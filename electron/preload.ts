@@ -17,6 +17,8 @@ export interface ElectronAPI {
   logout: (characterId?: number) => Promise<{ success: boolean }>
   fetchStructures: () => Promise<Record<string, unknown>>
   fetchCapitalPrices: () => Promise<unknown>
+  storageGet: () => Promise<Record<string, unknown> | null>
+  storageSet: (data: Record<string, unknown>) => Promise<boolean>
 }
 
 const electronAPI: ElectronAPI = {
@@ -27,6 +29,8 @@ const electronAPI: ElectronAPI = {
   logout: (characterId?: number) => ipcRenderer.invoke('auth:logout', characterId),
   fetchStructures: () => ipcRenderer.invoke('fetch:structures'),
   fetchCapitalPrices: () => ipcRenderer.invoke('fetch:capitalPrices'),
+  storageGet: () => ipcRenderer.invoke('storage:get'),
+  storageSet: (data: Record<string, unknown>) => ipcRenderer.invoke('storage:set', data),
 }
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI)

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuthStore } from '@/store/auth-store'
+import eveSsoLoginWhite from '/eve-sso-login-white.png'
 
 export function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false)
@@ -78,7 +79,7 @@ export function LoginScreen() {
           className="transition-opacity hover:opacity-80 disabled:opacity-50"
         >
           <img
-            src="/eve-sso-login-white.png"
+            src={eveSsoLoginWhite}
             alt="Log in with EVE Online"
           />
         </button>

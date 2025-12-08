@@ -1,5 +1,37 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage, type StateStorage } from 'zustand/middleware'
+
+// Custom storage adapter using Electron IPC for reliable file-based persistence
+const electronStorage: StateStorage = {
+  getItem: async (name: string): Promise<string | null> => {
+    if (!window.electronAPI) {
+      return localStorage.getItem(name)
+    }
+    const data = await window.electronAPI.storageGet()
+    if (data && name in data) {
+      return JSON.stringify(data[name])
+    }
+    return null
+  },
+  setItem: async (name: string, value: string): Promise<void> => {
+    if (!window.electronAPI) {
+      localStorage.setItem(name, value)
+      return
+    }
+    const existing = (await window.electronAPI.storageGet()) ?? {}
+    existing[name] = JSON.parse(value)
+    await window.electronAPI.storageSet(existing)
+  },
+  removeItem: async (name: string): Promise<void> => {
+    if (!window.electronAPI) {
+      localStorage.removeItem(name)
+      return
+    }
+    const existing = (await window.electronAPI.storageGet()) ?? {}
+    delete existing[name]
+    await window.electronAPI.storageSet(existing)
+  },
+}
 
 export type OwnerType = 'character' | 'corporation'
 
@@ -248,6 +280,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'auth-storage',
+      storage: createJSONStorage(() => electronStorage),
       partialize: (state) => ({
         owners: Object.fromEntries(
           Object.entries(state.owners).map(([key, owner]) => [

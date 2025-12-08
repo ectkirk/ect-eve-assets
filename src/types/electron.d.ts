@@ -15,6 +15,8 @@ interface ElectronAPI {
   logout: (characterId?: number) => Promise<{ success: boolean }>
   fetchStructures: () => Promise<Record<string, unknown>>
   fetchCapitalPrices: () => Promise<unknown>
+  storageGet: () => Promise<Record<string, unknown> | null>
+  storageSet: (data: Record<string, unknown>) => Promise<boolean>
 }
 
 declare global {

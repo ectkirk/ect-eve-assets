@@ -1,8 +1,34 @@
 import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
+import fs from 'node:fs'
 import { config } from 'dotenv'
 import { startAuth, refreshAccessToken, revokeToken } from './services/auth.js'
+
+// User data storage path
+const userDataPath = app.getPath('userData')
+const storageFile = path.join(userDataPath, 'auth-storage.json')
+
+function readStorage(): Record<string, unknown> | null {
+  try {
+    if (fs.existsSync(storageFile)) {
+      const data = fs.readFileSync(storageFile, 'utf-8')
+      return JSON.parse(data)
+    }
+  } catch (err) {
+    console.error('[Storage] Failed to read:', err)
+  }
+  return null
+}
+
+function writeStorage(data: Record<string, unknown>): void {
+  try {
+    fs.mkdirSync(userDataPath, { recursive: true })
+    fs.writeFileSync(storageFile, JSON.stringify(data, null, 2), 'utf-8')
+  } catch (err) {
+    console.error('[Storage] Failed to write:', err)
+  }
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -123,6 +149,16 @@ ipcMain.handle('fetch:capitalPrices', async () => {
     throw new Error(`Failed to fetch capital prices: ${response.status}`)
   }
   return response.json()
+})
+
+// File-based storage IPC handlers (replaces localStorage for persistence)
+ipcMain.handle('storage:get', () => {
+  return readStorage()
+})
+
+ipcMain.handle('storage:set', (_event, data: Record<string, unknown>) => {
+  writeStorage(data)
+  return true
 })
 
 app.whenReady().then(() => {
