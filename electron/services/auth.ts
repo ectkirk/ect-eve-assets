@@ -1,0 +1,278 @@
+import { shell } from 'electron'
+import { createServer, type Server } from 'node:http'
+import { randomBytes } from 'node:crypto'
+import { URL } from 'node:url'
+
+// EVE SSO Configuration
+const EVE_SSO = {
+  authUrl: 'https://login.eveonline.com/v2/oauth/authorize',
+  tokenUrl: 'https://login.eveonline.com/v2/oauth/token',
+  revokeUrl: 'https://login.eveonline.com/v2/oauth/revoke',
+  redirectUri: 'http://localhost:2020/callback',
+  scopes: [
+    'publicData',
+    'esi-assets.read_assets.v1',
+    'esi-markets.read_character_orders.v1',
+    'esi-industry.read_character_jobs.v1',
+    'esi-contracts.read_character_contracts.v1',
+    'esi-clones.read_clones.v1',
+    'esi-clones.read_implants.v1',
+    'esi-universe.read_structures.v1',
+    'esi-wallet.read_character_wallet.v1',
+  ],
+}
+
+// You must register your app at https://developers.eveonline.com/
+// and set these environment variables or replace with your values
+const CLIENT_ID = process.env.EVE_CLIENT_ID || ''
+const CLIENT_SECRET = process.env.EVE_CLIENT_SECRET || ''
+
+interface AuthResult {
+  success: boolean
+  accessToken?: string
+  refreshToken?: string
+  expiresAt?: number
+  characterId?: number
+  characterName?: string
+  error?: string
+}
+
+interface TokenResponse {
+  access_token: string
+  token_type: string
+  expires_in: number
+  refresh_token: string
+}
+
+interface JWTPayload {
+  sub: string
+  name: string
+  scp: string | string[]
+  iss: string
+  exp: number
+}
+
+let authServer: Server | null = null
+let pendingState: string | null = null
+
+function parseJWT(token: string): JWTPayload {
+  const parts = token.split('.')
+  if (parts.length !== 3) {
+    throw new Error('Invalid JWT format')
+  }
+  const payload = parts[1]
+  if (!payload) {
+    throw new Error('Missing JWT payload')
+  }
+  const decoded = Buffer.from(payload, 'base64url').toString('utf-8')
+  return JSON.parse(decoded) as JWTPayload
+}
+
+function extractCharacterId(sub: string): number {
+  // Format: "CHARACTER:EVE:123456789"
+  const parts = sub.split(':')
+  const idPart = parts[2]
+  if (!idPart) {
+    throw new Error('Invalid sub claim format')
+  }
+  return parseInt(idPart, 10)
+}
+
+async function exchangeCodeForTokens(code: string): Promise<TokenResponse> {
+  const credentials = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString(
+    'base64'
+  )
+
+  const response = await fetch(EVE_SSO.tokenUrl, {
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${credentials}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+    }),
+  })
+
+  if (!response.ok) {
+    const error = await response.text()
+    throw new Error(`Token exchange failed: ${error}`)
+  }
+
+  return (await response.json()) as TokenResponse
+}
+
+export async function refreshAccessToken(
+  refreshToken: string
+): Promise<AuthResult> {
+  try {
+    const credentials = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString(
+      'base64'
+    )
+
+    const response = await fetch(EVE_SSO.tokenUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${credentials}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+      }),
+    })
+
+    if (!response.ok) {
+      const error = await response.text()
+      return { success: false, error: `Token refresh failed: ${error}` }
+    }
+
+    const tokens = (await response.json()) as TokenResponse
+    const jwt = parseJWT(tokens.access_token)
+    const expiresAt = Date.now() + tokens.expires_in * 1000
+
+    return {
+      success: true,
+      accessToken: tokens.access_token,
+      refreshToken: tokens.refresh_token,
+      expiresAt,
+      characterId: extractCharacterId(jwt.sub),
+      characterName: jwt.name,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }
+  }
+}
+
+export async function startAuth(): Promise<AuthResult> {
+  return new Promise((resolve) => {
+    if (!CLIENT_ID || !CLIENT_SECRET) {
+      resolve({
+        success: false,
+        error:
+          'EVE_CLIENT_ID and EVE_CLIENT_SECRET environment variables must be set',
+      })
+      return
+    }
+
+    // Generate state for CSRF protection
+    pendingState = randomBytes(32).toString('hex')
+
+    // Build authorization URL
+    const authUrl = new URL(EVE_SSO.authUrl)
+    authUrl.searchParams.set('response_type', 'code')
+    authUrl.searchParams.set('client_id', CLIENT_ID)
+    authUrl.searchParams.set('redirect_uri', EVE_SSO.redirectUri)
+    authUrl.searchParams.set('scope', EVE_SSO.scopes.join(' '))
+    authUrl.searchParams.set('state', pendingState)
+
+    // Start local server to handle callback
+    authServer = createServer(async (req, res) => {
+      const url = new URL(req.url || '', `http://localhost:2020`)
+
+      if (url.pathname === '/callback') {
+        const code = url.searchParams.get('code')
+        const state = url.searchParams.get('state')
+        const error = url.searchParams.get('error')
+
+        // Send response to browser
+        res.writeHead(200, { 'Content-Type': 'text/html' })
+        res.end(`
+          <html>
+            <body style="font-family: sans-serif; text-align: center; padding: 50px; background: #0f172a; color: #e2e8f0;">
+              <h1>${error ? 'Authentication Failed' : 'Authentication Successful'}</h1>
+              <p>${error ? error : 'You can close this window and return to the application.'}</p>
+            </body>
+          </html>
+        `)
+
+        // Close server
+        authServer?.close()
+        authServer = null
+
+        if (error) {
+          resolve({ success: false, error })
+          return
+        }
+
+        // Verify state
+        if (state !== pendingState) {
+          resolve({ success: false, error: 'State mismatch - possible CSRF' })
+          return
+        }
+
+        if (!code) {
+          resolve({ success: false, error: 'No authorization code received' })
+          return
+        }
+
+        try {
+          // Exchange code for tokens
+          const tokens = await exchangeCodeForTokens(code)
+          const jwt = parseJWT(tokens.access_token)
+          const expiresAt = Date.now() + tokens.expires_in * 1000
+
+          resolve({
+            success: true,
+            accessToken: tokens.access_token,
+            refreshToken: tokens.refresh_token,
+            expiresAt,
+            characterId: extractCharacterId(jwt.sub),
+            characterName: jwt.name,
+          })
+        } catch (err) {
+          resolve({
+            success: false,
+            error: err instanceof Error ? err.message : 'Token exchange failed',
+          })
+        }
+      } else {
+        res.writeHead(404)
+        res.end('Not found')
+      }
+    })
+
+    authServer.listen(2020, () => {
+      // Open browser to EVE SSO
+      shell.openExternal(authUrl.toString())
+    })
+
+    // Timeout after 5 minutes
+    setTimeout(() => {
+      if (authServer) {
+        authServer.close()
+        authServer = null
+        resolve({ success: false, error: 'Authentication timed out' })
+      }
+    }, 5 * 60 * 1000)
+  })
+}
+
+export async function revokeToken(refreshToken: string): Promise<boolean> {
+  try {
+    const credentials = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString(
+      'base64'
+    )
+
+    const response = await fetch(EVE_SSO.revokeUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${credentials}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        token_type_hint: 'refresh_token',
+        token: refreshToken,
+      }),
+    })
+
+    return response.ok
+  } catch {
+    return false
+  }
+}
+
