@@ -1,6 +1,6 @@
 import { shell } from 'electron'
 import { createServer, type Server } from 'node:http'
-import { randomBytes } from 'node:crypto'
+import { randomBytes, createHash } from 'node:crypto'
 import { URL } from 'node:url'
 
 const CHARACTER_SCOPES = [
@@ -25,22 +25,22 @@ const EVE_SSO = {
   tokenUrl: 'https://login.eveonline.com/v2/oauth/token',
   revokeUrl: 'https://login.eveonline.com/v2/oauth/revoke',
   redirectUri: 'http://localhost:2020/callback',
+  clientId: 'ff72276da5e947b3a64763038d22ef53',
 }
 
-function getCredentials(): { clientId: string; clientSecret: string } {
-  const clientId = process.env.EVE_CLIENT_ID
-  const clientSecret = process.env.EVE_CLIENT_SECRET
-  if (!clientId || !clientSecret) {
-    throw new Error(
-      'EVE_CLIENT_ID and EVE_CLIENT_SECRET environment variables must be set'
-    )
+function generateCodeVerifier(): string {
+  const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-._~'
+  let result = ''
+  const bytes = randomBytes(128)
+  for (let i = 0; i < 128; i++) {
+    result += chars[bytes[i]! % chars.length]
   }
-  return { clientId, clientSecret }
+  return result
 }
 
-function getBasicAuth(): string {
-  const { clientId, clientSecret } = getCredentials()
-  return Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
+function generateCodeChallenge(verifier: string): string {
+  const hash = createHash('sha256').update(verifier, 'ascii').digest()
+  return hash.toString('base64url')
 }
 
 interface AuthResult {
@@ -87,6 +87,7 @@ interface JWTPayload {
 
 let authServer: Server | null = null
 let pendingState: string | null = null
+let pendingCodeVerifier: string | null = null
 
 function parseJWT(token: string): JWTPayload {
   const parts = token.split('.')
@@ -110,16 +111,18 @@ function extractCharacterId(sub: string): number {
   return parseInt(idPart, 10)
 }
 
-async function exchangeCodeForTokens(code: string): Promise<TokenResponse> {
+async function exchangeCodeForTokens(code: string, codeVerifier: string): Promise<TokenResponse> {
   const response = await fetch(EVE_SSO.tokenUrl, {
     method: 'POST',
     headers: {
-      Authorization: `Basic ${getBasicAuth()}`,
       'Content-Type': 'application/x-www-form-urlencoded',
+      Host: 'login.eveonline.com',
     },
     body: new URLSearchParams({
       grant_type: 'authorization_code',
+      client_id: EVE_SSO.clientId,
       code,
+      code_verifier: codeVerifier,
     }),
   })
 
@@ -138,11 +141,12 @@ export async function refreshAccessToken(
     const response = await fetch(EVE_SSO.tokenUrl, {
       method: 'POST',
       headers: {
-        Authorization: `Basic ${getBasicAuth()}`,
         'Content-Type': 'application/x-www-form-urlencoded',
+        Host: 'login.eveonline.com',
       },
       body: new URLSearchParams({
         grant_type: 'refresh_token',
+        client_id: EVE_SSO.clientId,
         refresh_token: refreshToken,
       }),
     })
@@ -179,26 +183,19 @@ export async function refreshAccessToken(
 
 export async function startAuth(includeCorporationScopes = false): Promise<AuthResult> {
   return new Promise((resolve) => {
-    let creds: { clientId: string; clientSecret: string }
-    try {
-      creds = getCredentials()
-    } catch (err) {
-      resolve({
-        success: false,
-        error: err instanceof Error ? err.message : 'Missing credentials',
-      })
-      return
-    }
-
     pendingState = randomBytes(32).toString('hex')
+    pendingCodeVerifier = generateCodeVerifier()
+    const codeChallenge = generateCodeChallenge(pendingCodeVerifier)
     const scopes = includeCorporationScopes ? CORPORATION_SCOPES : CHARACTER_SCOPES
 
     const authUrl = new URL(EVE_SSO.authUrl)
     authUrl.searchParams.set('response_type', 'code')
-    authUrl.searchParams.set('client_id', creds.clientId)
+    authUrl.searchParams.set('client_id', EVE_SSO.clientId)
     authUrl.searchParams.set('redirect_uri', EVE_SSO.redirectUri)
     authUrl.searchParams.set('scope', scopes.join(' '))
     authUrl.searchParams.set('state', pendingState)
+    authUrl.searchParams.set('code_challenge', codeChallenge)
+    authUrl.searchParams.set('code_challenge_method', 'S256')
 
     authServer = createServer(async (req, res) => {
       const url = new URL(req.url || '', `http://localhost:2020`)
@@ -236,8 +233,13 @@ export async function startAuth(includeCorporationScopes = false): Promise<AuthR
           return
         }
 
+        if (!pendingCodeVerifier) {
+          resolve({ success: false, error: 'Missing code verifier' })
+          return
+        }
+
         try {
-          const tokens = await exchangeCodeForTokens(code)
+          const tokens = await exchangeCodeForTokens(code, pendingCodeVerifier)
           const jwt = parseJWT(tokens.access_token)
           const expiresAt = Date.now() + tokens.expires_in * 1000
           const characterId = extractCharacterId(jwt.sub)
@@ -285,10 +287,11 @@ export async function revokeToken(refreshToken: string): Promise<boolean> {
     const response = await fetch(EVE_SSO.revokeUrl, {
       method: 'POST',
       headers: {
-        Authorization: `Basic ${getBasicAuth()}`,
         'Content-Type': 'application/x-www-form-urlencoded',
+        Host: 'login.eveonline.com',
       },
       body: new URLSearchParams({
+        client_id: EVE_SSO.clientId,
         token_type_hint: 'refresh_token',
         token: refreshToken,
       }),
