@@ -1,6 +1,6 @@
 {
   "name": "ecteveassets",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "EVE Online Asset Management Desktop Application",
   "main": "dist-electron/main.js",
@@ -43,17 +43,23 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "legalTrademarks": "EC Trade - edencom.net",
       "requestedExecutionLevel": "asInvoker"
     },
     "mac": {
-      "target": ["dmg"]
+      "target": [
+        "dmg"
+      ]
     },
     "linux": {
-      "target": ["AppImage"]
+      "target": [
+        "AppImage"
+      ]
     },
     "nsis": {
       "oneClick": false,
