@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuthStore } from '@/store/auth-store'
+import { AssetsTab } from '@/features/assets'
 
 const TABS = [
   'Assets',
@@ -15,6 +16,19 @@ const TABS = [
 ] as const
 
 type Tab = (typeof TABS)[number]
+
+function TabContent({ tab }: { tab: Tab }) {
+  switch (tab) {
+    case 'Assets':
+      return <AssetsTab />
+    default:
+      return (
+        <div className="text-slate-400">
+          Content for {tab} tab will be displayed here.
+        </div>
+      )
+  }
+}
 
 export function MainLayout() {
   const [activeTab, setActiveTab] = useState<Tab>('Assets')
@@ -69,12 +83,7 @@ export function MainLayout() {
 
       {/* Content Area */}
       <main className="flex-1 overflow-auto p-4">
-        <div className="rounded-lg border border-slate-700 bg-slate-800 p-4">
-          <h2 className="text-lg font-semibold">{activeTab}</h2>
-          <p className="mt-2 text-slate-400">
-            Content for {activeTab} tab will be displayed here.
-          </p>
-        </div>
+        <TabContent tab={activeTab} />
       </main>
     </div>
   )

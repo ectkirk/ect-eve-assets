@@ -17,10 +17,32 @@ export interface ESIMarketOrder {
   volume_total: number
 }
 
+export interface ESIMarketPrice {
+  adjusted_price?: number
+  average_price?: number
+  type_id: number
+}
+
 export async function getCharacterOrders(
   characterId: number
 ): Promise<ESIMarketOrder[]> {
   return esiClient.fetch<ESIMarketOrder[]>(
     `/characters/${characterId}/orders/`
   )
+}
+
+// Fetches average market prices - public endpoint, no auth required
+export async function getMarketPrices(): Promise<ESIMarketPrice[]> {
+  const response = await fetch(
+    'https://esi.evetech.net/latest/markets/prices/?datasource=tranquility',
+    {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    }
+  )
+  if (!response.ok) {
+    throw new Error(`Failed to fetch market prices: ${response.status}`)
+  }
+  return response.json()
 }
