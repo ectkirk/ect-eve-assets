@@ -4,7 +4,7 @@
   "type": "module",
   "description": "EVE Online Asset Management Desktop Application",
   "main": "dist-electron/main.js",
-  "author": "ectkirk",
+  "author": "EC Trade <contact@edencom.net>",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -29,8 +29,9 @@
     "dist:linux": "npm run build && electron-builder --linux"
   },
   "build": {
-    "appId": "com.ectkirk.ecteveassets",
+    "appId": "net.edencom.ecteveassets",
     "productName": "ECTEVEAssets",
+    "copyright": "Copyright © 2025 EC Trade (edencom.net)",
     "directories": {
       "output": "release"
     },
@@ -44,7 +45,9 @@
           "target": "nsis",
           "arch": ["x64"]
         }
-      ]
+      ],
+      "legalTrademarks": "EC Trade - edencom.net",
+      "requestedExecutionLevel": "asInvoker"
     },
     "mac": {
       "target": ["dmg"]
