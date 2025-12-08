@@ -12,7 +12,7 @@ import {
   type ColumnFiltersState,
   type VisibilityState,
 } from '@tanstack/react-table'
-import { ArrowUpDown, ChevronDown, Loader2 } from 'lucide-react'
+import { ArrowUpDown, ChevronDown, Loader2, X } from 'lucide-react'
 import {
   Table,
   TableBody,
@@ -24,7 +24,7 @@ import {
 import { useAuthStore, type Owner } from '@/store/auth-store'
 import { getCharacterAssets, getAssetNames, type ESIAsset } from '@/api/endpoints/assets'
 import { fetchPrices } from '@/api/ref-client'
-import { fetchAbyssalPrices, isAbyssalType, hasCachedAbyssalPrice } from '@/api/mutamarket-client'
+import { fetchAbyssalPrices, isAbyssalTypeId, hasCachedAbyssalPrice } from '@/api/mutamarket-client'
 import { getAbyssalPrice } from '@/store/reference-cache'
 import { getCorporationAssets } from '@/api/endpoints/corporation'
 import {
@@ -53,6 +53,8 @@ interface AssetRow {
   volume: number
   totalVolume: number
   categoryId: number
+  categoryName: string
+  groupName: string
   ownerId: number
   ownerName: string
   ownerType: 'character' | 'corporation'
@@ -267,6 +269,8 @@ export function AssetsTab() {
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [globalFilter, setGlobalFilter] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('')
+  const [groupFilter, setGroupFilter] = useState('')
 
   // Memoize query configs to prevent infinite re-renders
   const assetQueryConfigs = useMemo(
@@ -405,19 +409,19 @@ export function AssetsTab() {
       }
     }
 
-    // Get location name based on location_type
-    // Walk up parent chain until we find a station/structure/system
     const resolveLocationName = (asset: ESIAsset): string => {
       let current = asset
 
-      // Walk up parent chain for nested items (modules in ships, items in containers)
       while (current.location_type === 'item') {
         const parent = itemIdToAsset.get(current.location_id)
         if (!parent) break
         current = parent
       }
 
-      // Now current.location_id should be a station/structure/solar_system
+      if (current.location_type === 'solar_system' && current.item_id > 1_000_000_000_000) {
+        return getLocationName(current.item_id)
+      }
+
       return getLocationName(current.location_id)
     }
 
@@ -431,6 +435,8 @@ export function AssetsTab() {
         // Check abyssal price by item_id first (from persistent cache), then fall back to type price
         const abyssalPrice = getAbyssalPrice(asset.item_id)
         const price = abyssalPrice ?? priceMap.get(asset.type_id) ?? 0
+
+        const isAbyssal = isAbyssalTypeId(asset.type_id)
 
         rows.push({
           itemId: asset.item_id,
@@ -447,6 +453,8 @@ export function AssetsTab() {
           volume,
           totalVolume: volume * asset.quantity,
           categoryId: sdeType?.categoryId ?? 0,
+          categoryName: isAbyssal ? 'Abyssals' : (sdeType?.categoryName ?? ''),
+          groupName: sdeType?.groupName ?? '',
           ownerId: owner.id,
           ownerName: owner.name,
           ownerType: owner.type,
@@ -456,6 +464,33 @@ export function AssetsTab() {
 
     return rows
   }, [assetDataList, priceMap, nameMap, cacheVersion])
+
+  const categories = useMemo(() => {
+    const cats = new Set<string>()
+    for (const row of data) {
+      if (row.categoryName) cats.add(row.categoryName)
+    }
+    return Array.from(cats).sort()
+  }, [data])
+
+  const groups = useMemo(() => {
+    const grps = new Set<string>()
+    for (const row of data) {
+      if (row.groupName && (!categoryFilter || row.categoryName === categoryFilter)) {
+        grps.add(row.groupName)
+      }
+    }
+    return Array.from(grps).sort()
+  }, [data, categoryFilter])
+
+  const filteredData = useMemo(() => {
+    const groupLower = groupFilter.toLowerCase()
+    return data.filter((row) => {
+      if (categoryFilter && row.categoryName !== categoryFilter) return false
+      if (groupFilter && !row.groupName.toLowerCase().includes(groupLower)) return false
+      return true
+    })
+  }, [data, categoryFilter, groupFilter])
 
   // Resolve unknown types via ESI /universe/types/{type_id}
   const [typeResolutionProgress, setTypeResolutionProgress] = useState<{ resolved: number; total: number } | null>(null)
@@ -503,15 +538,10 @@ export function AssetsTab() {
     const currentAssetData = assetDataListRef.current
     if (resolvingAbyssalsRef.current || currentAssetData.length === 0 || !refPrices) return
 
-    // Find abyssal items with no price (not in persistent cache)
     const abyssalItemIds: number[] = []
     for (const { assets } of currentAssetData) {
       for (const asset of assets) {
-        const typeName = getTypeName(asset.type_id)
-        const hasPrice = refPrices.get(asset.type_id)
-
-        // If it's an abyssal type with no market price and not cached, try mutamarket
-        if (isAbyssalType(typeName) && !hasPrice && !hasCachedAbyssalPrice(asset.item_id)) {
+        if (isAbyssalTypeId(asset.type_id) && !hasCachedAbyssalPrice(asset.item_id)) {
           abyssalItemIds.push(asset.item_id)
         }
       }
@@ -570,6 +600,11 @@ export function AssetsTab() {
         const root = getRootLocation(asset)
         if (root.locationId > 1_000_000_000_000 && !hasStructure(root.locationId)) {
           unknownStructureIds.add(root.locationId)
+        }
+        if (asset.location_type === 'solar_system' && asset.item_id > 1_000_000_000_000) {
+          if (!hasStructure(asset.item_id)) {
+            unknownStructureIds.add(asset.item_id)
+          }
         }
       }
     }
@@ -654,22 +689,8 @@ export function AssetsTab() {
       })
   }, [assetDataKey])
 
-  const totals = useMemo(() => {
-    let totalValue = 0
-    let totalVolume = 0
-    let totalItems = 0
-
-    for (const row of data) {
-      totalValue += row.totalValue
-      totalVolume += row.totalVolume
-      totalItems += row.quantity
-    }
-
-    return { totalValue, totalVolume, totalItems }
-  }, [data])
-
   const table = useReactTable({
-    data,
+    data: filteredData,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -692,6 +713,21 @@ export function AssetsTab() {
       },
     },
   })
+
+  const filteredRows = table.getFilteredRowModel().rows
+  const totals = useMemo(() => {
+    let totalValue = 0
+    let totalVolume = 0
+    let totalItems = 0
+
+    for (const row of filteredRows) {
+      totalValue += row.original.totalValue
+      totalVolume += row.original.totalVolume
+      totalItems += row.original.quantity
+    }
+
+    return { totalValue, totalVolume, totalItems }
+  }, [filteredRows])
 
   const isLoading = assetQueries.some((q) => q.isLoading)
   const hasError = assetQueries.some((q) => q.error)
@@ -787,17 +823,65 @@ export function AssetsTab() {
         </div>
       </div>
 
-      {/* Search Filter */}
-      <div className="flex items-center gap-4">
-        <input
-          type="text"
-          placeholder="Search assets..."
-          value={globalFilter}
-          onChange={(e) => setGlobalFilter(e.target.value)}
-          className="w-64 rounded border border-slate-600 bg-slate-700 px-3 py-1.5 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
-        />
+      <div className="flex items-center gap-3">
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Search assets..."
+            value={globalFilter}
+            onChange={(e) => setGlobalFilter(e.target.value)}
+            className="w-56 rounded border border-slate-600 bg-slate-700 px-3 py-1.5 pr-8 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
+          />
+          {globalFilter && (
+            <button
+              onClick={() => setGlobalFilter('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        <select
+          value={categoryFilter}
+          onChange={(e) => {
+            setCategoryFilter(e.target.value)
+            setGroupFilter('')
+          }}
+          className="w-40 rounded border border-slate-600 bg-slate-700 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+        >
+          <option value="">All Categories</option>
+          {categories.map((cat) => (
+            <option key={cat} value={cat}>{cat}</option>
+          ))}
+        </select>
+
+        <div className="relative">
+          <input
+            type="text"
+            list="group-options"
+            placeholder="All Groups"
+            value={groupFilter}
+            onChange={(e) => setGroupFilter(e.target.value)}
+            className="w-44 rounded border border-slate-600 bg-slate-700 px-2 py-1.5 pr-8 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
+          />
+          {groupFilter && (
+            <button
+              onClick={() => setGroupFilter('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+          <datalist id="group-options">
+            {groups.map((grp) => (
+              <option key={grp} value={grp} />
+            ))}
+          </datalist>
+        </div>
+
         <span className="text-sm text-slate-400">
-          Showing {table.getFilteredRowModel().rows.length} of {data.length} assets
+          Showing {filteredRows.length} of {data.length} assets
         </span>
       </div>
 
