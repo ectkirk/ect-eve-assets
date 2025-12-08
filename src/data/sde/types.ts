@@ -6,7 +6,6 @@ export interface SDEType {
   categoryId: number
   volume: number
   packagedVolume?: number
-  mass?: number
   marketGroupId?: number
   published: boolean
 }

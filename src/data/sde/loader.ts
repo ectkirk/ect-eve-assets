@@ -98,32 +98,53 @@ async function saveToDBBulk<T>(storeName: string, items: T[]): Promise<void> {
   })
 }
 
+async function fetchBundledData<T>(filename: string): Promise<T[]> {
+  const response = await fetch(`/sde/${filename}`)
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ${filename}: ${response.status}`)
+  }
+  return response.json()
+}
+
+async function loadBundledSDE(): Promise<void> {
+  const [types, stations, solarSystems, regions] = await Promise.all([
+    fetchBundledData<SDEType>('types.json'),
+    fetchBundledData<SDEStation>('stations.json'),
+    fetchBundledData<SDESolarSystem>('solarSystems.json'),
+    fetchBundledData<SDERegion>('regions.json'),
+  ])
+
+  await Promise.all([
+    saveToDBBulk('types', types),
+    saveToDBBulk('stations', stations),
+    saveToDBBulk('solarSystems', solarSystems),
+    saveToDBBulk('regions', regions),
+  ])
+}
+
 export async function initSDE(): Promise<SDEDatabase> {
   if (cache) return cache
 
   // Try to load from IndexedDB first
-  const [types, stations, solarSystems, regions] = await Promise.all([
+  let [types, stations, solarSystems, regions] = await Promise.all([
     loadFromDB<SDEType>('types'),
     loadFromDB<SDEStation>('stations'),
     loadFromDB<SDESolarSystem>('solarSystems'),
     loadFromDB<SDERegion>('regions'),
   ])
 
-  // If we have data, use it
-  if (types.size > 0) {
-    cache = { types, stations, solarSystems, regions }
-    return cache
+  // If IndexedDB is empty, load bundled data
+  if (types.size === 0) {
+    await loadBundledSDE()
+    ;[types, stations, solarSystems, regions] = await Promise.all([
+      loadFromDB<SDEType>('types'),
+      loadFromDB<SDEStation>('stations'),
+      loadFromDB<SDESolarSystem>('solarSystems'),
+      loadFromDB<SDERegion>('regions'),
+    ])
   }
 
-  // Otherwise, we need to load initial data
-  // For now, create empty cache - data will be populated from bundled files
-  cache = {
-    types: new Map(),
-    stations: new Map(),
-    solarSystems: new Map(),
-    regions: new Map(),
-  }
-
+  cache = { types, stations, solarSystems, regions }
   return cache
 }
 
