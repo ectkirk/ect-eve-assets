@@ -5,13 +5,16 @@ interface AuthResult {
   expiresAt?: number
   characterId?: number
   characterName?: string
+  corporationId?: number
   error?: string
 }
 
 interface ElectronAPI {
-  startAuth: () => Promise<AuthResult>
-  refreshToken: (refreshToken: string) => Promise<AuthResult>
-  logout: () => Promise<{ success: boolean }>
+  startAuth: (includeCorporationScopes?: boolean) => Promise<AuthResult>
+  refreshToken: (refreshToken: string, characterId: number) => Promise<AuthResult>
+  logout: (characterId?: number) => Promise<{ success: boolean }>
+  fetchStructures: () => Promise<Record<string, unknown>>
+  fetchCapitalPrices: () => Promise<unknown>
 }
 
 declare global {

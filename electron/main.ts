@@ -18,7 +18,7 @@ export const VITE_PUBLIC = VITE_DEV_SERVER_URL
   : RENDERER_DIST
 
 let mainWindow: BrowserWindow | null = null
-let currentRefreshToken: string | null = null
+const characterTokens = new Map<number, string>()
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -45,35 +45,84 @@ function createWindow() {
 
   if (VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(VITE_DEV_SERVER_URL)
-    mainWindow.webContents.openDevTools()
+    mainWindow.webContents.openDevTools({ mode: 'detach' })
   } else {
     mainWindow.loadFile(path.join(RENDERER_DIST, 'index.html'))
   }
+
+  // Always allow DevTools toggle with F12 or Ctrl+Shift+I
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.key === 'F12') {
+      mainWindow?.webContents.toggleDevTools()
+      event.preventDefault()
+    }
+    if (input.control && input.shift && input.key.toLowerCase() === 'i') {
+      mainWindow?.webContents.toggleDevTools()
+      event.preventDefault()
+    }
+  })
+
+  // Log ALL renderer console messages to terminal
+  mainWindow.webContents.on('console-message', (event) => {
+    const levelMap: Record<string, string> = { '0': 'LOG', '1': 'INFO', '2': 'WARN', '3': 'ERROR' }
+    const levelName = levelMap[String(event.level)] || 'LOG'
+    console.log(`[Renderer:${levelName}] ${event.message}`)
+  })
+
+  // Catch renderer crashes
+  mainWindow.webContents.on('render-process-gone', (_event, details) => {
+    console.error('[CRASH] Renderer process gone:', details.reason)
+  })
 }
 
 // IPC handlers for auth
-ipcMain.handle('auth:start', async () => {
-  const result = await startAuth()
-  if (result.success && result.refreshToken) {
-    currentRefreshToken = result.refreshToken
+ipcMain.handle('auth:start', async (_event, includeCorporationScopes = false) => {
+  const result = await startAuth(includeCorporationScopes)
+  if (result.success && result.refreshToken && result.characterId) {
+    characterTokens.set(result.characterId, result.refreshToken)
   }
   return result
 })
 
-ipcMain.handle('auth:refresh', async (_event, refreshToken: string) => {
+ipcMain.handle('auth:refresh', async (_event, refreshToken: string, characterId: number) => {
   const result = await refreshAccessToken(refreshToken)
-  if (result.success && result.refreshToken) {
-    currentRefreshToken = result.refreshToken
+  if (result.success && result.refreshToken && characterId) {
+    characterTokens.set(characterId, result.refreshToken)
   }
   return result
 })
 
-ipcMain.handle('auth:logout', async () => {
-  if (currentRefreshToken) {
-    await revokeToken(currentRefreshToken)
-    currentRefreshToken = null
+ipcMain.handle('auth:logout', async (_event, characterId?: number) => {
+  if (characterId !== undefined) {
+    const token = characterTokens.get(characterId)
+    if (token) {
+      await revokeToken(token)
+      characterTokens.delete(characterId)
+    }
+  } else {
+    for (const [id, token] of characterTokens) {
+      await revokeToken(token)
+      characterTokens.delete(id)
+    }
   }
   return { success: true }
+})
+
+// IPC handlers for external API fetches (bypass CORS)
+ipcMain.handle('fetch:structures', async () => {
+  const response = await fetch('https://data.everef.net/structures/structures-latest.v2.json')
+  if (!response.ok) {
+    throw new Error(`Failed to fetch structures: ${response.status}`)
+  }
+  return response.json()
+})
+
+ipcMain.handle('fetch:capitalPrices', async () => {
+  const response = await fetch('https://buyback.edencom.net/api/capital-prices')
+  if (!response.ok) {
+    throw new Error(`Failed to fetch capital prices: ${response.status}`)
+  }
+  return response.json()
 })
 
 app.whenReady().then(() => {

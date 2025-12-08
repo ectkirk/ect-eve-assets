@@ -10,26 +10,13 @@ export interface SDEType {
   published: boolean
 }
 
-// SDE Location definition
-export interface SDEStation {
-  stationId: number
+// Player structure (from everef.net or ESI)
+export interface EVERefStructure {
+  structureId: number
   name: string
   solarSystemId: number
-  regionId: number
   typeId: number
-}
-
-export interface SDESolarSystem {
-  solarSystemId: number
-  name: string
-  constellationId: number
-  regionId: number
-  security: number
-}
-
-export interface SDERegion {
-  regionId: number
-  name: string
+  ownerId: number
 }
 
 // Location flags for asset filtering

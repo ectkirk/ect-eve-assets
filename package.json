@@ -25,6 +25,8 @@
     "build:sde": "tsx scripts/build-sde.ts"
   },
   "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-scroll-area": "^1.2.10",
     "@tanstack/react-query": "5.90.12",
     "@tanstack/react-table": "8.21.3",
     "class-variance-authority": "0.7.1",

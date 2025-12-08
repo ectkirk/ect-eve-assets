@@ -4,7 +4,7 @@ import { useAuthStore } from '@/store/auth-store'
 export function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { setAuth } = useAuthStore()
+  const addCharacter = useAuthStore((state) => state.addCharacter)
 
   const handleLogin = async () => {
     if (!window.electronAPI) {
@@ -18,14 +18,14 @@ export function LoginScreen() {
     try {
       const result = await window.electronAPI.startAuth()
 
-      if (result.success && result.accessToken && result.refreshToken) {
-        setAuth({
+      if (result.success && result.accessToken && result.refreshToken && result.characterId && result.characterName) {
+        addCharacter({
           accessToken: result.accessToken,
           refreshToken: result.refreshToken,
           expiresAt: result.expiresAt ?? Date.now() + 1200000,
           character: {
-            id: result.characterId ?? 0,
-            name: result.characterName ?? 'Unknown',
+            id: result.characterId,
+            name: result.characterName,
             corporationId: 0,
           },
         })

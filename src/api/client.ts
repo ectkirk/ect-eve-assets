@@ -1,7 +1,7 @@
-import { useAuthStore } from '@/store/auth-store'
+import { useAuthStore, ownerKey } from '@/store/auth-store'
 
-const ESI_BASE_URL = 'https://esi.evetech.net/latest'
-const COMPATIBILITY_DATE = '2025-11-06'
+export const ESI_BASE_URL = 'https://esi.evetech.net/latest'
+export const ESI_COMPATIBILITY_DATE = '2025-11-06'
 
 export interface ESIError {
   error: string
@@ -24,39 +24,67 @@ export class ESIClient {
     this.baseUrl = baseUrl
   }
 
-  private async getAccessToken(): Promise<string> {
-    const { accessToken, isTokenExpired, refreshToken } =
-      useAuthStore.getState()
+  // Get access token for a character (used for API calls)
+  // characterId is the actual character making the request (for auth)
+  private async getAccessToken(characterId?: number): Promise<string> {
+    const store = useAuthStore.getState()
 
-    if (!accessToken) {
-      throw new Error('Not authenticated')
+    // If no characterId specified, use active owner's characterId
+    let targetCharId = characterId
+    if (!targetCharId) {
+      const activeOwner = store.getActiveOwner()
+      if (!activeOwner) {
+        throw new Error('No active owner')
+      }
+      targetCharId = activeOwner.characterId
     }
 
-    if (isTokenExpired() && refreshToken && window.electronAPI) {
-      const result = await window.electronAPI.refreshToken(refreshToken)
+    // Find the character owner (not corporation) for this characterId
+    const charOwnerKey = ownerKey('character', targetCharId)
+    let owner = store.getOwner(charOwnerKey)
+
+    // If not found as character, check if any owner uses this characterId
+    if (!owner) {
+      owner = store.getOwnerByCharacterId(targetCharId)
+    }
+
+    if (!owner) {
+      throw new Error(`No owner found for character ${targetCharId}`)
+    }
+
+    const ownerId = ownerKey(owner.type, owner.id)
+
+    // If no access token or token expired, try to refresh
+    const needsRefresh = !owner.accessToken || store.isOwnerTokenExpired(ownerId)
+
+    if (needsRefresh && owner.refreshToken && window.electronAPI) {
+      const result = await window.electronAPI.refreshToken(owner.refreshToken, owner.characterId)
       if (result.success && result.accessToken && result.refreshToken) {
-        useAuthStore.getState().setAuth({
+        store.updateOwnerTokens(ownerId, {
           accessToken: result.accessToken,
           refreshToken: result.refreshToken,
           expiresAt: result.expiresAt ?? Date.now() + 1200000,
-          character: useAuthStore.getState().character ?? {
-            id: 0,
-            name: 'Unknown',
-            corporationId: 0,
-          },
         })
         return result.accessToken
       }
       throw new Error('Token refresh failed')
     }
 
-    return accessToken
+    if (!owner.accessToken) {
+      throw new Error('Not authenticated - no access token and refresh failed')
+    }
+
+    return owner.accessToken
   }
 
-  async fetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const accessToken = await this.getAccessToken()
+  async fetch<T>(
+    endpoint: string,
+    options: RequestInit = {},
+    characterId?: number
+  ): Promise<T> {
+    const accessToken = await this.getAccessToken(characterId)
     const url = `${this.baseUrl}${endpoint}`
-    const cacheKey = url
+    const cacheKey = `${characterId ?? 'active'}:${url}`
 
     // Check if we have cached data that hasn't expired
     const cached = cache.get(cacheKey)
@@ -67,7 +95,7 @@ export class ESIClient {
     const headers: HeadersInit = {
       Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
-      'X-Compatibility-Date': COMPATIBILITY_DATE,
+      'X-Compatibility-Date': ESI_COMPATIBILITY_DATE,
       ...options.headers,
     }
 
@@ -118,14 +146,15 @@ export class ESIClient {
 
   async fetchWithPagination<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    characterId?: number
   ): Promise<T[]> {
     const results: T[] = []
     let page = 1
     let hasMore = true
 
     while (hasMore) {
-      const accessToken = await this.getAccessToken()
+      const accessToken = await this.getAccessToken(characterId)
       const separator = endpoint.includes('?') ? '&' : '?'
       const url = `${this.baseUrl}${endpoint}${separator}page=${page}`
 
@@ -134,7 +163,7 @@ export class ESIClient {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
-          'X-Compatibility-Date': COMPATIBILITY_DATE,
+          'X-Compatibility-Date': ESI_COMPATIBILITY_DATE,
           ...options.headers,
         },
       })

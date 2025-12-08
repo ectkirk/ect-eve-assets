@@ -7,20 +7,26 @@ export interface AuthResult {
   expiresAt?: number
   characterId?: number
   characterName?: string
+  corporationId?: number
   error?: string
 }
 
 export interface ElectronAPI {
-  startAuth: () => Promise<AuthResult>
-  refreshToken: (refreshToken: string) => Promise<AuthResult>
-  logout: () => Promise<{ success: boolean }>
+  startAuth: (includeCorporationScopes?: boolean) => Promise<AuthResult>
+  refreshToken: (refreshToken: string, characterId: number) => Promise<AuthResult>
+  logout: (characterId?: number) => Promise<{ success: boolean }>
+  fetchStructures: () => Promise<Record<string, unknown>>
+  fetchCapitalPrices: () => Promise<unknown>
 }
 
 const electronAPI: ElectronAPI = {
-  startAuth: () => ipcRenderer.invoke('auth:start'),
-  refreshToken: (refreshToken: string) =>
-    ipcRenderer.invoke('auth:refresh', refreshToken),
-  logout: () => ipcRenderer.invoke('auth:logout'),
+  startAuth: (includeCorporationScopes = false) =>
+    ipcRenderer.invoke('auth:start', includeCorporationScopes),
+  refreshToken: (refreshToken: string, characterId: number) =>
+    ipcRenderer.invoke('auth:refresh', refreshToken, characterId),
+  logout: (characterId?: number) => ipcRenderer.invoke('auth:logout', characterId),
+  fetchStructures: () => ipcRenderer.invoke('fetch:structures'),
+  fetchCapitalPrices: () => ipcRenderer.invoke('fetch:capitalPrices'),
 }
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI)

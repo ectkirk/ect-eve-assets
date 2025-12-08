@@ -3,22 +3,28 @@ import { createServer, type Server } from 'node:http'
 import { randomBytes } from 'node:crypto'
 import { URL } from 'node:url'
 
+const CHARACTER_SCOPES = [
+  'publicData',
+  'esi-assets.read_assets.v1',
+  'esi-markets.read_character_orders.v1',
+  'esi-industry.read_character_jobs.v1',
+  'esi-contracts.read_character_contracts.v1',
+  'esi-clones.read_clones.v1',
+  'esi-clones.read_implants.v1',
+  'esi-universe.read_structures.v1',
+  'esi-wallet.read_character_wallet.v1',
+]
+
+const CORPORATION_SCOPES = [
+  ...CHARACTER_SCOPES,
+  'esi-assets.read_corporation_assets.v1',
+]
+
 const EVE_SSO = {
   authUrl: 'https://login.eveonline.com/v2/oauth/authorize',
   tokenUrl: 'https://login.eveonline.com/v2/oauth/token',
   revokeUrl: 'https://login.eveonline.com/v2/oauth/revoke',
   redirectUri: 'http://localhost:2020/callback',
-  scopes: [
-    'publicData',
-    'esi-assets.read_assets.v1',
-    'esi-markets.read_character_orders.v1',
-    'esi-industry.read_character_jobs.v1',
-    'esi-contracts.read_character_contracts.v1',
-    'esi-clones.read_clones.v1',
-    'esi-clones.read_implants.v1',
-    'esi-universe.read_structures.v1',
-    'esi-wallet.read_character_wallet.v1',
-  ],
 }
 
 function getCredentials(): { clientId: string; clientSecret: string } {
@@ -44,7 +50,24 @@ interface AuthResult {
   expiresAt?: number
   characterId?: number
   characterName?: string
+  corporationId?: number
   error?: string
+}
+
+interface ESICharacterInfo {
+  corporation_id: number
+  name: string
+  // other fields exist but we don't need them
+}
+
+async function fetchCharacterInfo(characterId: number): Promise<ESICharacterInfo> {
+  const response = await fetch(
+    `https://esi.evetech.net/latest/characters/${characterId}/`
+  )
+  if (!response.ok) {
+    throw new Error('Failed to fetch character info')
+  }
+  return response.json() as Promise<ESICharacterInfo>
 }
 
 interface TokenResponse {
@@ -132,14 +155,19 @@ export async function refreshAccessToken(
     const tokens = (await response.json()) as TokenResponse
     const jwt = parseJWT(tokens.access_token)
     const expiresAt = Date.now() + tokens.expires_in * 1000
+    const characterId = extractCharacterId(jwt.sub)
+
+    // Fetch character info to get corporation ID
+    const charInfo = await fetchCharacterInfo(characterId)
 
     return {
       success: true,
       accessToken: tokens.access_token,
       refreshToken: tokens.refresh_token,
       expiresAt,
-      characterId: extractCharacterId(jwt.sub),
+      characterId,
       characterName: jwt.name,
+      corporationId: charInfo.corporation_id,
     }
   } catch (error) {
     return {
@@ -149,7 +177,7 @@ export async function refreshAccessToken(
   }
 }
 
-export async function startAuth(): Promise<AuthResult> {
+export async function startAuth(includeCorporationScopes = false): Promise<AuthResult> {
   return new Promise((resolve) => {
     let creds: { clientId: string; clientSecret: string }
     try {
@@ -163,12 +191,13 @@ export async function startAuth(): Promise<AuthResult> {
     }
 
     pendingState = randomBytes(32).toString('hex')
+    const scopes = includeCorporationScopes ? CORPORATION_SCOPES : CHARACTER_SCOPES
 
     const authUrl = new URL(EVE_SSO.authUrl)
     authUrl.searchParams.set('response_type', 'code')
     authUrl.searchParams.set('client_id', creds.clientId)
     authUrl.searchParams.set('redirect_uri', EVE_SSO.redirectUri)
-    authUrl.searchParams.set('scope', EVE_SSO.scopes.join(' '))
+    authUrl.searchParams.set('scope', scopes.join(' '))
     authUrl.searchParams.set('state', pendingState)
 
     authServer = createServer(async (req, res) => {
@@ -211,14 +240,19 @@ export async function startAuth(): Promise<AuthResult> {
           const tokens = await exchangeCodeForTokens(code)
           const jwt = parseJWT(tokens.access_token)
           const expiresAt = Date.now() + tokens.expires_in * 1000
+          const characterId = extractCharacterId(jwt.sub)
+
+          // Fetch character info to get corporation ID
+          const charInfo = await fetchCharacterInfo(characterId)
 
           resolve({
             success: true,
             accessToken: tokens.access_token,
             refreshToken: tokens.refresh_token,
             expiresAt,
-            characterId: extractCharacterId(jwt.sub),
+            characterId,
             characterName: jwt.name,
+            corporationId: charInfo.corporation_id,
           })
         } catch (err) {
           resolve({
