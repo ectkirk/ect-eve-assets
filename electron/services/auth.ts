@@ -3,7 +3,6 @@ import { createServer, type Server } from 'node:http'
 import { randomBytes } from 'node:crypto'
 import { URL } from 'node:url'
 
-// EVE SSO Configuration
 const EVE_SSO = {
   authUrl: 'https://login.eveonline.com/v2/oauth/authorize',
   tokenUrl: 'https://login.eveonline.com/v2/oauth/token',
@@ -22,10 +21,21 @@ const EVE_SSO = {
   ],
 }
 
-// You must register your app at https://developers.eveonline.com/
-// and set these environment variables or replace with your values
-const CLIENT_ID = process.env.EVE_CLIENT_ID || ''
-const CLIENT_SECRET = process.env.EVE_CLIENT_SECRET || ''
+function getCredentials(): { clientId: string; clientSecret: string } {
+  const clientId = process.env.EVE_CLIENT_ID
+  const clientSecret = process.env.EVE_CLIENT_SECRET
+  if (!clientId || !clientSecret) {
+    throw new Error(
+      'EVE_CLIENT_ID and EVE_CLIENT_SECRET environment variables must be set'
+    )
+  }
+  return { clientId, clientSecret }
+}
+
+function getBasicAuth(): string {
+  const { clientId, clientSecret } = getCredentials()
+  return Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
+}
 
 interface AuthResult {
   success: boolean
@@ -69,7 +79,6 @@ function parseJWT(token: string): JWTPayload {
 }
 
 function extractCharacterId(sub: string): number {
-  // Format: "CHARACTER:EVE:123456789"
   const parts = sub.split(':')
   const idPart = parts[2]
   if (!idPart) {
@@ -79,14 +88,10 @@ function extractCharacterId(sub: string): number {
 }
 
 async function exchangeCodeForTokens(code: string): Promise<TokenResponse> {
-  const credentials = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString(
-    'base64'
-  )
-
   const response = await fetch(EVE_SSO.tokenUrl, {
     method: 'POST',
     headers: {
-      Authorization: `Basic ${credentials}`,
+      Authorization: `Basic ${getBasicAuth()}`,
       'Content-Type': 'application/x-www-form-urlencoded',
     },
     body: new URLSearchParams({
@@ -107,14 +112,10 @@ export async function refreshAccessToken(
   refreshToken: string
 ): Promise<AuthResult> {
   try {
-    const credentials = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString(
-      'base64'
-    )
-
     const response = await fetch(EVE_SSO.tokenUrl, {
       method: 'POST',
       headers: {
-        Authorization: `Basic ${credentials}`,
+        Authorization: `Basic ${getBasicAuth()}`,
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams({
@@ -150,27 +151,26 @@ export async function refreshAccessToken(
 
 export async function startAuth(): Promise<AuthResult> {
   return new Promise((resolve) => {
-    if (!CLIENT_ID || !CLIENT_SECRET) {
+    let creds: { clientId: string; clientSecret: string }
+    try {
+      creds = getCredentials()
+    } catch (err) {
       resolve({
         success: false,
-        error:
-          'EVE_CLIENT_ID and EVE_CLIENT_SECRET environment variables must be set',
+        error: err instanceof Error ? err.message : 'Missing credentials',
       })
       return
     }
 
-    // Generate state for CSRF protection
     pendingState = randomBytes(32).toString('hex')
 
-    // Build authorization URL
     const authUrl = new URL(EVE_SSO.authUrl)
     authUrl.searchParams.set('response_type', 'code')
-    authUrl.searchParams.set('client_id', CLIENT_ID)
+    authUrl.searchParams.set('client_id', creds.clientId)
     authUrl.searchParams.set('redirect_uri', EVE_SSO.redirectUri)
     authUrl.searchParams.set('scope', EVE_SSO.scopes.join(' '))
     authUrl.searchParams.set('state', pendingState)
 
-    // Start local server to handle callback
     authServer = createServer(async (req, res) => {
       const url = new URL(req.url || '', `http://localhost:2020`)
 
@@ -179,7 +179,6 @@ export async function startAuth(): Promise<AuthResult> {
         const state = url.searchParams.get('state')
         const error = url.searchParams.get('error')
 
-        // Send response to browser
         res.writeHead(200, { 'Content-Type': 'text/html' })
         res.end(`
           <html>
@@ -190,7 +189,6 @@ export async function startAuth(): Promise<AuthResult> {
           </html>
         `)
 
-        // Close server
         authServer?.close()
         authServer = null
 
@@ -199,7 +197,6 @@ export async function startAuth(): Promise<AuthResult> {
           return
         }
 
-        // Verify state
         if (state !== pendingState) {
           resolve({ success: false, error: 'State mismatch - possible CSRF' })
           return
@@ -211,7 +208,6 @@ export async function startAuth(): Promise<AuthResult> {
         }
 
         try {
-          // Exchange code for tokens
           const tokens = await exchangeCodeForTokens(code)
           const jwt = parseJWT(tokens.access_token)
           const expiresAt = Date.now() + tokens.expires_in * 1000
@@ -237,11 +233,9 @@ export async function startAuth(): Promise<AuthResult> {
     })
 
     authServer.listen(2020, () => {
-      // Open browser to EVE SSO
       shell.openExternal(authUrl.toString())
     })
 
-    // Timeout after 5 minutes
     setTimeout(() => {
       if (authServer) {
         authServer.close()
@@ -254,14 +248,10 @@ export async function startAuth(): Promise<AuthResult> {
 
 export async function revokeToken(refreshToken: string): Promise<boolean> {
   try {
-    const credentials = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString(
-      'base64'
-    )
-
     const response = await fetch(EVE_SSO.revokeUrl, {
       method: 'POST',
       headers: {
-        Authorization: `Basic ${credentials}`,
+        Authorization: `Basic ${getBasicAuth()}`,
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams({
@@ -275,4 +265,3 @@ export async function revokeToken(refreshToken: string): Promise<boolean> {
     return false
   }
 }
-

@@ -23,8 +23,13 @@ export function MainLayout() {
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <header className="flex items-center justify-between border-b border-border bg-card px-4 py-2">
-        <h1 className="text-lg font-semibold text-primary">ECTEVEAssets</h1>
+      <header className="flex items-center justify-between border-b border-slate-700 bg-slate-800 px-4 py-2">
+        <div className="flex flex-col">
+          <span className="text-lg font-bold text-white tracking-tight">
+            <span className="text-blue-400">ECT</span> EVE Assets
+          </span>
+          <span className="text-[10px] tracking-[0.2em] text-slate-400">We Like The Data</span>
+        </div>
         <div className="flex items-center gap-4">
           {character && (
             <div className="flex items-center gap-2">
@@ -38,7 +43,7 @@ export function MainLayout() {
           )}
           <button
             onClick={clearAuth}
-            className="rounded px-3 py-1 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground"
+            className="rounded px-3 py-1 text-sm text-slate-400 hover:bg-slate-700 hover:text-slate-50"
           >
             Logout
           </button>
@@ -46,15 +51,15 @@ export function MainLayout() {
       </header>
 
       {/* Tab Navigation */}
-      <nav className="flex gap-1 border-b border-border bg-card px-2">
+      <nav className="flex gap-1 border-b border-slate-700 bg-slate-800 px-2">
         {TABS.map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`px-3 py-2 text-sm transition-colors ${
               activeTab === tab
-                ? 'border-b-2 border-primary text-primary'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'border-b-2 border-blue-500 text-blue-500'
+                : 'text-slate-400 hover:text-slate-50'
             }`}
           >
             {tab}
@@ -64,9 +69,9 @@ export function MainLayout() {
 
       {/* Content Area */}
       <main className="flex-1 overflow-auto p-4">
-        <div className="rounded-lg border border-border bg-card p-4">
+        <div className="rounded-lg border border-slate-700 bg-slate-800 p-4">
           <h2 className="text-lg font-semibold">{activeTab}</h2>
-          <p className="mt-2 text-muted-foreground">
+          <p className="mt-2 text-slate-400">
             Content for {activeTab} tab will be displayed here.
           </p>
         </div>

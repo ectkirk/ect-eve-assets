@@ -1,9 +1,13 @@
 import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
+import { config } from 'dotenv'
 import { startAuth, refreshAccessToken, revokeToken } from './services/auth.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+// Load .env file from project root
+config({ path: path.join(__dirname, '..', '.env') })
 
 const APP_ROOT = path.join(__dirname, '..')
 export const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
@@ -26,6 +30,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
+      sandbox: false,
     },
     icon: path.join(VITE_PUBLIC, 'icon.png'),
     title: 'ECTEVEAssets',

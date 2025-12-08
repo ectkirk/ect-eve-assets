@@ -17,10 +17,10 @@ function App() {
 
   if (sdeError) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background text-foreground">
+      <div className="flex h-screen items-center justify-center bg-slate-900 text-slate-50">
         <div className="text-center">
-          <p className="text-destructive">Failed to load game data</p>
-          <p className="text-sm text-muted-foreground">{sdeError}</p>
+          <p className="text-red-500">Failed to load game data</p>
+          <p className="text-sm text-slate-400">{sdeError}</p>
         </div>
       </div>
     )
@@ -28,14 +28,14 @@ function App() {
 
   if (!sdeLoaded) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background text-foreground">
-        <p className="text-muted-foreground">Loading game data...</p>
+      <div className="flex h-screen items-center justify-center bg-slate-900 text-slate-50">
+        <p className="text-slate-400">Loading game data...</p>
       </div>
     )
   }
 
   return (
-    <div className="h-screen bg-background text-foreground">
+    <div className="h-screen bg-slate-900 text-slate-50">
       {isAuthenticated ? <MainLayout /> : <LoginScreen />}
     </div>
   )
