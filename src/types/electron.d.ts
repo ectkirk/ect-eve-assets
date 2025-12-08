@@ -9,6 +9,13 @@ interface AuthResult {
   error?: string
 }
 
+type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR'
+
+interface LogContext {
+  module?: string
+  [key: string]: unknown
+}
+
 interface ElectronAPI {
   startAuth: (includeCorporationScopes?: boolean) => Promise<AuthResult>
   refreshToken: (refreshToken: string, characterId: number) => Promise<AuthResult>
@@ -17,6 +24,8 @@ interface ElectronAPI {
   fetchCapitalPrices: () => Promise<unknown>
   storageGet: () => Promise<Record<string, unknown> | null>
   storageSet: (data: Record<string, unknown>) => Promise<boolean>
+  writeLog: (level: LogLevel, message: string, context?: LogContext) => Promise<void>
+  getLogDir: () => Promise<string>
 }
 
 declare global {

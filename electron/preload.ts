@@ -11,6 +11,13 @@ export interface AuthResult {
   error?: string
 }
 
+export type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR'
+
+export interface LogContext {
+  module?: string
+  [key: string]: unknown
+}
+
 export interface ElectronAPI {
   startAuth: (includeCorporationScopes?: boolean) => Promise<AuthResult>
   refreshToken: (refreshToken: string, characterId: number) => Promise<AuthResult>
@@ -19,6 +26,8 @@ export interface ElectronAPI {
   fetchCapitalPrices: () => Promise<unknown>
   storageGet: () => Promise<Record<string, unknown> | null>
   storageSet: (data: Record<string, unknown>) => Promise<boolean>
+  writeLog: (level: LogLevel, message: string, context?: LogContext) => Promise<void>
+  getLogDir: () => Promise<string>
 }
 
 const electronAPI: ElectronAPI = {
@@ -31,6 +40,9 @@ const electronAPI: ElectronAPI = {
   fetchCapitalPrices: () => ipcRenderer.invoke('fetch:capitalPrices'),
   storageGet: () => ipcRenderer.invoke('storage:get'),
   storageSet: (data: Record<string, unknown>) => ipcRenderer.invoke('storage:set', data),
+  writeLog: (level: LogLevel, message: string, context?: LogContext) =>
+    ipcRenderer.invoke('log:write', level, message, context),
+  getLogDir: () => ipcRenderer.invoke('log:getDir'),
 }
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI)

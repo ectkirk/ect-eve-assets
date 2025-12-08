@@ -1,4 +1,5 @@
 import type { SDEType, EVERefStructure } from './types'
+import { logger } from '@/lib/logger'
 
 const DB_NAME = 'ecteveassets-sde'
 const DB_VERSION = 3
@@ -32,12 +33,18 @@ function notifyStructuresUpdated(): void {
 async function openDB(): Promise<IDBDatabase> {
   if (db) return db
 
+  logger.debug('Opening IndexedDB', { module: 'SDE', dbName: DB_NAME, version: DB_VERSION })
+
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION)
 
-    request.onerror = () => reject(request.error)
+    request.onerror = () => {
+      logger.error('Failed to open IndexedDB', request.error, { module: 'SDE' })
+      reject(request.error)
+    }
     request.onsuccess = () => {
       db = request.result
+      logger.debug('IndexedDB opened successfully', { module: 'SDE' })
       resolve(db)
     }
 
@@ -134,16 +141,32 @@ async function saveToDBBulk<T>(storeName: string, items: T[]): Promise<void> {
 }
 
 export async function initSDE(): Promise<SDEDatabase> {
-  if (cache) return cache
+  if (cache) {
+    logger.debug('SDE already initialized, using cache', { module: 'SDE' })
+    return cache
+  }
 
-  // Load all cached data from IndexedDB
-  const types = await loadFromDB<SDEType>('types')
-  const structures = await loadFromDB<EVERefStructure>('structures')
-  const locationNames = await loadLocationNamesFromDB()
+  logger.info('Initializing SDE', { module: 'SDE' })
 
-  // Types will be populated on-demand via ESI
-  cache = { types, structures, locationNames }
-  return cache
+  try {
+    const types = await loadFromDB<SDEType>('types')
+    const structures = await loadFromDB<EVERefStructure>('structures')
+    const locationNames = await loadLocationNamesFromDB()
+
+    cache = { types, structures, locationNames }
+
+    logger.info('SDE initialized', {
+      module: 'SDE',
+      typesCount: types.size,
+      structuresCount: structures.size,
+      locationNamesCount: locationNames.size,
+    })
+
+    return cache
+  } catch (err) {
+    logger.error('Failed to initialize SDE', err, { module: 'SDE' })
+    throw err
+  }
 }
 
 export function getType(typeId: number): SDEType | undefined {
@@ -245,39 +268,47 @@ export function getStructure(structureId: number): EVERefStructure | undefined {
 
 export async function loadStructuresFromEveRef(): Promise<number> {
   if (!window.electronAPI) {
+    logger.error('Electron API not available', undefined, { module: 'SDE' })
     throw new Error('Electron API not available')
   }
 
-  const data = await window.electronAPI.fetchStructures() as Record<string, {
-    structure_id: number
-    name: string
-    solar_system_id: number
-    type_id: number
-    owner_id: number
-  }>
+  logger.info('Fetching structures from everef.net', { module: 'SDE' })
 
-  const structures: EVERefStructure[] = []
-  for (const [id, structure] of Object.entries(data)) {
-    if (structure.name) {
-      structures.push({
-        structureId: Number(id),
-        name: structure.name,
-        solarSystemId: structure.solar_system_id,
-        typeId: structure.type_id,
-        ownerId: structure.owner_id,
-      })
+  try {
+    const data = await window.electronAPI.fetchStructures() as Record<string, {
+      structure_id: number
+      name: string
+      solar_system_id: number
+      type_id: number
+      owner_id: number
+    }>
+
+    const structures: EVERefStructure[] = []
+    for (const [id, structure] of Object.entries(data)) {
+      if (structure.name) {
+        structures.push({
+          structureId: Number(id),
+          name: structure.name,
+          solarSystemId: structure.solar_system_id,
+          typeId: structure.type_id,
+          ownerId: structure.owner_id,
+        })
+      }
     }
+
+    await saveToDBBulk('structures', structures)
+
+    if (cache) {
+      cache.structures = new Map(structures.map((s) => [s.structureId, s]))
+    }
+
+    notifyStructuresUpdated()
+    logger.info('Structures loaded from everef.net', { module: 'SDE', count: structures.length })
+    return structures.length
+  } catch (err) {
+    logger.error('Failed to load structures from everef.net', err, { module: 'SDE' })
+    throw err
   }
-
-  await saveToDBBulk('structures', structures)
-
-  // Update cache
-  if (cache) {
-    cache.structures = new Map(structures.map((s) => [s.structureId, s]))
-  }
-
-  notifyStructuresUpdated()
-  return structures.length
 }
 
 export function getStructuresCount(): number {

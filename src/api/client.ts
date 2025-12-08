@@ -1,4 +1,5 @@
 import { useAuthStore, ownerKey } from '@/store/auth-store'
+import { logger } from '@/lib/logger'
 
 export const ESI_BASE_URL = 'https://esi.evetech.net/latest'
 export const ESI_COMPATIBILITY_DATE = '2025-11-06'
@@ -58,6 +59,7 @@ export class ESIClient {
     const needsRefresh = !owner.accessToken || store.isOwnerTokenExpired(ownerId)
 
     if (needsRefresh && owner.refreshToken && window.electronAPI) {
+      logger.debug('Refreshing access token', { module: 'ESI', characterId: owner.characterId })
       const result = await window.electronAPI.refreshToken(owner.refreshToken, owner.characterId)
       if (result.success && result.accessToken && result.refreshToken) {
         store.updateOwnerTokens(ownerId, {
@@ -65,8 +67,10 @@ export class ESIClient {
           refreshToken: result.refreshToken,
           expiresAt: result.expiresAt ?? Date.now() + 1200000,
         })
+        logger.debug('Token refreshed successfully', { module: 'ESI', characterId: owner.characterId })
         return result.accessToken
       }
+      logger.error('Token refresh failed', undefined, { module: 'ESI', characterId: owner.characterId })
       throw new Error('Token refresh failed')
     }
 
@@ -110,6 +114,7 @@ export class ESIClient {
     if (response.status === 429) {
       const retryAfter = response.headers.get('Retry-After')
       const waitSeconds = retryAfter ? parseInt(retryAfter, 10) : 60
+      logger.warn('ESI rate limited', { module: 'ESI', endpoint, retryAfter: waitSeconds })
       throw new Error(`Rate limited. Retry after ${waitSeconds} seconds`)
     }
 
@@ -125,6 +130,12 @@ export class ESIClient {
 
     if (!response.ok) {
       const error = (await response.json()) as ESIError
+      logger.error('ESI request failed', undefined, {
+        module: 'ESI',
+        endpoint,
+        status: response.status,
+        error: error.error,
+      })
       throw new Error(error.error || `ESI request failed: ${response.status}`)
     }
 

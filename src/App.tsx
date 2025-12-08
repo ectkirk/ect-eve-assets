@@ -3,6 +3,7 @@ import { useAuthStore } from './store/auth-store'
 import { LoginScreen } from './components/layout/LoginScreen'
 import { MainLayout } from './components/layout/MainLayout'
 import { initSDE, loadStructuresFromEveRef, getStructuresCount, clearStructuresCache } from './data/sde'
+import { logger } from './lib/logger'
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null; errorInfo: React.ErrorInfo | null }> {
   constructor(props: { children: ReactNode }) {
@@ -15,9 +16,10 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('[ErrorBoundary] Caught error:', error.message)
-    console.error('[ErrorBoundary] Stack:', error.stack)
-    console.error('[ErrorBoundary] Component stack:', errorInfo.componentStack)
+    logger.error('Uncaught error in component tree', error, {
+      module: 'ErrorBoundary',
+      componentStack: errorInfo.componentStack,
+    })
     this.setState({ errorInfo })
   }
 
@@ -54,9 +56,16 @@ function App() {
   const structuresLoadingRef = useRef(false)
 
   useEffect(() => {
+    logger.info('App starting', { module: 'App' })
     initSDE()
-      .then(() => setSdeLoaded(true))
-      .catch((err) => setSdeError(err.message))
+      .then(() => {
+        logger.info('SDE loaded successfully', { module: 'App' })
+        setSdeLoaded(true)
+      })
+      .catch((err) => {
+        logger.error('Failed to load SDE', err, { module: 'App' })
+        setSdeError(err.message)
+      })
   }, [])
 
   useEffect(() => {
@@ -70,13 +79,13 @@ function App() {
       const action = count > 0 ? clearStructuresCache() : Promise.resolve()
       action
         .then(() => {
-          console.log('[SDE] Loading structures from everef.net...')
+          logger.info('Loading structures from everef.net', { module: 'App' })
           return loadStructuresFromEveRef()
         })
-        .then((loaded) => console.log(`[SDE] Loaded ${loaded} structures`))
-        .catch((err) => console.warn('[SDE] Failed to load structures:', err.message))
+        .then((loaded) => logger.info('Structures loaded', { module: 'App', count: loaded }))
+        .catch((err) => logger.warn('Failed to load structures', { module: 'App', error: err.message }))
     } else {
-      console.log(`[SDE] ${count} structures already cached`)
+      logger.debug('Structures already cached', { module: 'App', count })
     }
   }, [isAuthenticated, sdeLoaded])
 

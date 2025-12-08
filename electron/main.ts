@@ -4,6 +4,7 @@ import path from 'node:path'
 import fs from 'node:fs'
 import { config } from 'dotenv'
 import { startAuth, refreshAccessToken, revokeToken } from './services/auth.js'
+import { logger, initLogger, type LogLevel, type LogContext } from './services/logger.js'
 
 // User data storage path
 const userDataPath = app.getPath('userData')
@@ -161,8 +162,37 @@ ipcMain.handle('storage:set', (_event, data: Record<string, unknown>) => {
   return true
 })
 
+// Logging IPC handler
+ipcMain.handle(
+  'log:write',
+  (_event, level: LogLevel, message: string, context?: LogContext) => {
+    const logContext = { ...context, source: 'renderer' }
+    switch (level) {
+      case 'DEBUG':
+        logger.debug(message, logContext)
+        break
+      case 'INFO':
+        logger.info(message, logContext)
+        break
+      case 'WARN':
+        logger.warn(message, logContext)
+        break
+      case 'ERROR':
+        logger.error(message, undefined, logContext)
+        break
+    }
+  }
+)
+
+ipcMain.handle('log:getDir', () => {
+  return logger.getLogDir()
+})
+
 app.whenReady().then(() => {
+  initLogger()
+  logger.info('App starting', { module: 'Main', version: app.getVersion() })
   createWindow()
+  logger.info('Main window created', { module: 'Main' })
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

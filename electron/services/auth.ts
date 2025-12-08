@@ -2,6 +2,7 @@ import { shell } from 'electron'
 import { createServer, type Server } from 'node:http'
 import { randomBytes, createHash } from 'node:crypto'
 import { URL } from 'node:url'
+import { logger } from './logger.js'
 
 const CHARACTER_SCOPES = [
   'publicData',
@@ -137,6 +138,8 @@ async function exchangeCodeForTokens(code: string, codeVerifier: string): Promis
 export async function refreshAccessToken(
   refreshToken: string
 ): Promise<AuthResult> {
+  logger.debug('Refreshing access token', { module: 'Auth' })
+
   try {
     const response = await fetch(EVE_SSO.tokenUrl, {
       method: 'POST',
@@ -153,6 +156,7 @@ export async function refreshAccessToken(
 
     if (!response.ok) {
       const error = await response.text()
+      logger.error('Token refresh failed', undefined, { module: 'Auth', status: response.status })
       return { success: false, error: `Token refresh failed: ${error}` }
     }
 
@@ -161,8 +165,9 @@ export async function refreshAccessToken(
     const expiresAt = Date.now() + tokens.expires_in * 1000
     const characterId = extractCharacterId(jwt.sub)
 
-    // Fetch character info to get corporation ID
     const charInfo = await fetchCharacterInfo(characterId)
+
+    logger.info('Token refreshed successfully', { module: 'Auth', characterId, characterName: jwt.name })
 
     return {
       success: true,
@@ -174,6 +179,7 @@ export async function refreshAccessToken(
       corporationId: charInfo.corporation_id,
     }
   } catch (error) {
+    logger.error('Token refresh exception', error, { module: 'Auth' })
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -182,6 +188,8 @@ export async function refreshAccessToken(
 }
 
 export async function startAuth(includeCorporationScopes = false): Promise<AuthResult> {
+  logger.info('Starting EVE SSO authentication', { module: 'Auth', includeCorporationScopes })
+
   return new Promise((resolve) => {
     pendingState = randomBytes(32).toString('hex')
     pendingCodeVerifier = generateCodeVerifier()
@@ -219,33 +227,44 @@ export async function startAuth(includeCorporationScopes = false): Promise<AuthR
         authServer = null
 
         if (error) {
+          logger.error('SSO callback returned error', undefined, { module: 'Auth', error })
           resolve({ success: false, error })
           return
         }
 
         if (state !== pendingState) {
+          logger.error('SSO state mismatch', undefined, { module: 'Auth' })
           resolve({ success: false, error: 'State mismatch - possible CSRF' })
           return
         }
 
         if (!code) {
+          logger.error('No authorization code received', undefined, { module: 'Auth' })
           resolve({ success: false, error: 'No authorization code received' })
           return
         }
 
         if (!pendingCodeVerifier) {
+          logger.error('Missing code verifier', undefined, { module: 'Auth' })
           resolve({ success: false, error: 'Missing code verifier' })
           return
         }
 
         try {
+          logger.debug('Exchanging auth code for tokens', { module: 'Auth' })
           const tokens = await exchangeCodeForTokens(code, pendingCodeVerifier)
           const jwt = parseJWT(tokens.access_token)
           const expiresAt = Date.now() + tokens.expires_in * 1000
           const characterId = extractCharacterId(jwt.sub)
 
-          // Fetch character info to get corporation ID
           const charInfo = await fetchCharacterInfo(characterId)
+
+          logger.info('Authentication successful', {
+            module: 'Auth',
+            characterId,
+            characterName: jwt.name,
+            corporationId: charInfo.corporation_id,
+          })
 
           resolve({
             success: true,
@@ -257,6 +276,7 @@ export async function startAuth(includeCorporationScopes = false): Promise<AuthR
             corporationId: charInfo.corporation_id,
           })
         } catch (err) {
+          logger.error('Token exchange failed', err, { module: 'Auth' })
           resolve({
             success: false,
             error: err instanceof Error ? err.message : 'Token exchange failed',
@@ -274,6 +294,7 @@ export async function startAuth(includeCorporationScopes = false): Promise<AuthR
 
     setTimeout(() => {
       if (authServer) {
+        logger.warn('Authentication timed out', { module: 'Auth' })
         authServer.close()
         authServer = null
         resolve({ success: false, error: 'Authentication timed out' })
@@ -283,6 +304,8 @@ export async function startAuth(includeCorporationScopes = false): Promise<AuthR
 }
 
 export async function revokeToken(refreshToken: string): Promise<boolean> {
+  logger.debug('Revoking token', { module: 'Auth' })
+
   try {
     const response = await fetch(EVE_SSO.revokeUrl, {
       method: 'POST',
@@ -297,8 +320,15 @@ export async function revokeToken(refreshToken: string): Promise<boolean> {
       }),
     })
 
+    if (response.ok) {
+      logger.info('Token revoked successfully', { module: 'Auth' })
+    } else {
+      logger.warn('Token revocation failed', { module: 'Auth', status: response.status })
+    }
+
     return response.ok
-  } catch {
+  } catch (err) {
+    logger.error('Token revocation exception', err, { module: 'Auth' })
     return false
   }
 }
