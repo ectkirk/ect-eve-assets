@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, shell, Menu } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import fs from 'node:fs'
@@ -46,6 +46,57 @@ export const VITE_PUBLIC = VITE_DEV_SERVER_URL
 
 let mainWindow: BrowserWindow | null = null
 const characterTokens = new Map<number, string>()
+
+function createMenu() {
+  const template: Electron.MenuItemConstructorOptions[] = [
+    {
+      label: 'File',
+      submenu: [
+        { role: 'quit' }
+      ]
+    },
+    {
+      label: 'Data',
+      submenu: [
+        {
+          label: 'Update...',
+          accelerator: 'CmdOrCtrl+U',
+          click: () => {
+            mainWindow?.webContents.send('data:openUpdateDialog')
+          }
+        }
+      ]
+    },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload' },
+        { role: 'forceReload' },
+        { role: 'toggleDevTools' },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' }
+      ]
+    },
+    {
+      label: 'Help',
+      submenu: [
+        {
+          label: 'Open Logs Folder',
+          click: () => {
+            shell.openPath(logger.getLogDir())
+          }
+        }
+      ]
+    }
+  ]
+
+  const menu = Menu.buildFromTemplate(template)
+  Menu.setApplicationMenu(menu)
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -135,22 +186,6 @@ ipcMain.handle('auth:logout', async (_event, characterId?: number) => {
   return { success: true }
 })
 
-// IPC handlers for external API fetches (bypass CORS)
-ipcMain.handle('fetch:structures', async () => {
-  const response = await fetch('https://data.everef.net/structures/structures-latest.v2.json')
-  if (!response.ok) {
-    throw new Error(`Failed to fetch structures: ${response.status}`)
-  }
-  return response.json()
-})
-
-ipcMain.handle('fetch:capitalPrices', async () => {
-  const response = await fetch('https://buyback.edencom.net/api/capital-prices')
-  if (!response.ok) {
-    throw new Error(`Failed to fetch capital prices: ${response.status}`)
-  }
-  return response.json()
-})
 
 // File-based storage IPC handlers (replaces localStorage for persistence)
 ipcMain.handle('storage:get', () => {
@@ -191,6 +226,7 @@ ipcMain.handle('log:getDir', () => {
 app.whenReady().then(() => {
   initLogger()
   logger.info('App starting', { module: 'Main', version: app.getVersion() })
+  createMenu()
   createWindow()
   logger.info('Main window created', { module: 'Main' })
 

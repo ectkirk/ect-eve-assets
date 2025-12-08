@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
-import { useQuery, useQueries } from '@tanstack/react-query'
+import { useQueries } from '@tanstack/react-query'
 import {
   useReactTable,
   getCoreRowModel,
@@ -23,15 +23,19 @@ import {
 } from '@/components/ui/table'
 import { useAuthStore, type Owner } from '@/store/auth-store'
 import { getCharacterAssets, getAssetNames, type ESIAsset } from '@/api/endpoints/assets'
-import {
-  getMarketPrices,
-  getRegionalMarketPrices,
-  getCapitalPrices,
-  CAPITAL_GROUP_IDS,
-  type PriceData,
-} from '@/api/endpoints/market'
+import { fetchPrices } from '@/api/ref-client'
+import { fetchAbyssalPrices, isAbyssalType, hasCachedAbyssalPrice } from '@/api/mutamarket-client'
+import { getAbyssalPrice } from '@/store/reference-cache'
 import { getCorporationAssets } from '@/api/endpoints/corporation'
-import { getTypeName, getLocationName, getType, getStructure, saveStructures, saveLocationNames, hasLocationName, hasType, saveTypes, type SDEType, type EVERefStructure } from '@/data/sde'
+import {
+  getTypeName,
+  getLocationName,
+  getType,
+  hasType,
+  hasStructure,
+  hasLocation,
+  subscribe as subscribeToCache,
+} from '@/store/reference-cache'
 import { resolveStructures, resolveLocationNames, resolveTypes } from '@/api/endpoints/universe'
 
 interface AssetRow {
@@ -278,44 +282,14 @@ export function AssetsTab() {
 
   const assetQueries = useQueries({ queries: assetQueryConfigs })
 
-  const { data: basePrices } = useQuery({
-    queryKey: ['marketPrices'],
-    queryFn: getMarketPrices,
-    staleTime: 60 * 60 * 1000,
-  })
+  const [refPrices, setRefPrices] = useState<Map<number, number> | null>(null)
 
-  const { data: capitalPrices } = useQuery({
-    queryKey: ['capitalPrices', 'v2'],
-    queryFn: getCapitalPrices,
-    staleTime: 60 * 60 * 1000,
-    retry: 2,
-  })
-
-  const [regionalPrices, setRegionalPrices] = useState<Map<number, PriceData> | null>(null)
-  const [priceUpdateTime, setPriceUpdateTime] = useState<Date | null>(null)
-  const [isUpdatingPrices, setIsUpdatingPrices] = useState(false)
-
-  const canUpdatePrices = useMemo(() => {
-    if (!priceUpdateTime) return true
-    const elapsed = Date.now() - priceUpdateTime.getTime()
-    return elapsed >= 5 * 60 * 1000
-  }, [priceUpdateTime])
-
-  const handleUpdatePrices = async () => {
-    if (!canUpdatePrices || isUpdatingPrices) return
-    setIsUpdatingPrices(true)
-    try {
-      const prices = await getRegionalMarketPrices()
-      setRegionalPrices(prices)
-      setPriceUpdateTime(new Date())
-    } finally {
-      setIsUpdatingPrices(false)
-    }
-  }
-
-  // Collect all asset data - use stable key to prevent re-renders
-  // useQueries returns a new array reference on each render, so we track
-  // when data actually changes using dataUpdatedAt
+  const [cacheVersion, setCacheVersion] = useState(0)
+  useEffect(() => {
+    return subscribeToCache(() => {
+      setCacheVersion((v) => v + 1)
+    })
+  }, [])
   const assetDataKey = assetQueries
     .filter((q) => q.data)
     .map((q) => `${q.data!.owner.type}-${q.data!.owner.id}`)
@@ -337,7 +311,21 @@ export function AssetsTab() {
       .map((q) => q.data!)
   }, [assetDataVersion])
 
-  // Refs for effect dependencies - always hold current values
+  useEffect(() => {
+    if (assetDataList.length === 0) return
+
+    const typeIds = new Set<number>()
+    for (const { assets } of assetDataList) {
+      for (const asset of assets) {
+        typeIds.add(asset.type_id)
+      }
+    }
+
+    if (typeIds.size === 0) return
+
+    fetchPrices(Array.from(typeIds)).then(setRefPrices)
+  }, [assetDataList])
+
   const assetDataListRef = useRef(assetDataList)
   assetDataListRef.current = assetDataList
 
@@ -386,26 +374,8 @@ export function AssetsTab() {
   nameQueriesRef.current = nameQueries
 
   const priceMap = useMemo(() => {
-    const map = new Map<number, number>()
-    if (basePrices) {
-      for (const p of basePrices) {
-        map.set(p.type_id, p.average_price ?? 0)
-      }
-    }
-    if (regionalPrices) {
-      for (const [typeId, priceData] of regionalPrices) {
-        if (priceData.sellMin > 0) {
-          map.set(typeId, priceData.sellMin)
-        }
-      }
-    }
-    if (capitalPrices) {
-      for (const [typeId, price] of capitalPrices) {
-        map.set(typeId, price)
-      }
-    }
-    return map
-  }, [basePrices, regionalPrices, capitalPrices])
+    return refPrices ?? new Map<number, number>()
+  }, [refPrices])
 
   const nameMap = useMemo(() => {
     void nameQueriesVersion
@@ -424,6 +394,7 @@ export function AssetsTab() {
 
   // Transform all assets to table rows
   const data = useMemo<AssetRow[]>(() => {
+    void cacheVersion
     const rows: AssetRow[] = []
 
     // Build item_id -> asset lookup for location_type='item' (nested in container/ship)
@@ -456,12 +427,10 @@ export function AssetsTab() {
         const customName = nameMap.get(asset.item_id)
         const typeName = customName || getTypeName(asset.type_id)
         const volume = sdeType?.volume ?? 0
-        const groupId = sdeType?.groupId ?? 0
 
-        // Capital ships use contract prices from EC Trade
-        const isCapital = CAPITAL_GROUP_IDS.has(groupId)
-        const capitalPrice = isCapital ? capitalPrices?.get(asset.type_id) : undefined
-        const price = capitalPrice ?? priceMap.get(asset.type_id) ?? 0
+        // Check abyssal price by item_id first (from persistent cache), then fall back to type price
+        const abyssalPrice = getAbyssalPrice(asset.item_id)
+        const price = abyssalPrice ?? priceMap.get(asset.type_id) ?? 0
 
         rows.push({
           itemId: asset.item_id,
@@ -486,7 +455,7 @@ export function AssetsTab() {
     }
 
     return rows
-  }, [assetDataList, priceMap, nameMap, capitalPrices])
+  }, [assetDataList, priceMap, nameMap, cacheVersion])
 
   // Resolve unknown types via ESI /universe/types/{type_id}
   const [typeResolutionProgress, setTypeResolutionProgress] = useState<{ resolved: number; total: number } | null>(null)
@@ -508,28 +477,16 @@ export function AssetsTab() {
     if (unknownTypeIds.size === 0) return
 
     resolvingTypesRef.current = true
-    console.log(`[Types] Resolving ${unknownTypeIds.size} unknown types via ESI...`)
+    console.log(`[Types] Resolving ${unknownTypeIds.size} unknown types via ref API...`)
     setTypeResolutionProgress({ resolved: 0, total: unknownTypeIds.size })
 
     resolveTypes(
       Array.from(unknownTypeIds),
-      20, // concurrency
+      20,
       (resolved, total) => setTypeResolutionProgress({ resolved, total })
     )
-      .then(async (resolved) => {
+      .then((resolved) => {
         if (resolved.size > 0) {
-          // Convert ResolvedType to SDEType
-          const types: SDEType[] = Array.from(resolved.values()).map((t) => ({
-            typeId: t.typeId,
-            name: t.name,
-            groupId: t.groupId,
-            categoryId: t.categoryId,
-            volume: t.volume,
-            packagedVolume: t.packagedVolume,
-            marketGroupId: t.marketGroupId,
-            published: t.published,
-          }))
-          await saveTypes(types)
           console.log(`[Types] Resolved ${resolved.size} types`)
         }
         setTypeResolutionProgress(null)
@@ -539,6 +496,46 @@ export function AssetsTab() {
         setTypeResolutionProgress(null)
       })
   }, [assetDataKey])
+
+  // Fetch abyssal module prices from Mutamarket
+  const resolvingAbyssalsRef = useRef(false)
+  useEffect(() => {
+    const currentAssetData = assetDataListRef.current
+    if (resolvingAbyssalsRef.current || currentAssetData.length === 0 || !refPrices) return
+
+    // Find abyssal items with no price (not in persistent cache)
+    const abyssalItemIds: number[] = []
+    for (const { assets } of currentAssetData) {
+      for (const asset of assets) {
+        const typeName = getTypeName(asset.type_id)
+        const hasPrice = refPrices.get(asset.type_id)
+
+        // If it's an abyssal type with no market price and not cached, try mutamarket
+        if (isAbyssalType(typeName) && !hasPrice && !hasCachedAbyssalPrice(asset.item_id)) {
+          abyssalItemIds.push(asset.item_id)
+        }
+      }
+    }
+
+    if (abyssalItemIds.length === 0) return
+
+    resolvingAbyssalsRef.current = true
+    console.log(`[Abyssals] Fetching ${abyssalItemIds.length} prices from Mutamarket...`)
+
+    fetchAbyssalPrices(abyssalItemIds)
+      .then((prices) => {
+        if (prices.size > 0) {
+          console.log(`[Abyssals] Resolved ${prices.size} prices`)
+          // Trigger re-render by bumping cache version (prices are in persistent cache)
+          setCacheVersion((v) => v + 1)
+        }
+        resolvingAbyssalsRef.current = false
+      })
+      .catch((err) => {
+        console.warn('[Abyssals] Failed to fetch prices:', err.message)
+        resolvingAbyssalsRef.current = false
+      })
+  }, [assetDataKey, refPrices])
 
   // Resolve unknown structures via ESI
   // Walk up parent chain to find root location for nested items
@@ -571,17 +568,16 @@ export function AssetsTab() {
     for (const { assets } of currentAssetData) {
       for (const asset of assets) {
         const root = getRootLocation(asset)
-        if (
-          root.locationType === 'station' &&
-          root.locationId > 1000000000000 &&
-          !getStructure(root.locationId)
-        ) {
+        if (root.locationId > 1_000_000_000_000 && !hasStructure(root.locationId)) {
           unknownStructureIds.add(root.locationId)
         }
       }
     }
 
-    if (unknownStructureIds.size === 0) return
+    if (unknownStructureIds.size === 0) {
+      console.log('[Structures] No unknown structures to resolve')
+      return
+    }
 
     // Collect all character IDs to try for structure resolution
     // Each character might have different docking access
@@ -593,23 +589,15 @@ export function AssetsTab() {
     console.log(`[Structures] Resolving ${unknownStructureIds.size} unknown structures via ESI (trying ${characterIds.length} characters)...`)
 
     resolveStructures(Array.from(unknownStructureIds), characterIds)
-      .then(async (resolved) => {
+      .then((resolved) => {
         if (resolved.size > 0) {
-          const structures: EVERefStructure[] = []
-          for (const [id, esiStructure] of resolved) {
-            structures.push({
-              structureId: id,
-              name: esiStructure.name,
-              solarSystemId: esiStructure.solar_system_id,
-              typeId: esiStructure.type_id ?? 0,
-              ownerId: esiStructure.owner_id,
-            })
-          }
-          await saveStructures(structures)
           console.log(`[Structures] Resolved ${resolved.size} structures`)
         }
       })
       .catch((err) => console.warn('[Structures] Failed to resolve:', err.message))
+      .finally(() => {
+        resolvingStructuresRef.current = false
+      })
   }, [assetDataKey, ownersKey])
 
   // Resolve unknown location IDs via /universe/names/
@@ -643,9 +631,8 @@ export function AssetsTab() {
     for (const { assets } of currentAssetData) {
       for (const asset of assets) {
         const rootLocationId = getRootLocationId(asset)
-        // Skip player structures (handled separately) and already cached
-        if (rootLocationId > 1000000000000) continue
-        if (hasLocationName(rootLocationId)) continue
+        if (rootLocationId > 1_000_000_000_000) continue
+        if (hasLocation(rootLocationId)) continue
         unknownLocationIds.add(rootLocationId)
       }
     }
@@ -653,40 +640,32 @@ export function AssetsTab() {
     if (unknownLocationIds.size === 0) return
 
     resolvingLocationsRef.current = true
-    console.log(`[Locations] Resolving ${unknownLocationIds.size} unknown locations via ESI...`)
+    console.log(`[Locations] Resolving ${unknownLocationIds.size} unknown locations...`)
 
     resolveLocationNames(Array.from(unknownLocationIds))
-      .then(async (resolved) => {
+      .then((resolved) => {
         if (resolved.size > 0) {
-          await saveLocationNames(resolved)
           console.log(`[Locations] Resolved ${resolved.size} locations`)
         }
       })
       .catch((err) => console.warn('[Locations] Failed to resolve:', err.message))
+      .finally(() => {
+        resolvingLocationsRef.current = false
+      })
   }, [assetDataKey])
 
-  // Calculate totals and count priced capitals
-  const { totals, pricedCapitalsCount } = useMemo(() => {
+  const totals = useMemo(() => {
     let totalValue = 0
     let totalVolume = 0
     let totalItems = 0
-    let pricedCaps = 0
 
     for (const row of data) {
       totalValue += row.totalValue
       totalVolume += row.totalVolume
       totalItems += row.quantity
-
-      const sdeType = getType(row.typeId)
-      if (sdeType && CAPITAL_GROUP_IDS.has(sdeType.groupId) && row.price > 0) {
-        pricedCaps++
-      }
     }
 
-    return {
-      totals: { totalValue, totalVolume, totalItems },
-      pricedCapitalsCount: pricedCaps,
-    }
+    return { totalValue, totalVolume, totalItems }
   }, [data])
 
   const table = useReactTable({
@@ -799,25 +778,9 @@ export function AssetsTab() {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleUpdatePrices}
-              disabled={!canUpdatePrices || isUpdatingPrices}
-              className="flex items-center gap-1 rounded border border-slate-600 bg-slate-700 px-3 py-1.5 text-sm hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isUpdatingPrices && <Loader2 className="h-3 w-3 animate-spin" />}
-              Update Prices
-            </button>
-            <span className="text-xs text-slate-500">
-              {priceUpdateTime
-                ? `Updated ${priceUpdateTime.toLocaleTimeString()}`
-                : regionalPrices
-                  ? 'Regional prices loaded'
-                  : 'Using average prices'}
-              {capitalPrices && ` | ${capitalPrices.size} cap prices`}
-              {pricedCapitalsCount > 0 && ` | ${pricedCapitalsCount} caps priced`}
-            </span>
-          </div>
+          <span className="text-xs text-slate-500">
+            {refPrices ? `${refPrices.size} prices loaded` : 'Loading prices...'}
+          </span>
           <button className="flex items-center gap-1 rounded border border-slate-600 bg-slate-700 px-3 py-1.5 text-sm hover:bg-slate-600">
             Columns <ChevronDown className="h-4 w-4" />
           </button>

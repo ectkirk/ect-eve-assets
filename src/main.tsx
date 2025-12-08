@@ -7,8 +7,12 @@ import './index.css'
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
+      staleTime: Infinity, // Never auto-refetch based on staleness
+      gcTime: Infinity, // Keep cached data forever (until manual refresh)
       retry: 1,
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+      refetchOnReconnect: false,
     },
   },
 })

@@ -22,12 +22,11 @@ export interface ElectronAPI {
   startAuth: (includeCorporationScopes?: boolean) => Promise<AuthResult>
   refreshToken: (refreshToken: string, characterId: number) => Promise<AuthResult>
   logout: (characterId?: number) => Promise<{ success: boolean }>
-  fetchStructures: () => Promise<Record<string, unknown>>
-  fetchCapitalPrices: () => Promise<unknown>
   storageGet: () => Promise<Record<string, unknown> | null>
   storageSet: (data: Record<string, unknown>) => Promise<boolean>
   writeLog: (level: LogLevel, message: string, context?: LogContext) => Promise<void>
   getLogDir: () => Promise<string>
+  onOpenUpdateDialog: (callback: () => void) => () => void
 }
 
 const electronAPI: ElectronAPI = {
@@ -36,13 +35,16 @@ const electronAPI: ElectronAPI = {
   refreshToken: (refreshToken: string, characterId: number) =>
     ipcRenderer.invoke('auth:refresh', refreshToken, characterId),
   logout: (characterId?: number) => ipcRenderer.invoke('auth:logout', characterId),
-  fetchStructures: () => ipcRenderer.invoke('fetch:structures'),
-  fetchCapitalPrices: () => ipcRenderer.invoke('fetch:capitalPrices'),
   storageGet: () => ipcRenderer.invoke('storage:get'),
   storageSet: (data: Record<string, unknown>) => ipcRenderer.invoke('storage:set', data),
   writeLog: (level: LogLevel, message: string, context?: LogContext) =>
     ipcRenderer.invoke('log:write', level, message, context),
   getLogDir: () => ipcRenderer.invoke('log:getDir'),
+  onOpenUpdateDialog: (callback: () => void) => {
+    const handler = () => callback()
+    ipcRenderer.on('data:openUpdateDialog', handler)
+    return () => ipcRenderer.removeListener('data:openUpdateDialog', handler)
+  },
 }
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI)

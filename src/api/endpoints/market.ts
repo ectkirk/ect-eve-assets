@@ -261,37 +261,3 @@ export async function getRegionalMarketPrices(
   return prices
 }
 
-export interface ECTradeCapitalPrice {
-  typeId: number
-  typeName: string
-  groupId: number
-  groupName: string
-  price: number | null
-  salesCount: number
-  timeWindow: string | null
-  hasSufficientData: boolean
-}
-
-interface ECTradeCapitalResponse {
-  capitals: ECTradeCapitalPrice[]
-}
-
-export async function getCapitalPrices(): Promise<Map<number, number>> {
-  console.log('[Capital] Fetching capital prices from EC Trade...')
-
-  if (!window.electronAPI) {
-    throw new Error('Electron API not available')
-  }
-
-  const data = (await window.electronAPI.fetchCapitalPrices()) as ECTradeCapitalResponse
-  const priceMap = new Map<number, number>()
-
-  for (const item of data.capitals) {
-    if (item.price && item.hasSufficientData) {
-      priceMap.set(item.typeId, item.price)
-    }
-  }
-
-  console.log('[Capital] Loaded', priceMap.size, 'capital prices')
-  return priceMap
-}

@@ -46,5 +46,17 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    proxy: {
+      '/ref-api': {
+        target: 'https://ref.edencom.net',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/ref-api/, '/api'),
+      },
+      '/mutamarket-api': {
+        target: 'https://mutamarket.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/mutamarket-api/, '/api'),
+      },
+    },
   },
 })

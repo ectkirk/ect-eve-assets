@@ -20,12 +20,11 @@ interface ElectronAPI {
   startAuth: (includeCorporationScopes?: boolean) => Promise<AuthResult>
   refreshToken: (refreshToken: string, characterId: number) => Promise<AuthResult>
   logout: (characterId?: number) => Promise<{ success: boolean }>
-  fetchStructures: () => Promise<Record<string, unknown>>
-  fetchCapitalPrices: () => Promise<unknown>
   storageGet: () => Promise<Record<string, unknown> | null>
   storageSet: (data: Record<string, unknown>) => Promise<boolean>
   writeLog: (level: LogLevel, message: string, context?: LogContext) => Promise<void>
   getLogDir: () => Promise<string>
+  onOpenUpdateDialog: (callback: () => void) => () => void
 }
 
 declare global {

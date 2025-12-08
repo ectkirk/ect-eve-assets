@@ -1,8 +1,11 @@
-import { useEffect, useState, useRef, Component, type ReactNode } from 'react'
+import { useEffect, useState, useCallback, Component, type ReactNode } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from './store/auth-store'
+import { useDataCacheStore, type DataType } from './store/data-cache-store'
 import { LoginScreen } from './components/layout/LoginScreen'
 import { MainLayout } from './components/layout/MainLayout'
-import { initSDE, loadStructuresFromEveRef, getStructuresCount, clearStructuresCache } from './data/sde'
+import { UpdateDialog } from './components/dialogs/UpdateDialog'
+import { initCache } from './store/reference-cache'
 import { logger } from './lib/logger'
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null; errorInfo: React.ErrorInfo | null }> {
@@ -51,59 +54,96 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
 
 function App() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
-  const [sdeLoaded, setSdeLoaded] = useState(false)
-  const [sdeError, setSdeError] = useState<string | null>(null)
-  const structuresLoadingRef = useRef(false)
+  const queryClient = useQueryClient()
+  const setFetching = useDataCacheStore((state) => state.setFetching)
+  const setFetched = useDataCacheStore((state) => state.setFetched)
+  const setError = useDataCacheStore((state) => state.setError)
+
+  const [cacheReady, setCacheReady] = useState(false)
+  const [cacheError, setCacheError] = useState<string | null>(null)
+  const [updateDialogOpen, setUpdateDialogOpen] = useState(false)
+
+  const handleDataUpdate = useCallback(async (selected: DataType[]) => {
+    logger.info('Starting data update', { module: 'App', dataTypes: selected })
+
+    for (const dataType of selected) {
+      setFetching(dataType, true)
+    }
+
+    try {
+      if (selected.includes('assets')) {
+        await queryClient.invalidateQueries({ queryKey: ['assets'] })
+        setFetched('assets', null)
+      }
+      if (selected.includes('marketOrders')) {
+        await queryClient.invalidateQueries({ queryKey: ['marketOrders'] })
+        setFetched('marketOrders', null)
+      }
+      if (selected.includes('industryJobs')) {
+        await queryClient.invalidateQueries({ queryKey: ['industryJobs'] })
+        setFetched('industryJobs', null)
+      }
+      if (selected.includes('contracts')) {
+        await queryClient.invalidateQueries({ queryKey: ['contracts'] })
+        setFetched('contracts', null)
+      }
+      if (selected.includes('clones')) {
+        await queryClient.invalidateQueries({ queryKey: ['clones'] })
+        setFetched('clones', null)
+      }
+      if (selected.includes('prices')) {
+        await queryClient.invalidateQueries({ queryKey: ['marketPrices'] })
+        await queryClient.invalidateQueries({ queryKey: ['capitalPrices'] })
+        setFetched('prices', null)
+      }
+
+      logger.info('Data update completed', { module: 'App', dataTypes: selected })
+    } catch (err) {
+      logger.error('Data update failed', err as Error, { module: 'App' })
+      for (const dataType of selected) {
+        setError(dataType, (err as Error).message)
+      }
+    }
+  }, [queryClient, setFetching, setFetched, setError])
 
   useEffect(() => {
     logger.info('App starting', { module: 'App' })
-    initSDE()
+    initCache()
       .then(() => {
-        logger.info('SDE loaded successfully', { module: 'App' })
-        setSdeLoaded(true)
+        logger.info('Cache initialized', { module: 'App' })
+        setCacheReady(true)
       })
       .catch((err) => {
-        logger.error('Failed to load SDE', err, { module: 'App' })
-        setSdeError(err.message)
+        logger.error('Failed to initialize cache', err, { module: 'App' })
+        setCacheError(err.message)
       })
   }, [])
 
   useEffect(() => {
-    if (!isAuthenticated || !sdeLoaded || structuresLoadingRef.current) return
+    if (!window.electronAPI) return
 
-    const count = getStructuresCount()
-    const needsReload = count < 1000
+    const unsubDialog = window.electronAPI.onOpenUpdateDialog(() => setUpdateDialogOpen(true))
 
-    if (needsReload) {
-      structuresLoadingRef.current = true
-      const action = count > 0 ? clearStructuresCache() : Promise.resolve()
-      action
-        .then(() => {
-          logger.info('Loading structures from everef.net', { module: 'App' })
-          return loadStructuresFromEveRef()
-        })
-        .then((loaded) => logger.info('Structures loaded', { module: 'App', count: loaded }))
-        .catch((err) => logger.warn('Failed to load structures', { module: 'App', error: err.message }))
-    } else {
-      logger.debug('Structures already cached', { module: 'App', count })
+    return () => {
+      unsubDialog()
     }
-  }, [isAuthenticated, sdeLoaded])
+  }, [])
 
-  if (sdeError) {
+  if (cacheError) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-900 text-slate-50">
         <div className="text-center">
-          <p className="text-red-500">Failed to load game data</p>
-          <p className="text-sm text-slate-400">{sdeError}</p>
+          <p className="text-red-500">Failed to initialize cache</p>
+          <p className="text-sm text-slate-400">{cacheError}</p>
         </div>
       </div>
     )
   }
 
-  if (!sdeLoaded) {
+  if (!cacheReady) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-900 text-slate-50">
-        <p className="text-slate-400">Loading game data...</p>
+        <p className="text-slate-400">Initializing...</p>
       </div>
     )
   }
@@ -112,6 +152,11 @@ function App() {
     <ErrorBoundary>
       <div className="h-screen bg-slate-900 text-slate-50">
         {isAuthenticated ? <MainLayout /> : <LoginScreen />}
+        <UpdateDialog
+          open={updateDialogOpen}
+          onOpenChange={setUpdateDialogOpen}
+          onUpdate={handleDataUpdate}
+        />
       </div>
     </ErrorBoundary>
   )
