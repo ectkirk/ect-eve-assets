@@ -8,7 +8,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ectkirk/ecteveassets"
+    "url": "https://github.com/ectkirk/ect-eve-assets"
   },
   "scripts": {
     "dev": "npm run build:preload && vite",
