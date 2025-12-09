@@ -2,6 +2,10 @@ import { useEffect, useState, useCallback, Component, type ReactNode } from 'rea
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from './store/auth-store'
 import { useAssetStore } from './store/asset-store'
+import { useMarketOrdersStore } from './store/market-orders-store'
+import { useIndustryJobsStore } from './store/industry-jobs-store'
+import { useContractsStore } from './store/contracts-store'
+import { useWalletStore } from './store/wallet-store'
 import { useDataCacheStore, type DataType } from './store/data-cache-store'
 import { LoginScreen } from './components/layout/LoginScreen'
 import { MainLayout } from './components/layout/MainLayout'
@@ -116,6 +120,15 @@ function App() {
       })
       .then(() => {
         logger.info('Asset store initialized', { module: 'App' })
+        return Promise.all([
+          useMarketOrdersStore.getState().init(),
+          useIndustryJobsStore.getState().init(),
+          useContractsStore.getState().init(),
+          useWalletStore.getState().init(),
+        ])
+      })
+      .then(() => {
+        logger.info('All stores initialized', { module: 'App' })
         setCacheReady(true)
       })
       .catch((err) => {

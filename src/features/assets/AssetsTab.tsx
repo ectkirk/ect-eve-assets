@@ -28,6 +28,7 @@ import { useAssetData } from '@/hooks/useAssetData'
 import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { useIndustryJobsStore } from '@/store/industry-jobs-store'
 import { useContractsStore } from '@/store/contracts-store'
+import { useWalletStore } from '@/store/wallet-store'
 import { TypeIcon, OwnerIcon } from '@/components/ui/type-icon'
 
 interface AssetRow {
@@ -55,14 +56,19 @@ interface AssetRow {
 }
 
 function formatNumber(value: number): string {
-  if (value >= 1_000_000_000) {
-    return (value / 1_000_000_000).toFixed(2) + 'B'
+  const abs = Math.abs(value)
+  const sign = value < 0 ? '-' : ''
+  if (abs >= 1_000_000_000_000) {
+    return sign + (abs / 1_000_000_000_000).toFixed(2) + 'T'
   }
-  if (value >= 1_000_000) {
-    return (value / 1_000_000).toFixed(2) + 'M'
+  if (abs >= 1_000_000_000) {
+    return sign + (abs / 1_000_000_000).toFixed(2) + 'B'
   }
-  if (value >= 1_000) {
-    return (value / 1_000).toFixed(2) + 'K'
+  if (abs >= 1_000_000) {
+    return sign + (abs / 1_000_000).toFixed(2) + 'M'
+  }
+  if (abs >= 1_000) {
+    return sign + (abs / 1_000).toFixed(2) + 'K'
   }
   return value.toLocaleString()
 }
@@ -337,11 +343,6 @@ export function AssetsTab() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [columnsDropdownOpen])
 
-  const characterOwners = useMemo(
-    () => owners.filter((o) => o.type === 'character'),
-    [owners]
-  )
-
   const ordersByOwner = useMarketOrdersStore((s) => s.ordersByOwner)
   const jobsByOwner = useIndustryJobsStore((s) => s.jobsByOwner)
   const contractsByOwner = useContractsStore((s) => s.contractsByOwner)
@@ -445,8 +446,156 @@ export function AssetsTab() {
       }
     }
 
+    const resolveLocationById = (locationId: number): { locationName: string; systemName: string; regionName: string } => {
+      if (locationId > 1_000_000_000_000) {
+        const structure = getStructure(locationId)
+        const locationName = structure?.name ?? `Structure ${locationId}`
+        let systemName = ''
+        let regionName = ''
+        if (structure?.solarSystemId) {
+          const system = getLocation(structure.solarSystemId)
+          systemName = system?.name ?? ''
+          regionName = system?.regionName ?? ''
+        }
+        return { locationName, systemName, regionName }
+      }
+      const location = getLocation(locationId)
+      return {
+        locationName: location?.name ?? `Location ${locationId}`,
+        systemName: location?.solarSystemName ?? '',
+        regionName: location?.regionName ?? '',
+      }
+    }
+
+    for (const { owner, orders } of ordersByOwner) {
+      for (const order of orders) {
+        const sdeType = getType(order.type_id)
+        const typeName = getTypeName(order.type_id)
+        const volume = sdeType?.volume ?? 0
+        const quantity = order.volume_remain
+        const { locationName, systemName, regionName } = resolveLocationById(order.location_id)
+
+        rows.push({
+          itemId: order.order_id,
+          typeId: order.type_id,
+          typeName,
+          quantity,
+          locationId: order.location_id,
+          locationName,
+          systemName,
+          regionName,
+          locationFlag: order.is_buy_order ? 'Buy Order' : 'Sell Order',
+          isSingleton: false,
+          isBlueprintCopy: false,
+          price: order.price,
+          totalValue: order.is_buy_order ? (order.escrow ?? 0) : order.price * quantity,
+          volume,
+          totalVolume: volume * quantity,
+          categoryId: sdeType?.categoryId ?? 0,
+          categoryName: sdeType?.categoryName ?? '',
+          groupName: sdeType?.groupName ?? '',
+          ownerId: owner.id,
+          ownerName: owner.name,
+          ownerType: owner.type,
+        })
+      }
+    }
+
+    for (const { owner, jobs } of jobsByOwner) {
+      for (const job of jobs) {
+        if (job.status !== 'active' && job.status !== 'ready') continue
+        const productTypeId = job.product_type_id ?? job.blueprint_type_id
+        const sdeType = getType(productTypeId)
+        const typeName = getTypeName(productTypeId)
+        const volume = sdeType?.volume ?? 0
+        const price = prices.get(productTypeId) ?? 0
+        const { locationName, systemName, regionName } = resolveLocationById(job.output_location_id)
+
+        rows.push({
+          itemId: job.job_id,
+          typeId: productTypeId,
+          typeName,
+          quantity: job.runs,
+          locationId: job.output_location_id,
+          locationName,
+          systemName,
+          regionName,
+          locationFlag: 'Industry Job',
+          isSingleton: false,
+          isBlueprintCopy: false,
+          price,
+          totalValue: price * job.runs,
+          volume,
+          totalVolume: volume * job.runs,
+          categoryId: sdeType?.categoryId ?? 0,
+          categoryName: sdeType?.categoryName ?? '',
+          groupName: sdeType?.groupName ?? '',
+          ownerId: owner.id,
+          ownerName: owner.name,
+          ownerType: owner.type,
+        })
+      }
+    }
+
+    const ownerIds = new Set(owners.map((o) => o.characterId))
+    const ownerCorpIds = new Set(owners.filter((o) => o.corporationId).map((o) => o.corporationId!))
+    const seenContracts = new Set<number>()
+
+    for (const { owner, contracts } of contractsByOwner) {
+      for (const { contract, items } of contracts) {
+        if (seenContracts.has(contract.contract_id)) continue
+        seenContracts.add(contract.contract_id)
+        if (contract.status !== 'outstanding' && contract.status !== 'in_progress') continue
+        if (contract.type === 'courier') continue
+
+        const isIssuer = ownerIds.has(contract.issuer_id)
+        const isAssignee = ownerIds.has(contract.assignee_id) || ownerCorpIds.has(contract.assignee_id)
+        const flag = isIssuer ? 'Contract Out' : isAssignee ? 'Contract In' : 'Contract'
+        const valueMultiplier = isAssignee && !isIssuer ? -1 : 1
+
+        for (const item of items) {
+          if (!item.is_included) continue
+          const sdeType = getType(item.type_id)
+          const typeName = getTypeName(item.type_id)
+          const volume = sdeType?.volume ?? 0
+          let price: number
+          if (isAbyssalTypeId(item.type_id) && item.item_id) {
+            price = getCachedAbyssalPrice(item.item_id) ?? 0
+          } else {
+            price = prices.get(item.type_id) ?? 0
+          }
+          const contractLocationId = contract.start_location_id ?? 0
+          const { locationName, systemName, regionName } = resolveLocationById(contractLocationId)
+
+          rows.push({
+            itemId: item.record_id,
+            typeId: item.type_id,
+            typeName,
+            quantity: item.quantity,
+            locationId: contractLocationId,
+            locationName,
+            systemName,
+            regionName,
+            locationFlag: flag,
+            isSingleton: item.is_singleton ?? false,
+            isBlueprintCopy: item.is_blueprint_copy ?? false,
+            price,
+            totalValue: price * item.quantity * valueMultiplier,
+            volume,
+            totalVolume: volume * item.quantity,
+            categoryId: sdeType?.categoryId ?? 0,
+            categoryName: sdeType?.categoryName ?? '',
+            groupName: sdeType?.groupName ?? '',
+            ownerId: owner.id,
+            ownerName: owner.name,
+            ownerType: owner.type,
+          })
+        }
+      }
+    }
+
     return rows
-  }, [assetsByOwner, prices, assetNames, cacheVersion])
+  }, [assetsByOwner, prices, assetNames, cacheVersion, ordersByOwner, jobsByOwner, contractsByOwner, owners])
 
   const categories = useMemo(() => {
     const cats = new Set<string>()
@@ -528,6 +677,8 @@ export function AssetsTab() {
   })
 
   const filteredRows = table.getFilteredRowModel().rows
+  const walletTotal = useWalletStore((s) => s.getTotalBalance)()
+
   const totals = useMemo(() => {
     let totalValue = 0
     let totalVolume = 0
@@ -539,68 +690,10 @@ export function AssetsTab() {
       totalItems += row.original.quantity
     }
 
+    totalValue += walletTotal
+
     return { totalValue, totalVolume, totalItems }
-  }, [filteredRows])
-
-  const otherTabValues = useMemo(() => {
-    let marketOrdersValue = 0
-    for (const { orders } of ordersByOwner) {
-      for (const order of orders) {
-        if (order.is_buy_order) {
-          marketOrdersValue += order.escrow ?? 0
-        } else {
-          marketOrdersValue += order.price * order.volume_remain
-        }
-      }
-    }
-
-    let industryJobsValue = 0
-    for (const { jobs } of jobsByOwner) {
-      for (const job of jobs) {
-        if (job.status !== 'active' && job.status !== 'ready') continue
-        const productTypeId = job.product_type_id ?? job.blueprint_type_id
-        const price = prices.get(productTypeId) ?? 0
-        industryJobsValue += price * job.runs
-      }
-    }
-
-    let contractsInValue = 0
-    let contractsOutValue = 0
-    const ownerIds = new Set(owners.map((o) => o.characterId))
-    const ownerCorpIds = new Set(owners.filter((o) => o.corporationId).map((o) => o.corporationId!))
-    const seenContracts = new Set<number>()
-
-    for (const { contracts } of contractsByOwner) {
-      for (const { contract, items } of contracts) {
-        if (seenContracts.has(contract.contract_id)) continue
-        seenContracts.add(contract.contract_id)
-        if (contract.status !== 'outstanding' && contract.status !== 'in_progress') continue
-        if (contract.type === 'courier') continue
-
-        let itemValue = 0
-        for (const item of items) {
-          let price: number
-          if (isAbyssalTypeId(item.type_id) && item.item_id) {
-            price = getCachedAbyssalPrice(item.item_id) ?? 0
-          } else {
-            price = prices.get(item.type_id) ?? 0
-          }
-          itemValue += price * item.quantity
-        }
-
-        const isIssuer = ownerIds.has(contract.issuer_id)
-        const isAssignee = ownerIds.has(contract.assignee_id) || ownerCorpIds.has(contract.assignee_id)
-
-        if (isAssignee && !isIssuer) {
-          contractsInValue += itemValue
-        } else if (isIssuer) {
-          contractsOutValue += itemValue
-        }
-      }
-    }
-
-    return { marketOrdersValue, industryJobsValue, contractsInValue, contractsOutValue }
-  }, [ordersByOwner, jobsByOwner, contractsByOwner, prices, owners])
+  }, [filteredRows, walletTotal])
 
   if (owners.length === 0) {
     return (
@@ -656,59 +749,10 @@ export function AssetsTab() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-6 text-sm">
           <div>
-            <span className="text-slate-400">Owners: </span>
-            <span className="font-medium">{owners.length}</span>
-            <span className="text-slate-500 text-xs ml-1">
-              ({characterOwners.length} char, {owners.length - characterOwners.length} corp)
-            </span>
-          </div>
-          <div>
-            <span className="text-slate-400">Items: </span>
-            <span className="font-medium">{totals.totalItems.toLocaleString()}</span>
-          </div>
-          <div>
-            <span className="text-slate-400">Assets: </span>
+            <span className="text-slate-400">Total Assets: </span>
             <span className="font-medium text-green-400">
               {formatNumber(totals.totalValue)} ISK
             </span>
-          </div>
-          {otherTabValues.marketOrdersValue > 0 && (
-            <div>
-              <span className="text-slate-400">Orders: </span>
-              <span className="font-medium text-amber-400">
-                {formatNumber(otherTabValues.marketOrdersValue)} ISK
-              </span>
-            </div>
-          )}
-          {otherTabValues.industryJobsValue > 0 && (
-            <div>
-              <span className="text-slate-400">Jobs: </span>
-              <span className="font-medium text-blue-400">
-                {formatNumber(otherTabValues.industryJobsValue)} ISK
-              </span>
-            </div>
-          )}
-          {(otherTabValues.contractsInValue > 0 || otherTabValues.contractsOutValue > 0) && (
-            <div>
-              <span className="text-slate-400">Contracts: </span>
-              {otherTabValues.contractsInValue > 0 && (
-                <span className="font-medium text-green-400" title="Incoming contract items">
-                  +{formatNumber(otherTabValues.contractsInValue)}
-                </span>
-              )}
-              {otherTabValues.contractsInValue > 0 && otherTabValues.contractsOutValue > 0 && (
-                <span className="text-slate-500"> / </span>
-              )}
-              {otherTabValues.contractsOutValue > 0 && (
-                <span className="font-medium text-orange-400" title="Outgoing contract items">
-                  -{formatNumber(otherTabValues.contractsOutValue)}
-                </span>
-              )}
-            </div>
-          )}
-          <div>
-            <span className="text-slate-400">Volume: </span>
-            <span className="font-medium">{formatVolume(totals.totalVolume)}</span>
           </div>
           {isLoading && (
             <div className="flex items-center gap-1 text-blue-400">
@@ -719,9 +763,6 @@ export function AssetsTab() {
         </div>
 
         <div className="flex items-center gap-3">
-          <span className="text-xs text-slate-500">
-            {prices.size > 0 ? `${prices.size} prices loaded` : 'Loading prices...'}
-          </span>
           {isRefreshingAbyssals && (
             <div className="flex items-center gap-1 text-xs text-blue-400">
               <Loader2 className="h-3 w-3 animate-spin" />

@@ -1,0 +1,1 @@
+export { WalletTab } from './WalletTab'

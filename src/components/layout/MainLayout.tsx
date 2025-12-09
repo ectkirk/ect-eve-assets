@@ -11,6 +11,7 @@ import { MarketOrdersTab } from '@/features/market-orders'
 import { IndustryJobsTab } from '@/features/industry-jobs'
 import { ClonesTab } from '@/features/clones'
 import { ContractsTab } from '@/features/contracts'
+import { WalletTab } from '@/features/wallet'
 import { Plus, Loader2 } from 'lucide-react'
 import { OwnerIcon } from '@/components/ui/type-icon'
 import { OwnerManagementModal } from './OwnerManagementModal'
@@ -27,6 +28,7 @@ const TABS = [
   'Office',
   'Structures',
   'Contracts',
+  'Wallet',
 ] as const
 
 type Tab = (typeof TABS)[number]
@@ -55,6 +57,8 @@ function TabContent({ tab }: { tab: Tab }) {
       return <ClonesTab />
     case 'Contracts':
       return <ContractsTab />
+    case 'Wallet':
+      return <WalletTab />
     default:
       return (
         <div className="text-slate-400">
