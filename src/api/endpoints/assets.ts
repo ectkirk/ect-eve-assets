@@ -1,20 +1,9 @@
 import { esiClient } from '../esi-client'
+import { ESIAssetSchema, ESIAssetNameSchema } from '../schemas'
+import { z } from 'zod'
 
-export interface ESIAsset {
-  is_blueprint_copy?: boolean
-  is_singleton: boolean
-  item_id: number
-  location_flag: string
-  location_id: number
-  location_type: string
-  quantity: number
-  type_id: number
-}
-
-export interface ESIAssetName {
-  item_id: number
-  name: string
-}
+export type ESIAsset = z.infer<typeof ESIAssetSchema>
+export type ESIAssetName = z.infer<typeof ESIAssetNameSchema>
 
 export async function getCharacterAssets(
   characterId: number,
@@ -22,7 +11,7 @@ export async function getCharacterAssets(
 ): Promise<ESIAsset[]> {
   return esiClient.fetchWithPagination<ESIAsset>(
     `/characters/${characterId}/assets/`,
-    { characterId: authCharacterId ?? characterId }
+    { characterId: authCharacterId ?? characterId, schema: ESIAssetSchema }
   )
 }
 
@@ -44,6 +33,7 @@ export async function getAssetNames(
         method: 'POST',
         body: JSON.stringify(chunk),
         characterId: authCharacterId,
+        schema: z.array(ESIAssetNameSchema),
       }
     )
     results.push(...names)

@@ -1,60 +1,16 @@
 import { esiClient } from '../esi-client'
+import { ESIContractSchema, ESIContractItemSchema } from '../schemas'
+import { z } from 'zod'
 
-export interface ESIContract {
-  acceptor_id: number
-  assignee_id: number
-  availability: 'public' | 'personal' | 'corporation' | 'alliance'
-  buyout?: number
-  collateral?: number
-  contract_id: number
-  date_accepted?: string
-  date_completed?: string
-  date_expired: string
-  date_issued: string
-  days_to_complete?: number
-  end_location_id?: number
-  for_corporation: boolean
-  issuer_corporation_id: number
-  issuer_id: number
-  price?: number
-  reward?: number
-  start_location_id?: number
-  status:
-    | 'outstanding'
-    | 'in_progress'
-    | 'finished_issuer'
-    | 'finished_contractor'
-    | 'finished'
-    | 'cancelled'
-    | 'rejected'
-    | 'failed'
-    | 'deleted'
-    | 'reversed'
-  title?: string
-  type: 'unknown' | 'item_exchange' | 'auction' | 'courier' | 'loan'
-  volume?: number
-}
-
-export interface ESIContractItem {
-  is_included: boolean
-  is_singleton?: boolean
-  quantity: number
-  raw_quantity?: number
-  record_id: number
-  type_id: number
-  item_id?: number
-  is_blueprint_copy?: boolean
-  material_efficiency?: number
-  time_efficiency?: number
-  runs?: number
-}
+export type ESIContract = z.infer<typeof ESIContractSchema>
+export type ESIContractItem = z.infer<typeof ESIContractItemSchema>
 
 export async function getCharacterContracts(
   characterId: number
 ): Promise<ESIContract[]> {
   return esiClient.fetchWithPagination<ESIContract>(
     `/characters/${characterId}/contracts/`,
-    { characterId }
+    { characterId, schema: ESIContractSchema }
   )
 }
 
@@ -64,7 +20,7 @@ export async function getContractItems(
 ): Promise<ESIContractItem[]> {
   return esiClient.fetch<ESIContractItem[]>(
     `/characters/${characterId}/contracts/${contractId}/items/`,
-    { characterId }
+    { characterId, schema: z.array(ESIContractItemSchema) }
   )
 }
 
@@ -82,7 +38,7 @@ export async function getCorporationContracts(
 ): Promise<ESIContract[]> {
   return esiClient.fetchWithPagination<ESIContract>(
     `/corporations/${corporationId}/contracts/`,
-    { characterId }
+    { characterId, schema: ESIContractSchema }
   )
 }
 
@@ -93,6 +49,6 @@ export async function getCorporationContractItems(
 ): Promise<ESIContractItem[]> {
   return esiClient.fetch<ESIContractItem[]>(
     `/corporations/${corporationId}/contracts/${contractId}/items/`,
-    { characterId }
+    { characterId, schema: z.array(ESIContractItemSchema) }
   )
 }

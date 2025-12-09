@@ -1,43 +1,11 @@
 import { esiClient } from '../esi-client'
 import { logger } from '@/lib/logger'
+import { ESIMarketOrderSchema, ESIRegionOrderSchema, ESIMarketPriceSchema } from '../schemas'
+import { z } from 'zod'
 
-export interface ESIMarketOrder {
-  duration: number
-  escrow?: number
-  is_buy_order: boolean
-  is_corporation: boolean
-  issued: string
-  location_id: number
-  min_volume?: number
-  order_id: number
-  price: number
-  range: string
-  region_id: number
-  type_id: number
-  volume_remain: number
-  volume_total: number
-}
-
-export interface ESIRegionOrder {
-  duration: number
-  is_buy_order: boolean
-  issued: string
-  location_id: number
-  min_volume: number
-  order_id: number
-  price: number
-  range: string
-  system_id: number
-  type_id: number
-  volume_remain: number
-  volume_total: number
-}
-
-export interface ESIMarketPrice {
-  adjusted_price?: number
-  average_price?: number
-  type_id: number
-}
+export type ESIMarketOrder = z.infer<typeof ESIMarketOrderSchema>
+export type ESIRegionOrder = z.infer<typeof ESIRegionOrderSchema>
+export type ESIMarketPrice = z.infer<typeof ESIMarketPriceSchema>
 
 export interface PriceData {
   sellMin: number
@@ -76,11 +44,15 @@ export const CAPITAL_GROUP_IDS = new Set([
 export async function getCharacterOrders(characterId: number): Promise<ESIMarketOrder[]> {
   return esiClient.fetch<ESIMarketOrder[]>(`/characters/${characterId}/orders/`, {
     characterId,
+    schema: z.array(ESIMarketOrderSchema),
   })
 }
 
 export async function getMarketPrices(): Promise<ESIMarketPrice[]> {
-  return esiClient.fetchPublic<ESIMarketPrice[]>('/markets/prices/')
+  return esiClient.fetch<ESIMarketPrice[]>('/markets/prices/', {
+    requiresAuth: false,
+    schema: z.array(ESIMarketPriceSchema),
+  })
 }
 
 interface Order {
@@ -165,11 +137,9 @@ function calculatePriceData(orders: ESIRegionOrder[]): PriceData {
 async function fetchAllRegionOrders(regionId: number): Promise<ESIRegionOrder[]> {
   logger.debug('Fetching regional market orders', { module: 'ESI', regionId })
 
-  // Use the ESI client for public endpoint with pagination
-  // This respects rate limits automatically
   return esiClient.fetchWithPagination<ESIRegionOrder>(
     `/markets/${regionId}/orders/?order_type=all`,
-    { requiresAuth: false }
+    { requiresAuth: false, schema: ESIRegionOrderSchema }
   )
 }
 

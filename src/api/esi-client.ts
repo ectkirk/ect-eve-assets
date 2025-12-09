@@ -1,5 +1,6 @@
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { logger } from '@/lib/logger'
+import type { z } from 'zod'
 
 export const ESI_BASE_URL = 'https://esi.evetech.net'
 export const ESI_COMPATIBILITY_DATE = '2025-11-06'
@@ -151,9 +152,10 @@ class ESIClient {
       characterId?: number
       requiresAuth?: boolean
       skipQueue?: boolean
+      schema?: z.ZodType<T>
     } = {}
   ): Promise<T> {
-    const { characterId, requiresAuth = true, skipQueue = false, ...fetchOptions } = options
+    const { characterId, requiresAuth = true, skipQueue = false, schema, ...fetchOptions } = options
 
     const executor = async (): Promise<T> => {
       await this.waitForRateLimit()
@@ -225,7 +227,23 @@ class ESIClient {
         throw new Error(errorMessage)
       }
 
-      const data = (await response.json()) as T
+      const rawData = await response.json()
+
+      let data: T
+      if (schema) {
+        const result = schema.safeParse(rawData)
+        if (!result.success) {
+          logger.error('ESI response validation failed', undefined, {
+            module: 'ESI',
+            endpoint,
+            errors: result.error.issues.slice(0, 3),
+          })
+          throw new Error(`ESI response validation failed: ${result.error.issues[0]?.message}`)
+        }
+        data = result.data
+      } else {
+        data = rawData as T
+      }
 
       const etag = response.headers.get('ETag')
       const expires = response.headers.get('Expires')
@@ -241,7 +259,7 @@ class ESIClient {
 
   async fetchWithPagination<T>(
     endpoint: string,
-    options: { characterId?: number; requiresAuth?: boolean } = {}
+    options: { characterId?: number; requiresAuth?: boolean; schema?: z.ZodType<T> } = {}
   ): Promise<T[]> {
     const results: T[] = []
     let page = 1
@@ -281,8 +299,24 @@ class ESIClient {
         throw new Error(error.error || `ESI request failed: ${response.status}`)
       }
 
-      const data = (await response.json()) as T[]
-      results.push(...data)
+      const rawData = await response.json()
+
+      if (options.schema) {
+        const arraySchema = options.schema.array()
+        const result = arraySchema.safeParse(rawData)
+        if (!result.success) {
+          logger.error('ESI paginated response validation failed', undefined, {
+            module: 'ESI',
+            endpoint,
+            page,
+            errors: result.error.issues.slice(0, 3),
+          })
+          throw new Error(`ESI response validation failed: ${result.error.issues[0]?.message}`)
+        }
+        results.push(...result.data)
+      } else {
+        results.push(...(rawData as T[]))
+      }
 
       const xPages = response.headers.get('X-Pages')
       const totalPages = xPages ? parseInt(xPages, 10) : 1

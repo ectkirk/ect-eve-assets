@@ -7,18 +7,10 @@ import {
   type CachedStructure,
 } from '@/store/reference-cache'
 import { logger } from '@/lib/logger'
+import { ESIStructureSchema, ESINameSchema } from '../schemas'
+import { z } from 'zod'
 
-export interface ESIStructure {
-  name: string
-  owner_id: number
-  position?: {
-    x: number
-    y: number
-    z: number
-  }
-  solar_system_id: number
-  type_id?: number
-}
+export type ESIStructure = z.infer<typeof ESIStructureSchema>
 
 type StructureResult =
   | { status: 'success'; data: ESIStructure; characterId: number }
@@ -33,7 +25,7 @@ async function getStructureFromESI(
   try {
     const data = await esiClient.fetch<ESIStructure>(
       `/universe/structures/${structureId}/`,
-      { characterId }
+      { characterId, schema: ESIStructureSchema }
     )
     return { status: 'success', data, characterId }
   } catch (error) {
@@ -141,13 +133,8 @@ export async function resolveStructures(
   return results
 }
 
-export type ESINameCategory = 'character' | 'corporation' | 'alliance' | 'faction' | 'station' | 'solar_system' | 'constellation' | 'region' | 'inventory_type'
-
-export interface ESIName {
-  id: number
-  name: string
-  category: ESINameCategory
-}
+export type ESIName = z.infer<typeof ESINameSchema>
+export type ESINameCategory = ESIName['category']
 
 const namesCache = new Map<number, ESIName>()
 
@@ -182,6 +169,7 @@ export async function resolveNames(ids: number[]): Promise<Map<number, ESIName>>
         method: 'POST',
         body: JSON.stringify(chunk),
         requiresAuth: false,
+        schema: z.array(ESINameSchema),
       })
       for (const item of names) {
         namesCache.set(item.id, item)

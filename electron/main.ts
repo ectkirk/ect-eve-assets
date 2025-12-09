@@ -188,15 +188,22 @@ function createWindow() {
 }
 
 // IPC handlers for auth
-ipcMain.handle('auth:start', async (_event, includeCorporationScopes = false) => {
-  const result = await startAuth(includeCorporationScopes)
+ipcMain.handle('auth:start', async (_event, includeCorporationScopes: unknown) => {
+  const includeCorpScopes = typeof includeCorporationScopes === 'boolean' ? includeCorporationScopes : false
+  const result = await startAuth(includeCorpScopes)
   if (result.success && result.refreshToken && result.characterId) {
     characterTokens.set(result.characterId, result.refreshToken)
   }
   return result
 })
 
-ipcMain.handle('auth:refresh', async (_event, refreshToken: string, characterId: number) => {
+ipcMain.handle('auth:refresh', async (_event, refreshToken: unknown, characterId: unknown) => {
+  if (typeof refreshToken !== 'string' || refreshToken.length === 0 || refreshToken.length > 4000) {
+    return { success: false, error: 'Invalid refresh token' }
+  }
+  if (typeof characterId !== 'number' || !Number.isInteger(characterId) || characterId <= 0) {
+    return { success: false, error: 'Invalid character ID' }
+  }
   const result = await refreshAccessToken(refreshToken)
   if (result.success && result.refreshToken && characterId) {
     characterTokens.set(characterId, result.refreshToken)
@@ -204,8 +211,11 @@ ipcMain.handle('auth:refresh', async (_event, refreshToken: string, characterId:
   return result
 })
 
-ipcMain.handle('auth:logout', async (_event, characterId?: number) => {
+ipcMain.handle('auth:logout', async (_event, characterId: unknown) => {
   if (characterId !== undefined) {
+    if (typeof characterId !== 'number' || !Number.isInteger(characterId) || characterId <= 0) {
+      return { success: false, error: 'Invalid character ID' }
+    }
     const token = characterTokens.get(characterId)
     if (token) {
       await revokeToken(token)
@@ -226,32 +236,73 @@ ipcMain.handle('storage:get', () => {
   return readStorage()
 })
 
-ipcMain.handle('storage:set', (_event, data: Record<string, unknown>) => {
-  writeStorage(data)
+const MAX_STORAGE_SIZE = 5 * 1024 * 1024 // 5MB
+
+ipcMain.handle('storage:set', (_event, data: unknown) => {
+  if (typeof data !== 'object' || data === null || Array.isArray(data)) {
+    console.error('[Storage] Invalid data type')
+    return false
+  }
+  try {
+    const json = JSON.stringify(data)
+    if (json.length > MAX_STORAGE_SIZE) {
+      console.error('[Storage] Data exceeds size limit')
+      return false
+    }
+  } catch {
+    console.error('[Storage] Data not serializable')
+    return false
+  }
+  writeStorage(data as Record<string, unknown>)
   return true
 })
 
 // Logging IPC handler
-ipcMain.handle(
-  'log:write',
-  (_event, level: LogLevel, message: string, context?: LogContext) => {
-    const logContext = { ...context, source: 'renderer' }
-    switch (level) {
-      case 'DEBUG':
-        logger.debug(message, logContext)
-        break
-      case 'INFO':
-        logger.info(message, logContext)
-        break
-      case 'WARN':
-        logger.warn(message, logContext)
-        break
-      case 'ERROR':
-        logger.error(message, undefined, logContext)
-        break
+const VALID_LOG_LEVELS = ['DEBUG', 'INFO', 'WARN', 'ERROR'] as const
+const MAX_LOG_MESSAGE_LENGTH = 10000
+const MAX_LOG_CONTEXT_SIZE = 50000
+
+ipcMain.handle('log:write', (_event, level: unknown, message: unknown, context: unknown) => {
+  if (typeof level !== 'string' || !VALID_LOG_LEVELS.includes(level as LogLevel)) {
+    return
+  }
+  if (typeof message !== 'string') {
+    return
+  }
+  const truncatedMessage = message.slice(0, MAX_LOG_MESSAGE_LENGTH)
+
+  let validContext: LogContext | undefined
+  if (context !== undefined) {
+    if (typeof context !== 'object' || context === null || Array.isArray(context)) {
+      return
+    }
+    try {
+      const contextJson = JSON.stringify(context)
+      if (contextJson.length > MAX_LOG_CONTEXT_SIZE) {
+        return
+      }
+      validContext = context as LogContext
+    } catch {
+      return
     }
   }
-)
+
+  const logContext = { ...validContext, source: 'renderer' }
+  switch (level as LogLevel) {
+    case 'DEBUG':
+      logger.debug(truncatedMessage, logContext)
+      break
+    case 'INFO':
+      logger.info(truncatedMessage, logContext)
+      break
+    case 'WARN':
+      logger.warn(truncatedMessage, logContext)
+      break
+    case 'ERROR':
+      logger.error(truncatedMessage, undefined, logContext)
+      break
+  }
+})
 
 ipcMain.handle('log:getDir', () => {
   return logger.getLogDir()

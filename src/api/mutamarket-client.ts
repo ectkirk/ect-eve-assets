@@ -5,36 +5,13 @@ import {
   saveAbyssals,
   type CachedAbyssal,
 } from '@/store/reference-cache'
+import { MutamarketModuleSchema } from './schemas'
+import { z } from 'zod'
 
 const isDev = import.meta.env.DEV
 const MUTAMARKET_API_BASE = isDev ? '/mutamarket-api' : 'https://mutamarket.com/api'
 
-export interface MutamarketModule {
-  id: number
-  type: {
-    id: number
-    name: string
-  }
-  source_type: {
-    id: number
-    name: string
-    meta_group?: string
-    meta_group_id?: number
-    published?: boolean
-  }
-  mutaplasmid?: {
-    id: number
-    name: string
-  }
-  estimated_value?: number
-  estimated_value_updated_at?: string
-  slug?: string
-  contract?: {
-    id: number
-    type: string
-    price: number
-  }
-}
+export type MutamarketModule = z.infer<typeof MutamarketModuleSchema>
 
 const ABYSSAL_TYPE_IDS = new Set([
   56305, 47757, 47753, 47749, 56306, 47745, 47408, 47740, 52230, 49738, 52227,
@@ -72,9 +49,18 @@ async function fetchSingleAbyssalPrice(itemId: number): Promise<{ price: number;
       return null
     }
 
-    const data = (await response.json()) as MutamarketModule
-    const price = data.estimated_value ?? 0
+    const rawData = await response.json()
+    const parseResult = MutamarketModuleSchema.safeParse(rawData)
+    if (!parseResult.success) {
+      logger.error('Mutamarket response validation failed', undefined, {
+        module: 'Mutamarket',
+        itemId,
+        errors: parseResult.error.issues.slice(0, 3),
+      })
+      return null
+    }
 
+    const price = parseResult.data.estimated_value ?? 0
     logger.debug(`Fetched abyssal price`, { module: 'Mutamarket', itemId, price })
 
     return { price, persist: true }

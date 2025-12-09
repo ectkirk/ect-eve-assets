@@ -98,7 +98,15 @@ describe('mutamarket-client', () => {
       vi.mocked(hasAbyssal).mockReturnValue(false)
 
       fetchSpy.mockResolvedValue(
-        new Response(JSON.stringify({ estimated_value: 2500000 }), { status: 200 })
+        new Response(
+          JSON.stringify({
+            id: 12345,
+            type: { id: 47408, name: 'Abyssal Damage Control' },
+            source_type: { id: 2048, name: 'Damage Control II' },
+            estimated_value: 2500000,
+          }),
+          { status: 200 }
+        )
       )
 
       const result = await fetchAbyssalPrices([12345])
@@ -186,7 +194,16 @@ describe('mutamarket-client', () => {
       const { hasAbyssal, saveAbyssals } = await import('@/store/reference-cache')
       vi.mocked(hasAbyssal).mockReturnValue(false)
 
-      fetchSpy.mockResolvedValue(new Response(JSON.stringify({}), { status: 200 }))
+      fetchSpy.mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            id: 12345,
+            type: { id: 47408, name: 'Abyssal Damage Control' },
+            source_type: { id: 2048, name: 'Damage Control II' },
+          }),
+          { status: 200 }
+        )
+      )
 
       const result = await fetchAbyssalPrices([12345])
 

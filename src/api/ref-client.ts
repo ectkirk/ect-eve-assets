@@ -8,48 +8,21 @@ import {
   type CachedType,
   type CachedLocation,
 } from '@/store/reference-cache'
+import {
+  RefTypeBulkResponseSchema,
+  RefUniverseBulkResponseSchema,
+  RefTypeSchema,
+  RefUniverseItemSchema,
+} from './schemas'
+import { z } from 'zod'
 
 const isDev = import.meta.env.DEV
 const REF_API_BASE = isDev ? '/ref-api/v1' : 'https://ref.edencom.net/api/v1'
 
-export interface RefMarketPrice {
-  adjusted?: string | number | null
-  average?: string | number | null
-  highestBuy?: number | null
-  lowestSell?: number | null
-}
-
-export interface RefType {
-  id: number
-  name: string
-  groupId?: number | null
-  groupName?: string | null
-  categoryId?: number | null
-  categoryName?: string | null
-  volume?: number | null
-  packagedVolume?: number | null
-  basePrice?: number | null
-  marketPrice: RefMarketPrice
-}
-
-interface RefTypeBulkResponse {
-  items: Record<string, RefType>
-}
-
-export type UniverseEntityType = 'region' | 'constellation' | 'system' | 'station' | 'structure'
-
-export interface RefUniverseItem {
-  type: UniverseEntityType
-  name: string
-  solarSystemId?: number
-  solarSystemName?: string
-  regionId?: number
-  regionName?: string
-}
-
-interface RefUniverseBulkResponse {
-  items: Record<string, RefUniverseItem>
-}
+export type RefMarketPrice = z.infer<typeof RefTypeSchema>['marketPrice']
+export type RefType = z.infer<typeof RefTypeSchema>
+export type RefUniverseItem = z.infer<typeof RefUniverseItemSchema>
+export type UniverseEntityType = RefUniverseItem['type']
 
 async function fetchTypesFromAPI(
   ids: number[],
@@ -74,9 +47,17 @@ async function fetchTypesFromAPI(
         continue
       }
 
-      const data = (await response.json()) as RefTypeBulkResponse
+      const rawData = await response.json()
+      const parseResult = RefTypeBulkResponseSchema.safeParse(rawData)
+      if (!parseResult.success) {
+        logger.error('RefAPI /types validation failed', undefined, {
+          module: 'RefAPI',
+          errors: parseResult.error.issues.slice(0, 3),
+        })
+        continue
+      }
 
-      for (const [idStr, type] of Object.entries(data.items)) {
+      for (const [idStr, type] of Object.entries(parseResult.data.items)) {
         results.set(Number(idStr), type)
       }
     } catch (error) {
@@ -107,9 +88,17 @@ async function fetchUniverseFromAPI(ids: number[]): Promise<Map<number, RefUnive
         continue
       }
 
-      const data = (await response.json()) as RefUniverseBulkResponse
+      const rawData = await response.json()
+      const parseResult = RefUniverseBulkResponseSchema.safeParse(rawData)
+      if (!parseResult.success) {
+        logger.error('RefAPI /universe validation failed', undefined, {
+          module: 'RefAPI',
+          errors: parseResult.error.issues.slice(0, 3),
+        })
+        continue
+      }
 
-      for (const [idStr, item] of Object.entries(data.items)) {
+      for (const [idStr, item] of Object.entries(parseResult.data.items)) {
         results.set(Number(idStr), item)
       }
     } catch (error) {

@@ -1,12 +1,14 @@
 import { esiClient } from '../esi-client'
+import { ESICorporationWalletDivisionSchema } from '../schemas'
+import { z } from 'zod'
 
-export interface ESICorporationWalletDivision {
-  balance: number
-  division: number
-}
+export type ESICorporationWalletDivision = z.infer<typeof ESICorporationWalletDivisionSchema>
 
 export async function getCharacterWallet(characterId: number): Promise<number> {
-  return esiClient.fetch<number>(`/characters/${characterId}/wallet/`, { characterId })
+  return esiClient.fetch<number>(`/characters/${characterId}/wallet/`, {
+    characterId,
+    schema: z.number(),
+  })
 }
 
 export async function getCorporationWallets(
@@ -15,6 +17,6 @@ export async function getCorporationWallets(
 ): Promise<ESICorporationWalletDivision[]> {
   return esiClient.fetch<ESICorporationWalletDivision[]>(
     `/corporations/${corporationId}/wallets/`,
-    { characterId }
+    { characterId, schema: z.array(ESICorporationWalletDivisionSchema) }
   )
 }
