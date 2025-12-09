@@ -11,8 +11,9 @@
     "url": "https://github.com/ectkirk/ecteveassets"
   },
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "npm run build:preload && vite",
+    "build": "vite build && npm run build:preload",
+    "build:preload": "npx esbuild electron/preload.ts --bundle --platform=node --target=node18 --external:electron --format=cjs --outfile=dist-electron/preload.cjs",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
