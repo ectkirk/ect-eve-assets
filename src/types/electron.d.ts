@@ -21,6 +21,12 @@ interface RefApiResult {
   error?: string
 }
 
+interface MutamarketResult {
+  estimated_value?: number | null
+  error?: string
+  status?: number
+}
+
 interface ElectronAPI {
   startAuth: (includeCorporationScopes?: boolean) => Promise<AuthResult>
   cancelAuth: () => Promise<void>
@@ -34,6 +40,7 @@ interface ElectronAPI {
   onRefreshAbyssalPrices: (callback: () => void) => () => void
   refTypes: (ids: number[], market: 'jita' | 'the_forge') => Promise<RefApiResult>
   refUniverse: (ids: number[]) => Promise<RefApiResult>
+  mutamarketModule: (itemId: number) => Promise<MutamarketResult>
 }
 
 declare global {

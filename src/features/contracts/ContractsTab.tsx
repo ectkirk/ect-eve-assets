@@ -206,7 +206,7 @@ function ContractsTable({
           <TableHead>Location</TableHead>
           <TableHead>Assignee</TableHead>
           <TableHead className="text-right">Price</TableHead>
-          <TableHead className="text-right">Value</TableHead>
+          {!showCourierColumns && <TableHead className="text-right">Value</TableHead>}
           {showCourierColumns && (
             <>
               <TableHead className="text-right">Volume</TableHead>
@@ -289,9 +289,11 @@ function ContractsTable({
                 <TableCell className="py-1.5 text-right tabular-nums text-amber-400">
                   {value > 0 ? formatISK(value) : '-'}
                 </TableCell>
-                <TableCell className="py-1.5 text-right tabular-nums text-green-400">
-                  {row.itemValue > 0 ? formatISK(row.itemValue) : '-'}
-                </TableCell>
+                {!showCourierColumns && (
+                  <TableCell className="py-1.5 text-right tabular-nums text-green-400">
+                    {row.itemValue > 0 ? formatISK(row.itemValue) : '-'}
+                  </TableCell>
+                )}
                 {showCourierColumns && (
                   <>
                     <TableCell className="py-1.5 text-right tabular-nums text-slate-400">

@@ -23,6 +23,12 @@ export interface RefApiResult {
   error?: string
 }
 
+export interface MutamarketResult {
+  estimated_value?: number | null
+  error?: string
+  status?: number
+}
+
 export interface ElectronAPI {
   startAuth: (includeCorporationScopes?: boolean) => Promise<AuthResult>
   cancelAuth: () => Promise<void>
@@ -36,6 +42,7 @@ export interface ElectronAPI {
   onRefreshAbyssalPrices: (callback: () => void) => () => void
   refTypes: (ids: number[], market: 'jita' | 'the_forge') => Promise<RefApiResult>
   refUniverse: (ids: number[]) => Promise<RefApiResult>
+  mutamarketModule: (itemId: number) => Promise<MutamarketResult>
 }
 
 const electronAPI: ElectronAPI = {
@@ -63,6 +70,7 @@ const electronAPI: ElectronAPI = {
   refTypes: (ids: number[], market: 'jita' | 'the_forge') =>
     ipcRenderer.invoke('ref:types', ids, market),
   refUniverse: (ids: number[]) => ipcRenderer.invoke('ref:universe', ids),
+  mutamarketModule: (itemId: number) => ipcRenderer.invoke('mutamarket:module', itemId),
 }
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI)

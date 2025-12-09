@@ -678,6 +678,7 @@ export function AssetsTab() {
 
   const filteredRows = table.getFilteredRowModel().rows
   const walletTotal = useWalletStore((s) => s.getTotalBalance)()
+  const hasActiveFilters = globalFilter.length > 0 || categoryFilter !== null
 
   const totals = useMemo(() => {
     let totalValue = 0
@@ -690,10 +691,12 @@ export function AssetsTab() {
       totalItems += row.original.quantity
     }
 
-    totalValue += walletTotal
+    if (!hasActiveFilters) {
+      totalValue += walletTotal
+    }
 
     return { totalValue, totalVolume, totalItems }
-  }, [filteredRows, walletTotal])
+  }, [filteredRows, walletTotal, hasActiveFilters])
 
   if (owners.length === 0) {
     return (
