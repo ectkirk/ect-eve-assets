@@ -247,8 +247,8 @@ export const MutamarketModuleSchema = z.object({
   source_type: z.object({
     id: z.number(),
     name: z.string(),
-    meta_group: z.string().optional(),
-    meta_group_id: z.number().optional(),
+    meta_group: z.string().nullable().optional(),
+    meta_group_id: z.number().nullable().optional(),
     published: z.boolean().optional(),
   }),
   mutaplasmid: z
@@ -256,16 +256,18 @@ export const MutamarketModuleSchema = z.object({
       id: z.number(),
       name: z.string(),
     })
+    .nullable()
     .optional(),
-  estimated_value: z.number().optional(),
-  estimated_value_updated_at: z.string().optional(),
-  slug: z.string().optional(),
+  estimated_value: z.number().nullable().optional(),
+  estimated_value_updated_at: z.string().nullable().optional(),
+  slug: z.string().nullable().optional(),
   contract: z
     .object({
       id: z.number(),
       type: z.string(),
       price: z.number(),
     })
+    .nullable()
     .optional(),
 })
 

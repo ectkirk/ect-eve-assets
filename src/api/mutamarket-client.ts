@@ -122,7 +122,6 @@ export async function fetchAbyssalPrices(
 
   logger.debug(`Fetching ${uncachedIds.length} abyssal prices from Mutamarket`, { module: 'Mutamarket' })
 
-  const REQUEST_DELAY_MS = 200
   let fetched = 0
   const toSave: CachedAbyssal[] = []
 
@@ -142,10 +141,6 @@ export async function fetchAbyssalPrices(
     }
     fetched++
     onProgress?.(fetched, uncachedIds.length)
-
-    if (fetched < uncachedIds.length) {
-      await new Promise((resolve) => setTimeout(resolve, REQUEST_DELAY_MS))
-    }
   }
 
   if (toSave.length > 0) {
