@@ -71,6 +71,7 @@
     "@radix-ui/react-scroll-area": "^1.2.10",
     "@tanstack/react-query": "5.90.12",
     "@tanstack/react-table": "8.21.3",
+    "@tanstack/react-virtual": "^3.13.13",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "dotenv": "^17.2.3",

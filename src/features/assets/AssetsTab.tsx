@@ -5,14 +5,15 @@ import {
   getCoreRowModel,
   getSortedRowModel,
   getFilteredRowModel,
-  getPaginationRowModel,
   flexRender,
   type ColumnDef,
   type SortingState,
   type ColumnFiltersState,
   type VisibilityState,
+  type ColumnOrderState,
 } from '@tanstack/react-table'
-import { ArrowUpDown, ChevronDown, Loader2, X } from 'lucide-react'
+import { useVirtualizer } from '@tanstack/react-virtual'
+import { ArrowUpDown, Check, ChevronDown, Loader2, X } from 'lucide-react'
 import {
   Table,
   TableBody,
@@ -80,41 +81,92 @@ function formatVolume(value: number): string {
   return value.toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' m³'
 }
 
+const COLUMN_LABELS: Record<string, string> = {
+  ownerName: 'Owner',
+  typeName: 'Name',
+  quantity: 'Quantity',
+  locationName: 'Location',
+  locationFlag: 'Flag',
+  price: 'Price',
+  totalValue: 'Value',
+  totalVolume: 'Volume',
+}
+
+const STORAGE_KEY_VISIBILITY = 'assets-column-visibility'
+const STORAGE_KEY_ORDER = 'assets-column-order'
+
+const DEFAULT_COLUMN_ORDER: ColumnOrderState = [
+  'ownerName',
+  'typeName',
+  'quantity',
+  'locationName',
+  'locationFlag',
+  'price',
+  'totalValue',
+  'totalVolume',
+]
+
+function loadColumnVisibility(): VisibilityState {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY_VISIBILITY)
+    return stored ? JSON.parse(stored) : {}
+  } catch {
+    return {}
+  }
+}
+
+function saveColumnVisibility(state: VisibilityState): void {
+  try {
+    localStorage.setItem(STORAGE_KEY_VISIBILITY, JSON.stringify(state))
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+function loadColumnOrder(): ColumnOrderState {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY_ORDER)
+    return stored ? JSON.parse(stored) : DEFAULT_COLUMN_ORDER
+  } catch {
+    return DEFAULT_COLUMN_ORDER
+  }
+}
+
+function saveColumnOrder(state: ColumnOrderState): void {
+  try {
+    localStorage.setItem(STORAGE_KEY_ORDER, JSON.stringify(state))
+  } catch {
+    // Ignore storage errors
+  }
+}
+
 const columns: ColumnDef<AssetRow>[] = [
   {
     accessorKey: 'ownerName',
-    header: ({ column }) => (
-      <button
-        className="flex items-center gap-1 hover:text-slate-50"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      >
-        Owner
-        <ArrowUpDown className="h-4 w-4" />
-      </button>
-    ),
+    size: 40,
+    header: () => <span className="sr-only">Owner</span>,
     cell: ({ row }) => {
       const ownerId = row.original.ownerId
       const name = row.getValue('ownerName') as string
       const isCorp = row.original.ownerType === 'corporation'
       return (
-        <div className="flex items-center gap-2">
-          <img
-            src={
-              isCorp
-                ? `https://images.evetech.net/corporations/${ownerId}/logo?size=32`
-                : `https://images.evetech.net/characters/${ownerId}/portrait?size=32`
-            }
-            alt=""
-            className="h-5 w-5 rounded"
-            loading="lazy"
-          />
-          <span className={isCorp ? 'text-yellow-400' : ''}>{name}</span>
-        </div>
+        <img
+          src={
+            isCorp
+              ? `https://images.evetech.net/corporations/${ownerId}/logo?size=32`
+              : `https://images.evetech.net/characters/${ownerId}/portrait?size=32`
+          }
+          alt={name}
+          title={name}
+          className="h-6 w-6 rounded"
+          loading="lazy"
+        />
       )
     },
   },
   {
     accessorKey: 'typeName',
+    size: 280,
     header: ({ column }) => (
       <button
         className="flex items-center gap-1 hover:text-slate-50"
@@ -160,6 +212,7 @@ const columns: ColumnDef<AssetRow>[] = [
   },
   {
     accessorKey: 'quantity',
+    size: 100,
     header: ({ column }) => (
       <button
         className="flex items-center gap-1 hover:text-slate-50"
@@ -177,6 +230,7 @@ const columns: ColumnDef<AssetRow>[] = [
   },
   {
     accessorKey: 'locationName',
+    size: 300,
     header: ({ column }) => (
       <button
         className="flex items-center gap-1 hover:text-slate-50"
@@ -189,6 +243,7 @@ const columns: ColumnDef<AssetRow>[] = [
   },
   {
     accessorKey: 'locationFlag',
+    size: 100,
     header: 'Flag',
     cell: ({ row }) => {
       const flag = row.getValue('locationFlag') as string
@@ -197,9 +252,10 @@ const columns: ColumnDef<AssetRow>[] = [
   },
   {
     accessorKey: 'price',
+    size: 120,
     header: ({ column }) => (
       <button
-        className="flex items-center gap-1 hover:text-slate-50"
+        className="flex items-center gap-1 hover:text-slate-50 ml-auto"
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
       >
         Price
@@ -217,9 +273,10 @@ const columns: ColumnDef<AssetRow>[] = [
   },
   {
     accessorKey: 'totalValue',
+    size: 120,
     header: ({ column }) => (
       <button
-        className="flex items-center gap-1 hover:text-slate-50"
+        className="flex items-center gap-1 hover:text-slate-50 ml-auto"
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
       >
         Value
@@ -237,9 +294,10 @@ const columns: ColumnDef<AssetRow>[] = [
   },
   {
     accessorKey: 'totalVolume',
+    size: 130,
     header: ({ column }) => (
       <button
-        className="flex items-center gap-1 hover:text-slate-50"
+        className="flex items-center gap-1 hover:text-slate-50 ml-auto"
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
       >
         Volume
@@ -270,9 +328,37 @@ export function AssetsTab() {
 
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(loadColumnVisibility)
+  const [columnOrder, setColumnOrder] = useState<ColumnOrderState>(loadColumnOrder)
   const [globalFilter, setGlobalFilter] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
+  const [columnsDropdownOpen, setColumnsDropdownOpen] = useState(false)
+  const columnsDropdownRef = useRef<HTMLDivElement>(null)
+  const draggedColumnRef = useRef<string | null>(null)
+
+  // Persist column visibility changes
+  useEffect(() => {
+    saveColumnVisibility(columnVisibility)
+  }, [columnVisibility])
+
+  // Persist column order changes
+  useEffect(() => {
+    saveColumnOrder(columnOrder)
+  }, [columnOrder])
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    if (!columnsDropdownOpen) return
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (columnsDropdownRef.current && !columnsDropdownRef.current.contains(e.target as Node)) {
+        setColumnsDropdownOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [columnsDropdownOpen])
 
   // Memoize query configs to prevent infinite re-renders
   const assetQueryConfigs = useMemo(
@@ -742,20 +828,53 @@ export function AssetsTab() {
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
+    onColumnOrderChange: setColumnOrder,
     state: {
       sorting,
       columnFilters,
       columnVisibility,
+      columnOrder,
     },
-    initialState: {
-      pagination: {
-        pageSize: 50,
-      },
-    },
+  })
+
+  const handleDragStart = (e: React.DragEvent, columnId: string) => {
+    draggedColumnRef.current = columnId
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }
+
+  const handleDrop = (e: React.DragEvent, targetColumnId: string) => {
+    e.preventDefault()
+    const draggedId = draggedColumnRef.current
+    if (!draggedId || draggedId === targetColumnId) return
+
+    const newOrder = [...columnOrder]
+    const draggedIndex = newOrder.indexOf(draggedId)
+    const targetIndex = newOrder.indexOf(targetColumnId)
+
+    if (draggedIndex === -1 || targetIndex === -1) return
+
+    newOrder.splice(draggedIndex, 1)
+    newOrder.splice(targetIndex, 0, draggedId)
+    setColumnOrder(newOrder)
+    draggedColumnRef.current = null
+  }
+
+  const tableContainerRef = useRef<HTMLDivElement>(null)
+  const { rows } = table.getRowModel()
+
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => tableContainerRef.current,
+    estimateSize: () => 41, // Estimated row height in pixels
+    overscan: 10,
   })
 
   const filteredRows = table.getFilteredRowModel().rows
@@ -867,9 +986,32 @@ export function AssetsTab() {
               <span>Fetching abyssal prices...</span>
             </div>
           )}
-          <button className="flex items-center gap-1 rounded border border-slate-600 bg-slate-700 px-3 py-1.5 text-sm hover:bg-slate-600">
-            Columns <ChevronDown className="h-4 w-4" />
-          </button>
+          <div className="relative" ref={columnsDropdownRef}>
+            <button
+              onClick={() => setColumnsDropdownOpen(!columnsDropdownOpen)}
+              className="flex items-center gap-1 rounded border border-slate-600 bg-slate-700 px-3 py-1.5 text-sm hover:bg-slate-600"
+            >
+              Columns <ChevronDown className="h-4 w-4" />
+            </button>
+            {columnsDropdownOpen && (
+              <div className="absolute right-0 top-full z-50 mt-1 min-w-[160px] rounded border border-slate-600 bg-slate-800 py-1 shadow-lg">
+                {table.getAllColumns()
+                  .filter((column) => column.getCanHide())
+                  .map((column) => (
+                    <button
+                      key={column.id}
+                      onClick={() => column.toggleVisibility(!column.getIsVisible())}
+                      className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-slate-700"
+                    >
+                      <span className="flex h-4 w-4 items-center justify-center">
+                        {column.getIsVisible() && <Check className="h-4 w-4 text-blue-400" />}
+                      </span>
+                      {COLUMN_LABELS[column.id] ?? column.id}
+                    </button>
+                  ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -908,14 +1050,26 @@ export function AssetsTab() {
         </span>
       </div>
 
-      {/* Table */}
-      <div className="rounded-lg border border-slate-700">
-        <Table>
-          <TableHeader>
+      {/* Table with Virtual Scrolling */}
+      <div
+        ref={tableContainerRef}
+        className="rounded-lg border border-slate-700 overflow-auto"
+        style={{ height: 'calc(100vh - 280px)', minHeight: '400px' }}
+      >
+        <Table style={{ tableLayout: 'fixed', width: '100%' }}>
+          <TableHeader className="sticky top-0 z-10 bg-slate-800">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="bg-slate-800 hover:bg-slate-800">
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
+                  <TableHead
+                    key={header.id}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, header.column.id)}
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, header.column.id)}
+                    className="cursor-grab active:cursor-grabbing"
+                    style={{ width: header.getSize(), minWidth: header.getSize() }}
+                  >
                     {header.isPlaceholder
                       ? null
                       : flexRender(
@@ -928,16 +1082,45 @@ export function AssetsTab() {
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
+            {rows.length ? (
+              <>
+                {rowVirtualizer.getVirtualItems().length > 0 && (
+                  <tr>
+                    <td
+                      colSpan={columns.length}
+                      style={{ height: rowVirtualizer.getVirtualItems()[0]?.start ?? 0 }}
+                    />
+                  </tr>
+                )}
+                {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                  const row = rows[virtualRow.index]
+                  if (!row) return null
+                  return (
+                    <TableRow key={row.id} data-index={virtualRow.index}>
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell
+                          key={cell.id}
+                          style={{ width: cell.column.getSize(), minWidth: cell.column.getSize() }}
+                        >
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  )
+                })}
+                {rowVirtualizer.getVirtualItems().length > 0 && (
+                  <tr>
+                    <td
+                      colSpan={columns.length}
+                      style={{
+                        height:
+                          rowVirtualizer.getTotalSize() -
+                          (rowVirtualizer.getVirtualItems().at(-1)?.end ?? 0),
+                      }}
+                    />
+                  </tr>
+                )}
+              </>
             ) : (
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-24 text-center">
@@ -947,44 +1130,6 @@ export function AssetsTab() {
             )}
           </TableBody>
         </Table>
-      </div>
-
-      {/* Pagination */}
-      <div className="flex items-center justify-between">
-        <div className="text-sm text-slate-400">
-          Page {table.getState().pagination.pageIndex + 1} of{' '}
-          {table.getPageCount()}
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => table.setPageIndex(0)}
-            disabled={!table.getCanPreviousPage()}
-            className="rounded border border-slate-600 px-2 py-1 text-sm disabled:opacity-50 hover:bg-slate-700"
-          >
-            First
-          </button>
-          <button
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-            className="rounded border border-slate-600 px-3 py-1 text-sm disabled:opacity-50 hover:bg-slate-700"
-          >
-            Previous
-          </button>
-          <button
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-            className="rounded border border-slate-600 px-3 py-1 text-sm disabled:opacity-50 hover:bg-slate-700"
-          >
-            Next
-          </button>
-          <button
-            onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-            disabled={!table.getCanNextPage()}
-            className="rounded border border-slate-600 px-2 py-1 text-sm disabled:opacity-50 hover:bg-slate-700"
-          >
-            Last
-          </button>
-        </div>
       </div>
     </div>
   )
