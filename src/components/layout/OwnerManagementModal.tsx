@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useAuthStore, type Owner, ownerKey } from '@/store/auth-store'
 import { esiClient } from '@/api/esi-client'
 import {
@@ -43,6 +43,37 @@ export function OwnerManagementModal({
   const [isAddingCorporation, setIsAddingCorporation] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [cooldownRemaining, setCooldownRemaining] = useState(0)
+  const cooldownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const AUTH_COOLDOWN_MS = 10000
+
+  useEffect(() => {
+    return () => {
+      if (cooldownTimerRef.current) {
+        clearInterval(cooldownTimerRef.current)
+      }
+    }
+  }, [])
+
+  const startCooldown = () => {
+    setCooldownRemaining(AUTH_COOLDOWN_MS)
+    if (cooldownTimerRef.current) {
+      clearInterval(cooldownTimerRef.current)
+    }
+    cooldownTimerRef.current = setInterval(() => {
+      setCooldownRemaining((prev) => {
+        if (prev <= 1000) {
+          if (cooldownTimerRef.current) {
+            clearInterval(cooldownTimerRef.current)
+            cooldownTimerRef.current = null
+          }
+          return 0
+        }
+        return prev - 1000
+      })
+    }, 1000)
+  }
 
   const ownersRecord = useAuthStore((state) => state.owners)
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
@@ -96,6 +127,7 @@ export function OwnerManagementModal({
             corporationId: result.corporationId,
           },
         })
+        startCooldown()
       } else if (result.error && result.error !== 'Authentication cancelled') {
         setError(result.error)
       }
@@ -160,6 +192,7 @@ export function OwnerManagementModal({
             corporationId: result.corporationId,
           },
         })
+        startCooldown()
       } else if (result.error && result.error !== 'Authentication cancelled') {
         setError(result.error)
       }
@@ -296,6 +329,28 @@ export function OwnerManagementModal({
               >
                 Cancel
               </button>
+            </div>
+          ) : cooldownRemaining > 0 ? (
+            <div className="flex flex-col items-center gap-2 py-2">
+              <span className="text-sm text-slate-400">
+                Please wait {Math.ceil(cooldownRemaining / 1000)}s before adding another account
+              </span>
+              <div className="flex gap-2 w-full">
+                <button
+                  disabled
+                  className="flex flex-1 items-center justify-center gap-2 rounded-md bg-blue-600/50 px-4 py-2 text-sm font-medium cursor-not-allowed opacity-50"
+                >
+                  <User className="h-4 w-4" />
+                  Add Character
+                </button>
+                <button
+                  disabled
+                  className="flex flex-1 items-center justify-center gap-2 rounded-md bg-yellow-600/50 px-4 py-2 text-sm font-medium cursor-not-allowed opacity-50"
+                >
+                  <Building2 className="h-4 w-4" />
+                  Add Corporation
+                </button>
+              </div>
             </div>
           ) : (
             <div className="flex gap-2">
