@@ -1,6 +1,6 @@
 {
   "name": "ecteveassets",
-  "version": "0.2.4-alpha",
+  "version": "0.2.5-alpha",
   "type": "module",
   "description": "EVE Online Asset Management Desktop Application",
   "main": "dist-electron/main.js",
