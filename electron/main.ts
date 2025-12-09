@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import fs from 'node:fs'
 import { config } from 'dotenv'
-import { startAuth, refreshAccessToken, revokeToken } from './services/auth.js'
+import { startAuth, refreshAccessToken, revokeToken, cancelAuth } from './services/auth.js'
 import { logger, initLogger, type LogLevel, type LogContext } from './services/logger.js'
 
 // User data storage path
@@ -196,6 +196,10 @@ ipcMain.handle('auth:start', async (_event, includeCorporationScopes: unknown) =
     characterTokens.set(result.characterId, result.refreshToken)
   }
   return result
+})
+
+ipcMain.handle('auth:cancel', () => {
+  cancelAuth()
 })
 
 ipcMain.handle('auth:refresh', async (_event, refreshToken: unknown, characterId: unknown) => {

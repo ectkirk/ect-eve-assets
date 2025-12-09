@@ -96,7 +96,7 @@ export function OwnerManagementModal({
             corporationId: result.corporationId,
           },
         })
-      } else if (result.error) {
+      } else if (result.error && result.error !== 'Authentication cancelled') {
         setError(result.error)
       }
     } finally {
@@ -160,12 +160,16 @@ export function OwnerManagementModal({
             corporationId: result.corporationId,
           },
         })
-      } else if (result.error) {
+      } else if (result.error && result.error !== 'Authentication cancelled') {
         setError(result.error)
       }
     } finally {
       setIsAddingCorporation(false)
     }
+  }
+
+  const handleCancelAuth = () => {
+    window.electronAPI?.cancelAuth()
   }
 
   const handleRemoveOwner = async (owner: Owner, e: React.MouseEvent) => {
@@ -280,42 +284,37 @@ export function OwnerManagementModal({
 
         {/* Actions */}
         <div className="flex flex-col gap-2 border-t border-slate-700 pt-4">
-          <div className="flex gap-2">
-            <button
-              onClick={handleAddCharacter}
-              disabled={isAddingCharacter || isAddingCorporation}
-              className="flex flex-1 items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium hover:bg-blue-500 disabled:opacity-50"
-            >
-              {isAddingCharacter ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Adding...
-                </>
-              ) : (
-                <>
-                  <User className="h-4 w-4" />
-                  Add Character
-                </>
-              )}
-            </button>
-            <button
-              onClick={handleAddCorporation}
-              disabled={isAddingCharacter || isAddingCorporation}
-              className="flex flex-1 items-center justify-center gap-2 rounded-md bg-yellow-600 px-4 py-2 text-sm font-medium hover:bg-yellow-500 disabled:opacity-50"
-            >
-              {isAddingCorporation ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Adding...
-                </>
-              ) : (
-                <>
-                  <Building2 className="h-4 w-4" />
-                  Add Corporation
-                </>
-              )}
-            </button>
-          </div>
+          {isAddingCharacter || isAddingCorporation ? (
+            <div className="flex flex-col items-center gap-3 py-2">
+              <div className="flex items-center gap-2 text-slate-400">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Waiting for EVE login...</span>
+              </div>
+              <button
+                onClick={handleCancelAuth}
+                className="text-sm text-slate-500 hover:text-slate-300 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <button
+                onClick={handleAddCharacter}
+                className="flex flex-1 items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium hover:bg-blue-500"
+              >
+                <User className="h-4 w-4" />
+                Add Character
+              </button>
+              <button
+                onClick={handleAddCorporation}
+                className="flex flex-1 items-center justify-center gap-2 rounded-md bg-yellow-600 px-4 py-2 text-sm font-medium hover:bg-yellow-500"
+              >
+                <Building2 className="h-4 w-4" />
+                Add Corporation
+              </button>
+            </div>
+          )}
           {owners.length > 0 && (
             <button
               onClick={handleLogoutAll}
