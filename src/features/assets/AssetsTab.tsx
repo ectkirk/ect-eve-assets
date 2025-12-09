@@ -12,7 +12,7 @@ import {
   type ColumnOrderState,
 } from '@tanstack/react-table'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { ArrowUpDown, Check, ChevronDown, Loader2, X } from 'lucide-react'
+import { ArrowUpDown, Check, ChevronDown, Loader2, RefreshCw, X } from 'lucide-react'
 import {
   Table,
   TableBody,
@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/table'
 import { type ESIAsset } from '@/api/endpoints/assets'
 import { isAbyssalTypeId } from '@/api/mutamarket-client'
-import { getAbyssalPrice, getTypeName, getType, getStructure, getLocation } from '@/store/reference-cache'
+import { getAbyssalPrice, getTypeName, getType, getStructure, getLocation, CategoryIds } from '@/store/reference-cache'
 import { useAssetData } from '@/hooks/useAssetData'
 
 interface AssetRow {
@@ -298,18 +298,34 @@ const columns: ColumnDef<AssetRow>[] = [
   },
 ]
 
+function formatTimeRemaining(ms: number): string {
+  if (ms <= 0) return ''
+  const minutes = Math.ceil(ms / 60000)
+  if (minutes >= 60) {
+    const hours = Math.floor(minutes / 60)
+    const mins = minutes % 60
+    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
+  }
+  return `${minutes}m`
+}
+
 export function AssetsTab() {
   const {
     assetsByOwner,
     owners,
     isLoading,
+    hasData,
     hasError,
-    firstError,
+    errorMessage,
     typeProgress,
     prices,
     assetNames,
     cacheVersion,
     isRefreshingAbyssals,
+    update,
+    updateProgress,
+    canUpdate,
+    timeUntilUpdate,
   } = useAssetData()
 
   const [sorting, setSorting] = useState<SortingState>([])
@@ -371,15 +387,8 @@ export function AssetsTab() {
       let systemName = ''
       let regionName = ''
 
-      if (current.location_type === 'solar_system' && current.item_id > 1_000_000_000_000) {
-        const structure = getStructure(current.item_id)
-        locationName = structure?.name ?? `Structure ${current.item_id}`
-        if (structure?.solarSystemId) {
-          const system = getLocation(structure.solarSystemId)
-          systemName = system?.name ?? ''
-          regionName = system?.regionName ?? ''
-        }
-      } else if (current.location_id > 1_000_000_000_000) {
+      if (current.location_id > 1_000_000_000_000) {
+        // Player structure - location_id is the structure's ID
         const structure = getStructure(current.location_id)
         locationName = structure?.name ?? `Structure ${current.location_id}`
         if (structure?.solarSystemId) {
@@ -387,7 +396,25 @@ export function AssetsTab() {
           systemName = system?.name ?? ''
           regionName = system?.regionName ?? ''
         }
+      } else if (current.location_type === 'solar_system') {
+        // Asset directly in space - check if it's a deployed structure (category 65)
+        const type = getType(current.type_id)
+        if (type?.categoryId === CategoryIds.STRUCTURE) {
+          const structure = getStructure(current.item_id)
+          locationName = structure?.name ?? `Structure ${current.item_id}`
+          if (structure?.solarSystemId) {
+            const system = getLocation(structure.solarSystemId)
+            systemName = system?.name ?? ''
+            regionName = system?.regionName ?? ''
+          }
+        } else {
+          const system = getLocation(current.location_id)
+          locationName = system?.name ?? `System ${current.location_id}`
+          systemName = system?.name ?? ''
+          regionName = system?.regionName ?? ''
+        }
       } else {
+        // NPC station
         const location = getLocation(current.location_id)
         locationName = location?.name ?? `Location ${current.location_id}`
         systemName = location?.solarSystemName ?? ''
@@ -541,11 +568,17 @@ export function AssetsTab() {
     )
   }
 
-  if (isLoading && data.length === 0) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-        <span className="ml-2 text-slate-400">Loading assets...</span>
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-500 mx-auto" />
+          <p className="mt-2 text-slate-400">
+            {updateProgress
+              ? `Fetching assets (${updateProgress.current + 1}/${updateProgress.total})...`
+              : 'Loading assets...'}
+          </p>
+        </div>
       </div>
     )
   }
@@ -564,14 +597,26 @@ export function AssetsTab() {
     )
   }
 
-  if (hasError && data.length === 0) {
+  if (!hasData) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <p className="text-red-500">Failed to load assets</p>
-          <p className="text-sm text-slate-400">
-            {firstError instanceof Error ? firstError.message : 'Unknown error'}
-          </p>
+          {hasError && (
+            <>
+              <p className="text-red-500">Failed to load assets</p>
+              <p className="text-sm text-slate-400 mb-4">{errorMessage}</p>
+            </>
+          )}
+          {!hasError && (
+            <p className="text-slate-400 mb-4">No asset data loaded. Click Update to fetch from ESI.</p>
+          )}
+          <button
+            onClick={() => update()}
+            disabled={!canUpdate}
+            className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {canUpdate ? 'Update Assets' : `Update in ${formatTimeRemaining(timeUntilUpdate)}`}
+          </button>
         </div>
       </div>
     )
@@ -621,6 +666,15 @@ export function AssetsTab() {
               <span>Fetching abyssal prices...</span>
             </div>
           )}
+          <button
+            onClick={() => update()}
+            disabled={!canUpdate}
+            title={canUpdate ? 'Update assets from ESI' : `Available in ${formatTimeRemaining(timeUntilUpdate)}`}
+            className="flex items-center gap-1.5 rounded border border-slate-600 bg-slate-700 px-3 py-1.5 text-sm hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            {canUpdate ? 'Update' : formatTimeRemaining(timeUntilUpdate)}
+          </button>
           <div className="relative" ref={columnsDropdownRef}>
             <button
               onClick={() => setColumnsDropdownOpen(!columnsDropdownOpen)}

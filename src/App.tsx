@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, Component, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from './store/auth-store'
+import { useAssetStore } from './store/asset-store'
 import { useDataCacheStore, type DataType } from './store/data-cache-store'
 import { LoginScreen } from './components/layout/LoginScreen'
 import { MainLayout } from './components/layout/MainLayout'
@@ -111,6 +112,10 @@ function App() {
     initCache()
       .then(() => {
         logger.info('Cache initialized', { module: 'App' })
+        return useAssetStore.getState().init()
+      })
+      .then(() => {
+        logger.info('Asset store initialized', { module: 'App' })
         setCacheReady(true)
       })
       .catch((err) => {

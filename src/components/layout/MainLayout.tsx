@@ -3,6 +3,7 @@ import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { AssetsTab } from '@/features/assets'
 import { ItemHangarTab } from '@/features/item-hangar'
 import { OfficeTab } from '@/features/office'
+import { StructuresTab } from '@/features/structures'
 import { Plus, Loader2 } from 'lucide-react'
 import { OwnerManagementModal } from './OwnerManagementModal'
 
@@ -16,6 +17,7 @@ const TABS = [
   'Industry Jobs',
   'Clones',
   'Office',
+  'Structures',
   'Contracts',
 ] as const
 
@@ -29,6 +31,8 @@ function TabContent({ tab }: { tab: Tab }) {
       return <ItemHangarTab />
     case 'Office':
       return <OfficeTab />
+    case 'Structures':
+      return <StructuresTab />
     default:
       return (
         <div className="text-slate-400">

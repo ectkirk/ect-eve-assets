@@ -17,18 +17,20 @@ export interface ESIAssetName {
 }
 
 export async function getCharacterAssets(
-  characterId: number
+  characterId: number,
+  authCharacterId?: number
 ): Promise<ESIAsset[]> {
   return esiClient.fetchWithPagination<ESIAsset>(
-    `/characters/${characterId}/assets/`
+    `/characters/${characterId}/assets/`,
+    { characterId: authCharacterId ?? characterId }
   )
 }
 
 export async function getAssetNames(
   characterId: number,
+  authCharacterId: number,
   itemIds: number[]
 ): Promise<ESIAssetName[]> {
-  // ESI limits to 1000 items per request
   const chunks: number[][] = []
   for (let i = 0; i < itemIds.length; i += 1000) {
     chunks.push(itemIds.slice(i, i + 1000))
@@ -41,6 +43,7 @@ export async function getAssetNames(
       {
         method: 'POST',
         body: JSON.stringify(chunk),
+        characterId: authCharacterId,
       }
     )
     results.push(...names)

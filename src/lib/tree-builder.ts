@@ -84,9 +84,19 @@ function shouldIncludeAsset(
       return ASSET_SAFETY_FLAGS.has(flag)
 
     case TreeMode.OFFICE:
-      // Items inside Office containers (typeId 27)
+      // Items inside Office containers (typeId 27), excluding deployed structures
+      if (type?.categoryId === CategoryIds.STRUCTURE) return false
       if (parentType?.id === OFFICE_TYPE_ID) return true
-      return type?.id === OFFICE_TYPE_ID
+      // Include Office containers, but exclude those inside deployed structures
+      // (they will be created as parent nodes when processing their contents)
+      if (type?.id === OFFICE_TYPE_ID) {
+        return parentType?.categoryId !== CategoryIds.STRUCTURE
+      }
+      return false
+
+    case TreeMode.STRUCTURES:
+      // Deployed structures (category 65) in space
+      return type?.categoryId === CategoryIds.STRUCTURE && asset.location_type === 'solar_system'
 
     default:
       return true
@@ -276,10 +286,9 @@ export function buildTree(
   }
 
   // Get root location for an asset (station/structure)
-  // Returns the item we stopped at (which may be a player structure)
   const getRootLocation = (
     asset: ESIAsset
-  ): { locationId: number; locationType: string; rootItemId: number } => {
+  ): { locationId: number; locationType: string; rootItemId?: number } => {
     let current = asset
     while (current.location_type === 'item') {
       const parent = assetById.get(current.location_id)
@@ -289,7 +298,7 @@ export function buildTree(
     return {
       locationId: current.location_id,
       locationType: current.location_type,
-      rootItemId: current.item_id,
+      rootItemId: current !== asset ? current.item_id : undefined,
     }
   }
 
@@ -332,12 +341,11 @@ export function buildTree(
     let regionId: number | undefined
     let stationLocationId: number
 
-    // Check if we stopped at a player structure (item_id > 1 trillion)
-    if (root.rootItemId > 1_000_000_000_000) {
-      // Player structure - use the structure's item_id as the station
-      stationLocationId = root.rootItemId
-      const structure = getStructure(root.rootItemId)
-      locationName = structure?.name ?? `Structure ${root.rootItemId}`
+    if (root.locationId > 1_000_000_000_000) {
+      // Player structure - location_id is the structure's ID
+      stationLocationId = root.locationId
+      const structure = getStructure(root.locationId)
+      locationName = structure?.name ?? `Structure ${root.locationId}`
       if (structure?.solarSystemId) {
         const system = getLocation(structure.solarSystemId)
         systemName = system?.name ?? `System ${structure.solarSystemId}`
@@ -346,24 +354,42 @@ export function buildTree(
         regionId = system?.regionId
       }
     } else if (root.locationType === 'solar_system') {
-      // Asset is directly in a solar system (ship in space, etc.)
-      // root.locationId IS the solar system ID
-      stationLocationId = root.locationId
-      const system = getLocation(root.locationId)
-      locationName = system?.name ?? `System ${root.locationId}`
-      systemName = system?.name ?? ''
-      systemId = root.locationId
-      regionName = system?.regionName ?? ''
-      regionId = system?.regionId
-    } else if (root.locationId > 1_000_000_000_000) {
-      // Player structure (via location_id - shouldn't typically hit this path)
-      stationLocationId = root.locationId
-      const structure = getStructure(root.locationId)
-      locationName = structure?.name ?? `Structure ${root.locationId}`
-      if (structure?.solarSystemId) {
-        const system = getLocation(structure.solarSystemId)
-        systemName = system?.name ?? `System ${structure.solarSystemId}`
-        systemId = structure.solarSystemId
+      // Asset directly in space or inside a deployed structure
+      const rootAsset = root.rootItemId ? assetById.get(root.rootItemId)?.asset : undefined
+      const rootType = rootAsset ? getType(rootAsset.type_id) : undefined
+      const isInsideDeployedStructure = rootType?.categoryId === CategoryIds.STRUCTURE
+
+      if (type?.categoryId === CategoryIds.STRUCTURE) {
+        // Current asset IS a deployed structure
+        stationLocationId = asset.item_id
+        const structure = getStructure(asset.item_id)
+        locationName = structure?.name ?? `Structure ${asset.item_id}`
+        if (structure?.solarSystemId) {
+          const system = getLocation(structure.solarSystemId)
+          systemName = system?.name ?? `System ${structure.solarSystemId}`
+          systemId = structure.solarSystemId
+          regionName = system?.regionName ?? ''
+          regionId = system?.regionId
+        }
+      } else if (isInsideDeployedStructure && root.rootItemId) {
+        // Current asset is INSIDE a deployed structure
+        stationLocationId = root.rootItemId
+        const structure = getStructure(root.rootItemId)
+        locationName = structure?.name ?? `Structure ${root.rootItemId}`
+        if (structure?.solarSystemId) {
+          const system = getLocation(structure.solarSystemId)
+          systemName = system?.name ?? `System ${structure.solarSystemId}`
+          systemId = structure.solarSystemId
+          regionName = system?.regionName ?? ''
+          regionId = system?.regionId
+        }
+      } else {
+        // Non-structure asset in space
+        stationLocationId = root.locationId
+        const system = getLocation(root.locationId)
+        locationName = system?.name ?? `System ${root.locationId}`
+        systemName = system?.name ?? ''
+        systemId = root.locationId
         regionName = system?.regionName ?? ''
         regionId = system?.regionId
       }

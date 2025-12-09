@@ -66,26 +66,25 @@ async function getStructureFromESI(
 }
 
 export async function resolveStructures(
-  structureIds: number[],
-  characterIds: number[] = []
+  structureToCharacter: Map<number, number>
 ): Promise<Map<number, CachedStructure>> {
   const results = new Map<number, CachedStructure>()
-  const uncachedIds: number[] = []
+  const uncached = new Map<number, number>()
 
-  for (const id of structureIds) {
-    if (hasStructure(id)) {
-      results.set(id, getCachedStructure(id)!)
+  for (const [structureId, characterId] of structureToCharacter) {
+    if (hasStructure(structureId)) {
+      results.set(structureId, getCachedStructure(structureId)!)
     } else {
-      uncachedIds.push(id)
+      uncached.set(structureId, characterId)
     }
   }
 
-  if (uncachedIds.length === 0) return results
+  if (uncached.size === 0) return results
 
   const toCache: CachedStructure[] = []
 
   // NPC stations via ref API
-  const npcIds = uncachedIds.filter((id) => id < 1_000_000_000_000)
+  const npcIds = Array.from(uncached.keys()).filter((id) => id < 1_000_000_000_000)
   if (npcIds.length > 0) {
     const resolved = await resolveLocations(npcIds)
     for (const [id, loc] of resolved) {
@@ -99,57 +98,42 @@ export async function resolveStructures(
         }
         results.set(id, cached)
         toCache.push(cached)
+        uncached.delete(id)
       }
     }
   }
 
-  // Player structures via ESI
-  const playerStructureIds = uncachedIds.filter(
-    (id) => id > 1_000_000_000_000 && !results.has(id)
+  // Player structures via ESI - only try the character who owns assets there
+  const playerStructures = Array.from(uncached.entries()).filter(
+    ([id]) => id > 1_000_000_000_000
   )
 
-  if (playerStructureIds.length > 0 && characterIds.length > 0) {
+  if (playerStructures.length > 0) {
     logger.info('Resolving player structures', {
       module: 'ESI',
-      count: playerStructureIds.length,
+      count: playerStructures.length,
     })
 
-    for (const structureId of playerStructureIds) {
+    for (const [structureId, characterId] of playerStructures) {
       if (esiClient.isRateLimited()) {
         logger.warn('Stopping structure resolution due to rate limit', { module: 'ESI' })
         break
       }
 
-      let resolved = false
+      const result = await getStructureFromESI(structureId, characterId)
 
-      for (const charId of characterIds) {
-        const result = await getStructureFromESI(structureId, charId)
-
-        if (result.status === 'success') {
-          const cached: CachedStructure = {
-            id: structureId,
-            name: result.data.name,
-            solarSystemId: result.data.solar_system_id,
-            typeId: result.data.type_id ?? 0,
-            ownerId: result.data.owner_id,
-            resolvedByCharacterId: result.characterId,
-          }
-          results.set(structureId, cached)
-          toCache.push(cached)
-          resolved = true
-          break
+      if (result.status === 'success') {
+        const cached: CachedStructure = {
+          id: structureId,
+          name: result.data.name,
+          solarSystemId: result.data.solar_system_id,
+          typeId: result.data.type_id ?? 0,
+          ownerId: result.data.owner_id,
+          resolvedByCharacterId: result.characterId,
         }
-
-        if (result.status === 'denied') {
-          continue
-        }
-
-        // not_found or error - stop trying this structure
-        break
-      }
-
-      // All characters failed - cache as inaccessible
-      if (!resolved && !results.has(structureId)) {
+        results.set(structureId, cached)
+        toCache.push(cached)
+      } else {
         const placeholder: CachedStructure = {
           id: structureId,
           name: 'Unknown Structure',

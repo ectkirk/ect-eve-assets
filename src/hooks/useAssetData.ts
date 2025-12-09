@@ -1,12 +1,11 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
-import { useQueries } from '@tanstack/react-query'
 import { useAuthStore, type Owner } from '@/store/auth-store'
-import { getCharacterAssets, getAssetNames, type ESIAsset } from '@/api/endpoints/assets'
-import { getCorporationAssets } from '@/api/endpoints/corporation'
-import { fetchPrices } from '@/api/ref-client'
+import { useAssetStore, type OwnerAssets } from '@/store/asset-store'
+import { type ESIAsset } from '@/api/endpoints/assets'
 import { fetchAbyssalPrices, isAbyssalTypeId, hasCachedAbyssalPrice } from '@/api/mutamarket-client'
 import {
   hasType,
+  getType,
   hasStructure,
   hasLocation,
   getStructure,
@@ -14,107 +13,75 @@ import {
 } from '@/store/reference-cache'
 import { resolveStructures, resolveLocationNames, resolveTypes } from '@/api/endpoints/universe'
 
-export interface OwnerAssets {
-  owner: Owner
-  assets: ESIAsset[]
-}
+let resolvingTypes = false
+let resolvingStructures = false
+let resolvingLocations = false
+
+export type { OwnerAssets }
 
 export interface AssetDataResult {
   assetsByOwner: OwnerAssets[]
   owners: Owner[]
   isLoading: boolean
-  isFetching: boolean
+  hasData: boolean
   hasError: boolean
-  firstError: Error | null
+  errorMessage: string | null
+  lastUpdated: number | null
   typeProgress: { resolved: number; total: number } | null
   prices: Map<number, number>
   assetNames: Map<number, string>
   cacheVersion: number
   isRefreshingAbyssals: boolean
   refreshAbyssalPrices: () => Promise<void>
-}
-
-async function fetchOwnerAssets(owner: Owner): Promise<OwnerAssets> {
-  let assets: ESIAsset[]
-  if (owner.type === 'corporation') {
-    assets = await getCorporationAssets(owner.id, owner.characterId)
-  } else {
-    assets = await getCharacterAssets(owner.id)
-  }
-  return { owner, assets }
+  update: (force?: boolean) => Promise<void>
+  updateProgress: { current: number; total: number } | null
+  canUpdate: boolean
+  timeUntilUpdate: number
 }
 
 export function useAssetData(): AssetDataResult {
   const ownersRecord = useAuthStore((state) => state.owners)
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
 
+  const assetsByOwner = useAssetStore((s) => s.assetsByOwner)
+  const assetNames = useAssetStore((s) => s.assetNames)
+  const prices = useAssetStore((s) => s.prices)
+  const lastUpdated = useAssetStore((s) => s.lastUpdated)
+  const isUpdating = useAssetStore((s) => s.isUpdating)
+  const updateError = useAssetStore((s) => s.updateError)
+  const updateProgress = useAssetStore((s) => s.updateProgress)
+  const update = useAssetStore((s) => s.update)
+  const canUpdateFn = useAssetStore((s) => s.canUpdate)
+  const getTimeUntilUpdateFn = useAssetStore((s) => s.getTimeUntilUpdate)
+
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const interval = setInterval(() => setTick((t) => t + 1), 1000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const canUpdate = canUpdateFn()
+  const timeUntilUpdate = getTimeUntilUpdateFn()
+
   const [cacheVersion, setCacheVersion] = useState(0)
   useEffect(() => {
     return subscribeToCache(() => setCacheVersion((v) => v + 1))
   }, [])
-
-  const assetQueryConfigs = useMemo(
-    () =>
-      owners.map((owner) => ({
-        queryKey: ['assets', owner.type, owner.id] as const,
-        queryFn: () => fetchOwnerAssets(owner),
-        enabled: !!(owner.accessToken || owner.refreshToken),
-        staleTime: 5 * 60 * 1000,
-      })),
-    [owners]
-  )
-
-  const assetQueries = useQueries({ queries: assetQueryConfigs })
-
-  const assetDataVersion = assetQueries.map((q) => q.dataUpdatedAt).join(',')
-  const assetQueriesRef = useRef(assetQueries)
-  assetQueriesRef.current = assetQueries
-
-  const assetsByOwner = useMemo(() => {
-    void assetDataVersion
-    return assetQueriesRef.current.filter((q) => q.data).map((q) => q.data!)
-  }, [assetDataVersion])
 
   const assetDataKey = assetsByOwner
     .map((d) => `${d.owner.type}-${d.owner.id}`)
     .sort()
     .join(',')
 
-  const ownersKey = owners
-    .map((o) => `${o.type}-${o.id}`)
-    .sort()
-    .join(',')
-
   const assetsByOwnerRef = useRef(assetsByOwner)
   assetsByOwnerRef.current = assetsByOwner
 
-  const ownersRef = useRef(owners)
-  ownersRef.current = owners
-
-  // Prices
-  const [prices, setPrices] = useState<Map<number, number>>(new Map())
-  useEffect(() => {
-    const data = assetsByOwnerRef.current
-    if (data.length === 0) return
-
-    const typeIds = new Set<number>()
-    for (const { assets } of data) {
-      for (const asset of assets) {
-        typeIds.add(asset.type_id)
-      }
-    }
-    if (typeIds.size === 0) return
-
-    fetchPrices(Array.from(typeIds)).then(setPrices)
-  }, [assetDataKey])
-
-  // Type resolution
+  // Type resolution (ref API - ok to call)
   const [typeProgress, setTypeProgress] = useState<{ resolved: number; total: number } | null>(null)
-  const resolvingTypesRef = useRef(false)
 
   useEffect(() => {
     const data = assetsByOwnerRef.current
-    if (resolvingTypesRef.current || data.length === 0) return
+    if (resolvingTypes || data.length === 0) return
 
     const unknownTypeIds = new Set<number>()
     for (const { assets } of data) {
@@ -126,7 +93,7 @@ export function useAssetData(): AssetDataResult {
     }
     if (unknownTypeIds.size === 0) return
 
-    resolvingTypesRef.current = true
+    resolvingTypes = true
     setTypeProgress({ resolved: 0, total: unknownTypeIds.size })
 
     resolveTypes(Array.from(unknownTypeIds), 20, (resolved, total) =>
@@ -135,67 +102,72 @@ export function useAssetData(): AssetDataResult {
       .then(() => setTypeProgress(null))
       .catch(() => setTypeProgress(null))
       .finally(() => {
-        resolvingTypesRef.current = false
+        resolvingTypes = false
       })
   }, [assetDataKey])
 
-  // Structure resolution
-  const resolvingStructuresRef = useRef(false)
-
+  // Structure resolution (ESI - only for unknown structures)
   useEffect(() => {
     const data = assetsByOwnerRef.current
-    const currentOwners = ownersRef.current
-    if (resolvingStructuresRef.current || data.length === 0) return
+    if (resolvingStructures || data.length === 0) return
 
+    const itemIdToOwner = new Map<number, Owner>()
     const itemIdToAsset = new Map<number, ESIAsset>()
-    for (const { assets } of data) {
+    for (const { owner, assets } of data) {
       for (const asset of assets) {
         itemIdToAsset.set(asset.item_id, asset)
+        itemIdToOwner.set(asset.item_id, owner)
       }
     }
 
-    const getRootStructureId = (asset: ESIAsset): number | null => {
+    const getRootInfo = (
+      asset: ESIAsset
+    ): { structureId: number | null; owner: Owner | undefined } => {
       let current = asset
+      let owner = itemIdToOwner.get(asset.item_id)
       while (current.location_type === 'item') {
         const parent = itemIdToAsset.get(current.location_id)
         if (!parent) break
         current = parent
+        owner = itemIdToOwner.get(current.item_id)
       }
-      if (current.item_id > 1_000_000_000_000) return current.item_id
-      if (current.location_id > 1_000_000_000_000) return current.location_id
-      return null
+      if (current.location_id > 1_000_000_000_000) return { structureId: current.location_id, owner }
+      return { structureId: null, owner }
     }
 
-    const unknownStructureIds = new Set<number>()
-    for (const { assets } of data) {
+    const structureToCharacter = new Map<number, number>()
+    for (const { owner, assets } of data) {
       for (const asset of assets) {
-        const structureId = getRootStructureId(asset)
-        if (structureId && !hasStructure(structureId)) {
-          unknownStructureIds.add(structureId)
+        const type = hasType(asset.type_id) ? getType(asset.type_id) : undefined
+        if (
+          type?.categoryId === 65 &&
+          asset.location_type === 'solar_system' &&
+          !hasStructure(asset.item_id)
+        ) {
+          structureToCharacter.set(asset.item_id, owner.characterId)
+        }
+
+        const { structureId, owner: rootOwner } = getRootInfo(asset)
+        if (structureId && !hasStructure(structureId) && rootOwner) {
+          structureToCharacter.set(structureId, rootOwner.characterId)
         }
       }
     }
-    if (unknownStructureIds.size === 0) return
+    if (structureToCharacter.size === 0) return
 
-    const characterIds = currentOwners
-      .map((o) => o.characterId)
-      .filter((id, idx, arr) => arr.indexOf(id) === idx)
+    resolvingStructures = true
 
-    resolvingStructuresRef.current = true
-
-    resolveStructures(Array.from(unknownStructureIds), characterIds)
+    resolveStructures(structureToCharacter)
       .catch(() => {})
       .finally(() => {
-        resolvingStructuresRef.current = false
+        resolvingStructures = false
       })
-  }, [assetDataKey, ownersKey])
+  }, [assetDataKey])
 
-  // Location resolution
-  const resolvingLocationsRef = useRef(false)
-
+  // Location resolution (ref API - ok to call)
   useEffect(() => {
     const data = assetsByOwnerRef.current
-    if (resolvingLocationsRef.current || data.length === 0) return
+    if (resolvingLocations || data.length === 0) return
 
     const itemIdToAsset = new Map<number, ESIAsset>()
     for (const { assets } of data) {
@@ -210,9 +182,6 @@ export function useAssetData(): AssetDataResult {
         const parent = itemIdToAsset.get(current.location_id)
         if (!parent) break
         current = parent
-      }
-      if (current.item_id > 1_000_000_000_000) {
-        return { structureId: current.item_id, locationId: current.location_id }
       }
       if (current.location_id > 1_000_000_000_000) {
         return { structureId: current.location_id, locationId: current.location_id }
@@ -236,55 +205,18 @@ export function useAssetData(): AssetDataResult {
     }
     if (unknownLocationIds.size === 0) return
 
-    resolvingLocationsRef.current = true
+    resolvingLocations = true
 
     resolveLocationNames(Array.from(unknownLocationIds))
       .catch(() => {})
       .finally(() => {
-        resolvingLocationsRef.current = false
+        resolvingLocations = false
       })
   }, [assetDataKey, cacheVersion])
 
-  const nameQueryConfigs = useMemo(() => {
-    return assetsByOwner
-      .filter((data) => data.owner.type === 'character')
-      .flatMap((data) => {
-        const singletonIds = data.assets.filter((a) => a.is_singleton).map((a) => a.item_id)
-        if (singletonIds.length === 0) return []
-        return [
-          {
-            queryKey: ['assetNames', data.owner.id, singletonIds.length] as const,
-            queryFn: () => getAssetNames(data.owner.id, singletonIds),
-            enabled: singletonIds.length > 0,
-            staleTime: 5 * 60 * 1000,
-          },
-        ]
-      })
-  }, [assetsByOwner])
-
-  const nameQueries = useQueries({ queries: nameQueryConfigs })
-
-  const nameQueriesVersion = nameQueries.map((q) => q.dataUpdatedAt).join(',')
-  const nameQueriesRef = useRef(nameQueries)
-  nameQueriesRef.current = nameQueries
-
-  const assetNames = useMemo(() => {
-    void nameQueriesVersion
-    const map = new Map<number, string>()
-    for (const query of nameQueriesRef.current) {
-      if (query.data) {
-        for (const n of query.data) {
-          if (n.name && n.name !== 'None') {
-            map.set(n.item_id, n.name)
-          }
-        }
-      }
-    }
-    return map
-  }, [nameQueriesVersion])
-
+  // Abyssal prices (Mutamarket - ok to call)
   const [isRefreshingAbyssals, setIsRefreshingAbyssals] = useState(false)
-  const refreshAbyssalPricesRef = useRef<() => Promise<void>>()
+  const refreshAbyssalPricesRef = useRef<(() => Promise<void>) | undefined>(undefined)
 
   refreshAbyssalPricesRef.current = async () => {
     if (isRefreshingAbyssals || assetsByOwner.length === 0) return
@@ -324,23 +256,25 @@ export function useAssetData(): AssetDataResult {
     return () => window.removeEventListener('refreshAbyssalPrices', handler)
   }, [])
 
-  const isLoading = assetQueries.some((q) => q.isLoading)
-  const isFetching = assetQueries.some((q) => q.isFetching)
-  const hasError = assetQueries.some((q) => q.error)
-  const firstError = assetQueries.find((q) => q.error)?.error ?? null
+  const hasData = assetsByOwner.length > 0
 
   return {
     assetsByOwner,
     owners,
-    isLoading,
-    isFetching,
-    hasError,
-    firstError,
+    isLoading: isUpdating,
+    hasData,
+    hasError: !!updateError,
+    errorMessage: updateError,
+    lastUpdated,
     typeProgress,
     prices,
     assetNames,
     cacheVersion,
     isRefreshingAbyssals,
     refreshAbyssalPrices,
+    update,
+    updateProgress,
+    canUpdate,
+    timeUntilUpdate,
   }
 }
