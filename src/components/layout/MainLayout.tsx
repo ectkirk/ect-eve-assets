@@ -2,6 +2,9 @@ import { useState, useMemo } from 'react'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { AssetsTab } from '@/features/assets'
 import { ItemHangarTab } from '@/features/item-hangar'
+import { ShipHangarTab } from '@/features/ship-hangar'
+import { DeliveriesTab } from '@/features/deliveries'
+import { AssetSafetyTab } from '@/features/asset-safety'
 import { OfficeTab } from '@/features/office'
 import { StructuresTab } from '@/features/structures'
 import { Plus, Loader2 } from 'lucide-react'
@@ -29,6 +32,12 @@ function TabContent({ tab }: { tab: Tab }) {
       return <AssetsTab />
     case 'Item Hangar':
       return <ItemHangarTab />
+    case 'Ship Hangar':
+      return <ShipHangarTab />
+    case 'Deliveries':
+      return <DeliveriesTab />
+    case 'Asset Safety':
+      return <AssetSafetyTab />
     case 'Office':
       return <OfficeTab />
     case 'Structures':
