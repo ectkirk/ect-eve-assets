@@ -10,8 +10,17 @@ import {
 } from 'lucide-react'
 import { useAuthStore } from '@/store/auth-store'
 import { useClonesStore } from '@/store/clones-store'
-import { hasType, getType, hasLocation, getLocation, subscribe } from '@/store/reference-cache'
+import {
+  hasType,
+  getType,
+  hasLocation,
+  getLocation,
+  hasStructure,
+  getStructure,
+  subscribe,
+} from '@/store/reference-cache'
 import { resolveTypes, resolveLocations } from '@/api/ref-client'
+import { resolveStructures } from '@/api/endpoints/universe'
 import { cn } from '@/lib/utils'
 import { TypeIcon, CharacterPortrait } from '@/components/ui/type-icon'
 
@@ -214,24 +223,37 @@ export function ClonesTab() {
 
     const unresolvedTypeIds = new Set<number>()
     const unknownLocationIds = new Set<number>()
+    const structureToCharacter = new Map<number, number>()
 
     const needsResolution = (typeId: number) => {
       const type = getType(typeId)
       return !type || type.name.startsWith('Unknown Type ')
     }
 
-    for (const { clones, activeImplants } of clonesByOwner) {
+    for (const { owner, clones, activeImplants } of clonesByOwner) {
       for (const implantId of activeImplants) {
         if (needsResolution(implantId)) unresolvedTypeIds.add(implantId)
       }
 
-      if (clones.home_location && !hasLocation(clones.home_location.location_id)) {
-        unknownLocationIds.add(clones.home_location.location_id)
+      if (clones.home_location) {
+        const { location_id, location_type } = clones.home_location
+        if (location_type === 'structure') {
+          if (!hasStructure(location_id)) {
+            structureToCharacter.set(location_id, owner.characterId)
+          }
+        } else if (!hasLocation(location_id)) {
+          unknownLocationIds.add(location_id)
+        }
       }
 
       for (const jumpClone of clones.jump_clones) {
-        if (!hasLocation(jumpClone.location_id)) {
-          unknownLocationIds.add(jumpClone.location_id)
+        const { location_id, location_type } = jumpClone
+        if (location_type === 'structure') {
+          if (!hasStructure(location_id)) {
+            structureToCharacter.set(location_id, owner.characterId)
+          }
+        } else if (!hasLocation(location_id)) {
+          unknownLocationIds.add(location_id)
         }
         for (const implantId of jumpClone.implants) {
           if (needsResolution(implantId)) unresolvedTypeIds.add(implantId)
@@ -245,6 +267,9 @@ export function ClonesTab() {
     if (unknownLocationIds.size > 0) {
       resolveLocations(Array.from(unknownLocationIds)).catch(() => {})
     }
+    if (structureToCharacter.size > 0) {
+      resolveStructures(structureToCharacter).catch(() => {})
+    }
   }, [clonesByOwner])
 
   const [expandedCharacters, setExpandedCharacters] = useState<Set<number>>(new Set())
@@ -252,16 +277,27 @@ export function ClonesTab() {
   const characterClones = useMemo(() => {
     void cacheVersion
 
+    const getLocationName = (
+      locationId: number,
+      locationType: 'station' | 'structure'
+    ): string => {
+      if (locationType === 'structure') {
+        const structure = hasStructure(locationId) ? getStructure(locationId) : undefined
+        return structure?.name ?? `Structure ${locationId}`
+      }
+      const location = hasLocation(locationId) ? getLocation(locationId) : undefined
+      return location?.name ?? `Location ${locationId}`
+    }
+
     const result: CharacterClones[] = []
 
     for (const { owner, clones, activeImplants } of clonesByOwner) {
       const homeLocationId = clones.home_location?.location_id
+      const homeLocationType = clones.home_location?.location_type ?? 'station'
       const homeLocation = homeLocationId
         ? {
             locationId: homeLocationId,
-            locationName: hasLocation(homeLocationId)
-              ? getLocation(homeLocationId)?.name ?? `Location ${homeLocationId}`
-              : `Location ${homeLocationId}`,
+            locationName: getLocationName(homeLocationId, homeLocationType),
           }
         : null
 
@@ -279,15 +315,13 @@ export function ClonesTab() {
         name: 'Active Clone',
         locationId: homeLocationId ?? 0,
         locationName: homeLocation?.locationName ?? 'Unknown',
-        locationType: clones.home_location?.location_type ?? 'station',
+        locationType: homeLocationType,
         implants: activeImplantInfos,
         isActive: true,
         isHome: true,
       }
 
       const jumpClones: CloneInfo[] = clones.jump_clones.map((jc) => {
-        const location = hasLocation(jc.location_id) ? getLocation(jc.location_id) : undefined
-
         const implants: ImplantInfo[] = jc.implants.map((typeId) => {
           const type = hasType(typeId) ? getType(typeId) : undefined
           return {
@@ -301,7 +335,7 @@ export function ClonesTab() {
           id: jc.jump_clone_id,
           name: jc.name ?? '',
           locationId: jc.location_id,
-          locationName: location?.name ?? `Location ${jc.location_id}`,
+          locationName: getLocationName(jc.location_id, jc.location_type),
           locationType: jc.location_type,
           implants,
           isHome: jc.location_id === homeLocationId,

@@ -3,8 +3,17 @@ import { Loader2, RefreshCw, TrendingUp, TrendingDown, ChevronRight, ChevronDown
 import { useAuthStore } from '@/store/auth-store'
 import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { type ESIMarketOrder } from '@/api/endpoints/market'
-import { hasType, getType, hasLocation, getLocation, subscribe } from '@/store/reference-cache'
+import {
+  hasType,
+  getType,
+  hasLocation,
+  getLocation,
+  hasStructure,
+  getStructure,
+  subscribe,
+} from '@/store/reference-cache'
 import { resolveTypes, resolveLocations } from '@/api/ref-client'
+import { resolveStructures } from '@/api/endpoints/universe'
 import {
   Table,
   TableBody,
@@ -210,14 +219,21 @@ export function MarketOrdersTab() {
 
     const unresolvedTypeIds = new Set<number>()
     const unknownLocationIds = new Set<number>()
+    const structureToCharacter = new Map<number, number>()
 
-    for (const { orders } of ordersByOwner) {
+    for (const { owner, orders } of ordersByOwner) {
       for (const order of orders) {
         const type = getType(order.type_id)
         if (!type || type.name.startsWith('Unknown Type ')) {
           unresolvedTypeIds.add(order.type_id)
         }
-        if (!hasLocation(order.location_id)) unknownLocationIds.add(order.location_id)
+        if (order.location_id > 1_000_000_000_000) {
+          if (!hasStructure(order.location_id)) {
+            structureToCharacter.set(order.location_id, owner.characterId)
+          }
+        } else if (!hasLocation(order.location_id)) {
+          unknownLocationIds.add(order.location_id)
+        }
       }
     }
 
@@ -227,6 +243,9 @@ export function MarketOrdersTab() {
     if (unknownLocationIds.size > 0) {
       resolveLocations(Array.from(unknownLocationIds)).catch(() => {})
     }
+    if (structureToCharacter.size > 0) {
+      resolveStructures(structureToCharacter).catch(() => {})
+    }
   }, [ordersByOwner])
 
   const [expandedLocations, setExpandedLocations] = useState<Set<number>>(new Set())
@@ -234,12 +253,29 @@ export function MarketOrdersTab() {
   const locationGroups = useMemo(() => {
     void cacheVersion
 
+    const getLocationInfo = (locationId: number) => {
+      if (locationId > 1_000_000_000_000) {
+        const structure = hasStructure(locationId) ? getStructure(locationId) : undefined
+        return {
+          name: structure?.name ?? `Structure ${locationId}`,
+          regionName: '',
+          systemName: '',
+        }
+      }
+      const location = hasLocation(locationId) ? getLocation(locationId) : undefined
+      return {
+        name: location?.name ?? `Location ${locationId}`,
+        regionName: location?.regionName ?? '',
+        systemName: location?.solarSystemName ?? '',
+      }
+    }
+
     const groups = new Map<number, LocationGroup>()
 
     for (const { owner, orders } of ordersByOwner) {
       for (const order of orders) {
         const type = hasType(order.type_id) ? getType(order.type_id) : undefined
-        const location = hasLocation(order.location_id) ? getLocation(order.location_id) : undefined
+        const locationInfo = getLocationInfo(order.location_id)
 
         const row: OrderRow = {
           order,
@@ -247,9 +283,9 @@ export function MarketOrdersTab() {
           typeId: order.type_id,
           typeName: type?.name ?? `Unknown Type ${order.type_id}`,
           categoryId: type?.categoryId,
-          locationName: location?.name ?? `Location ${order.location_id}`,
-          regionName: location?.regionName ?? '',
-          systemName: location?.solarSystemName ?? '',
+          locationName: locationInfo.name,
+          regionName: locationInfo.regionName,
+          systemName: locationInfo.systemName,
         }
 
         let group = groups.get(order.location_id)

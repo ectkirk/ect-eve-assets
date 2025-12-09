@@ -16,8 +16,17 @@ import {
 import { useAuthStore } from '@/store/auth-store'
 import { useIndustryJobsStore } from '@/store/industry-jobs-store'
 import { type ESIIndustryJob } from '@/api/endpoints/industry'
-import { hasType, getType, hasLocation, getLocation, subscribe } from '@/store/reference-cache'
+import {
+  hasType,
+  getType,
+  hasLocation,
+  getLocation,
+  hasStructure,
+  getStructure,
+  subscribe,
+} from '@/store/reference-cache'
 import { resolveTypes, resolveLocations } from '@/api/ref-client'
+import { resolveStructures } from '@/api/endpoints/universe'
 import {
   Table,
   TableBody,
@@ -281,8 +290,9 @@ export function IndustryJobsTab() {
 
     const unresolvedTypeIds = new Set<number>()
     const unknownLocationIds = new Set<number>()
+    const structureToCharacter = new Map<number, number>()
 
-    for (const { jobs } of jobsByOwner) {
+    for (const { owner, jobs } of jobsByOwner) {
       for (const job of jobs) {
         const bpType = getType(job.blueprint_type_id)
         if (!bpType || bpType.name.startsWith('Unknown Type ')) {
@@ -294,7 +304,13 @@ export function IndustryJobsTab() {
             unresolvedTypeIds.add(job.product_type_id)
           }
         }
-        if (!hasLocation(job.facility_id)) unknownLocationIds.add(job.facility_id)
+        if (job.facility_id > 1_000_000_000_000) {
+          if (!hasStructure(job.facility_id)) {
+            structureToCharacter.set(job.facility_id, owner.characterId)
+          }
+        } else if (!hasLocation(job.facility_id)) {
+          unknownLocationIds.add(job.facility_id)
+        }
       }
     }
 
@@ -304,12 +320,24 @@ export function IndustryJobsTab() {
     if (unknownLocationIds.size > 0) {
       resolveLocations(Array.from(unknownLocationIds)).catch(() => {})
     }
+    if (structureToCharacter.size > 0) {
+      resolveStructures(structureToCharacter).catch(() => {})
+    }
   }, [jobsByOwner])
 
   const [expandedLocations, setExpandedLocations] = useState<Set<number>>(new Set())
 
   const locationGroups = useMemo(() => {
     void cacheVersion
+
+    const getLocationName = (locationId: number): string => {
+      if (locationId > 1_000_000_000_000) {
+        const structure = hasStructure(locationId) ? getStructure(locationId) : undefined
+        return structure?.name ?? `Structure ${locationId}`
+      }
+      const location = hasLocation(locationId) ? getLocation(locationId) : undefined
+      return location?.name ?? `Location ${locationId}`
+    }
 
     const groups = new Map<number, LocationGroup>()
 
@@ -320,7 +348,6 @@ export function IndustryJobsTab() {
           job.product_type_id && hasType(job.product_type_id)
             ? getType(job.product_type_id)
             : undefined
-        const location = hasLocation(job.facility_id) ? getLocation(job.facility_id) : undefined
 
         const row: JobRow = {
           job,
@@ -328,7 +355,7 @@ export function IndustryJobsTab() {
           blueprintName: bpType?.name ?? `Unknown Type ${job.blueprint_type_id}`,
           productName: productType?.name ?? (job.product_type_id ? `Unknown Type ${job.product_type_id}` : ''),
           productCategoryId: productType?.categoryId,
-          locationName: location?.name ?? `Location ${job.facility_id}`,
+          locationName: getLocationName(job.facility_id),
           activityName: ACTIVITY_NAMES[job.activity_id] ?? `Activity ${job.activity_id}`,
         }
 

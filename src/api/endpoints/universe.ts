@@ -140,3 +140,57 @@ export async function resolveStructures(
 
   return results
 }
+
+export type ESINameCategory = 'character' | 'corporation' | 'alliance' | 'faction' | 'station' | 'solar_system' | 'constellation' | 'region' | 'inventory_type'
+
+export interface ESIName {
+  id: number
+  name: string
+  category: ESINameCategory
+}
+
+const namesCache = new Map<number, ESIName>()
+
+export function getName(id: number): ESIName | undefined {
+  return namesCache.get(id)
+}
+
+export function hasName(id: number): boolean {
+  return namesCache.has(id)
+}
+
+export async function resolveNames(ids: number[]): Promise<Map<number, ESIName>> {
+  if (ids.length === 0) return new Map()
+
+  const results = new Map<number, ESIName>()
+  const uncached: number[] = []
+
+  for (const id of ids) {
+    if (namesCache.has(id)) {
+      results.set(id, namesCache.get(id)!)
+    } else {
+      uncached.push(id)
+    }
+  }
+
+  if (uncached.length === 0) return results
+
+  for (let i = 0; i < uncached.length; i += 1000) {
+    const chunk = uncached.slice(i, i + 1000)
+    try {
+      const names = await esiClient.fetch<ESIName[]>('/universe/names/', {
+        method: 'POST',
+        body: JSON.stringify(chunk),
+        requiresAuth: false,
+      })
+      for (const item of names) {
+        namesCache.set(item.id, item)
+        results.set(item.id, item)
+      }
+    } catch {
+      logger.warn('Failed to resolve names', { module: 'ESI', count: chunk.length })
+    }
+  }
+
+  return results
+}

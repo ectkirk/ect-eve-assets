@@ -303,6 +303,43 @@ class ESIClient {
   clearCache(): void {
     this.cache.clear()
   }
+
+  async fetchBatch<T, R>(
+    items: T[],
+    fetcher: (item: T) => Promise<R>,
+    options: { batchSize?: number; onProgress?: (completed: number, total: number) => void } = {}
+  ): Promise<Map<T, R | null>> {
+    const { batchSize = 20, onProgress } = options
+    const results = new Map<T, R | null>()
+
+    for (let i = 0; i < items.length; i += batchSize) {
+      await this.waitForRateLimit()
+
+      const batch = items.slice(i, i + batchSize)
+      const batchPromises = batch.map(async (item) => {
+        try {
+          const result = await fetcher(item)
+          return { item, result, error: null }
+        } catch (error) {
+          return { item, result: null, error }
+        }
+      })
+
+      const batchResults = await Promise.all(batchPromises)
+
+      for (const { item, result } of batchResults) {
+        results.set(item, result)
+      }
+
+      onProgress?.(Math.min(i + batchSize, items.length), items.length)
+
+      if (i + batchSize < items.length) {
+        await this.delay(this.minRequestInterval)
+      }
+    }
+
+    return results
+  }
 }
 
 export const esiClient = new ESIClient()

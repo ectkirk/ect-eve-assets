@@ -37,11 +37,16 @@ export interface ESIContract {
 
 export interface ESIContractItem {
   is_included: boolean
-  is_singleton: boolean
+  is_singleton?: boolean
   quantity: number
   raw_quantity?: number
   record_id: number
   type_id: number
+  item_id?: number
+  is_blueprint_copy?: boolean
+  material_efficiency?: number
+  time_efficiency?: number
+  runs?: number
 }
 
 export async function getCharacterContracts(
@@ -59,6 +64,35 @@ export async function getContractItems(
 ): Promise<ESIContractItem[]> {
   return esiClient.fetch<ESIContractItem[]>(
     `/characters/${characterId}/contracts/${contractId}/items/`,
+    { characterId }
+  )
+}
+
+export async function getPublicContractItems(
+  contractId: number
+): Promise<ESIContractItem[]> {
+  return esiClient.fetchPublic<ESIContractItem[]>(
+    `/contracts/public/items/${contractId}/`
+  )
+}
+
+export async function getCorporationContracts(
+  characterId: number,
+  corporationId: number
+): Promise<ESIContract[]> {
+  return esiClient.fetchWithPagination<ESIContract>(
+    `/corporations/${corporationId}/contracts/`,
+    { characterId }
+  )
+}
+
+export async function getCorporationContractItems(
+  characterId: number,
+  corporationId: number,
+  contractId: number
+): Promise<ESIContractItem[]> {
+  return esiClient.fetch<ESIContractItem[]>(
+    `/corporations/${corporationId}/contracts/${contractId}/items/`,
     { characterId }
   )
 }
