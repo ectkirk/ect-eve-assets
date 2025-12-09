@@ -32,11 +32,36 @@ const EVE_SSO = {
   revokeUrl: 'https://login.eveonline.com/v2/oauth/revoke',
   jwksUrl: 'https://login.eveonline.com/oauth/jwks',
   issuer: 'https://login.eveonline.com',
-  redirectUri: 'http://localhost:2020/callback',
   clientId: 'ff72276da5e947b3a64763038d22ef53',
 }
 
+const CALLBACK_PORTS = [2020, 2021, 2022, 2023, 2024]
+
 const JWKS = jose.createRemoteJWKSet(new URL(EVE_SSO.jwksUrl))
+
+function tryListen(server: Server, port: number): Promise<number> {
+  return new Promise((resolve, reject) => {
+    server.once('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EADDRINUSE') {
+        reject(err)
+      } else {
+        reject(err)
+      }
+    })
+    server.listen(port, () => resolve(port))
+  })
+}
+
+async function findAvailablePort(server: Server): Promise<number> {
+  for (const port of CALLBACK_PORTS) {
+    try {
+      return await tryListen(server, port)
+    } catch {
+      logger.debug('Port in use, trying next', { module: 'Auth', port })
+    }
+  }
+  throw new Error('No available ports for OAuth callback')
+}
 
 function generateCodeVerifier(): string {
   const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-._~'
@@ -193,23 +218,36 @@ export async function refreshAccessToken(
 export async function startAuth(includeCorporationScopes = false): Promise<AuthResult> {
   logger.info('Starting EVE SSO authentication', { module: 'Auth', includeCorporationScopes })
 
+  pendingState = randomBytes(32).toString('hex')
+  pendingCodeVerifier = generateCodeVerifier()
+  const codeChallenge = generateCodeChallenge(pendingCodeVerifier)
+  const scopes = includeCorporationScopes ? CORPORATION_SCOPES : CHARACTER_SCOPES
+
+  authServer = createServer()
+
+  let callbackPort: number
+  try {
+    callbackPort = await findAvailablePort(authServer)
+    logger.info('OAuth callback server started', { module: 'Auth', port: callbackPort })
+  } catch (err) {
+    logger.error('Failed to start OAuth callback server', err, { module: 'Auth' })
+    return { success: false, error: 'No available ports for OAuth callback' }
+  }
+
+  const redirectUri = `http://localhost:${callbackPort}/callback`
+
+  const authUrl = new URL(EVE_SSO.authUrl)
+  authUrl.searchParams.set('response_type', 'code')
+  authUrl.searchParams.set('client_id', EVE_SSO.clientId)
+  authUrl.searchParams.set('redirect_uri', redirectUri)
+  authUrl.searchParams.set('scope', scopes.join(' '))
+  authUrl.searchParams.set('state', pendingState)
+  authUrl.searchParams.set('code_challenge', codeChallenge)
+  authUrl.searchParams.set('code_challenge_method', 'S256')
+
   return new Promise((resolve) => {
-    pendingState = randomBytes(32).toString('hex')
-    pendingCodeVerifier = generateCodeVerifier()
-    const codeChallenge = generateCodeChallenge(pendingCodeVerifier)
-    const scopes = includeCorporationScopes ? CORPORATION_SCOPES : CHARACTER_SCOPES
-
-    const authUrl = new URL(EVE_SSO.authUrl)
-    authUrl.searchParams.set('response_type', 'code')
-    authUrl.searchParams.set('client_id', EVE_SSO.clientId)
-    authUrl.searchParams.set('redirect_uri', EVE_SSO.redirectUri)
-    authUrl.searchParams.set('scope', scopes.join(' '))
-    authUrl.searchParams.set('state', pendingState)
-    authUrl.searchParams.set('code_challenge', codeChallenge)
-    authUrl.searchParams.set('code_challenge_method', 'S256')
-
-    authServer = createServer(async (req, res) => {
-      const url = new URL(req.url || '', `http://localhost:2020`)
+    authServer!.on('request', async (req, res) => {
+      const url = new URL(req.url || '', `http://localhost:${callbackPort}`)
 
       if (url.pathname === '/callback') {
         const code = url.searchParams.get('code')
@@ -291,9 +329,7 @@ export async function startAuth(includeCorporationScopes = false): Promise<AuthR
       }
     })
 
-    authServer.listen(2020, () => {
-      shell.openExternal(authUrl.toString())
-    })
+    shell.openExternal(authUrl.toString())
 
     setTimeout(() => {
       if (authServer) {

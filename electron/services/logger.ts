@@ -18,6 +18,7 @@ const LOG_LEVELS: Record<LogLevel, number> = {
 
 const LOG_RETENTION_DAYS = 7
 const MAX_LOG_SIZE_MB = 10
+const SENSITIVE_KEYS = ['accessToken', 'refreshToken', 'access_token', 'refresh_token', 'token', 'password', 'secret', 'authorization']
 
 let logDir: string
 let logFile: string
@@ -66,11 +67,34 @@ function rotateLogsIfNeeded(): void {
   }
 }
 
+function sanitizeValue(value: unknown): unknown {
+  if (typeof value === 'object' && value !== null) {
+    if (Array.isArray(value)) {
+      return value.map(sanitizeValue)
+    }
+    return sanitizeContext(value as Record<string, unknown>)
+  }
+  return value
+}
+
+function sanitizeContext(context: Record<string, unknown>): Record<string, unknown> {
+  const sanitized: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(context)) {
+    if (SENSITIVE_KEYS.some(sensitive => key.toLowerCase().includes(sensitive.toLowerCase()))) {
+      sanitized[key] = '[REDACTED]'
+    } else {
+      sanitized[key] = sanitizeValue(value)
+    }
+  }
+  return sanitized
+}
+
 function formatMessage(level: LogLevel, message: string, context?: LogContext): string {
   const timestamp = new Date().toISOString()
-  const module = context?.module ? `[${context.module}]` : ''
-  const contextStr = context
-    ? Object.entries(context)
+  const sanitizedContext = context ? sanitizeContext(context) : undefined
+  const module = sanitizedContext?.module ? `[${sanitizedContext.module}]` : ''
+  const contextStr = sanitizedContext
+    ? Object.entries(sanitizedContext)
         .filter(([key]) => key !== 'module')
         .map(([key, value]) => `${key}=${JSON.stringify(value)}`)
         .join(' ')

@@ -6,9 +6,18 @@ export const ESI_BASE_URL = 'https://esi.evetech.net'
 export const ESI_COMPATIBILITY_DATE = '2025-11-06'
 export const ESI_USER_AGENT = 'ECTEVEAssets/0.2.0 (ecteveassets@edencom.net; +https://github.com/ectkirk/ecteveassets)'
 
-export interface ESIError {
+export interface ESIErrorResponse {
   error: string
   timeout?: number
+}
+
+export class ESIError extends Error {
+  status: number
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'ESIError'
+    this.status = status
+  }
 }
 
 interface CacheEntry {
@@ -218,13 +227,13 @@ class ESIClient {
       if (!response.ok) {
         let errorMessage = `ESI request failed: ${response.status}`
         try {
-          const error = (await response.json()) as ESIError
+          const error = (await response.json()) as ESIErrorResponse
           errorMessage = error.error || errorMessage
         } catch {
           // Response not JSON
         }
         logger.error('ESI request failed', undefined, { module: 'ESI', endpoint, status: response.status })
-        throw new Error(errorMessage)
+        throw new ESIError(errorMessage, response.status)
       }
 
       const rawData = await response.json()
@@ -295,8 +304,8 @@ class ESIClient {
       }
 
       if (!response.ok) {
-        const error = (await response.json()) as ESIError
-        throw new Error(error.error || `ESI request failed: ${response.status}`)
+        const error = (await response.json()) as ESIErrorResponse
+        throw new ESIError(error.error || `ESI request failed: ${response.status}`, response.status)
       }
 
       const rawData = await response.json()

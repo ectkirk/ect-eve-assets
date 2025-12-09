@@ -1,4 +1,4 @@
-import { esiClient } from '../esi-client'
+import { esiClient, ESIError } from '../esi-client'
 import { resolveLocations } from '../ref-client'
 import {
   hasStructure,
@@ -29,13 +29,9 @@ async function getStructureFromESI(
     )
     return { status: 'success', data, characterId }
   } catch (error) {
-    if (error instanceof Error) {
-      if (error.message.includes('403') || error.message.includes('Forbidden')) {
-        return { status: 'denied' }
-      }
-      if (error.message.includes('404')) {
-        return { status: 'not_found' }
-      }
+    if (error instanceof ESIError) {
+      if (error.status === 403) return { status: 'denied' }
+      if (error.status === 404) return { status: 'not_found' }
     }
     return { status: 'error' }
   }

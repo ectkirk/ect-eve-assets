@@ -106,7 +106,7 @@ function createMenu() {
       submenu: [
         { role: 'reload' },
         { role: 'forceReload' },
-        { role: 'toggleDevTools' },
+        ...(app.isPackaged ? [] : [{ role: 'toggleDevTools' as const }]),
         { type: 'separator' },
         { role: 'resetZoom' },
         { role: 'zoomIn' },
@@ -162,17 +162,18 @@ function createWindow() {
     mainWindow.loadFile(path.join(RENDERER_DIST, 'index.html'))
   }
 
-  // Always allow DevTools toggle with F12 or Ctrl+Shift+I
-  mainWindow.webContents.on('before-input-event', (event, input) => {
-    if (input.key === 'F12') {
-      mainWindow?.webContents.toggleDevTools()
-      event.preventDefault()
-    }
-    if (input.control && input.shift && input.key.toLowerCase() === 'i') {
-      mainWindow?.webContents.toggleDevTools()
-      event.preventDefault()
-    }
-  })
+  if (!app.isPackaged) {
+    mainWindow.webContents.on('before-input-event', (event, input) => {
+      if (input.key === 'F12') {
+        mainWindow?.webContents.toggleDevTools()
+        event.preventDefault()
+      }
+      if (input.control && input.shift && input.key.toLowerCase() === 'i') {
+        mainWindow?.webContents.toggleDevTools()
+        event.preventDefault()
+      }
+    })
+  }
 
   // Log ALL renderer console messages to terminal
   mainWindow.webContents.on('console-message', (event) => {
