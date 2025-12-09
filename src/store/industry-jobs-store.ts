@@ -1,6 +1,10 @@
 import { create } from 'zustand'
 import { useAuthStore, type Owner } from './auth-store'
-import { getCharacterIndustryJobs, type ESIIndustryJob } from '@/api/endpoints/industry'
+import {
+  getCharacterIndustryJobs,
+  getCorporationIndustryJobs,
+  type ESIIndustryJob,
+} from '@/api/endpoints/industry'
 import { logger } from '@/lib/logger'
 
 const DB_NAME = 'ecteveassets-industry-jobs'
@@ -185,9 +189,7 @@ export const useIndustryJobsStore = create<IndustryJobsStore>((set, get) => ({
       return
     }
 
-    const owners = Object.values(useAuthStore.getState().owners).filter(
-      (o) => o.type === 'character'
-    )
+    const owners = Object.values(useAuthStore.getState().owners)
     if (owners.length === 0) {
       set({ updateError: 'No characters logged in' })
       return
@@ -200,8 +202,27 @@ export const useIndustryJobsStore = create<IndustryJobsStore>((set, get) => ({
 
       for (const owner of owners) {
         try {
-          logger.info('Fetching industry jobs', { module: 'IndustryJobsStore', owner: owner.name })
-          const jobs = await getCharacterIndustryJobs(owner.characterId, true)
+          logger.info('Fetching industry jobs', {
+            module: 'IndustryJobsStore',
+            owner: owner.name,
+            type: owner.type,
+          })
+
+          let jobs: ESIIndustryJob[] = []
+
+          if (owner.type === 'corporation') {
+            jobs = await getCorporationIndustryJobs(owner.characterId, owner.id)
+          } else {
+            jobs = await getCharacterIndustryJobs(owner.characterId)
+          }
+
+          logger.debug('Industry jobs fetched', {
+            module: 'IndustryJobsStore',
+            owner: owner.name,
+            type: owner.type,
+            count: jobs.length,
+          })
+
           results.push({ owner, jobs })
         } catch (err) {
           logger.error('Failed to fetch industry jobs', err instanceof Error ? err : undefined, {

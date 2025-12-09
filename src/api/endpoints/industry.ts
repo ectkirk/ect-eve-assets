@@ -1,4 +1,5 @@
 import { esiClient } from '../esi-client'
+import { logger } from '@/lib/logger'
 
 export interface ESIIndustryJob {
   activity_id: number
@@ -26,12 +27,27 @@ export interface ESIIndustryJob {
 }
 
 export async function getCharacterIndustryJobs(
-  characterId: number,
-  includeCompleted = false
+  characterId: number
 ): Promise<ESIIndustryJob[]> {
-  const params = includeCompleted ? '?include_completed=true' : ''
-  return esiClient.fetch<ESIIndustryJob[]>(
-    `/characters/${characterId}/industry/jobs/${params}`,
-    { characterId }
-  )
+  const endpoint = `/characters/${characterId}/industry/jobs`
+  logger.debug('Fetching character industry jobs', {
+    module: 'Industry',
+    characterId,
+    endpoint,
+  })
+  const result = await esiClient.fetch<ESIIndustryJob[]>(endpoint, { characterId })
+  logger.debug('Character industry jobs result', {
+    module: 'Industry',
+    characterId,
+    count: result.length,
+  })
+  return result
+}
+
+export async function getCorporationIndustryJobs(
+  characterId: number,
+  corporationId: number
+): Promise<ESIIndustryJob[]> {
+  const endpoint = `/corporations/${corporationId}/industry/jobs`
+  return esiClient.fetchWithPagination<ESIIndustryJob>(endpoint, { characterId })
 }

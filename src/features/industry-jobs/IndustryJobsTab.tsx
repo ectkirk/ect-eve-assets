@@ -14,6 +14,7 @@ import {
   PauseCircle,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/auth-store'
+import { useAssetStore } from '@/store/asset-store'
 import { useIndustryJobsStore } from '@/store/industry-jobs-store'
 import { type ESIIndustryJob } from '@/api/endpoints/industry'
 import {
@@ -70,6 +71,7 @@ interface JobRow {
   productCategoryId?: number
   locationName: string
   activityName: string
+  productValue: number
 }
 
 interface LocationGroup {
@@ -147,6 +149,7 @@ function JobsTable({ jobs }: { jobs: JobRow[] }) {
           <TableHead>Blueprint</TableHead>
           <TableHead>Product</TableHead>
           <TableHead className="text-right">Runs</TableHead>
+          <TableHead className="text-right">Value</TableHead>
           <TableHead className="text-right">Cost</TableHead>
           <TableHead className="text-right">Time</TableHead>
           <TableHead>Owner</TableHead>
@@ -158,7 +161,7 @@ function JobsTable({ jobs }: { jobs: JobRow[] }) {
           const duration = formatDuration(row.job.end_date)
 
           return (
-            <TableRow key={row.job.job_id}>
+            <TableRow key={`${row.ownerName}-${row.job.job_id}`}>
               <TableCell className="py-1.5 w-8">
                 <StatusIcon status={row.job.status} />
               </TableCell>
@@ -196,6 +199,9 @@ function JobsTable({ jobs }: { jobs: JobRow[] }) {
               </TableCell>
               <TableCell className="py-1.5 text-right tabular-nums">
                 {row.job.runs.toLocaleString()}
+              </TableCell>
+              <TableCell className="py-1.5 text-right tabular-nums text-green-400">
+                {row.productValue > 0 ? formatISK(row.productValue) : '-'}
               </TableCell>
               <TableCell className="py-1.5 text-right tabular-nums text-amber-400">
                 {row.job.cost ? formatISK(row.job.cost) : '-'}
@@ -259,6 +265,7 @@ export function IndustryJobsTab() {
   const ownersRecord = useAuthStore((s) => s.owners)
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
 
+  const prices = useAssetStore((s) => s.prices)
   const jobsByOwner = useIndustryJobsStore((s) => s.jobsByOwner)
   const lastUpdated = useIndustryJobsStore((s) => s.lastUpdated)
   const isUpdating = useIndustryJobsStore((s) => s.isUpdating)
@@ -349,6 +356,9 @@ export function IndustryJobsTab() {
             ? getType(job.product_type_id)
             : undefined
 
+        const productPrice = job.product_type_id ? (prices.get(job.product_type_id) ?? 0) : 0
+        const productValue = productPrice * job.runs
+
         const row: JobRow = {
           job,
           ownerName: owner.name,
@@ -357,6 +367,7 @@ export function IndustryJobsTab() {
           productCategoryId: productType?.categoryId,
           locationName: getLocationName(job.facility_id),
           activityName: ACTIVITY_NAMES[job.activity_id] ?? `Activity ${job.activity_id}`,
+          productValue,
         }
 
         let group = groups.get(job.facility_id)
@@ -396,7 +407,7 @@ export function IndustryJobsTab() {
     }
 
     return sorted
-  }, [jobsByOwner, cacheVersion])
+  }, [jobsByOwner, cacheVersion, prices])
 
   const toggleLocation = useCallback((locationId: number) => {
     setExpandedLocations((prev) => {

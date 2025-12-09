@@ -67,7 +67,7 @@ interface ESICharacterInfo {
 
 async function fetchCharacterInfo(characterId: number): Promise<ESICharacterInfo> {
   const response = await fetch(
-    `https://esi.evetech.net/latest/characters/${characterId}/`
+    `https://esi.evetech.net/characters/${characterId}/`
   )
   if (!response.ok) {
     throw new Error('Failed to fetch character info')

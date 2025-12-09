@@ -1,9 +1,9 @@
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { logger } from '@/lib/logger'
 
-export const ESI_BASE_URL = 'https://esi.evetech.net/latest'
+export const ESI_BASE_URL = 'https://esi.evetech.net'
 export const ESI_COMPATIBILITY_DATE = '2025-11-06'
-export const ESI_USER_AGENT = 'ECTEVEAssets/0.2.0 (contact@ectrade.org; +https://github.com/ectrade/ecteveassets)'
+export const ESI_USER_AGENT = 'ECTEVEAssets/0.2.0 (ecteveassets@edencom.net; +https://github.com/ectkirk/ecteveassets)'
 
 export interface ESIError {
   error: string
@@ -163,6 +163,7 @@ class ESIClient {
 
       const cached = this.cache.get(cacheKey)
       if (cached && Date.now() < cached.expires) {
+        logger.debug('ESI cache hit', { module: 'ESI', url, expiresIn: cached.expires - Date.now() })
         return cached.data as T
       }
 
@@ -183,10 +184,19 @@ class ESIClient {
         headers['If-None-Match'] = cached.etag
       }
 
+      logger.debug('ESI request', { module: 'ESI', url, method: fetchOptions.method ?? 'GET' })
+
       const response = await fetch(url, {
         method: fetchOptions.method ?? 'GET',
         headers,
         body: fetchOptions.body,
+      })
+
+      logger.debug('ESI response', {
+        module: 'ESI',
+        url,
+        status: response.status,
+        contentType: response.headers.get('Content-Type'),
       })
 
       const rateLimitGroup = response.headers.get('X-Ratelimit-Group') ?? 'default'
