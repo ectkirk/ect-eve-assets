@@ -18,6 +18,11 @@ export interface LogContext {
   [key: string]: unknown
 }
 
+export interface RefApiResult {
+  items?: Record<string, unknown>
+  error?: string
+}
+
 export interface ElectronAPI {
   startAuth: (includeCorporationScopes?: boolean) => Promise<AuthResult>
   cancelAuth: () => Promise<void>
@@ -29,6 +34,8 @@ export interface ElectronAPI {
   getLogDir: () => Promise<string>
   onOpenUpdateDialog: (callback: () => void) => () => void
   onRefreshAbyssalPrices: (callback: () => void) => () => void
+  refTypes: (ids: number[], market: 'jita' | 'the_forge') => Promise<RefApiResult>
+  refUniverse: (ids: number[]) => Promise<RefApiResult>
 }
 
 const electronAPI: ElectronAPI = {
@@ -53,6 +60,9 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.on('data:refreshAbyssalPrices', handler)
     return () => ipcRenderer.removeListener('data:refreshAbyssalPrices', handler)
   },
+  refTypes: (ids: number[], market: 'jita' | 'the_forge') =>
+    ipcRenderer.invoke('ref:types', ids, market),
+  refUniverse: (ids: number[]) => ipcRenderer.invoke('ref:universe', ids),
 }
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI)

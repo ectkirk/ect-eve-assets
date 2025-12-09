@@ -16,6 +16,11 @@ interface LogContext {
   [key: string]: unknown
 }
 
+interface RefApiResult {
+  items?: Record<string, unknown>
+  error?: string
+}
+
 interface ElectronAPI {
   startAuth: (includeCorporationScopes?: boolean) => Promise<AuthResult>
   cancelAuth: () => Promise<void>
@@ -27,6 +32,8 @@ interface ElectronAPI {
   getLogDir: () => Promise<string>
   onOpenUpdateDialog: (callback: () => void) => () => void
   onRefreshAbyssalPrices: (callback: () => void) => () => void
+  refTypes: (ids: number[], market: 'jita' | 'the_forge') => Promise<RefApiResult>
+  refUniverse: (ids: number[]) => Promise<RefApiResult>
 }
 
 declare global {
