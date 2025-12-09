@@ -4,7 +4,7 @@ import type { z } from 'zod'
 
 export const ESI_BASE_URL = 'https://esi.evetech.net'
 export const ESI_COMPATIBILITY_DATE = '2025-11-06'
-export const ESI_USER_AGENT = 'ECTEVEAssets/0.2.0 (ecteveassets@edencom.net; +https://github.com/ectkirk/ecteveassets)'
+export const ESI_USER_AGENT = 'ECTEVEAssets/0.2.0 (ecteveassets@edencom.net; +https://github.com/ectkirk/ect-eve-assets)'
 
 export interface ESIErrorResponse {
   error: string
