@@ -1,4 +1,4 @@
-import { esiClient } from '../client'
+import { esiClient } from '../esi-client'
 
 export interface ESIIndustryJob {
   activity_id: number

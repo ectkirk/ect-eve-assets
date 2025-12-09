@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { AssetsTab } from '@/features/assets'
+import { ItemHangarTab } from '@/features/item-hangar'
+import { OfficeTab } from '@/features/office'
 import { Plus, Loader2 } from 'lucide-react'
 import { OwnerManagementModal } from './OwnerManagementModal'
 
@@ -23,6 +25,10 @@ function TabContent({ tab }: { tab: Tab }) {
   switch (tab) {
     case 'Assets':
       return <AssetsTab />
+    case 'Item Hangar':
+      return <ItemHangarTab />
+    case 'Office':
+      return <OfficeTab />
     default:
       return (
         <div className="text-slate-400">

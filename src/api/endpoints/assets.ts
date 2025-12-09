@@ -1,4 +1,4 @@
-import { esiClient } from '../client'
+import { esiClient } from '../esi-client'
 
 export interface ESIAsset {
   is_blueprint_copy?: boolean

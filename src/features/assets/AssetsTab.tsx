@@ -1,5 +1,4 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
-import { useQueries } from '@tanstack/react-query'
 import {
   useReactTable,
   getCoreRowModel,
@@ -22,23 +21,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { useAuthStore, type Owner } from '@/store/auth-store'
-import { getCharacterAssets, getAssetNames, type ESIAsset } from '@/api/endpoints/assets'
-import { fetchPrices } from '@/api/ref-client'
-import { fetchAbyssalPrices, isAbyssalTypeId, hasCachedAbyssalPrice } from '@/api/mutamarket-client'
-import { getAbyssalPrice } from '@/store/reference-cache'
-import { getCorporationAssets } from '@/api/endpoints/corporation'
-import {
-  getTypeName,
-  getType,
-  getStructure,
-  getLocation,
-  hasType,
-  hasStructure,
-  hasLocation,
-  subscribe as subscribeToCache,
-} from '@/store/reference-cache'
-import { resolveStructures, resolveLocationNames, resolveTypes } from '@/api/endpoints/universe'
+import { type ESIAsset } from '@/api/endpoints/assets'
+import { isAbyssalTypeId } from '@/api/mutamarket-client'
+import { getAbyssalPrice, getTypeName, getType, getStructure, getLocation } from '@/store/reference-cache'
+import { useAssetData } from '@/hooks/useAssetData'
 
 interface AssetRow {
   itemId: number
@@ -312,19 +298,19 @@ const columns: ColumnDef<AssetRow>[] = [
   },
 ]
 
-async function fetchOwnerAssets(owner: Owner): Promise<{ owner: Owner; assets: ESIAsset[] }> {
-  let assets: ESIAsset[]
-  if (owner.type === 'corporation') {
-    assets = await getCorporationAssets(owner.id, owner.characterId)
-  } else {
-    assets = await getCharacterAssets(owner.id)
-  }
-  return { owner, assets }
-}
-
 export function AssetsTab() {
-  const ownersRecord = useAuthStore((state) => state.owners)
-  const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
+  const {
+    assetsByOwner,
+    owners,
+    isLoading,
+    hasError,
+    firstError,
+    typeProgress,
+    prices,
+    assetNames,
+    cacheVersion,
+    isRefreshingAbyssals,
+  } = useAssetData()
 
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
@@ -336,17 +322,14 @@ export function AssetsTab() {
   const columnsDropdownRef = useRef<HTMLDivElement>(null)
   const draggedColumnRef = useRef<string | null>(null)
 
-  // Persist column visibility changes
   useEffect(() => {
     saveColumnVisibility(columnVisibility)
   }, [columnVisibility])
 
-  // Persist column order changes
   useEffect(() => {
     saveColumnOrder(columnOrder)
   }, [columnOrder])
 
-  // Close dropdown on click outside
   useEffect(() => {
     if (!columnsDropdownOpen) return
 
@@ -360,138 +343,17 @@ export function AssetsTab() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [columnsDropdownOpen])
 
-  // Memoize query configs to prevent infinite re-renders
-  const assetQueryConfigs = useMemo(
-    () =>
-      owners.map((owner) => ({
-        queryKey: ['assets', owner.type, owner.id] as const,
-        queryFn: () => fetchOwnerAssets(owner),
-        enabled: !!(owner.accessToken || owner.refreshToken),
-        staleTime: 5 * 60 * 1000,
-      })),
-    [owners]
-  )
-
-  const assetQueries = useQueries({ queries: assetQueryConfigs })
-
-  const [refPrices, setRefPrices] = useState<Map<number, number> | null>(null)
-
-  const [cacheVersion, setCacheVersion] = useState(0)
-  useEffect(() => {
-    return subscribeToCache(() => {
-      setCacheVersion((v) => v + 1)
-    })
-  }, [])
-  const assetDataKey = assetQueries
-    .filter((q) => q.data)
-    .map((q) => `${q.data!.owner.type}-${q.data!.owner.id}`)
-    .sort()
-    .join(',')
-
-  const assetDataVersion = assetQueries
-    .map((q) => q.dataUpdatedAt)
-    .join(',')
-
-  // Store query results in a ref to access in useMemo without dependency issues
-  const assetQueriesRef = useRef(assetQueries)
-  assetQueriesRef.current = assetQueries
-
-  const assetDataList = useMemo(() => {
-    void assetDataVersion
-    return assetQueriesRef.current
-      .filter((q) => q.data)
-      .map((q) => q.data!)
-  }, [assetDataVersion])
-
-  useEffect(() => {
-    if (assetDataList.length === 0) return
-
-    const typeIds = new Set<number>()
-    for (const { assets } of assetDataList) {
-      for (const asset of assets) {
-        typeIds.add(asset.type_id)
-      }
-    }
-
-    if (typeIds.size === 0) return
-
-    fetchPrices(Array.from(typeIds)).then(setRefPrices)
-  }, [assetDataList])
-
-  const assetDataListRef = useRef(assetDataList)
-  assetDataListRef.current = assetDataList
-
-  const ownersRef = useRef(owners)
-  ownersRef.current = owners
-
-  // Stable keys for effect dependencies (primitives don't cause size warnings)
-  const ownersKey = owners.map((o) => `${o.type}-${o.id}`).sort().join(',')
-
-  // Get all character owners for name resolution
   const characterOwners = useMemo(
     () => owners.filter((o) => o.type === 'character'),
     [owners]
   )
 
-  // Compute name query configs with stable dependencies
-  const nameQueryConfigs = useMemo(() => {
-    return assetDataList
-      .filter((data) => data.owner.type === 'character') // Only characters have named assets
-      .flatMap((data) => {
-        const singletonIds = data.assets
-          .filter((a) => a.is_singleton)
-          .map((a) => a.item_id)
-
-        if (singletonIds.length === 0) return []
-
-        return [{
-          queryKey: ['assetNames', data.owner.id, singletonIds.length] as const,
-          queryFn: () => getAssetNames(data.owner.id, singletonIds),
-          enabled: singletonIds.length > 0,
-          staleTime: 5 * 60 * 1000,
-        }]
-      })
-  }, [assetDataList])
-
-  // Fetch asset names for all characters
-  const nameQueries = useQueries({
-    queries: nameQueryConfigs,
-  })
-
-  // Track nameQueries changes using dataUpdatedAt
-  const nameQueriesVersion = nameQueries
-    .map((q) => q.dataUpdatedAt)
-    .join(',')
-  const nameQueriesRef = useRef(nameQueries)
-  nameQueriesRef.current = nameQueries
-
-  const priceMap = useMemo(() => {
-    return refPrices ?? new Map<number, number>()
-  }, [refPrices])
-
-  const nameMap = useMemo(() => {
-    void nameQueriesVersion
-    const map = new Map<number, string>()
-    for (const query of nameQueriesRef.current) {
-      if (query.data) {
-        for (const n of query.data) {
-          if (n.name && n.name !== 'None') {
-            map.set(n.item_id, n.name)
-          }
-        }
-      }
-    }
-    return map
-  }, [nameQueriesVersion])
-
-  // Transform all assets to table rows
   const data = useMemo<AssetRow[]>(() => {
     void cacheVersion
     const rows: AssetRow[] = []
 
-    // Build item_id -> asset lookup for location_type='item' (nested in container/ship)
     const itemIdToAsset = new Map<number, ESIAsset>()
-    for (const { assets } of assetDataList) {
+    for (const { assets } of assetsByOwner) {
       for (const asset of assets) {
         itemIdToAsset.set(asset.item_id, asset)
       }
@@ -499,7 +361,6 @@ export function AssetsTab() {
 
     const resolveLocation = (asset: ESIAsset): { locationName: string; systemName: string; regionName: string } => {
       let current = asset
-
       while (current.location_type === 'item') {
         const parent = itemIdToAsset.get(current.location_id)
         if (!parent) break
@@ -511,8 +372,6 @@ export function AssetsTab() {
       let regionName = ''
 
       if (current.location_type === 'solar_system' && current.item_id > 1_000_000_000_000) {
-        // Asset is a structure itself (e.g., ship in space)
-        // Structure comes from ESI, system/region from ref API
         const structure = getStructure(current.item_id)
         locationName = structure?.name ?? `Structure ${current.item_id}`
         if (structure?.solarSystemId) {
@@ -521,7 +380,6 @@ export function AssetsTab() {
           regionName = system?.regionName ?? ''
         }
       } else if (current.location_id > 1_000_000_000_000) {
-        // Player structure from ESI, system/region from ref API
         const structure = getStructure(current.location_id)
         locationName = structure?.name ?? `Structure ${current.location_id}`
         if (structure?.solarSystemId) {
@@ -530,7 +388,6 @@ export function AssetsTab() {
           regionName = system?.regionName ?? ''
         }
       } else {
-        // NPC station or other location - now with system/region from ref API
         const location = getLocation(current.location_id)
         locationName = location?.name ?? `Location ${current.location_id}`
         systemName = location?.solarSystemName ?? ''
@@ -540,16 +397,15 @@ export function AssetsTab() {
       return { locationName, systemName, regionName }
     }
 
-    for (const { owner, assets } of assetDataList) {
+    for (const { owner, assets } of assetsByOwner) {
       for (const asset of assets) {
         const sdeType = getType(asset.type_id)
-        const customName = nameMap.get(asset.item_id)
+        const customName = assetNames.get(asset.item_id)
         const typeName = customName || getTypeName(asset.type_id)
         const volume = sdeType?.volume ?? 0
 
-        // Check abyssal price by item_id first (from persistent cache), then fall back to type price
         const abyssalPrice = getAbyssalPrice(asset.item_id)
-        const price = abyssalPrice ?? priceMap.get(asset.type_id) ?? 0
+        const price = abyssalPrice ?? prices.get(asset.type_id) ?? 0
 
         const isAbyssal = isAbyssalTypeId(asset.type_id)
         const { locationName, systemName, regionName } = resolveLocation(asset)
@@ -581,7 +437,7 @@ export function AssetsTab() {
     }
 
     return rows
-  }, [assetDataList, priceMap, nameMap, cacheVersion])
+  }, [assetsByOwner, prices, assetNames, cacheVersion])
 
   const categories = useMemo(() => {
     const cats = new Set<string>()
@@ -606,221 +462,6 @@ export function AssetsTab() {
       return true
     })
   }, [data, categoryFilter, globalFilter])
-
-  // Resolve unknown types via ESI /universe/types/{type_id}
-  const [typeResolutionProgress, setTypeResolutionProgress] = useState<{ resolved: number; total: number } | null>(null)
-  const resolvingTypesRef = useRef(false)
-  useEffect(() => {
-    const currentAssetData = assetDataListRef.current
-    if (resolvingTypesRef.current || currentAssetData.length === 0) return
-
-    // Collect unique type IDs that aren't cached
-    const unknownTypeIds = new Set<number>()
-    for (const { assets } of currentAssetData) {
-      for (const asset of assets) {
-        if (!hasType(asset.type_id)) {
-          unknownTypeIds.add(asset.type_id)
-        }
-      }
-    }
-
-    if (unknownTypeIds.size === 0) return
-
-    resolvingTypesRef.current = true
-    console.log(`[Types] Resolving ${unknownTypeIds.size} unknown types via ref API...`)
-    setTypeResolutionProgress({ resolved: 0, total: unknownTypeIds.size })
-
-    resolveTypes(
-      Array.from(unknownTypeIds),
-      20,
-      (resolved, total) => setTypeResolutionProgress({ resolved, total })
-    )
-      .then((resolved) => {
-        if (resolved.size > 0) {
-          console.log(`[Types] Resolved ${resolved.size} types`)
-        }
-        setTypeResolutionProgress(null)
-      })
-      .catch((err) => {
-        console.warn('[Types] Failed to resolve:', err.message)
-        setTypeResolutionProgress(null)
-      })
-  }, [assetDataKey])
-
-  // Fetch abyssal module prices from Mutamarket (manual action via Data menu)
-  const [isRefreshingAbyssals, setIsRefreshingAbyssals] = useState(false)
-  const refreshAbyssalPricesRef = useRef<() => Promise<void>>(null!)
-
-  refreshAbyssalPricesRef.current = async () => {
-    if (isRefreshingAbyssals || assetDataList.length === 0) return
-
-    const abyssalItemIds: number[] = []
-    for (const { assets } of assetDataList) {
-      for (const asset of assets) {
-        if (isAbyssalTypeId(asset.type_id) && !hasCachedAbyssalPrice(asset.item_id)) {
-          abyssalItemIds.push(asset.item_id)
-        }
-      }
-    }
-
-    if (abyssalItemIds.length === 0) {
-      console.log('[Abyssals] No uncached abyssal items to fetch')
-      return
-    }
-
-    setIsRefreshingAbyssals(true)
-    console.log(`[Abyssals] Fetching ${abyssalItemIds.length} prices from Mutamarket...`)
-
-    try {
-      const prices = await fetchAbyssalPrices(abyssalItemIds)
-      if (prices.size > 0) {
-        console.log(`[Abyssals] Resolved ${prices.size} prices`)
-        setCacheVersion((v) => v + 1)
-      }
-    } catch (err) {
-      console.warn('[Abyssals] Failed to fetch prices:', err instanceof Error ? err.message : err)
-    } finally {
-      setIsRefreshingAbyssals(false)
-    }
-  }
-
-  // Listen for Data menu "Refresh Abyssal Prices" command
-  useEffect(() => {
-    const handler = () => {
-      refreshAbyssalPricesRef.current?.()
-    }
-    window.addEventListener('refreshAbyssalPrices', handler)
-    return () => window.removeEventListener('refreshAbyssalPrices', handler)
-  }, [])
-
-  // Resolve unknown structures via ESI
-  // Walk up parent chain to find root location for nested items
-  const resolvingStructuresRef = useRef(false)
-  useEffect(() => {
-    const currentAssetData = assetDataListRef.current
-    const currentOwners = ownersRef.current
-    if (resolvingStructuresRef.current || currentAssetData.length === 0) return
-
-    // Build item_id -> asset lookup for walking parent chain
-    const itemIdToAsset = new Map<number, ESIAsset>()
-    for (const { assets } of currentAssetData) {
-      for (const asset of assets) {
-        itemIdToAsset.set(asset.item_id, asset)
-      }
-    }
-
-    // Find root location for an asset (walk up parent chain)
-    const getRootLocation = (asset: ESIAsset): { locationId: number; locationType: string } => {
-      let current = asset
-      while (current.location_type === 'item') {
-        const parent = itemIdToAsset.get(current.location_id)
-        if (!parent) break
-        current = parent
-      }
-      return { locationId: current.location_id, locationType: current.location_type }
-    }
-
-    const unknownStructureIds = new Set<number>()
-    for (const { assets } of currentAssetData) {
-      for (const asset of assets) {
-        const root = getRootLocation(asset)
-        if (root.locationId > 1_000_000_000_000 && !hasStructure(root.locationId)) {
-          unknownStructureIds.add(root.locationId)
-        }
-        if (asset.location_type === 'solar_system' && asset.item_id > 1_000_000_000_000) {
-          if (!hasStructure(asset.item_id)) {
-            unknownStructureIds.add(asset.item_id)
-          }
-        }
-      }
-    }
-
-    if (unknownStructureIds.size === 0) {
-      console.log('[Structures] No unknown structures to resolve')
-      return
-    }
-
-    // Collect all character IDs to try for structure resolution
-    // Each character might have different docking access
-    const characterIds = currentOwners
-      .map((o) => o.characterId)
-      .filter((id, index, arr) => arr.indexOf(id) === index) // unique
-
-    resolvingStructuresRef.current = true
-    console.log(`[Structures] Resolving ${unknownStructureIds.size} unknown structures via ESI (trying ${characterIds.length} characters)...`)
-
-    resolveStructures(Array.from(unknownStructureIds), characterIds)
-      .then((resolved) => {
-        if (resolved.size > 0) {
-          console.log(`[Structures] Resolved ${resolved.size} structures`)
-        }
-      })
-      .catch((err) => console.warn('[Structures] Failed to resolve:', err.message))
-      .finally(() => {
-        resolvingStructuresRef.current = false
-      })
-  }, [assetDataKey, ownersKey])
-
-  // Resolve unknown location IDs via ref API /universe
-  // Handles NPC stations, solar systems (for structures), regions, etc.
-  const resolvingLocationsRef = useRef(false)
-  useEffect(() => {
-    const currentAssetData = assetDataListRef.current
-    if (resolvingLocationsRef.current || currentAssetData.length === 0) return
-
-    // Build item_id -> asset lookup for walking parent chain
-    const itemIdToAsset = new Map<number, ESIAsset>()
-    for (const { assets } of currentAssetData) {
-      for (const asset of assets) {
-        itemIdToAsset.set(asset.item_id, asset)
-      }
-    }
-
-    // Find root location for an asset (walk up parent chain)
-    const getRootLocationId = (asset: ESIAsset): number => {
-      let current = asset
-      while (current.location_type === 'item') {
-        const parent = itemIdToAsset.get(current.location_id)
-        if (!parent) break
-        current = parent
-      }
-      return current.location_id
-    }
-
-    // Collect unknown location IDs (not structures, not already cached)
-    const unknownLocationIds = new Set<number>()
-    for (const { assets } of currentAssetData) {
-      for (const asset of assets) {
-        const rootLocationId = getRootLocationId(asset)
-        if (rootLocationId > 1_000_000_000_000) {
-          // Player structure - check if we need to resolve its solar system
-          const structure = getStructure(rootLocationId)
-          if (structure?.solarSystemId && !hasLocation(structure.solarSystemId)) {
-            unknownLocationIds.add(structure.solarSystemId)
-          }
-        } else if (!hasLocation(rootLocationId)) {
-          // NPC station or other location
-          unknownLocationIds.add(rootLocationId)
-        }
-      }
-    }
-
-    if (unknownLocationIds.size === 0) return
-
-    resolvingLocationsRef.current = true
-    console.log(`[Locations] Resolving ${unknownLocationIds.size} unknown locations via ref API...`)
-
-    resolveLocationNames(Array.from(unknownLocationIds))
-      .then((resolved) => {
-        if (resolved.size > 0) {
-          console.log(`[Locations] Resolved ${resolved.size} locations`)
-        }
-      })
-      .catch((err) => console.warn('[Locations] Failed to resolve:', err.message))
-      .finally(() => {
-        resolvingLocationsRef.current = false
-      })
-  }, [assetDataKey, cacheVersion])
 
   const table = useReactTable({
     data: filteredData,
@@ -892,10 +533,6 @@ export function AssetsTab() {
     return { totalValue, totalVolume, totalItems }
   }, [filteredRows])
 
-  const isLoading = assetQueries.some((q) => q.isLoading)
-  const hasError = assetQueries.some((q) => q.error)
-  const firstError = assetQueries.find((q) => q.error)?.error
-
   if (owners.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -913,16 +550,14 @@ export function AssetsTab() {
     )
   }
 
-  if (typeResolutionProgress && data.length === 0) {
+  if (typeProgress && data.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-blue-500 mx-auto" />
-          <p className="mt-2 text-slate-400">
-            Resolving item types from ESI...
-          </p>
+          <p className="mt-2 text-slate-400">Resolving item types...</p>
           <p className="text-sm text-slate-500">
-            {typeResolutionProgress.resolved} / {typeResolutionProgress.total}
+            {typeProgress.resolved} / {typeProgress.total}
           </p>
         </div>
       </div>
@@ -978,7 +613,7 @@ export function AssetsTab() {
 
         <div className="flex items-center gap-3">
           <span className="text-xs text-slate-500">
-            {refPrices ? `${refPrices.size} prices loaded` : 'Loading prices...'}
+            {prices.size > 0 ? `${prices.size} prices loaded` : 'Loading prices...'}
           </span>
           {isRefreshingAbyssals && (
             <div className="flex items-center gap-1 text-xs text-blue-400">

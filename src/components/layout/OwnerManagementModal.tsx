@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useAuthStore, type Owner, ownerKey } from '@/store/auth-store'
+import { esiClient } from '@/api/esi-client'
 import {
   Dialog,
   DialogContent,
@@ -24,17 +25,13 @@ interface OwnerManagementModalProps {
 
 async function fetchCorpName(corpId: number): Promise<string> {
   try {
-    const response = await fetch(
-      `https://esi.evetech.net/latest/corporations/${corpId}/`
+    const data = await esiClient.fetchPublic<{ name: string }>(
+      `/corporations/${corpId}/`
     )
-    if (response.ok) {
-      const data = await response.json()
-      return data.name
-    }
+    return data.name
   } catch {
-    // Ignore errors
+    return `Corporation ${corpId}`
   }
-  return `Corporation ${corpId}`
 }
 
 export function OwnerManagementModal({

@@ -20,6 +20,8 @@ export interface CachedStructure {
   solarSystemId: number
   typeId: number
   ownerId: number
+  resolvedByCharacterId?: number
+  inaccessible?: boolean
 }
 
 export interface CachedLocation {

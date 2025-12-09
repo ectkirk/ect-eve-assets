@@ -1,4 +1,4 @@
-import { esiClient } from '../client'
+import { esiClient } from '../esi-client'
 import { resolveTypes as refResolveTypes, resolveLocations } from '../ref-client'
 import {
   hasStructure,
@@ -7,6 +7,7 @@ import {
   type CachedStructure,
   type CachedType,
 } from '@/store/reference-cache'
+import { logger } from '@/lib/logger'
 
 export interface ESIStructure {
   name: string
@@ -35,36 +36,33 @@ export async function resolveLocationNames(locationIds: number[]): Promise<Map<n
   return nameMap
 }
 
-async function getStructureFromESI(structureId: number, characterId?: number): Promise<ESIStructure | null> {
-  try {
-    return await esiClient.fetch<ESIStructure>(
-      `/universe/structures/${structureId}/`,
-      {},
-      characterId
-    )
-  } catch (error) {
-    if (error instanceof Error && (error.message.includes('403') || error.message.includes('404'))) {
-      return null
-    }
-    throw error
-  }
-}
+type StructureResult =
+  | { status: 'success'; data: ESIStructure; characterId: number }
+  | { status: 'denied' }
+  | { status: 'not_found' }
+  | { status: 'error' }
 
-async function getStructureWithCharacters(
+async function getStructureFromESI(
   structureId: number,
-  characterIds: number[]
-): Promise<ESIStructure | null> {
-  for (const charId of characterIds) {
-    try {
-      const structure = await getStructureFromESI(structureId, charId)
-      if (structure) {
-        return structure
+  characterId: number
+): Promise<StructureResult> {
+  try {
+    const data = await esiClient.fetch<ESIStructure>(
+      `/universe/structures/${structureId}/`,
+      { characterId }
+    )
+    return { status: 'success', data, characterId }
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message.includes('403') || error.message.includes('Forbidden')) {
+        return { status: 'denied' }
       }
-    } catch {
-      // Try next character
+      if (error.message.includes('404')) {
+        return { status: 'not_found' }
+      }
     }
+    return { status: 'error' }
   }
-  return null
 }
 
 export async function resolveStructures(
@@ -86,7 +84,7 @@ export async function resolveStructures(
 
   const toCache: CachedStructure[] = []
 
-  // Try ref API for NPC stations first
+  // NPC stations via ref API
   const npcIds = uncachedIds.filter((id) => id < 1_000_000_000_000)
   if (npcIds.length > 0) {
     const resolved = await resolveLocations(npcIds)
@@ -105,39 +103,71 @@ export async function resolveStructures(
     }
   }
 
-  // Player structures need ESI auth
+  // Player structures via ESI
   const playerStructureIds = uncachedIds.filter(
     (id) => id > 1_000_000_000_000 && !results.has(id)
   )
 
   if (playerStructureIds.length > 0 && characterIds.length > 0) {
-    const batchSize = 10
-    for (let i = 0; i < playerStructureIds.length; i += batchSize) {
-      const batch = playerStructureIds.slice(i, i + batchSize)
-      const promises = batch.map(async (id) => {
-        try {
-          const structure = await getStructureWithCharacters(id, characterIds)
-          if (structure) {
-            const cached: CachedStructure = {
-              id,
-              name: structure.name,
-              solarSystemId: structure.solar_system_id,
-              typeId: structure.type_id ?? 0,
-              ownerId: structure.owner_id,
-            }
-            results.set(id, cached)
-            toCache.push(cached)
+    logger.info('Resolving player structures', {
+      module: 'ESI',
+      count: playerStructureIds.length,
+    })
+
+    for (const structureId of playerStructureIds) {
+      if (esiClient.isRateLimited()) {
+        logger.warn('Stopping structure resolution due to rate limit', { module: 'ESI' })
+        break
+      }
+
+      let resolved = false
+
+      for (const charId of characterIds) {
+        const result = await getStructureFromESI(structureId, charId)
+
+        if (result.status === 'success') {
+          const cached: CachedStructure = {
+            id: structureId,
+            name: result.data.name,
+            solarSystemId: result.data.solar_system_id,
+            typeId: result.data.type_id ?? 0,
+            ownerId: result.data.owner_id,
+            resolvedByCharacterId: result.characterId,
           }
-        } catch {
-          // Skip failed lookups
+          results.set(structureId, cached)
+          toCache.push(cached)
+          resolved = true
+          break
         }
-      })
-      await Promise.all(promises)
+
+        if (result.status === 'denied') {
+          continue
+        }
+
+        // not_found or error - stop trying this structure
+        break
+      }
+
+      // All characters failed - cache as inaccessible
+      if (!resolved && !results.has(structureId)) {
+        const placeholder: CachedStructure = {
+          id: structureId,
+          name: 'Unknown Structure',
+          solarSystemId: 0,
+          typeId: 0,
+          ownerId: 0,
+          inaccessible: true,
+        }
+        results.set(structureId, placeholder)
+        toCache.push(placeholder)
+        logger.debug('Structure inaccessible', { module: 'ESI', structureId })
+      }
     }
   }
 
   if (toCache.length > 0) {
     await saveStructures(toCache)
+    logger.info('Cached structures', { module: 'ESI', count: toCache.length })
   }
 
   return results

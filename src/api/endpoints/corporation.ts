@@ -1,4 +1,4 @@
-import { esiClient } from '../client'
+import { esiClient } from '../esi-client'
 import type { ESIAsset } from './assets'
 
 // Response from /characters/{character_id}/roles/
@@ -19,8 +19,7 @@ export async function getCorporationAssets(
   // Corp assets endpoint uses corp ID but auth token from character with Director role
   return esiClient.fetchWithPagination<ESIAsset>(
     `/corporations/${corporationId}/assets/`,
-    {},
-    characterId
+    { characterId }
   )
 }
 
@@ -30,8 +29,7 @@ export async function getCharacterRoles(
 ): Promise<ESICharacterRoles> {
   return esiClient.fetch<ESICharacterRoles>(
     `/characters/${characterId}/roles/`,
-    {},
-    characterId
+    { characterId }
   )
 }
 

@@ -1,4 +1,4 @@
-import { esiClient } from '../client'
+import { esiClient } from '../esi-client'
 
 export interface ESIClone {
   home_location?: {
