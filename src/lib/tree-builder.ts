@@ -6,6 +6,7 @@ import {
   TreeMode,
   CategoryIds,
   HANGAR_FLAGS,
+  SHIP_CONTENT_FLAGS,
   DELIVERY_FLAGS,
   ASSET_SAFETY_FLAGS,
   OFFICE_TYPE_ID,
@@ -54,49 +55,94 @@ function isContainer(type: CachedType | undefined): boolean {
   )
 }
 
+function getParentChain(
+  asset: ESIAsset,
+  assetById: Map<number, AssetWithOwner>
+): AssetWithOwner[] {
+  const chain: AssetWithOwner[] = []
+  let current = asset
+  while (current.location_type === 'item') {
+    const parent = assetById.get(current.location_id)
+    if (!parent) break
+    chain.push(parent)
+    current = parent.asset
+  }
+  return chain
+}
+
+function getRootFlag(
+  asset: ESIAsset,
+  assetById: Map<number, AssetWithOwner>
+): string {
+  let current = asset
+  while (current.location_type === 'item') {
+    const parent = assetById.get(current.location_id)
+    if (!parent) break
+    current = parent.asset
+  }
+  return current.location_flag
+}
+
 function shouldIncludeAsset(
   asset: ESIAsset,
   type: CachedType | undefined,
   mode: TreeMode,
-  _parentAsset?: ESIAsset,
-  parentType?: CachedType
+  assetById: Map<number, AssetWithOwner>
 ): boolean {
   const flag = asset.location_flag
+  const rootFlag = getRootFlag(asset, assetById)
+  const parentChain = getParentChain(asset, assetById)
+  const immediateParent = parentChain[0]
+  const immediateParentType = immediateParent ? getType(immediateParent.asset.type_id) : undefined
 
   switch (mode) {
-    case TreeMode.ITEM_HANGAR:
-      // Items in hangars that are NOT ships, NOT offices, and NOT inside offices
-      if (!HANGAR_FLAGS.has(flag)) return false
+    case TreeMode.ITEM_HANGAR: {
       if (isShip(type)) return false
       if (isOffice(asset.type_id)) return false
-      if (parentType && isOffice(parentType.id)) return false
-      return true
+      const isInOffice = parentChain.some((p) => isOffice(p.asset.type_id))
+      if (isInOffice) return false
+      if (HANGAR_FLAGS.has(flag)) return true
+      if (SHIP_CONTENT_FLAGS.has(flag) && HANGAR_FLAGS.has(rootFlag)) return true
+      return false
+    }
 
     case TreeMode.SHIP_HANGAR:
-      // Ships in hangars only
       if (!HANGAR_FLAGS.has(flag)) return false
       return isShip(type)
 
     case TreeMode.DELIVERIES:
-      return DELIVERY_FLAGS.has(flag)
-
-    case TreeMode.ASSET_SAFETY:
-      return ASSET_SAFETY_FLAGS.has(flag)
-
-    case TreeMode.OFFICE:
-      // Items inside Office containers (typeId 27), excluding deployed structures
-      if (type?.categoryId === CategoryIds.STRUCTURE) return false
-      if (parentType?.id === OFFICE_TYPE_ID) return true
-      // Include Office containers, but exclude those inside deployed structures
-      // (they will be created as parent nodes when processing their contents)
-      if (type?.id === OFFICE_TYPE_ID) {
-        return parentType?.categoryId !== CategoryIds.STRUCTURE
-      }
+      if (DELIVERY_FLAGS.has(flag)) return true
+      if (SHIP_CONTENT_FLAGS.has(flag) && DELIVERY_FLAGS.has(rootFlag)) return true
       return false
 
-    case TreeMode.STRUCTURES:
-      // Deployed structures (category 65) in space
-      return type?.categoryId === CategoryIds.STRUCTURE && asset.location_type === 'solar_system'
+    case TreeMode.ASSET_SAFETY:
+      if (ASSET_SAFETY_FLAGS.has(flag)) return true
+      if (SHIP_CONTENT_FLAGS.has(flag) && ASSET_SAFETY_FLAGS.has(rootFlag)) return true
+      return false
+
+    case TreeMode.OFFICE: {
+      if (type?.categoryId === CategoryIds.STRUCTURE) return false
+      const hasOfficeInChain = parentChain.some((p) => isOffice(p.asset.type_id))
+      if (!hasOfficeInChain) {
+        if (type?.id === OFFICE_TYPE_ID) {
+          return immediateParentType?.categoryId !== CategoryIds.STRUCTURE
+        }
+        return false
+      }
+      return true
+    }
+
+    case TreeMode.STRUCTURES: {
+      if (type?.categoryId === CategoryIds.STRUCTURE && asset.location_type === 'solar_system') {
+        return true
+      }
+      if (isOffice(asset.type_id)) return false
+      if (HANGAR_FLAGS.has(flag)) return false
+      if (DELIVERY_FLAGS.has(flag)) return false
+      if (ASSET_SAFETY_FLAGS.has(flag)) return false
+      const isDirectlyInStructure = immediateParentType?.categoryId === CategoryIds.STRUCTURE
+      return isDirectlyInStructure
+    }
 
     default:
       return true
@@ -127,18 +173,20 @@ function createItemNode(
   const price = getAssetPrice(asset, prices)
   const volume = type?.volume ?? 0
   const customName = assetNames?.get(asset.item_id)
+  const typeName = type?.name || `Type ${asset.type_id}`
 
   let nodeType: TreeNodeType = 'item'
-  let displayName = customName || type?.name || `Type ${asset.type_id}`
+  let displayName = customName || typeName
 
   if (isOffice(asset.type_id)) {
     nodeType = 'office'
-    // Name office after the station/structure it's in
     displayName = stationName ? `Office @ ${stationName}` : 'Office'
   } else if (isShip(type)) {
     nodeType = 'ship'
+    displayName = customName ? `${typeName} (${customName})` : typeName
   } else if (isContainer(type)) {
     nodeType = 'container'
+    displayName = customName ? `${typeName} (${customName})` : typeName
   }
 
   return {
@@ -231,6 +279,17 @@ function aggregateTotals(node: TreeNode): void {
   node.totalVolume = totalVolume
 }
 
+function findNodeRecursive(nodes: TreeNode[], id: string): TreeNode | undefined {
+  for (const node of nodes) {
+    if (node.id === id) return node
+    if (node.children.length > 0) {
+      const found = findNodeRecursive(node.children, id)
+      if (found) return found
+    }
+  }
+  return undefined
+}
+
 function stackIdenticalItems(nodes: TreeNode[]): TreeNode[] {
   const stackMap = new Map<string, TreeNode>()
   const result: TreeNode[] = []
@@ -277,14 +336,6 @@ export function buildTree(
     assetById.set(aw.asset.item_id, aw)
   }
 
-  // Find parent chain for each asset
-  const getParentAsset = (asset: ESIAsset): AssetWithOwner | undefined => {
-    if (asset.location_type === 'item') {
-      return assetById.get(asset.location_id)
-    }
-    return undefined
-  }
-
   // Get root location for an asset (station/structure)
   const getRootLocation = (
     asset: ESIAsset
@@ -310,10 +361,8 @@ export function buildTree(
     if (seenItemIds.has(aw.asset.item_id)) continue
 
     const type = getType(aw.asset.type_id)
-    const parent = getParentAsset(aw.asset)
-    const parentType = parent ? getType(parent.asset.type_id) : undefined
 
-    if (shouldIncludeAsset(aw.asset, type, mode, parent?.asset, parentType)) {
+    if (shouldIncludeAsset(aw.asset, type, mode, assetById)) {
       filteredAssets.push(aw)
       seenItemIds.add(aw.asset.item_id)
     }
@@ -446,58 +495,78 @@ export function buildTree(
       systemNode.children.push(stationNode)
     }
 
-    // Create item node
-    const itemNode = createItemNode(asset, owner, type, prices, assetNames, 3, locationName)
+    // Get the full parent chain (from immediate parent up to root container in hangar)
+    // Filter out the deployed structure if it's being used as the station
+    const rawParentChain = getParentChain(asset, assetById)
+    const parentChain = rawParentChain.filter((p) => p.asset.item_id !== stationLocationId)
 
-    // Handle nested items (inside containers/ships/offices)
-    if (asset.location_type === 'item') {
-      const parentAw = assetById.get(asset.location_id)
-      if (parentAw) {
-        const parentType = getType(parentAw.asset.type_id)
-        const parentIsOffice = isOffice(parentAw.asset.type_id)
-
-        // Find or create parent container/office node in station
-        const parentNodeId = `asset-${parentAw.asset.item_id}`
-        let parentNode = stationNode.children.find((n) => n.id === parentNodeId)
-
-        if (!parentNode) {
-          parentNode = createItemNode(
-            parentAw.asset,
-            parentAw.owner,
-            parentType,
-            prices,
-            assetNames,
-            3,
-            locationName
-          )
-          stationNode.children.push(parentNode)
-          addedItemIds.add(parentAw.asset.item_id)
-        }
-
-        // If parent is an office and item has a division flag, group by division
-        if (parentIsOffice && OFFICE_DIVISION_FLAGS.has(asset.location_flag)) {
-          const divisionNodeId = `division-${parentAw.asset.item_id}-${asset.location_flag}`
-          let divisionNode = parentNode.children.find((n) => n.id === divisionNodeId)
-
-          if (!divisionNode) {
-            divisionNode = createDivisionNode(parentAw.asset.item_id, asset.location_flag, 4)
-            parentNode.children.push(divisionNode)
-          }
-
-          itemNode.depth = 5
-          divisionNode.children.push(itemNode)
-          addedItemIds.add(asset.item_id)
+    // Find office info for division grouping BEFORE building the tree
+    let officeIndex = -1
+    let divisionFlag: string | undefined
+    for (let i = 0; i < parentChain.length; i++) {
+      if (isOffice(parentChain[i]!.asset.type_id)) {
+        officeIndex = i
+        if (i === 0) {
+          divisionFlag = OFFICE_DIVISION_FLAGS.has(asset.location_flag) ? asset.location_flag : undefined
         } else {
-          itemNode.depth = 4
-          parentNode.children.push(itemNode)
-          addedItemIds.add(asset.item_id)
+          const childOfOffice = parentChain[i - 1]!
+          divisionFlag = OFFICE_DIVISION_FLAGS.has(childOfOffice.asset.location_flag)
+            ? childOfOffice.asset.location_flag
+            : undefined
         }
-        continue
+        break
       }
     }
 
-    // Add directly to station
-    stationNode.children.push(itemNode)
+    // Build nested structure: station -> [parent chain with division inserted] -> item
+    let currentParent: TreeNode = stationNode
+    let currentDepth = 3
+    let divisionInserted = false
+
+    // Process parent chain in reverse (from outermost to innermost)
+    for (let i = parentChain.length - 1; i >= 0; i--) {
+      const parentAw = parentChain[i]!
+      const parentType = getType(parentAw.asset.type_id)
+      const parentNodeId = `asset-${parentAw.asset.item_id}`
+
+      let parentNode = findNodeRecursive(currentParent.children, parentNodeId)
+
+      if (!parentNode) {
+        parentNode = createItemNode(
+          parentAw.asset,
+          parentAw.owner,
+          parentType,
+          prices,
+          assetNames,
+          currentDepth,
+          locationName
+        )
+        currentParent.children.push(parentNode)
+        addedItemIds.add(parentAw.asset.item_id)
+      }
+
+      currentParent = parentNode
+      currentDepth = parentNode.depth + 1
+
+      // Insert division node right after the office
+      if (i === officeIndex && divisionFlag && !divisionInserted) {
+        const divisionNodeId = `division-${parentAw.asset.item_id}-${divisionFlag}`
+        let divisionNode = currentParent.children.find((n) => n.id === divisionNodeId)
+
+        if (!divisionNode) {
+          divisionNode = createDivisionNode(parentAw.asset.item_id, divisionFlag, currentDepth)
+          currentParent.children.push(divisionNode)
+        }
+
+        currentParent = divisionNode
+        currentDepth = divisionNode.depth + 1
+        divisionInserted = true
+      }
+    }
+
+    // Create and add the item node
+    const itemNode = createItemNode(asset, owner, type, prices, assetNames, currentDepth, locationName)
+    currentParent.children.push(itemNode)
     addedItemIds.add(asset.item_id)
   }
 
