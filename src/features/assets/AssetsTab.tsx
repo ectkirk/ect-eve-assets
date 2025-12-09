@@ -29,8 +29,9 @@ import { getAbyssalPrice } from '@/store/reference-cache'
 import { getCorporationAssets } from '@/api/endpoints/corporation'
 import {
   getTypeName,
-  getLocationName,
   getType,
+  getStructure,
+  getLocation,
   hasType,
   hasStructure,
   hasLocation,
@@ -45,6 +46,8 @@ interface AssetRow {
   quantity: number
   locationId: number
   locationName: string
+  systemName: string
+  regionName: string
   locationFlag: string
   isSingleton: boolean
   isBlueprintCopy: boolean
@@ -270,7 +273,6 @@ export function AssetsTab() {
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [globalFilter, setGlobalFilter] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
-  const [groupFilter, setGroupFilter] = useState('')
 
   // Memoize query configs to prevent infinite re-renders
   const assetQueryConfigs = useMemo(
@@ -409,7 +411,7 @@ export function AssetsTab() {
       }
     }
 
-    const resolveLocationName = (asset: ESIAsset): string => {
+    const resolveLocation = (asset: ESIAsset): { locationName: string; systemName: string; regionName: string } => {
       let current = asset
 
       while (current.location_type === 'item') {
@@ -418,11 +420,38 @@ export function AssetsTab() {
         current = parent
       }
 
+      let locationName: string
+      let systemName = ''
+      let regionName = ''
+
       if (current.location_type === 'solar_system' && current.item_id > 1_000_000_000_000) {
-        return getLocationName(current.item_id)
+        // Asset is a structure itself (e.g., ship in space)
+        // Structure comes from ESI, system/region from ref API
+        const structure = getStructure(current.item_id)
+        locationName = structure?.name ?? `Structure ${current.item_id}`
+        if (structure?.solarSystemId) {
+          const system = getLocation(structure.solarSystemId)
+          systemName = system?.name ?? ''
+          regionName = system?.regionName ?? ''
+        }
+      } else if (current.location_id > 1_000_000_000_000) {
+        // Player structure from ESI, system/region from ref API
+        const structure = getStructure(current.location_id)
+        locationName = structure?.name ?? `Structure ${current.location_id}`
+        if (structure?.solarSystemId) {
+          const system = getLocation(structure.solarSystemId)
+          systemName = system?.name ?? ''
+          regionName = system?.regionName ?? ''
+        }
+      } else {
+        // NPC station or other location - now with system/region from ref API
+        const location = getLocation(current.location_id)
+        locationName = location?.name ?? `Location ${current.location_id}`
+        systemName = location?.solarSystemName ?? ''
+        regionName = location?.regionName ?? ''
       }
 
-      return getLocationName(current.location_id)
+      return { locationName, systemName, regionName }
     }
 
     for (const { owner, assets } of assetDataList) {
@@ -437,6 +466,7 @@ export function AssetsTab() {
         const price = abyssalPrice ?? priceMap.get(asset.type_id) ?? 0
 
         const isAbyssal = isAbyssalTypeId(asset.type_id)
+        const { locationName, systemName, regionName } = resolveLocation(asset)
 
         rows.push({
           itemId: asset.item_id,
@@ -444,7 +474,9 @@ export function AssetsTab() {
           typeName,
           quantity: asset.quantity,
           locationId: asset.location_id,
-          locationName: resolveLocationName(asset),
+          locationName,
+          systemName,
+          regionName,
           locationFlag: asset.location_flag,
           isSingleton: asset.is_singleton,
           isBlueprintCopy: asset.is_blueprint_copy ?? false,
@@ -473,24 +505,21 @@ export function AssetsTab() {
     return Array.from(cats).sort()
   }, [data])
 
-  const groups = useMemo(() => {
-    const grps = new Set<string>()
-    for (const row of data) {
-      if (row.groupName && (!categoryFilter || row.categoryName === categoryFilter)) {
-        grps.add(row.groupName)
-      }
-    }
-    return Array.from(grps).sort()
-  }, [data, categoryFilter])
-
   const filteredData = useMemo(() => {
-    const groupLower = groupFilter.toLowerCase()
+    const searchLower = globalFilter.toLowerCase()
     return data.filter((row) => {
       if (categoryFilter && row.categoryName !== categoryFilter) return false
-      if (groupFilter && !row.groupName.toLowerCase().includes(groupLower)) return false
+      if (globalFilter) {
+        const matchesType = row.typeName.toLowerCase().includes(searchLower)
+        const matchesGroup = row.groupName.toLowerCase().includes(searchLower)
+        const matchesLocation = row.locationName.toLowerCase().includes(searchLower)
+        const matchesSystem = row.systemName.toLowerCase().includes(searchLower)
+        const matchesRegion = row.regionName.toLowerCase().includes(searchLower)
+        if (!matchesType && !matchesGroup && !matchesLocation && !matchesSystem && !matchesRegion) return false
+      }
       return true
     })
-  }, [data, categoryFilter, groupFilter])
+  }, [data, categoryFilter, globalFilter])
 
   // Resolve unknown types via ESI /universe/types/{type_id}
   const [typeResolutionProgress, setTypeResolutionProgress] = useState<{ resolved: number; total: number } | null>(null)
@@ -532,14 +561,15 @@ export function AssetsTab() {
       })
   }, [assetDataKey])
 
-  // Fetch abyssal module prices from Mutamarket
-  const resolvingAbyssalsRef = useRef(false)
-  useEffect(() => {
-    const currentAssetData = assetDataListRef.current
-    if (resolvingAbyssalsRef.current || currentAssetData.length === 0 || !refPrices) return
+  // Fetch abyssal module prices from Mutamarket (manual action via Data menu)
+  const [isRefreshingAbyssals, setIsRefreshingAbyssals] = useState(false)
+  const refreshAbyssalPricesRef = useRef<() => Promise<void>>(null!)
+
+  refreshAbyssalPricesRef.current = async () => {
+    if (isRefreshingAbyssals || assetDataList.length === 0) return
 
     const abyssalItemIds: number[] = []
-    for (const { assets } of currentAssetData) {
+    for (const { assets } of assetDataList) {
       for (const asset of assets) {
         if (isAbyssalTypeId(asset.type_id) && !hasCachedAbyssalPrice(asset.item_id)) {
           abyssalItemIds.push(asset.item_id)
@@ -547,25 +577,35 @@ export function AssetsTab() {
       }
     }
 
-    if (abyssalItemIds.length === 0) return
+    if (abyssalItemIds.length === 0) {
+      console.log('[Abyssals] No uncached abyssal items to fetch')
+      return
+    }
 
-    resolvingAbyssalsRef.current = true
+    setIsRefreshingAbyssals(true)
     console.log(`[Abyssals] Fetching ${abyssalItemIds.length} prices from Mutamarket...`)
 
-    fetchAbyssalPrices(abyssalItemIds)
-      .then((prices) => {
-        if (prices.size > 0) {
-          console.log(`[Abyssals] Resolved ${prices.size} prices`)
-          // Trigger re-render by bumping cache version (prices are in persistent cache)
-          setCacheVersion((v) => v + 1)
-        }
-        resolvingAbyssalsRef.current = false
-      })
-      .catch((err) => {
-        console.warn('[Abyssals] Failed to fetch prices:', err.message)
-        resolvingAbyssalsRef.current = false
-      })
-  }, [assetDataKey, refPrices])
+    try {
+      const prices = await fetchAbyssalPrices(abyssalItemIds)
+      if (prices.size > 0) {
+        console.log(`[Abyssals] Resolved ${prices.size} prices`)
+        setCacheVersion((v) => v + 1)
+      }
+    } catch (err) {
+      console.warn('[Abyssals] Failed to fetch prices:', err instanceof Error ? err.message : err)
+    } finally {
+      setIsRefreshingAbyssals(false)
+    }
+  }
+
+  // Listen for Data menu "Refresh Abyssal Prices" command
+  useEffect(() => {
+    const handler = () => {
+      refreshAbyssalPricesRef.current?.()
+    }
+    window.addEventListener('refreshAbyssalPrices', handler)
+    return () => window.removeEventListener('refreshAbyssalPrices', handler)
+  }, [])
 
   // Resolve unknown structures via ESI
   // Walk up parent chain to find root location for nested items
@@ -635,8 +675,8 @@ export function AssetsTab() {
       })
   }, [assetDataKey, ownersKey])
 
-  // Resolve unknown location IDs via /universe/names/
-  // Handles NPC stations, solar systems, regions, etc.
+  // Resolve unknown location IDs via ref API /universe
+  // Handles NPC stations, solar systems (for structures), regions, etc.
   const resolvingLocationsRef = useRef(false)
   useEffect(() => {
     const currentAssetData = assetDataListRef.current
@@ -666,16 +706,23 @@ export function AssetsTab() {
     for (const { assets } of currentAssetData) {
       for (const asset of assets) {
         const rootLocationId = getRootLocationId(asset)
-        if (rootLocationId > 1_000_000_000_000) continue
-        if (hasLocation(rootLocationId)) continue
-        unknownLocationIds.add(rootLocationId)
+        if (rootLocationId > 1_000_000_000_000) {
+          // Player structure - check if we need to resolve its solar system
+          const structure = getStructure(rootLocationId)
+          if (structure?.solarSystemId && !hasLocation(structure.solarSystemId)) {
+            unknownLocationIds.add(structure.solarSystemId)
+          }
+        } else if (!hasLocation(rootLocationId)) {
+          // NPC station or other location
+          unknownLocationIds.add(rootLocationId)
+        }
       }
     }
 
     if (unknownLocationIds.size === 0) return
 
     resolvingLocationsRef.current = true
-    console.log(`[Locations] Resolving ${unknownLocationIds.size} unknown locations...`)
+    console.log(`[Locations] Resolving ${unknownLocationIds.size} unknown locations via ref API...`)
 
     resolveLocationNames(Array.from(unknownLocationIds))
       .then((resolved) => {
@@ -687,7 +734,7 @@ export function AssetsTab() {
       .finally(() => {
         resolvingLocationsRef.current = false
       })
-  }, [assetDataKey])
+  }, [assetDataKey, cacheVersion])
 
   const table = useReactTable({
     data: filteredData,
@@ -699,13 +746,10 @@ export function AssetsTab() {
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
-    onGlobalFilterChange: setGlobalFilter,
-    globalFilterFn: 'includesString',
     state: {
       sorting,
       columnFilters,
       columnVisibility,
-      globalFilter,
     },
     initialState: {
       pagination: {
@@ -817,6 +861,12 @@ export function AssetsTab() {
           <span className="text-xs text-slate-500">
             {refPrices ? `${refPrices.size} prices loaded` : 'Loading prices...'}
           </span>
+          {isRefreshingAbyssals && (
+            <div className="flex items-center gap-1 text-xs text-blue-400">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              <span>Fetching abyssal prices...</span>
+            </div>
+          )}
           <button className="flex items-center gap-1 rounded border border-slate-600 bg-slate-700 px-3 py-1.5 text-sm hover:bg-slate-600">
             Columns <ChevronDown className="h-4 w-4" />
           </button>
@@ -827,10 +877,10 @@ export function AssetsTab() {
         <div className="relative">
           <input
             type="text"
-            placeholder="Search assets..."
+            placeholder="Search name, group, station, system, region..."
             value={globalFilter}
             onChange={(e) => setGlobalFilter(e.target.value)}
-            className="w-56 rounded border border-slate-600 bg-slate-700 px-3 py-1.5 pr-8 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
+            className="w-72 rounded border border-slate-600 bg-slate-700 px-3 py-1.5 pr-8 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
           />
           {globalFilter && (
             <button
@@ -844,10 +894,7 @@ export function AssetsTab() {
 
         <select
           value={categoryFilter}
-          onChange={(e) => {
-            setCategoryFilter(e.target.value)
-            setGroupFilter('')
-          }}
+          onChange={(e) => setCategoryFilter(e.target.value)}
           className="w-40 rounded border border-slate-600 bg-slate-700 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
         >
           <option value="">All Categories</option>
@@ -855,30 +902,6 @@ export function AssetsTab() {
             <option key={cat} value={cat}>{cat}</option>
           ))}
         </select>
-
-        <div className="relative">
-          <input
-            type="text"
-            list="group-options"
-            placeholder="All Groups"
-            value={groupFilter}
-            onChange={(e) => setGroupFilter(e.target.value)}
-            className="w-44 rounded border border-slate-600 bg-slate-700 px-2 py-1.5 pr-8 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
-          />
-          {groupFilter && (
-            <button
-              onClick={() => setGroupFilter('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
-          <datalist id="group-options">
-            {groups.map((grp) => (
-              <option key={grp} value={grp} />
-            ))}
-          </datalist>
-        </div>
 
         <span className="text-sm text-slate-400">
           Showing {filteredRows.length} of {data.length} assets

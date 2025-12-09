@@ -64,6 +64,13 @@ function createMenu() {
           click: () => {
             mainWindow?.webContents.send('data:openUpdateDialog')
           }
+        },
+        { type: 'separator' },
+        {
+          label: 'Refresh Abyssal Prices',
+          click: () => {
+            mainWindow?.webContents.send('data:refreshAbyssalPrices')
+          }
         }
       ]
     },

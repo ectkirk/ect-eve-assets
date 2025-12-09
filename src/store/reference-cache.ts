@@ -1,7 +1,7 @@
 import { logger } from '@/lib/logger'
 
 const DB_NAME = 'ecteveassets-cache'
-const DB_VERSION = 2
+const DB_VERSION = 4
 
 export interface CachedType {
   id: number
@@ -25,7 +25,11 @@ export interface CachedStructure {
 export interface CachedLocation {
   id: number
   name: string
-  type: 'region' | 'constellation' | 'system' | 'station'
+  type: 'region' | 'constellation' | 'system' | 'station' | 'structure'
+  solarSystemId?: number
+  solarSystemName?: string
+  regionId?: number
+  regionName?: string
 }
 
 export interface CachedAbyssal {
@@ -70,6 +74,7 @@ async function openDB(): Promise<IDBDatabase> {
 
     request.onupgradeneeded = (event) => {
       const database = (event.target as IDBOpenDBRequest).result
+      const oldVersion = event.oldVersion
 
       if (!database.objectStoreNames.contains('types')) {
         database.createObjectStore('types', { keyPath: 'id' })
@@ -82,6 +87,13 @@ async function openDB(): Promise<IDBDatabase> {
       }
       if (!database.objectStoreNames.contains('abyssals')) {
         database.createObjectStore('abyssals', { keyPath: 'id' })
+      }
+
+      // Clear locations cache when upgrading to v4 (added regionName/solarSystemName fields)
+      if (oldVersion < 4 && database.objectStoreNames.contains('locations')) {
+        const tx = (event.target as IDBOpenDBRequest).transaction!
+        tx.objectStore('locations').clear()
+        logger.info('Cleared locations cache for v4 upgrade', { module: 'ReferenceCache' })
       }
     }
   })

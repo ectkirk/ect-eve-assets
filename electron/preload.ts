@@ -27,6 +27,7 @@ export interface ElectronAPI {
   writeLog: (level: LogLevel, message: string, context?: LogContext) => Promise<void>
   getLogDir: () => Promise<string>
   onOpenUpdateDialog: (callback: () => void) => () => void
+  onRefreshAbyssalPrices: (callback: () => void) => () => void
 }
 
 const electronAPI: ElectronAPI = {
@@ -44,6 +45,11 @@ const electronAPI: ElectronAPI = {
     const handler = () => callback()
     ipcRenderer.on('data:openUpdateDialog', handler)
     return () => ipcRenderer.removeListener('data:openUpdateDialog', handler)
+  },
+  onRefreshAbyssalPrices: (callback: () => void) => {
+    const handler = () => callback()
+    ipcRenderer.on('data:refreshAbyssalPrices', handler)
+    return () => ipcRenderer.removeListener('data:refreshAbyssalPrices', handler)
   },
 }
 

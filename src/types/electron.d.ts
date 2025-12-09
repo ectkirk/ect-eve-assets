@@ -25,6 +25,7 @@ interface ElectronAPI {
   writeLog: (level: LogLevel, message: string, context?: LogContext) => Promise<void>
   getLogDir: () => Promise<string>
   onOpenUpdateDialog: (callback: () => void) => () => void
+  onRefreshAbyssalPrices: (callback: () => void) => () => void
 }
 
 declare global {

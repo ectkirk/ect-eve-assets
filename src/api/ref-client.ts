@@ -4,6 +4,7 @@ import {
   getType,
   saveTypes,
   hasLocation,
+  getLocation,
   saveLocations,
   type CachedType,
   type CachedLocation,
@@ -36,11 +37,15 @@ interface RefTypeBulkResponse {
   items: Record<string, RefType>
 }
 
-export type UniverseEntityType = 'region' | 'constellation' | 'system' | 'station'
+export type UniverseEntityType = 'region' | 'constellation' | 'system' | 'station' | 'structure'
 
 export interface RefUniverseItem {
   type: UniverseEntityType
   name: string
+  solarSystemId?: number
+  solarSystemName?: string
+  regionId?: number
+  regionName?: string
 }
 
 interface RefUniverseBulkResponse {
@@ -185,8 +190,7 @@ export async function resolveLocations(locationIds: number[]): Promise<Map<numbe
   for (const id of locationIds) {
     if (id > 1_000_000_000_000) continue
     if (hasLocation(id)) {
-      const loc = { id, name: '', type: 'station' as const }
-      results.set(id, loc)
+      results.set(id, getLocation(id)!)
     } else {
       uncachedIds.push(id)
     }
@@ -202,6 +206,10 @@ export async function resolveLocations(locationIds: number[]): Promise<Map<numbe
         id,
         name: item.name,
         type: item.type,
+        solarSystemId: item.solarSystemId,
+        solarSystemName: item.solarSystemName,
+        regionId: item.regionId,
+        regionName: item.regionName,
       }
       results.set(id, cached)
       toCache.push(cached)
