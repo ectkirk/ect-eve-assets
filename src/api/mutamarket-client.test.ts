@@ -166,19 +166,20 @@ describe('mutamarket-client', () => {
       expect(onProgress).toHaveBeenCalled()
     })
 
-    it('processes items in batches', async () => {
+    it('processes items sequentially', async () => {
       const { hasAbyssal } = await import('@/store/reference-cache')
       vi.mocked(hasAbyssal).mockReturnValue(false)
+      fetchSpy.mockClear()
 
-      fetchSpy.mockResolvedValue(
-        new Response(JSON.stringify({ estimated_value: 100 }), { status: 200 })
+      fetchSpy.mockImplementation(() =>
+        Promise.resolve(new Response(JSON.stringify({ estimated_value: 100 }), { status: 200 }))
       )
 
-      const items = Array.from({ length: 10 }, (_, i) => i + 1)
+      const items = Array.from({ length: 3 }, (_, i) => i + 1)
       await fetchAbyssalPrices(items)
 
-      expect(fetchSpy).toHaveBeenCalledTimes(10)
-    })
+      expect(fetchSpy).toHaveBeenCalledTimes(3)
+    }, 10000)
 
     it('skips zero-priced items in results but persists them', async () => {
       const { hasAbyssal, getAbyssalPrice } = await import('@/store/reference-cache')

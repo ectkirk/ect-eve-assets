@@ -20,6 +20,7 @@ export interface LogContext {
 
 export interface ElectronAPI {
   startAuth: (includeCorporationScopes?: boolean) => Promise<AuthResult>
+  cancelAuth: () => Promise<void>
   refreshToken: (refreshToken: string, characterId: number) => Promise<AuthResult>
   logout: (characterId?: number) => Promise<{ success: boolean }>
   storageGet: () => Promise<Record<string, unknown> | null>
@@ -33,6 +34,7 @@ export interface ElectronAPI {
 const electronAPI: ElectronAPI = {
   startAuth: (includeCorporationScopes = false) =>
     ipcRenderer.invoke('auth:start', includeCorporationScopes),
+  cancelAuth: () => ipcRenderer.invoke('auth:cancel'),
   refreshToken: (refreshToken: string, characterId: number) =>
     ipcRenderer.invoke('auth:refresh', refreshToken, characterId),
   logout: (characterId?: number) => ipcRenderer.invoke('auth:logout', characterId),

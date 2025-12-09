@@ -37,9 +37,26 @@ export function hasCachedAbyssalPrice(itemId: number): boolean {
   return hasAbyssal(itemId)
 }
 
-async function fetchSingleAbyssalPrice(itemId: number): Promise<{ price: number; persist: boolean } | null> {
+const FETCH_TIMEOUT_MS = 5000
+const MAX_RETRIES = 2
+const RETRY_DELAYS = [500, 1500]
+
+async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Response> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
   try {
-    const response = await fetch(`${MUTAMARKET_API_BASE}/modules/${itemId}`)
+    return await fetch(url, { signal: controller.signal })
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
+
+async function fetchSingleAbyssalPrice(
+  itemId: number,
+  retryCount = 0
+): Promise<{ price: number; persist: boolean } | null> {
+  try {
+    const response = await fetchWithTimeout(`${MUTAMARKET_API_BASE}/modules/${itemId}`, FETCH_TIMEOUT_MS)
 
     if (!response.ok) {
       if (response.status === 404) {
@@ -52,7 +69,7 @@ async function fetchSingleAbyssalPrice(itemId: number): Promise<{ price: number;
     const rawData = await response.json()
     const parseResult = MutamarketModuleSchema.safeParse(rawData)
     if (!parseResult.success) {
-      logger.error('Mutamarket response validation failed', undefined, {
+      logger.warn('Mutamarket response validation failed', {
         module: 'Mutamarket',
         itemId,
         errors: parseResult.error.issues.slice(0, 3),
@@ -64,8 +81,19 @@ async function fetchSingleAbyssalPrice(itemId: number): Promise<{ price: number;
     logger.debug(`Fetched abyssal price`, { module: 'Mutamarket', itemId, price })
 
     return { price, persist: true }
-  } catch (error) {
-    logger.error('Mutamarket API error', error, { module: 'Mutamarket', itemId })
+  } catch {
+    if (retryCount < MAX_RETRIES) {
+      const delay = RETRY_DELAYS[retryCount] ?? 1000
+      logger.debug('Mutamarket request failed, retrying', {
+        module: 'Mutamarket',
+        itemId,
+        retryCount: retryCount + 1,
+        delay,
+      })
+      await new Promise((resolve) => setTimeout(resolve, delay))
+      return fetchSingleAbyssalPrice(itemId, retryCount + 1)
+    }
+    logger.debug('Mutamarket API error after retries', { module: 'Mutamarket', itemId })
     return null
   }
 }
@@ -94,32 +122,30 @@ export async function fetchAbyssalPrices(
 
   logger.debug(`Fetching ${uncachedIds.length} abyssal prices from Mutamarket`, { module: 'Mutamarket' })
 
-  const batchSize = 5
+  const REQUEST_DELAY_MS = 200
   let fetched = 0
   const toSave: CachedAbyssal[] = []
 
-  for (let i = 0; i < uncachedIds.length; i += batchSize) {
-    const batch = uncachedIds.slice(i, i + batchSize)
+  for (const itemId of uncachedIds) {
+    const result = await fetchSingleAbyssalPrice(itemId)
+    if (result !== null) {
+      if (result.price > 0) {
+        results.set(itemId, result.price)
+      }
+      if (result.persist) {
+        toSave.push({
+          id: itemId,
+          price: result.price,
+          fetchedAt: Date.now(),
+        })
+      }
+    }
+    fetched++
+    onProgress?.(fetched, uncachedIds.length)
 
-    await Promise.all(
-      batch.map(async (itemId) => {
-        const result = await fetchSingleAbyssalPrice(itemId)
-        if (result !== null) {
-          if (result.price > 0) {
-            results.set(itemId, result.price)
-          }
-          if (result.persist) {
-            toSave.push({
-              id: itemId,
-              price: result.price,
-              fetchedAt: Date.now(),
-            })
-          }
-        }
-        fetched++
-        onProgress?.(fetched, uncachedIds.length)
-      })
-    )
+    if (fetched < uncachedIds.length) {
+      await new Promise((resolve) => setTimeout(resolve, REQUEST_DELAY_MS))
+    }
   }
 
   if (toSave.length > 0) {

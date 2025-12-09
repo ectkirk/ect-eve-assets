@@ -18,6 +18,7 @@ interface LogContext {
 
 interface ElectronAPI {
   startAuth: (includeCorporationScopes?: boolean) => Promise<AuthResult>
+  cancelAuth: () => Promise<void>
   refreshToken: (refreshToken: string, characterId: number) => Promise<AuthResult>
   logout: (characterId?: number) => Promise<{ success: boolean }>
   storageGet: () => Promise<Record<string, unknown> | null>

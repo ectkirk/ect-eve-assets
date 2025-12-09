@@ -123,6 +123,19 @@ interface JWTPayload {
 let authServer: Server | null = null
 let pendingState: string | null = null
 let pendingCodeVerifier: string | null = null
+let pendingResolve: ((result: AuthResult) => void) | null = null
+
+const AUTH_TIMEOUT_MS = 2 * 60 * 1000
+
+export function cancelAuth(): void {
+  if (authServer) {
+    logger.info('Authentication cancelled by user', { module: 'Auth' })
+    authServer.close()
+    authServer = null
+    pendingResolve?.({ success: false, error: 'Authentication cancelled' })
+    pendingResolve = null
+  }
+}
 
 async function verifyToken(token: string): Promise<JWTPayload> {
   const { payload } = await jose.jwtVerify(token, JWKS, {
@@ -246,6 +259,8 @@ export async function startAuth(includeCorporationScopes = false): Promise<AuthR
   authUrl.searchParams.set('code_challenge_method', 'S256')
 
   return new Promise((resolve) => {
+    pendingResolve = resolve
+
     authServer!.on('request', async (req, res) => {
       const url = new URL(req.url || '', `http://localhost:${callbackPort}`)
 
@@ -266,6 +281,7 @@ export async function startAuth(includeCorporationScopes = false): Promise<AuthR
 
         authServer?.close()
         authServer = null
+        pendingResolve = null
 
         if (error) {
           logger.error('SSO callback returned error', undefined, { module: 'Auth', error })
@@ -336,9 +352,10 @@ export async function startAuth(includeCorporationScopes = false): Promise<AuthR
         logger.warn('Authentication timed out', { module: 'Auth' })
         authServer.close()
         authServer = null
+        pendingResolve = null
         resolve({ success: false, error: 'Authentication timed out' })
       }
-    }, 5 * 60 * 1000)
+    }, AUTH_TIMEOUT_MS)
   })
 }
 
