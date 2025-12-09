@@ -16,9 +16,6 @@ import {
 } from './schemas'
 import { z } from 'zod'
 
-const isDev = import.meta.env.DEV
-const REF_API_BASE = isDev ? '/ref-api/v1' : 'https://ref.edencom.net/api/v1'
-
 export type RefMarketPrice = z.infer<typeof RefTypeSchema>['marketPrice']
 export type RefType = z.infer<typeof RefTypeSchema>
 export type RefUniverseItem = z.infer<typeof RefUniverseItemSchema>
@@ -36,18 +33,12 @@ async function fetchTypesFromAPI(
     const chunk = ids.slice(i, i + 1000)
 
     try {
-      const response = await fetch(`${REF_API_BASE}/types?market=${market}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: chunk }),
-      })
-
-      if (!response.ok) {
-        logger.warn('RefAPI /types failed', { module: 'RefAPI', status: response.status })
+      const rawData = await window.electronAPI!.refTypes(chunk, market)
+      if (rawData && typeof rawData === 'object' && 'error' in rawData) {
+        logger.warn('RefAPI /types failed', { module: 'RefAPI', error: rawData.error })
         continue
       }
 
-      const rawData = await response.json()
       const parseResult = RefTypeBulkResponseSchema.safeParse(rawData)
       if (!parseResult.success) {
         logger.error('RefAPI /types validation failed', undefined, {
@@ -77,18 +68,12 @@ async function fetchUniverseFromAPI(ids: number[]): Promise<Map<number, RefUnive
     const chunk = ids.slice(i, i + 1000)
 
     try {
-      const response = await fetch(`${REF_API_BASE}/universe`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: chunk }),
-      })
-
-      if (!response.ok) {
-        logger.warn('RefAPI /universe failed', { module: 'RefAPI', status: response.status })
+      const rawData = await window.electronAPI!.refUniverse(chunk)
+      if (rawData && typeof rawData === 'object' && 'error' in rawData) {
+        logger.warn('RefAPI /universe failed', { module: 'RefAPI', error: rawData.error })
         continue
       }
 
-      const rawData = await response.json()
       const parseResult = RefUniverseBulkResponseSchema.safeParse(rawData)
       if (!parseResult.success) {
         logger.error('RefAPI /universe validation failed', undefined, {

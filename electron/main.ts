@@ -85,14 +85,14 @@ function createMenu() {
     {
       label: 'Data',
       submenu: [
-        {
-          label: 'Update...',
-          accelerator: 'CmdOrCtrl+U',
-          click: () => {
-            mainWindow?.webContents.send('data:openUpdateDialog')
-          }
-        },
-        { type: 'separator' },
+        // {
+        //   label: 'Update...',
+        //   accelerator: 'CmdOrCtrl+U',
+        //   click: () => {
+        //     mainWindow?.webContents.send('data:openUpdateDialog')
+        //   }
+        // },
+        // { type: 'separator' },
         {
           label: 'Refresh Abyssal Prices',
           click: () => {
@@ -311,6 +311,60 @@ ipcMain.handle('log:write', (_event, level: unknown, message: unknown, context: 
 
 ipcMain.handle('log:getDir', () => {
   return logger.getLogDir()
+})
+
+const REF_API_BASE = 'https://ref.edencom.net/api/v1'
+const MAX_REF_IDS = 1000
+
+ipcMain.handle('ref:types', async (_event, ids: unknown, market: unknown) => {
+  if (!Array.isArray(ids) || ids.length === 0 || ids.length > MAX_REF_IDS) {
+    return { error: 'Invalid ids array' }
+  }
+  if (!ids.every((id) => typeof id === 'number' && Number.isInteger(id) && id > 0)) {
+    return { error: 'Invalid id values' }
+  }
+  if (market !== 'jita' && market !== 'the_forge') {
+    return { error: 'Invalid market' }
+  }
+
+  try {
+    const response = await fetch(`${REF_API_BASE}/types?market=${market}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids }),
+    })
+    if (!response.ok) {
+      return { error: `HTTP ${response.status}` }
+    }
+    return await response.json()
+  } catch (err) {
+    logger.error('ref:types fetch failed', err, { module: 'Main' })
+    return { error: String(err) }
+  }
+})
+
+ipcMain.handle('ref:universe', async (_event, ids: unknown) => {
+  if (!Array.isArray(ids) || ids.length === 0 || ids.length > MAX_REF_IDS) {
+    return { error: 'Invalid ids array' }
+  }
+  if (!ids.every((id) => typeof id === 'number' && Number.isInteger(id) && id > 0)) {
+    return { error: 'Invalid id values' }
+  }
+
+  try {
+    const response = await fetch(`${REF_API_BASE}/universe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids }),
+    })
+    if (!response.ok) {
+      return { error: `HTTP ${response.status}` }
+    }
+    return await response.json()
+  } catch (err) {
+    logger.error('ref:universe fetch failed', err, { module: 'Main' })
+    return { error: String(err) }
+  }
 })
 
 app.whenReady().then(() => {
