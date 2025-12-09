@@ -28,7 +28,6 @@ export function TreeTab({ mode }: TreeTabProps) {
     hasData,
     hasError,
     errorMessage,
-    typeProgress,
     prices,
     cacheVersion,
     update,
@@ -70,20 +69,6 @@ export function TreeTab({ mode }: TreeTabProps) {
             {updateProgress
               ? `Fetching assets (${updateProgress.current + 1}/${updateProgress.total})...`
               : 'Loading assets...'}
-          </p>
-        </div>
-      </div>
-    )
-  }
-
-  if (typeProgress && treeNodes.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-500 mx-auto" />
-          <p className="mt-2 text-slate-400">Resolving item types...</p>
-          <p className="text-sm text-slate-500">
-            {typeProgress.resolved} / {typeProgress.total}
           </p>
         </div>
       </div>

@@ -149,7 +149,7 @@ export function getType(id: number): CachedType | undefined {
 }
 
 export function getTypeName(id: number): string {
-  return typesCache.get(id)?.name ?? `Type ${id}`
+  return typesCache.get(id)?.name ?? `Unknown Type ${id}`
 }
 
 export function hasType(id: number): boolean {

@@ -173,7 +173,7 @@ function createItemNode(
   const price = getAssetPrice(asset, prices)
   const volume = type?.volume ?? 0
   const customName = assetNames?.get(asset.item_id)
-  const typeName = type?.name || `Type ${asset.type_id}`
+  const typeName = type?.name || `Unknown Type ${asset.type_id}`
 
   let nodeType: TreeNodeType = 'item'
   let displayName = customName || typeName

@@ -1,6 +1,5 @@
 import { logger } from '@/lib/logger'
 import {
-  hasType,
   getType,
   saveTypes,
   hasLocation,
@@ -129,8 +128,9 @@ export async function resolveTypes(
   const uncachedIds: number[] = []
 
   for (const id of typeIds) {
-    if (hasType(id)) {
-      results.set(id, getType(id)!)
+    const cached = getType(id)
+    if (cached && !cached.name.startsWith('Unknown Type ')) {
+      results.set(id, cached)
     } else {
       uncachedIds.push(id)
     }
@@ -230,6 +230,7 @@ export async function fetchPrices(
 ): Promise<Map<number, number>> {
   const fetched = await fetchTypesFromAPI(typeIds, market)
   const prices = new Map<number, number>()
+  const toCache: CachedType[] = []
 
   for (const [typeId, type] of fetched) {
     const lowestSell = type.marketPrice.lowestSell
@@ -238,6 +239,21 @@ export async function fetchPrices(
     if (price > 0) {
       prices.set(typeId, price)
     }
+
+    toCache.push({
+      id: type.id,
+      name: type.name,
+      groupId: type.groupId ?? 0,
+      groupName: type.groupName ?? '',
+      categoryId: type.categoryId ?? 0,
+      categoryName: type.categoryName ?? '',
+      volume: type.volume ?? 0,
+      packagedVolume: type.packagedVolume ?? undefined,
+    })
+  }
+
+  if (toCache.length > 0) {
+    await saveTypes(toCache)
   }
 
   return prices

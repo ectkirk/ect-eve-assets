@@ -1,11 +1,10 @@
 import { esiClient } from '../esi-client'
-import { resolveTypes as refResolveTypes, resolveLocations } from '../ref-client'
+import { resolveLocations } from '../ref-client'
 import {
   hasStructure,
   getStructure as getCachedStructure,
   saveStructures,
   type CachedStructure,
-  type CachedType,
 } from '@/store/reference-cache'
 import { logger } from '@/lib/logger'
 
@@ -19,21 +18,6 @@ export interface ESIStructure {
   }
   solar_system_id: number
   type_id?: number
-}
-
-export async function resolveLocationName(locationId: number): Promise<string | null> {
-  const results = await resolveLocations([locationId])
-  const item = results.get(locationId)
-  return item?.name ?? null
-}
-
-export async function resolveLocationNames(locationIds: number[]): Promise<Map<number, string>> {
-  const resolved = await resolveLocations(locationIds)
-  const nameMap = new Map<number, string>()
-  for (const [id, loc] of resolved) {
-    nameMap.set(id, loc.name)
-  }
-  return nameMap
 }
 
 type StructureResult =
@@ -154,17 +138,5 @@ export async function resolveStructures(
     logger.info('Cached structures', { module: 'ESI', count: toCache.length })
   }
 
-  return results
-}
-
-export async function resolveTypes(
-  typeIds: number[],
-  _concurrency = 20,
-  onProgress?: (resolved: number, total: number) => void
-): Promise<Map<number, CachedType>> {
-  if (typeIds.length === 0) return new Map()
-  onProgress?.(0, typeIds.length)
-  const results = await refResolveTypes(typeIds)
-  onProgress?.(results.size, typeIds.length)
   return results
 }

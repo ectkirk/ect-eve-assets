@@ -1,0 +1,454 @@
+import { useEffect, useMemo, useState, useCallback } from 'react'
+import { Loader2, RefreshCw, TrendingUp, TrendingDown, ChevronRight, ChevronDown } from 'lucide-react'
+import { useAuthStore } from '@/store/auth-store'
+import { useMarketOrdersStore } from '@/store/market-orders-store'
+import { type ESIMarketOrder } from '@/api/endpoints/market'
+import { hasType, getType, hasLocation, getLocation, subscribe } from '@/store/reference-cache'
+import { resolveTypes, resolveLocations } from '@/api/ref-client'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { TypeIcon } from '@/components/ui/type-icon'
+
+interface OrderRow {
+  order: ESIMarketOrder
+  ownerName: string
+  typeId: number
+  typeName: string
+  categoryId?: number
+  locationName: string
+  regionName: string
+  systemName: string
+}
+
+interface LocationGroup {
+  locationId: number
+  locationName: string
+  regionName: string
+  systemName: string
+  orders: OrderRow[]
+  totalBuyValue: number
+  totalSellValue: number
+}
+
+function formatISK(value: number): string {
+  if (value >= 1_000_000_000) return (value / 1_000_000_000).toFixed(2) + 'B'
+  if (value >= 1_000_000) return (value / 1_000_000).toFixed(2) + 'M'
+  if (value >= 1_000) return (value / 1_000).toFixed(2) + 'K'
+  return value.toLocaleString()
+}
+
+function formatTimeRemaining(ms: number): string {
+  if (ms <= 0) return ''
+  const minutes = Math.ceil(ms / 60000)
+  if (minutes >= 60) {
+    const hours = Math.floor(minutes / 60)
+    const mins = minutes % 60
+    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
+  }
+  return `${minutes}m`
+}
+
+function formatExpiry(issued: string, duration: number): string {
+  const issuedDate = new Date(issued)
+  const expiryDate = new Date(issuedDate.getTime() + duration * 24 * 60 * 60 * 1000)
+  const now = Date.now()
+  const remaining = expiryDate.getTime() - now
+
+  if (remaining <= 0) return 'Expired'
+
+  const days = Math.floor(remaining / (24 * 60 * 60 * 1000))
+  if (days > 0) return `${days}d`
+
+  const hours = Math.floor(remaining / (60 * 60 * 1000))
+  return `${hours}h`
+}
+
+function OrdersTable({ orders }: { orders: OrderRow[] }) {
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow className="hover:bg-transparent">
+          <TableHead className="w-8"></TableHead>
+          <TableHead>Item</TableHead>
+          <TableHead className="text-right">Price</TableHead>
+          <TableHead className="text-right">Quantity</TableHead>
+          <TableHead className="text-right">Total</TableHead>
+          <TableHead className="text-right">Expires</TableHead>
+          <TableHead>Owner</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {orders.map((row) => {
+          const total = row.order.price * row.order.volume_remain
+          return (
+            <TableRow key={row.order.order_id}>
+              <TableCell className="py-1.5 w-8">
+                {row.order.is_buy_order ? (
+                  <TrendingDown className="h-4 w-4 text-green-400" />
+                ) : (
+                  <TrendingUp className="h-4 w-4 text-red-400" />
+                )}
+              </TableCell>
+              <TableCell className="py-1.5">
+                <div className="flex items-center gap-2">
+                  <TypeIcon typeId={row.typeId} categoryId={row.categoryId} />
+                  <span className="truncate" title={row.typeName}>
+                    {row.typeName}
+                  </span>
+                </div>
+              </TableCell>
+              <TableCell className="py-1.5 text-right tabular-nums">
+                {formatISK(row.order.price)}
+              </TableCell>
+              <TableCell className="py-1.5 text-right tabular-nums">
+                {row.order.volume_remain.toLocaleString()}
+                {row.order.volume_remain !== row.order.volume_total && (
+                  <span className="text-slate-500">
+                    /{row.order.volume_total.toLocaleString()}
+                  </span>
+                )}
+              </TableCell>
+              <TableCell className="py-1.5 text-right tabular-nums text-amber-400">
+                {formatISK(total)}
+              </TableCell>
+              <TableCell className="py-1.5 text-right tabular-nums text-slate-400">
+                {formatExpiry(row.order.issued, row.order.duration)}
+              </TableCell>
+              <TableCell className="py-1.5 text-slate-400">{row.ownerName}</TableCell>
+            </TableRow>
+          )
+        })}
+      </TableBody>
+    </Table>
+  )
+}
+
+function LocationGroupRow({
+  group,
+  isExpanded,
+  onToggle,
+}: {
+  group: LocationGroup
+  isExpanded: boolean
+  onToggle: () => void
+}) {
+  const buyOrders = group.orders.filter((o) => o.order.is_buy_order)
+  const sellOrders = group.orders.filter((o) => !o.order.is_buy_order)
+
+  return (
+    <div className="border-b border-slate-700 last:border-b-0">
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-800/50 text-left"
+      >
+        {isExpanded ? (
+          <ChevronDown className="h-4 w-4 text-slate-400" />
+        ) : (
+          <ChevronRight className="h-4 w-4 text-slate-400" />
+        )}
+        <span className="font-medium text-blue-300 flex-1">{group.locationName}</span>
+        <span className="text-xs text-slate-500 mr-4">
+          {group.systemName} / {group.regionName}
+        </span>
+        <span className="text-xs text-green-400 w-24 text-right">
+          {buyOrders.length > 0 && `${buyOrders.length} buy`}
+        </span>
+        <span className="text-xs text-red-400 w-24 text-right">
+          {sellOrders.length > 0 && `${sellOrders.length} sell`}
+        </span>
+        <span className="text-xs text-amber-400 w-28 text-right tabular-nums">
+          {formatISK(group.totalBuyValue + group.totalSellValue)}
+        </span>
+      </button>
+      {isExpanded && (
+        <div className="bg-slate-900/30 px-3 pb-2">
+          <OrdersTable orders={group.orders} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function MarketOrdersTab() {
+  const ownersRecord = useAuthStore((s) => s.owners)
+  const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
+
+  const ordersByOwner = useMarketOrdersStore((s) => s.ordersByOwner)
+  const lastUpdated = useMarketOrdersStore((s) => s.lastUpdated)
+  const isUpdating = useMarketOrdersStore((s) => s.isUpdating)
+  const updateError = useMarketOrdersStore((s) => s.updateError)
+  const init = useMarketOrdersStore((s) => s.init)
+  const update = useMarketOrdersStore((s) => s.update)
+  const canUpdateFn = useMarketOrdersStore((s) => s.canUpdate)
+  const getTimeUntilUpdateFn = useMarketOrdersStore((s) => s.getTimeUntilUpdate)
+  const initialized = useMarketOrdersStore((s) => s.initialized)
+
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const interval = setInterval(() => setTick((t) => t + 1), 1000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const canUpdate = canUpdateFn()
+  const timeUntilUpdate = getTimeUntilUpdateFn()
+
+  useEffect(() => {
+    init()
+  }, [init])
+
+  const [cacheVersion, setCacheVersion] = useState(0)
+  useEffect(() => subscribe(() => setCacheVersion((v) => v + 1)), [])
+
+  useEffect(() => {
+    if (ordersByOwner.length === 0) return
+
+    const unresolvedTypeIds = new Set<number>()
+    const unknownLocationIds = new Set<number>()
+
+    for (const { orders } of ordersByOwner) {
+      for (const order of orders) {
+        const type = getType(order.type_id)
+        if (!type || type.name.startsWith('Unknown Type ')) {
+          unresolvedTypeIds.add(order.type_id)
+        }
+        if (!hasLocation(order.location_id)) unknownLocationIds.add(order.location_id)
+      }
+    }
+
+    if (unresolvedTypeIds.size > 0) {
+      resolveTypes(Array.from(unresolvedTypeIds)).catch(() => {})
+    }
+    if (unknownLocationIds.size > 0) {
+      resolveLocations(Array.from(unknownLocationIds)).catch(() => {})
+    }
+  }, [ordersByOwner])
+
+  const [expandedLocations, setExpandedLocations] = useState<Set<number>>(new Set())
+
+  const locationGroups = useMemo(() => {
+    void cacheVersion
+
+    const groups = new Map<number, LocationGroup>()
+
+    for (const { owner, orders } of ordersByOwner) {
+      for (const order of orders) {
+        const type = hasType(order.type_id) ? getType(order.type_id) : undefined
+        const location = hasLocation(order.location_id) ? getLocation(order.location_id) : undefined
+
+        const row: OrderRow = {
+          order,
+          ownerName: owner.name,
+          typeId: order.type_id,
+          typeName: type?.name ?? `Unknown Type ${order.type_id}`,
+          categoryId: type?.categoryId,
+          locationName: location?.name ?? `Location ${order.location_id}`,
+          regionName: location?.regionName ?? '',
+          systemName: location?.solarSystemName ?? '',
+        }
+
+        let group = groups.get(order.location_id)
+        if (!group) {
+          group = {
+            locationId: order.location_id,
+            locationName: row.locationName,
+            regionName: row.regionName,
+            systemName: row.systemName,
+            orders: [],
+            totalBuyValue: 0,
+            totalSellValue: 0,
+          }
+          groups.set(order.location_id, group)
+        }
+
+        group.orders.push(row)
+        const orderValue = order.price * order.volume_remain
+        if (order.is_buy_order) {
+          group.totalBuyValue += orderValue
+        } else {
+          group.totalSellValue += orderValue
+        }
+      }
+    }
+
+    const sorted = Array.from(groups.values()).sort((a, b) => {
+      const aTotal = a.totalBuyValue + a.totalSellValue
+      const bTotal = b.totalBuyValue + b.totalSellValue
+      return bTotal - aTotal
+    })
+
+    for (const group of sorted) {
+      group.orders.sort((a, b) => {
+        if (a.order.is_buy_order !== b.order.is_buy_order) {
+          return a.order.is_buy_order ? 1 : -1
+        }
+        return b.order.price * b.order.volume_remain - a.order.price * a.order.volume_remain
+      })
+    }
+
+    return sorted
+  }, [ordersByOwner, cacheVersion])
+
+  const toggleLocation = useCallback((locationId: number) => {
+    setExpandedLocations((prev) => {
+      const next = new Set(prev)
+      if (next.has(locationId)) next.delete(locationId)
+      else next.add(locationId)
+      return next
+    })
+  }, [])
+
+  const expandAll = useCallback(() => {
+    const allIds = locationGroups.map((g) => g.locationId)
+    setExpandedLocations(new Set(allIds))
+  }, [locationGroups])
+
+  const collapseAll = useCallback(() => {
+    setExpandedLocations(new Set())
+  }, [])
+
+  const totals = useMemo(() => {
+    let buyValue = 0
+    let sellValue = 0
+    let buyCount = 0
+    let sellCount = 0
+
+    for (const group of locationGroups) {
+      buyValue += group.totalBuyValue
+      sellValue += group.totalSellValue
+      for (const row of group.orders) {
+        if (row.order.is_buy_order) buyCount++
+        else sellCount++
+      }
+    }
+
+    return { buyValue, sellValue, buyCount, sellCount }
+  }, [locationGroups])
+
+  if (owners.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-slate-400">No characters logged in. Add a character to view orders.</p>
+      </div>
+    )
+  }
+
+  if (!initialized || (isUpdating && ordersByOwner.length === 0)) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-500 mx-auto" />
+          <p className="mt-2 text-slate-400">Loading market orders...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (ordersByOwner.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          {updateError && (
+            <>
+              <p className="text-red-500">Failed to load market orders</p>
+              <p className="text-sm text-slate-400 mb-4">{updateError}</p>
+            </>
+          )}
+          {!updateError && (
+            <p className="text-slate-400 mb-4">No market orders loaded. Click Update to fetch from ESI.</p>
+          )}
+          <button
+            onClick={() => update()}
+            disabled={!canUpdate}
+            className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50"
+          >
+            {canUpdate ? 'Update Orders' : `Update in ${formatTimeRemaining(timeUntilUpdate)}`}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-6 text-sm">
+          <div>
+            <span className="text-slate-400">Buy Orders: </span>
+            <span className="font-medium text-green-400">{totals.buyCount}</span>
+            <span className="text-slate-500 ml-1">({formatISK(totals.buyValue)})</span>
+          </div>
+          <div>
+            <span className="text-slate-400">Sell Orders: </span>
+            <span className="font-medium text-red-400">{totals.sellCount}</span>
+            <span className="text-slate-500 ml-1">({formatISK(totals.sellValue)})</span>
+          </div>
+          <div>
+            <span className="text-slate-400">Total Value: </span>
+            <span className="font-medium text-amber-400">
+              {formatISK(totals.buyValue + totals.sellValue)}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={expandAll}
+            className="rounded border border-slate-600 bg-slate-700 px-2 py-1 text-xs hover:bg-slate-600"
+          >
+            Expand All
+          </button>
+          <button
+            onClick={collapseAll}
+            className="rounded border border-slate-600 bg-slate-700 px-2 py-1 text-xs hover:bg-slate-600"
+          >
+            Collapse All
+          </button>
+          <button
+            onClick={() => update()}
+            disabled={!canUpdate || isUpdating}
+            className="flex items-center gap-1.5 rounded bg-blue-600 px-3 py-1 text-sm hover:bg-blue-500 disabled:opacity-50"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isUpdating ? 'animate-spin' : ''}`} />
+            {isUpdating
+              ? 'Updating...'
+              : canUpdate
+                ? 'Update'
+                : formatTimeRemaining(timeUntilUpdate)}
+          </button>
+        </div>
+      </div>
+
+      <div
+        className="rounded-lg border border-slate-700 overflow-auto"
+        style={{ height: 'calc(100vh - 220px)', minHeight: '400px' }}
+      >
+        {locationGroups.length === 0 ? (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-slate-400">No active market orders.</p>
+          </div>
+        ) : (
+          locationGroups.map((group) => (
+            <LocationGroupRow
+              key={group.locationId}
+              group={group}
+              isExpanded={expandedLocations.has(group.locationId)}
+              onToggle={() => toggleLocation(group.locationId)}
+            />
+          ))
+        )}
+      </div>
+
+      {lastUpdated && (
+        <p className="text-xs text-slate-500 text-right">
+          Last updated: {new Date(lastUpdated).toLocaleString()}
+        </p>
+      )}
+    </div>
+  )
+}

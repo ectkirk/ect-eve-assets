@@ -31,6 +31,7 @@ export async function getCharacterIndustryJobs(
 ): Promise<ESIIndustryJob[]> {
   const params = includeCompleted ? '?include_completed=true' : ''
   return esiClient.fetch<ESIIndustryJob[]>(
-    `/characters/${characterId}/industry/jobs/${params}`
+    `/characters/${characterId}/industry/jobs/${params}`,
+    { characterId }
   )
 }

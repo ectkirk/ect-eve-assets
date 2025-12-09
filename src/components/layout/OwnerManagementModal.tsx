@@ -17,6 +17,7 @@ import {
   Search,
   CheckCircle2,
 } from 'lucide-react'
+import { OwnerIcon } from '@/components/ui/type-icon'
 
 interface OwnerManagementModalProps {
   open: boolean
@@ -338,9 +339,6 @@ interface OwnerRowProps {
 
 function OwnerRow({ owner, isActive, onSelect, onRemove }: OwnerRowProps) {
   const isCorp = owner.type === 'corporation'
-  const imageUrl = isCorp
-    ? `https://images.evetech.net/corporations/${owner.id}/logo?size=32`
-    : `https://images.evetech.net/characters/${owner.id}/portrait?size=32`
 
   return (
     <div
@@ -350,7 +348,7 @@ function OwnerRow({ owner, isActive, onSelect, onRemove }: OwnerRowProps) {
       }`}
     >
       <div className="flex items-center gap-2">
-        <img src={imageUrl} alt={owner.name} className="h-6 w-6 rounded" />
+        <OwnerIcon ownerId={owner.id} ownerType={owner.type} size="lg" />
         <span className={`text-sm ${isCorp ? 'text-yellow-400' : ''}`}>
           {owner.name}
         </span>

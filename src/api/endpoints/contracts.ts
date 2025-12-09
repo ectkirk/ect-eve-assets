@@ -48,7 +48,8 @@ export async function getCharacterContracts(
   characterId: number
 ): Promise<ESIContract[]> {
   return esiClient.fetchWithPagination<ESIContract>(
-    `/characters/${characterId}/contracts/`
+    `/characters/${characterId}/contracts/`,
+    { characterId }
   )
 }
 
@@ -57,6 +58,7 @@ export async function getContractItems(
   contractId: number
 ): Promise<ESIContractItem[]> {
   return esiClient.fetch<ESIContractItem[]>(
-    `/characters/${characterId}/contracts/${contractId}/items/`
+    `/characters/${characterId}/contracts/${contractId}/items/`,
+    { characterId }
   )
 }

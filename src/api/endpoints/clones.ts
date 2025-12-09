@@ -23,11 +23,11 @@ export interface ESIImplant {
 export async function getCharacterClones(
   characterId: number
 ): Promise<ESIClone> {
-  return esiClient.fetch<ESIClone>(`/characters/${characterId}/clones/`)
+  return esiClient.fetch<ESIClone>(`/characters/${characterId}/clones/`, { characterId })
 }
 
 export async function getCharacterImplants(
   characterId: number
 ): Promise<number[]> {
-  return esiClient.fetch<number[]>(`/characters/${characterId}/implants/`)
+  return esiClient.fetch<number[]>(`/characters/${characterId}/implants/`, { characterId })
 }

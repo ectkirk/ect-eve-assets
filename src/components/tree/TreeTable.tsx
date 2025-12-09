@@ -25,6 +25,7 @@ import {
 import type { TreeNode, TreeNodeType } from '@/lib/tree-types'
 import { flattenTree, getAllNodeIds } from '@/lib/tree-builder'
 import { cn } from '@/lib/utils'
+import { TypeIcon } from '@/components/ui/type-icon'
 
 interface TreeTableProps {
   nodes: TreeNode[]
@@ -81,38 +82,16 @@ function TreeNodeIcon({ nodeType }: { nodeType: TreeNodeType }) {
   return <Icon className={cn('h-4 w-4 flex-shrink-0', colorClass)} />
 }
 
-const SKIN_CATEGORY_ID = 91
-const BLUEPRINT_CATEGORY_ID = 9
-
 function ItemIcon({ node }: { node: TreeNode }) {
-  const typeId = node.typeId
-  const categoryId = node.categoryId
-  const isBpc = node.isBlueprintCopy
-
-  if (!typeId) {
+  if (!node.typeId) {
     return <TreeNodeIcon nodeType={node.nodeType} />
   }
 
-  const isSkin = categoryId === SKIN_CATEGORY_ID
-  const isBlueprint = categoryId === BLUEPRINT_CATEGORY_ID
-
-  if (isSkin) {
-    return <div className="h-5 w-5 flex-shrink-0 rounded bg-slate-700" />
-  }
-
-  let imageUrl = `https://images.evetech.net/types/${typeId}/icon?size=32`
-  if (isBlueprint) {
-    imageUrl = isBpc
-      ? `https://images.evetech.net/types/${typeId}/bpc?size=32`
-      : `https://images.evetech.net/types/${typeId}/bp?size=32`
-  }
-
   return (
-    <img
-      src={imageUrl}
-      alt=""
-      className="h-5 w-5 flex-shrink-0"
-      loading="lazy"
+    <TypeIcon
+      typeId={node.typeId}
+      categoryId={node.categoryId}
+      isBlueprintCopy={node.isBlueprintCopy}
     />
   )
 }

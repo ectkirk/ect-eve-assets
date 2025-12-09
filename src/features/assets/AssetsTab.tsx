@@ -25,6 +25,7 @@ import { type ESIAsset } from '@/api/endpoints/assets'
 import { isAbyssalTypeId } from '@/api/mutamarket-client'
 import { getAbyssalPrice, getTypeName, getType, getStructure, getLocation, CategoryIds } from '@/store/reference-cache'
 import { useAssetData } from '@/hooks/useAssetData'
+import { TypeIcon, OwnerIcon } from '@/components/ui/type-icon'
 
 interface AssetRow {
   itemId: number
@@ -134,19 +135,11 @@ const columns: ColumnDef<AssetRow>[] = [
     cell: ({ row }) => {
       const ownerId = row.original.ownerId
       const name = row.getValue('ownerName') as string
-      const isCorp = row.original.ownerType === 'corporation'
+      const ownerType = row.original.ownerType
       return (
-        <img
-          src={
-            isCorp
-              ? `https://images.evetech.net/corporations/${ownerId}/logo?size=32`
-              : `https://images.evetech.net/characters/${ownerId}/portrait?size=32`
-          }
-          alt={name}
-          title={name}
-          className="h-6 w-6 rounded"
-          loading="lazy"
-        />
+        <span title={name}>
+          <OwnerIcon ownerId={ownerId} ownerType={ownerType} size="lg" />
+        </span>
       )
     },
   },
@@ -167,27 +160,10 @@ const columns: ColumnDef<AssetRow>[] = [
       const typeName = row.getValue('typeName') as string
       const isBpc = row.original.isBlueprintCopy
       const categoryId = row.original.categoryId
-      const isSkin = categoryId === 91
-      const isBlueprint = categoryId === 9
-
-      let imageUrl = `https://images.evetech.net/types/${typeId}/icon?size=32`
-      if (isBlueprint) {
-        imageUrl = isBpc
-          ? `https://images.evetech.net/types/${typeId}/bpc?size=32`
-          : `https://images.evetech.net/types/${typeId}/bp?size=32`
-      }
 
       return (
         <div className="flex items-center gap-2">
-          {!isSkin && (
-            <img
-              src={imageUrl}
-              alt=""
-              className="h-6 w-6"
-              loading="lazy"
-            />
-          )}
-          {isSkin && <div className="h-6 w-6 rounded bg-slate-700" />}
+          <TypeIcon typeId={typeId} categoryId={categoryId} isBlueprintCopy={isBpc} size="lg" />
           <span className={isBpc ? 'text-cyan-400' : ''}>
             {typeName}
             {isBpc && ' (Copy)'}
@@ -317,7 +293,6 @@ export function AssetsTab() {
     hasData,
     hasError,
     errorMessage,
-    typeProgress,
     prices,
     assetNames,
     cacheVersion,
@@ -577,20 +552,6 @@ export function AssetsTab() {
             {updateProgress
               ? `Fetching assets (${updateProgress.current + 1}/${updateProgress.total})...`
               : 'Loading assets...'}
-          </p>
-        </div>
-      </div>
-    )
-  }
-
-  if (typeProgress && data.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-500 mx-auto" />
-          <p className="mt-2 text-slate-400">Resolving item types...</p>
-          <p className="text-sm text-slate-500">
-            {typeProgress.resolved} / {typeProgress.total}
           </p>
         </div>
       </div>

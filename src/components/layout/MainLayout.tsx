@@ -7,7 +7,12 @@ import { DeliveriesTab } from '@/features/deliveries'
 import { AssetSafetyTab } from '@/features/asset-safety'
 import { OfficeTab } from '@/features/office'
 import { StructuresTab } from '@/features/structures'
+import { MarketOrdersTab } from '@/features/market-orders'
+import { IndustryJobsTab } from '@/features/industry-jobs'
+import { ClonesTab } from '@/features/clones'
+import { ContractsTab } from '@/features/contracts'
 import { Plus, Loader2 } from 'lucide-react'
+import { OwnerIcon } from '@/components/ui/type-icon'
 import { OwnerManagementModal } from './OwnerManagementModal'
 
 const TABS = [
@@ -42,6 +47,14 @@ function TabContent({ tab }: { tab: Tab }) {
       return <OfficeTab />
     case 'Structures':
       return <StructuresTab />
+    case 'Market Orders':
+      return <MarketOrdersTab />
+    case 'Industry Jobs':
+      return <IndustryJobsTab />
+    case 'Clones':
+      return <ClonesTab />
+    case 'Contracts':
+      return <ContractsTab />
     default:
       return (
         <div className="text-slate-400">
@@ -127,15 +140,7 @@ function OwnerButton() {
       >
         {activeOwner && (
           <>
-            <img
-              src={
-                activeOwner.type === 'corporation'
-                  ? `https://images.evetech.net/corporations/${activeOwner.id}/logo?size=32`
-                  : `https://images.evetech.net/characters/${activeOwner.id}/portrait?size=32`
-              }
-              alt={activeOwner.name}
-              className="h-8 w-8 rounded"
-            />
+            <OwnerIcon ownerId={activeOwner.id} ownerType={activeOwner.type} size="lg" />
             <span
               className={`text-sm ${activeOwner.type === 'corporation' ? 'text-yellow-400' : ''}`}
             >

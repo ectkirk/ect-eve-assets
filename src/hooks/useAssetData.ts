@@ -11,9 +11,9 @@ import {
   getStructure,
   subscribe as subscribeToCache,
 } from '@/store/reference-cache'
-import { resolveStructures, resolveLocationNames, resolveTypes } from '@/api/endpoints/universe'
+import { resolveStructures } from '@/api/endpoints/universe'
+import { resolveLocations } from '@/api/ref-client'
 
-let resolvingTypes = false
 let resolvingStructures = false
 let resolvingLocations = false
 
@@ -27,7 +27,6 @@ export interface AssetDataResult {
   hasError: boolean
   errorMessage: string | null
   lastUpdated: number | null
-  typeProgress: { resolved: number; total: number } | null
   prices: Map<number, number>
   assetNames: Map<number, string>
   cacheVersion: number
@@ -75,36 +74,6 @@ export function useAssetData(): AssetDataResult {
 
   const assetsByOwnerRef = useRef(assetsByOwner)
   assetsByOwnerRef.current = assetsByOwner
-
-  // Type resolution (ref API - ok to call)
-  const [typeProgress, setTypeProgress] = useState<{ resolved: number; total: number } | null>(null)
-
-  useEffect(() => {
-    const data = assetsByOwnerRef.current
-    if (resolvingTypes || data.length === 0) return
-
-    const unknownTypeIds = new Set<number>()
-    for (const { assets } of data) {
-      for (const asset of assets) {
-        if (!hasType(asset.type_id)) {
-          unknownTypeIds.add(asset.type_id)
-        }
-      }
-    }
-    if (unknownTypeIds.size === 0) return
-
-    resolvingTypes = true
-    setTypeProgress({ resolved: 0, total: unknownTypeIds.size })
-
-    resolveTypes(Array.from(unknownTypeIds), 20, (resolved, total) =>
-      setTypeProgress({ resolved, total })
-    )
-      .then(() => setTypeProgress(null))
-      .catch(() => setTypeProgress(null))
-      .finally(() => {
-        resolvingTypes = false
-      })
-  }, [assetDataKey])
 
   // Structure resolution (ESI - only for unknown structures)
   useEffect(() => {
@@ -207,7 +176,7 @@ export function useAssetData(): AssetDataResult {
 
     resolvingLocations = true
 
-    resolveLocationNames(Array.from(unknownLocationIds))
+    resolveLocations(Array.from(unknownLocationIds))
       .catch(() => {})
       .finally(() => {
         resolvingLocations = false
@@ -266,7 +235,6 @@ export function useAssetData(): AssetDataResult {
     hasError: !!updateError,
     errorMessage: updateError,
     lastUpdated,
-    typeProgress,
     prices,
     assetNames,
     cacheVersion,

@@ -1,0 +1,1 @@
+export { IndustryJobsTab } from './IndustryJobsTab'
