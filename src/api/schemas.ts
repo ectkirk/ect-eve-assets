@@ -72,7 +72,7 @@ export const ESIContractItemSchema = z.object({
 export const ESIMarketOrderSchema = z.object({
   duration: z.number(),
   escrow: z.number().optional(),
-  is_buy_order: z.boolean(),
+  is_buy_order: z.boolean().optional().default(false),
   is_corporation: z.boolean(),
   issued: z.string(),
   location_id: z.number(),
@@ -128,7 +128,7 @@ export const ESIIndustryJobSchema = z.object({
   product_type_id: z.number().optional(),
   runs: z.number(),
   start_date: z.string(),
-  station_id: z.number(),
+  station_id: z.number().optional(),
   status: z.enum(['active', 'cancelled', 'delivered', 'paused', 'ready', 'reverted']),
   successful_runs: z.number().optional(),
 })

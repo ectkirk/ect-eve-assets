@@ -232,7 +232,15 @@ class ESIClient {
         } catch {
           // Response not JSON
         }
-        logger.error('ESI request failed', undefined, { module: 'ESI', endpoint, status: response.status })
+        if (response.status === 403 || response.status === 404) {
+          logger.debug('ESI request returned expected error', {
+            module: 'ESI',
+            endpoint,
+            status: response.status,
+          })
+        } else {
+          logger.error('ESI request failed', undefined, { module: 'ESI', endpoint, status: response.status })
+        }
         throw new ESIError(errorMessage, response.status)
       }
 
