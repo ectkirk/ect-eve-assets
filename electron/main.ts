@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell, Menu } from 'electron'
+import { app, BrowserWindow, ipcMain, shell, Menu, safeStorage } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import fs from 'node:fs'
@@ -10,11 +10,31 @@ import { logger, initLogger, type LogLevel, type LogContext } from './services/l
 const userDataPath = app.getPath('userData')
 const storageFile = path.join(userDataPath, 'auth-storage.json')
 
+function canEncrypt(): boolean {
+  return safeStorage.isEncryptionAvailable()
+}
+
 function readStorage(): Record<string, unknown> | null {
   try {
-    if (fs.existsSync(storageFile)) {
-      const data = fs.readFileSync(storageFile, 'utf-8')
-      return JSON.parse(data)
+    if (!fs.existsSync(storageFile)) return null
+
+    const fileData = fs.readFileSync(storageFile)
+
+    if (canEncrypt()) {
+      try {
+        const decrypted = safeStorage.decryptString(fileData)
+        return JSON.parse(decrypted)
+      } catch {
+        // File might be plaintext from before encryption was available
+        const text = fileData.toString('utf-8')
+        if (text.startsWith('{')) {
+          return JSON.parse(text)
+        }
+        throw new Error('Cannot decrypt storage')
+      }
+    } else {
+      console.warn('[Storage] Encryption not available, using plaintext')
+      return JSON.parse(fileData.toString('utf-8'))
     }
   } catch (err) {
     console.error('[Storage] Failed to read:', err)
@@ -25,7 +45,14 @@ function readStorage(): Record<string, unknown> | null {
 function writeStorage(data: Record<string, unknown>): void {
   try {
     fs.mkdirSync(userDataPath, { recursive: true })
-    fs.writeFileSync(storageFile, JSON.stringify(data, null, 2), 'utf-8')
+
+    if (canEncrypt()) {
+      const encrypted = safeStorage.encryptString(JSON.stringify(data))
+      fs.writeFileSync(storageFile, encrypted, { mode: 0o600 })
+    } else {
+      console.warn('[Storage] Encryption not available, using plaintext')
+      fs.writeFileSync(storageFile, JSON.stringify(data, null, 2), { mode: 0o600, encoding: 'utf-8' })
+    }
   } catch (err) {
     console.error('[Storage] Failed to write:', err)
   }

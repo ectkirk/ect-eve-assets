@@ -2,6 +2,7 @@ import { shell } from 'electron'
 import { createServer, type Server } from 'node:http'
 import { randomBytes, createHash } from 'node:crypto'
 import { URL } from 'node:url'
+import * as jose from 'jose'
 import { logger } from './logger.js'
 
 const CHARACTER_SCOPES = [
@@ -29,9 +30,13 @@ const EVE_SSO = {
   authUrl: 'https://login.eveonline.com/v2/oauth/authorize',
   tokenUrl: 'https://login.eveonline.com/v2/oauth/token',
   revokeUrl: 'https://login.eveonline.com/v2/oauth/revoke',
+  jwksUrl: 'https://login.eveonline.com/oauth/jwks',
+  issuer: 'https://login.eveonline.com',
   redirectUri: 'http://localhost:2020/callback',
   clientId: 'ff72276da5e947b3a64763038d22ef53',
 }
+
+const JWKS = jose.createRemoteJWKSet(new URL(EVE_SSO.jwksUrl))
 
 function generateCodeVerifier(): string {
   const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-._~'
@@ -94,17 +99,11 @@ let authServer: Server | null = null
 let pendingState: string | null = null
 let pendingCodeVerifier: string | null = null
 
-function parseJWT(token: string): JWTPayload {
-  const parts = token.split('.')
-  if (parts.length !== 3) {
-    throw new Error('Invalid JWT format')
-  }
-  const payload = parts[1]
-  if (!payload) {
-    throw new Error('Missing JWT payload')
-  }
-  const decoded = Buffer.from(payload, 'base64url').toString('utf-8')
-  return JSON.parse(decoded) as JWTPayload
+async function verifyToken(token: string): Promise<JWTPayload> {
+  const { payload } = await jose.jwtVerify(token, JWKS, {
+    issuer: EVE_SSO.issuer,
+  })
+  return payload as unknown as JWTPayload
 }
 
 function extractCharacterId(sub: string): number {
@@ -165,7 +164,7 @@ export async function refreshAccessToken(
     }
 
     const tokens = (await response.json()) as TokenResponse
-    const jwt = parseJWT(tokens.access_token)
+    const jwt = await verifyToken(tokens.access_token)
     const expiresAt = Date.now() + tokens.expires_in * 1000
     const characterId = extractCharacterId(jwt.sub)
 
@@ -257,7 +256,7 @@ export async function startAuth(includeCorporationScopes = false): Promise<AuthR
         try {
           logger.debug('Exchanging auth code for tokens', { module: 'Auth' })
           const tokens = await exchangeCodeForTokens(code, pendingCodeVerifier)
-          const jwt = parseJWT(tokens.access_token)
+          const jwt = await verifyToken(tokens.access_token)
           const expiresAt = Date.now() + tokens.expires_in * 1000
           const characterId = extractCharacterId(jwt.sub)
 
