@@ -367,6 +367,36 @@ ipcMain.handle('ref:universe', async (_event, ids: unknown) => {
   }
 })
 
+const MUTAMARKET_API_BASE = 'https://mutamarket.com/api'
+const MUTAMARKET_TIMEOUT_MS = 5000
+
+ipcMain.handle('mutamarket:module', async (_event, itemId: unknown) => {
+  if (typeof itemId !== 'number' || !Number.isInteger(itemId) || itemId <= 0) {
+    return { error: 'Invalid item ID' }
+  }
+
+  try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), MUTAMARKET_TIMEOUT_MS)
+
+    const response = await fetch(`${MUTAMARKET_API_BASE}/modules/${itemId}`, {
+      signal: controller.signal,
+    })
+    clearTimeout(timeoutId)
+
+    if (!response.ok) {
+      return { error: `HTTP ${response.status}`, status: response.status }
+    }
+    return await response.json()
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      return { error: 'Timeout' }
+    }
+    logger.error('mutamarket:module fetch failed', err, { module: 'Main', itemId })
+    return { error: String(err) }
+  }
+})
+
 app.whenReady().then(() => {
   initLogger()
   logger.info('App starting', { module: 'Main', version: app.getVersion() })

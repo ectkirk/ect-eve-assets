@@ -8,9 +8,6 @@ import {
 import { MutamarketModuleSchema } from './schemas'
 import { z } from 'zod'
 
-const isDev = import.meta.env.DEV
-const MUTAMARKET_API_BASE = isDev ? '/mutamarket-api' : 'https://mutamarket.com/api'
-
 export type MutamarketModule = z.infer<typeof MutamarketModuleSchema>
 
 const ABYSSAL_TYPE_IDS = new Set([
@@ -37,36 +34,35 @@ export function hasCachedAbyssalPrice(itemId: number): boolean {
   return hasAbyssal(itemId)
 }
 
-const FETCH_TIMEOUT_MS = 5000
 const MAX_RETRIES = 2
 const RETRY_DELAYS = [500, 1500]
-
-async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Response> {
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
-  try {
-    return await fetch(url, { signal: controller.signal })
-  } finally {
-    clearTimeout(timeoutId)
-  }
-}
 
 async function fetchSingleAbyssalPrice(
   itemId: number,
   retryCount = 0
 ): Promise<{ price: number; persist: boolean } | null> {
   try {
-    const response = await fetchWithTimeout(`${MUTAMARKET_API_BASE}/modules/${itemId}`, FETCH_TIMEOUT_MS)
+    const rawData = await window.electronAPI!.mutamarketModule(itemId)
 
-    if (!response.ok) {
-      if (response.status === 404) {
+    if (rawData.error) {
+      if (rawData.status === 404) {
         return { price: 0, persist: true }
       }
-      logger.warn('Mutamarket API failed', { module: 'Mutamarket', status: response.status, itemId })
+      if (retryCount < MAX_RETRIES) {
+        const delay = RETRY_DELAYS[retryCount] ?? 1000
+        logger.debug('Mutamarket request failed, retrying', {
+          module: 'Mutamarket',
+          itemId,
+          retryCount: retryCount + 1,
+          delay,
+        })
+        await new Promise((resolve) => setTimeout(resolve, delay))
+        return fetchSingleAbyssalPrice(itemId, retryCount + 1)
+      }
+      logger.warn('Mutamarket API failed', { module: 'Mutamarket', error: rawData.error, itemId })
       return null
     }
 
-    const rawData = await response.json()
     const parseResult = MutamarketModuleSchema.safeParse(rawData)
     if (!parseResult.success) {
       logger.warn('Mutamarket response validation failed', {
