@@ -9,7 +9,6 @@ import {
   type SortingState,
   type ColumnFiltersState,
   type VisibilityState,
-  type ColumnOrderState,
 } from '@tanstack/react-table'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { ArrowUpDown, Loader2 } from 'lucide-react'
@@ -56,9 +55,7 @@ function formatVolume(value: number): string {
 
 const COLUMN_LABELS: Record<string, string> = {
   ownerName: 'Owner',
-  typeName: 'Name',
   quantity: 'Quantity',
-  locationName: 'Location',
   locationFlag: 'Flag',
   price: 'Price',
   totalValue: 'Value',
@@ -66,22 +63,12 @@ const COLUMN_LABELS: Record<string, string> = {
 }
 
 const STORAGE_KEY_VISIBILITY = 'assets-column-visibility'
-const STORAGE_KEY_ORDER = 'assets-column-order'
 
-const DEFAULT_COLUMN_ORDER: ColumnOrderState = [
-  'ownerName',
-  'typeName',
-  'quantity',
-  'locationName',
-  'locationFlag',
-  'price',
-  'totalValue',
-  'totalVolume',
-]
+const TOGGLEABLE_COLUMNS = ['ownerName', 'quantity', 'locationFlag', 'price', 'totalValue', 'totalVolume']
 
 const DEFAULT_COLUMN_VISIBILITY: VisibilityState = {
   locationFlag: false,
-  price: false,
+  totalVolume: false,
 }
 
 function loadColumnVisibility(): VisibilityState {
@@ -101,22 +88,6 @@ function saveColumnVisibility(state: VisibilityState): void {
   }
 }
 
-function loadColumnOrder(): ColumnOrderState {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY_ORDER)
-    return stored ? JSON.parse(stored) : DEFAULT_COLUMN_ORDER
-  } catch {
-    return DEFAULT_COLUMN_ORDER
-  }
-}
-
-function saveColumnOrder(state: ColumnOrderState): void {
-  try {
-    localStorage.setItem(STORAGE_KEY_ORDER, JSON.stringify(state))
-  } catch {
-    // Ignore storage errors
-  }
-}
 
 const columns: ColumnDef<AssetRow>[] = [
   {
@@ -137,8 +108,7 @@ const columns: ColumnDef<AssetRow>[] = [
   },
   {
     accessorKey: 'typeName',
-    size: 280,
-    meta: { noFlex: true },
+    size: 450,
     header: ({ column }) => (
       <button
         className="flex items-center gap-1 hover:text-slate-50"
@@ -167,10 +137,10 @@ const columns: ColumnDef<AssetRow>[] = [
   },
   {
     accessorKey: 'quantity',
-    size: 100,
+    size: 140,
     header: ({ column }) => (
       <button
-        className="flex items-center gap-1 hover:text-slate-50"
+        className="flex items-center gap-1 hover:text-slate-50 ml-auto"
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
       >
         Quantity
@@ -178,36 +148,14 @@ const columns: ColumnDef<AssetRow>[] = [
       </button>
     ),
     cell: ({ row }) => (
-      <span className="tabular-nums">
+      <span className="tabular-nums text-right w-full">
         {(row.getValue('quantity') as number).toLocaleString()}
       </span>
     ),
   },
   {
-    accessorKey: 'locationName',
-    size: 300,
-    header: ({ column }) => (
-      <button
-        className="flex items-center gap-1 hover:text-slate-50"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      >
-        Location
-        <ArrowUpDown className="h-4 w-4" />
-      </button>
-    ),
-  },
-  {
-    accessorKey: 'locationFlag',
-    size: 100,
-    header: 'Flag',
-    cell: ({ row }) => {
-      const flag = row.getValue('locationFlag') as string
-      return <span className="text-slate-400 text-xs">{flag}</span>
-    },
-  },
-  {
     accessorKey: 'price',
-    size: 120,
+    size: 130,
     header: ({ column }) => (
       <button
         className="flex items-center gap-1 hover:text-slate-50 ml-auto"
@@ -228,7 +176,7 @@ const columns: ColumnDef<AssetRow>[] = [
   },
   {
     accessorKey: 'totalValue',
-    size: 120,
+    size: 130,
     header: ({ column }) => (
       <button
         className="flex items-center gap-1 hover:text-slate-50 ml-auto"
@@ -265,6 +213,41 @@ const columns: ColumnDef<AssetRow>[] = [
       </span>
     ),
   },
+  {
+    accessorKey: 'locationName',
+    size: 450,
+    header: ({ column }) => (
+      <button
+        className="flex items-center gap-1 hover:text-slate-50 ml-auto"
+        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+      >
+        Location
+        <ArrowUpDown className="h-4 w-4" />
+      </button>
+    ),
+    cell: ({ row }) => (
+      <span className="text-right w-full">{row.getValue('locationName') as string}</span>
+    ),
+  },
+  {
+    accessorKey: 'locationFlag',
+    size: 140,
+    meta: { noFlex: true },
+    header: ({ column }) => (
+      <button
+        className="flex items-center gap-1 hover:text-slate-50 ml-auto"
+        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+      >
+        Flag
+        <ArrowUpDown className="h-4 w-4" />
+      </button>
+    ),
+    cell: ({ row }) => (
+      <div className="w-full text-right">
+        <span className="text-slate-400 text-xs">{row.getValue('locationFlag') as string}</span>
+      </div>
+    ),
+  },
 ]
 
 export function AssetsTab() {
@@ -285,19 +268,13 @@ export function AssetsTab() {
   const [sorting, setSorting] = useState<SortingState>([{ id: 'totalValue', desc: true }])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(loadColumnVisibility)
-  const [columnOrder, setColumnOrder] = useState<ColumnOrderState>(loadColumnOrder)
   const [categoryFilterValue, setCategoryFilterValue] = useState('')
-  const draggedColumnRef = useRef<string | null>(null)
 
   const { setColumns, search, setCategoryFilter, setResultCount } = useTabControls()
 
   useEffect(() => {
     saveColumnVisibility(columnVisibility)
   }, [columnVisibility])
-
-  useEffect(() => {
-    saveColumnOrder(columnOrder)
-  }, [columnOrder])
 
   const ordersByOwner = useMarketOrdersStore((s) => s.ordersByOwner)
   const jobsByOwner = useIndustryJobsStore((s) => s.jobsByOwner)
@@ -609,18 +586,16 @@ export function AssetsTab() {
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
-    onColumnOrderChange: setColumnOrder,
     state: {
       sorting,
       columnFilters,
       columnVisibility,
-      columnOrder,
     },
   })
 
   useEffect(() => {
     const cols = table.getAllColumns()
-      .filter((col) => col.getCanHide())
+      .filter((col) => col.getCanHide() && TOGGLEABLE_COLUMNS.includes(col.id))
       .map((col) => ({
         id: col.id,
         label: COLUMN_LABELS[col.id] ?? col.id,
@@ -644,33 +619,6 @@ export function AssetsTab() {
     setResultCount({ showing: filteredData.length, total: data.length })
     return () => setResultCount(null)
   }, [filteredData.length, data.length, setResultCount])
-
-  const handleDragStart = (e: React.DragEvent, columnId: string) => {
-    draggedColumnRef.current = columnId
-    e.dataTransfer.effectAllowed = 'move'
-  }
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'move'
-  }
-
-  const handleDrop = (e: React.DragEvent, targetColumnId: string) => {
-    e.preventDefault()
-    const draggedId = draggedColumnRef.current
-    if (!draggedId || draggedId === targetColumnId) return
-
-    const newOrder = [...columnOrder]
-    const draggedIndex = newOrder.indexOf(draggedId)
-    const targetIndex = newOrder.indexOf(targetColumnId)
-
-    if (draggedIndex === -1 || targetIndex === -1) return
-
-    newOrder.splice(draggedIndex, 1)
-    newOrder.splice(targetIndex, 0, draggedId)
-    setColumnOrder(newOrder)
-    draggedColumnRef.current = null
-  }
 
   const tableContainerRef = useRef<HTMLDivElement>(null)
   const { rows } = table.getRowModel()
@@ -745,11 +693,7 @@ export function AssetsTab() {
               headerGroup.headers.filter(h => h.column.getIsVisible()).map((header) => (
                 <div
                   key={header.id}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, header.column.id)}
-                  onDragOver={handleDragOver}
-                  onDrop={(e) => handleDrop(e, header.column.id)}
-                  className={`sticky top-0 z-10 bg-slate-800 py-3 text-left text-sm font-medium text-slate-300 cursor-grab active:cursor-grabbing border-b border-slate-700 ${header.column.id === 'ownerName' ? 'px-2' : 'px-4'}`}
+                  className={`sticky top-0 z-10 bg-slate-800 py-3 text-left text-sm font-medium text-slate-300 border-b border-slate-700 ${header.column.id === 'ownerName' ? 'px-2' : 'px-4'}`}
                 >
                   {header.isPlaceholder
                     ? null
