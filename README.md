@@ -39,8 +39,27 @@ npm run build
 ## EVE SSO
 
 1. Register at https://developers.eveonline.com/
-2. Callback: `http://localhost:2020/callback`
-3. Set `EVE_CLIENT_ID` environment variable
+2. Callback: `http://localhost/callback`
+3. Required scopes:
+   - `publicData`
+   - `esi-assets.read_assets.v1`
+   - `esi-characters.read_blueprints.v1`
+   - `esi-markets.read_character_orders.v1`
+   - `esi-industry.read_character_jobs.v1`
+   - `esi-contracts.read_character_contracts.v1`
+   - `esi-clones.read_clones.v1`
+   - `esi-clones.read_implants.v1`
+   - `esi-universe.read_structures.v1`
+   - `esi-wallet.read_character_wallet.v1`
+   - For corporation features, also add:
+     - `esi-assets.read_corporation_assets.v1`
+     - `esi-corporations.read_blueprints.v1`
+     - `esi-corporations.read_divisions.v1`
+     - `esi-contracts.read_corporation_contracts.v1`
+     - `esi-industry.read_corporation_jobs.v1`
+     - `esi-markets.read_corporation_orders.v1`
+     - `esi-wallet.read_corporation_wallets.v1`
+4. Set `EVE_CLIENT_ID` environment variable
 
 ## License
 
