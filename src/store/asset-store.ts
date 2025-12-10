@@ -10,7 +10,7 @@ import { getCharacterAssets, getCharacterAssetNames, getCorporationAssetNames, t
 import { getCorporationAssets } from '@/api/endpoints/corporation'
 import { fetchPrices, resolveTypes } from '@/api/ref-client'
 import { fetchAbyssalPrices, isAbyssalTypeId, hasCachedAbyssalPrice } from '@/api/mutamarket-client'
-import { getType, getTypeName } from '@/store/reference-cache'
+import { getType } from '@/store/reference-cache'
 
 import { logger } from '@/lib/logger'
 
@@ -283,9 +283,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
           const names = await fetchOwnerAssetNames(owner, assets)
           for (const n of names) {
             if (n.name && n.name !== 'None') {
-              const typeId = itemToType.get(n.item_id)
-              const typeName = typeId ? getTypeName(typeId) : ''
-              allNames.set(n.item_id, typeName ? `${typeName} (${n.name})` : n.name)
+              allNames.set(n.item_id, n.name)
             }
           }
         } catch (err) {
@@ -396,16 +394,11 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
       await resolveTypes(Array.from(new Set(assets.map((a) => a.type_id))))
       const newNames = new Map(state.assetNames)
       const names = await fetchOwnerAssetNames(owner, assets)
-      let storedCount = 0
       for (const n of names) {
         if (n.name && n.name !== 'None') {
-          const typeId = itemToType.get(n.item_id)
-          const typeName = typeId ? getTypeName(typeId) : ''
-          newNames.set(n.item_id, typeName ? `${typeName} (${n.name})` : n.name)
-          storedCount++
+          newNames.set(n.item_id, n.name)
         }
       }
-      logger.debug('Asset names stored', { module: 'AssetStore', stored: storedCount, totalNames: newNames.size })
 
       const typeIds = new Set<number>()
       for (const asset of assets) {

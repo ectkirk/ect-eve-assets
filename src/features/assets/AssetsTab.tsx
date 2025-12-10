@@ -343,7 +343,8 @@ export function AssetsTab() {
         if (asset.item_id === 16159 || asset.type_id === 27) continue
         const sdeType = getType(asset.type_id)
         const customName = assetNames.get(asset.item_id)
-        const baseName = customName || getTypeName(asset.type_id)
+        const rawTypeName = getTypeName(asset.type_id)
+        const baseName = customName ? `${rawTypeName} (${customName})` : rawTypeName
         const isBlueprint = sdeType?.categoryId === CategoryIds.BLUEPRINT
         const isBpc = asset.is_blueprint_copy ?? false
         const typeName = isBlueprint ? formatBlueprintName(baseName, asset.item_id) : baseName
