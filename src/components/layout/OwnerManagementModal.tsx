@@ -227,6 +227,7 @@ export function OwnerManagementModal({
       await window.electronAPI.logout(owner.id)
     }
     useAuthStore.getState().removeOwner(key)
+    await useAssetStore.getState().removeForOwner(owner.type, owner.id)
   }
 
   const handleSwitchOwner = (owner: Owner) => {
@@ -240,6 +241,7 @@ export function OwnerManagementModal({
       }
     }
     useAuthStore.getState().clearAuth()
+    await useAssetStore.getState().clear()
     onOpenChange(false)
   }
 

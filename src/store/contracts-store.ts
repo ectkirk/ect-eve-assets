@@ -47,6 +47,7 @@ interface ContractsActions {
   init: () => Promise<void>
   update: (force?: boolean) => Promise<void>
   updateForOwner: (owner: Owner) => Promise<void>
+  removeForOwner: (ownerType: string, ownerId: number) => Promise<void>
   clear: () => Promise<void>
   canUpdate: () => boolean
   getTimeUntilUpdate: () => number
@@ -471,6 +472,21 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
         owner: owner.name,
       })
     }
+  },
+
+  removeForOwner: async (ownerType: string, ownerId: number) => {
+    const state = get()
+    const ownerKey = `${ownerType}-${ownerId}`
+    const updated = state.contractsByOwner.filter(
+      (oc) => `${oc.owner.type}-${oc.owner.id}` !== ownerKey
+    )
+
+    if (updated.length === state.contractsByOwner.length) return
+
+    await saveToDB(updated, state.lastUpdated ?? Date.now())
+    set({ contractsByOwner: updated })
+
+    logger.info('Contracts removed for owner', { module: 'ContractsStore', ownerKey })
   },
 
   clear: async () => {

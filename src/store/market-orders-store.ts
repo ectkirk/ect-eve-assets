@@ -33,6 +33,7 @@ interface MarketOrdersActions {
   init: () => Promise<void>
   update: (force?: boolean) => Promise<void>
   updateForOwner: (owner: Owner) => Promise<void>
+  removeForOwner: (ownerType: string, ownerId: number) => Promise<void>
   clear: () => Promise<void>
   canUpdate: () => boolean
   getTimeUntilUpdate: () => number
@@ -266,6 +267,21 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
         owner: owner.name,
       })
     }
+  },
+
+  removeForOwner: async (ownerType: string, ownerId: number) => {
+    const state = get()
+    const ownerKey = `${ownerType}-${ownerId}`
+    const updated = state.ordersByOwner.filter(
+      (oo) => `${oo.owner.type}-${oo.owner.id}` !== ownerKey
+    )
+
+    if (updated.length === state.ordersByOwner.length) return
+
+    await saveToDB(updated, state.lastUpdated ?? Date.now())
+    set({ ordersByOwner: updated })
+
+    logger.info('Market orders removed for owner', { module: 'MarketOrdersStore', ownerKey })
   },
 
   clear: async () => {

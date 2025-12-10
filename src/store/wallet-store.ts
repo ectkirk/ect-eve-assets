@@ -49,6 +49,7 @@ interface WalletActions {
   init: () => Promise<void>
   update: (force?: boolean) => Promise<void>
   updateForOwner: (owner: Owner) => Promise<void>
+  removeForOwner: (ownerType: string, ownerId: number) => Promise<void>
   clear: () => Promise<void>
   canUpdate: () => boolean
   getTimeUntilUpdate: () => number
@@ -313,6 +314,21 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
         owner: owner.name,
       })
     }
+  },
+
+  removeForOwner: async (ownerType: string, ownerId: number) => {
+    const state = get()
+    const ownerKey = `${ownerType}-${ownerId}`
+    const updated = state.walletsByOwner.filter(
+      (ow) => `${ow.owner.type}-${ow.owner.id}` !== ownerKey
+    )
+
+    if (updated.length === state.walletsByOwner.length) return
+
+    await saveToDB(updated, state.lastUpdated ?? Date.now())
+    set({ walletsByOwner: updated })
+
+    logger.info('Wallet removed for owner', { module: 'WalletStore', ownerKey })
   },
 
   clear: async () => {

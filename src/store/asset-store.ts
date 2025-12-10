@@ -44,6 +44,7 @@ interface AssetActions {
   init: () => Promise<void>
   update: (force?: boolean) => Promise<void>
   updateForOwner: (owner: Owner) => Promise<void>
+  removeForOwner: (ownerType: string, ownerId: number) => Promise<void>
   clear: () => Promise<void>
   canUpdate: () => boolean
   getTimeUntilUpdate: () => number
@@ -421,6 +422,29 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
     }
   },
 
+  removeForOwner: async (ownerType: string, ownerId: number) => {
+    const state = get()
+    const ownerKey = `${ownerType}-${ownerId}`
+    const updated = state.assetsByOwner.filter(
+      (oa) => `${oa.owner.type}-${oa.owner.id}` !== ownerKey
+    )
+
+    if (updated.length === state.assetsByOwner.length) return
+
+    await saveToDB(updated, state.assetNames, state.prices, state.lastUpdated ?? Date.now())
+    set({ assetsByOwner: updated })
+
+    logger.info('Assets removed for owner', { module: 'AssetStore', ownerKey })
+
+    await Promise.all([
+      useMarketOrdersStore.getState().removeForOwner(ownerType, ownerId),
+      useIndustryJobsStore.getState().removeForOwner(ownerType, ownerId),
+      useContractsStore.getState().removeForOwner(ownerType, ownerId),
+      useClonesStore.getState().removeForOwner(ownerType, ownerId),
+      useWalletStore.getState().removeForOwner(ownerType, ownerId),
+    ])
+  },
+
   clear: async () => {
     await clearDB()
     set({
@@ -431,5 +455,13 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
       updateError: null,
       updateProgress: null,
     })
+
+    await Promise.all([
+      useMarketOrdersStore.getState().clear(),
+      useIndustryJobsStore.getState().clear(),
+      useContractsStore.getState().clear(),
+      useClonesStore.getState().clear(),
+      useWalletStore.getState().clear(),
+    ])
   },
 }))

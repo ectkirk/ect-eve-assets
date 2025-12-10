@@ -35,6 +35,7 @@ interface ClonesActions {
   init: () => Promise<void>
   update: (force?: boolean) => Promise<void>
   updateForOwner: (owner: Owner) => Promise<void>
+  removeForOwner: (ownerType: string, ownerId: number) => Promise<void>
   clear: () => Promise<void>
   canUpdate: () => boolean
   getTimeUntilUpdate: () => number
@@ -276,6 +277,21 @@ export const useClonesStore = create<ClonesStore>((set, get) => ({
         owner: owner.name,
       })
     }
+  },
+
+  removeForOwner: async (ownerType: string, ownerId: number) => {
+    const state = get()
+    const ownerKey = `${ownerType}-${ownerId}`
+    const updated = state.clonesByOwner.filter(
+      (oc) => `${oc.owner.type}-${oc.owner.id}` !== ownerKey
+    )
+
+    if (updated.length === state.clonesByOwner.length) return
+
+    await saveToDB(updated, state.lastUpdated ?? Date.now())
+    set({ clonesByOwner: updated })
+
+    logger.info('Clones removed for owner', { module: 'ClonesStore', ownerKey })
   },
 
   clear: async () => {
