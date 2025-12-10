@@ -121,6 +121,7 @@ export const useAuthStore = create<AuthState>()(
       addOwner: ({ accessToken, refreshToken, expiresAt, owner }) => {
         const key = ownerKey(owner.type, owner.id)
         set((state) => {
+          const hadOwners = Object.keys(state.owners).length > 0
           const newOwners = {
             ...state.owners,
             [key]: {
@@ -136,7 +137,7 @@ export const useAuthStore = create<AuthState>()(
           }
           return {
             owners: newOwners,
-            activeOwnerId: state.activeOwnerId ?? key,
+            activeOwnerId: hadOwners ? null : key,
             isAuthenticated: true,
           }
         })
