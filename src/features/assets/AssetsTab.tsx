@@ -550,7 +550,24 @@ export function AssetsTab() {
       }
     }
 
-    return rows
+    const aggregated = new Map<string, AssetRow>()
+    for (const row of rows) {
+      if (isAbyssalTypeId(row.typeId) || row.isSingleton) {
+        aggregated.set(`unique-${row.itemId}`, row)
+        continue
+      }
+      const key = `${row.ownerId}-${row.typeId}-${row.locationId}-${row.locationFlag}-${row.isBlueprintCopy}`
+      const existing = aggregated.get(key)
+      if (existing) {
+        existing.quantity += row.quantity
+        existing.totalValue += row.totalValue
+        existing.totalVolume += row.totalVolume
+      } else {
+        aggregated.set(key, { ...row })
+      }
+    }
+
+    return Array.from(aggregated.values())
   }, [assetsByOwner, prices, assetNames, cacheVersion, ordersByOwner, jobsByOwner, contractsByOwner, owners])
 
   const categories = useMemo(() => {
