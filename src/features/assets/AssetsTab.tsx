@@ -345,11 +345,12 @@ export function AssetsTab() {
         const customName = assetNames.get(asset.item_id)
         const baseName = customName || getTypeName(asset.type_id)
         const isBlueprint = sdeType?.categoryId === CategoryIds.BLUEPRINT
+        const isBpc = asset.is_blueprint_copy ?? false
         const typeName = isBlueprint ? formatBlueprintName(baseName, asset.item_id) : baseName
         const volume = sdeType?.packagedVolume ?? sdeType?.volume ?? 0
 
         const abyssalPrice = getAbyssalPrice(asset.item_id)
-        const price = abyssalPrice ?? prices.get(asset.type_id) ?? 0
+        const price = isBpc ? 0 : (abyssalPrice ?? prices.get(asset.type_id) ?? 0)
 
         const isAbyssal = isAbyssalTypeId(asset.type_id)
         const { locationName, systemName, regionName } = resolveLocation(asset)
@@ -365,7 +366,7 @@ export function AssetsTab() {
           regionName,
           locationFlag: asset.location_flag,
           isSingleton: asset.is_singleton,
-          isBlueprintCopy: asset.is_blueprint_copy ?? false,
+          isBlueprintCopy: isBpc,
           price,
           totalValue: price * asset.quantity,
           volume,
