@@ -365,7 +365,6 @@ export function TreeTable({
                       key={node.id}
                       data-index={virtualRow.index}
                       className={cn(
-                        node.children.length > 0 && 'cursor-pointer',
                         node.nodeType === 'region' && 'bg-slate-800/30',
                         node.nodeType === 'system' && 'bg-slate-800/20'
                       )}

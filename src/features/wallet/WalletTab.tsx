@@ -220,7 +220,7 @@ export function WalletTab() {
               onClick={() => isCorp && toggleOwner(key)}
               className={cn(
                 'w-full flex items-center gap-3 px-4 py-3 text-left',
-                isCorp ? 'hover:bg-slate-800/50 cursor-pointer' : 'cursor-default'
+                isCorp && 'hover:bg-slate-800/50'
               )}
             >
               {isCorp ? (

@@ -284,7 +284,7 @@ export function OwnerManagementModal({
             {owners.length > 1 && (
               <div
                 onClick={() => handleSwitchOwner(null)}
-                className={`flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 transition-colors hover:bg-slate-700 ${
+                className={`flex items-center gap-2 rounded-md px-3 py-2 transition-colors hover:bg-slate-700 ${
                   activeOwnerId === null ? 'bg-slate-700/50 ring-1 ring-blue-500/50' : ''
                 }`}
               >
@@ -434,7 +434,7 @@ function OwnerRow({ owner, isActive, onSelect, onRemove }: OwnerRowProps) {
   return (
     <div
       onClick={onSelect}
-      className={`flex cursor-pointer items-center justify-between rounded-md px-3 py-2 transition-colors hover:bg-slate-700 ${
+      className={`flex items-center justify-between rounded-md px-3 py-2 transition-colors hover:bg-slate-700 ${
         isActive ? 'bg-slate-700/50 ring-1 ring-blue-500/50' : ''
       }`}
     >
