@@ -4,6 +4,7 @@ import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useTabControls } from '@/context'
+import { useColumnSettings, type ColumnConfig } from '@/hooks'
 import { type ESIMarketOrder } from '@/api/endpoints/market'
 import {
   hasType,
@@ -80,7 +81,7 @@ function OrdersTable({ orders }: { orders: OrderRow[] }) {
           <TableHead className="text-right">Quantity</TableHead>
           <TableHead className="text-right">Total</TableHead>
           <TableHead className="text-right">Expires</TableHead>
-          <TableHead>Owner</TableHead>
+          <TableHead className="text-right">Owner</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -120,7 +121,7 @@ function OrdersTable({ orders }: { orders: OrderRow[] }) {
               <TableCell className="py-1.5 text-right tabular-nums text-slate-400">
                 {formatExpiry(row.order.issued, row.order.duration)}
               </TableCell>
-              <TableCell className="py-1.5 text-slate-400">{row.ownerName}</TableCell>
+              <TableCell className="py-1.5 text-right text-slate-400">{row.ownerName}</TableCell>
             </TableRow>
           )
         })}
@@ -180,7 +181,6 @@ export function MarketOrdersTab() {
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
 
   const ordersByOwner = useMarketOrdersStore((s) => s.ordersByOwner)
-  const ordersLastUpdated = useMarketOrdersStore((s) => s.lastUpdated)
   const ordersUpdating = useMarketOrdersStore((s) => s.isUpdating)
   const updateError = useMarketOrdersStore((s) => s.updateError)
   const init = useMarketOrdersStore((s) => s.init)
@@ -232,8 +232,20 @@ export function MarketOrdersTab() {
 
   const [expandedLocations, setExpandedLocations] = useState<Set<number>>(new Set())
 
-  const { setExpandCollapse, search, setResultCount } = useTabControls()
+  const { setExpandCollapse, search, setResultCount, setTotalValue, setColumns } = useTabControls()
   const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
+
+  const ORDER_COLUMNS: ColumnConfig[] = useMemo(() => [
+    { id: 'type', label: 'Buy/Sell' },
+    { id: 'item', label: 'Item' },
+    { id: 'price', label: 'Price' },
+    { id: 'quantity', label: 'Quantity' },
+    { id: 'total', label: 'Total' },
+    { id: 'expires', label: 'Expires' },
+    { id: 'owner', label: 'Owner' },
+  ], [])
+
+  const { getColumnsForDropdown } = useColumnSettings('market-orders', ORDER_COLUMNS)
 
   const locationGroups = useMemo(() => {
     void cacheVersion
@@ -410,6 +422,16 @@ export function MarketOrdersTab() {
     return () => setResultCount(null)
   }, [totals.buyCount, totals.sellCount, totalOrderCount, setResultCount])
 
+  useEffect(() => {
+    setTotalValue(totals.buyValue + totals.sellValue)
+    return () => setTotalValue(null)
+  }, [totals.buyValue, totals.sellValue, setTotalValue])
+
+  useEffect(() => {
+    setColumns(getColumnsForDropdown())
+    return () => setColumns([])
+  }, [getColumnsForDropdown, setColumns])
+
   if (owners.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -448,50 +470,20 @@ export function MarketOrdersTab() {
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-6 text-sm">
-        <div>
-          <span className="text-slate-400">Buy Orders: </span>
-          <span className="font-medium text-green-400">{totals.buyCount}</span>
-          <span className="text-slate-500 ml-1">({formatISK(totals.buyValue)})</span>
+    <div className="h-full rounded-lg border border-slate-700 overflow-auto">
+      {locationGroups.length === 0 ? (
+        <div className="flex items-center justify-center h-full">
+          <p className="text-slate-400">No active market orders.</p>
         </div>
-        <div>
-          <span className="text-slate-400">Sell Orders: </span>
-          <span className="font-medium text-red-400">{totals.sellCount}</span>
-          <span className="text-slate-500 ml-1">({formatISK(totals.sellValue)})</span>
-        </div>
-        <div>
-          <span className="text-slate-400">Total Value: </span>
-          <span className="font-medium text-amber-400">
-            {formatISK(totals.buyValue + totals.sellValue)}
-          </span>
-        </div>
-      </div>
-
-      <div
-        className="rounded-lg border border-slate-700 overflow-auto"
-        style={{ height: 'calc(100vh - 220px)', minHeight: '400px' }}
-      >
-        {locationGroups.length === 0 ? (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-slate-400">No active market orders.</p>
-          </div>
-        ) : (
-          locationGroups.map((group) => (
-            <LocationGroupRow
-              key={group.locationId}
-              group={group}
-              isExpanded={expandedLocations.has(group.locationId)}
-              onToggle={() => toggleLocation(group.locationId)}
-            />
-          ))
-        )}
-      </div>
-
-      {ordersLastUpdated && (
-        <p className="text-xs text-slate-500 text-right">
-          Last updated: {new Date(ordersLastUpdated).toLocaleString()}
-        </p>
+      ) : (
+        locationGroups.map((group) => (
+          <LocationGroupRow
+            key={group.locationId}
+            group={group}
+            isExpanded={expandedLocations.has(group.locationId)}
+            onToggle={() => toggleLocation(group.locationId)}
+          />
+        ))
       )}
     </div>
   )

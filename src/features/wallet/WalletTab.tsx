@@ -6,6 +6,7 @@ import { useAssetData } from '@/hooks/useAssetData'
 import { OwnerIcon } from '@/components/ui/type-icon'
 import { cn } from '@/lib/utils'
 import { useTabControls } from '@/context'
+import { useColumnSettings, type ColumnConfig } from '@/hooks'
 
 function formatISK(value: number): string {
   const abs = Math.abs(value)
@@ -37,7 +38,6 @@ export function WalletTab() {
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
 
   const walletsByOwner = useWalletStore((s) => s.walletsByOwner)
-  const walletLastUpdated = useWalletStore((s) => s.lastUpdated)
   const walletUpdating = useWalletStore((s) => s.isUpdating)
   const updateError = useWalletStore((s) => s.updateError)
   const init = useWalletStore((s) => s.init)
@@ -72,7 +72,14 @@ export function WalletTab() {
     setExpandedOwners(new Set())
   }, [])
 
-  const { setExpandCollapse, search, setResultCount } = useTabControls()
+  const { setExpandCollapse, search, setResultCount, setTotalValue, setColumns } = useTabControls()
+
+  const WALLET_COLUMNS: ColumnConfig[] = useMemo(() => [
+    { id: 'owner', label: 'Owner' },
+    { id: 'balance', label: 'Balance' },
+  ], [])
+
+  const { getColumnsForDropdown } = useColumnSettings('wallet', WALLET_COLUMNS)
 
   const expandableKeys = useMemo(
     () => walletsByOwner.filter((w) => isCorporationWallet(w)).map((w) => `${w.owner.type}-${w.owner.id}`),
@@ -141,6 +148,16 @@ export function WalletTab() {
     return () => setResultCount(null)
   }, [sortedWallets.length, walletsByOwner.length, setResultCount])
 
+  useEffect(() => {
+    setTotalValue(totalBalance)
+    return () => setTotalValue(null)
+  }, [totalBalance, setTotalValue])
+
+  useEffect(() => {
+    setColumns(getColumnsForDropdown())
+    return () => setColumns([])
+  }, [getColumnsForDropdown, setColumns])
+
   if (owners.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -179,101 +196,83 @@ export function WalletTab() {
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-6 text-sm">
-        <div>
-          <span className="text-slate-400">Total Balance: </span>
-          <span className="font-medium text-green-400">{formatISK(totalBalance)}</span>
-        </div>
-      </div>
+    <div className="h-full rounded-lg border border-slate-700 overflow-auto">
+      {sortedWallets.map((wallet) => {
+        const key = `${wallet.owner.type}-${wallet.owner.id}`
+        const isCorp = isCorporationWallet(wallet)
+        const isExpanded = expandedOwners.has(key)
 
-      <div
-        className="rounded-lg border border-slate-700 overflow-auto"
-        style={{ height: 'calc(100vh - 220px)', minHeight: '400px' }}
-      >
-        {sortedWallets.map((wallet) => {
-          const ownerKey = `${wallet.owner.type}-${wallet.owner.id}`
-          const isCorp = isCorporationWallet(wallet)
-          const isExpanded = expandedOwners.has(ownerKey)
-
-          let ownerTotal = 0
-          if (isCorp) {
-            for (const div of wallet.divisions) {
-              ownerTotal += div.balance
-            }
-          } else {
-            ownerTotal = wallet.balance
+        let ownerTotal = 0
+        if (isCorp) {
+          for (const div of wallet.divisions) {
+            ownerTotal += div.balance
           }
+        } else {
+          ownerTotal = wallet.balance
+        }
 
-          return (
-            <div key={ownerKey} className="border-b border-slate-700 last:border-b-0">
-              <button
-                onClick={() => isCorp && toggleOwner(ownerKey)}
+        return (
+          <div key={key} className="border-b border-slate-700 last:border-b-0">
+            <button
+              onClick={() => isCorp && toggleOwner(key)}
+              className={cn(
+                'w-full flex items-center gap-3 px-4 py-3 text-left',
+                isCorp ? 'hover:bg-slate-800/50 cursor-pointer' : 'cursor-default'
+              )}
+            >
+              {isCorp ? (
+                isExpanded ? (
+                  <ChevronDown className="h-4 w-4 text-slate-400" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 text-slate-400" />
+                )
+              ) : (
+                <Wallet className="h-4 w-4 text-slate-400" />
+              )}
+              <OwnerIcon
+                ownerId={wallet.owner.id}
+                ownerType={wallet.owner.type}
+                size="lg"
+              />
+              <span className="font-medium flex-1">{wallet.owner.name}</span>
+              <span
                 className={cn(
-                  'w-full flex items-center gap-3 px-4 py-3 text-left',
-                  isCorp ? 'hover:bg-slate-800/50 cursor-pointer' : 'cursor-default'
+                  'font-medium tabular-nums',
+                  ownerTotal >= 0 ? 'text-green-400' : 'text-red-400'
                 )}
               >
-                {isCorp ? (
-                  isExpanded ? (
-                    <ChevronDown className="h-4 w-4 text-slate-400" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4 text-slate-400" />
-                  )
-                ) : (
-                  <Wallet className="h-4 w-4 text-slate-400" />
-                )}
-                <OwnerIcon
-                  ownerId={wallet.owner.id}
-                  ownerType={wallet.owner.type}
-                  size="lg"
-                />
-                <span className="font-medium flex-1">{wallet.owner.name}</span>
-                <span
-                  className={cn(
-                    'font-medium tabular-nums',
-                    ownerTotal >= 0 ? 'text-green-400' : 'text-red-400'
-                  )}
-                >
-                  {formatISK(ownerTotal)}
-                </span>
-              </button>
+                {formatISK(ownerTotal)}
+              </span>
+            </button>
 
-              {isCorp && isExpanded && (
-                <div className="px-4 pb-3">
-                  {wallet.divisions
-                    .sort((a, b) => a.division - b.division)
-                    .map((div) => (
-                      <div
-                        key={div.division}
-                        className="flex items-center gap-3 py-2 pl-8 border-t border-slate-700/50 first:border-t-0"
+            {isCorp && isExpanded && (
+              <div className="px-4 pb-3">
+                {wallet.divisions
+                  .sort((a, b) => a.division - b.division)
+                  .map((div) => (
+                    <div
+                      key={div.division}
+                      className="flex items-center gap-3 py-2 pl-8 border-t border-slate-700/50 first:border-t-0"
+                    >
+                      <Building2 className="h-4 w-4 text-slate-500" />
+                      <span className="text-slate-300 flex-1">
+                        {DIVISION_NAMES[div.division - 1] ?? `Division ${div.division}`}
+                      </span>
+                      <span
+                        className={cn(
+                          'font-medium tabular-nums text-sm',
+                          div.balance >= 0 ? 'text-green-400' : 'text-red-400'
+                        )}
                       >
-                        <Building2 className="h-4 w-4 text-slate-500" />
-                        <span className="text-slate-300 flex-1">
-                          {DIVISION_NAMES[div.division - 1] ?? `Division ${div.division}`}
-                        </span>
-                        <span
-                          className={cn(
-                            'font-medium tabular-nums text-sm',
-                            div.balance >= 0 ? 'text-green-400' : 'text-red-400'
-                          )}
-                        >
-                          {formatISK(div.balance)}
-                        </span>
-                      </div>
-                    ))}
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
-
-      {walletLastUpdated && (
-        <p className="text-xs text-slate-500 text-right">
-          Last updated: {new Date(walletLastUpdated).toLocaleString()}
-        </p>
-      )}
+                        {formatISK(div.balance)}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }

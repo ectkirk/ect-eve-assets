@@ -14,6 +14,7 @@ import {
   History,
 } from 'lucide-react'
 import { useTabControls } from '@/context'
+import { useColumnSettings, type ColumnConfig } from '@/hooks'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useContractsStore, type ContractWithItems } from '@/store/contracts-store'
 import { useAssetData } from '@/hooks/useAssetData'
@@ -213,8 +214,8 @@ function ContractsTable({
           ) : !showCourierColumns ? (
             <TableHead className="text-right">Expires</TableHead>
           ) : null}
-          <TableHead>Status</TableHead>
-          <TableHead>Owner</TableHead>
+          <TableHead className="text-right">Status</TableHead>
+          <TableHead className="text-right">Owner</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -335,7 +336,7 @@ function ContractsTable({
                     {expiry.text}
                   </TableCell>
                 ) : null}
-                <TableCell className="py-1.5">
+                <TableCell className="py-1.5 text-right">
                   {row.status === 'outstanding' && <span className="text-yellow-400">Outstanding</span>}
                   {row.status === 'in_progress' && <span className="text-blue-400">In Progress</span>}
                   {(row.status === 'finished' || row.status === 'finished_issuer' || row.status === 'finished_contractor') && (
@@ -347,7 +348,7 @@ function ContractsTable({
                   {row.status === 'deleted' && <span className="text-slate-500">Deleted</span>}
                   {row.status === 'reversed' && <span className="text-orange-400">Reversed</span>}
                 </TableCell>
-                <TableCell className="py-1.5 text-slate-400">{row.ownerName}</TableCell>
+                <TableCell className="py-1.5 text-right text-slate-400">{row.ownerName}</TableCell>
               </TableRow>
               {hasMultipleItems &&
                 isExpanded &&
@@ -409,7 +410,6 @@ export function ContractsTab() {
 
   const prices = useAssetStore((s) => s.prices)
   const contractsByOwner = useContractsStore((s) => s.contractsByOwner)
-  const contractsLastUpdated = useContractsStore((s) => s.lastUpdated)
   const contractsUpdating = useContractsStore((s) => s.isUpdating)
   const updateError = useContractsStore((s) => s.updateError)
   const init = useContractsStore((s) => s.init)
@@ -499,8 +499,22 @@ export function ContractsTab() {
   const [showCourier, setShowCourier] = useState(true)
   const [showCompleted, setShowCompleted] = useState(false)
 
-  const { setExpandCollapse, search, setResultCount } = useTabControls()
+  const { setExpandCollapse, search, setResultCount, setTotalValue, setColumns } = useTabControls()
   const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
+
+  const CONTRACT_COLUMNS: ColumnConfig[] = useMemo(() => [
+    { id: 'status', label: 'Status' },
+    { id: 'type', label: 'Type' },
+    { id: 'title', label: 'Title/Items' },
+    { id: 'location', label: 'Location' },
+    { id: 'assignee', label: 'Assignee' },
+    { id: 'price', label: 'Price' },
+    { id: 'value', label: 'Value' },
+    { id: 'expires', label: 'Expires' },
+    { id: 'owner', label: 'Owner' },
+  ], [])
+
+  const { getColumnsForDropdown } = useColumnSettings('contracts', CONTRACT_COLUMNS)
 
   const { directionGroups, courierGroup, completedContracts } = useMemo(() => {
     void cacheVersion
@@ -710,6 +724,16 @@ export function ContractsTab() {
     return () => setResultCount(null)
   }, [totals.activeCount, totals.courierCount, totals.completedCount, setResultCount])
 
+  useEffect(() => {
+    setTotalValue(totals.valueIn + totals.valueOut)
+    return () => setTotalValue(null)
+  }, [totals.valueIn, totals.valueOut, setTotalValue])
+
+  useEffect(() => {
+    setColumns(getColumnsForDropdown())
+    return () => setColumns([])
+  }, [getColumnsForDropdown, setColumns])
+
   if (owners.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -748,108 +772,76 @@ export function ContractsTab() {
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-6 text-sm">
-        <div>
-          <span className="text-slate-400">In: </span>
-          <span className="font-medium text-green-400">{totals.assetsIn}</span>
-          {totals.valueIn > 0 && (
-            <span className="text-slate-500 ml-1">({formatISK(totals.valueIn)})</span>
-          )}
+    <div className="h-full rounded-lg border border-slate-700 overflow-auto">
+      {directionGroups.length === 0 && !courierGroup && completedContracts.length === 0 ? (
+        <div className="flex items-center justify-center h-full">
+          <p className="text-slate-400">No contracts.</p>
         </div>
-        <div>
-          <span className="text-slate-400">Out: </span>
-          <span className="font-medium text-orange-400">{totals.assetsOut}</span>
-          {totals.valueOut > 0 && (
-            <span className="text-slate-500 ml-1">({formatISK(totals.valueOut)})</span>
-          )}
-        </div>
-        <div>
-          <span className="text-slate-400">Completed: </span>
-          <span className="font-medium text-slate-300">{totals.completedCount}</span>
-        </div>
-      </div>
-
-      <div
-        className="rounded-lg border border-slate-700 overflow-auto"
-        style={{ height: 'calc(100vh - 220px)', minHeight: '400px' }}
-      >
-        {directionGroups.length === 0 && !courierGroup && completedContracts.length === 0 ? (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-slate-400">No contracts.</p>
-          </div>
-        ) : (
-          <>
-            {directionGroups.map((group) => (
-              <DirectionGroupRow
-                key={group.direction}
-                group={group}
-                isExpanded={expandedDirections.has(group.direction)}
-                onToggle={() => toggleDirection(group.direction)}
-                cacheVersion={cacheVersion}
-              />
-            ))}
-            {courierGroup && (
-              <div className="border-t border-slate-600">
-                <button
-                  onClick={() => setShowCourier(!showCourier)}
-                  className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-800/50 text-left"
-                >
-                  {showCourier ? (
-                    <ChevronDown className="h-4 w-4 text-slate-400" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4 text-slate-400" />
-                  )}
-                  <Truck className="h-4 w-4 text-blue-400" />
-                  <span className="text-blue-300 flex-1">{courierGroup.displayName}</span>
-                  <span className="text-xs text-slate-400 w-20 text-right">
-                    {courierGroup.contracts.length} contract
-                    {courierGroup.contracts.length !== 1 ? 's' : ''}
-                  </span>
-                  <span className="text-xs text-amber-400 w-28 text-right tabular-nums">
-                    {courierGroup.totalValue > 0 && formatISK(courierGroup.totalValue)}
-                  </span>
-                </button>
-                {showCourier && (
-                  <div className="bg-slate-900/30 px-3 pb-2">
-                    <ContractsTable contracts={courierGroup.contracts} cacheVersion={cacheVersion} showCourierColumns />
-                  </div>
+      ) : (
+        <>
+          {directionGroups.map((group) => (
+            <DirectionGroupRow
+              key={group.direction}
+              group={group}
+              isExpanded={expandedDirections.has(group.direction)}
+              onToggle={() => toggleDirection(group.direction)}
+              cacheVersion={cacheVersion}
+            />
+          ))}
+          {courierGroup && (
+            <div className="border-t border-slate-600">
+              <button
+                onClick={() => setShowCourier(!showCourier)}
+                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-800/50 text-left"
+              >
+                {showCourier ? (
+                  <ChevronDown className="h-4 w-4 text-slate-400" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 text-slate-400" />
                 )}
-              </div>
-            )}
-            {completedContracts.length > 0 && (
-              <div className="border-t border-slate-600">
-                <button
-                  onClick={() => setShowCompleted(!showCompleted)}
-                  className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-800/50 text-left"
-                >
-                  {showCompleted ? (
-                    <ChevronDown className="h-4 w-4 text-slate-400" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4 text-slate-400" />
-                  )}
-                  <History className="h-4 w-4 text-slate-400" />
-                  <span className="text-slate-300 flex-1">Completed Contracts</span>
-                  <span className="text-xs text-slate-400 w-20 text-right">
-                    {completedContracts.length} contract
-                    {completedContracts.length !== 1 ? 's' : ''}
-                  </span>
-                </button>
-                {showCompleted && (
-                  <div className="bg-slate-900/30 px-3 pb-2">
-                    <ContractsTable contracts={completedContracts} cacheVersion={cacheVersion} showCompletedDate />
-                  </div>
+                <Truck className="h-4 w-4 text-blue-400" />
+                <span className="text-blue-300 flex-1">{courierGroup.displayName}</span>
+                <span className="text-xs text-slate-400 w-20 text-right">
+                  {courierGroup.contracts.length} contract
+                  {courierGroup.contracts.length !== 1 ? 's' : ''}
+                </span>
+                <span className="text-xs text-amber-400 w-28 text-right tabular-nums">
+                  {courierGroup.totalValue > 0 && formatISK(courierGroup.totalValue)}
+                </span>
+              </button>
+              {showCourier && (
+                <div className="bg-slate-900/30 px-3 pb-2">
+                  <ContractsTable contracts={courierGroup.contracts} cacheVersion={cacheVersion} showCourierColumns />
+                </div>
+              )}
+            </div>
+          )}
+          {completedContracts.length > 0 && (
+            <div className="border-t border-slate-600">
+              <button
+                onClick={() => setShowCompleted(!showCompleted)}
+                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-800/50 text-left"
+              >
+                {showCompleted ? (
+                  <ChevronDown className="h-4 w-4 text-slate-400" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 text-slate-400" />
                 )}
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
-      {contractsLastUpdated && (
-        <p className="text-xs text-slate-500 text-right">
-          Last updated: {new Date(contractsLastUpdated).toLocaleString()}
-        </p>
+                <History className="h-4 w-4 text-slate-400" />
+                <span className="text-slate-300 flex-1">Completed Contracts</span>
+                <span className="text-xs text-slate-400 w-20 text-right">
+                  {completedContracts.length} contract
+                  {completedContracts.length !== 1 ? 's' : ''}
+                </span>
+              </button>
+              {showCompleted && (
+                <div className="bg-slate-900/30 px-3 pb-2">
+                  <ContractsTable contracts={completedContracts} cacheVersion={cacheVersion} showCompletedDate />
+                </div>
+              )}
+            </div>
+          )}
+        </>
       )}
     </div>
   )

@@ -11,6 +11,7 @@ import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useClonesStore } from '@/store/clones-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useTabControls } from '@/context'
+import { useColumnSettings, type ColumnConfig } from '@/hooks'
 import {
   hasType,
   getType,
@@ -183,7 +184,6 @@ export function ClonesTab() {
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
 
   const clonesByOwner = useClonesStore((s) => s.clonesByOwner)
-  const clonesLastUpdated = useClonesStore((s) => s.lastUpdated)
   const clonesUpdating = useClonesStore((s) => s.isUpdating)
   const updateError = useClonesStore((s) => s.updateError)
   const init = useClonesStore((s) => s.init)
@@ -255,8 +255,16 @@ export function ClonesTab() {
 
   const [expandedCharacters, setExpandedCharacters] = useState<Set<number>>(new Set())
 
-  const { setExpandCollapse, search, setResultCount } = useTabControls()
+  const { setExpandCollapse, search, setResultCount, setColumns } = useTabControls()
   const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
+
+  const CLONE_COLUMNS: ColumnConfig[] = useMemo(() => [
+    { id: 'character', label: 'Character' },
+    { id: 'location', label: 'Location' },
+    { id: 'implants', label: 'Implants' },
+  ], [])
+
+  const { getColumnsForDropdown } = useColumnSettings('clones', CLONE_COLUMNS)
 
   const characterClones = useMemo(() => {
     void cacheVersion
@@ -399,25 +407,15 @@ export function ClonesTab() {
     return () => setExpandCollapse(null)
   }, [expandableIds, isAllExpanded, expandAll, collapseAll, setExpandCollapse])
 
-  const totals = useMemo(() => {
-    let totalJumpClones = 0
-    let totalImplants = 0
-
-    for (const char of characterClones) {
-      totalJumpClones += char.jumpClones.length
-      totalImplants += char.activeClone.implants.length
-      for (const jc of char.jumpClones) {
-        totalImplants += jc.implants.length
-      }
-    }
-
-    return { totalJumpClones, totalImplants, characters: characterClones.length }
-  }, [characterClones])
-
   useEffect(() => {
     setResultCount({ showing: characterClones.length, total: clonesByOwner.length })
     return () => setResultCount(null)
   }, [characterClones.length, clonesByOwner.length, setResultCount])
+
+  useEffect(() => {
+    setColumns(getColumnsForDropdown())
+    return () => setColumns([])
+  }, [getColumnsForDropdown, setColumns])
 
   if (owners.length === 0) {
     return (
@@ -457,46 +455,20 @@ export function ClonesTab() {
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-6 text-sm">
-        <div>
-          <span className="text-slate-400">Characters: </span>
-          <span className="font-medium">{totals.characters}</span>
+    <div className="h-full rounded-lg border border-slate-700 overflow-auto">
+      {characterClones.length === 0 ? (
+        <div className="flex items-center justify-center h-full">
+          <p className="text-slate-400">No clone data available.</p>
         </div>
-        <div>
-          <span className="text-slate-400">Jump Clones: </span>
-          <span className="font-medium text-blue-400">{totals.totalJumpClones}</span>
-        </div>
-        <div>
-          <span className="text-slate-400">Total Implants: </span>
-          <span className="font-medium text-purple-400">{totals.totalImplants}</span>
-        </div>
-      </div>
-
-      <div
-        className="rounded-lg border border-slate-700 overflow-auto"
-        style={{ height: 'calc(100vh - 220px)', minHeight: '400px' }}
-      >
-        {characterClones.length === 0 ? (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-slate-400">No clone data available.</p>
-          </div>
-        ) : (
-          characterClones.map((data) => (
-            <CharacterClonesSection
-              key={data.ownerId}
-              data={data}
-              isExpanded={expandedCharacters.has(data.ownerId)}
-              onToggle={() => toggleCharacter(data.ownerId)}
-            />
-          ))
-        )}
-      </div>
-
-      {clonesLastUpdated && (
-        <p className="text-xs text-slate-500 text-right">
-          Last updated: {new Date(clonesLastUpdated).toLocaleString()}
-        </p>
+      ) : (
+        characterClones.map((data) => (
+          <CharacterClonesSection
+            key={data.ownerId}
+            data={data}
+            isExpanded={expandedCharacters.has(data.ownerId)}
+            onToggle={() => toggleCharacter(data.ownerId)}
+          />
+        ))
       )}
     </div>
   )

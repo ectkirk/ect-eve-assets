@@ -17,6 +17,7 @@ import { useAssetStore } from '@/store/asset-store'
 import { useIndustryJobsStore } from '@/store/industry-jobs-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useTabControls } from '@/context'
+import { useColumnSettings, type ColumnConfig } from '@/hooks'
 import { type ESIIndustryJob } from '@/api/endpoints/industry'
 import {
   hasType,
@@ -142,7 +143,7 @@ function JobsTable({ jobs }: { jobs: JobRow[] }) {
           <TableHead className="text-right">Value</TableHead>
           <TableHead className="text-right">Cost</TableHead>
           <TableHead className="text-right">Time</TableHead>
-          <TableHead>Owner</TableHead>
+          <TableHead className="text-right">Owner</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -205,7 +206,7 @@ function JobsTable({ jobs }: { jobs: JobRow[] }) {
               >
                 {duration.text}
               </TableCell>
-              <TableCell className="py-1.5 text-slate-400">{row.ownerName}</TableCell>
+              <TableCell className="py-1.5 text-right text-slate-400">{row.ownerName}</TableCell>
             </TableRow>
           )
         })}
@@ -257,7 +258,6 @@ export function IndustryJobsTab() {
 
   const prices = useAssetStore((s) => s.prices)
   const jobsByOwner = useIndustryJobsStore((s) => s.jobsByOwner)
-  const jobsLastUpdated = useIndustryJobsStore((s) => s.lastUpdated)
   const jobsUpdating = useIndustryJobsStore((s) => s.isUpdating)
   const updateError = useIndustryJobsStore((s) => s.updateError)
   const init = useIndustryJobsStore((s) => s.init)
@@ -315,8 +315,22 @@ export function IndustryJobsTab() {
 
   const [expandedLocations, setExpandedLocations] = useState<Set<number>>(new Set())
 
-  const { setExpandCollapse, search, setResultCount } = useTabControls()
+  const { setExpandCollapse, search, setResultCount, setTotalValue, setColumns } = useTabControls()
   const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
+
+  const JOB_COLUMNS: ColumnConfig[] = useMemo(() => [
+    { id: 'status', label: 'Status' },
+    { id: 'activity', label: 'Activity' },
+    { id: 'blueprint', label: 'Blueprint' },
+    { id: 'product', label: 'Product' },
+    { id: 'runs', label: 'Runs' },
+    { id: 'value', label: 'Value' },
+    { id: 'cost', label: 'Cost' },
+    { id: 'time', label: 'Time' },
+    { id: 'owner', label: 'Owner' },
+  ], [])
+
+  const { getColumnsForDropdown } = useColumnSettings('industry-jobs', JOB_COLUMNS)
 
   const locationGroups = useMemo(() => {
     void cacheVersion
@@ -486,6 +500,16 @@ export function IndustryJobsTab() {
     return () => setResultCount(null)
   }, [totals.activeCount, totals.completedCount, totalJobCount, setResultCount])
 
+  useEffect(() => {
+    setTotalValue(totals.totalCost)
+    return () => setTotalValue(null)
+  }, [totals.totalCost, setTotalValue])
+
+  useEffect(() => {
+    setColumns(getColumnsForDropdown())
+    return () => setColumns([])
+  }, [getColumnsForDropdown, setColumns])
+
   if (owners.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -524,46 +548,20 @@ export function IndustryJobsTab() {
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-6 text-sm">
-        <div>
-          <span className="text-slate-400">Active: </span>
-          <span className="font-medium text-blue-400">{totals.activeCount}</span>
+    <div className="h-full rounded-lg border border-slate-700 overflow-auto">
+      {locationGroups.length === 0 ? (
+        <div className="flex items-center justify-center h-full">
+          <p className="text-slate-400">No industry jobs.</p>
         </div>
-        <div>
-          <span className="text-slate-400">Completed: </span>
-          <span className="font-medium text-slate-500">{totals.completedCount}</span>
-        </div>
-        <div>
-          <span className="text-slate-400">Total Cost: </span>
-          <span className="font-medium text-amber-400">{formatISK(totals.totalCost)}</span>
-        </div>
-      </div>
-
-      <div
-        className="rounded-lg border border-slate-700 overflow-auto"
-        style={{ height: 'calc(100vh - 220px)', minHeight: '400px' }}
-      >
-        {locationGroups.length === 0 ? (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-slate-400">No industry jobs.</p>
-          </div>
-        ) : (
-          locationGroups.map((group) => (
-            <LocationGroupRow
-              key={group.locationId}
-              group={group}
-              isExpanded={expandedLocations.has(group.locationId)}
-              onToggle={() => toggleLocation(group.locationId)}
-            />
-          ))
-        )}
-      </div>
-
-      {jobsLastUpdated && (
-        <p className="text-xs text-slate-500 text-right">
-          Last updated: {new Date(jobsLastUpdated).toLocaleString()}
-        </p>
+      ) : (
+        locationGroups.map((group) => (
+          <LocationGroupRow
+            key={group.locationId}
+            group={group}
+            isExpanded={expandedLocations.has(group.locationId)}
+            onToggle={() => toggleLocation(group.locationId)}
+          />
+        ))
       )}
     </div>
   )
