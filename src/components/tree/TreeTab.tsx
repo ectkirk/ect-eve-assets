@@ -77,15 +77,18 @@ export function TreeTab({ mode }: TreeTabProps) {
     void cacheVersion
     if (assetsByOwner.length === 0 || prices.size === 0) return []
 
-    const assetsWithOwners: AssetWithOwner[] = []
+    const allAssets: AssetWithOwner[] = []
+    const filteredAssets: AssetWithOwner[] = []
     for (const { owner, assets } of assetsByOwner) {
-      if (activeOwnerId !== null && ownerKey(owner.type, owner.id) !== activeOwnerId) continue
+      const isActiveOwner = activeOwnerId === null || ownerKey(owner.type, owner.id) === activeOwnerId
       for (const asset of assets) {
-        assetsWithOwners.push({ asset, owner })
+        const aw = { asset, owner }
+        allAssets.push(aw)
+        if (isActiveOwner) filteredAssets.push(aw)
       }
     }
 
-    return buildTree(assetsWithOwners, { mode, prices, assetNames, hangarDivisionNames })
+    return buildTree(filteredAssets, { mode, prices, assetNames, hangarDivisionNames, allAssets })
   }, [assetsByOwner, prices, assetNames, cacheVersion, mode, activeOwnerId, hangarDivisionNames])
 
   const treeNodes = useMemo(() => {

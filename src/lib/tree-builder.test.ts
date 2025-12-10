@@ -202,6 +202,97 @@ describe('buildTree', () => {
       expect(stationNode.children).toHaveLength(1)
       expect(stationNode.children[0]!.typeId).toBe(587)
     })
+
+    it('includes items inside ships as children', () => {
+      const shipId = 1
+      const cargoItemId = 2
+      const assets: AssetWithOwner[] = [
+        createAssetWithOwner(createAsset({ item_id: shipId, type_id: 587, location_flag: 'Hangar' })),
+        createAssetWithOwner(createAsset({ item_id: cargoItemId, type_id: 34, location_id: shipId, location_type: 'item', location_flag: 'Cargo' })),
+      ]
+
+      const tree = buildTree(assets, {
+        mode: TreeMode.SHIP_HANGAR,
+        prices: new Map(),
+      })
+
+      expect(tree).toHaveLength(1)
+      const stationNode = tree[0]!.children[0]!.children[0]!
+      expect(stationNode.children).toHaveLength(1)
+      const shipNode = stationNode.children[0]!
+      expect(shipNode.typeId).toBe(587)
+      expect(shipNode.children).toHaveLength(1)
+      expect(shipNode.children[0]!.typeId).toBe(34)
+    })
+
+    it('includes fitted modules inside ships in player structures', () => {
+      const structureId = 1000000000001
+      const shipId = 100
+      const moduleId = 101
+      const assets: AssetWithOwner[] = [
+        createAssetWithOwner(createAsset({
+          item_id: shipId,
+          type_id: 587,
+          location_id: structureId,
+          location_type: 'other',
+          location_flag: 'Hangar'
+        })),
+        createAssetWithOwner(createAsset({
+          item_id: moduleId,
+          type_id: 34,
+          location_id: shipId,
+          location_type: 'item',
+          location_flag: 'HiSlot0'
+        })),
+      ]
+
+      const tree = buildTree(assets, {
+        mode: TreeMode.SHIP_HANGAR,
+        prices: new Map(),
+      })
+
+      expect(tree).toHaveLength(1)
+      const stationNode = tree[0]!.children[0]!.children[0]!
+      expect(stationNode.children).toHaveLength(1)
+      const shipNode = stationNode.children[0]!
+      expect(shipNode.typeId).toBe(587)
+      expect(shipNode.nodeType).toBe('ship')
+      expect(shipNode.children).toHaveLength(1)
+      expect(shipNode.children[0]!.typeId).toBe(34)
+    })
+
+    it('includes ships with AutoFit flag and their fitted modules', () => {
+      const shipId = 100
+      const moduleId = 101
+      const assets: AssetWithOwner[] = [
+        createAssetWithOwner(createAsset({
+          item_id: shipId,
+          type_id: 587,
+          location_flag: 'AutoFit'
+        })),
+        createAssetWithOwner(createAsset({
+          item_id: moduleId,
+          type_id: 34,
+          location_id: shipId,
+          location_type: 'item',
+          location_flag: 'HiSlot0'
+        })),
+      ]
+
+      const tree = buildTree(assets, {
+        mode: TreeMode.SHIP_HANGAR,
+        prices: new Map(),
+      })
+
+      expect(tree).toHaveLength(1)
+      const stationNode = tree[0]!.children[0]!.children[0]!
+      expect(stationNode.children).toHaveLength(1)
+      const shipNode = stationNode.children[0]!
+      expect(shipNode.typeId).toBe(587)
+      expect(shipNode.nodeType).toBe('ship')
+      expect(shipNode.children).toHaveLength(1)
+      expect(shipNode.children[0]!.typeId).toBe(34)
+    })
   })
 
   describe('TreeMode.DELIVERIES', () => {

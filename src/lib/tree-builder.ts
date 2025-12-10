@@ -31,6 +31,7 @@ export interface TreeBuilderOptions {
   prices: Map<number, number>
   assetNames?: Map<number, string>
   hangarDivisionNames?: Map<number, string>
+  allAssets?: AssetWithOwner[]
 }
 
 function isShip(type: CachedType | undefined): boolean {
@@ -107,9 +108,14 @@ function shouldIncludeAsset(
       return false
     }
 
-    case TreeMode.SHIP_HANGAR:
-      if (!HANGAR_FLAGS.has(flag)) return false
-      return isShip(type)
+    case TreeMode.SHIP_HANGAR: {
+      const validRoots = new Set([...HANGAR_FLAGS, 'AutoFit'])
+      if (validRoots.has(flag)) return isShip(type)
+      if (SHIP_CONTENT_FLAGS.has(flag) && validRoots.has(rootFlag)) {
+        return parentChain.some((p) => isShip(getType(p.asset.type_id)))
+      }
+      return false
+    }
 
     case TreeMode.DELIVERIES:
       if (DELIVERY_FLAGS.has(flag)) return true
@@ -353,11 +359,11 @@ export function buildTree(
   assetsWithOwners: AssetWithOwner[],
   options: TreeBuilderOptions
 ): TreeNode[] {
-  const { mode, prices, assetNames, hangarDivisionNames } = options
+  const { mode, prices, assetNames, hangarDivisionNames, allAssets } = options
 
-  // Build lookup maps
+  // Build lookup map from all assets (for parent chain resolution)
   const assetById = new Map<number, AssetWithOwner>()
-  for (const aw of assetsWithOwners) {
+  for (const aw of allAssets ?? assetsWithOwners) {
     assetById.set(aw.asset.item_id, aw)
   }
 
