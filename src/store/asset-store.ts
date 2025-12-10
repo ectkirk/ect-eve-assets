@@ -6,10 +6,11 @@ import { useContractsStore } from './contracts-store'
 import { useClonesStore } from './clones-store'
 import { useWalletStore } from './wallet-store'
 import { useBlueprintsStore } from './blueprints-store'
-import { getCharacterAssets, getAssetNames, type ESIAsset, type ESIAssetName } from '@/api/endpoints/assets'
+import { getCharacterAssets, getCharacterAssetNames, getCorporationAssetNames, type ESIAsset, type ESIAssetName } from '@/api/endpoints/assets'
 import { getCorporationAssets } from '@/api/endpoints/corporation'
 import { fetchPrices } from '@/api/ref-client'
 import { fetchAbyssalPrices, isAbyssalTypeId, hasCachedAbyssalPrice } from '@/api/mutamarket-client'
+import { getTypeName } from '@/store/reference-cache'
 import { logger } from '@/lib/logger'
 
 const DB_NAME = 'ecteveassets-assets'
@@ -171,10 +172,16 @@ async function fetchOwnerAssets(owner: Owner): Promise<ESIAsset[]> {
 }
 
 async function fetchOwnerAssetNames(owner: Owner, assets: ESIAsset[]): Promise<ESIAssetName[]> {
-  if (owner.type !== 'character') return []
   const singletonIds = assets.filter((a) => a.is_singleton).map((a) => a.item_id)
   if (singletonIds.length === 0) return []
-  return getAssetNames(owner.id, owner.characterId, singletonIds)
+  if (owner.type === 'corporation') {
+    try {
+      return await getCorporationAssetNames(owner.id, owner.characterId, singletonIds)
+    } catch {
+      return []
+    }
+  }
+  return getCharacterAssetNames(owner.id, owner.characterId, singletonIds)
 }
 
 export const useAssetStore = create<AssetStore>((set, get) => ({
@@ -251,10 +258,17 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
           const assets = await fetchOwnerAssets(owner)
           results.push({ owner, assets })
 
+          const itemToType = new Map<number, number>()
+          for (const asset of assets) {
+            itemToType.set(asset.item_id, asset.type_id)
+          }
+
           const names = await fetchOwnerAssetNames(owner, assets)
           for (const n of names) {
             if (n.name && n.name !== 'None') {
-              allNames.set(n.item_id, n.name)
+              const typeId = itemToType.get(n.item_id)
+              const typeName = typeId ? getTypeName(typeId) : ''
+              allNames.set(n.item_id, typeName ? `${typeName} (${n.name})` : n.name)
             }
           }
         } catch (err) {
@@ -357,11 +371,18 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
       const assets = await fetchOwnerAssets(owner)
       const newOwnerAssets: OwnerAssets = { owner, assets }
 
+      const itemToType = new Map<number, number>()
+      for (const asset of assets) {
+        itemToType.set(asset.item_id, asset.type_id)
+      }
+
       const newNames = new Map(state.assetNames)
       const names = await fetchOwnerAssetNames(owner, assets)
       for (const n of names) {
         if (n.name && n.name !== 'None') {
-          newNames.set(n.item_id, n.name)
+          const typeId = itemToType.get(n.item_id)
+          const typeName = typeId ? getTypeName(typeId) : ''
+          newNames.set(n.item_id, typeName ? `${typeName} (${n.name})` : n.name)
         }
       }
 

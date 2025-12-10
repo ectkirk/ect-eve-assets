@@ -15,7 +15,7 @@ export async function getCharacterAssets(
   )
 }
 
-export async function getAssetNames(
+export async function getCharacterAssetNames(
   characterId: number,
   authCharacterId: number,
   itemIds: number[]
@@ -33,6 +33,33 @@ export async function getAssetNames(
         method: 'POST',
         body: JSON.stringify(chunk),
         characterId: authCharacterId,
+        schema: z.array(ESIAssetNameSchema),
+      }
+    )
+    results.push(...names)
+  }
+
+  return results
+}
+
+export async function getCorporationAssetNames(
+  corporationId: number,
+  characterId: number,
+  itemIds: number[]
+): Promise<ESIAssetName[]> {
+  const chunks: number[][] = []
+  for (let i = 0; i < itemIds.length; i += 1000) {
+    chunks.push(itemIds.slice(i, i + 1000))
+  }
+
+  const results: ESIAssetName[] = []
+  for (const chunk of chunks) {
+    const names = await esiClient.fetch<ESIAssetName[]>(
+      `/corporations/${corporationId}/assets/names/`,
+      {
+        method: 'POST',
+        body: JSON.stringify(chunk),
+        characterId,
         schema: z.array(ESIAssetNameSchema),
       }
     )
