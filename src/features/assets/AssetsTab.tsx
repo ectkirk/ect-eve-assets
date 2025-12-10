@@ -282,7 +282,7 @@ export function AssetsTab() {
     updateProgress,
   } = useAssetData()
 
-  const [sorting, setSorting] = useState<SortingState>([])
+  const [sorting, setSorting] = useState<SortingState>([{ id: 'totalValue', desc: true }])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(loadColumnVisibility)
   const [columnOrder, setColumnOrder] = useState<ColumnOrderState>(loadColumnOrder)

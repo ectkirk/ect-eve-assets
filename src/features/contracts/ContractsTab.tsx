@@ -626,15 +626,18 @@ export function ContractsTab() {
       }
     }
 
+    const sortByValue = (contracts: ContractRow[]): ContractRow[] =>
+      [...contracts].sort((a, b) => b.itemValue - a.itemValue)
+
     const filterContracts = (contracts: ContractRow[]): ContractRow[] => {
-      if (!search) return contracts
+      if (!search) return sortByValue(contracts)
       const searchLower = search.toLowerCase()
-      return contracts.filter((row) =>
+      return sortByValue(contracts.filter((row) =>
         row.typeName.toLowerCase().includes(searchLower) ||
         row.ownerName.toLowerCase().includes(searchLower) ||
         row.locationName.toLowerCase().includes(searchLower) ||
         row.assigneeName.toLowerCase().includes(searchLower)
-      )
+      ))
     }
 
     const filteredIn = filterContracts(groups.in.contracts)

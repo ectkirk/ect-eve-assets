@@ -131,10 +131,13 @@ export function WalletTab() {
     }
 
     const sorted = [...filtered].sort((a, b) => {
-      if (a.owner.type !== b.owner.type) {
-        return a.owner.type === 'character' ? -1 : 1
-      }
-      return a.owner.name.localeCompare(b.owner.name)
+      const aBalance = 'divisions' in a
+        ? a.divisions.reduce((sum, d) => sum + d.balance, 0)
+        : a.balance
+      const bBalance = 'divisions' in b
+        ? b.divisions.reduce((sum, d) => sum + d.balance, 0)
+        : b.balance
+      return bBalance - aBalance
     })
 
     if (!search) return sorted

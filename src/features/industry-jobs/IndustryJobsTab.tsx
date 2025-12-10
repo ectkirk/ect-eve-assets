@@ -82,6 +82,7 @@ interface LocationGroup {
   jobs: JobRow[]
   activeCount: number
   completedCount: number
+  totalValue: number
 }
 
 function formatISK(value: number): string {
@@ -380,11 +381,13 @@ export function IndustryJobsTab() {
             jobs: [],
             activeCount: 0,
             completedCount: 0,
+            totalValue: 0,
           }
           groups.set(job.facility_id, group)
         }
 
         group.jobs.push(row)
+        group.totalValue += productValue
         if (job.status === 'active' || job.status === 'paused') {
           group.activeCount++
         } else {
@@ -393,19 +396,10 @@ export function IndustryJobsTab() {
       }
     }
 
-    let sorted = Array.from(groups.values()).sort((a, b) => {
-      if (a.activeCount !== b.activeCount) return b.activeCount - a.activeCount
-      return a.locationName.localeCompare(b.locationName)
-    })
+    let sorted = Array.from(groups.values()).sort((a, b) => b.totalValue - a.totalValue)
 
     for (const group of sorted) {
-      group.jobs.sort((a, b) => {
-        const statusOrder = { active: 0, ready: 1, paused: 2, delivered: 3, cancelled: 4, reverted: 5 }
-        const aOrder = statusOrder[a.job.status] ?? 99
-        const bOrder = statusOrder[b.job.status] ?? 99
-        if (aOrder !== bOrder) return aOrder - bOrder
-        return new Date(a.job.end_date).getTime() - new Date(b.job.end_date).getTime()
-      })
+      group.jobs.sort((a, b) => b.productValue - a.productValue)
     }
 
     if (search) {
