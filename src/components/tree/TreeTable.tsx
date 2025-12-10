@@ -167,7 +167,6 @@ function TreeRowContent({ node, isExpanded, onToggle, visibleColumns }: {
                   title={node.name}
                 >
                   {node.name}
-                  {node.isBlueprintCopy && ' (Copy)'}
                 </span>
               </div>
             </TableCell>

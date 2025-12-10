@@ -128,10 +128,7 @@ const columns: ColumnDef<AssetRow>[] = [
       return (
         <div className="flex items-center gap-2">
           <TypeIcon typeId={typeId} categoryId={categoryId} isBlueprintCopy={isBpc} size="lg" />
-          <span className={isBpc ? 'text-cyan-400' : ''}>
-            {typeName}
-            {isBpc && ' (Copy)'}
-          </span>
+          <span className={isBpc ? 'text-cyan-400' : ''}>{typeName}</span>
         </div>
       )
     },
