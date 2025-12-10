@@ -338,7 +338,7 @@ export function formatBlueprintName(baseName: string, itemId: number): string {
   if (!info) return baseName
 
   if (info.isCopy) {
-    return `${baseName} (${info.runs} runs, ME ${info.materialEfficiency}, TE ${info.timeEfficiency})`
+    return `${baseName} (M${info.materialEfficiency} T${info.timeEfficiency} R${info.runs})`
   }
-  return `${baseName} (ME ${info.materialEfficiency}, TE ${info.timeEfficiency})`
+  return `${baseName} (M${info.materialEfficiency} T${info.timeEfficiency})`
 }
