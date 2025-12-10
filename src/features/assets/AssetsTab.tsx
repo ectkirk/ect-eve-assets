@@ -678,7 +678,7 @@ export function AssetsTab() {
 
   const filteredRows = table.getFilteredRowModel().rows
   const walletTotal = useWalletStore((s) => s.getTotalBalance)()
-  const hasActiveFilters = globalFilter.length > 0 || categoryFilter !== null
+  const hasActiveFilters = globalFilter.length > 0 || categoryFilter.length > 0
 
   const totals = useMemo(() => {
     let totalValue = 0
