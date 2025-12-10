@@ -348,6 +348,30 @@ ipcMain.handle('ref:universe', async (_event, ids: unknown) => {
   }
 })
 
+ipcMain.handle('ref:ships', async (_event, ids: unknown) => {
+  if (!Array.isArray(ids) || ids.length === 0 || ids.length > MAX_REF_IDS) {
+    return { error: 'Invalid ids array' }
+  }
+  if (!ids.every((id) => typeof id === 'number' && Number.isInteger(id) && id > 0)) {
+    return { error: 'Invalid id values' }
+  }
+
+  try {
+    const response = await fetch(`${REF_API_BASE}/ships`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids }),
+    })
+    if (!response.ok) {
+      return { error: `HTTP ${response.status}` }
+    }
+    return await response.json()
+  } catch (err) {
+    logger.error('ref:ships fetch failed', err, { module: 'Main' })
+    return { error: String(err) }
+  }
+})
+
 const MUTAMARKET_API_BASE = 'https://mutamarket.com/api'
 const MUTAMARKET_TIMEOUT_MS = 5000
 

@@ -20,12 +20,19 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu'
 import type { TreeNode, TreeNodeType } from '@/lib/tree-types'
 import { flattenTree, getAllNodeIds } from '@/lib/tree-builder'
 import { cn } from '@/lib/utils'
 import { TypeIcon } from '@/components/ui/type-icon'
 import { useTabControls } from '@/context'
 import { useColumnSettings, type ColumnConfig } from '@/hooks'
+import { FittingDialog } from '@/components/dialogs/FittingDialog'
 
 interface TreeTableProps {
   nodes: TreeNode[]
@@ -305,6 +312,14 @@ export function TreeTable({
     e.dataTransfer.dropEffect = 'move'
   }
 
+  const [fittingDialogOpen, setFittingDialogOpen] = useState(false)
+  const [selectedShipNode, setSelectedShipNode] = useState<TreeNode | null>(null)
+
+  const handleViewFitting = useCallback((node: TreeNode) => {
+    setSelectedShipNode(node)
+    setFittingDialogOpen(true)
+  }, [])
+
   if (nodes.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -358,8 +373,9 @@ export function TreeTable({
                   const node = flatRows[virtualRow.index]
                   if (!node) return null
                   const isExpanded = expandedNodes.has(node.id)
+                  const isShip = node.nodeType === 'ship'
 
-                  return (
+                  const row = (
                     <TableRow
                       key={node.id}
                       data-index={virtualRow.index}
@@ -381,6 +397,23 @@ export function TreeTable({
                       />
                     </TableRow>
                   )
+
+                  if (isShip) {
+                    return (
+                      <ContextMenu key={node.id}>
+                        <ContextMenuTrigger asChild>
+                          {row}
+                        </ContextMenuTrigger>
+                        <ContextMenuContent>
+                          <ContextMenuItem onClick={() => handleViewFitting(node)}>
+                            View Fitting
+                          </ContextMenuItem>
+                        </ContextMenuContent>
+                      </ContextMenu>
+                    )
+                  }
+
+                  return row
                 })}
                 {rowVirtualizer.getVirtualItems().length > 0 && (
                   <tr>
@@ -404,6 +437,12 @@ export function TreeTable({
             )}
           </TableBody>
         </Table>
+
+      <FittingDialog
+        open={fittingDialogOpen}
+        onOpenChange={setFittingDialogOpen}
+        shipNode={selectedShipNode}
+      />
     </div>
   )
 }

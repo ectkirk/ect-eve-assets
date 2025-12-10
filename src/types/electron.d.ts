@@ -27,6 +27,25 @@ interface MutamarketResult {
   status?: number
 }
 
+interface RefShipsResult {
+  ships?: Record<number, {
+    id: number
+    name: string
+    groupId: number
+    groupName: string
+    slots: {
+      high: number
+      mid: number
+      low: number
+      rig: number
+      subsystem: number
+      launcher: number
+      turret: number
+    }
+  }>
+  error?: string
+}
+
 interface ElectronAPI {
   startAuth: (includeCorporationScopes?: boolean) => Promise<AuthResult>
   cancelAuth: () => Promise<void>
@@ -39,6 +58,7 @@ interface ElectronAPI {
   onOpenUpdateDialog: (callback: () => void) => () => void
   refTypes: (ids: number[], market: 'jita' | 'the_forge') => Promise<RefApiResult>
   refUniverse: (ids: number[]) => Promise<RefApiResult>
+  refShips: (ids: number[]) => Promise<RefShipsResult>
   mutamarketModule: (itemId: number) => Promise<MutamarketResult>
 }
 

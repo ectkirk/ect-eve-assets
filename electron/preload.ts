@@ -29,6 +29,25 @@ export interface MutamarketResult {
   status?: number
 }
 
+export interface RefShipsResult {
+  ships?: Record<number, {
+    id: number
+    name: string
+    groupId: number
+    groupName: string
+    slots: {
+      high: number
+      mid: number
+      low: number
+      rig: number
+      subsystem: number
+      launcher: number
+      turret: number
+    }
+  }>
+  error?: string
+}
+
 export interface ElectronAPI {
   startAuth: (includeCorporationScopes?: boolean) => Promise<AuthResult>
   cancelAuth: () => Promise<void>
@@ -41,6 +60,7 @@ export interface ElectronAPI {
   onOpenUpdateDialog: (callback: () => void) => () => void
   refTypes: (ids: number[], market: 'jita' | 'the_forge') => Promise<RefApiResult>
   refUniverse: (ids: number[]) => Promise<RefApiResult>
+  refShips: (ids: number[]) => Promise<RefShipsResult>
   mutamarketModule: (itemId: number) => Promise<MutamarketResult>
 }
 
@@ -64,6 +84,7 @@ const electronAPI: ElectronAPI = {
   refTypes: (ids: number[], market: 'jita' | 'the_forge') =>
     ipcRenderer.invoke('ref:types', ids, market),
   refUniverse: (ids: number[]) => ipcRenderer.invoke('ref:universe', ids),
+  refShips: (ids: number[]) => ipcRenderer.invoke('ref:ships', ids),
   mutamarketModule: (itemId: number) => ipcRenderer.invoke('mutamarket:module', itemId),
 }
 
