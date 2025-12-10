@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useAssetStore } from '@/store/asset-store'
 import { AssetsTab } from '@/features/assets'
@@ -13,9 +13,11 @@ import { IndustryJobsTab } from '@/features/industry-jobs'
 import { ClonesTab } from '@/features/clones'
 import { ContractsTab } from '@/features/contracts'
 import { WalletTab } from '@/features/wallet'
-import { Plus, Loader2 } from 'lucide-react'
+import { Plus, Loader2, RefreshCw } from 'lucide-react'
 import { OwnerIcon } from '@/components/ui/type-icon'
 import { OwnerManagementModal } from './OwnerManagementModal'
+import { useTotalAssets } from '@/hooks'
+import { formatNumber } from '@/lib/utils'
 
 const TABS = [
   'Assets',
@@ -175,6 +177,65 @@ function OwnerButton() {
   )
 }
 
+function formatTimeRemaining(ms: number): string {
+  const minutes = Math.floor(ms / 60000)
+  const seconds = Math.floor((ms % 60000) / 1000)
+  if (minutes > 0) return `${minutes}m ${seconds}s`
+  return `${seconds}s`
+}
+
+function HeaderControls() {
+  const totals = useTotalAssets()
+  const isUpdating = useAssetStore((s) => s.isUpdating)
+  const update = useAssetStore((s) => s.update)
+  const canUpdateFn = useAssetStore((s) => s.canUpdate)
+  const getTimeUntilUpdateFn = useAssetStore((s) => s.getTimeUntilUpdate)
+  const hasData = useAssetStore((s) => s.assetsByOwner.length > 0)
+
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const interval = setInterval(() => setTick((t) => t + 1), 1000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const canUpdate = canUpdateFn()
+  const timeUntilUpdate = getTimeUntilUpdateFn()
+
+  return (
+    <div className="flex items-center gap-4">
+      {hasData && (
+        <div className="flex items-center gap-4 text-sm">
+          <div>
+            <span className="text-slate-400">Total Assets: </span>
+            <span className="font-medium text-green-400">{formatNumber(totals.total)} ISK</span>
+          </div>
+          <div>
+            <span className="text-slate-400">Market: </span>
+            <span className="font-medium text-blue-400">{formatNumber(totals.marketTotal)}</span>
+          </div>
+          <div>
+            <span className="text-slate-400">Contracts: </span>
+            <span className="font-medium text-yellow-400">{formatNumber(totals.contractsTotal)}</span>
+          </div>
+          <div>
+            <span className="text-slate-400">Wallet: </span>
+            <span className="font-medium text-emerald-400">{formatNumber(totals.walletTotal)}</span>
+          </div>
+        </div>
+      )}
+      <button
+        onClick={() => update()}
+        disabled={!canUpdate}
+        title={canUpdate ? 'Update assets from ESI' : `Available in ${formatTimeRemaining(timeUntilUpdate)}`}
+        className="flex items-center gap-1.5 rounded border border-slate-600 bg-slate-700 px-2.5 py-1 text-sm hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <RefreshCw className={`h-3.5 w-3.5 ${isUpdating ? 'animate-spin' : ''}`} />
+        {canUpdate ? 'Update' : formatTimeRemaining(timeUntilUpdate)}
+      </button>
+    </div>
+  )
+}
+
 export function MainLayout() {
   const [activeTab, setActiveTab] = useState<Tab>('Assets')
 
@@ -190,7 +251,10 @@ export function MainLayout() {
             We Like The Data
           </span>
         </div>
-        <OwnerButton />
+        <div className="flex items-center gap-4">
+          <HeaderControls />
+          <OwnerButton />
+        </div>
       </header>
 
       {/* Tab Navigation */}

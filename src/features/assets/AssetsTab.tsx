@@ -12,7 +12,7 @@ import {
   type ColumnOrderState,
 } from '@tanstack/react-table'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { ArrowUpDown, Check, ChevronDown, Loader2, RefreshCw, X } from 'lucide-react'
+import { ArrowUpDown, Check, ChevronDown, Loader2, X } from 'lucide-react'
 import {
   Table,
   TableBody,
@@ -28,8 +28,8 @@ import { useAssetData } from '@/hooks/useAssetData'
 import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { useIndustryJobsStore } from '@/store/industry-jobs-store'
 import { useContractsStore } from '@/store/contracts-store'
-import { useWalletStore } from '@/store/wallet-store'
 import { TypeIcon, OwnerIcon } from '@/components/ui/type-icon'
+import { formatNumber } from '@/lib/utils'
 
 interface AssetRow {
   itemId: number
@@ -55,23 +55,6 @@ interface AssetRow {
   ownerType: 'character' | 'corporation'
 }
 
-function formatNumber(value: number): string {
-  const abs = Math.abs(value)
-  const sign = value < 0 ? '-' : ''
-  if (abs >= 1_000_000_000_000) {
-    return sign + (abs / 1_000_000_000_000).toFixed(2) + 'T'
-  }
-  if (abs >= 1_000_000_000) {
-    return sign + (abs / 1_000_000_000).toFixed(2) + 'B'
-  }
-  if (abs >= 1_000_000) {
-    return sign + (abs / 1_000_000).toFixed(2) + 'M'
-  }
-  if (abs >= 1_000) {
-    return sign + (abs / 1_000).toFixed(2) + 'K'
-  }
-  return value.toLocaleString()
-}
 
 function formatVolume(value: number): string {
   return value.toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' m³'
@@ -283,17 +266,6 @@ const columns: ColumnDef<AssetRow>[] = [
   },
 ]
 
-function formatTimeRemaining(ms: number): string {
-  if (ms <= 0) return ''
-  const minutes = Math.ceil(ms / 60000)
-  if (minutes >= 60) {
-    const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
-    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
-  }
-  return `${minutes}m`
-}
-
 export function AssetsTab() {
   const {
     assetsByOwner,
@@ -306,10 +278,7 @@ export function AssetsTab() {
     assetNames,
     cacheVersion,
     isRefreshingAbyssals,
-    update,
     updateProgress,
-    canUpdate,
-    timeUntilUpdate,
   } = useAssetData()
 
   const [sorting, setSorting] = useState<SortingState>([])
@@ -677,26 +646,6 @@ export function AssetsTab() {
   })
 
   const filteredRows = table.getFilteredRowModel().rows
-  const walletTotal = useWalletStore((s) => s.getTotalBalance)()
-  const hasActiveFilters = globalFilter.length > 0 || categoryFilter.length > 0
-
-  const totals = useMemo(() => {
-    let totalValue = 0
-    let totalVolume = 0
-    let totalItems = 0
-
-    for (const row of filteredRows) {
-      totalValue += row.original.totalValue
-      totalVolume += row.original.totalVolume
-      totalItems += row.original.quantity
-    }
-
-    if (!hasActiveFilters) {
-      totalValue += walletTotal
-    }
-
-    return { totalValue, totalVolume, totalItems }
-  }, [filteredRows, walletTotal, hasActiveFilters])
 
   if (owners.length === 0) {
     return (
@@ -728,19 +677,12 @@ export function AssetsTab() {
           {hasError && (
             <>
               <p className="text-red-500">Failed to load assets</p>
-              <p className="text-sm text-slate-400 mb-4">{errorMessage}</p>
+              <p className="text-sm text-slate-400">{errorMessage}</p>
             </>
           )}
           {!hasError && (
-            <p className="text-slate-400 mb-4">No asset data loaded. Click Update to fetch from ESI.</p>
+            <p className="text-slate-400">No asset data loaded. Click Update in the header to fetch from ESI.</p>
           )}
-          <button
-            onClick={() => update()}
-            disabled={!canUpdate}
-            className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {canUpdate ? 'Update Assets' : `Update in ${formatTimeRemaining(timeUntilUpdate)}`}
-          </button>
         </div>
       </div>
     )
@@ -751,36 +693,15 @@ export function AssetsTab() {
       {/* Summary Bar */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-6 text-sm">
-          <div>
-            <span className="text-slate-400">Total Assets: </span>
-            <span className="font-medium text-green-400">
-              {formatNumber(totals.totalValue)} ISK
-            </span>
-          </div>
-          {isLoading && (
+          {isRefreshingAbyssals && (
             <div className="flex items-center gap-1 text-blue-400">
               <Loader2 className="h-3 w-3 animate-spin" />
-              <span>Refreshing...</span>
+              <span>Fetching abyssal prices...</span>
             </div>
           )}
         </div>
 
         <div className="flex items-center gap-3">
-          {isRefreshingAbyssals && (
-            <div className="flex items-center gap-1 text-xs text-blue-400">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              <span>Fetching abyssal prices...</span>
-            </div>
-          )}
-          <button
-            onClick={() => update()}
-            disabled={!canUpdate}
-            title={canUpdate ? 'Update assets from ESI' : `Available in ${formatTimeRemaining(timeUntilUpdate)}`}
-            className="flex items-center gap-1.5 rounded border border-slate-600 bg-slate-700 px-3 py-1.5 text-sm hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            {canUpdate ? 'Update' : formatTimeRemaining(timeUntilUpdate)}
-          </button>
           <div className="relative" ref={columnsDropdownRef}>
             <button
               onClick={() => setColumnsDropdownOpen(!columnsDropdownOpen)}
