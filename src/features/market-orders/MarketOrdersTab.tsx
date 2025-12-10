@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { Loader2, TrendingUp, TrendingDown, ChevronRight, ChevronDown } from 'lucide-react'
-import { useAuthStore } from '@/store/auth-store'
+import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useTabControls } from '@/context'
@@ -233,6 +233,7 @@ export function MarketOrdersTab() {
   const [expandedLocations, setExpandedLocations] = useState<Set<number>>(new Set())
 
   const { setExpandCollapse, search } = useTabControls()
+  const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
 
   const locationGroups = useMemo(() => {
     void cacheVersion
@@ -254,9 +255,13 @@ export function MarketOrdersTab() {
       }
     }
 
+    const filteredOrdersByOwner = activeOwnerId === null
+      ? ordersByOwner
+      : ordersByOwner.filter(({ owner }) => ownerKey(owner.type, owner.id) === activeOwnerId)
+
     const groups = new Map<number, LocationGroup>()
 
-    for (const { owner, orders } of ordersByOwner) {
+    for (const { owner, orders } of filteredOrdersByOwner) {
       for (const order of orders) {
         const type = hasType(order.type_id) ? getType(order.type_id) : undefined
         const locationInfo = getLocationInfo(order.location_id)
@@ -331,7 +336,7 @@ export function MarketOrdersTab() {
     }
 
     return sorted
-  }, [ordersByOwner, cacheVersion, search])
+  }, [ordersByOwner, cacheVersion, search, activeOwnerId])
 
   const toggleLocation = useCallback((locationId: number) => {
     setExpandedLocations((prev) => {

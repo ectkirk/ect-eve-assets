@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Loader2 } from 'lucide-react'
 import { useAssetData } from '@/hooks/useAssetData'
+import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { TreeTable, useTreeState } from '@/components/tree'
 import { buildTree, filterTree, type AssetWithOwner } from '@/lib/tree-builder'
 import { type TreeMode } from '@/lib/tree-types'
@@ -38,6 +39,7 @@ export function TreeTab({ mode }: TreeTabProps) {
   } = useAssetData()
 
   const { search } = useTabControls()
+  const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
 
   const treeNodes = useMemo(() => {
     void cacheVersion
@@ -45,6 +47,7 @@ export function TreeTab({ mode }: TreeTabProps) {
 
     const assetsWithOwners: AssetWithOwner[] = []
     for (const { owner, assets } of assetsByOwner) {
+      if (activeOwnerId !== null && ownerKey(owner.type, owner.id) !== activeOwnerId) continue
       for (const asset of assets) {
         assetsWithOwners.push({ asset, owner })
       }
@@ -52,7 +55,7 @@ export function TreeTab({ mode }: TreeTabProps) {
 
     const nodes = buildTree(assetsWithOwners, { mode, prices })
     return filterTree(nodes, search)
-  }, [assetsByOwner, prices, cacheVersion, mode, search])
+  }, [assetsByOwner, prices, cacheVersion, mode, search, activeOwnerId])
 
   const { expandedNodes, toggleExpand, expandAll, collapseAll } = useTreeState(treeNodes)
 

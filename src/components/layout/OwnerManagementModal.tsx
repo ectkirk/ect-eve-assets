@@ -230,8 +230,12 @@ export function OwnerManagementModal({
     await useAssetStore.getState().removeForOwner(owner.type, owner.id)
   }
 
-  const handleSwitchOwner = (owner: Owner) => {
-    useAuthStore.getState().switchOwner(ownerKey(owner.type, owner.id))
+  const handleSwitchOwner = (owner: Owner | null) => {
+    if (owner === null) {
+      useAuthStore.getState().switchOwner(null)
+    } else {
+      useAuthStore.getState().switchOwner(ownerKey(owner.type, owner.id))
+    }
   }
 
   const handleLogoutAll = async () => {
@@ -276,6 +280,22 @@ export function OwnerManagementModal({
 
         <ScrollArea className="max-h-[400px]">
           <div className="space-y-4 pr-4">
+            {/* All Characters Option */}
+            {owners.length > 1 && (
+              <div
+                onClick={() => handleSwitchOwner(null)}
+                className={`flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 transition-colors hover:bg-slate-700 ${
+                  activeOwnerId === null ? 'bg-slate-700/50 ring-1 ring-blue-500/50' : ''
+                }`}
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-600">
+                  <User className="h-4 w-4 text-slate-300" />
+                </div>
+                <span className="text-sm font-medium">All Characters</span>
+                {activeOwnerId === null && <CheckCircle2 className="h-4 w-4 text-blue-400" />}
+              </div>
+            )}
+
             {/* Characters Section */}
             <div>
               <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-slate-400">

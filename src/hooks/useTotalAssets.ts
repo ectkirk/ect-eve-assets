@@ -4,7 +4,7 @@ import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { useIndustryJobsStore } from '@/store/industry-jobs-store'
 import { useContractsStore } from '@/store/contracts-store'
 import { useWalletStore } from '@/store/wallet-store'
-import { useAuthStore } from '@/store/auth-store'
+import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { isAbyssalTypeId, getCachedAbyssalPrice } from '@/api/mutamarket-client'
 
 export interface AssetTotals {
@@ -22,13 +22,18 @@ export function useTotalAssets(): AssetTotals {
   const ordersByOwner = useMarketOrdersStore((s) => s.ordersByOwner)
   const jobsByOwner = useIndustryJobsStore((s) => s.jobsByOwner)
   const contractsByOwner = useContractsStore((s) => s.contractsByOwner)
-  const walletTotal = useWalletStore((s) => s.getTotalBalance)()
+  const walletsByOwner = useWalletStore((s) => s.walletsByOwner)
   const ownersRecord = useAuthStore((s) => s.owners)
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
+  const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
 
   return useMemo(() => {
+    const matchesOwner = (type: 'character' | 'corporation', id: number) =>
+      activeOwnerId === null || ownerKey(type, id) === activeOwnerId
+
     let assetsTotal = 0
-    for (const { assets } of assetsByOwner) {
+    for (const { owner, assets } of assetsByOwner) {
+      if (!matchesOwner(owner.type, owner.id)) continue
       for (const asset of assets) {
         const abyssalPrice = isAbyssalTypeId(asset.type_id)
           ? getCachedAbyssalPrice(asset.item_id)
@@ -39,14 +44,16 @@ export function useTotalAssets(): AssetTotals {
     }
 
     let marketTotal = 0
-    for (const { orders } of ordersByOwner) {
+    for (const { owner, orders } of ordersByOwner) {
+      if (!matchesOwner(owner.type, owner.characterId)) continue
       for (const order of orders) {
         marketTotal += order.is_buy_order ? (order.escrow ?? 0) : order.price * order.volume_remain
       }
     }
 
     let industryTotal = 0
-    for (const { jobs } of jobsByOwner) {
+    for (const { owner, jobs } of jobsByOwner) {
+      if (!matchesOwner(owner.type, owner.characterId)) continue
       for (const job of jobs) {
         if (job.status !== 'active' && job.status !== 'ready') continue
         const productTypeId = job.product_type_id ?? job.blueprint_type_id
@@ -56,11 +63,13 @@ export function useTotalAssets(): AssetTotals {
     }
 
     let contractsTotal = 0
-    const ownerIds = new Set(owners.map((o) => o.characterId))
-    const ownerCorpIds = new Set(owners.filter((o) => o.corporationId).map((o) => o.corporationId!))
+    const filteredOwners = activeOwnerId === null ? owners : owners.filter((o) => ownerKey(o.type, o.id) === activeOwnerId)
+    const ownerIds = new Set(filteredOwners.map((o) => o.characterId))
+    const ownerCorpIds = new Set(filteredOwners.filter((o) => o.corporationId).map((o) => o.corporationId!))
     const seenContracts = new Set<number>()
 
-    for (const { contracts } of contractsByOwner) {
+    for (const { owner, contracts } of contractsByOwner) {
+      if (!matchesOwner(owner.type, owner.id)) continue
       for (const { contract, items } of contracts) {
         if (seenContracts.has(contract.contract_id)) continue
         seenContracts.add(contract.contract_id)
@@ -91,6 +100,18 @@ export function useTotalAssets(): AssetTotals {
       }
     }
 
+    let walletTotal = 0
+    for (const wallet of walletsByOwner) {
+      if (!matchesOwner(wallet.owner.type, wallet.owner.id)) continue
+      if ('divisions' in wallet) {
+        for (const div of wallet.divisions) {
+          walletTotal += div.balance
+        }
+      } else {
+        walletTotal += wallet.balance
+      }
+    }
+
     const total = assetsTotal + marketTotal + industryTotal + contractsTotal + walletTotal
 
     return {
@@ -101,5 +122,5 @@ export function useTotalAssets(): AssetTotals {
       contractsTotal,
       walletTotal,
     }
-  }, [assetsByOwner, prices, ordersByOwner, jobsByOwner, contractsByOwner, walletTotal, owners])
+  }, [assetsByOwner, prices, ordersByOwner, jobsByOwner, contractsByOwner, walletsByOwner, owners, activeOwnerId])
 }

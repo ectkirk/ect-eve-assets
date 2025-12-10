@@ -7,7 +7,7 @@ import {
   Home,
   MapPin,
 } from 'lucide-react'
-import { useAuthStore } from '@/store/auth-store'
+import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useClonesStore } from '@/store/clones-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useTabControls } from '@/context'
@@ -256,6 +256,7 @@ export function ClonesTab() {
   const [expandedCharacters, setExpandedCharacters] = useState<Set<number>>(new Set())
 
   const { setExpandCollapse, search } = useTabControls()
+  const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
 
   const characterClones = useMemo(() => {
     void cacheVersion
@@ -274,7 +275,11 @@ export function ClonesTab() {
 
     const result: CharacterClones[] = []
 
-    for (const { owner, clones, activeImplants } of clonesByOwner) {
+    const filteredClonesByOwner = activeOwnerId === null
+      ? clonesByOwner
+      : clonesByOwner.filter(({ owner }) => ownerKey(owner.type, owner.characterId) === activeOwnerId)
+
+    for (const { owner, clones, activeImplants } of filteredClonesByOwner) {
       const homeLocationId = clones.home_location?.location_id
       const homeLocationType = clones.home_location?.location_type ?? 'station'
       const homeLocation = homeLocationId
@@ -351,7 +356,7 @@ export function ClonesTab() {
     }
 
     return sorted
-  }, [clonesByOwner, cacheVersion, search])
+  }, [clonesByOwner, cacheVersion, search, activeOwnerId])
 
   const toggleCharacter = useCallback((ownerId: number) => {
     setExpandedCharacters((prev) => {

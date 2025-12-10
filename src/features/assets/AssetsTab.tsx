@@ -25,6 +25,7 @@ import { type ESIAsset } from '@/api/endpoints/assets'
 import { isAbyssalTypeId, getCachedAbyssalPrice } from '@/api/mutamarket-client'
 import { getAbyssalPrice, getTypeName, getType, getStructure, getLocation, CategoryIds } from '@/store/reference-cache'
 import { useAssetData } from '@/hooks/useAssetData'
+import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { useIndustryJobsStore } from '@/store/industry-jobs-store'
 import { useContractsStore } from '@/store/contracts-store'
@@ -561,9 +562,15 @@ export function AssetsTab() {
     return Array.from(cats).sort()
   }, [data])
 
+  const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
+
   const filteredData = useMemo(() => {
     const searchLower = search.toLowerCase()
     return data.filter((row) => {
+      if (activeOwnerId !== null) {
+        const rowOwnerKey = ownerKey(row.ownerType, row.ownerId)
+        if (rowOwnerKey !== activeOwnerId) return false
+      }
       if (categoryFilterValue && row.categoryName !== categoryFilterValue) return false
       if (search) {
         const matchesType = row.typeName.toLowerCase().includes(searchLower)
@@ -575,7 +582,7 @@ export function AssetsTab() {
       }
       return true
     })
-  }, [data, categoryFilterValue, search])
+  }, [data, categoryFilterValue, search, activeOwnerId])
 
   const table = useReactTable({
     data: filteredData,

@@ -13,7 +13,7 @@ import {
   AlertCircle,
 } from 'lucide-react'
 import { useTabControls } from '@/context'
-import { useAuthStore } from '@/store/auth-store'
+import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useContractsStore, type ContractWithItems } from '@/store/contracts-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { type ESIContract } from '@/api/endpoints/contracts'
@@ -464,6 +464,7 @@ export function ContractsTab() {
   const [showCourier, setShowCourier] = useState(true)
 
   const { setExpandCollapse, search } = useTabControls()
+  const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
 
   const { directionGroups, courierGroup } = useMemo(() => {
     void cacheVersion
@@ -477,6 +478,10 @@ export function ContractsTab() {
       const location = hasLocation(locationId) ? getLocation(locationId) : undefined
       return location?.name ?? `Location ${locationId}`
     }
+
+    const filteredContractsByOwner = activeOwnerId === null
+      ? contractsByOwner
+      : contractsByOwner.filter(({ owner }) => ownerKey(owner.type, owner.id) === activeOwnerId)
 
     const ownerIds = new Set<number>()
     const ownerCorpIds = new Set<number>()
@@ -494,7 +499,7 @@ export function ContractsTab() {
 
     const seenContracts = new Set<number>()
 
-    for (const { owner, contracts } of contractsByOwner) {
+    for (const { owner, contracts } of filteredContractsByOwner) {
       for (const contractWithItems of contracts) {
         const contract = contractWithItems.contract
         const items = contractWithItems.items
@@ -582,7 +587,7 @@ export function ContractsTab() {
         ? { direction: 'out' as ContractDirection, displayName: 'Active Couriers', contracts: filteredCourier, totalValue: filteredCourier.reduce((acc, c) => acc + getContractValue(c.contractWithItems.contract), 0) }
         : null,
     }
-  }, [contractsByOwner, cacheVersion, owners, prices, search])
+  }, [contractsByOwner, cacheVersion, owners, prices, search, activeOwnerId])
 
   const toggleDirection = useCallback((direction: string) => {
     setExpandedDirections((prev) => {

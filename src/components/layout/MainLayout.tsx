@@ -13,7 +13,7 @@ import { IndustryJobsTab } from '@/features/industry-jobs'
 import { ClonesTab } from '@/features/clones'
 import { ContractsTab } from '@/features/contracts'
 import { WalletTab } from '@/features/wallet'
-import { Plus, Loader2, RefreshCw, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp, Search, X } from 'lucide-react'
+import { Plus, Loader2, RefreshCw, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp, Search, X, User } from 'lucide-react'
 import { OwnerIcon } from '@/components/ui/type-icon'
 import { OwnerManagementModal } from './OwnerManagementModal'
 import { useTotalAssets } from '@/hooks'
@@ -157,7 +157,15 @@ function OwnerButton() {
         onClick={() => setModalOpen(true)}
         className="flex items-center gap-2 rounded px-2 py-1 hover:bg-slate-700"
       >
-        {activeOwner && (
+        {activeOwnerId === null ? (
+          <>
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-600">
+              <User className="h-4 w-4 text-slate-300" />
+            </div>
+            <span className="text-sm">All Characters</span>
+            <span className="text-xs text-slate-400">({owners.length})</span>
+          </>
+        ) : activeOwner ? (
           <>
             <OwnerIcon ownerId={activeOwner.id} ownerType={activeOwner.type} size="lg" />
             <span
@@ -171,7 +179,7 @@ function OwnerButton() {
               </span>
             )}
           </>
-        )}
+        ) : null}
       </button>
       <OwnerManagementModal open={modalOpen} onOpenChange={setModalOpen} />
     </>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { Loader2, ChevronRight, ChevronDown, Wallet, Building2 } from 'lucide-react'
-import { useAuthStore } from '@/store/auth-store'
+import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useWalletStore, isCorporationWallet } from '@/store/wallet-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { OwnerIcon } from '@/components/ui/type-icon'
@@ -115,8 +115,15 @@ export function WalletTab() {
     return total
   }, [walletsByOwner])
 
+  const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
+
   const sortedWallets = useMemo(() => {
-    const sorted = [...walletsByOwner].sort((a, b) => {
+    let filtered = walletsByOwner
+    if (activeOwnerId !== null) {
+      filtered = walletsByOwner.filter((w) => ownerKey(w.owner.type, w.owner.id) === activeOwnerId)
+    }
+
+    const sorted = [...filtered].sort((a, b) => {
       if (a.owner.type !== b.owner.type) {
         return a.owner.type === 'character' ? -1 : 1
       }
@@ -127,7 +134,7 @@ export function WalletTab() {
 
     const searchLower = search.toLowerCase()
     return sorted.filter((wallet) => wallet.owner.name.toLowerCase().includes(searchLower))
-  }, [walletsByOwner, search])
+  }, [walletsByOwner, search, activeOwnerId])
 
   if (owners.length === 0) {
     return (

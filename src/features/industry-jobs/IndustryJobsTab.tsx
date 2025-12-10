@@ -12,7 +12,7 @@ import {
   XCircle,
   PauseCircle,
 } from 'lucide-react'
-import { useAuthStore } from '@/store/auth-store'
+import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useAssetStore } from '@/store/asset-store'
 import { useIndustryJobsStore } from '@/store/industry-jobs-store'
 import { useAssetData } from '@/hooks/useAssetData'
@@ -316,6 +316,7 @@ export function IndustryJobsTab() {
   const [expandedLocations, setExpandedLocations] = useState<Set<number>>(new Set())
 
   const { setExpandCollapse, search } = useTabControls()
+  const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
 
   const locationGroups = useMemo(() => {
     void cacheVersion
@@ -331,7 +332,11 @@ export function IndustryJobsTab() {
 
     const groups = new Map<number, LocationGroup>()
 
-    for (const { owner, jobs } of jobsByOwner) {
+    const filteredJobsByOwner = activeOwnerId === null
+      ? jobsByOwner
+      : jobsByOwner.filter(({ owner }) => ownerKey(owner.type, owner.characterId) === activeOwnerId)
+
+    for (const { owner, jobs } of filteredJobsByOwner) {
       for (const job of jobs) {
         const bpType = hasType(job.blueprint_type_id) ? getType(job.blueprint_type_id) : undefined
         const productType =
@@ -409,7 +414,7 @@ export function IndustryJobsTab() {
     }
 
     return sorted
-  }, [jobsByOwner, cacheVersion, prices, search])
+  }, [jobsByOwner, cacheVersion, prices, search, activeOwnerId])
 
   const toggleLocation = useCallback((locationId: number) => {
     setExpandedLocations((prev) => {
