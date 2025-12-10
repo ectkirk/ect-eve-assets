@@ -288,7 +288,7 @@ function SearchBar() {
           placeholder="Search name, group, location, system, region..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded border border-slate-600 bg-slate-700 pl-9 pr-8 py-1.5 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
+          className="w-full rounded border border-slate-600 bg-slate-700 pl-9 pr-8 py-1.5 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-hidden"
         />
         {search && (
           <button
@@ -304,7 +304,7 @@ function SearchBar() {
         <select
           value={categoryFilter.value}
           onChange={(e) => categoryFilter.onChange(e.target.value)}
-          className="w-40 rounded border border-slate-600 bg-slate-700 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+          className="w-40 rounded border border-slate-600 bg-slate-700 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-hidden"
         >
           <option value="">All Categories</option>
           {categoryFilter.categories.map((cat) => (
