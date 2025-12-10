@@ -171,7 +171,7 @@ function createItemNode(
   stationName?: string
 ): TreeNode {
   const price = getAssetPrice(asset, prices)
-  const volume = type?.volume ?? 0
+  const volume = type?.packagedVolume ?? type?.volume ?? 0
   const customName = assetNames?.get(asset.item_id)
   const typeName = type?.name || `Unknown Type ${asset.type_id}`
 
@@ -257,6 +257,16 @@ function createLocationNode(
   }
 }
 
+function countItemLines(node: TreeNode): number {
+  const isItemNode = node.nodeType === 'item' || node.nodeType === 'stack' ||
+    node.nodeType === 'ship' || node.nodeType === 'container'
+  let count = isItemNode ? 1 : 0
+  for (const child of node.children) {
+    count += countItemLines(child)
+  }
+  return count
+}
+
 function aggregateTotals(node: TreeNode): void {
   let totalCount = node.quantity ?? 0
   let totalValue = node.price ? node.price * (node.quantity ?? 0) : 0
@@ -264,7 +274,7 @@ function aggregateTotals(node: TreeNode): void {
 
   if (node.asset) {
     const type = getType(node.asset.type_id)
-    totalVolume = (type?.volume ?? 0) * (node.quantity ?? 0)
+    totalVolume = (type?.packagedVolume ?? type?.volume ?? 0) * (node.quantity ?? 0)
   }
 
   for (const child of node.children) {
@@ -272,6 +282,10 @@ function aggregateTotals(node: TreeNode): void {
     totalCount += child.totalCount
     totalValue += child.totalValue
     totalVolume += child.totalVolume
+  }
+
+  if (node.nodeType === 'station' || node.nodeType === 'system' || node.nodeType === 'region') {
+    totalCount = countItemLines(node)
   }
 
   node.totalCount = totalCount

@@ -34,6 +34,8 @@ interface TabControlsContextValue {
   setCategoryFilter: (config: CategoryFilterConfig | null) => void
   resultCount: ResultCount | null
   setResultCount: (count: ResultCount | null) => void
+  totalValue: number | null
+  setTotalValue: (value: number | null) => void
 }
 
 const TabControlsContext = createContext<TabControlsContextValue | null>(null)
@@ -44,6 +46,7 @@ export function TabControlsProvider({ children }: { children: ReactNode }) {
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilterConfig | null>(null)
   const [resultCount, setResultCount] = useState<ResultCount | null>(null)
+  const [totalValue, setTotalValue] = useState<number | null>(null)
 
   return (
     <TabControlsContext.Provider value={{
@@ -57,6 +60,8 @@ export function TabControlsProvider({ children }: { children: ReactNode }) {
       setCategoryFilter,
       resultCount,
       setResultCount,
+      totalValue,
+      setTotalValue,
     }}>
       {children}
     </TabControlsContext.Provider>

@@ -133,6 +133,7 @@ export function TreeTab({ mode }: TreeTabProps) {
       onToggleExpand={toggleExpand}
       onExpandAll={expandAll}
       onCollapseAll={collapseAll}
+      storageKey={`tree-${mode.toLowerCase()}`}
     />
   )
 }

@@ -266,7 +266,7 @@ function ColumnsDropdown() {
 }
 
 function SearchBar() {
-  const { search, setSearch, categoryFilter, resultCount } = useTabControls()
+  const { search, setSearch, categoryFilter, resultCount, totalValue } = useTabControls()
 
   return (
     <div className="flex items-center gap-3 border-b border-slate-700 bg-slate-800/50 px-4 py-2">
@@ -300,6 +300,13 @@ function SearchBar() {
             <option key={cat} value={cat}>{cat}</option>
           ))}
         </select>
+      )}
+
+      {totalValue !== null && (
+        <span className="text-sm">
+          <span className="text-slate-400">Value: </span>
+          <span className="text-green-400">{formatNumber(totalValue)} ISK</span>
+        </span>
       )}
 
       {resultCount && (
