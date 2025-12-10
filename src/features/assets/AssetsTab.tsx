@@ -342,6 +342,7 @@ export function AssetsTab() {
 
     for (const { owner, assets } of assetsByOwner) {
       for (const asset of assets) {
+        if (asset.item_id === 16159 || asset.type_id === 27) continue
         const sdeType = getType(asset.type_id)
         const customName = assetNames.get(asset.item_id)
         const typeName = customName || getTypeName(asset.type_id)
