@@ -6,6 +6,8 @@ on:
       - main
       - develop
 
+permissions: {}
+
 jobs:
   notify:
     runs-on: windows-latest
