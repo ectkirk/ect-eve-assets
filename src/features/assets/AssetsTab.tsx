@@ -12,7 +12,7 @@ import {
   type ColumnOrderState,
 } from '@tanstack/react-table'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { ArrowUpDown, Check, ChevronDown, Loader2, X } from 'lucide-react'
+import { ArrowUpDown, Loader2, X } from 'lucide-react'
 import {
   Table,
   TableBody,
@@ -30,6 +30,7 @@ import { useIndustryJobsStore } from '@/store/industry-jobs-store'
 import { useContractsStore } from '@/store/contracts-store'
 import { TypeIcon, OwnerIcon } from '@/components/ui/type-icon'
 import { formatNumber } from '@/lib/utils'
+import { useTabControls } from '@/context'
 
 interface AssetRow {
   itemId: number
@@ -287,9 +288,9 @@ export function AssetsTab() {
   const [columnOrder, setColumnOrder] = useState<ColumnOrderState>(loadColumnOrder)
   const [globalFilter, setGlobalFilter] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
-  const [columnsDropdownOpen, setColumnsDropdownOpen] = useState(false)
-  const columnsDropdownRef = useRef<HTMLDivElement>(null)
   const draggedColumnRef = useRef<string | null>(null)
+
+  const { setColumns } = useTabControls()
 
   useEffect(() => {
     saveColumnVisibility(columnVisibility)
@@ -298,19 +299,6 @@ export function AssetsTab() {
   useEffect(() => {
     saveColumnOrder(columnOrder)
   }, [columnOrder])
-
-  useEffect(() => {
-    if (!columnsDropdownOpen) return
-
-    const handleClickOutside = (e: MouseEvent) => {
-      if (columnsDropdownRef.current && !columnsDropdownRef.current.contains(e.target as Node)) {
-        setColumnsDropdownOpen(false)
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [columnsDropdownOpen])
 
   const ordersByOwner = useMarketOrdersStore((s) => s.ordersByOwner)
   const jobsByOwner = useIndustryJobsStore((s) => s.jobsByOwner)
@@ -608,6 +596,19 @@ export function AssetsTab() {
     },
   })
 
+  useEffect(() => {
+    const cols = table.getAllColumns()
+      .filter((col) => col.getCanHide())
+      .map((col) => ({
+        id: col.id,
+        label: COLUMN_LABELS[col.id] ?? col.id,
+        visible: col.getIsVisible(),
+        toggle: () => col.toggleVisibility(!col.getIsVisible()),
+      }))
+    setColumns(cols)
+    return () => setColumns([])
+  }, [table, columnVisibility, setColumns])
+
   const handleDragStart = (e: React.DragEvent, columnId: string) => {
     draggedColumnRef.current = columnId
     e.dataTransfer.effectAllowed = 'move'
@@ -701,34 +702,6 @@ export function AssetsTab() {
           )}
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="relative" ref={columnsDropdownRef}>
-            <button
-              onClick={() => setColumnsDropdownOpen(!columnsDropdownOpen)}
-              className="flex items-center gap-1 rounded border border-slate-600 bg-slate-700 px-3 py-1.5 text-sm hover:bg-slate-600"
-            >
-              Columns <ChevronDown className="h-4 w-4" />
-            </button>
-            {columnsDropdownOpen && (
-              <div className="absolute right-0 top-full z-50 mt-1 min-w-[160px] rounded border border-slate-600 bg-slate-800 py-1 shadow-lg">
-                {table.getAllColumns()
-                  .filter((column) => column.getCanHide())
-                  .map((column) => (
-                    <button
-                      key={column.id}
-                      onClick={() => column.toggleVisibility(!column.getIsVisible())}
-                      className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-slate-700"
-                    >
-                      <span className="flex h-4 w-4 items-center justify-center">
-                        {column.getIsVisible() && <Check className="h-4 w-4 text-blue-400" />}
-                      </span>
-                      {COLUMN_LABELS[column.id] ?? column.id}
-                    </button>
-                  ))}
-              </div>
-            )}
-          </div>
-        </div>
       </div>
 
       <div className="flex items-center gap-3">

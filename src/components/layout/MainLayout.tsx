@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useAssetStore } from '@/store/asset-store'
 import { AssetsTab } from '@/features/assets'
@@ -13,11 +13,12 @@ import { IndustryJobsTab } from '@/features/industry-jobs'
 import { ClonesTab } from '@/features/clones'
 import { ContractsTab } from '@/features/contracts'
 import { WalletTab } from '@/features/wallet'
-import { Plus, Loader2, RefreshCw } from 'lucide-react'
+import { Plus, Loader2, RefreshCw, ChevronDown, Check } from 'lucide-react'
 import { OwnerIcon } from '@/components/ui/type-icon'
 import { OwnerManagementModal } from './OwnerManagementModal'
 import { useTotalAssets } from '@/hooks'
 import { formatNumber } from '@/lib/utils'
+import { TabControlsProvider, useTabControls } from '@/context'
 
 const TABS = [
   'Assets',
@@ -184,6 +185,52 @@ function formatTimeRemaining(ms: number): string {
   return `${seconds}s`
 }
 
+function ColumnsDropdown() {
+  const { columns } = useTabControls()
+  const [open, setOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [open])
+
+  if (columns.length === 0) return null
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1 rounded border border-slate-600 bg-slate-700 px-2.5 py-1 text-sm hover:bg-slate-600"
+      >
+        Columns <ChevronDown className="h-3.5 w-3.5" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full z-50 mt-1 min-w-[160px] rounded border border-slate-600 bg-slate-800 py-1 shadow-lg">
+          {columns.map((col) => (
+            <button
+              key={col.id}
+              onClick={() => col.toggle()}
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-slate-700"
+            >
+              <span className="flex h-4 w-4 items-center justify-center">
+                {col.visible && <Check className="h-4 w-4 text-blue-400" />}
+              </span>
+              {col.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function HeaderControls() {
   const totals = useTotalAssets()
   const isUpdating = useAssetStore((s) => s.isUpdating)
@@ -236,7 +283,7 @@ function HeaderControls() {
   )
 }
 
-export function MainLayout() {
+function MainLayoutInner() {
   const [activeTab, setActiveTab] = useState<Tab>('Assets')
 
   return (
@@ -258,20 +305,25 @@ export function MainLayout() {
       </header>
 
       {/* Tab Navigation */}
-      <nav className="flex gap-1 border-b border-slate-700 bg-slate-800 px-2">
-        {TABS.map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-3 py-2 text-sm transition-colors ${
-              activeTab === tab
-                ? 'border-b-2 border-blue-500 text-blue-500'
-                : 'text-slate-400 hover:text-slate-50'
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
+      <nav className="flex items-center justify-between border-b border-slate-700 bg-slate-800 px-2">
+        <div className="flex gap-1">
+          {TABS.map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-3 py-2 text-sm transition-colors ${
+                activeTab === tab
+                  ? 'border-b-2 border-blue-500 text-blue-500'
+                  : 'text-slate-400 hover:text-slate-50'
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-2 py-1">
+          <ColumnsDropdown />
+        </div>
       </nav>
 
       {/* Content Area */}
@@ -279,5 +331,13 @@ export function MainLayout() {
         <TabContent tab={activeTab} />
       </main>
     </div>
+  )
+}
+
+export function MainLayout() {
+  return (
+    <TabControlsProvider>
+      <MainLayoutInner />
+    </TabControlsProvider>
   )
 }
