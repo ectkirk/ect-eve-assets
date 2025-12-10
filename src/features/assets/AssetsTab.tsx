@@ -442,14 +442,14 @@ export function AssetsTab() {
         const typeName = getTypeName(productTypeId)
         const volume = sdeType?.packagedVolume ?? sdeType?.volume ?? 0
         const price = prices.get(productTypeId) ?? 0
-        const { locationName, systemName, regionName } = resolveLocationById(job.output_location_id)
+        const { locationName, systemName, regionName } = resolveLocationById(job.facility_id)
 
         rows.push({
           itemId: job.job_id,
           typeId: productTypeId,
           typeName,
           quantity: job.runs,
-          locationId: job.output_location_id,
+          locationId: job.facility_id,
           locationName,
           systemName,
           regionName,
@@ -483,8 +483,11 @@ export function AssetsTab() {
 
         const isIssuer = ownerIds.has(contract.issuer_id)
         const isAssignee = ownerIds.has(contract.assignee_id) || ownerCorpIds.has(contract.assignee_id)
-        const flag = isIssuer ? 'Contract Out' : isAssignee ? 'Contract In' : 'Contract'
-        const valueMultiplier = isAssignee && !isIssuer ? -1 : 1
+
+        if (isIssuer && !isAssignee) continue
+
+        const flag = isAssignee ? 'Contract In' : 'Contract'
+        const valueMultiplier = !isIssuer ? -1 : 1
 
         for (const item of items) {
           if (!item.is_included) continue
