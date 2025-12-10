@@ -13,7 +13,7 @@ import { IndustryJobsTab } from '@/features/industry-jobs'
 import { ClonesTab } from '@/features/clones'
 import { ContractsTab } from '@/features/contracts'
 import { WalletTab } from '@/features/wallet'
-import { Plus, Loader2, RefreshCw, ChevronDown, Check } from 'lucide-react'
+import { Plus, Loader2, RefreshCw, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp } from 'lucide-react'
 import { OwnerIcon } from '@/components/ui/type-icon'
 import { OwnerManagementModal } from './OwnerManagementModal'
 import { useTotalAssets } from '@/hooks'
@@ -185,6 +185,32 @@ function formatTimeRemaining(ms: number): string {
   return `${seconds}s`
 }
 
+function ExpandCollapseButton() {
+  const { expandCollapse } = useTabControls()
+
+  if (!expandCollapse) return null
+
+  return (
+    <button
+      onClick={expandCollapse.toggle}
+      className="flex items-center gap-1 rounded border border-slate-600 bg-slate-700 px-2.5 py-1 text-sm hover:bg-slate-600"
+      title={expandCollapse.isExpanded ? 'Collapse all' : 'Expand all'}
+    >
+      {expandCollapse.isExpanded ? (
+        <>
+          <ChevronsDownUp className="h-3.5 w-3.5" />
+          Collapse
+        </>
+      ) : (
+        <>
+          <ChevronsUpDown className="h-3.5 w-3.5" />
+          Expand
+        </>
+      )}
+    </button>
+  )
+}
+
 function ColumnsDropdown() {
   const { columns } = useTabControls()
   const [open, setOpen] = useState(false)
@@ -322,6 +348,7 @@ function MainLayoutInner() {
           ))}
         </div>
         <div className="flex items-center gap-2 py-1">
+          <ExpandCollapseButton />
           <ColumnsDropdown />
         </div>
       </nav>

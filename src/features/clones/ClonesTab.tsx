@@ -10,6 +10,7 @@ import {
 import { useAuthStore } from '@/store/auth-store'
 import { useClonesStore } from '@/store/clones-store'
 import { useAssetData } from '@/hooks/useAssetData'
+import { useTabControls } from '@/context'
 import {
   hasType,
   getType,
@@ -352,6 +353,31 @@ export function ClonesTab() {
     setExpandedCharacters(new Set())
   }, [])
 
+  const { setExpandCollapse } = useTabControls()
+
+  const expandableIds = useMemo(() => characterClones.map((c) => c.ownerId), [characterClones])
+  const isAllExpanded = expandableIds.length > 0 && expandableIds.every((id) => expandedCharacters.has(id))
+
+  useEffect(() => {
+    if (expandableIds.length === 0) {
+      setExpandCollapse(null)
+      return
+    }
+
+    setExpandCollapse({
+      isExpanded: isAllExpanded,
+      toggle: () => {
+        if (isAllExpanded) {
+          collapseAll()
+        } else {
+          expandAll()
+        }
+      },
+    })
+
+    return () => setExpandCollapse(null)
+  }, [expandableIds, isAllExpanded, expandAll, collapseAll, setExpandCollapse])
+
   const totals = useMemo(() => {
     let totalJumpClones = 0
     let totalImplants = 0
@@ -406,35 +432,18 @@ export function ClonesTab() {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-6 text-sm">
-          <div>
-            <span className="text-slate-400">Characters: </span>
-            <span className="font-medium">{totals.characters}</span>
-          </div>
-          <div>
-            <span className="text-slate-400">Jump Clones: </span>
-            <span className="font-medium text-blue-400">{totals.totalJumpClones}</span>
-          </div>
-          <div>
-            <span className="text-slate-400">Total Implants: </span>
-            <span className="font-medium text-purple-400">{totals.totalImplants}</span>
-          </div>
+      <div className="flex items-center gap-6 text-sm">
+        <div>
+          <span className="text-slate-400">Characters: </span>
+          <span className="font-medium">{totals.characters}</span>
         </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={expandAll}
-            className="rounded border border-slate-600 bg-slate-700 px-2 py-1 text-xs hover:bg-slate-600"
-          >
-            Expand All
-          </button>
-          <button
-            onClick={collapseAll}
-            className="rounded border border-slate-600 bg-slate-700 px-2 py-1 text-xs hover:bg-slate-600"
-          >
-            Collapse All
-          </button>
+        <div>
+          <span className="text-slate-400">Jump Clones: </span>
+          <span className="font-medium text-blue-400">{totals.totalJumpClones}</span>
+        </div>
+        <div>
+          <span className="text-slate-400">Total Implants: </span>
+          <span className="font-medium text-purple-400">{totals.totalImplants}</span>
         </div>
       </div>
 

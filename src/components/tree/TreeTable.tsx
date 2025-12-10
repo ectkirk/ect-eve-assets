@@ -1,4 +1,4 @@
-import { useMemo, useRef, useCallback, useState } from 'react'
+import { useMemo, useRef, useCallback, useState, useEffect } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import {
   ChevronRight,
@@ -11,8 +11,6 @@ import {
   Box,
   Briefcase,
   Layers,
-  ChevronsUpDown,
-  ChevronsDownUp,
 } from 'lucide-react'
 import {
   Table,
@@ -26,6 +24,7 @@ import type { TreeNode, TreeNodeType } from '@/lib/tree-types'
 import { flattenTree, getAllNodeIds } from '@/lib/tree-builder'
 import { cn } from '@/lib/utils'
 import { TypeIcon } from '@/components/ui/type-icon'
+import { useTabControls } from '@/context'
 
 interface TreeTableProps {
   nodes: TreeNode[]
@@ -183,6 +182,7 @@ export function TreeTable({
   onCollapseAll,
 }: TreeTableProps) {
   const tableContainerRef = useRef<HTMLDivElement>(null)
+  const { setExpandCollapse } = useTabControls()
 
   const flatRows = useMemo(
     () => flattenTree(nodes, expandedNodes),
@@ -215,6 +215,29 @@ export function TreeTable({
     [nodes]
   )
 
+  const allNodeIds = useMemo(() => getAllNodeIds(nodes), [nodes])
+  const isAllExpanded = allNodeIds.length > 0 && allNodeIds.every((id) => expandedNodes.has(id))
+
+  useEffect(() => {
+    if (!hasExpandableNodes) {
+      setExpandCollapse(null)
+      return
+    }
+
+    setExpandCollapse({
+      isExpanded: isAllExpanded,
+      toggle: () => {
+        if (isAllExpanded) {
+          onCollapseAll()
+        } else {
+          onExpandAll()
+        }
+      },
+    })
+
+    return () => setExpandCollapse(null)
+  }, [hasExpandableNodes, isAllExpanded, onExpandAll, onCollapseAll, setExpandCollapse])
+
   if (nodes.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -226,44 +249,21 @@ export function TreeTable({
   return (
     <div className="space-y-3">
       {/* Summary Bar */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-6 text-sm">
-          <div>
-            <span className="text-slate-400">Items: </span>
-            <span className="font-medium">{totals.totalCount.toLocaleString()}</span>
-          </div>
-          <div>
-            <span className="text-slate-400">Value: </span>
-            <span className="font-medium text-green-400">
-              {formatNumber(totals.totalValue)} ISK
-            </span>
-          </div>
-          <div>
-            <span className="text-slate-400">Volume: </span>
-            <span className="font-medium">{formatVolume(totals.totalVolume)}</span>
-          </div>
+      <div className="flex items-center gap-6 text-sm">
+        <div>
+          <span className="text-slate-400">Items: </span>
+          <span className="font-medium">{totals.totalCount.toLocaleString()}</span>
         </div>
-
-        {hasExpandableNodes && (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onExpandAll}
-              className="flex items-center gap-1 rounded border border-slate-600 bg-slate-700 px-2 py-1 text-xs hover:bg-slate-600"
-              title="Expand all"
-            >
-              <ChevronsUpDown className="h-3.5 w-3.5" />
-              Expand
-            </button>
-            <button
-              onClick={onCollapseAll}
-              className="flex items-center gap-1 rounded border border-slate-600 bg-slate-700 px-2 py-1 text-xs hover:bg-slate-600"
-              title="Collapse all"
-            >
-              <ChevronsDownUp className="h-3.5 w-3.5" />
-              Collapse
-            </button>
-          </div>
-        )}
+        <div>
+          <span className="text-slate-400">Value: </span>
+          <span className="font-medium text-green-400">
+            {formatNumber(totals.totalValue)} ISK
+          </span>
+        </div>
+        <div>
+          <span className="text-slate-400">Volume: </span>
+          <span className="font-medium">{formatVolume(totals.totalVolume)}</span>
+        </div>
       </div>
 
       {/* Table */}

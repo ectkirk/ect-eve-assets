@@ -12,6 +12,7 @@ import {
   XCircle,
   AlertCircle,
 } from 'lucide-react'
+import { useTabControls } from '@/context'
 import { useAuthStore } from '@/store/auth-store'
 import { useContractsStore, type ContractWithItems } from '@/store/contracts-store'
 import { useAssetData } from '@/hooks/useAssetData'
@@ -582,6 +583,26 @@ export function ContractsTab() {
     setExpandedDirections(new Set())
   }, [])
 
+  const { setExpandCollapse } = useTabControls()
+
+  const expandableDirections = ['in', 'out'] as const
+  const isAllExpanded = expandableDirections.every((d) => expandedDirections.has(d))
+
+  useEffect(() => {
+    setExpandCollapse({
+      isExpanded: isAllExpanded,
+      toggle: () => {
+        if (isAllExpanded) {
+          collapseAll()
+        } else {
+          expandAll()
+        }
+      },
+    })
+
+    return () => setExpandCollapse(null)
+  }, [isAllExpanded, expandAll, collapseAll, setExpandCollapse])
+
   const totals = useMemo(() => {
     let totalContracts = 0
     let assetsIn = 0
@@ -642,41 +663,24 @@ export function ContractsTab() {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-6 text-sm">
-          <div>
-            <span className="text-slate-400">In: </span>
-            <span className="font-medium text-green-400">{totals.assetsIn}</span>
-            {totals.valueIn > 0 && (
-              <span className="text-slate-500 ml-1">({formatISK(totals.valueIn)})</span>
-            )}
-          </div>
-          <div>
-            <span className="text-slate-400">Out: </span>
-            <span className="font-medium text-orange-400">{totals.assetsOut}</span>
-            {totals.valueOut > 0 && (
-              <span className="text-slate-500 ml-1">({formatISK(totals.valueOut)})</span>
-            )}
-          </div>
-          <div>
-            <span className="text-slate-400">Total: </span>
-            <span className="font-medium">{totals.totalContracts}</span>
-          </div>
+      <div className="flex items-center gap-6 text-sm">
+        <div>
+          <span className="text-slate-400">In: </span>
+          <span className="font-medium text-green-400">{totals.assetsIn}</span>
+          {totals.valueIn > 0 && (
+            <span className="text-slate-500 ml-1">({formatISK(totals.valueIn)})</span>
+          )}
         </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={expandAll}
-            className="rounded border border-slate-600 bg-slate-700 px-2 py-1 text-xs hover:bg-slate-600"
-          >
-            Expand All
-          </button>
-          <button
-            onClick={collapseAll}
-            className="rounded border border-slate-600 bg-slate-700 px-2 py-1 text-xs hover:bg-slate-600"
-          >
-            Collapse All
-          </button>
+        <div>
+          <span className="text-slate-400">Out: </span>
+          <span className="font-medium text-orange-400">{totals.assetsOut}</span>
+          {totals.valueOut > 0 && (
+            <span className="text-slate-500 ml-1">({formatISK(totals.valueOut)})</span>
+          )}
+        </div>
+        <div>
+          <span className="text-slate-400">Total: </span>
+          <span className="font-medium">{totals.totalContracts}</span>
         </div>
       </div>
 

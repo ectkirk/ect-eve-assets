@@ -5,6 +5,7 @@ import { useWalletStore, isCorporationWallet } from '@/store/wallet-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { OwnerIcon } from '@/components/ui/type-icon'
 import { cn } from '@/lib/utils'
+import { useTabControls } from '@/context'
 
 function formatISK(value: number): string {
   const abs = Math.abs(value)
@@ -71,6 +72,35 @@ export function WalletTab() {
     setExpandedOwners(new Set())
   }, [])
 
+  const { setExpandCollapse } = useTabControls()
+
+  const expandableKeys = useMemo(
+    () => walletsByOwner.filter((w) => isCorporationWallet(w)).map((w) => `${w.owner.type}-${w.owner.id}`),
+    [walletsByOwner]
+  )
+
+  const isAllExpanded = expandableKeys.length > 0 && expandableKeys.every((k) => expandedOwners.has(k))
+
+  useEffect(() => {
+    if (expandableKeys.length === 0) {
+      setExpandCollapse(null)
+      return
+    }
+
+    setExpandCollapse({
+      isExpanded: isAllExpanded,
+      toggle: () => {
+        if (isAllExpanded) {
+          collapseAll()
+        } else {
+          expandAll()
+        }
+      },
+    })
+
+    return () => setExpandCollapse(null)
+  }, [expandableKeys, isAllExpanded, expandAll, collapseAll, setExpandCollapse])
+
   const totalBalance = useMemo(() => {
     let total = 0
     for (const wallet of walletsByOwner) {
@@ -133,27 +163,10 @@ export function WalletTab() {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-6 text-sm">
-          <div>
-            <span className="text-slate-400">Total Balance: </span>
-            <span className="font-medium text-green-400">{formatISK(totalBalance)}</span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={expandAll}
-            className="rounded border border-slate-600 bg-slate-700 px-2 py-1 text-xs hover:bg-slate-600"
-          >
-            Expand All
-          </button>
-          <button
-            onClick={collapseAll}
-            className="rounded border border-slate-600 bg-slate-700 px-2 py-1 text-xs hover:bg-slate-600"
-          >
-            Collapse All
-          </button>
+      <div className="flex items-center gap-6 text-sm">
+        <div>
+          <span className="text-slate-400">Total Balance: </span>
+          <span className="font-medium text-green-400">{formatISK(totalBalance)}</span>
         </div>
       </div>
 

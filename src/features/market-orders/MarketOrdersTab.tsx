@@ -3,6 +3,7 @@ import { Loader2, TrendingUp, TrendingDown, ChevronRight, ChevronDown } from 'lu
 import { useAuthStore } from '@/store/auth-store'
 import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { useAssetData } from '@/hooks/useAssetData'
+import { useTabControls } from '@/context'
 import { type ESIMarketOrder } from '@/api/endpoints/market'
 import {
   hasType,
@@ -329,6 +330,31 @@ export function MarketOrdersTab() {
     setExpandedLocations(new Set())
   }, [])
 
+  const { setExpandCollapse } = useTabControls()
+
+  const expandableIds = useMemo(() => locationGroups.map((g) => g.locationId), [locationGroups])
+  const isAllExpanded = expandableIds.length > 0 && expandableIds.every((id) => expandedLocations.has(id))
+
+  useEffect(() => {
+    if (expandableIds.length === 0) {
+      setExpandCollapse(null)
+      return
+    }
+
+    setExpandCollapse({
+      isExpanded: isAllExpanded,
+      toggle: () => {
+        if (isAllExpanded) {
+          collapseAll()
+        } else {
+          expandAll()
+        }
+      },
+    })
+
+    return () => setExpandCollapse(null)
+  }, [expandableIds, isAllExpanded, expandAll, collapseAll, setExpandCollapse])
+
   const totals = useMemo(() => {
     let buyValue = 0
     let sellValue = 0
@@ -386,39 +412,22 @@ export function MarketOrdersTab() {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-6 text-sm">
-          <div>
-            <span className="text-slate-400">Buy Orders: </span>
-            <span className="font-medium text-green-400">{totals.buyCount}</span>
-            <span className="text-slate-500 ml-1">({formatISK(totals.buyValue)})</span>
-          </div>
-          <div>
-            <span className="text-slate-400">Sell Orders: </span>
-            <span className="font-medium text-red-400">{totals.sellCount}</span>
-            <span className="text-slate-500 ml-1">({formatISK(totals.sellValue)})</span>
-          </div>
-          <div>
-            <span className="text-slate-400">Total Value: </span>
-            <span className="font-medium text-amber-400">
-              {formatISK(totals.buyValue + totals.sellValue)}
-            </span>
-          </div>
+      <div className="flex items-center gap-6 text-sm">
+        <div>
+          <span className="text-slate-400">Buy Orders: </span>
+          <span className="font-medium text-green-400">{totals.buyCount}</span>
+          <span className="text-slate-500 ml-1">({formatISK(totals.buyValue)})</span>
         </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={expandAll}
-            className="rounded border border-slate-600 bg-slate-700 px-2 py-1 text-xs hover:bg-slate-600"
-          >
-            Expand All
-          </button>
-          <button
-            onClick={collapseAll}
-            className="rounded border border-slate-600 bg-slate-700 px-2 py-1 text-xs hover:bg-slate-600"
-          >
-            Collapse All
-          </button>
+        <div>
+          <span className="text-slate-400">Sell Orders: </span>
+          <span className="font-medium text-red-400">{totals.sellCount}</span>
+          <span className="text-slate-500 ml-1">({formatISK(totals.sellValue)})</span>
+        </div>
+        <div>
+          <span className="text-slate-400">Total Value: </span>
+          <span className="font-medium text-amber-400">
+            {formatISK(totals.buyValue + totals.sellValue)}
+          </span>
         </div>
       </div>
 
