@@ -8,6 +8,7 @@ import { logger } from './logger.js'
 const CHARACTER_SCOPES = [
   'publicData',
   'esi-assets.read_assets.v1',
+  'esi-characters.read_blueprints.v1',
   'esi-markets.read_character_orders.v1',
   'esi-industry.read_character_jobs.v1',
   'esi-contracts.read_character_contracts.v1',
@@ -20,6 +21,7 @@ const CHARACTER_SCOPES = [
 const CORPORATION_SCOPES = [
   ...CHARACTER_SCOPES,
   'esi-assets.read_corporation_assets.v1',
+  'esi-corporations.read_blueprints.v1',
   'esi-contracts.read_corporation_contracts.v1',
   'esi-industry.read_corporation_jobs.v1',
   'esi-markets.read_corporation_orders.v1',

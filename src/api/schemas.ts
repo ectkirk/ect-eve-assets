@@ -185,6 +185,18 @@ export const ESINameSchema = z.object({
   ]),
 })
 
+// ESI Blueprints
+export const ESIBlueprintSchema = z.object({
+  item_id: z.number(),
+  location_flag: z.string(),
+  location_id: z.number(),
+  material_efficiency: z.number(),
+  quantity: z.number(),
+  runs: z.number(),
+  time_efficiency: z.number(),
+  type_id: z.number(),
+})
+
 // ESI Corporation
 export const ESICharacterRolesSchema = z.object({
   roles: z.array(z.string()),

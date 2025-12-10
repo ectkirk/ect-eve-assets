@@ -15,6 +15,7 @@ import { ArrowUpDown, Loader2 } from 'lucide-react'
 import { type ESIAsset } from '@/api/endpoints/assets'
 import { isAbyssalTypeId, getCachedAbyssalPrice } from '@/api/mutamarket-client'
 import { getAbyssalPrice, getTypeName, getType, getStructure, getLocation, CategoryIds } from '@/store/reference-cache'
+import { formatBlueprintName } from '@/store/blueprints-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useMarketOrdersStore } from '@/store/market-orders-store'
@@ -345,7 +346,9 @@ export function AssetsTab() {
         if (asset.item_id === 16159 || asset.type_id === 27) continue
         const sdeType = getType(asset.type_id)
         const customName = assetNames.get(asset.item_id)
-        const typeName = customName || getTypeName(asset.type_id)
+        const baseName = customName || getTypeName(asset.type_id)
+        const isBlueprint = sdeType?.categoryId === CategoryIds.BLUEPRINT
+        const typeName = isBlueprint ? formatBlueprintName(baseName, asset.item_id) : baseName
         const volume = sdeType?.packagedVolume ?? sdeType?.volume ?? 0
 
         const abyssalPrice = getAbyssalPrice(asset.item_id)

@@ -6,6 +6,7 @@ import { useMarketOrdersStore } from './store/market-orders-store'
 import { useIndustryJobsStore } from './store/industry-jobs-store'
 import { useContractsStore } from './store/contracts-store'
 import { useWalletStore } from './store/wallet-store'
+import { useBlueprintsStore } from './store/blueprints-store'
 import { useDataCacheStore, type DataType } from './store/data-cache-store'
 import { LoginScreen } from './components/layout/LoginScreen'
 import { MainLayout } from './components/layout/MainLayout'
@@ -125,6 +126,7 @@ function App() {
           useIndustryJobsStore.getState().init(),
           useContractsStore.getState().init(),
           useWalletStore.getState().init(),
+          useBlueprintsStore.getState().init(),
         ])
       })
       .then(() => {

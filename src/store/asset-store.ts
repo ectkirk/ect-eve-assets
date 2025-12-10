@@ -5,6 +5,7 @@ import { useIndustryJobsStore } from './industry-jobs-store'
 import { useContractsStore } from './contracts-store'
 import { useClonesStore } from './clones-store'
 import { useWalletStore } from './wallet-store'
+import { useBlueprintsStore } from './blueprints-store'
 import { getCharacterAssets, getAssetNames, type ESIAsset, type ESIAssetName } from '@/api/endpoints/assets'
 import { getCorporationAssets } from '@/api/endpoints/corporation'
 import { fetchPrices } from '@/api/ref-client'
@@ -273,6 +274,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         useContractsStore.getState().update(true),
         useClonesStore.getState().update(true),
         useWalletStore.getState().update(true),
+        useBlueprintsStore.getState().update(true),
       ])
 
       // Collect all type IDs that need prices
@@ -425,6 +427,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         useContractsStore.getState().updateForOwner(owner),
         useClonesStore.getState().updateForOwner(owner),
         useWalletStore.getState().updateForOwner(owner),
+        useBlueprintsStore.getState().updateForOwner(owner),
       ])
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error'
@@ -453,6 +456,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
       useContractsStore.getState().removeForOwner(ownerType, ownerId),
       useClonesStore.getState().removeForOwner(ownerType, ownerId),
       useWalletStore.getState().removeForOwner(ownerType, ownerId),
+      useBlueprintsStore.getState().removeForOwner(ownerType, ownerId),
     ])
   },
 
@@ -473,6 +477,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
       useContractsStore.getState().clear(),
       useClonesStore.getState().clear(),
       useWalletStore.getState().clear(),
+      useBlueprintsStore.getState().clear(),
     ])
   },
 }))
