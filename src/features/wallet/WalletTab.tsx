@@ -72,7 +72,7 @@ export function WalletTab() {
     setExpandedOwners(new Set())
   }, [])
 
-  const { setExpandCollapse, search } = useTabControls()
+  const { setExpandCollapse, search, setResultCount } = useTabControls()
 
   const expandableKeys = useMemo(
     () => walletsByOwner.filter((w) => isCorporationWallet(w)).map((w) => `${w.owner.type}-${w.owner.id}`),
@@ -135,6 +135,11 @@ export function WalletTab() {
     const searchLower = search.toLowerCase()
     return sorted.filter((wallet) => wallet.owner.name.toLowerCase().includes(searchLower))
   }, [walletsByOwner, search, activeOwnerId])
+
+  useEffect(() => {
+    setResultCount({ showing: sortedWallets.length, total: walletsByOwner.length })
+    return () => setResultCount(null)
+  }, [sortedWallets.length, walletsByOwner.length, setResultCount])
 
   if (owners.length === 0) {
     return (

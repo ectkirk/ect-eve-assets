@@ -463,7 +463,7 @@ export function ContractsTab() {
   const [expandedDirections, setExpandedDirections] = useState<Set<string>>(new Set(['in', 'out']))
   const [showCourier, setShowCourier] = useState(true)
 
-  const { setExpandCollapse, search } = useTabControls()
+  const { setExpandCollapse, search, setResultCount } = useTabControls()
   const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
 
   const { directionGroups, courierGroup } = useMemo(() => {
@@ -644,6 +644,22 @@ export function ContractsTab() {
 
     return { totalContracts, assetsIn, assetsOut, valueIn, valueOut }
   }, [directionGroups])
+
+  const totalContractCount = useMemo(() => {
+    const seen = new Set<number>()
+    for (const { contracts } of contractsByOwner) {
+      for (const { contract } of contracts) {
+        seen.add(contract.contract_id)
+      }
+    }
+    return seen.size
+  }, [contractsByOwner])
+
+  useEffect(() => {
+    const showingCount = totals.totalContracts + (courierGroup?.contracts.length ?? 0)
+    setResultCount({ showing: showingCount, total: totalContractCount })
+    return () => setResultCount(null)
+  }, [totals.totalContracts, courierGroup, totalContractCount, setResultCount])
 
   if (owners.length === 0) {
     return (

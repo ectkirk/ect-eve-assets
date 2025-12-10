@@ -290,7 +290,7 @@ export function AssetsTab() {
   const [categoryFilterValue, setCategoryFilterValue] = useState('')
   const draggedColumnRef = useRef<string | null>(null)
 
-  const { setColumns, search, setCategoryFilter } = useTabControls()
+  const { setColumns, search, setCategoryFilter, setResultCount } = useTabControls()
 
   useEffect(() => {
     saveColumnVisibility(columnVisibility)
@@ -624,6 +624,11 @@ export function AssetsTab() {
     return () => setCategoryFilter(null)
   }, [categories, categoryFilterValue, setCategoryFilter])
 
+  useEffect(() => {
+    setResultCount({ showing: filteredData.length, total: data.length })
+    return () => setResultCount(null)
+  }, [filteredData.length, data.length, setResultCount])
+
   const handleDragStart = (e: React.DragEvent, columnId: string) => {
     draggedColumnRef.current = columnId
     e.dataTransfer.effectAllowed = 'move'
@@ -657,11 +662,9 @@ export function AssetsTab() {
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => tableContainerRef.current,
-    estimateSize: () => 41, // Estimated row height in pixels
+    estimateSize: () => 41,
     overscan: 10,
   })
-
-  const filteredRows = table.getFilteredRowModel().rows
 
   if (owners.length === 0) {
     return (
@@ -706,19 +709,13 @@ export function AssetsTab() {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-6 text-sm">
-        <span className="text-slate-400">
-          Showing {filteredRows.length} of {data.length} assets
-        </span>
-        {isRefreshingAbyssals && (
-          <div className="flex items-center gap-1 text-blue-400">
-            <Loader2 className="h-3 w-3 animate-spin" />
-            <span>Fetching abyssal prices...</span>
-          </div>
-        )}
-      </div>
+      {isRefreshingAbyssals && (
+        <div className="flex items-center gap-1 text-sm text-blue-400">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          <span>Fetching abyssal prices...</span>
+        </div>
+      )}
 
-      {/* Table with Virtual Scrolling */}
       <div
         ref={tableContainerRef}
         className="rounded-lg border border-slate-700 overflow-auto"

@@ -1,9 +1,9 @@
-import { useMemo } from 'react'
+import { useMemo, useEffect } from 'react'
 import { Loader2 } from 'lucide-react'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { TreeTable, useTreeState } from '@/components/tree'
-import { buildTree, filterTree, type AssetWithOwner } from '@/lib/tree-builder'
+import { buildTree, filterTree, countTreeItems, type AssetWithOwner } from '@/lib/tree-builder'
 import { type TreeMode } from '@/lib/tree-types'
 import { useTabControls } from '@/context'
 
@@ -38,10 +38,10 @@ export function TreeTab({ mode }: TreeTabProps) {
     timeUntilUpdate,
   } = useAssetData()
 
-  const { search } = useTabControls()
+  const { search, setResultCount } = useTabControls()
   const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
 
-  const treeNodes = useMemo(() => {
+  const unfilteredNodes = useMemo(() => {
     void cacheVersion
     if (assetsByOwner.length === 0 || prices.size === 0) return []
 
@@ -53,9 +53,19 @@ export function TreeTab({ mode }: TreeTabProps) {
       }
     }
 
-    const nodes = buildTree(assetsWithOwners, { mode, prices })
-    return filterTree(nodes, search)
-  }, [assetsByOwner, prices, cacheVersion, mode, search, activeOwnerId])
+    return buildTree(assetsWithOwners, { mode, prices })
+  }, [assetsByOwner, prices, cacheVersion, mode, activeOwnerId])
+
+  const treeNodes = useMemo(() => {
+    return filterTree(unfilteredNodes, search)
+  }, [unfilteredNodes, search])
+
+  useEffect(() => {
+    const total = countTreeItems(unfilteredNodes)
+    const showing = countTreeItems(treeNodes)
+    setResultCount({ showing, total })
+    return () => setResultCount(null)
+  }, [unfilteredNodes, treeNodes, setResultCount])
 
   const { expandedNodes, toggleExpand, expandAll, collapseAll } = useTreeState(treeNodes)
 

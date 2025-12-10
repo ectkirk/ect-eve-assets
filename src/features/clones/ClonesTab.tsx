@@ -255,7 +255,7 @@ export function ClonesTab() {
 
   const [expandedCharacters, setExpandedCharacters] = useState<Set<number>>(new Set())
 
-  const { setExpandCollapse, search } = useTabControls()
+  const { setExpandCollapse, search, setResultCount } = useTabControls()
   const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
 
   const characterClones = useMemo(() => {
@@ -413,6 +413,11 @@ export function ClonesTab() {
 
     return { totalJumpClones, totalImplants, characters: characterClones.length }
   }, [characterClones])
+
+  useEffect(() => {
+    setResultCount({ showing: characterClones.length, total: clonesByOwner.length })
+    return () => setResultCount(null)
+  }, [characterClones.length, clonesByOwner.length, setResultCount])
 
   if (owners.length === 0) {
     return (

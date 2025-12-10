@@ -315,7 +315,7 @@ export function IndustryJobsTab() {
 
   const [expandedLocations, setExpandedLocations] = useState<Set<number>>(new Set())
 
-  const { setExpandCollapse, search } = useTabControls()
+  const { setExpandCollapse, search, setResultCount } = useTabControls()
   const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
 
   const locationGroups = useMemo(() => {
@@ -472,6 +472,19 @@ export function IndustryJobsTab() {
 
     return { activeCount, completedCount, totalCost }
   }, [locationGroups])
+
+  const totalJobCount = useMemo(() => {
+    let count = 0
+    for (const { jobs } of jobsByOwner) {
+      count += jobs.length
+    }
+    return count
+  }, [jobsByOwner])
+
+  useEffect(() => {
+    setResultCount({ showing: totals.activeCount + totals.completedCount, total: totalJobCount })
+    return () => setResultCount(null)
+  }, [totals.activeCount, totals.completedCount, totalJobCount, setResultCount])
 
   if (owners.length === 0) {
     return (

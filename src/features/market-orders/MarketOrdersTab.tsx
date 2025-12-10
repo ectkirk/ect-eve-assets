@@ -232,7 +232,7 @@ export function MarketOrdersTab() {
 
   const [expandedLocations, setExpandedLocations] = useState<Set<number>>(new Set())
 
-  const { setExpandCollapse, search } = useTabControls()
+  const { setExpandCollapse, search, setResultCount } = useTabControls()
   const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
 
   const locationGroups = useMemo(() => {
@@ -396,6 +396,19 @@ export function MarketOrdersTab() {
 
     return { buyValue, sellValue, buyCount, sellCount }
   }, [locationGroups])
+
+  const totalOrderCount = useMemo(() => {
+    let count = 0
+    for (const { orders } of ordersByOwner) {
+      count += orders.length
+    }
+    return count
+  }, [ordersByOwner])
+
+  useEffect(() => {
+    setResultCount({ showing: totals.buyCount + totals.sellCount, total: totalOrderCount })
+    return () => setResultCount(null)
+  }, [totals.buyCount, totals.sellCount, totalOrderCount, setResultCount])
 
   if (owners.length === 0) {
     return (

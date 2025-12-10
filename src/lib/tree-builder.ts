@@ -667,3 +667,16 @@ export function filterTree(nodes: TreeNode[], search: string): TreeNode[] {
 
   return result
 }
+
+export function countTreeItems(nodes: TreeNode[]): number {
+  let count = 0
+  for (const node of nodes) {
+    if (node.asset) {
+      count += 1
+    }
+    if (node.children.length > 0) {
+      count += countTreeItems(node.children)
+    }
+  }
+  return count
+}
