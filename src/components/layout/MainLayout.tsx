@@ -348,6 +348,10 @@ function HeaderControls() {
             <span className="font-medium text-blue-400">{formatNumber(totals.marketTotal)}</span>
           </div>
           <div>
+            <span className="text-slate-400">Industry: </span>
+            <span className="font-medium text-orange-400">{formatNumber(totals.industryTotal)}</span>
+          </div>
+          <div>
             <span className="text-slate-400">Contracts: </span>
             <span className="font-medium text-yellow-400">{formatNumber(totals.contractsTotal)}</span>
           </div>

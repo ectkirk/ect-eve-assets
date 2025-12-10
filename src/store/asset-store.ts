@@ -266,11 +266,30 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
 
       const lastUpdated = Date.now()
 
-      // Fetch prices
+      // Update other stores first so we can collect their type IDs for pricing
+      await Promise.all([
+        useMarketOrdersStore.getState().update(true),
+        useIndustryJobsStore.getState().update(true),
+        useContractsStore.getState().update(true),
+        useClonesStore.getState().update(true),
+        useWalletStore.getState().update(true),
+      ])
+
+      // Collect all type IDs that need prices
       const typeIds = new Set<number>()
       for (const { assets } of results) {
         for (const asset of assets) {
           typeIds.add(asset.type_id)
+        }
+      }
+
+      // Add industry job product type IDs
+      const industryJobs = useIndustryJobsStore.getState().jobsByOwner
+      for (const { jobs } of industryJobs) {
+        for (const job of jobs) {
+          if (job.product_type_id) {
+            typeIds.add(job.product_type_id)
+          }
         }
       }
 
@@ -318,14 +337,6 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         owners: results.length,
         totalAssets: results.reduce((sum, r) => sum + r.assets.length, 0),
       })
-
-      await Promise.all([
-        useMarketOrdersStore.getState().update(true),
-        useIndustryJobsStore.getState().update(true),
-        useContractsStore.getState().update(true),
-        useClonesStore.getState().update(true),
-        useWalletStore.getState().update(true),
-      ])
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error'
       set({ isUpdating: false, updateProgress: null, updateError: message })
