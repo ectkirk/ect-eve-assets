@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { useAuthStore } from '@/store/auth-store'
 import { useClonesStore } from '@/store/clones-store'
+import { useAssetData } from '@/hooks/useAssetData'
 import {
   hasType,
   getType,
@@ -193,23 +194,14 @@ export function ClonesTab() {
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
 
   const clonesByOwner = useClonesStore((s) => s.clonesByOwner)
-  const lastUpdated = useClonesStore((s) => s.lastUpdated)
-  const isUpdating = useClonesStore((s) => s.isUpdating)
+  const clonesLastUpdated = useClonesStore((s) => s.lastUpdated)
+  const clonesUpdating = useClonesStore((s) => s.isUpdating)
   const updateError = useClonesStore((s) => s.updateError)
   const init = useClonesStore((s) => s.init)
-  const update = useClonesStore((s) => s.update)
-  const canUpdateFn = useClonesStore((s) => s.canUpdate)
-  const getTimeUntilUpdateFn = useClonesStore((s) => s.getTimeUntilUpdate)
   const initialized = useClonesStore((s) => s.initialized)
 
-  const [, setTick] = useState(0)
-  useEffect(() => {
-    const interval = setInterval(() => setTick((t) => t + 1), 1000)
-    return () => clearInterval(interval)
-  }, [])
-
-  const canUpdate = canUpdateFn()
-  const timeUntilUpdate = getTimeUntilUpdateFn()
+  const { update, canUpdate, timeUntilUpdate, isLoading: assetsUpdating } = useAssetData()
+  const isUpdating = assetsUpdating || clonesUpdating
 
   useEffect(() => {
     init()
@@ -497,9 +489,9 @@ export function ClonesTab() {
         )}
       </div>
 
-      {lastUpdated && (
+      {clonesLastUpdated && (
         <p className="text-xs text-slate-500 text-right">
-          Last updated: {new Date(lastUpdated).toLocaleString()}
+          Last updated: {new Date(clonesLastUpdated).toLocaleString()}
         </p>
       )}
     </div>

@@ -37,7 +37,6 @@ interface ElectronAPI {
   writeLog: (level: LogLevel, message: string, context?: LogContext) => Promise<void>
   getLogDir: () => Promise<string>
   onOpenUpdateDialog: (callback: () => void) => () => void
-  onRefreshAbyssalPrices: (callback: () => void) => () => void
   refTypes: (ids: number[], market: 'jita' | 'the_forge') => Promise<RefApiResult>
   refUniverse: (ids: number[]) => Promise<RefApiResult>
   mutamarketModule: (itemId: number) => Promise<MutamarketResult>

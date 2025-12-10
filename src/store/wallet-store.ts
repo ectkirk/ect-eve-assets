@@ -48,6 +48,7 @@ const UPDATE_COOLDOWN_MS = 5 * 60 * 1000
 interface WalletActions {
   init: () => Promise<void>
   update: (force?: boolean) => Promise<void>
+  updateForOwner: (owner: Owner) => Promise<void>
   clear: () => Promise<void>
   canUpdate: () => boolean
   getTimeUntilUpdate: () => number
@@ -273,6 +274,43 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
       set({ isUpdating: false, updateError: message })
       logger.error('Wallet update failed', err instanceof Error ? err : undefined, {
         module: 'WalletStore',
+      })
+    }
+  },
+
+  updateForOwner: async (owner: Owner) => {
+    const state = get()
+    try {
+      logger.info('Fetching wallet for new owner', { module: 'WalletStore', owner: owner.name })
+
+      let walletData: CharacterWallet | CorporationWallet
+      if (owner.type === 'character') {
+        const balance = await getCharacterWallet(owner.characterId)
+        walletData = { owner, balance }
+      } else {
+        const divisions = await getCorporationWallets(owner.characterId, owner.id)
+        walletData = { owner, divisions }
+      }
+
+      const ownerKey = `${owner.type}-${owner.id}`
+      const updated = state.walletsByOwner.filter(
+        (ow) => `${ow.owner.type}-${ow.owner.id}` !== ownerKey
+      )
+      updated.push(walletData)
+
+      const lastUpdated = Date.now()
+      await saveToDB(updated, lastUpdated)
+
+      set({ walletsByOwner: updated, lastUpdated })
+
+      logger.info('Wallet updated for owner', {
+        module: 'WalletStore',
+        owner: owner.name,
+      })
+    } catch (err) {
+      logger.error('Failed to fetch wallet for owner', err instanceof Error ? err : undefined, {
+        module: 'WalletStore',
+        owner: owner.name,
       })
     }
   },

@@ -139,16 +139,7 @@ function App() {
 
   useEffect(() => {
     if (!window.electronAPI) return
-
-    const unsubDialog = window.electronAPI.onOpenUpdateDialog(() => setUpdateDialogOpen(true))
-    const unsubAbyssal = window.electronAPI.onRefreshAbyssalPrices(() => {
-      window.dispatchEvent(new CustomEvent('refreshAbyssalPrices'))
-    })
-
-    return () => {
-      unsubDialog()
-      unsubAbyssal()
-    }
+    return window.electronAPI.onOpenUpdateDialog(() => setUpdateDialogOpen(true))
   }, [])
 
   if (cacheError) {

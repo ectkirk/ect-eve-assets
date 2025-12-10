@@ -16,6 +16,7 @@ import {
 import { useAuthStore } from '@/store/auth-store'
 import { useAssetStore } from '@/store/asset-store'
 import { useIndustryJobsStore } from '@/store/industry-jobs-store'
+import { useAssetData } from '@/hooks/useAssetData'
 import { type ESIIndustryJob } from '@/api/endpoints/industry'
 import {
   hasType,
@@ -267,23 +268,14 @@ export function IndustryJobsTab() {
 
   const prices = useAssetStore((s) => s.prices)
   const jobsByOwner = useIndustryJobsStore((s) => s.jobsByOwner)
-  const lastUpdated = useIndustryJobsStore((s) => s.lastUpdated)
-  const isUpdating = useIndustryJobsStore((s) => s.isUpdating)
+  const jobsLastUpdated = useIndustryJobsStore((s) => s.lastUpdated)
+  const jobsUpdating = useIndustryJobsStore((s) => s.isUpdating)
   const updateError = useIndustryJobsStore((s) => s.updateError)
   const init = useIndustryJobsStore((s) => s.init)
-  const update = useIndustryJobsStore((s) => s.update)
-  const canUpdateFn = useIndustryJobsStore((s) => s.canUpdate)
-  const getTimeUntilUpdateFn = useIndustryJobsStore((s) => s.getTimeUntilUpdate)
   const initialized = useIndustryJobsStore((s) => s.initialized)
 
-  const [, setTick] = useState(0)
-  useEffect(() => {
-    const interval = setInterval(() => setTick((t) => t + 1), 1000)
-    return () => clearInterval(interval)
-  }, [])
-
-  const canUpdate = canUpdateFn()
-  const timeUntilUpdate = getTimeUntilUpdateFn()
+  const { update, canUpdate, timeUntilUpdate, isLoading: assetsUpdating } = useAssetData()
+  const isUpdating = assetsUpdating || jobsUpdating
 
   useEffect(() => {
     init()
@@ -553,9 +545,9 @@ export function IndustryJobsTab() {
         )}
       </div>
 
-      {lastUpdated && (
+      {jobsLastUpdated && (
         <p className="text-xs text-slate-500 text-right">
-          Last updated: {new Date(lastUpdated).toLocaleString()}
+          Last updated: {new Date(jobsLastUpdated).toLocaleString()}
         </p>
       )}
     </div>

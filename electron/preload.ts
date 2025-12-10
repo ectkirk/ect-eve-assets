@@ -39,7 +39,6 @@ export interface ElectronAPI {
   writeLog: (level: LogLevel, message: string, context?: LogContext) => Promise<void>
   getLogDir: () => Promise<string>
   onOpenUpdateDialog: (callback: () => void) => () => void
-  onRefreshAbyssalPrices: (callback: () => void) => () => void
   refTypes: (ids: number[], market: 'jita' | 'the_forge') => Promise<RefApiResult>
   refUniverse: (ids: number[]) => Promise<RefApiResult>
   mutamarketModule: (itemId: number) => Promise<MutamarketResult>
@@ -61,11 +60,6 @@ const electronAPI: ElectronAPI = {
     const handler = () => callback()
     ipcRenderer.on('data:openUpdateDialog', handler)
     return () => ipcRenderer.removeListener('data:openUpdateDialog', handler)
-  },
-  onRefreshAbyssalPrices: (callback: () => void) => {
-    const handler = () => callback()
-    ipcRenderer.on('data:refreshAbyssalPrices', handler)
-    return () => ipcRenderer.removeListener('data:refreshAbyssalPrices', handler)
   },
   refTypes: (ids: number[], market: 'jita' | 'the_forge') =>
     ipcRenderer.invoke('ref:types', ids, market),

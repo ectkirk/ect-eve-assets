@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { useAuthStore } from '@/store/auth-store'
 import { useContractsStore, type ContractWithItems } from '@/store/contracts-store'
+import { useAssetData } from '@/hooks/useAssetData'
 import { type ESIContract } from '@/api/endpoints/contracts'
 import {
   hasType,
@@ -384,23 +385,14 @@ export function ContractsTab() {
 
   const prices = useAssetStore((s) => s.prices)
   const contractsByOwner = useContractsStore((s) => s.contractsByOwner)
-  const lastUpdated = useContractsStore((s) => s.lastUpdated)
-  const isUpdating = useContractsStore((s) => s.isUpdating)
+  const contractsLastUpdated = useContractsStore((s) => s.lastUpdated)
+  const contractsUpdating = useContractsStore((s) => s.isUpdating)
   const updateError = useContractsStore((s) => s.updateError)
   const init = useContractsStore((s) => s.init)
-  const update = useContractsStore((s) => s.update)
-  const canUpdateFn = useContractsStore((s) => s.canUpdate)
-  const getTimeUntilUpdateFn = useContractsStore((s) => s.getTimeUntilUpdate)
   const initialized = useContractsStore((s) => s.initialized)
 
-  const [, setTick] = useState(0)
-  useEffect(() => {
-    const interval = setInterval(() => setTick((t) => t + 1), 1000)
-    return () => clearInterval(interval)
-  }, [])
-
-  const canUpdate = canUpdateFn()
-  const timeUntilUpdate = getTimeUntilUpdateFn()
+  const { update, canUpdate, timeUntilUpdate, isLoading: assetsUpdating } = useAssetData()
+  const isUpdating = assetsUpdating || contractsUpdating
 
   useEffect(() => {
     init()
@@ -770,9 +762,9 @@ export function ContractsTab() {
         )}
       </div>
 
-      {lastUpdated && (
+      {contractsLastUpdated && (
         <p className="text-xs text-slate-500 text-right">
-          Last updated: {new Date(lastUpdated).toLocaleString()}
+          Last updated: {new Date(contractsLastUpdated).toLocaleString()}
         </p>
       )}
     </div>

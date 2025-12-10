@@ -1,8 +1,14 @@
 import { create } from 'zustand'
 import { useAuthStore, type Owner } from './auth-store'
+import { useMarketOrdersStore } from './market-orders-store'
+import { useIndustryJobsStore } from './industry-jobs-store'
+import { useContractsStore } from './contracts-store'
+import { useClonesStore } from './clones-store'
+import { useWalletStore } from './wallet-store'
 import { getCharacterAssets, getAssetNames, type ESIAsset, type ESIAssetName } from '@/api/endpoints/assets'
 import { getCorporationAssets } from '@/api/endpoints/corporation'
 import { fetchPrices } from '@/api/ref-client'
+import { fetchAbyssalPrices, isAbyssalTypeId, hasCachedAbyssalPrice } from '@/api/mutamarket-client'
 import { logger } from '@/lib/logger'
 
 const DB_NAME = 'ecteveassets-assets'
@@ -37,6 +43,7 @@ const UPDATE_COOLDOWN_MS = 60 * 60 * 1000 // 1 hour
 interface AssetActions {
   init: () => Promise<void>
   update: (force?: boolean) => Promise<void>
+  updateForOwner: (owner: Owner) => Promise<void>
   clear: () => Promise<void>
   canUpdate: () => boolean
   getTimeUntilUpdate: () => number
@@ -276,6 +283,22 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         }
       }
 
+      const abyssalItemIds: number[] = []
+      for (const { assets } of results) {
+        for (const asset of assets) {
+          if (isAbyssalTypeId(asset.type_id) && !hasCachedAbyssalPrice(asset.item_id)) {
+            abyssalItemIds.push(asset.item_id)
+          }
+        }
+      }
+      if (abyssalItemIds.length > 0) {
+        try {
+          await fetchAbyssalPrices(abyssalItemIds)
+        } catch (err) {
+          logger.error('Failed to fetch abyssal prices', err instanceof Error ? err : undefined, { module: 'AssetStore' })
+        }
+      }
+
       // Save to IndexedDB
       await saveToDB(results, allNames, prices, lastUpdated)
 
@@ -294,10 +317,107 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         owners: results.length,
         totalAssets: results.reduce((sum, r) => sum + r.assets.length, 0),
       })
+
+      await Promise.all([
+        useMarketOrdersStore.getState().update(true),
+        useIndustryJobsStore.getState().update(true),
+        useContractsStore.getState().update(true),
+        useClonesStore.getState().update(true),
+        useWalletStore.getState().update(true),
+      ])
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error'
       set({ isUpdating: false, updateProgress: null, updateError: message })
       logger.error('Asset update failed', err instanceof Error ? err : undefined, { module: 'AssetStore' })
+    }
+  },
+
+  updateForOwner: async (owner: Owner) => {
+    const state = get()
+    if (state.isUpdating) return
+
+    set({ isUpdating: true, updateError: null, updateProgress: { current: 0, total: 1 } })
+
+    try {
+      logger.info('Fetching assets for new owner', { module: 'AssetStore', owner: owner.name, type: owner.type })
+      const assets = await fetchOwnerAssets(owner)
+      const newOwnerAssets: OwnerAssets = { owner, assets }
+
+      const newNames = new Map(state.assetNames)
+      const names = await fetchOwnerAssetNames(owner, assets)
+      for (const n of names) {
+        if (n.name && n.name !== 'None') {
+          newNames.set(n.item_id, n.name)
+        }
+      }
+
+      const typeIds = new Set<number>()
+      for (const asset of assets) {
+        typeIds.add(asset.type_id)
+      }
+
+      const newPrices = new Map(state.prices)
+      if (typeIds.size > 0) {
+        try {
+          const fetchedPrices = await fetchPrices(Array.from(typeIds))
+          for (const [id, price] of fetchedPrices) {
+            newPrices.set(id, price)
+          }
+        } catch (err) {
+          logger.error('Failed to fetch prices', err instanceof Error ? err : undefined, { module: 'AssetStore' })
+        }
+      }
+
+      const abyssalItemIds: number[] = []
+      for (const asset of assets) {
+        if (isAbyssalTypeId(asset.type_id) && !hasCachedAbyssalPrice(asset.item_id)) {
+          abyssalItemIds.push(asset.item_id)
+        }
+      }
+      if (abyssalItemIds.length > 0) {
+        try {
+          await fetchAbyssalPrices(abyssalItemIds)
+        } catch (err) {
+          logger.error('Failed to fetch abyssal prices', err instanceof Error ? err : undefined, { module: 'AssetStore' })
+        }
+      }
+
+      const ownerKey = `${owner.type}-${owner.id}`
+      const updatedAssets = state.assetsByOwner.filter(
+        (oa) => `${oa.owner.type}-${oa.owner.id}` !== ownerKey
+      )
+      updatedAssets.push(newOwnerAssets)
+
+      const lastUpdated = Date.now()
+      await saveToDB(updatedAssets, newNames, newPrices, lastUpdated)
+
+      set({
+        assetsByOwner: updatedAssets,
+        assetNames: newNames,
+        prices: newPrices,
+        lastUpdated,
+        isUpdating: false,
+        updateProgress: null,
+        updateError: null,
+      })
+
+      logger.info('Assets updated for owner', {
+        module: 'AssetStore',
+        owner: owner.name,
+        assets: assets.length,
+      })
+
+      await Promise.all([
+        useMarketOrdersStore.getState().updateForOwner(owner),
+        useIndustryJobsStore.getState().updateForOwner(owner),
+        useContractsStore.getState().updateForOwner(owner),
+        useClonesStore.getState().updateForOwner(owner),
+        useWalletStore.getState().updateForOwner(owner),
+      ])
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      set({ isUpdating: false, updateProgress: null, updateError: message })
+      logger.error('Asset update failed for owner', err instanceof Error ? err : undefined, { module: 'AssetStore' })
     }
   },
 

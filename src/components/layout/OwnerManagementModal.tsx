@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useAuthStore, type Owner, ownerKey } from '@/store/auth-store'
+import { useAssetStore } from '@/store/asset-store'
 import { esiClient } from '@/api/esi-client'
 import {
   Dialog,
@@ -115,19 +116,26 @@ export function OwnerManagementModal({
         result.characterName &&
         result.corporationId
       ) {
+        const newOwner = {
+          id: result.characterId,
+          type: 'character' as const,
+          name: result.characterName,
+          characterId: result.characterId,
+          corporationId: result.corporationId,
+        }
         useAuthStore.getState().addOwner({
           accessToken: result.accessToken,
           refreshToken: result.refreshToken,
           expiresAt: result.expiresAt ?? Date.now() + 1200000,
-          owner: {
-            id: result.characterId,
-            type: 'character',
-            name: result.characterName,
-            characterId: result.characterId,
-            corporationId: result.corporationId,
-          },
+          owner: newOwner,
         })
         startCooldown()
+        useAssetStore.getState().updateForOwner({
+          ...newOwner,
+          accessToken: result.accessToken,
+          refreshToken: result.refreshToken,
+          expiresAt: result.expiresAt ?? Date.now() + 1200000,
+        })
       } else if (result.error && result.error !== 'Authentication cancelled') {
         setError(result.error)
       }
@@ -180,19 +188,26 @@ export function OwnerManagementModal({
 
         // Add the corporation
         const corpName = await fetchCorpName(result.corporationId)
+        const newCorpOwner = {
+          id: result.corporationId,
+          type: 'corporation' as const,
+          name: corpName,
+          characterId: result.characterId,
+          corporationId: result.corporationId,
+        }
         store.addOwner({
           accessToken: result.accessToken,
           refreshToken: result.refreshToken,
           expiresAt: result.expiresAt ?? Date.now() + 1200000,
-          owner: {
-            id: result.corporationId,
-            type: 'corporation',
-            name: corpName,
-            characterId: result.characterId,
-            corporationId: result.corporationId,
-          },
+          owner: newCorpOwner,
         })
         startCooldown()
+        useAssetStore.getState().updateForOwner({
+          ...newCorpOwner,
+          accessToken: result.accessToken,
+          refreshToken: result.refreshToken,
+          expiresAt: result.expiresAt ?? Date.now() + 1200000,
+        })
       } else if (result.error && result.error !== 'Authentication cancelled') {
         setError(result.error)
       }

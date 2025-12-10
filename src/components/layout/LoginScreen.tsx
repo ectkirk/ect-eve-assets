@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuthStore } from '@/store/auth-store'
+import { useAssetStore } from '@/store/asset-store'
 import eveSsoLoginWhite from '/eve-sso-login-white.png'
 
 export function LoginScreen() {
@@ -20,6 +21,16 @@ export function LoginScreen() {
       const result = await window.electronAPI.startAuth()
 
       if (result.success && result.accessToken && result.refreshToken && result.characterId && result.characterName) {
+        const newOwner = {
+          id: result.characterId,
+          type: 'character' as const,
+          name: result.characterName,
+          characterId: result.characterId,
+          corporationId: 0,
+          accessToken: result.accessToken,
+          refreshToken: result.refreshToken,
+          expiresAt: result.expiresAt ?? Date.now() + 1200000,
+        }
         addCharacter({
           accessToken: result.accessToken,
           refreshToken: result.refreshToken,
@@ -30,6 +41,7 @@ export function LoginScreen() {
             corporationId: 0,
           },
         })
+        useAssetStore.getState().updateForOwner(newOwner)
       } else if (result.error !== 'Authentication cancelled') {
         setError(result.error ?? 'Authentication failed')
       }

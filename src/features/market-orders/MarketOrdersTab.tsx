@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react'
 import { Loader2, RefreshCw, TrendingUp, TrendingDown, ChevronRight, ChevronDown } from 'lucide-react'
 import { useAuthStore } from '@/store/auth-store'
 import { useMarketOrdersStore } from '@/store/market-orders-store'
+import { useAssetData } from '@/hooks/useAssetData'
 import { type ESIMarketOrder } from '@/api/endpoints/market'
 import {
   hasType,
@@ -189,23 +190,14 @@ export function MarketOrdersTab() {
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
 
   const ordersByOwner = useMarketOrdersStore((s) => s.ordersByOwner)
-  const lastUpdated = useMarketOrdersStore((s) => s.lastUpdated)
-  const isUpdating = useMarketOrdersStore((s) => s.isUpdating)
+  const ordersLastUpdated = useMarketOrdersStore((s) => s.lastUpdated)
+  const ordersUpdating = useMarketOrdersStore((s) => s.isUpdating)
   const updateError = useMarketOrdersStore((s) => s.updateError)
   const init = useMarketOrdersStore((s) => s.init)
-  const update = useMarketOrdersStore((s) => s.update)
-  const canUpdateFn = useMarketOrdersStore((s) => s.canUpdate)
-  const getTimeUntilUpdateFn = useMarketOrdersStore((s) => s.getTimeUntilUpdate)
   const initialized = useMarketOrdersStore((s) => s.initialized)
 
-  const [, setTick] = useState(0)
-  useEffect(() => {
-    const interval = setInterval(() => setTick((t) => t + 1), 1000)
-    return () => clearInterval(interval)
-  }, [])
-
-  const canUpdate = canUpdateFn()
-  const timeUntilUpdate = getTimeUntilUpdateFn()
+  const { update, canUpdate, timeUntilUpdate, isLoading: assetsUpdating } = useAssetData()
+  const isUpdating = assetsUpdating || ordersUpdating
 
   useEffect(() => {
     init()
@@ -480,9 +472,9 @@ export function MarketOrdersTab() {
         )}
       </div>
 
-      {lastUpdated && (
+      {ordersLastUpdated && (
         <p className="text-xs text-slate-500 text-right">
-          Last updated: {new Date(lastUpdated).toLocaleString()}
+          Last updated: {new Date(ordersLastUpdated).toLocaleString()}
         </p>
       )}
     </div>

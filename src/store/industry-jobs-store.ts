@@ -36,6 +36,7 @@ const UPDATE_COOLDOWN_MS = 5 * 60 * 1000
 interface IndustryJobsActions {
   init: () => Promise<void>
   update: (force?: boolean) => Promise<void>
+  updateForOwner: (owner: Owner) => Promise<void>
   clear: () => Promise<void>
   canUpdate: () => boolean
   getTimeUntilUpdate: () => number
@@ -252,6 +253,42 @@ export const useIndustryJobsStore = create<IndustryJobsStore>((set, get) => ({
       set({ isUpdating: false, updateError: message })
       logger.error('Industry jobs update failed', err instanceof Error ? err : undefined, {
         module: 'IndustryJobsStore',
+      })
+    }
+  },
+
+  updateForOwner: async (owner: Owner) => {
+    const state = get()
+    try {
+      logger.info('Fetching industry jobs for new owner', { module: 'IndustryJobsStore', owner: owner.name })
+
+      let jobs: ESIIndustryJob[]
+      if (owner.type === 'character') {
+        jobs = await getCharacterIndustryJobs(owner.characterId)
+      } else {
+        jobs = await getCorporationIndustryJobs(owner.characterId, owner.id)
+      }
+
+      const ownerKey = `${owner.type}-${owner.id}`
+      const updated = state.jobsByOwner.filter(
+        (oj) => `${oj.owner.type}-${oj.owner.id}` !== ownerKey
+      )
+      updated.push({ owner, jobs })
+
+      const lastUpdated = Date.now()
+      await saveToDB(updated, lastUpdated)
+
+      set({ jobsByOwner: updated, lastUpdated })
+
+      logger.info('Industry jobs updated for owner', {
+        module: 'IndustryJobsStore',
+        owner: owner.name,
+        jobs: jobs.length,
+      })
+    } catch (err) {
+      logger.error('Failed to fetch industry jobs for owner', err instanceof Error ? err : undefined, {
+        module: 'IndustryJobsStore',
+        owner: owner.name,
       })
     }
   },

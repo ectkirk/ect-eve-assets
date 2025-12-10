@@ -83,25 +83,6 @@ function createMenu() {
       ]
     },
     {
-      label: 'Data',
-      submenu: [
-        // {
-        //   label: 'Update...',
-        //   accelerator: 'CmdOrCtrl+U',
-        //   click: () => {
-        //     mainWindow?.webContents.send('data:openUpdateDialog')
-        //   }
-        // },
-        // { type: 'separator' },
-        {
-          label: 'Refresh Abyssal Prices',
-          click: () => {
-            mainWindow?.webContents.send('data:refreshAbyssalPrices')
-          }
-        }
-      ]
-    },
-    {
       label: 'View',
       submenu: [
         { role: 'reload' },

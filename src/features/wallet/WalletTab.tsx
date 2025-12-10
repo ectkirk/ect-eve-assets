@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react'
 import { Loader2, RefreshCw, ChevronRight, ChevronDown, Wallet, Building2 } from 'lucide-react'
 import { useAuthStore } from '@/store/auth-store'
 import { useWalletStore, isCorporationWallet } from '@/store/wallet-store'
+import { useAssetData } from '@/hooks/useAssetData'
 import { OwnerIcon } from '@/components/ui/type-icon'
 import { cn } from '@/lib/utils'
 
@@ -46,23 +47,14 @@ export function WalletTab() {
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
 
   const walletsByOwner = useWalletStore((s) => s.walletsByOwner)
-  const lastUpdated = useWalletStore((s) => s.lastUpdated)
-  const isUpdating = useWalletStore((s) => s.isUpdating)
+  const walletLastUpdated = useWalletStore((s) => s.lastUpdated)
+  const walletUpdating = useWalletStore((s) => s.isUpdating)
   const updateError = useWalletStore((s) => s.updateError)
   const init = useWalletStore((s) => s.init)
-  const update = useWalletStore((s) => s.update)
-  const canUpdateFn = useWalletStore((s) => s.canUpdate)
-  const getTimeUntilUpdateFn = useWalletStore((s) => s.getTimeUntilUpdate)
   const initialized = useWalletStore((s) => s.initialized)
 
-  const [, setTick] = useState(0)
-  useEffect(() => {
-    const interval = setInterval(() => setTick((t) => t + 1), 1000)
-    return () => clearInterval(interval)
-  }, [])
-
-  const canUpdate = canUpdateFn()
-  const timeUntilUpdate = getTimeUntilUpdateFn()
+  const { update, canUpdate, timeUntilUpdate, isLoading: assetsUpdating } = useAssetData()
+  const isUpdating = assetsUpdating || walletUpdating
 
   useEffect(() => {
     init()
@@ -277,9 +269,9 @@ export function WalletTab() {
         })}
       </div>
 
-      {lastUpdated && (
+      {walletLastUpdated && (
         <p className="text-xs text-slate-500 text-right">
-          Last updated: {new Date(lastUpdated).toLocaleString()}
+          Last updated: {new Date(walletLastUpdated).toLocaleString()}
         </p>
       )}
     </div>
