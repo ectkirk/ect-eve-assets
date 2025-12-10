@@ -1,45 +1,54 @@
-  ## Security Considerations
+# Security Policy
 
-  ECTEVEAssets is a desktop application that handles EVE Online SSO authentication. Key security aspects:
+## Supported Versions
 
-  - **OAuth Tokens**: Access and refresh tokens are stored locally via Zustand persistence
-  - **EVE SSO**: Authentication uses EVE Online's OAuth2 flow with PKCE
-  - **Local Only**: No data is sent to third-party servers; all ESI requests go directly to CCP's APIs
-  - **No Secrets in Code**: Client credentials must be provided via environment variables
+| Version | Supported          |
+| ------- | ------------------ |
+| 0.3.x   | :white_check_mark: |
+| < 0.3.0 | :x:                |
 
-  ## Reporting a Vulnerability
+## Security Considerations
 
-  If you discover a security vulnerability, please:
+ECTEVEAssets is a desktop application that handles EVE Online SSO authentication. Key security aspects:
 
-  1. **Do NOT** open a public GitHub issue
-  2. Email security concerns to: contact@edencom.net
-  3. Include:
-     - Description of the vulnerability
-     - Steps to reproduce
-     - Potential impact
-     - Suggested fix (if any)
+- **OAuth Tokens**: Access and refresh tokens are stored locally via Zustand persistence
+- **EVE SSO**: Authentication uses EVE Online's OAuth2 flow with PKCE
+- **Local Only**: No data is sent to third-party servers; all ESI requests go directly to CCP's APIs
+- **No Secrets in Code**: Client credentials must be provided via environment variables
 
-  ### Response Timeline
+## Reporting a Vulnerability
 
-  - **Acknowledgment**: Within 48 hours
-  - **Initial Assessment**: Within 7 days
-  - **Resolution**: Depends on severity; critical issues prioritized
+If you discover a security vulnerability, please:
 
-  ### What to Expect
+1. **Do NOT** open a public GitHub issue
+2. Email security concerns to: contact@edencom.net
+3. Include:
+   - Description of the vulnerability
+   - Steps to reproduce
+   - Potential impact
+   - Suggested fix (if any)
 
-  - Accepted vulnerabilities will be patched in the next release
-  - Credit will be given in release notes (unless you prefer anonymity)
-  - Declined reports will receive an explanation
+### Response Timeline
 
-  ## Scope
+- **Acknowledgment**: Within 48 hours
+- **Initial Assessment**: Within 7 days
+- **Resolution**: Depends on severity; critical issues prioritized
 
-  In scope:
-  - Token handling and storage
-  - OAuth flow implementation
-  - IPC security between main and renderer processes
-  - Dependency vulnerabilities
+### What to Expect
 
-  Out of scope:
-  - EVE Online's ESI API security (report to CCP)
-  - Social engineering attacks
-  - Issues requiring physical access to the user's machine
+- Accepted vulnerabilities will be patched in the next release
+- Credit will be given in release notes (unless you prefer anonymity)
+- Declined reports will receive an explanation
+
+## Scope
+
+In scope:
+- Token handling and storage
+- OAuth flow implementation
+- IPC security between main and renderer processes
+- Dependency vulnerabilities
+
+Out of scope:
+- EVE Online's ESI API security (report to CCP)
+- Social engineering attacks
+- Issues requiring physical access to the user's machine
