@@ -1,0 +1,30 @@
+name: Discord Release Notification
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  notify:
+    runs-on: windows-latest
+    steps:
+      - name: Post to Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        shell: pwsh
+        run: |
+          $releaseBody = "${{ github.event.release.body }}".Substring(0, [Math]::Min(500, "${{ github.event.release.body }}".Length))
+          $body = @{
+            embeds = @(@{
+              title = "New Release: ${{ github.event.release.name }}"
+              description = $releaseBody
+              url = "${{ github.event.release.html_url }}"
+              color = 3066993
+              fields = @(
+                @{ name = "Version"; value = "${{ github.event.release.tag_name }}"; inline = $true }
+                @{ name = "Author"; value = "${{ github.event.release.author.login }}"; inline = $true }
+                @{ name = "Repository"; value = "${{ github.repository }}"; inline = $true }
+              )
+            })
+          } | ConvertTo-Json -Depth 4
+          Invoke-RestMethod -Uri $env:DISCORD_WEBHOOK -Method Post -ContentType "application/json" -Body $body
