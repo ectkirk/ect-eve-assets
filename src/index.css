@@ -1,70 +1,64 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 @layer base {
-  /* Light mode (default) */
   :root {
-    --color-bg-primary: theme('colors.slate.50');
-    --color-bg-secondary: theme('colors.white');
-    --color-bg-tertiary: theme('colors.slate.100');
-    --color-text-primary: theme('colors.slate.900');
-    --color-text-secondary: theme('colors.slate.600');
-    --color-text-muted: theme('colors.slate.400');
-    --color-border: theme('colors.slate.200');
-    --color-accent: theme('colors.blue.600');
-    --color-accent-hover: theme('colors.blue.700');
-    --color-success: theme('colors.emerald.600');
-    --color-warning: theme('colors.amber.500');
-    --color-danger: theme('colors.red.600');
+    --color-bg-primary: var(--color-slate-50);
+    --color-bg-secondary: var(--color-white);
+    --color-bg-tertiary: var(--color-slate-100);
+    --color-text-primary: var(--color-slate-900);
+    --color-text-secondary: var(--color-slate-600);
+    --color-text-muted: var(--color-slate-400);
+    --color-border: var(--color-slate-200);
+    --color-accent: var(--color-blue-600);
+    --color-accent-hover: var(--color-blue-700);
+    --color-success: var(--color-emerald-600);
+    --color-warning: var(--color-amber-500);
+    --color-danger: var(--color-red-600);
   }
 
-  /* Dark mode */
   .dark {
-    --color-bg-primary: theme('colors.slate.900');
-    --color-bg-secondary: theme('colors.slate.800');
-    --color-bg-tertiary: theme('colors.slate.700');
-    --color-text-primary: theme('colors.slate.50');
-    --color-text-secondary: theme('colors.slate.300');
-    --color-text-muted: theme('colors.slate.500');
-    --color-border: theme('colors.slate.700');
-    --color-accent: theme('colors.blue.500');
-    --color-accent-hover: theme('colors.blue.400');
-    --color-success: theme('colors.emerald.500');
-    --color-warning: theme('colors.amber.400');
-    --color-danger: theme('colors.red.500');
+    --color-bg-primary: var(--color-slate-900);
+    --color-bg-secondary: var(--color-slate-800);
+    --color-bg-tertiary: var(--color-slate-700);
+    --color-text-primary: var(--color-slate-50);
+    --color-text-secondary: var(--color-slate-300);
+    --color-text-muted: var(--color-slate-500);
+    --color-border: var(--color-slate-700);
+    --color-accent: var(--color-blue-500);
+    --color-accent-hover: var(--color-blue-400);
+    --color-success: var(--color-emerald-500);
+    --color-warning: var(--color-amber-400);
+    --color-danger: var(--color-red-500);
   }
 
-  /* Colorblind-safe light mode (deuteranopia/protanopia friendly) */
   .colorblind {
-    --color-bg-primary: theme('colors.slate.50');
-    --color-bg-secondary: theme('colors.white');
-    --color-bg-tertiary: theme('colors.slate.100');
-    --color-text-primary: theme('colors.slate.900');
-    --color-text-secondary: theme('colors.slate.600');
-    --color-text-muted: theme('colors.slate.400');
-    --color-border: theme('colors.slate.200');
-    --color-accent: theme('colors.sky.600');
-    --color-accent-hover: theme('colors.sky.700');
-    --color-success: theme('colors.sky.600');
-    --color-warning: theme('colors.orange.500');
-    --color-danger: theme('colors.orange.700');
+    --color-bg-primary: var(--color-slate-50);
+    --color-bg-secondary: var(--color-white);
+    --color-bg-tertiary: var(--color-slate-100);
+    --color-text-primary: var(--color-slate-900);
+    --color-text-secondary: var(--color-slate-600);
+    --color-text-muted: var(--color-slate-400);
+    --color-border: var(--color-slate-200);
+    --color-accent: var(--color-sky-600);
+    --color-accent-hover: var(--color-sky-700);
+    --color-success: var(--color-sky-600);
+    --color-warning: var(--color-orange-500);
+    --color-danger: var(--color-orange-700);
   }
 
-  /* Colorblind-safe dark mode */
   .dark.colorblind {
-    --color-bg-primary: theme('colors.slate.900');
-    --color-bg-secondary: theme('colors.slate.800');
-    --color-bg-tertiary: theme('colors.slate.700');
-    --color-text-primary: theme('colors.slate.50');
-    --color-text-secondary: theme('colors.slate.300');
-    --color-text-muted: theme('colors.slate.500');
-    --color-border: theme('colors.slate.700');
-    --color-accent: theme('colors.sky.400');
-    --color-accent-hover: theme('colors.sky.300');
-    --color-success: theme('colors.sky.400');
-    --color-warning: theme('colors.orange.400');
-    --color-danger: theme('colors.orange.500');
+    --color-bg-primary: var(--color-slate-900);
+    --color-bg-secondary: var(--color-slate-800);
+    --color-bg-tertiary: var(--color-slate-700);
+    --color-text-primary: var(--color-slate-50);
+    --color-text-secondary: var(--color-slate-300);
+    --color-text-muted: var(--color-slate-500);
+    --color-border: var(--color-slate-700);
+    --color-accent: var(--color-sky-400);
+    --color-accent-hover: var(--color-sky-300);
+    --color-success: var(--color-sky-400);
+    --color-warning: var(--color-orange-400);
+    --color-danger: var(--color-orange-500);
   }
 
   body {
@@ -88,7 +82,6 @@
   }
 }
 
-/* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
