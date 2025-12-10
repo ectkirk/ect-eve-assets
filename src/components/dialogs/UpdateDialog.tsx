@@ -170,10 +170,10 @@ export function UpdateDialog({ open, onOpenChange, onUpdate }: UpdateDialogProps
               return (
                 <label
                   key={dt.key}
-                  className={`flex items-center justify-between p-2 rounded cursor-pointer transition-colors ${
+                  className={`flex items-center justify-between p-2 rounded transition-colors ${
                     updatable
                       ? 'hover:bg-slate-800'
-                      : 'opacity-50 cursor-not-allowed'
+                      : 'opacity-50'
                   } ${isSelected && updatable ? 'bg-slate-800' : ''}`}
                 >
                   <div className="flex items-center gap-3">

@@ -46,6 +46,8 @@ const UPDATE_COOLDOWN_MS = 5 * 60 * 1000
 interface ContractsActions {
   init: () => Promise<void>
   update: (force?: boolean) => Promise<void>
+  updateForOwner: (owner: Owner) => Promise<void>
+  removeForOwner: (ownerType: string, ownerId: number) => Promise<void>
   clear: () => Promise<void>
   canUpdate: () => boolean
   getTimeUntilUpdate: () => number
@@ -371,6 +373,120 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
         module: 'ContractsStore',
       })
     }
+  },
+
+  updateForOwner: async (owner: Owner) => {
+    const state = get()
+    try {
+      logger.info('Fetching contracts for new owner', { module: 'ContractsStore', owner: owner.name })
+
+      const globalItemsCache = new Map<number, ESIContractItem[]>()
+      for (const { contracts } of state.contractsByOwner) {
+        for (const { contract, items } of contracts) {
+          if (items.length > 0 && !globalItemsCache.has(contract.contract_id)) {
+            globalItemsCache.set(contract.contract_id, items)
+          }
+        }
+      }
+
+      const characterContracts = await getCharacterContracts(owner.characterId)
+
+      let corpContracts: ESIContract[] = []
+      if (owner.corporationId) {
+        try {
+          corpContracts = await getCorporationContracts(owner.characterId, owner.corporationId)
+        } catch {
+          // No corp access
+        }
+      }
+
+      const seenIds = new Set(characterContracts.map(c => c.contract_id))
+      const uniqueCorpContracts = corpContracts.filter(c => !seenIds.has(c.contract_id))
+      const contracts = [...characterContracts, ...uniqueCorpContracts]
+
+      const contractsToFetch: ESIContract[] = []
+      const contractItemsMap = new Map<number, ESIContractItem[]>()
+      const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000
+
+      for (const contract of contracts) {
+        if (contract.type !== 'item_exchange' && contract.type !== 'auction') continue
+
+        const isActive = contract.status === 'outstanding' || contract.status === 'in_progress'
+        if (!isActive) continue
+
+        const cached = globalItemsCache.get(contract.contract_id)
+        const isPublic = contract.availability === 'public'
+        const hasItemIds = cached?.some((i: ESIContractItem) => i.item_id)
+        const cacheValid = cached && cached.length > 0 && (!isPublic || hasItemIds)
+        if (cacheValid) {
+          contractItemsMap.set(contract.contract_id, cached)
+          continue
+        }
+
+        const issuedDate = new Date(contract.date_issued).getTime()
+        if (issuedDate >= thirtyDaysAgo) {
+          contractsToFetch.push(contract)
+        }
+      }
+
+      for (const contract of contractsToFetch) {
+        try {
+          let items: ESIContractItem[]
+          if (contract.availability === 'public') {
+            items = await getPublicContractItems(contract.contract_id)
+          } else if (owner.type === 'corporation') {
+            items = await getCorporationContractItems(owner.characterId, owner.id, contract.contract_id)
+          } else {
+            items = await getContractItems(owner.characterId, contract.contract_id)
+          }
+          contractItemsMap.set(contract.contract_id, items)
+        } catch {
+          contractItemsMap.set(contract.contract_id, [])
+        }
+      }
+
+      const contractsWithItems: ContractWithItems[] = contracts.map((contract) => ({
+        contract,
+        items: contractItemsMap.get(contract.contract_id) ?? [],
+      }))
+
+      const ownerKey = `${owner.type}-${owner.id}`
+      const updated = state.contractsByOwner.filter(
+        (oc) => `${oc.owner.type}-${oc.owner.id}` !== ownerKey
+      )
+      updated.push({ owner, contracts: contractsWithItems })
+
+      const lastUpdated = Date.now()
+      await saveToDB(updated, lastUpdated)
+
+      set({ contractsByOwner: updated, lastUpdated })
+
+      logger.info('Contracts updated for owner', {
+        module: 'ContractsStore',
+        owner: owner.name,
+        contracts: contractsWithItems.length,
+      })
+    } catch (err) {
+      logger.error('Failed to fetch contracts for owner', err instanceof Error ? err : undefined, {
+        module: 'ContractsStore',
+        owner: owner.name,
+      })
+    }
+  },
+
+  removeForOwner: async (ownerType: string, ownerId: number) => {
+    const state = get()
+    const ownerKey = `${ownerType}-${ownerId}`
+    const updated = state.contractsByOwner.filter(
+      (oc) => `${oc.owner.type}-${oc.owner.id}` !== ownerKey
+    )
+
+    if (updated.length === state.contractsByOwner.length) return
+
+    await saveToDB(updated, state.lastUpdated ?? Date.now())
+    set({ contractsByOwner: updated })
+
+    logger.info('Contracts removed for owner', { module: 'ContractsStore', ownerKey })
   },
 
   clear: async () => {

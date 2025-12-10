@@ -9,27 +9,21 @@ import {
   type SortingState,
   type ColumnFiltersState,
   type VisibilityState,
-  type ColumnOrderState,
 } from '@tanstack/react-table'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { ArrowUpDown, Check, ChevronDown, Loader2, RefreshCw, X } from 'lucide-react'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+import { ArrowUpDown, Loader2 } from 'lucide-react'
 import { type ESIAsset } from '@/api/endpoints/assets'
 import { isAbyssalTypeId, getCachedAbyssalPrice } from '@/api/mutamarket-client'
 import { getAbyssalPrice, getTypeName, getType, getStructure, getLocation, CategoryIds } from '@/store/reference-cache'
+import { formatBlueprintName } from '@/store/blueprints-store'
 import { useAssetData } from '@/hooks/useAssetData'
+import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { useIndustryJobsStore } from '@/store/industry-jobs-store'
 import { useContractsStore } from '@/store/contracts-store'
-import { useWalletStore } from '@/store/wallet-store'
 import { TypeIcon, OwnerIcon } from '@/components/ui/type-icon'
+import { formatNumber } from '@/lib/utils'
+import { useTabControls } from '@/context'
 
 interface AssetRow {
   itemId: number
@@ -55,23 +49,6 @@ interface AssetRow {
   ownerType: 'character' | 'corporation'
 }
 
-function formatNumber(value: number): string {
-  const abs = Math.abs(value)
-  const sign = value < 0 ? '-' : ''
-  if (abs >= 1_000_000_000_000) {
-    return sign + (abs / 1_000_000_000_000).toFixed(2) + 'T'
-  }
-  if (abs >= 1_000_000_000) {
-    return sign + (abs / 1_000_000_000).toFixed(2) + 'B'
-  }
-  if (abs >= 1_000_000) {
-    return sign + (abs / 1_000_000).toFixed(2) + 'M'
-  }
-  if (abs >= 1_000) {
-    return sign + (abs / 1_000).toFixed(2) + 'K'
-  }
-  return value.toLocaleString()
-}
 
 function formatVolume(value: number): string {
   return value.toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' m³'
@@ -79,9 +56,7 @@ function formatVolume(value: number): string {
 
 const COLUMN_LABELS: Record<string, string> = {
   ownerName: 'Owner',
-  typeName: 'Name',
   quantity: 'Quantity',
-  locationName: 'Location',
   locationFlag: 'Flag',
   price: 'Price',
   totalValue: 'Value',
@@ -89,25 +64,20 @@ const COLUMN_LABELS: Record<string, string> = {
 }
 
 const STORAGE_KEY_VISIBILITY = 'assets-column-visibility'
-const STORAGE_KEY_ORDER = 'assets-column-order'
 
-const DEFAULT_COLUMN_ORDER: ColumnOrderState = [
-  'ownerName',
-  'typeName',
-  'quantity',
-  'locationName',
-  'locationFlag',
-  'price',
-  'totalValue',
-  'totalVolume',
-]
+const TOGGLEABLE_COLUMNS = ['ownerName', 'quantity', 'locationFlag', 'price', 'totalValue', 'totalVolume']
+
+const DEFAULT_COLUMN_VISIBILITY: VisibilityState = {
+  locationFlag: false,
+  totalVolume: false,
+}
 
 function loadColumnVisibility(): VisibilityState {
   try {
     const stored = localStorage.getItem(STORAGE_KEY_VISIBILITY)
-    return stored ? JSON.parse(stored) : {}
+    return stored ? JSON.parse(stored) : DEFAULT_COLUMN_VISIBILITY
   } catch {
-    return {}
+    return DEFAULT_COLUMN_VISIBILITY
   }
 }
 
@@ -119,27 +89,12 @@ function saveColumnVisibility(state: VisibilityState): void {
   }
 }
 
-function loadColumnOrder(): ColumnOrderState {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY_ORDER)
-    return stored ? JSON.parse(stored) : DEFAULT_COLUMN_ORDER
-  } catch {
-    return DEFAULT_COLUMN_ORDER
-  }
-}
-
-function saveColumnOrder(state: ColumnOrderState): void {
-  try {
-    localStorage.setItem(STORAGE_KEY_ORDER, JSON.stringify(state))
-  } catch {
-    // Ignore storage errors
-  }
-}
 
 const columns: ColumnDef<AssetRow>[] = [
   {
     accessorKey: 'ownerName',
     size: 40,
+    meta: { noFlex: true },
     header: () => <span className="sr-only">Owner</span>,
     cell: ({ row }) => {
       const ownerId = row.original.ownerId
@@ -154,7 +109,7 @@ const columns: ColumnDef<AssetRow>[] = [
   },
   {
     accessorKey: 'typeName',
-    size: 280,
+    size: 450,
     header: ({ column }) => (
       <button
         className="flex items-center gap-1 hover:text-slate-50"
@@ -173,20 +128,17 @@ const columns: ColumnDef<AssetRow>[] = [
       return (
         <div className="flex items-center gap-2">
           <TypeIcon typeId={typeId} categoryId={categoryId} isBlueprintCopy={isBpc} size="lg" />
-          <span className={isBpc ? 'text-cyan-400' : ''}>
-            {typeName}
-            {isBpc && ' (Copy)'}
-          </span>
+          <span className={isBpc ? 'text-cyan-400' : ''}>{typeName}</span>
         </div>
       )
     },
   },
   {
     accessorKey: 'quantity',
-    size: 100,
+    size: 140,
     header: ({ column }) => (
       <button
-        className="flex items-center gap-1 hover:text-slate-50"
+        className="flex items-center gap-1 hover:text-slate-50 ml-auto"
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
       >
         Quantity
@@ -194,36 +146,14 @@ const columns: ColumnDef<AssetRow>[] = [
       </button>
     ),
     cell: ({ row }) => (
-      <span className="tabular-nums">
+      <span className="tabular-nums text-right w-full">
         {(row.getValue('quantity') as number).toLocaleString()}
       </span>
     ),
   },
   {
-    accessorKey: 'locationName',
-    size: 300,
-    header: ({ column }) => (
-      <button
-        className="flex items-center gap-1 hover:text-slate-50"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      >
-        Location
-        <ArrowUpDown className="h-4 w-4" />
-      </button>
-    ),
-  },
-  {
-    accessorKey: 'locationFlag',
-    size: 100,
-    header: 'Flag',
-    cell: ({ row }) => {
-      const flag = row.getValue('locationFlag') as string
-      return <span className="text-slate-400 text-xs">{flag}</span>
-    },
-  },
-  {
     accessorKey: 'price',
-    size: 120,
+    size: 130,
     header: ({ column }) => (
       <button
         className="flex items-center gap-1 hover:text-slate-50 ml-auto"
@@ -236,7 +166,7 @@ const columns: ColumnDef<AssetRow>[] = [
     cell: ({ row }) => {
       const price = row.getValue('price') as number
       return (
-        <span className="tabular-nums text-right block">
+        <span className="tabular-nums text-right w-full">
           {price > 0 ? formatNumber(price) + ' ISK' : '-'}
         </span>
       )
@@ -244,7 +174,7 @@ const columns: ColumnDef<AssetRow>[] = [
   },
   {
     accessorKey: 'totalValue',
-    size: 120,
+    size: 130,
     header: ({ column }) => (
       <button
         className="flex items-center gap-1 hover:text-slate-50 ml-auto"
@@ -257,7 +187,7 @@ const columns: ColumnDef<AssetRow>[] = [
     cell: ({ row }) => {
       const value = row.getValue('totalValue') as number
       return (
-        <span className="tabular-nums text-right block text-green-400">
+        <span className="tabular-nums text-right w-full text-green-400">
           {value > 0 ? formatNumber(value) + ' ISK' : '-'}
         </span>
       )
@@ -276,23 +206,47 @@ const columns: ColumnDef<AssetRow>[] = [
       </button>
     ),
     cell: ({ row }) => (
-      <span className="tabular-nums text-right block text-slate-400">
+      <span className="tabular-nums text-right w-full text-slate-400">
         {formatVolume(row.getValue('totalVolume') as number)}
       </span>
     ),
   },
+  {
+    accessorKey: 'locationName',
+    size: 450,
+    header: ({ column }) => (
+      <button
+        className="flex items-center gap-1 hover:text-slate-50 ml-auto"
+        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+      >
+        Location
+        <ArrowUpDown className="h-4 w-4" />
+      </button>
+    ),
+    cell: ({ row }) => (
+      <span className="text-right w-full">{row.getValue('locationName') as string}</span>
+    ),
+  },
+  {
+    accessorKey: 'locationFlag',
+    size: 140,
+    meta: { noFlex: true },
+    header: ({ column }) => (
+      <button
+        className="flex items-center gap-1 hover:text-slate-50 ml-auto"
+        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+      >
+        Flag
+        <ArrowUpDown className="h-4 w-4" />
+      </button>
+    ),
+    cell: ({ row }) => (
+      <div className="w-full text-right">
+        <span className="text-slate-400 text-xs">{row.getValue('locationFlag') as string}</span>
+      </div>
+    ),
+  },
 ]
-
-function formatTimeRemaining(ms: number): string {
-  if (ms <= 0) return ''
-  const minutes = Math.ceil(ms / 60000)
-  if (minutes >= 60) {
-    const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
-    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
-  }
-  return `${minutes}m`
-}
 
 export function AssetsTab() {
   const {
@@ -306,42 +260,19 @@ export function AssetsTab() {
     assetNames,
     cacheVersion,
     isRefreshingAbyssals,
-    update,
     updateProgress,
-    canUpdate,
-    timeUntilUpdate,
   } = useAssetData()
 
-  const [sorting, setSorting] = useState<SortingState>([])
+  const [sorting, setSorting] = useState<SortingState>([{ id: 'totalValue', desc: true }])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(loadColumnVisibility)
-  const [columnOrder, setColumnOrder] = useState<ColumnOrderState>(loadColumnOrder)
-  const [globalFilter, setGlobalFilter] = useState('')
-  const [categoryFilter, setCategoryFilter] = useState('')
-  const [columnsDropdownOpen, setColumnsDropdownOpen] = useState(false)
-  const columnsDropdownRef = useRef<HTMLDivElement>(null)
-  const draggedColumnRef = useRef<string | null>(null)
+  const [categoryFilterValue, setCategoryFilterValue] = useState('')
+
+  const { setColumns, search, setCategoryFilter, setResultCount } = useTabControls()
 
   useEffect(() => {
     saveColumnVisibility(columnVisibility)
   }, [columnVisibility])
-
-  useEffect(() => {
-    saveColumnOrder(columnOrder)
-  }, [columnOrder])
-
-  useEffect(() => {
-    if (!columnsDropdownOpen) return
-
-    const handleClickOutside = (e: MouseEvent) => {
-      if (columnsDropdownRef.current && !columnsDropdownRef.current.contains(e.target as Node)) {
-        setColumnsDropdownOpen(false)
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [columnsDropdownOpen])
 
   const ordersByOwner = useMarketOrdersStore((s) => s.ordersByOwner)
   const jobsByOwner = useIndustryJobsStore((s) => s.jobsByOwner)
@@ -409,13 +340,18 @@ export function AssetsTab() {
 
     for (const { owner, assets } of assetsByOwner) {
       for (const asset of assets) {
+        if (asset.item_id === 16159 || asset.type_id === 27) continue
         const sdeType = getType(asset.type_id)
         const customName = assetNames.get(asset.item_id)
-        const typeName = customName || getTypeName(asset.type_id)
-        const volume = sdeType?.volume ?? 0
+        const rawTypeName = getTypeName(asset.type_id)
+        const baseName = customName ? `${rawTypeName} (${customName})` : rawTypeName
+        const isBlueprint = sdeType?.categoryId === CategoryIds.BLUEPRINT
+        const isBpc = asset.is_blueprint_copy ?? false
+        const typeName = isBlueprint ? formatBlueprintName(baseName, asset.item_id) : baseName
+        const volume = sdeType?.packagedVolume ?? sdeType?.volume ?? 0
 
         const abyssalPrice = getAbyssalPrice(asset.item_id)
-        const price = abyssalPrice ?? prices.get(asset.type_id) ?? 0
+        const price = isBpc ? 0 : (abyssalPrice ?? prices.get(asset.type_id) ?? 0)
 
         const isAbyssal = isAbyssalTypeId(asset.type_id)
         const { locationName, systemName, regionName } = resolveLocation(asset)
@@ -431,7 +367,7 @@ export function AssetsTab() {
           regionName,
           locationFlag: asset.location_flag,
           isSingleton: asset.is_singleton,
-          isBlueprintCopy: asset.is_blueprint_copy ?? false,
+          isBlueprintCopy: isBpc,
           price,
           totalValue: price * asset.quantity,
           volume,
@@ -471,7 +407,7 @@ export function AssetsTab() {
       for (const order of orders) {
         const sdeType = getType(order.type_id)
         const typeName = getTypeName(order.type_id)
-        const volume = sdeType?.volume ?? 0
+        const volume = sdeType?.packagedVolume ?? sdeType?.volume ?? 0
         const quantity = order.volume_remain
         const { locationName, systemName, regionName } = resolveLocationById(order.location_id)
 
@@ -507,16 +443,16 @@ export function AssetsTab() {
         const productTypeId = job.product_type_id ?? job.blueprint_type_id
         const sdeType = getType(productTypeId)
         const typeName = getTypeName(productTypeId)
-        const volume = sdeType?.volume ?? 0
+        const volume = sdeType?.packagedVolume ?? sdeType?.volume ?? 0
         const price = prices.get(productTypeId) ?? 0
-        const { locationName, systemName, regionName } = resolveLocationById(job.output_location_id)
+        const { locationName, systemName, regionName } = resolveLocationById(job.facility_id)
 
         rows.push({
           itemId: job.job_id,
           typeId: productTypeId,
           typeName,
           quantity: job.runs,
-          locationId: job.output_location_id,
+          locationId: job.facility_id,
           locationName,
           systemName,
           regionName,
@@ -550,14 +486,17 @@ export function AssetsTab() {
 
         const isIssuer = ownerIds.has(contract.issuer_id)
         const isAssignee = ownerIds.has(contract.assignee_id) || ownerCorpIds.has(contract.assignee_id)
-        const flag = isIssuer ? 'Contract Out' : isAssignee ? 'Contract In' : 'Contract'
-        const valueMultiplier = isAssignee && !isIssuer ? -1 : 1
+
+        if (isIssuer && !isAssignee) continue
+
+        const flag = isAssignee ? 'Contract In' : 'Contract'
+        const valueMultiplier = !isIssuer ? -1 : 1
 
         for (const item of items) {
           if (!item.is_included) continue
           const sdeType = getType(item.type_id)
           const typeName = getTypeName(item.type_id)
-          const volume = sdeType?.volume ?? 0
+          const volume = sdeType?.packagedVolume ?? sdeType?.volume ?? 0
           let price: number
           if (isAbyssalTypeId(item.type_id) && item.item_id) {
             price = getCachedAbyssalPrice(item.item_id) ?? 0
@@ -594,7 +533,25 @@ export function AssetsTab() {
       }
     }
 
-    return rows
+    const aggregated = new Map<string, AssetRow>()
+    for (const row of rows) {
+      const isBlueprint = row.categoryId === CategoryIds.BLUEPRINT
+      if (isAbyssalTypeId(row.typeId) || (row.isSingleton && !isBlueprint)) {
+        aggregated.set(`unique-${row.itemId}`, row)
+        continue
+      }
+      const key = `${row.ownerId}-${row.typeId}-${row.locationId}-${row.locationFlag}-${row.typeName}`
+      const existing = aggregated.get(key)
+      if (existing) {
+        existing.quantity += row.quantity
+        existing.totalValue += row.totalValue
+        existing.totalVolume += row.totalVolume
+      } else {
+        aggregated.set(key, { ...row })
+      }
+    }
+
+    return Array.from(aggregated.values())
   }, [assetsByOwner, prices, assetNames, cacheVersion, ordersByOwner, jobsByOwner, contractsByOwner, owners])
 
   const categories = useMemo(() => {
@@ -605,11 +562,17 @@ export function AssetsTab() {
     return Array.from(cats).sort()
   }, [data])
 
+  const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
+
   const filteredData = useMemo(() => {
-    const searchLower = globalFilter.toLowerCase()
+    const searchLower = search.toLowerCase()
     return data.filter((row) => {
-      if (categoryFilter && row.categoryName !== categoryFilter) return false
-      if (globalFilter) {
+      if (activeOwnerId !== null) {
+        const rowOwnerKey = ownerKey(row.ownerType, row.ownerId)
+        if (rowOwnerKey !== activeOwnerId) return false
+      }
+      if (categoryFilterValue && row.categoryName !== categoryFilterValue) return false
+      if (search) {
         const matchesType = row.typeName.toLowerCase().includes(searchLower)
         const matchesGroup = row.groupName.toLowerCase().includes(searchLower)
         const matchesLocation = row.locationName.toLowerCase().includes(searchLower)
@@ -619,7 +582,7 @@ export function AssetsTab() {
       }
       return true
     })
-  }, [data, categoryFilter, globalFilter])
+  }, [data, categoryFilterValue, search, activeOwnerId])
 
   const table = useReactTable({
     data: filteredData,
@@ -630,41 +593,39 @@ export function AssetsTab() {
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
-    onColumnOrderChange: setColumnOrder,
     state: {
       sorting,
       columnFilters,
       columnVisibility,
-      columnOrder,
     },
   })
 
-  const handleDragStart = (e: React.DragEvent, columnId: string) => {
-    draggedColumnRef.current = columnId
-    e.dataTransfer.effectAllowed = 'move'
-  }
+  useEffect(() => {
+    const cols = table.getAllColumns()
+      .filter((col) => col.getCanHide() && TOGGLEABLE_COLUMNS.includes(col.id))
+      .map((col) => ({
+        id: col.id,
+        label: COLUMN_LABELS[col.id] ?? col.id,
+        visible: col.getIsVisible(),
+        toggle: () => col.toggleVisibility(!col.getIsVisible()),
+      }))
+    setColumns(cols)
+    return () => setColumns([])
+  }, [table, columnVisibility, setColumns])
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'move'
-  }
+  useEffect(() => {
+    setCategoryFilter({
+      categories,
+      value: categoryFilterValue,
+      onChange: setCategoryFilterValue,
+    })
+    return () => setCategoryFilter(null)
+  }, [categories, categoryFilterValue, setCategoryFilter])
 
-  const handleDrop = (e: React.DragEvent, targetColumnId: string) => {
-    e.preventDefault()
-    const draggedId = draggedColumnRef.current
-    if (!draggedId || draggedId === targetColumnId) return
-
-    const newOrder = [...columnOrder]
-    const draggedIndex = newOrder.indexOf(draggedId)
-    const targetIndex = newOrder.indexOf(targetColumnId)
-
-    if (draggedIndex === -1 || targetIndex === -1) return
-
-    newOrder.splice(draggedIndex, 1)
-    newOrder.splice(targetIndex, 0, draggedId)
-    setColumnOrder(newOrder)
-    draggedColumnRef.current = null
-  }
+  useEffect(() => {
+    setResultCount({ showing: filteredData.length, total: data.length })
+    return () => setResultCount(null)
+  }, [filteredData.length, data.length, setResultCount])
 
   const tableContainerRef = useRef<HTMLDivElement>(null)
   const { rows } = table.getRowModel()
@@ -672,31 +633,9 @@ export function AssetsTab() {
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => tableContainerRef.current,
-    estimateSize: () => 41, // Estimated row height in pixels
+    estimateSize: () => 41,
     overscan: 10,
   })
-
-  const filteredRows = table.getFilteredRowModel().rows
-  const walletTotal = useWalletStore((s) => s.getTotalBalance)()
-  const hasActiveFilters = globalFilter.length > 0 || categoryFilter !== null
-
-  const totals = useMemo(() => {
-    let totalValue = 0
-    let totalVolume = 0
-    let totalItems = 0
-
-    for (const row of filteredRows) {
-      totalValue += row.original.totalValue
-      totalVolume += row.original.totalVolume
-      totalItems += row.original.quantity
-    }
-
-    if (!hasActiveFilters) {
-      totalValue += walletTotal
-    }
-
-    return { totalValue, totalVolume, totalItems }
-  }, [filteredRows, walletTotal, hasActiveFilters])
 
   if (owners.length === 0) {
     return (
@@ -728,203 +667,87 @@ export function AssetsTab() {
           {hasError && (
             <>
               <p className="text-red-500">Failed to load assets</p>
-              <p className="text-sm text-slate-400 mb-4">{errorMessage}</p>
+              <p className="text-sm text-slate-400">{errorMessage}</p>
             </>
           )}
           {!hasError && (
-            <p className="text-slate-400 mb-4">No asset data loaded. Click Update to fetch from ESI.</p>
+            <p className="text-slate-400">No asset data loaded. Click Update in the header to fetch from ESI.</p>
           )}
-          <button
-            onClick={() => update()}
-            disabled={!canUpdate}
-            className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {canUpdate ? 'Update Assets' : `Update in ${formatTimeRemaining(timeUntilUpdate)}`}
-          </button>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-4">
-      {/* Summary Bar */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-6 text-sm">
-          <div>
-            <span className="text-slate-400">Total Assets: </span>
-            <span className="font-medium text-green-400">
-              {formatNumber(totals.totalValue)} ISK
-            </span>
-          </div>
-          {isLoading && (
-            <div className="flex items-center gap-1 text-blue-400">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              <span>Refreshing...</span>
-            </div>
-          )}
+    <div className="flex flex-col h-full">
+      {isRefreshingAbyssals && (
+        <div className="flex items-center gap-1 text-sm text-blue-400 mb-2">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          <span>Fetching abyssal prices...</span>
         </div>
+      )}
 
-        <div className="flex items-center gap-3">
-          {isRefreshingAbyssals && (
-            <div className="flex items-center gap-1 text-xs text-blue-400">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              <span>Fetching abyssal prices...</span>
-            </div>
-          )}
-          <button
-            onClick={() => update()}
-            disabled={!canUpdate}
-            title={canUpdate ? 'Update assets from ESI' : `Available in ${formatTimeRemaining(timeUntilUpdate)}`}
-            className="flex items-center gap-1.5 rounded border border-slate-600 bg-slate-700 px-3 py-1.5 text-sm hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            {canUpdate ? 'Update' : formatTimeRemaining(timeUntilUpdate)}
-          </button>
-          <div className="relative" ref={columnsDropdownRef}>
-            <button
-              onClick={() => setColumnsDropdownOpen(!columnsDropdownOpen)}
-              className="flex items-center gap-1 rounded border border-slate-600 bg-slate-700 px-3 py-1.5 text-sm hover:bg-slate-600"
-            >
-              Columns <ChevronDown className="h-4 w-4" />
-            </button>
-            {columnsDropdownOpen && (
-              <div className="absolute right-0 top-full z-50 mt-1 min-w-[160px] rounded border border-slate-600 bg-slate-800 py-1 shadow-lg">
-                {table.getAllColumns()
-                  .filter((column) => column.getCanHide())
-                  .map((column) => (
-                    <button
-                      key={column.id}
-                      onClick={() => column.toggleVisibility(!column.getIsVisible())}
-                      className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-slate-700"
-                    >
-                      <span className="flex h-4 w-4 items-center justify-center">
-                        {column.getIsVisible() && <Check className="h-4 w-4 text-blue-400" />}
-                      </span>
-                      {COLUMN_LABELS[column.id] ?? column.id}
-                    </button>
-                  ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-3">
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="Search name, group, station, system, region..."
-            value={globalFilter}
-            onChange={(e) => setGlobalFilter(e.target.value)}
-            className="w-72 rounded border border-slate-600 bg-slate-700 px-3 py-1.5 pr-8 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
-          />
-          {globalFilter && (
-            <button
-              onClick={() => setGlobalFilter('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-
-        <select
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-          className="w-40 rounded border border-slate-600 bg-slate-700 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
-        >
-          <option value="">All Categories</option>
-          {categories.map((cat) => (
-            <option key={cat} value={cat}>{cat}</option>
-          ))}
-        </select>
-
-        <span className="text-sm text-slate-400">
-          Showing {filteredRows.length} of {data.length} assets
-        </span>
-      </div>
-
-      {/* Table with Virtual Scrolling */}
       <div
         ref={tableContainerRef}
-        className="rounded-lg border border-slate-700 overflow-auto"
-        style={{ height: 'calc(100vh - 280px)', minHeight: '400px' }}
+        className="flex-1 min-h-0 rounded-lg border border-slate-700 overflow-auto"
       >
-        <Table style={{ tableLayout: 'fixed', width: '100%' }}>
-          <TableHeader className="sticky top-0 z-10 bg-slate-800">
+        <div className="grid" style={{ gridTemplateColumns: table.getVisibleLeafColumns().map(col => {
+          const noFlex = (col.columnDef.meta as { noFlex?: boolean } | undefined)?.noFlex
+          return noFlex ? `${col.getSize()}px` : `minmax(${col.getSize()}px, 1fr)`
+        }).join(' ') }}>
+          <div className="contents">
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="bg-slate-800 hover:bg-slate-800">
-                {headerGroup.headers.map((header) => (
-                  <TableHead
-                    key={header.id}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, header.column.id)}
-                    onDragOver={handleDragOver}
-                    onDrop={(e) => handleDrop(e, header.column.id)}
-                    className="cursor-grab active:cursor-grabbing"
-                    style={{ width: header.getSize(), minWidth: header.getSize() }}
-                  >
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                  </TableHead>
-                ))}
-              </TableRow>
+              headerGroup.headers.filter(h => h.column.getIsVisible()).map((header) => (
+                <div
+                  key={header.id}
+                  className={`sticky top-0 z-10 bg-slate-800 py-3 text-left text-sm font-medium text-slate-300 border-b border-slate-700 ${header.column.id === 'ownerName' ? 'px-2' : 'px-4'}`}
+                >
+                  {header.isPlaceholder
+                    ? null
+                    : flexRender(
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
+                </div>
+              ))
             ))}
-          </TableHeader>
-          <TableBody>
-            {rows.length ? (
-              <>
-                {rowVirtualizer.getVirtualItems().length > 0 && (
-                  <tr>
-                    <td
-                      colSpan={columns.length}
-                      style={{ height: rowVirtualizer.getVirtualItems()[0]?.start ?? 0 }}
-                    />
-                  </tr>
-                )}
-                {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                  const row = rows[virtualRow.index]
-                  if (!row) return null
-                  return (
-                    <TableRow key={row.id} data-index={virtualRow.index}>
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell
-                          key={cell.id}
-                          style={{ width: cell.column.getSize(), minWidth: cell.column.getSize() }}
-                        >
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  )
-                })}
-                {rowVirtualizer.getVirtualItems().length > 0 && (
-                  <tr>
-                    <td
-                      colSpan={columns.length}
-                      style={{
-                        height:
-                          rowVirtualizer.getTotalSize() -
-                          (rowVirtualizer.getVirtualItems().at(-1)?.end ?? 0),
-                      }}
-                    />
-                  </tr>
-                )}
-              </>
-            ) : (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  No assets found.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+          </div>
+          {rows.length ? (
+            <>
+              {rowVirtualizer.getVirtualItems().length > 0 && (
+                <div style={{ height: rowVirtualizer.getVirtualItems()[0]?.start ?? 0, gridColumn: `1 / -1` }} />
+              )}
+              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                const row = rows[virtualRow.index]
+                if (!row) return null
+                return (
+                  <div key={row.id} data-index={virtualRow.index} className="contents group">
+                    {row.getVisibleCells().map((cell) => (
+                      <div
+                        key={cell.id}
+                        className={`py-2 text-sm border-b border-slate-700/50 group-hover:bg-slate-700/50 flex items-center ${cell.column.id === 'ownerName' ? 'px-2' : 'px-4'}`}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </div>
+                    ))}
+                  </div>
+                )
+              })}
+              {rowVirtualizer.getVirtualItems().length > 0 && (
+                <div
+                  style={{
+                    height: rowVirtualizer.getTotalSize() - (rowVirtualizer.getVirtualItems().at(-1)?.end ?? 0),
+                    gridColumn: `1 / -1`,
+                  }}
+                />
+              )}
+            </>
+          ) : (
+            <div className="h-24 flex items-center justify-center text-slate-400" style={{ gridColumn: `1 / -1` }}>
+              No assets found.
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

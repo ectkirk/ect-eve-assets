@@ -1,9 +1,14 @@
 import { esiClient } from '../esi-client'
 import type { ESIAsset } from './assets'
-import { ESIAssetSchema, ESICharacterRolesSchema } from '../schemas'
+import {
+  ESIAssetSchema,
+  ESICharacterRolesSchema,
+  ESICorporationDivisionsSchema,
+} from '../schemas'
 import { z } from 'zod'
 
 export type ESICharacterRoles = z.infer<typeof ESICharacterRolesSchema>
+export type ESICorporationDivisions = z.infer<typeof ESICorporationDivisionsSchema>
 
 const DIRECTOR_ROLE = 'Director'
 
@@ -39,4 +44,14 @@ export async function getCharacterCorpRoles(
   } catch {
     return []
   }
+}
+
+export async function getCorporationDivisions(
+  corporationId: number,
+  characterId: number
+): Promise<ESICorporationDivisions> {
+  return esiClient.fetch<ESICorporationDivisions>(
+    `/corporations/${corporationId}/divisions/`,
+    { characterId, schema: ESICorporationDivisionsSchema }
+  )
 }

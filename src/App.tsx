@@ -1,13 +1,12 @@
 import { useEffect, useState, useCallback, Component, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { useAuthStore } from './store/auth-store'
 import { useAssetStore } from './store/asset-store'
 import { useMarketOrdersStore } from './store/market-orders-store'
 import { useIndustryJobsStore } from './store/industry-jobs-store'
 import { useContractsStore } from './store/contracts-store'
 import { useWalletStore } from './store/wallet-store'
+import { useBlueprintsStore } from './store/blueprints-store'
 import { useDataCacheStore, type DataType } from './store/data-cache-store'
-import { LoginScreen } from './components/layout/LoginScreen'
 import { MainLayout } from './components/layout/MainLayout'
 import { UpdateDialog } from './components/dialogs/UpdateDialog'
 import { initCache } from './store/reference-cache'
@@ -58,7 +57,6 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
 }
 
 function App() {
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const queryClient = useQueryClient()
   const setFetching = useDataCacheStore((state) => state.setFetching)
   const setFetched = useDataCacheStore((state) => state.setFetched)
@@ -125,6 +123,7 @@ function App() {
           useIndustryJobsStore.getState().init(),
           useContractsStore.getState().init(),
           useWalletStore.getState().init(),
+          useBlueprintsStore.getState().init(),
         ])
       })
       .then(() => {
@@ -139,16 +138,7 @@ function App() {
 
   useEffect(() => {
     if (!window.electronAPI) return
-
-    const unsubDialog = window.electronAPI.onOpenUpdateDialog(() => setUpdateDialogOpen(true))
-    const unsubAbyssal = window.electronAPI.onRefreshAbyssalPrices(() => {
-      window.dispatchEvent(new CustomEvent('refreshAbyssalPrices'))
-    })
-
-    return () => {
-      unsubDialog()
-      unsubAbyssal()
-    }
+    return window.electronAPI.onOpenUpdateDialog(() => setUpdateDialogOpen(true))
   }, [])
 
   if (cacheError) {
@@ -173,7 +163,7 @@ function App() {
   return (
     <ErrorBoundary>
       <div className="h-screen bg-slate-900 text-slate-50">
-        {isAuthenticated ? <MainLayout /> : <LoginScreen />}
+        <MainLayout />
         <UpdateDialog
           open={updateDialogOpen}
           onOpenChange={setUpdateDialogOpen}

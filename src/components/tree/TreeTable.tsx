@@ -1,4 +1,4 @@
-import { useMemo, useRef, useCallback, useState } from 'react'
+import { useMemo, useRef, useCallback, useState, useEffect } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import {
   ChevronRight,
@@ -11,8 +11,6 @@ import {
   Box,
   Briefcase,
   Layers,
-  ChevronsUpDown,
-  ChevronsDownUp,
 } from 'lucide-react'
 import {
   Table,
@@ -26,6 +24,8 @@ import type { TreeNode, TreeNodeType } from '@/lib/tree-types'
 import { flattenTree, getAllNodeIds } from '@/lib/tree-builder'
 import { cn } from '@/lib/utils'
 import { TypeIcon } from '@/components/ui/type-icon'
+import { useTabControls } from '@/context'
+import { useColumnSettings, type ColumnConfig } from '@/hooks'
 
 interface TreeTableProps {
   nodes: TreeNode[]
@@ -33,6 +33,7 @@ interface TreeTableProps {
   onToggleExpand: (nodeId: string) => void
   onExpandAll: () => void
   onCollapseAll: () => void
+  storageKey?: string
 }
 
 function formatNumber(value: number): string {
@@ -96,10 +97,18 @@ function ItemIcon({ node }: { node: TreeNode }) {
   )
 }
 
-function TreeRowContent({ node, isExpanded, onToggle }: {
+const TREE_COLUMNS: ColumnConfig[] = [
+  { id: 'name', label: 'Name' },
+  { id: 'quantity', label: 'Quantity' },
+  { id: 'value', label: 'Value' },
+  { id: 'volume', label: 'Volume', defaultVisible: false },
+]
+
+function TreeRowContent({ node, isExpanded, onToggle, visibleColumns }: {
   node: TreeNode
   isExpanded: boolean
   onToggle: () => void
+  visibleColumns: string[]
 }) {
   const hasChildren = node.children.length > 0
   const indentPx = node.depth * 20
@@ -113,66 +122,97 @@ function TreeRowContent({ node, isExpanded, onToggle }: {
 
   return (
     <>
-      <TableCell className="py-1.5">
-        <div
-          className="flex items-center gap-1"
-          style={{ paddingLeft: `${indentPx}px` }}
-        >
-          {hasChildren ? (
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onToggle()
-              }}
-              className="p-0.5 hover:bg-slate-700 rounded"
-            >
-              {isExpanded ? (
-                <ChevronDown className="h-4 w-4 text-slate-400" />
-              ) : (
-                <ChevronRight className="h-4 w-4 text-slate-400" />
-              )}
-            </button>
-          ) : (
-            <span className="w-5" />
-          )}
+      {visibleColumns.map((colId) => {
+        if (colId === 'name') {
+          return (
+            <TableCell key={colId} className="py-1.5">
+              <div
+                className="flex items-center gap-1"
+                style={{ paddingLeft: `${indentPx}px` }}
+              >
+                {hasChildren ? (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onToggle()
+                    }}
+                    className="p-0.5 hover:bg-slate-700 rounded"
+                  >
+                    {isExpanded ? (
+                      <ChevronDown className="h-4 w-4 text-slate-400" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 text-slate-400" />
+                    )}
+                  </button>
+                ) : (
+                  <span className="w-5" />
+                )}
 
-          {isAssetNode ? (
-            <ItemIcon node={node} />
-          ) : (
-            <TreeNodeIcon nodeType={node.nodeType} />
-          )}
+                {isAssetNode ? (
+                  <ItemIcon node={node} />
+                ) : (
+                  <TreeNodeIcon nodeType={node.nodeType} />
+                )}
 
-          <span
-            className={cn(
-              'truncate',
-              isLocationNode && node.nodeType === 'region' && 'font-semibold text-purple-300',
-              isLocationNode && node.nodeType === 'system' && 'font-medium text-yellow-300',
-              isLocationNode && node.nodeType === 'station' && 'text-blue-300',
-              isOfficeNode && 'font-medium text-amber-300',
-              isDivisionNode && 'text-amber-200',
-              node.isBlueprintCopy && 'text-cyan-400'
-            )}
-            title={node.name}
-          >
-            {node.name}
-            {node.isBlueprintCopy && ' (Copy)'}
-          </span>
-        </div>
-      </TableCell>
-
-      <TableCell className="py-1.5 text-right tabular-nums w-24">
-        {node.totalCount > 0 ? node.totalCount.toLocaleString() : '-'}
-      </TableCell>
-
-      <TableCell className="py-1.5 text-right tabular-nums text-green-400 w-32">
-        {node.totalValue > 0 ? formatNumber(node.totalValue) + ' ISK' : '-'}
-      </TableCell>
-
-      <TableCell className="py-1.5 text-right tabular-nums text-slate-400 w-32">
-        {node.totalVolume > 0 ? formatVolume(node.totalVolume) : '-'}
-      </TableCell>
+                <span
+                  className={cn(
+                    'truncate',
+                    isLocationNode && node.nodeType === 'region' && 'font-semibold text-purple-300',
+                    isLocationNode && node.nodeType === 'system' && 'font-medium text-yellow-300',
+                    isLocationNode && node.nodeType === 'station' && 'text-blue-300',
+                    isOfficeNode && 'font-medium text-amber-300',
+                    isDivisionNode && 'text-amber-200',
+                    node.isBlueprintCopy && 'text-cyan-400'
+                  )}
+                  title={node.name}
+                >
+                  {node.name}
+                </span>
+              </div>
+            </TableCell>
+          )
+        }
+        if (colId === 'quantity') {
+          return (
+            <TableCell key={colId} className="py-1.5 text-right tabular-nums w-24">
+              {node.totalCount > 0 ? node.totalCount.toLocaleString() : '-'}
+            </TableCell>
+          )
+        }
+        if (colId === 'value') {
+          return (
+            <TableCell key={colId} className="py-1.5 text-right tabular-nums text-green-400 w-32">
+              {node.totalValue > 0 ? formatNumber(node.totalValue) + ' ISK' : '-'}
+            </TableCell>
+          )
+        }
+        if (colId === 'volume') {
+          return (
+            <TableCell key={colId} className="py-1.5 text-right tabular-nums text-slate-400 w-32">
+              {node.nodeType !== 'region' && node.nodeType !== 'system' && node.totalVolume > 0
+                ? formatVolume(node.totalVolume)
+                : '-'}
+            </TableCell>
+          )
+        }
+        return null
+      })}
     </>
   )
+}
+
+const COLUMN_WIDTHS: Record<string, string> = {
+  name: 'w-auto',
+  quantity: 'w-24',
+  value: 'w-32',
+  volume: 'w-32',
+}
+
+const COLUMN_ALIGN: Record<string, string> = {
+  name: 'text-left',
+  quantity: 'text-right',
+  value: 'text-right',
+  volume: 'text-right',
 }
 
 export function TreeTable({
@@ -181,8 +221,18 @@ export function TreeTable({
   onToggleExpand,
   onExpandAll,
   onCollapseAll,
+  storageKey = 'tree-table',
 }: TreeTableProps) {
   const tableContainerRef = useRef<HTMLDivElement>(null)
+
+  const {
+    getVisibleColumns,
+    getColumnsForDropdown,
+    handleDragStart,
+    handleDrop,
+  } = useColumnSettings(storageKey, TREE_COLUMNS)
+
+  const visibleColumns = getVisibleColumns()
 
   const flatRows = useMemo(
     () => flattenTree(nodes, expandedNodes),
@@ -215,6 +265,46 @@ export function TreeTable({
     [nodes]
   )
 
+  const allNodeIds = useMemo(() => getAllNodeIds(nodes), [nodes])
+  const isAllExpanded = allNodeIds.length > 0 && allNodeIds.every((id) => expandedNodes.has(id))
+
+  const { setExpandCollapse, setTotalValue, setColumns } = useTabControls()
+
+  useEffect(() => {
+    setTotalValue(totals.totalValue)
+    return () => setTotalValue(null)
+  }, [totals.totalValue, setTotalValue])
+
+  useEffect(() => {
+    setColumns(getColumnsForDropdown())
+    return () => setColumns([])
+  }, [getColumnsForDropdown, setColumns])
+
+  useEffect(() => {
+    if (!hasExpandableNodes) {
+      setExpandCollapse(null)
+      return
+    }
+
+    setExpandCollapse({
+      isExpanded: isAllExpanded,
+      toggle: () => {
+        if (isAllExpanded) {
+          onCollapseAll()
+        } else {
+          onExpandAll()
+        }
+      },
+    })
+
+    return () => setExpandCollapse(null)
+  }, [hasExpandableNodes, isAllExpanded, onExpandAll, onCollapseAll, setExpandCollapse])
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }
+
   if (nodes.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -224,61 +314,33 @@ export function TreeTable({
   }
 
   return (
-    <div className="space-y-3">
-      {/* Summary Bar */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-6 text-sm">
-          <div>
-            <span className="text-slate-400">Items: </span>
-            <span className="font-medium">{totals.totalCount.toLocaleString()}</span>
-          </div>
-          <div>
-            <span className="text-slate-400">Value: </span>
-            <span className="font-medium text-green-400">
-              {formatNumber(totals.totalValue)} ISK
-            </span>
-          </div>
-          <div>
-            <span className="text-slate-400">Volume: </span>
-            <span className="font-medium">{formatVolume(totals.totalVolume)}</span>
-          </div>
-        </div>
-
-        {hasExpandableNodes && (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onExpandAll}
-              className="flex items-center gap-1 rounded border border-slate-600 bg-slate-700 px-2 py-1 text-xs hover:bg-slate-600"
-              title="Expand all"
-            >
-              <ChevronsUpDown className="h-3.5 w-3.5" />
-              Expand
-            </button>
-            <button
-              onClick={onCollapseAll}
-              className="flex items-center gap-1 rounded border border-slate-600 bg-slate-700 px-2 py-1 text-xs hover:bg-slate-600"
-              title="Collapse all"
-            >
-              <ChevronsDownUp className="h-3.5 w-3.5" />
-              Collapse
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Table */}
-      <div
-        ref={tableContainerRef}
-        className="rounded-lg border border-slate-700 overflow-auto"
-        style={{ height: 'calc(100vh - 280px)', minHeight: '400px' }}
-      >
+    <div
+      ref={tableContainerRef}
+      className="h-full rounded-lg border border-slate-700 overflow-auto"
+    >
         <Table style={{ tableLayout: 'fixed', width: '100%' }}>
           <TableHeader className="sticky top-0 z-10 bg-slate-800">
             <TableRow className="bg-slate-800 hover:bg-slate-800">
-              <TableHead className="w-auto">Name</TableHead>
-              <TableHead className="w-24 text-right">Count</TableHead>
-              <TableHead className="w-32 text-right">Value</TableHead>
-              <TableHead className="w-32 text-right">Volume</TableHead>
+              {visibleColumns.map((colId) => {
+                const col = TREE_COLUMNS.find(c => c.id === colId)
+                if (!col) return null
+                return (
+                  <TableHead
+                    key={colId}
+                    draggable
+                    onDragStart={() => handleDragStart(colId)}
+                    onDragOver={handleDragOver}
+                    onDrop={() => handleDrop(colId)}
+                    className={cn(
+                      COLUMN_WIDTHS[colId],
+                      COLUMN_ALIGN[colId],
+                      'cursor-grab active:cursor-grabbing'
+                    )}
+                  >
+                    {col.label}
+                  </TableHead>
+                )
+              })}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -287,7 +349,7 @@ export function TreeTable({
                 {rowVirtualizer.getVirtualItems().length > 0 && (
                   <tr>
                     <td
-                      colSpan={4}
+                      colSpan={visibleColumns.length}
                       style={{ height: rowVirtualizer.getVirtualItems()[0]?.start ?? 0 }}
                     />
                   </tr>
@@ -302,7 +364,6 @@ export function TreeTable({
                       key={node.id}
                       data-index={virtualRow.index}
                       className={cn(
-                        node.children.length > 0 && 'cursor-pointer',
                         node.nodeType === 'region' && 'bg-slate-800/30',
                         node.nodeType === 'system' && 'bg-slate-800/20'
                       )}
@@ -316,6 +377,7 @@ export function TreeTable({
                         node={node}
                         isExpanded={isExpanded}
                         onToggle={() => onToggleExpand(node.id)}
+                        visibleColumns={visibleColumns}
                       />
                     </TableRow>
                   )
@@ -323,7 +385,7 @@ export function TreeTable({
                 {rowVirtualizer.getVirtualItems().length > 0 && (
                   <tr>
                     <td
-                      colSpan={4}
+                      colSpan={visibleColumns.length}
                       style={{
                         height:
                           rowVirtualizer.getTotalSize() -
@@ -335,14 +397,13 @@ export function TreeTable({
               </>
             ) : (
               <TableRow>
-                <TableCell colSpan={4} className="h-24 text-center">
+                <TableCell colSpan={visibleColumns.length} className="h-24 text-center">
                   No items found.
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
-      </div>
     </div>
   )
 }

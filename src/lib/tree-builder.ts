@@ -30,6 +30,7 @@ export interface TreeBuilderOptions {
   mode: TreeMode
   prices: Map<number, number>
   assetNames?: Map<number, string>
+  hangarDivisionNames?: Map<number, string>
 }
 
 function isShip(type: CachedType | undefined): boolean {
@@ -171,7 +172,7 @@ function createItemNode(
   stationName?: string
 ): TreeNode {
   const price = getAssetPrice(asset, prices)
-  const volume = type?.volume ?? 0
+  const volume = type?.packagedVolume ?? type?.volume ?? 0
   const customName = assetNames?.get(asset.item_id)
   const typeName = type?.name || `Unknown Type ${asset.type_id}`
 
@@ -213,12 +214,22 @@ function createItemNode(
   }
 }
 
+function getDivisionNumber(flag: string): number | undefined {
+  const match = flag.match(/^CorpSAG(\d)$/)
+  return match ? parseInt(match[1]!, 10) : undefined
+}
+
 function createDivisionNode(
   officeItemId: number,
   flag: string,
-  depth: number
+  depth: number,
+  hangarDivisionNames?: Map<number, string>
 ): TreeNode {
-  const divisionName = DIVISION_FLAG_NAMES[flag] || flag
+  const divisionNum = getDivisionNumber(flag)
+  const customName = divisionNum ? hangarDivisionNames?.get(divisionNum) : undefined
+  const defaultName = DIVISION_FLAG_NAMES[flag] || flag
+  const divisionName = customName || defaultName
+
   return {
     id: `division-${officeItemId}-${flag}`,
     nodeType: 'division',
@@ -257,6 +268,16 @@ function createLocationNode(
   }
 }
 
+function countItemLines(node: TreeNode): number {
+  const isItemNode = node.nodeType === 'item' || node.nodeType === 'stack' ||
+    node.nodeType === 'ship' || node.nodeType === 'container'
+  let count = isItemNode ? 1 : 0
+  for (const child of node.children) {
+    count += countItemLines(child)
+  }
+  return count
+}
+
 function aggregateTotals(node: TreeNode): void {
   let totalCount = node.quantity ?? 0
   let totalValue = node.price ? node.price * (node.quantity ?? 0) : 0
@@ -264,7 +285,7 @@ function aggregateTotals(node: TreeNode): void {
 
   if (node.asset) {
     const type = getType(node.asset.type_id)
-    totalVolume = (type?.volume ?? 0) * (node.quantity ?? 0)
+    totalVolume = (type?.packagedVolume ?? type?.volume ?? 0) * (node.quantity ?? 0)
   }
 
   for (const child of node.children) {
@@ -272,6 +293,10 @@ function aggregateTotals(node: TreeNode): void {
     totalCount += child.totalCount
     totalValue += child.totalValue
     totalVolume += child.totalVolume
+  }
+
+  if (node.nodeType === 'station' || node.nodeType === 'system' || node.nodeType === 'region') {
+    totalCount = countItemLines(node)
   }
 
   node.totalCount = totalCount
@@ -328,7 +353,7 @@ export function buildTree(
   assetsWithOwners: AssetWithOwner[],
   options: TreeBuilderOptions
 ): TreeNode[] {
-  const { mode, prices, assetNames } = options
+  const { mode, prices, assetNames, hangarDivisionNames } = options
 
   // Build lookup maps
   const assetById = new Map<number, AssetWithOwner>()
@@ -554,7 +579,12 @@ export function buildTree(
         let divisionNode = currentParent.children.find((n) => n.id === divisionNodeId)
 
         if (!divisionNode) {
-          divisionNode = createDivisionNode(parentAw.asset.item_id, divisionFlag, currentDepth)
+          divisionNode = createDivisionNode(
+            parentAw.asset.item_id,
+            divisionFlag,
+            currentDepth,
+            hangarDivisionNames
+          )
           currentParent.children.push(divisionNode)
         }
 
@@ -635,4 +665,48 @@ export function getAllNodeIds(nodes: TreeNode[], result: string[] = []): string[
     }
   }
   return result
+}
+
+function nodeMatchesSearch(node: TreeNode, searchLower: string): boolean {
+  if (node.name.toLowerCase().includes(searchLower)) return true
+  if (node.typeName?.toLowerCase().includes(searchLower)) return true
+  if (node.groupName?.toLowerCase().includes(searchLower)) return true
+  if (node.regionName?.toLowerCase().includes(searchLower)) return true
+  if (node.systemName?.toLowerCase().includes(searchLower)) return true
+  return false
+}
+
+export function filterTree(nodes: TreeNode[], search: string): TreeNode[] {
+  if (!search) return nodes
+
+  const searchLower = search.toLowerCase()
+  const result: TreeNode[] = []
+
+  for (const node of nodes) {
+    const filteredChildren = filterTree(node.children, search)
+    const selfMatches = nodeMatchesSearch(node, searchLower)
+
+    if (selfMatches || filteredChildren.length > 0) {
+      const filteredNode: TreeNode = {
+        ...node,
+        children: selfMatches ? node.children : filteredChildren,
+      }
+      result.push(filteredNode)
+    }
+  }
+
+  return result
+}
+
+export function countTreeItems(nodes: TreeNode[]): number {
+  let count = 0
+  for (const node of nodes) {
+    if (node.asset) {
+      count += 1
+    }
+    if (node.children.length > 0) {
+      count += countTreeItems(node.children)
+    }
+  }
+  return count
 }

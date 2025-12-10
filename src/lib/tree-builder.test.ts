@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { buildTree, flattenTree, getAllNodeIds, type AssetWithOwner } from './tree-builder'
+import { buildTree, flattenTree, getAllNodeIds, filterTree, type AssetWithOwner } from './tree-builder'
 import { TreeMode } from './tree-types'
 import type { ESIAsset } from '@/api/endpoints/assets'
 import type { Owner } from '@/store/auth-store'
@@ -103,7 +103,7 @@ describe('buildTree', () => {
         prices: new Map([[34, 5], [35, 10]]),
       })
 
-      expect(tree[0]!.totalCount).toBe(150)
+      expect(tree[0]!.totalCount).toBe(2)
       expect(tree[0]!.totalValue).toBe(100 * 5 + 50 * 10)
     })
   })
@@ -1000,5 +1000,98 @@ describe('office division grouping', () => {
     })
 
     expect(tree).toHaveLength(0)
+  })
+})
+
+describe('filterTree', () => {
+  it('returns all nodes when search is empty', () => {
+    const assets: AssetWithOwner[] = [
+      createAssetWithOwner(createAsset({ item_id: 1, type_id: 34 })),
+      createAssetWithOwner(createAsset({ item_id: 2, type_id: 35 })),
+    ]
+
+    const tree = buildTree(assets, {
+      mode: TreeMode.ITEM_HANGAR,
+      prices: new Map(),
+    })
+
+    const filtered = filterTree(tree, '')
+    expect(filtered).toHaveLength(tree.length)
+  })
+
+  it('filters by item name', () => {
+    const assets: AssetWithOwner[] = [
+      createAssetWithOwner(createAsset({ item_id: 1, type_id: 34 })),
+      createAssetWithOwner(createAsset({ item_id: 2, type_id: 35 })),
+    ]
+
+    const tree = buildTree(assets, {
+      mode: TreeMode.ITEM_HANGAR,
+      prices: new Map(),
+    })
+
+    const filtered = filterTree(tree, 'Tritanium')
+    const stationNode = filtered[0]!.children[0]!.children[0]!
+    expect(stationNode.children).toHaveLength(1)
+    expect(stationNode.children[0]!.name).toBe('Tritanium')
+  })
+
+  it('is case insensitive', () => {
+    const assets: AssetWithOwner[] = [
+      createAssetWithOwner(createAsset({ item_id: 1, type_id: 34 })),
+    ]
+
+    const tree = buildTree(assets, {
+      mode: TreeMode.ITEM_HANGAR,
+      prices: new Map(),
+    })
+
+    const filtered = filterTree(tree, 'TRITANIUM')
+    const stationNode = filtered[0]!.children[0]!.children[0]!
+    expect(stationNode.children).toHaveLength(1)
+  })
+
+  it('keeps parent when child matches', () => {
+    const assets: AssetWithOwner[] = [
+      createAssetWithOwner(createAsset({ item_id: 1, type_id: 34 })),
+    ]
+
+    const tree = buildTree(assets, {
+      mode: TreeMode.ITEM_HANGAR,
+      prices: new Map(),
+    })
+
+    const filtered = filterTree(tree, 'Tritanium')
+    expect(filtered).toHaveLength(1)
+    expect(filtered[0]!.name).toBe('The Forge')
+  })
+
+  it('filters by region name', () => {
+    const assets: AssetWithOwner[] = [
+      createAssetWithOwner(createAsset({ item_id: 1, type_id: 34 })),
+    ]
+
+    const tree = buildTree(assets, {
+      mode: TreeMode.ITEM_HANGAR,
+      prices: new Map(),
+    })
+
+    const filtered = filterTree(tree, 'Forge')
+    expect(filtered).toHaveLength(1)
+    expect(filtered[0]!.name).toBe('The Forge')
+  })
+
+  it('returns empty when no matches', () => {
+    const assets: AssetWithOwner[] = [
+      createAssetWithOwner(createAsset({ item_id: 1, type_id: 34 })),
+    ]
+
+    const tree = buildTree(assets, {
+      mode: TreeMode.ITEM_HANGAR,
+      prices: new Map(),
+    })
+
+    const filtered = filterTree(tree, 'nonexistent')
+    expect(filtered).toHaveLength(0)
   })
 })

@@ -1,9 +1,12 @@
-import { useMemo } from 'react'
+import { useMemo, useEffect } from 'react'
 import { Loader2 } from 'lucide-react'
 import { useAssetData } from '@/hooks/useAssetData'
+import { useAuthStore, ownerKey } from '@/store/auth-store'
+import { useDivisionsStore } from '@/store/divisions-store'
 import { TreeTable, useTreeState } from '@/components/tree'
-import { buildTree, type AssetWithOwner } from '@/lib/tree-builder'
+import { buildTree, filterTree, countTreeItems, type AssetWithOwner } from '@/lib/tree-builder'
 import { type TreeMode } from '@/lib/tree-types'
+import { useTabControls } from '@/context'
 
 interface TreeTabProps {
   mode: TreeMode
@@ -29,6 +32,7 @@ export function TreeTab({ mode }: TreeTabProps) {
     hasError,
     errorMessage,
     prices,
+    assetNames,
     cacheVersion,
     update,
     updateProgress,
@@ -36,19 +40,64 @@ export function TreeTab({ mode }: TreeTabProps) {
     timeUntilUpdate,
   } = useAssetData()
 
-  const treeNodes = useMemo(() => {
+  const { search, setResultCount } = useTabControls()
+  const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
+
+  const divisionsInit = useDivisionsStore((s) => s.init)
+  const divisionsInitialized = useDivisionsStore((s) => s.initialized)
+  const divisionsByCorp = useDivisionsStore((s) => s.divisionsByCorp)
+  const fetchDivisionsForOwner = useDivisionsStore((s) => s.fetchForOwner)
+
+  useEffect(() => {
+    divisionsInit()
+  }, [divisionsInit])
+
+  useEffect(() => {
+    if (!divisionsInitialized) return
+    for (const owner of owners) {
+      if (owner.type === 'corporation') {
+        fetchDivisionsForOwner(owner)
+      }
+    }
+  }, [divisionsInitialized, owners, fetchDivisionsForOwner])
+
+  const hangarDivisionNames = useMemo(() => {
+    const map = new Map<number, string>()
+    for (const [, divisions] of divisionsByCorp) {
+      for (const hangar of divisions.hangar) {
+        if (hangar.name) {
+          map.set(hangar.division, hangar.name)
+        }
+      }
+    }
+    return map
+  }, [divisionsByCorp])
+
+  const unfilteredNodes = useMemo(() => {
     void cacheVersion
     if (assetsByOwner.length === 0 || prices.size === 0) return []
 
     const assetsWithOwners: AssetWithOwner[] = []
     for (const { owner, assets } of assetsByOwner) {
+      if (activeOwnerId !== null && ownerKey(owner.type, owner.id) !== activeOwnerId) continue
       for (const asset of assets) {
         assetsWithOwners.push({ asset, owner })
       }
     }
 
-    return buildTree(assetsWithOwners, { mode, prices })
-  }, [assetsByOwner, prices, cacheVersion, mode])
+    return buildTree(assetsWithOwners, { mode, prices, assetNames, hangarDivisionNames })
+  }, [assetsByOwner, prices, assetNames, cacheVersion, mode, activeOwnerId, hangarDivisionNames])
+
+  const treeNodes = useMemo(() => {
+    return filterTree(unfilteredNodes, search)
+  }, [unfilteredNodes, search])
+
+  useEffect(() => {
+    const total = countTreeItems(unfilteredNodes)
+    const showing = countTreeItems(treeNodes)
+    setResultCount({ showing, total })
+    return () => setResultCount(null)
+  }, [unfilteredNodes, treeNodes, setResultCount])
 
   const { expandedNodes, toggleExpand, expandAll, collapseAll } = useTreeState(treeNodes)
 
@@ -116,6 +165,7 @@ export function TreeTab({ mode }: TreeTabProps) {
       onToggleExpand={toggleExpand}
       onExpandAll={expandAll}
       onCollapseAll={collapseAll}
+      storageKey={`tree-${mode.toLowerCase()}`}
     />
   )
 }

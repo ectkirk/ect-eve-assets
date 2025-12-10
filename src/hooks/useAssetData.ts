@@ -217,14 +217,6 @@ export function useAssetData(): AssetDataResult {
     await refreshAbyssalPricesRef.current?.()
   }
 
-  useEffect(() => {
-    const handler = () => {
-      refreshAbyssalPricesRef.current?.()
-    }
-    window.addEventListener('refreshAbyssalPrices', handler)
-    return () => window.removeEventListener('refreshAbyssalPrices', handler)
-  }, [])
-
   const hasData = assetsByOwner.length > 0
 
   return {

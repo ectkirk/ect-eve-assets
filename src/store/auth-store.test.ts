@@ -75,7 +75,7 @@ describe('useAuthStore', () => {
       expect(state.owners['corporation-98000001']).toBeDefined()
     })
 
-    it('sets first owner as active', () => {
+    it('sets first owner as active, then defaults to All Characters on second add', () => {
       const { addOwner } = useAuthStore.getState()
 
       addOwner({
@@ -91,6 +91,8 @@ describe('useAuthStore', () => {
         },
       })
 
+      expect(useAuthStore.getState().activeOwnerId).toBe('character-11111')
+
       addOwner({
         accessToken: 'token2',
         refreshToken: 'refresh2',
@@ -105,7 +107,7 @@ describe('useAuthStore', () => {
       })
 
       const state = useAuthStore.getState()
-      expect(state.activeOwnerId).toBe('character-11111')
+      expect(state.activeOwnerId).toBeNull()
     })
   })
 
@@ -204,6 +206,7 @@ describe('useAuthStore', () => {
     })
 
     it('does nothing for non-existent owner', () => {
+      useAuthStore.setState({ activeOwnerId: 'character-11111' })
       const { switchOwner } = useAuthStore.getState()
       switchOwner('character-99999')
 

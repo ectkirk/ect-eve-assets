@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import {
   Loader2,
-  RefreshCw,
   ChevronRight,
   ChevronDown,
   User,
   Home,
   MapPin,
 } from 'lucide-react'
-import { useAuthStore } from '@/store/auth-store'
+import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useClonesStore } from '@/store/clones-store'
+import { useAssetData } from '@/hooks/useAssetData'
+import { useTabControls } from '@/context'
+import { useColumnSettings, type ColumnConfig } from '@/hooks'
 import {
   hasType,
   getType,
@@ -47,17 +49,6 @@ interface CharacterClones {
   homeLocation: { locationId: number; locationName: string } | null
   activeClone: CloneInfo
   jumpClones: CloneInfo[]
-}
-
-function formatTimeRemaining(ms: number): string {
-  if (ms <= 0) return ''
-  const minutes = Math.ceil(ms / 60000)
-  if (minutes >= 60) {
-    const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
-    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
-  }
-  return `${minutes}m`
 }
 
 function getImplantSlot(typeId: number): number {
@@ -193,23 +184,13 @@ export function ClonesTab() {
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
 
   const clonesByOwner = useClonesStore((s) => s.clonesByOwner)
-  const lastUpdated = useClonesStore((s) => s.lastUpdated)
-  const isUpdating = useClonesStore((s) => s.isUpdating)
+  const clonesUpdating = useClonesStore((s) => s.isUpdating)
   const updateError = useClonesStore((s) => s.updateError)
   const init = useClonesStore((s) => s.init)
-  const update = useClonesStore((s) => s.update)
-  const canUpdateFn = useClonesStore((s) => s.canUpdate)
-  const getTimeUntilUpdateFn = useClonesStore((s) => s.getTimeUntilUpdate)
   const initialized = useClonesStore((s) => s.initialized)
 
-  const [, setTick] = useState(0)
-  useEffect(() => {
-    const interval = setInterval(() => setTick((t) => t + 1), 1000)
-    return () => clearInterval(interval)
-  }, [])
-
-  const canUpdate = canUpdateFn()
-  const timeUntilUpdate = getTimeUntilUpdateFn()
+  const { isLoading: assetsUpdating } = useAssetData()
+  const isUpdating = assetsUpdating || clonesUpdating
 
   useEffect(() => {
     init()
@@ -274,6 +255,17 @@ export function ClonesTab() {
 
   const [expandedCharacters, setExpandedCharacters] = useState<Set<number>>(new Set())
 
+  const { setExpandCollapse, search, setResultCount, setColumns } = useTabControls()
+  const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
+
+  const CLONE_COLUMNS: ColumnConfig[] = useMemo(() => [
+    { id: 'character', label: 'Character' },
+    { id: 'location', label: 'Location' },
+    { id: 'implants', label: 'Implants' },
+  ], [])
+
+  const { getColumnsForDropdown } = useColumnSettings('clones', CLONE_COLUMNS)
+
   const characterClones = useMemo(() => {
     void cacheVersion
 
@@ -291,7 +283,11 @@ export function ClonesTab() {
 
     const result: CharacterClones[] = []
 
-    for (const { owner, clones, activeImplants } of clonesByOwner) {
+    const filteredClonesByOwner = activeOwnerId === null
+      ? clonesByOwner
+      : clonesByOwner.filter(({ owner }) => ownerKey(owner.type, owner.characterId) === activeOwnerId)
+
+    for (const { owner, clones, activeImplants } of filteredClonesByOwner) {
       const homeLocationId = clones.home_location?.location_id
       const homeLocationType = clones.home_location?.location_type ?? 'station'
       const homeLocation = homeLocationId
@@ -351,8 +347,24 @@ export function ClonesTab() {
       })
     }
 
-    return result.sort((a, b) => a.ownerName.localeCompare(b.ownerName))
-  }, [clonesByOwner, cacheVersion])
+    let sorted = result.sort((a, b) => a.ownerName.localeCompare(b.ownerName))
+
+    if (search) {
+      const searchLower = search.toLowerCase()
+      sorted = sorted.filter((char) =>
+        char.ownerName.toLowerCase().includes(searchLower) ||
+        char.activeClone.locationName.toLowerCase().includes(searchLower) ||
+        char.activeClone.implants.some((i) => i.name.toLowerCase().includes(searchLower)) ||
+        char.jumpClones.some((jc) =>
+          jc.locationName.toLowerCase().includes(searchLower) ||
+          jc.name.toLowerCase().includes(searchLower) ||
+          jc.implants.some((i) => i.name.toLowerCase().includes(searchLower))
+        )
+      )
+    }
+
+    return sorted
+  }, [clonesByOwner, cacheVersion, search, activeOwnerId])
 
   const toggleCharacter = useCallback((ownerId: number) => {
     setExpandedCharacters((prev) => {
@@ -372,20 +384,38 @@ export function ClonesTab() {
     setExpandedCharacters(new Set())
   }, [])
 
-  const totals = useMemo(() => {
-    let totalJumpClones = 0
-    let totalImplants = 0
+  const expandableIds = useMemo(() => characterClones.map((c) => c.ownerId), [characterClones])
+  const isAllExpanded = expandableIds.length > 0 && expandableIds.every((id) => expandedCharacters.has(id))
 
-    for (const char of characterClones) {
-      totalJumpClones += char.jumpClones.length
-      totalImplants += char.activeClone.implants.length
-      for (const jc of char.jumpClones) {
-        totalImplants += jc.implants.length
-      }
+  useEffect(() => {
+    if (expandableIds.length === 0) {
+      setExpandCollapse(null)
+      return
     }
 
-    return { totalJumpClones, totalImplants, characters: characterClones.length }
-  }, [characterClones])
+    setExpandCollapse({
+      isExpanded: isAllExpanded,
+      toggle: () => {
+        if (isAllExpanded) {
+          collapseAll()
+        } else {
+          expandAll()
+        }
+      },
+    })
+
+    return () => setExpandCollapse(null)
+  }, [expandableIds, isAllExpanded, expandAll, collapseAll, setExpandCollapse])
+
+  useEffect(() => {
+    setResultCount({ showing: characterClones.length, total: clonesByOwner.length })
+    return () => setResultCount(null)
+  }, [characterClones.length, clonesByOwner.length, setResultCount])
+
+  useEffect(() => {
+    setColumns(getColumnsForDropdown())
+    return () => setColumns([])
+  }, [getColumnsForDropdown, setColumns])
 
   if (owners.length === 0) {
     return (
@@ -417,90 +447,28 @@ export function ClonesTab() {
             </>
           )}
           {!updateError && (
-            <p className="text-slate-400 mb-4">No clone data loaded. Click Update to fetch from ESI.</p>
+            <p className="text-slate-400">No clone data loaded. Use the Update button in the header to fetch from ESI.</p>
           )}
-          <button
-            onClick={() => update()}
-            disabled={!canUpdate}
-            className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50"
-          >
-            {canUpdate ? 'Update Clones' : `Update in ${formatTimeRemaining(timeUntilUpdate)}`}
-          </button>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-6 text-sm">
-          <div>
-            <span className="text-slate-400">Characters: </span>
-            <span className="font-medium">{totals.characters}</span>
-          </div>
-          <div>
-            <span className="text-slate-400">Jump Clones: </span>
-            <span className="font-medium text-blue-400">{totals.totalJumpClones}</span>
-          </div>
-          <div>
-            <span className="text-slate-400">Total Implants: </span>
-            <span className="font-medium text-purple-400">{totals.totalImplants}</span>
-          </div>
+    <div className="h-full rounded-lg border border-slate-700 overflow-auto">
+      {characterClones.length === 0 ? (
+        <div className="flex items-center justify-center h-full">
+          <p className="text-slate-400">No clone data available.</p>
         </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={expandAll}
-            className="rounded border border-slate-600 bg-slate-700 px-2 py-1 text-xs hover:bg-slate-600"
-          >
-            Expand All
-          </button>
-          <button
-            onClick={collapseAll}
-            className="rounded border border-slate-600 bg-slate-700 px-2 py-1 text-xs hover:bg-slate-600"
-          >
-            Collapse All
-          </button>
-          <button
-            onClick={() => update()}
-            disabled={!canUpdate || isUpdating}
-            className="flex items-center gap-1.5 rounded bg-blue-600 px-3 py-1 text-sm hover:bg-blue-500 disabled:opacity-50"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${isUpdating ? 'animate-spin' : ''}`} />
-            {isUpdating
-              ? 'Updating...'
-              : canUpdate
-                ? 'Update'
-                : formatTimeRemaining(timeUntilUpdate)}
-          </button>
-        </div>
-      </div>
-
-      <div
-        className="rounded-lg border border-slate-700 overflow-auto"
-        style={{ height: 'calc(100vh - 220px)', minHeight: '400px' }}
-      >
-        {characterClones.length === 0 ? (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-slate-400">No clone data available.</p>
-          </div>
-        ) : (
-          characterClones.map((data) => (
-            <CharacterClonesSection
-              key={data.ownerId}
-              data={data}
-              isExpanded={expandedCharacters.has(data.ownerId)}
-              onToggle={() => toggleCharacter(data.ownerId)}
-            />
-          ))
-        )}
-      </div>
-
-      {lastUpdated && (
-        <p className="text-xs text-slate-500 text-right">
-          Last updated: {new Date(lastUpdated).toLocaleString()}
-        </p>
+      ) : (
+        characterClones.map((data) => (
+          <CharacterClonesSection
+            key={data.ownerId}
+            data={data}
+            isExpanded={expandedCharacters.has(data.ownerId)}
+            onToggle={() => toggleCharacter(data.ownerId)}
+          />
+        ))
       )}
     </div>
   )

@@ -1,0 +1,41 @@
+name: Dependency Review
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: always
+
+      - name: Discord notification on vulnerability found
+        if: failure()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: |
+          curl -H "Content-Type: application/json" -X POST -d '{
+            "embeds": [{
+              "title": "Vulnerable Dependency Detected",
+              "description": "PR #${{ github.event.pull_request.number }}: **${{ github.event.pull_request.title }}**",
+              "url": "${{ github.event.pull_request.html_url }}",
+              "color": 15158332,
+              "fields": [
+                {"name": "Author", "value": "${{ github.event.pull_request.user.login }}", "inline": true},
+                {"name": "Action", "value": "[View Details](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})", "inline": true}
+              ]
+            }]
+          }' $DISCORD_WEBHOOK
