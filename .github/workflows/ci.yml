@@ -34,3 +34,21 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Discord notification on failure
+        if: failure()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: |
+          curl -H "Content-Type: application/json" -X POST -d '{
+            "embeds": [{
+              "title": "CI Failed",
+              "description": "**${{ github.event.head_commit.message }}**",
+              "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+              "color": 15158332,
+              "fields": [
+                {"name": "Branch", "value": "${{ github.ref_name }}", "inline": true},
+                {"name": "Author", "value": "${{ github.actor }}", "inline": true}
+              ]
+            }]
+          }' $DISCORD_WEBHOOK

@@ -21,3 +21,21 @@ jobs:
         with:
           fail-on-severity: high
           comment-summary-in-pr: always
+
+      - name: Discord notification on vulnerability found
+        if: failure()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: |
+          curl -H "Content-Type: application/json" -X POST -d '{
+            "embeds": [{
+              "title": "Vulnerable Dependency Detected",
+              "description": "PR #${{ github.event.pull_request.number }}: **${{ github.event.pull_request.title }}**",
+              "url": "${{ github.event.pull_request.html_url }}",
+              "color": 15158332,
+              "fields": [
+                {"name": "Author", "value": "${{ github.event.pull_request.user.login }}", "inline": true},
+                {"name": "Action", "value": "[View Details](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})", "inline": true}
+              ]
+            }]
+          }' $DISCORD_WEBHOOK
