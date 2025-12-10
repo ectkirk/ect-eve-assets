@@ -10,8 +10,12 @@ import { getCharacterAssets, getCharacterAssetNames, getCorporationAssetNames, t
 import { getCorporationAssets } from '@/api/endpoints/corporation'
 import { fetchPrices } from '@/api/ref-client'
 import { fetchAbyssalPrices, isAbyssalTypeId, hasCachedAbyssalPrice } from '@/api/mutamarket-client'
-import { getTypeName } from '@/store/reference-cache'
+import { getType, getTypeName } from '@/store/reference-cache'
+
 import { logger } from '@/lib/logger'
+
+const NAMEABLE_CATEGORIES = new Set([6, 22, 65])
+const NAMEABLE_GROUPS = new Set([12, 14, 340, 448, 649])
 
 const DB_NAME = 'ecteveassets-assets'
 const DB_VERSION = 1
@@ -171,17 +175,25 @@ async function fetchOwnerAssets(owner: Owner): Promise<ESIAsset[]> {
   return getCharacterAssets(owner.id, owner.characterId)
 }
 
+function isNameable(typeId: number): boolean {
+  const type = getType(typeId)
+  if (!type) return false
+  return NAMEABLE_CATEGORIES.has(type.categoryId) || NAMEABLE_GROUPS.has(type.groupId)
+}
+
 async function fetchOwnerAssetNames(owner: Owner, assets: ESIAsset[]): Promise<ESIAssetName[]> {
-  const singletonIds = assets.filter((a) => a.is_singleton).map((a) => a.item_id)
-  if (singletonIds.length === 0) return []
+  const nameableIds = assets
+    .filter((a) => a.is_singleton && isNameable(a.type_id))
+    .map((a) => a.item_id)
+  if (nameableIds.length === 0) return []
   if (owner.type === 'corporation') {
     try {
-      return await getCorporationAssetNames(owner.id, owner.characterId, singletonIds)
+      return await getCorporationAssetNames(owner.id, owner.characterId, nameableIds)
     } catch {
       return []
     }
   }
-  return getCharacterAssetNames(owner.id, owner.characterId, singletonIds)
+  return getCharacterAssetNames(owner.id, owner.characterId, nameableIds)
 }
 
 export const useAssetStore = create<AssetStore>((set, get) => ({
