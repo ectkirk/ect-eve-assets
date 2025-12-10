@@ -30,6 +30,7 @@ export interface TreeBuilderOptions {
   mode: TreeMode
   prices: Map<number, number>
   assetNames?: Map<number, string>
+  hangarDivisionNames?: Map<number, string>
 }
 
 function isShip(type: CachedType | undefined): boolean {
@@ -213,12 +214,22 @@ function createItemNode(
   }
 }
 
+function getDivisionNumber(flag: string): number | undefined {
+  const match = flag.match(/^CorpSAG(\d)$/)
+  return match ? parseInt(match[1]!, 10) : undefined
+}
+
 function createDivisionNode(
   officeItemId: number,
   flag: string,
-  depth: number
+  depth: number,
+  hangarDivisionNames?: Map<number, string>
 ): TreeNode {
-  const divisionName = DIVISION_FLAG_NAMES[flag] || flag
+  const divisionNum = getDivisionNumber(flag)
+  const customName = divisionNum ? hangarDivisionNames?.get(divisionNum) : undefined
+  const defaultName = DIVISION_FLAG_NAMES[flag] || flag
+  const divisionName = customName || defaultName
+
   return {
     id: `division-${officeItemId}-${flag}`,
     nodeType: 'division',
@@ -342,7 +353,7 @@ export function buildTree(
   assetsWithOwners: AssetWithOwner[],
   options: TreeBuilderOptions
 ): TreeNode[] {
-  const { mode, prices, assetNames } = options
+  const { mode, prices, assetNames, hangarDivisionNames } = options
 
   // Build lookup maps
   const assetById = new Map<number, AssetWithOwner>()
@@ -568,7 +579,12 @@ export function buildTree(
         let divisionNode = currentParent.children.find((n) => n.id === divisionNodeId)
 
         if (!divisionNode) {
-          divisionNode = createDivisionNode(parentAw.asset.item_id, divisionFlag, currentDepth)
+          divisionNode = createDivisionNode(
+            parentAw.asset.item_id,
+            divisionFlag,
+            currentDepth,
+            hangarDivisionNames
+          )
           currentParent.children.push(divisionNode)
         }
 

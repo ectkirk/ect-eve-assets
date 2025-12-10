@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react'
 import { Loader2, ChevronRight, ChevronDown, Wallet, Building2 } from 'lucide-react'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useWalletStore, isCorporationWallet } from '@/store/wallet-store'
+import { useDivisionsStore } from '@/store/divisions-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { OwnerIcon } from '@/components/ui/type-icon'
 import { cn } from '@/lib/utils'
@@ -23,7 +24,7 @@ function formatISK(value: number): string {
   return value.toLocaleString() + ' ISK'
 }
 
-const DIVISION_NAMES = [
+const DEFAULT_WALLET_NAMES = [
   'Master Wallet',
   '2nd Wallet Division',
   '3rd Wallet Division',
@@ -43,12 +44,27 @@ export function WalletTab() {
   const init = useWalletStore((s) => s.init)
   const initialized = useWalletStore((s) => s.initialized)
 
+  const divisionsInit = useDivisionsStore((s) => s.init)
+  const divisionsInitialized = useDivisionsStore((s) => s.initialized)
+  const getWalletName = useDivisionsStore((s) => s.getWalletName)
+  const fetchDivisionsForOwner = useDivisionsStore((s) => s.fetchForOwner)
+
   const { isLoading: assetsUpdating } = useAssetData()
   const isUpdating = assetsUpdating || walletUpdating
 
   useEffect(() => {
     init()
-  }, [init])
+    divisionsInit()
+  }, [init, divisionsInit])
+
+  useEffect(() => {
+    if (!divisionsInitialized) return
+    for (const owner of owners) {
+      if (owner.type === 'corporation') {
+        fetchDivisionsForOwner(owner)
+      }
+    }
+  }, [divisionsInitialized, owners, fetchDivisionsForOwner])
 
   const [expandedOwners, setExpandedOwners] = useState<Set<string>>(new Set())
 
@@ -252,25 +268,31 @@ export function WalletTab() {
               <div className="px-4 pb-3">
                 {wallet.divisions
                   .sort((a, b) => a.division - b.division)
-                  .map((div) => (
-                    <div
-                      key={div.division}
-                      className="flex items-center gap-3 py-2 pl-8 border-t border-slate-700/50 first:border-t-0"
-                    >
-                      <Building2 className="h-4 w-4 text-slate-500" />
-                      <span className="text-slate-300 flex-1">
-                        {DIVISION_NAMES[div.division - 1] ?? `Division ${div.division}`}
-                      </span>
-                      <span
-                        className={cn(
-                          'font-medium tabular-nums text-sm',
-                          div.balance >= 0 ? 'text-green-400' : 'text-red-400'
-                        )}
+                  .map((div) => {
+                    const customName = getWalletName(wallet.owner.id, div.division)
+                    const defaultName = DEFAULT_WALLET_NAMES[div.division - 1] ?? `Division ${div.division}`
+                    const displayName = customName || defaultName
+
+                    return (
+                      <div
+                        key={div.division}
+                        className="flex items-center gap-3 py-2 pl-8 border-t border-slate-700/50 first:border-t-0"
                       >
-                        {formatISK(div.balance)}
-                      </span>
-                    </div>
-                  ))}
+                        <Building2 className="h-4 w-4 text-slate-500" />
+                        <span className="text-slate-300 flex-1">
+                          {displayName}
+                        </span>
+                        <span
+                          className={cn(
+                            'font-medium tabular-nums text-sm',
+                            div.balance >= 0 ? 'text-green-400' : 'text-red-400'
+                          )}
+                        >
+                          {formatISK(div.balance)}
+                        </span>
+                      </div>
+                    )
+                  })}
               </div>
             )}
           </div>

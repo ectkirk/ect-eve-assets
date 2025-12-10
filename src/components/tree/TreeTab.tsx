@@ -2,6 +2,7 @@ import { useMemo, useEffect } from 'react'
 import { Loader2 } from 'lucide-react'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
+import { useDivisionsStore } from '@/store/divisions-store'
 import { TreeTable, useTreeState } from '@/components/tree'
 import { buildTree, filterTree, countTreeItems, type AssetWithOwner } from '@/lib/tree-builder'
 import { type TreeMode } from '@/lib/tree-types'
@@ -42,6 +43,36 @@ export function TreeTab({ mode }: TreeTabProps) {
   const { search, setResultCount } = useTabControls()
   const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
 
+  const divisionsInit = useDivisionsStore((s) => s.init)
+  const divisionsInitialized = useDivisionsStore((s) => s.initialized)
+  const divisionsByCorp = useDivisionsStore((s) => s.divisionsByCorp)
+  const fetchDivisionsForOwner = useDivisionsStore((s) => s.fetchForOwner)
+
+  useEffect(() => {
+    divisionsInit()
+  }, [divisionsInit])
+
+  useEffect(() => {
+    if (!divisionsInitialized) return
+    for (const owner of owners) {
+      if (owner.type === 'corporation') {
+        fetchDivisionsForOwner(owner)
+      }
+    }
+  }, [divisionsInitialized, owners, fetchDivisionsForOwner])
+
+  const hangarDivisionNames = useMemo(() => {
+    const map = new Map<number, string>()
+    for (const [, divisions] of divisionsByCorp) {
+      for (const hangar of divisions.hangar) {
+        if (hangar.name) {
+          map.set(hangar.division, hangar.name)
+        }
+      }
+    }
+    return map
+  }, [divisionsByCorp])
+
   const unfilteredNodes = useMemo(() => {
     void cacheVersion
     if (assetsByOwner.length === 0 || prices.size === 0) return []
@@ -54,8 +85,8 @@ export function TreeTab({ mode }: TreeTabProps) {
       }
     }
 
-    return buildTree(assetsWithOwners, { mode, prices, assetNames })
-  }, [assetsByOwner, prices, assetNames, cacheVersion, mode, activeOwnerId])
+    return buildTree(assetsWithOwners, { mode, prices, assetNames, hangarDivisionNames })
+  }, [assetsByOwner, prices, assetNames, cacheVersion, mode, activeOwnerId, hangarDivisionNames])
 
   const treeNodes = useMemo(() => {
     return filterTree(unfilteredNodes, search)

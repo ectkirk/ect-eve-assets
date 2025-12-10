@@ -211,6 +211,17 @@ export const ESICorporationWalletDivisionSchema = z.object({
   division: z.number(),
 })
 
+// ESI Corporation Divisions
+export const ESIDivisionSchema = z.object({
+  division: z.number(),
+  name: z.string().optional(),
+})
+
+export const ESICorporationDivisionsSchema = z.object({
+  hangar: z.array(ESIDivisionSchema).optional(),
+  wallet: z.array(ESIDivisionSchema).optional(),
+})
+
 // ref-client schemas
 export const RefMarketPriceSchema = z.object({
   adjusted: z.union([z.string(), z.number(), z.null()]).optional(),
