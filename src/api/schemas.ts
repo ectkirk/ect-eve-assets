@@ -228,6 +228,9 @@ export const RefMarketPriceSchema = z.object({
   average: z.union([z.string(), z.number(), z.null()]).optional(),
   highestBuy: z.number().nullable().optional(),
   lowestSell: z.number().nullable().optional(),
+  salesCount: z.number().optional(),
+  timeWindow: z.string().nullable().optional(),
+  hasSufficientData: z.boolean().optional(),
 })
 
 export const RefTypeSchema = z.object({
