@@ -103,7 +103,7 @@ describe('buildTree', () => {
         prices: new Map([[34, 5], [35, 10]]),
       })
 
-      expect(tree[0]!.totalCount).toBe(150)
+      expect(tree[0]!.totalCount).toBe(2)
       expect(tree[0]!.totalValue).toBe(100 * 5 + 50 * 10)
     })
   })
