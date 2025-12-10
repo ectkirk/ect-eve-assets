@@ -11,6 +11,7 @@ import {
   Clock,
   XCircle,
   AlertCircle,
+  History,
 } from 'lucide-react'
 import { useTabControls } from '@/context'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
@@ -70,7 +71,8 @@ interface ContractRow {
   direction: ContractDirection
   assigneeName: string
   itemValue: number
-  status: 'outstanding' | 'in_progress'
+  status: ESIContract['status']
+  dateCompleted?: string
 }
 
 interface DirectionGroup {
@@ -170,10 +172,12 @@ function ContractsTable({
   contracts,
   cacheVersion,
   showCourierColumns = false,
+  showCompletedDate = false,
 }: {
   contracts: ContractRow[]
   cacheVersion: number
   showCourierColumns?: boolean
+  showCompletedDate?: boolean
 }) {
   const [expandedContracts, setExpandedContracts] = useState<Set<number>>(new Set())
 
@@ -192,19 +196,23 @@ function ContractsTable({
         <TableRow className="hover:bg-transparent">
           <TableHead className="w-8"></TableHead>
           <TableHead>Type</TableHead>
-          <TableHead>Title / Items</TableHead>
+          {!showCompletedDate && !showCourierColumns && <TableHead>Title / Items</TableHead>}
           <TableHead>Location</TableHead>
           <TableHead>Assignee</TableHead>
           <TableHead className="text-right">Price</TableHead>
-          {!showCourierColumns && <TableHead className="text-right">Value</TableHead>}
+          {!showCourierColumns && !showCompletedDate && <TableHead className="text-right">Value</TableHead>}
           {showCourierColumns && (
             <>
               <TableHead className="text-right">Volume</TableHead>
               <TableHead className="text-right">Collateral</TableHead>
-              <TableHead className="text-right">Days</TableHead>
+              <TableHead className="text-right">Days Left</TableHead>
             </>
           )}
-          <TableHead className="text-right">Expires</TableHead>
+          {showCompletedDate ? (
+            <TableHead className="text-right">Completed</TableHead>
+          ) : !showCourierColumns ? (
+            <TableHead className="text-right">Expires</TableHead>
+          ) : null}
           <TableHead>Status</TableHead>
           <TableHead>Owner</TableHead>
         </TableRow>
@@ -238,35 +246,37 @@ function ContractsTable({
                     <span>{CONTRACT_TYPE_NAMES[contract.type]}</span>
                   </div>
                 </TableCell>
-                <TableCell className="py-1.5">
-                  <div className="flex items-center gap-2">
-                    {hasMultipleItems ? (
-                      <button
-                        onClick={() => toggleContract(contract.contract_id)}
-                        className="flex items-center gap-1 hover:text-blue-400"
-                      >
-                        {isExpanded ? (
-                          <ChevronDown className="h-4 w-4 text-slate-400" />
-                        ) : (
-                          <ChevronRight className="h-4 w-4 text-slate-400" />
-                        )}
-                        <span>{itemSummary}</span>
-                      </button>
-                    ) : (
-                      <>
-                        {items.length === 1 && row.firstItemTypeId && (
-                          <ItemTypeIcon
-                            typeId={row.firstItemTypeId}
-                            categoryId={row.firstItemCategoryId}
-                          />
-                        )}
-                        <span className="truncate" title={itemSummary}>
-                          {itemSummary}
-                        </span>
-                      </>
-                    )}
-                  </div>
-                </TableCell>
+                {!showCompletedDate && !showCourierColumns && (
+                  <TableCell className="py-1.5">
+                    <div className="flex items-center gap-2">
+                      {hasMultipleItems ? (
+                        <button
+                          onClick={() => toggleContract(contract.contract_id)}
+                          className="flex items-center gap-1 hover:text-blue-400"
+                        >
+                          {isExpanded ? (
+                            <ChevronDown className="h-4 w-4 text-slate-400" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4 text-slate-400" />
+                          )}
+                          <span>{itemSummary}</span>
+                        </button>
+                      ) : (
+                        <>
+                          {items.length === 1 && row.firstItemTypeId && (
+                            <ItemTypeIcon
+                              typeId={row.firstItemTypeId}
+                              categoryId={row.firstItemCategoryId}
+                            />
+                          )}
+                          <span className="truncate" title={itemSummary}>
+                            {itemSummary}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </TableCell>
+                )}
                 <TableCell className="py-1.5 text-slate-400">
                   <span className="truncate" title={row.locationName}>
                     {row.locationName}
@@ -279,38 +289,63 @@ function ContractsTable({
                 <TableCell className="py-1.5 text-right tabular-nums text-amber-400">
                   {value > 0 ? formatISK(value) : '-'}
                 </TableCell>
-                {!showCourierColumns && (
+                {!showCourierColumns && !showCompletedDate && (
                   <TableCell className="py-1.5 text-right tabular-nums text-green-400">
                     {row.itemValue > 0 ? formatISK(row.itemValue) : '-'}
                   </TableCell>
                 )}
-                {showCourierColumns && (
-                  <>
-                    <TableCell className="py-1.5 text-right tabular-nums text-slate-400">
-                      {contract.volume ? `${contract.volume.toLocaleString()} m³` : '-'}
-                    </TableCell>
-                    <TableCell className="py-1.5 text-right tabular-nums text-amber-400">
-                      {contract.collateral ? formatISK(contract.collateral) : '-'}
-                    </TableCell>
-                    <TableCell className="py-1.5 text-right tabular-nums text-slate-400">
-                      {contract.days_to_complete ?? '-'}
-                    </TableCell>
-                  </>
-                )}
-                <TableCell
-                  className={cn(
-                    'py-1.5 text-right tabular-nums',
-                    expiry.isExpired ? 'text-red-400' : 'text-slate-400'
-                  )}
-                >
-                  {expiry.text}
-                </TableCell>
+                {showCourierColumns && (() => {
+                  let daysDisplay: string | number = contract.days_to_complete ?? '-'
+                  let daysColor = 'text-slate-400'
+
+                  if (contract.status === 'in_progress' && contract.date_accepted && contract.days_to_complete) {
+                    const acceptedDate = new Date(contract.date_accepted).getTime()
+                    const deadline = acceptedDate + contract.days_to_complete * 24 * 60 * 60 * 1000
+                    const remaining = deadline - Date.now()
+                    const daysLeft = Math.ceil(remaining / (24 * 60 * 60 * 1000))
+                    daysDisplay = daysLeft > 0 ? `${daysLeft}d` : 'Overdue'
+                    daysColor = daysLeft <= 1 ? 'text-red-400' : daysLeft <= 3 ? 'text-yellow-400' : 'text-slate-400'
+                  }
+
+                  return (
+                    <>
+                      <TableCell className="py-1.5 text-right tabular-nums text-slate-400">
+                        {contract.volume ? `${contract.volume.toLocaleString()} m³` : '-'}
+                      </TableCell>
+                      <TableCell className="py-1.5 text-right tabular-nums text-amber-400">
+                        {contract.collateral ? formatISK(contract.collateral) : '-'}
+                      </TableCell>
+                      <TableCell className={cn('py-1.5 text-right tabular-nums', daysColor)}>
+                        {daysDisplay}
+                      </TableCell>
+                    </>
+                  )
+                })()}
+                {showCompletedDate ? (
+                  <TableCell className="py-1.5 text-right tabular-nums text-slate-400">
+                    {row.dateCompleted ? new Date(row.dateCompleted).toLocaleDateString() : '-'}
+                  </TableCell>
+                ) : !showCourierColumns ? (
+                  <TableCell
+                    className={cn(
+                      'py-1.5 text-right tabular-nums',
+                      expiry.isExpired ? 'text-red-400' : 'text-slate-400'
+                    )}
+                  >
+                    {expiry.text}
+                  </TableCell>
+                ) : null}
                 <TableCell className="py-1.5">
-                  {row.status === 'in_progress' ? (
-                    <span className="text-blue-400">In Progress</span>
-                  ) : (
-                    <span className="text-yellow-400">Outstanding</span>
+                  {row.status === 'outstanding' && <span className="text-yellow-400">Outstanding</span>}
+                  {row.status === 'in_progress' && <span className="text-blue-400">In Progress</span>}
+                  {(row.status === 'finished' || row.status === 'finished_issuer' || row.status === 'finished_contractor') && (
+                    <span className="text-green-400">Finished</span>
                   )}
+                  {row.status === 'cancelled' && <span className="text-slate-400">Cancelled</span>}
+                  {row.status === 'rejected' && <span className="text-red-400">Rejected</span>}
+                  {row.status === 'failed' && <span className="text-red-400">Failed</span>}
+                  {row.status === 'deleted' && <span className="text-slate-500">Deleted</span>}
+                  {row.status === 'reversed' && <span className="text-orange-400">Reversed</span>}
                 </TableCell>
                 <TableCell className="py-1.5 text-slate-400">{row.ownerName}</TableCell>
               </TableRow>
@@ -462,11 +497,12 @@ export function ContractsTab() {
 
   const [expandedDirections, setExpandedDirections] = useState<Set<string>>(new Set(['in', 'out']))
   const [showCourier, setShowCourier] = useState(true)
+  const [showCompleted, setShowCompleted] = useState(false)
 
   const { setExpandCollapse, search, setResultCount } = useTabControls()
   const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
 
-  const { directionGroups, courierGroup } = useMemo(() => {
+  const { directionGroups, courierGroup, completedContracts } = useMemo(() => {
     void cacheVersion
 
     const getLocationName = (locationId: number | undefined): string => {
@@ -496,69 +532,82 @@ export function ContractsTab() {
     }
 
     const courier: ContractRow[] = []
+    const completed: ContractRow[] = []
 
     const seenContracts = new Set<number>()
+
+    const buildContractRow = (
+      contractWithItems: ContractWithItems,
+      owner: { name: string },
+      isIssuer: boolean
+    ): ContractRow => {
+      const contract = contractWithItems.contract
+      const items = contractWithItems.items
+      const direction: ContractDirection = isIssuer ? 'out' : 'in'
+
+      const firstItem = items[0]
+      const firstItemType =
+        firstItem && hasType(firstItem.type_id) ? getType(firstItem.type_id) : undefined
+
+      let assigneeName: string
+      if (contract.availability === 'public') {
+        assigneeName = 'Public'
+      } else if (contract.assignee_id) {
+        assigneeName = getName(contract.assignee_id)?.name ?? `ID ${contract.assignee_id}`
+      } else {
+        assigneeName = '-'
+      }
+
+      let itemValue = 0
+      for (const item of items) {
+        let price: number
+        if (isAbyssalTypeId(item.type_id) && item.item_id) {
+          price = getCachedAbyssalPrice(item.item_id) ?? 0
+        } else {
+          price = prices.get(item.type_id) ?? 0
+        }
+        itemValue += price * item.quantity
+      }
+
+      return {
+        contractWithItems,
+        ownerName: owner.name,
+        locationName: getLocationName(contract.start_location_id),
+        endLocationName: contract.end_location_id ? getLocationName(contract.end_location_id) : '',
+        firstItemTypeId: firstItem?.type_id,
+        firstItemCategoryId: firstItemType?.categoryId,
+        typeName: firstItemType?.name ?? (firstItem ? `Unknown Type ${firstItem.type_id}` : ''),
+        direction,
+        assigneeName,
+        itemValue,
+        status: contract.status,
+        dateCompleted: contract.date_completed,
+      }
+    }
 
     for (const { owner, contracts } of filteredContractsByOwner) {
       for (const contractWithItems of contracts) {
         const contract = contractWithItems.contract
-        const items = contractWithItems.items
 
         if (seenContracts.has(contract.contract_id)) continue
         seenContracts.add(contract.contract_id)
 
-        const isActive = contract.status === 'outstanding' || contract.status === 'in_progress'
-        if (!isActive) continue
-
         const isIssuer = ownerIds.has(contract.issuer_id)
-
-        const direction: ContractDirection = isIssuer ? 'out' : 'in'
-
-        const firstItem = items[0]
-        const firstItemType =
-          firstItem && hasType(firstItem.type_id) ? getType(firstItem.type_id) : undefined
-
-        let assigneeName: string
-        if (contract.availability === 'public') {
-          assigneeName = 'Public'
-        } else if (contract.assignee_id) {
-          assigneeName = getName(contract.assignee_id)?.name ?? `ID ${contract.assignee_id}`
-        } else {
-          assigneeName = '-'
-        }
-
-        let itemValue = 0
-        for (const item of items) {
-          let price: number
-          if (isAbyssalTypeId(item.type_id) && item.item_id) {
-            price = getCachedAbyssalPrice(item.item_id) ?? 0
-          } else {
-            price = prices.get(item.type_id) ?? 0
-          }
-          itemValue += price * item.quantity
-        }
-
-        const row: ContractRow = {
-          contractWithItems,
-          ownerName: owner.name,
-          locationName: getLocationName(contract.start_location_id),
-          endLocationName: contract.end_location_id ? getLocationName(contract.end_location_id) : '',
-          firstItemTypeId: firstItem?.type_id,
-          firstItemCategoryId: firstItemType?.categoryId,
-          typeName: firstItemType?.name ?? (firstItem ? `Unknown Type ${firstItem.type_id}` : ''),
-          direction,
-          assigneeName,
-          itemValue,
-          status: contract.status as 'outstanding' | 'in_progress',
-        }
-
+        const isActive = contract.status === 'outstanding' || contract.status === 'in_progress'
         const isCourier = contract.type === 'courier'
+
+        if (!isActive) {
+          completed.push(buildContractRow(contractWithItems, owner, isIssuer))
+          continue
+        }
+
+        const row = buildContractRow(contractWithItems, owner, isIssuer)
 
         if (isCourier) {
           courier.push(row)
         } else {
-          groups[direction].contracts.push(row)
-          groups[direction].totalValue += getContractValue(contract)
+          groups[row.direction].contracts.push(row)
+          groups[row.direction].totalValue += getContractValue(contract)
         }
       }
     }
@@ -577,6 +626,11 @@ export function ContractsTab() {
     const filteredIn = filterContracts(groups.in.contracts)
     const filteredOut = filterContracts(groups.out.contracts)
     const filteredCourier = filterContracts(courier)
+    const filteredCompleted = filterContracts(completed).sort((a, b) => {
+      const dateA = a.dateCompleted ? new Date(a.dateCompleted).getTime() : 0
+      const dateB = b.dateCompleted ? new Date(b.dateCompleted).getTime() : 0
+      return dateB - dateA
+    })
 
     return {
       directionGroups: [
@@ -586,6 +640,7 @@ export function ContractsTab() {
       courierGroup: filteredCourier.length > 0
         ? { direction: 'out' as ContractDirection, displayName: 'Active Couriers', contracts: filteredCourier, totalValue: filteredCourier.reduce((acc, c) => acc + getContractValue(c.contractWithItems.contract), 0) }
         : null,
+      completedContracts: filteredCompleted,
     }
   }, [contractsByOwner, cacheVersion, owners, prices, search, activeOwnerId])
 
@@ -625,14 +680,14 @@ export function ContractsTab() {
   }, [isAllExpanded, expandAll, collapseAll, setExpandCollapse])
 
   const totals = useMemo(() => {
-    let totalContracts = 0
+    let activeCount = 0
     let assetsIn = 0
     let assetsOut = 0
     let valueIn = 0
     let valueOut = 0
 
     for (const group of directionGroups) {
-      totalContracts += group.contracts.length
+      activeCount += group.contracts.length
       if (group.direction === 'in') {
         assetsIn = group.contracts.length
         valueIn = group.totalValue
@@ -642,24 +697,18 @@ export function ContractsTab() {
       }
     }
 
-    return { totalContracts, assetsIn, assetsOut, valueIn, valueOut }
-  }, [directionGroups])
+    const courierCount = courierGroup?.contracts.length ?? 0
+    const completedCount = completedContracts.length
 
-  const totalContractCount = useMemo(() => {
-    const seen = new Set<number>()
-    for (const { contracts } of contractsByOwner) {
-      for (const { contract } of contracts) {
-        seen.add(contract.contract_id)
-      }
-    }
-    return seen.size
-  }, [contractsByOwner])
+    return { activeCount, assetsIn, assetsOut, valueIn, valueOut, courierCount, completedCount }
+  }, [directionGroups, courierGroup, completedContracts])
 
   useEffect(() => {
-    const showingCount = totals.totalContracts + (courierGroup?.contracts.length ?? 0)
-    setResultCount({ showing: showingCount, total: totalContractCount })
+    const showingCount = totals.activeCount + totals.courierCount + totals.completedCount
+    const totalCount = showingCount
+    setResultCount({ showing: showingCount, total: totalCount })
     return () => setResultCount(null)
-  }, [totals.totalContracts, courierGroup, totalContractCount, setResultCount])
+  }, [totals.activeCount, totals.courierCount, totals.completedCount, setResultCount])
 
   if (owners.length === 0) {
     return (
@@ -716,8 +765,8 @@ export function ContractsTab() {
           )}
         </div>
         <div>
-          <span className="text-slate-400">Total: </span>
-          <span className="font-medium">{totals.totalContracts}</span>
+          <span className="text-slate-400">Completed: </span>
+          <span className="font-medium text-slate-300">{totals.completedCount}</span>
         </div>
       </div>
 
@@ -725,9 +774,9 @@ export function ContractsTab() {
         className="rounded-lg border border-slate-700 overflow-auto"
         style={{ height: 'calc(100vh - 220px)', minHeight: '400px' }}
       >
-        {directionGroups.length === 0 && !courierGroup ? (
+        {directionGroups.length === 0 && !courierGroup && completedContracts.length === 0 ? (
           <div className="flex items-center justify-center h-full">
-            <p className="text-slate-400">No active contracts.</p>
+            <p className="text-slate-400">No contracts.</p>
           </div>
         ) : (
           <>
@@ -764,6 +813,31 @@ export function ContractsTab() {
                 {showCourier && (
                   <div className="bg-slate-900/30 px-3 pb-2">
                     <ContractsTable contracts={courierGroup.contracts} cacheVersion={cacheVersion} showCourierColumns />
+                  </div>
+                )}
+              </div>
+            )}
+            {completedContracts.length > 0 && (
+              <div className="border-t border-slate-600">
+                <button
+                  onClick={() => setShowCompleted(!showCompleted)}
+                  className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-800/50 text-left"
+                >
+                  {showCompleted ? (
+                    <ChevronDown className="h-4 w-4 text-slate-400" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 text-slate-400" />
+                  )}
+                  <History className="h-4 w-4 text-slate-400" />
+                  <span className="text-slate-300 flex-1">Completed Contracts</span>
+                  <span className="text-xs text-slate-400 w-20 text-right">
+                    {completedContracts.length} contract
+                    {completedContracts.length !== 1 ? 's' : ''}
+                  </span>
+                </button>
+                {showCompleted && (
+                  <div className="bg-slate-900/30 px-3 pb-2">
+                    <ContractsTable contracts={completedContracts} cacheVersion={cacheVersion} showCompletedDate />
                   </div>
                 )}
               </div>
