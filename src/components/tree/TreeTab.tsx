@@ -31,6 +31,7 @@ export function TreeTab({ mode }: TreeTabProps) {
     hasError,
     errorMessage,
     prices,
+    assetNames,
     cacheVersion,
     update,
     updateProgress,
@@ -53,8 +54,8 @@ export function TreeTab({ mode }: TreeTabProps) {
       }
     }
 
-    return buildTree(assetsWithOwners, { mode, prices })
-  }, [assetsByOwner, prices, cacheVersion, mode, activeOwnerId])
+    return buildTree(assetsWithOwners, { mode, prices, assetNames })
+  }, [assetsByOwner, prices, assetNames, cacheVersion, mode, activeOwnerId])
 
   const treeNodes = useMemo(() => {
     return filterTree(unfilteredNodes, search)

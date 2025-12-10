@@ -8,7 +8,7 @@ import { useWalletStore } from './wallet-store'
 import { useBlueprintsStore } from './blueprints-store'
 import { getCharacterAssets, getCharacterAssetNames, getCorporationAssetNames, type ESIAsset, type ESIAssetName } from '@/api/endpoints/assets'
 import { getCorporationAssets } from '@/api/endpoints/corporation'
-import { fetchPrices } from '@/api/ref-client'
+import { fetchPrices, resolveTypes } from '@/api/ref-client'
 import { fetchAbyssalPrices, isAbyssalTypeId, hasCachedAbyssalPrice } from '@/api/mutamarket-client'
 import { getType, getTypeName } from '@/store/reference-cache'
 
@@ -185,11 +185,15 @@ async function fetchOwnerAssetNames(owner: Owner, assets: ESIAsset[]): Promise<E
   const nameableIds = assets
     .filter((a) => a.is_singleton && isNameable(a.type_id))
     .map((a) => a.item_id)
+  logger.debug('Nameable items', { module: 'AssetStore', owner: owner.name, count: nameableIds.length, total: assets.length })
   if (nameableIds.length === 0) return []
   if (owner.type === 'corporation') {
     try {
-      return await getCorporationAssetNames(owner.id, owner.characterId, nameableIds)
-    } catch {
+      const names = await getCorporationAssetNames(owner.id, owner.characterId, nameableIds)
+      logger.debug('Corp asset names returned', { module: 'AssetStore', count: names.length })
+      return names
+    } catch (err) {
+      logger.error('Corp asset names failed', err instanceof Error ? err : undefined, { module: 'AssetStore' })
       return []
     }
   }
@@ -275,6 +279,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
             itemToType.set(asset.item_id, asset.type_id)
           }
 
+          await resolveTypes(Array.from(new Set(assets.map((a) => a.type_id))))
           const names = await fetchOwnerAssetNames(owner, assets)
           for (const n of names) {
             if (n.name && n.name !== 'None') {
@@ -388,15 +393,19 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         itemToType.set(asset.item_id, asset.type_id)
       }
 
+      await resolveTypes(Array.from(new Set(assets.map((a) => a.type_id))))
       const newNames = new Map(state.assetNames)
       const names = await fetchOwnerAssetNames(owner, assets)
+      let storedCount = 0
       for (const n of names) {
         if (n.name && n.name !== 'None') {
           const typeId = itemToType.get(n.item_id)
           const typeName = typeId ? getTypeName(typeId) : ''
           newNames.set(n.item_id, typeName ? `${typeName} (${n.name})` : n.name)
+          storedCount++
         }
       }
+      logger.debug('Asset names stored', { module: 'AssetStore', stored: storedCount, totalNames: newNames.size })
 
       const typeIds = new Set<number>()
       for (const asset of assets) {
