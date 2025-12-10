@@ -32,6 +32,8 @@ const UPDATE_COOLDOWN_MS = 5 * 60 * 1000
 interface MarketOrdersActions {
   init: () => Promise<void>
   update: (force?: boolean) => Promise<void>
+  updateForOwner: (owner: Owner) => Promise<void>
+  removeForOwner: (ownerType: string, ownerId: number) => Promise<void>
   clear: () => Promise<void>
   canUpdate: () => boolean
   getTimeUntilUpdate: () => number
@@ -233,6 +235,53 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
         module: 'MarketOrdersStore',
       })
     }
+  },
+
+  updateForOwner: async (owner: Owner) => {
+    if (owner.type !== 'character') return
+
+    const state = get()
+    try {
+      logger.info('Fetching market orders for new owner', { module: 'MarketOrdersStore', owner: owner.name })
+      const orders = await getCharacterOrders(owner.characterId)
+
+      const ownerKey = `${owner.type}-${owner.id}`
+      const updated = state.ordersByOwner.filter(
+        (oo) => `${oo.owner.type}-${oo.owner.id}` !== ownerKey
+      )
+      updated.push({ owner, orders })
+
+      const lastUpdated = Date.now()
+      await saveToDB(updated, lastUpdated)
+
+      set({ ordersByOwner: updated, lastUpdated })
+
+      logger.info('Market orders updated for owner', {
+        module: 'MarketOrdersStore',
+        owner: owner.name,
+        orders: orders.length,
+      })
+    } catch (err) {
+      logger.error('Failed to fetch market orders for owner', err instanceof Error ? err : undefined, {
+        module: 'MarketOrdersStore',
+        owner: owner.name,
+      })
+    }
+  },
+
+  removeForOwner: async (ownerType: string, ownerId: number) => {
+    const state = get()
+    const ownerKey = `${ownerType}-${ownerId}`
+    const updated = state.ordersByOwner.filter(
+      (oo) => `${oo.owner.type}-${oo.owner.id}` !== ownerKey
+    )
+
+    if (updated.length === state.ordersByOwner.length) return
+
+    await saveToDB(updated, state.lastUpdated ?? Date.now())
+    set({ ordersByOwner: updated })
+
+    logger.info('Market orders removed for owner', { module: 'MarketOrdersStore', ownerKey })
   },
 
   clear: async () => {

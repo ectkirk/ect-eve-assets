@@ -24,7 +24,7 @@ export function getTypeIconUrl(
   const { categoryId, isBlueprintCopy } = options ?? {}
 
   if (categoryId === SKIN_CATEGORY_ID) {
-    return null
+    return `https://images.evetech.net/types/81350/icon?size=32`
   }
 
   if (categoryId === BLUEPRINT_CATEGORY_ID) {

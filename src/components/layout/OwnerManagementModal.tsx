@@ -1,5 +1,6 @@
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo } from 'react'
 import { useAuthStore, type Owner, ownerKey } from '@/store/auth-store'
+import { useAssetStore } from '@/store/asset-store'
 import { esiClient } from '@/api/esi-client'
 import {
   Dialog,
@@ -41,39 +42,9 @@ export function OwnerManagementModal({
 }: OwnerManagementModalProps) {
   const [isAddingCharacter, setIsAddingCharacter] = useState(false)
   const [isAddingCorporation, setIsAddingCorporation] = useState(false)
+  const [isUpdatingData, setIsUpdatingData] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [cooldownRemaining, setCooldownRemaining] = useState(0)
-  const cooldownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-
-  const AUTH_COOLDOWN_MS = 10000
-
-  useEffect(() => {
-    return () => {
-      if (cooldownTimerRef.current) {
-        clearInterval(cooldownTimerRef.current)
-      }
-    }
-  }, [])
-
-  const startCooldown = () => {
-    setCooldownRemaining(AUTH_COOLDOWN_MS)
-    if (cooldownTimerRef.current) {
-      clearInterval(cooldownTimerRef.current)
-    }
-    cooldownTimerRef.current = setInterval(() => {
-      setCooldownRemaining((prev) => {
-        if (prev <= 1000) {
-          if (cooldownTimerRef.current) {
-            clearInterval(cooldownTimerRef.current)
-            cooldownTimerRef.current = null
-          }
-          return 0
-        }
-        return prev - 1000
-      })
-    }, 1000)
-  }
 
   const ownersRecord = useAuthStore((state) => state.owners)
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
@@ -115,24 +86,34 @@ export function OwnerManagementModal({
         result.characterName &&
         result.corporationId
       ) {
+        const newOwner = {
+          id: result.characterId,
+          type: 'character' as const,
+          name: result.characterName,
+          characterId: result.characterId,
+          corporationId: result.corporationId,
+        }
         useAuthStore.getState().addOwner({
           accessToken: result.accessToken,
           refreshToken: result.refreshToken,
           expiresAt: result.expiresAt ?? Date.now() + 1200000,
-          owner: {
-            id: result.characterId,
-            type: 'character',
-            name: result.characterName,
-            characterId: result.characterId,
-            corporationId: result.corporationId,
-          },
+          owner: newOwner,
         })
-        startCooldown()
+        setIsAddingCharacter(false)
+        setIsUpdatingData(true)
+        await useAssetStore.getState().updateForOwner({
+          ...newOwner,
+          accessToken: result.accessToken,
+          refreshToken: result.refreshToken,
+          expiresAt: result.expiresAt ?? Date.now() + 1200000,
+        })
+        setIsUpdatingData(false)
       } else if (result.error && result.error !== 'Authentication cancelled') {
         setError(result.error)
       }
     } finally {
       setIsAddingCharacter(false)
+      setIsUpdatingData(false)
     }
   }
 
@@ -142,7 +123,6 @@ export function OwnerManagementModal({
     setIsAddingCorporation(true)
     setError(null)
     try {
-      // Login with corporation scopes
       const result = await window.electronAPI.startAuth(true)
       if (
         result.success &&
@@ -154,7 +134,6 @@ export function OwnerManagementModal({
       ) {
         const store = useAuthStore.getState()
 
-        // Add the character if not already added
         const charKey = ownerKey('character', result.characterId)
         if (!store.getOwner(charKey)) {
           store.addOwner({
@@ -170,7 +149,6 @@ export function OwnerManagementModal({
             },
           })
         } else {
-          // Update existing character's tokens
           store.updateOwnerTokens(charKey, {
             accessToken: result.accessToken,
             refreshToken: result.refreshToken,
@@ -178,26 +156,35 @@ export function OwnerManagementModal({
           })
         }
 
-        // Add the corporation
         const corpName = await fetchCorpName(result.corporationId)
+        const newCorpOwner = {
+          id: result.corporationId,
+          type: 'corporation' as const,
+          name: corpName,
+          characterId: result.characterId,
+          corporationId: result.corporationId,
+        }
         store.addOwner({
           accessToken: result.accessToken,
           refreshToken: result.refreshToken,
           expiresAt: result.expiresAt ?? Date.now() + 1200000,
-          owner: {
-            id: result.corporationId,
-            type: 'corporation',
-            name: corpName,
-            characterId: result.characterId,
-            corporationId: result.corporationId,
-          },
+          owner: newCorpOwner,
         })
-        startCooldown()
+        setIsAddingCorporation(false)
+        setIsUpdatingData(true)
+        await useAssetStore.getState().updateForOwner({
+          ...newCorpOwner,
+          accessToken: result.accessToken,
+          refreshToken: result.refreshToken,
+          expiresAt: result.expiresAt ?? Date.now() + 1200000,
+        })
+        setIsUpdatingData(false)
       } else if (result.error && result.error !== 'Authentication cancelled') {
         setError(result.error)
       }
     } finally {
       setIsAddingCorporation(false)
+      setIsUpdatingData(false)
     }
   }
 
@@ -207,25 +194,41 @@ export function OwnerManagementModal({
 
   const handleRemoveOwner = async (owner: Owner, e: React.MouseEvent) => {
     e.stopPropagation()
-    const key = ownerKey(owner.type, owner.id)
-    if (window.electronAPI && owner.type === 'character') {
-      await window.electronAPI.logout(owner.id)
+    setIsUpdatingData(true)
+    try {
+      const key = ownerKey(owner.type, owner.id)
+      if (window.electronAPI && owner.type === 'character') {
+        await window.electronAPI.logout(owner.id)
+      }
+      useAuthStore.getState().removeOwner(key)
+      await useAssetStore.getState().removeForOwner(owner.type, owner.id)
+    } finally {
+      setIsUpdatingData(false)
     }
-    useAuthStore.getState().removeOwner(key)
   }
 
-  const handleSwitchOwner = (owner: Owner) => {
-    useAuthStore.getState().switchOwner(ownerKey(owner.type, owner.id))
+  const handleSwitchOwner = (owner: Owner | null) => {
+    if (owner === null) {
+      useAuthStore.getState().switchOwner(null)
+    } else {
+      useAuthStore.getState().switchOwner(ownerKey(owner.type, owner.id))
+    }
   }
 
   const handleLogoutAll = async () => {
-    if (window.electronAPI) {
-      for (const owner of characterOwners) {
-        await window.electronAPI.logout(owner.id)
+    setIsUpdatingData(true)
+    try {
+      if (window.electronAPI) {
+        for (const owner of characterOwners) {
+          await window.electronAPI.logout(owner.id)
+        }
       }
+      useAuthStore.getState().clearAuth()
+      await useAssetStore.getState().clear()
+      onOpenChange(false)
+    } finally {
+      setIsUpdatingData(false)
     }
-    useAuthStore.getState().clearAuth()
-    onOpenChange(false)
   }
 
   return (
@@ -259,6 +262,22 @@ export function OwnerManagementModal({
 
         <ScrollArea className="max-h-[400px]">
           <div className="space-y-4 pr-4">
+            {/* All Characters Option */}
+            {owners.length > 1 && (
+              <div
+                onClick={() => handleSwitchOwner(null)}
+                className={`flex items-center gap-2 rounded-md px-3 py-2 transition-colors hover:bg-slate-700 ${
+                  activeOwnerId === null ? 'bg-slate-700/50 ring-1 ring-blue-500/50' : ''
+                }`}
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-600">
+                  <User className="h-4 w-4 text-slate-300" />
+                </div>
+                <span className="text-sm font-medium">All Characters</span>
+                {activeOwnerId === null && <CheckCircle2 className="h-4 w-4 text-blue-400" />}
+              </div>
+            )}
+
             {/* Characters Section */}
             <div>
               <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-slate-400">
@@ -278,6 +297,7 @@ export function OwnerManagementModal({
                       isActive={
                         ownerKey(owner.type, owner.id) === activeOwnerId
                       }
+                      disabled={isUpdatingData}
                       onSelect={() => handleSwitchOwner(owner)}
                       onRemove={(e) => handleRemoveOwner(owner, e)}
                     />
@@ -305,6 +325,7 @@ export function OwnerManagementModal({
                       isActive={
                         ownerKey(owner.type, owner.id) === activeOwnerId
                       }
+                      disabled={isUpdatingData}
                       onSelect={() => handleSwitchOwner(owner)}
                       onRemove={(e) => handleRemoveOwner(owner, e)}
                     />
@@ -330,27 +351,10 @@ export function OwnerManagementModal({
                 Cancel
               </button>
             </div>
-          ) : cooldownRemaining > 0 ? (
-            <div className="flex flex-col items-center gap-2 py-2">
-              <span className="text-sm text-slate-400">
-                Please wait {Math.ceil(cooldownRemaining / 1000)}s before adding another account
-              </span>
-              <div className="flex gap-2 w-full">
-                <button
-                  disabled
-                  className="flex flex-1 items-center justify-center gap-2 rounded-md bg-blue-600/50 px-4 py-2 text-sm font-medium cursor-not-allowed opacity-50"
-                >
-                  <User className="h-4 w-4" />
-                  Add Character
-                </button>
-                <button
-                  disabled
-                  className="flex flex-1 items-center justify-center gap-2 rounded-md bg-yellow-600/50 px-4 py-2 text-sm font-medium cursor-not-allowed opacity-50"
-                >
-                  <Building2 className="h-4 w-4" />
-                  Add Corporation
-                </button>
-              </div>
+          ) : isUpdatingData ? (
+            <div className="flex items-center justify-center gap-2 py-2 text-slate-400">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Updating data...</span>
             </div>
           ) : (
             <div className="flex gap-2">
@@ -370,7 +374,7 @@ export function OwnerManagementModal({
               </button>
             </div>
           )}
-          {owners.length > 0 && (
+          {owners.length > 0 && !isUpdatingData && (
             <button
               onClick={handleLogoutAll}
               className="w-full rounded-md border border-red-800 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-900/30"
@@ -387,19 +391,20 @@ export function OwnerManagementModal({
 interface OwnerRowProps {
   owner: Owner
   isActive: boolean
+  disabled?: boolean
   onSelect: () => void
   onRemove: (e: React.MouseEvent) => void
 }
 
-function OwnerRow({ owner, isActive, onSelect, onRemove }: OwnerRowProps) {
+function OwnerRow({ owner, isActive, disabled, onSelect, onRemove }: OwnerRowProps) {
   const isCorp = owner.type === 'corporation'
 
   return (
     <div
-      onClick={onSelect}
-      className={`flex cursor-pointer items-center justify-between rounded-md px-3 py-2 transition-colors hover:bg-slate-700 ${
-        isActive ? 'bg-slate-700/50 ring-1 ring-blue-500/50' : ''
-      }`}
+      onClick={disabled ? undefined : onSelect}
+      className={`flex items-center justify-between rounded-md px-3 py-2 transition-colors ${
+        disabled ? 'opacity-50' : 'hover:bg-slate-700'
+      } ${isActive ? 'bg-slate-700/50 ring-1 ring-blue-500/50' : ''}`}
     >
       <div className="flex items-center gap-2">
         <OwnerIcon ownerId={owner.id} ownerType={owner.type} size="lg" />
@@ -408,13 +413,15 @@ function OwnerRow({ owner, isActive, onSelect, onRemove }: OwnerRowProps) {
         </span>
         {isActive && <CheckCircle2 className="h-4 w-4 text-blue-400" />}
       </div>
-      <button
-        onClick={onRemove}
-        className="rounded p-1 text-slate-400 hover:bg-slate-600 hover:text-red-400"
-        title={`Remove ${owner.type}`}
-      >
-        <X className="h-4 w-4" />
-      </button>
+      {!disabled && (
+        <button
+          onClick={onRemove}
+          className="rounded p-1 text-slate-400 hover:bg-slate-600 hover:text-red-400"
+          title={`Remove ${owner.type}`}
+        >
+          <X className="h-4 w-4" />
+        </button>
+      )}
     </div>
   )
 }

@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
-import { Loader2, RefreshCw, TrendingUp, TrendingDown, ChevronRight, ChevronDown } from 'lucide-react'
-import { useAuthStore } from '@/store/auth-store'
+import { Loader2, TrendingUp, TrendingDown, ChevronRight, ChevronDown } from 'lucide-react'
+import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useMarketOrdersStore } from '@/store/market-orders-store'
+import { useAssetData } from '@/hooks/useAssetData'
+import { useTabControls } from '@/context'
+import { useColumnSettings, type ColumnConfig } from '@/hooks'
 import { type ESIMarketOrder } from '@/api/endpoints/market'
 import {
   hasType,
@@ -52,17 +55,6 @@ function formatISK(value: number): string {
   return value.toLocaleString()
 }
 
-function formatTimeRemaining(ms: number): string {
-  if (ms <= 0) return ''
-  const minutes = Math.ceil(ms / 60000)
-  if (minutes >= 60) {
-    const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
-    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
-  }
-  return `${minutes}m`
-}
-
 function formatExpiry(issued: string, duration: number): string {
   const issuedDate = new Date(issued)
   const expiryDate = new Date(issuedDate.getTime() + duration * 24 * 60 * 60 * 1000)
@@ -89,7 +81,7 @@ function OrdersTable({ orders }: { orders: OrderRow[] }) {
           <TableHead className="text-right">Quantity</TableHead>
           <TableHead className="text-right">Total</TableHead>
           <TableHead className="text-right">Expires</TableHead>
-          <TableHead>Owner</TableHead>
+          <TableHead className="text-right">Owner</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -129,7 +121,7 @@ function OrdersTable({ orders }: { orders: OrderRow[] }) {
               <TableCell className="py-1.5 text-right tabular-nums text-slate-400">
                 {formatExpiry(row.order.issued, row.order.duration)}
               </TableCell>
-              <TableCell className="py-1.5 text-slate-400">{row.ownerName}</TableCell>
+              <TableCell className="py-1.5 text-right text-slate-400">{row.ownerName}</TableCell>
             </TableRow>
           )
         })}
@@ -189,23 +181,13 @@ export function MarketOrdersTab() {
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
 
   const ordersByOwner = useMarketOrdersStore((s) => s.ordersByOwner)
-  const lastUpdated = useMarketOrdersStore((s) => s.lastUpdated)
-  const isUpdating = useMarketOrdersStore((s) => s.isUpdating)
+  const ordersUpdating = useMarketOrdersStore((s) => s.isUpdating)
   const updateError = useMarketOrdersStore((s) => s.updateError)
   const init = useMarketOrdersStore((s) => s.init)
-  const update = useMarketOrdersStore((s) => s.update)
-  const canUpdateFn = useMarketOrdersStore((s) => s.canUpdate)
-  const getTimeUntilUpdateFn = useMarketOrdersStore((s) => s.getTimeUntilUpdate)
   const initialized = useMarketOrdersStore((s) => s.initialized)
 
-  const [, setTick] = useState(0)
-  useEffect(() => {
-    const interval = setInterval(() => setTick((t) => t + 1), 1000)
-    return () => clearInterval(interval)
-  }, [])
-
-  const canUpdate = canUpdateFn()
-  const timeUntilUpdate = getTimeUntilUpdateFn()
+  const { isLoading: assetsUpdating } = useAssetData()
+  const isUpdating = assetsUpdating || ordersUpdating
 
   useEffect(() => {
     init()
@@ -250,6 +232,21 @@ export function MarketOrdersTab() {
 
   const [expandedLocations, setExpandedLocations] = useState<Set<number>>(new Set())
 
+  const { setExpandCollapse, search, setResultCount, setTotalValue, setColumns } = useTabControls()
+  const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
+
+  const ORDER_COLUMNS: ColumnConfig[] = useMemo(() => [
+    { id: 'type', label: 'Buy/Sell' },
+    { id: 'item', label: 'Item' },
+    { id: 'price', label: 'Price' },
+    { id: 'quantity', label: 'Quantity' },
+    { id: 'total', label: 'Total' },
+    { id: 'expires', label: 'Expires' },
+    { id: 'owner', label: 'Owner' },
+  ], [])
+
+  const { getColumnsForDropdown } = useColumnSettings('market-orders', ORDER_COLUMNS)
+
   const locationGroups = useMemo(() => {
     void cacheVersion
 
@@ -270,9 +267,13 @@ export function MarketOrdersTab() {
       }
     }
 
+    const filteredOrdersByOwner = activeOwnerId === null
+      ? ordersByOwner
+      : ordersByOwner.filter(({ owner }) => ownerKey(owner.type, owner.id) === activeOwnerId)
+
     const groups = new Map<number, LocationGroup>()
 
-    for (const { owner, orders } of ordersByOwner) {
+    for (const { owner, orders } of filteredOrdersByOwner) {
       for (const order of orders) {
         const type = hasType(order.type_id) ? getType(order.type_id) : undefined
         const locationInfo = getLocationInfo(order.location_id)
@@ -312,7 +313,7 @@ export function MarketOrdersTab() {
       }
     }
 
-    const sorted = Array.from(groups.values()).sort((a, b) => {
+    let sorted = Array.from(groups.values()).sort((a, b) => {
       const aTotal = a.totalBuyValue + a.totalSellValue
       const bTotal = b.totalBuyValue + b.totalSellValue
       return bTotal - aTotal
@@ -327,8 +328,27 @@ export function MarketOrdersTab() {
       })
     }
 
+    if (search) {
+      const searchLower = search.toLowerCase()
+      sorted = sorted.map((group) => {
+        const filteredOrders = group.orders.filter((o) =>
+          o.typeName.toLowerCase().includes(searchLower) ||
+          o.ownerName.toLowerCase().includes(searchLower) ||
+          o.locationName.toLowerCase().includes(searchLower) ||
+          o.regionName.toLowerCase().includes(searchLower) ||
+          o.systemName.toLowerCase().includes(searchLower)
+        )
+        return {
+          ...group,
+          orders: filteredOrders,
+          totalBuyValue: filteredOrders.filter((o) => o.order.is_buy_order).reduce((acc, o) => acc + o.order.price * o.order.volume_remain, 0),
+          totalSellValue: filteredOrders.filter((o) => !o.order.is_buy_order).reduce((acc, o) => acc + o.order.price * o.order.volume_remain, 0),
+        }
+      }).filter((g) => g.orders.length > 0)
+    }
+
     return sorted
-  }, [ordersByOwner, cacheVersion])
+  }, [ordersByOwner, cacheVersion, search, activeOwnerId])
 
   const toggleLocation = useCallback((locationId: number) => {
     setExpandedLocations((prev) => {
@@ -348,6 +368,29 @@ export function MarketOrdersTab() {
     setExpandedLocations(new Set())
   }, [])
 
+  const expandableIds = useMemo(() => locationGroups.map((g) => g.locationId), [locationGroups])
+  const isAllExpanded = expandableIds.length > 0 && expandableIds.every((id) => expandedLocations.has(id))
+
+  useEffect(() => {
+    if (expandableIds.length === 0) {
+      setExpandCollapse(null)
+      return
+    }
+
+    setExpandCollapse({
+      isExpanded: isAllExpanded,
+      toggle: () => {
+        if (isAllExpanded) {
+          collapseAll()
+        } else {
+          expandAll()
+        }
+      },
+    })
+
+    return () => setExpandCollapse(null)
+  }, [expandableIds, isAllExpanded, expandAll, collapseAll, setExpandCollapse])
+
   const totals = useMemo(() => {
     let buyValue = 0
     let sellValue = 0
@@ -365,6 +408,29 @@ export function MarketOrdersTab() {
 
     return { buyValue, sellValue, buyCount, sellCount }
   }, [locationGroups])
+
+  const totalOrderCount = useMemo(() => {
+    let count = 0
+    for (const { orders } of ordersByOwner) {
+      count += orders.length
+    }
+    return count
+  }, [ordersByOwner])
+
+  useEffect(() => {
+    setResultCount({ showing: totals.buyCount + totals.sellCount, total: totalOrderCount })
+    return () => setResultCount(null)
+  }, [totals.buyCount, totals.sellCount, totalOrderCount, setResultCount])
+
+  useEffect(() => {
+    setTotalValue(totals.buyValue + totals.sellValue)
+    return () => setTotalValue(null)
+  }, [totals.buyValue, totals.sellValue, setTotalValue])
+
+  useEffect(() => {
+    setColumns(getColumnsForDropdown())
+    return () => setColumns([])
+  }, [getColumnsForDropdown, setColumns])
 
   if (owners.length === 0) {
     return (
@@ -396,94 +462,28 @@ export function MarketOrdersTab() {
             </>
           )}
           {!updateError && (
-            <p className="text-slate-400 mb-4">No market orders loaded. Click Update to fetch from ESI.</p>
+            <p className="text-slate-400">No market orders loaded. Use the Update button in the header to fetch from ESI.</p>
           )}
-          <button
-            onClick={() => update()}
-            disabled={!canUpdate}
-            className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50"
-          >
-            {canUpdate ? 'Update Orders' : `Update in ${formatTimeRemaining(timeUntilUpdate)}`}
-          </button>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-6 text-sm">
-          <div>
-            <span className="text-slate-400">Buy Orders: </span>
-            <span className="font-medium text-green-400">{totals.buyCount}</span>
-            <span className="text-slate-500 ml-1">({formatISK(totals.buyValue)})</span>
-          </div>
-          <div>
-            <span className="text-slate-400">Sell Orders: </span>
-            <span className="font-medium text-red-400">{totals.sellCount}</span>
-            <span className="text-slate-500 ml-1">({formatISK(totals.sellValue)})</span>
-          </div>
-          <div>
-            <span className="text-slate-400">Total Value: </span>
-            <span className="font-medium text-amber-400">
-              {formatISK(totals.buyValue + totals.sellValue)}
-            </span>
-          </div>
+    <div className="h-full rounded-lg border border-slate-700 overflow-auto">
+      {locationGroups.length === 0 ? (
+        <div className="flex items-center justify-center h-full">
+          <p className="text-slate-400">No active market orders.</p>
         </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={expandAll}
-            className="rounded border border-slate-600 bg-slate-700 px-2 py-1 text-xs hover:bg-slate-600"
-          >
-            Expand All
-          </button>
-          <button
-            onClick={collapseAll}
-            className="rounded border border-slate-600 bg-slate-700 px-2 py-1 text-xs hover:bg-slate-600"
-          >
-            Collapse All
-          </button>
-          <button
-            onClick={() => update()}
-            disabled={!canUpdate || isUpdating}
-            className="flex items-center gap-1.5 rounded bg-blue-600 px-3 py-1 text-sm hover:bg-blue-500 disabled:opacity-50"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${isUpdating ? 'animate-spin' : ''}`} />
-            {isUpdating
-              ? 'Updating...'
-              : canUpdate
-                ? 'Update'
-                : formatTimeRemaining(timeUntilUpdate)}
-          </button>
-        </div>
-      </div>
-
-      <div
-        className="rounded-lg border border-slate-700 overflow-auto"
-        style={{ height: 'calc(100vh - 220px)', minHeight: '400px' }}
-      >
-        {locationGroups.length === 0 ? (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-slate-400">No active market orders.</p>
-          </div>
-        ) : (
-          locationGroups.map((group) => (
-            <LocationGroupRow
-              key={group.locationId}
-              group={group}
-              isExpanded={expandedLocations.has(group.locationId)}
-              onToggle={() => toggleLocation(group.locationId)}
-            />
-          ))
-        )}
-      </div>
-
-      {lastUpdated && (
-        <p className="text-xs text-slate-500 text-right">
-          Last updated: {new Date(lastUpdated).toLocaleString()}
-        </p>
+      ) : (
+        locationGroups.map((group) => (
+          <LocationGroupRow
+            key={group.locationId}
+            group={group}
+            isExpanded={expandedLocations.has(group.locationId)}
+            onToggle={() => toggleLocation(group.locationId)}
+          />
+        ))
       )}
     </div>
   )

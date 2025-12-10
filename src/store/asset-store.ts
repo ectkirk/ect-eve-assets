@@ -1,9 +1,21 @@
 import { create } from 'zustand'
 import { useAuthStore, type Owner } from './auth-store'
-import { getCharacterAssets, getAssetNames, type ESIAsset, type ESIAssetName } from '@/api/endpoints/assets'
+import { useMarketOrdersStore } from './market-orders-store'
+import { useIndustryJobsStore } from './industry-jobs-store'
+import { useContractsStore } from './contracts-store'
+import { useClonesStore } from './clones-store'
+import { useWalletStore } from './wallet-store'
+import { useBlueprintsStore } from './blueprints-store'
+import { getCharacterAssets, getCharacterAssetNames, getCorporationAssetNames, type ESIAsset, type ESIAssetName } from '@/api/endpoints/assets'
 import { getCorporationAssets } from '@/api/endpoints/corporation'
-import { fetchPrices } from '@/api/ref-client'
+import { fetchPrices, resolveTypes } from '@/api/ref-client'
+import { fetchAbyssalPrices, isAbyssalTypeId, hasCachedAbyssalPrice } from '@/api/mutamarket-client'
+import { getType } from '@/store/reference-cache'
+
 import { logger } from '@/lib/logger'
+
+const NAMEABLE_CATEGORIES = new Set([6, 22, 65])
+const NAMEABLE_GROUPS = new Set([12, 14, 340, 448, 649])
 
 const DB_NAME = 'ecteveassets-assets'
 const DB_VERSION = 1
@@ -37,6 +49,8 @@ const UPDATE_COOLDOWN_MS = 60 * 60 * 1000 // 1 hour
 interface AssetActions {
   init: () => Promise<void>
   update: (force?: boolean) => Promise<void>
+  updateForOwner: (owner: Owner) => Promise<void>
+  removeForOwner: (ownerType: string, ownerId: number) => Promise<void>
   clear: () => Promise<void>
   canUpdate: () => boolean
   getTimeUntilUpdate: () => number
@@ -161,11 +175,29 @@ async function fetchOwnerAssets(owner: Owner): Promise<ESIAsset[]> {
   return getCharacterAssets(owner.id, owner.characterId)
 }
 
+function isNameable(typeId: number): boolean {
+  const type = getType(typeId)
+  if (!type) return false
+  return NAMEABLE_CATEGORIES.has(type.categoryId) || NAMEABLE_GROUPS.has(type.groupId)
+}
+
 async function fetchOwnerAssetNames(owner: Owner, assets: ESIAsset[]): Promise<ESIAssetName[]> {
-  if (owner.type !== 'character') return []
-  const singletonIds = assets.filter((a) => a.is_singleton).map((a) => a.item_id)
-  if (singletonIds.length === 0) return []
-  return getAssetNames(owner.id, owner.characterId, singletonIds)
+  const nameableIds = assets
+    .filter((a) => a.is_singleton && isNameable(a.type_id))
+    .map((a) => a.item_id)
+  logger.debug('Nameable items', { module: 'AssetStore', owner: owner.name, count: nameableIds.length, total: assets.length })
+  if (nameableIds.length === 0) return []
+  if (owner.type === 'corporation') {
+    try {
+      const names = await getCorporationAssetNames(owner.id, owner.characterId, nameableIds)
+      logger.debug('Corp asset names returned', { module: 'AssetStore', count: names.length })
+      return names
+    } catch (err) {
+      logger.error('Corp asset names failed', err instanceof Error ? err : undefined, { module: 'AssetStore' })
+      return []
+    }
+  }
+  return getCharacterAssetNames(owner.id, owner.characterId, nameableIds)
 }
 
 export const useAssetStore = create<AssetStore>((set, get) => ({
@@ -242,6 +274,12 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
           const assets = await fetchOwnerAssets(owner)
           results.push({ owner, assets })
 
+          const itemToType = new Map<number, number>()
+          for (const asset of assets) {
+            itemToType.set(asset.item_id, asset.type_id)
+          }
+
+          await resolveTypes(Array.from(new Set(assets.map((a) => a.type_id))))
           const names = await fetchOwnerAssetNames(owner, assets)
           for (const n of names) {
             if (n.name && n.name !== 'None') {
@@ -258,11 +296,31 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
 
       const lastUpdated = Date.now()
 
-      // Fetch prices
+      // Update other stores first so we can collect their type IDs for pricing
+      await Promise.all([
+        useMarketOrdersStore.getState().update(true),
+        useIndustryJobsStore.getState().update(true),
+        useContractsStore.getState().update(true),
+        useClonesStore.getState().update(true),
+        useWalletStore.getState().update(true),
+        useBlueprintsStore.getState().update(true),
+      ])
+
+      // Collect all type IDs that need prices
       const typeIds = new Set<number>()
       for (const { assets } of results) {
         for (const asset of assets) {
           typeIds.add(asset.type_id)
+        }
+      }
+
+      // Add industry job product type IDs
+      const industryJobs = useIndustryJobsStore.getState().jobsByOwner
+      for (const { jobs } of industryJobs) {
+        for (const job of jobs) {
+          if (job.product_type_id) {
+            typeIds.add(job.product_type_id)
+          }
         }
       }
 
@@ -273,6 +331,22 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
           logger.info('Prices loaded', { module: 'AssetStore', count: prices.size })
         } catch (err) {
           logger.error('Failed to fetch prices', err instanceof Error ? err : undefined, { module: 'AssetStore' })
+        }
+      }
+
+      const abyssalItemIds: number[] = []
+      for (const { assets } of results) {
+        for (const asset of assets) {
+          if (isAbyssalTypeId(asset.type_id) && !hasCachedAbyssalPrice(asset.item_id)) {
+            abyssalItemIds.push(asset.item_id)
+          }
+        }
+      }
+      if (abyssalItemIds.length > 0) {
+        try {
+          await fetchAbyssalPrices(abyssalItemIds)
+        } catch (err) {
+          logger.error('Failed to fetch abyssal prices', err instanceof Error ? err : undefined, { module: 'AssetStore' })
         }
       }
 
@@ -301,6 +375,126 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
     }
   },
 
+  updateForOwner: async (owner: Owner) => {
+    const state = get()
+    if (state.isUpdating) return
+
+    set({ isUpdating: true, updateError: null, updateProgress: { current: 0, total: 1 } })
+
+    try {
+      logger.info('Fetching assets for new owner', { module: 'AssetStore', owner: owner.name, type: owner.type })
+      const assets = await fetchOwnerAssets(owner)
+      const newOwnerAssets: OwnerAssets = { owner, assets }
+
+      const itemToType = new Map<number, number>()
+      for (const asset of assets) {
+        itemToType.set(asset.item_id, asset.type_id)
+      }
+
+      await resolveTypes(Array.from(new Set(assets.map((a) => a.type_id))))
+      const newNames = new Map(state.assetNames)
+      const names = await fetchOwnerAssetNames(owner, assets)
+      for (const n of names) {
+        if (n.name && n.name !== 'None') {
+          newNames.set(n.item_id, n.name)
+        }
+      }
+
+      const typeIds = new Set<number>()
+      for (const asset of assets) {
+        typeIds.add(asset.type_id)
+      }
+
+      const newPrices = new Map(state.prices)
+      if (typeIds.size > 0) {
+        try {
+          const fetchedPrices = await fetchPrices(Array.from(typeIds))
+          for (const [id, price] of fetchedPrices) {
+            newPrices.set(id, price)
+          }
+        } catch (err) {
+          logger.error('Failed to fetch prices', err instanceof Error ? err : undefined, { module: 'AssetStore' })
+        }
+      }
+
+      const abyssalItemIds: number[] = []
+      for (const asset of assets) {
+        if (isAbyssalTypeId(asset.type_id) && !hasCachedAbyssalPrice(asset.item_id)) {
+          abyssalItemIds.push(asset.item_id)
+        }
+      }
+      if (abyssalItemIds.length > 0) {
+        try {
+          await fetchAbyssalPrices(abyssalItemIds)
+        } catch (err) {
+          logger.error('Failed to fetch abyssal prices', err instanceof Error ? err : undefined, { module: 'AssetStore' })
+        }
+      }
+
+      const ownerKey = `${owner.type}-${owner.id}`
+      const updatedAssets = state.assetsByOwner.filter(
+        (oa) => `${oa.owner.type}-${oa.owner.id}` !== ownerKey
+      )
+      updatedAssets.push(newOwnerAssets)
+
+      const lastUpdated = Date.now()
+      await saveToDB(updatedAssets, newNames, newPrices, lastUpdated)
+
+      set({
+        assetsByOwner: updatedAssets,
+        assetNames: newNames,
+        prices: newPrices,
+        lastUpdated,
+        isUpdating: false,
+        updateProgress: null,
+        updateError: null,
+      })
+
+      logger.info('Assets updated for owner', {
+        module: 'AssetStore',
+        owner: owner.name,
+        assets: assets.length,
+      })
+
+      await Promise.all([
+        useMarketOrdersStore.getState().updateForOwner(owner),
+        useIndustryJobsStore.getState().updateForOwner(owner),
+        useContractsStore.getState().updateForOwner(owner),
+        useClonesStore.getState().updateForOwner(owner),
+        useWalletStore.getState().updateForOwner(owner),
+        useBlueprintsStore.getState().updateForOwner(owner),
+      ])
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      set({ isUpdating: false, updateProgress: null, updateError: message })
+      logger.error('Asset update failed for owner', err instanceof Error ? err : undefined, { module: 'AssetStore' })
+    }
+  },
+
+  removeForOwner: async (ownerType: string, ownerId: number) => {
+    const state = get()
+    const ownerKey = `${ownerType}-${ownerId}`
+    const updated = state.assetsByOwner.filter(
+      (oa) => `${oa.owner.type}-${oa.owner.id}` !== ownerKey
+    )
+
+    if (updated.length === state.assetsByOwner.length) return
+
+    await saveToDB(updated, state.assetNames, state.prices, state.lastUpdated ?? Date.now())
+    set({ assetsByOwner: updated })
+
+    logger.info('Assets removed for owner', { module: 'AssetStore', ownerKey })
+
+    await Promise.all([
+      useMarketOrdersStore.getState().removeForOwner(ownerType, ownerId),
+      useIndustryJobsStore.getState().removeForOwner(ownerType, ownerId),
+      useContractsStore.getState().removeForOwner(ownerType, ownerId),
+      useClonesStore.getState().removeForOwner(ownerType, ownerId),
+      useWalletStore.getState().removeForOwner(ownerType, ownerId),
+      useBlueprintsStore.getState().removeForOwner(ownerType, ownerId),
+    ])
+  },
+
   clear: async () => {
     await clearDB()
     set({
@@ -311,5 +505,14 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
       updateError: null,
       updateProgress: null,
     })
+
+    await Promise.all([
+      useMarketOrdersStore.getState().clear(),
+      useIndustryJobsStore.getState().clear(),
+      useContractsStore.getState().clear(),
+      useClonesStore.getState().clear(),
+      useWalletStore.getState().clear(),
+      useBlueprintsStore.getState().clear(),
+    ])
   },
 }))

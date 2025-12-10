@@ -34,6 +34,8 @@ const UPDATE_COOLDOWN_MS = 5 * 60 * 1000
 interface ClonesActions {
   init: () => Promise<void>
   update: (force?: boolean) => Promise<void>
+  updateForOwner: (owner: Owner) => Promise<void>
+  removeForOwner: (ownerType: string, ownerId: number) => Promise<void>
   clear: () => Promise<void>
   canUpdate: () => boolean
   getTimeUntilUpdate: () => number
@@ -240,6 +242,56 @@ export const useClonesStore = create<ClonesStore>((set, get) => ({
         module: 'ClonesStore',
       })
     }
+  },
+
+  updateForOwner: async (owner: Owner) => {
+    if (owner.type !== 'character') return
+
+    const state = get()
+    try {
+      logger.info('Fetching clones for new owner', { module: 'ClonesStore', owner: owner.name })
+
+      const [clones, activeImplants] = await Promise.all([
+        getCharacterClones(owner.characterId),
+        getCharacterImplants(owner.characterId),
+      ])
+
+      const ownerKey = `${owner.type}-${owner.id}`
+      const updated = state.clonesByOwner.filter(
+        (oc) => `${oc.owner.type}-${oc.owner.id}` !== ownerKey
+      )
+      updated.push({ owner, clones, activeImplants })
+
+      const lastUpdated = Date.now()
+      await saveToDB(updated, lastUpdated)
+
+      set({ clonesByOwner: updated, lastUpdated })
+
+      logger.info('Clones updated for owner', {
+        module: 'ClonesStore',
+        owner: owner.name,
+      })
+    } catch (err) {
+      logger.error('Failed to fetch clones for owner', err instanceof Error ? err : undefined, {
+        module: 'ClonesStore',
+        owner: owner.name,
+      })
+    }
+  },
+
+  removeForOwner: async (ownerType: string, ownerId: number) => {
+    const state = get()
+    const ownerKey = `${ownerType}-${ownerId}`
+    const updated = state.clonesByOwner.filter(
+      (oc) => `${oc.owner.type}-${oc.owner.id}` !== ownerKey
+    )
+
+    if (updated.length === state.clonesByOwner.length) return
+
+    await saveToDB(updated, state.lastUpdated ?? Date.now())
+    set({ clonesByOwner: updated })
+
+    logger.info('Clones removed for owner', { module: 'ClonesStore', ownerKey })
   },
 
   clear: async () => {

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import {
   Loader2,
-  RefreshCw,
   ChevronRight,
   ChevronDown,
   Hammer,
@@ -13,9 +12,12 @@ import {
   XCircle,
   PauseCircle,
 } from 'lucide-react'
-import { useAuthStore } from '@/store/auth-store'
+import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useAssetStore } from '@/store/asset-store'
 import { useIndustryJobsStore } from '@/store/industry-jobs-store'
+import { useAssetData } from '@/hooks/useAssetData'
+import { useTabControls } from '@/context'
+import { useColumnSettings, type ColumnConfig } from '@/hooks'
 import { type ESIIndustryJob } from '@/api/endpoints/industry'
 import {
   hasType,
@@ -80,6 +82,7 @@ interface LocationGroup {
   jobs: JobRow[]
   activeCount: number
   completedCount: number
+  totalValue: number
 }
 
 function formatISK(value: number): string {
@@ -87,17 +90,6 @@ function formatISK(value: number): string {
   if (value >= 1_000_000) return (value / 1_000_000).toFixed(2) + 'M'
   if (value >= 1_000) return (value / 1_000).toFixed(2) + 'K'
   return value.toLocaleString()
-}
-
-function formatTimeRemaining(ms: number): string {
-  if (ms <= 0) return ''
-  const minutes = Math.ceil(ms / 60000)
-  if (minutes >= 60) {
-    const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
-    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
-  }
-  return `${minutes}m`
 }
 
 function formatDuration(endDate: string): { text: string; isComplete: boolean; isPast: boolean } {
@@ -152,7 +144,7 @@ function JobsTable({ jobs }: { jobs: JobRow[] }) {
           <TableHead className="text-right">Value</TableHead>
           <TableHead className="text-right">Cost</TableHead>
           <TableHead className="text-right">Time</TableHead>
-          <TableHead>Owner</TableHead>
+          <TableHead className="text-right">Owner</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -215,7 +207,7 @@ function JobsTable({ jobs }: { jobs: JobRow[] }) {
               >
                 {duration.text}
               </TableCell>
-              <TableCell className="py-1.5 text-slate-400">{row.ownerName}</TableCell>
+              <TableCell className="py-1.5 text-right text-slate-400">{row.ownerName}</TableCell>
             </TableRow>
           )
         })}
@@ -267,23 +259,13 @@ export function IndustryJobsTab() {
 
   const prices = useAssetStore((s) => s.prices)
   const jobsByOwner = useIndustryJobsStore((s) => s.jobsByOwner)
-  const lastUpdated = useIndustryJobsStore((s) => s.lastUpdated)
-  const isUpdating = useIndustryJobsStore((s) => s.isUpdating)
+  const jobsUpdating = useIndustryJobsStore((s) => s.isUpdating)
   const updateError = useIndustryJobsStore((s) => s.updateError)
   const init = useIndustryJobsStore((s) => s.init)
-  const update = useIndustryJobsStore((s) => s.update)
-  const canUpdateFn = useIndustryJobsStore((s) => s.canUpdate)
-  const getTimeUntilUpdateFn = useIndustryJobsStore((s) => s.getTimeUntilUpdate)
   const initialized = useIndustryJobsStore((s) => s.initialized)
 
-  const [, setTick] = useState(0)
-  useEffect(() => {
-    const interval = setInterval(() => setTick((t) => t + 1), 1000)
-    return () => clearInterval(interval)
-  }, [])
-
-  const canUpdate = canUpdateFn()
-  const timeUntilUpdate = getTimeUntilUpdateFn()
+  const { isLoading: assetsUpdating } = useAssetData()
+  const isUpdating = assetsUpdating || jobsUpdating
 
   useEffect(() => {
     init()
@@ -334,6 +316,23 @@ export function IndustryJobsTab() {
 
   const [expandedLocations, setExpandedLocations] = useState<Set<number>>(new Set())
 
+  const { setExpandCollapse, search, setResultCount, setTotalValue, setColumns } = useTabControls()
+  const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
+
+  const JOB_COLUMNS: ColumnConfig[] = useMemo(() => [
+    { id: 'status', label: 'Status' },
+    { id: 'activity', label: 'Activity' },
+    { id: 'blueprint', label: 'Blueprint' },
+    { id: 'product', label: 'Product' },
+    { id: 'runs', label: 'Runs' },
+    { id: 'value', label: 'Value' },
+    { id: 'cost', label: 'Cost' },
+    { id: 'time', label: 'Time' },
+    { id: 'owner', label: 'Owner' },
+  ], [])
+
+  const { getColumnsForDropdown } = useColumnSettings('industry-jobs', JOB_COLUMNS)
+
   const locationGroups = useMemo(() => {
     void cacheVersion
 
@@ -348,7 +347,11 @@ export function IndustryJobsTab() {
 
     const groups = new Map<number, LocationGroup>()
 
-    for (const { owner, jobs } of jobsByOwner) {
+    const filteredJobsByOwner = activeOwnerId === null
+      ? jobsByOwner
+      : jobsByOwner.filter(({ owner }) => ownerKey(owner.type, owner.characterId) === activeOwnerId)
+
+    for (const { owner, jobs } of filteredJobsByOwner) {
       for (const job of jobs) {
         const bpType = hasType(job.blueprint_type_id) ? getType(job.blueprint_type_id) : undefined
         const productType =
@@ -378,11 +381,13 @@ export function IndustryJobsTab() {
             jobs: [],
             activeCount: 0,
             completedCount: 0,
+            totalValue: 0,
           }
           groups.set(job.facility_id, group)
         }
 
         group.jobs.push(row)
+        group.totalValue += productValue
         if (job.status === 'active' || job.status === 'paused') {
           group.activeCount++
         } else {
@@ -391,23 +396,33 @@ export function IndustryJobsTab() {
       }
     }
 
-    const sorted = Array.from(groups.values()).sort((a, b) => {
-      if (a.activeCount !== b.activeCount) return b.activeCount - a.activeCount
-      return a.locationName.localeCompare(b.locationName)
-    })
+    let sorted = Array.from(groups.values()).sort((a, b) => b.totalValue - a.totalValue)
 
     for (const group of sorted) {
-      group.jobs.sort((a, b) => {
-        const statusOrder = { active: 0, ready: 1, paused: 2, delivered: 3, cancelled: 4, reverted: 5 }
-        const aOrder = statusOrder[a.job.status] ?? 99
-        const bOrder = statusOrder[b.job.status] ?? 99
-        if (aOrder !== bOrder) return aOrder - bOrder
-        return new Date(a.job.end_date).getTime() - new Date(b.job.end_date).getTime()
-      })
+      group.jobs.sort((a, b) => b.productValue - a.productValue)
+    }
+
+    if (search) {
+      const searchLower = search.toLowerCase()
+      sorted = sorted.map((group) => {
+        const filteredJobs = group.jobs.filter((j) =>
+          j.blueprintName.toLowerCase().includes(searchLower) ||
+          j.productName.toLowerCase().includes(searchLower) ||
+          j.ownerName.toLowerCase().includes(searchLower) ||
+          j.locationName.toLowerCase().includes(searchLower) ||
+          j.activityName.toLowerCase().includes(searchLower)
+        )
+        return {
+          ...group,
+          jobs: filteredJobs,
+          activeCount: filteredJobs.filter((j) => j.job.status === 'active' || j.job.status === 'paused').length,
+          completedCount: filteredJobs.filter((j) => j.job.status !== 'active' && j.job.status !== 'paused').length,
+        }
+      }).filter((g) => g.jobs.length > 0)
     }
 
     return sorted
-  }, [jobsByOwner, cacheVersion, prices])
+  }, [jobsByOwner, cacheVersion, prices, search, activeOwnerId])
 
   const toggleLocation = useCallback((locationId: number) => {
     setExpandedLocations((prev) => {
@@ -427,6 +442,29 @@ export function IndustryJobsTab() {
     setExpandedLocations(new Set())
   }, [])
 
+  const expandableIds = useMemo(() => locationGroups.map((g) => g.locationId), [locationGroups])
+  const isAllExpanded = expandableIds.length > 0 && expandableIds.every((id) => expandedLocations.has(id))
+
+  useEffect(() => {
+    if (expandableIds.length === 0) {
+      setExpandCollapse(null)
+      return
+    }
+
+    setExpandCollapse({
+      isExpanded: isAllExpanded,
+      toggle: () => {
+        if (isAllExpanded) {
+          collapseAll()
+        } else {
+          expandAll()
+        }
+      },
+    })
+
+    return () => setExpandCollapse(null)
+  }, [expandableIds, isAllExpanded, expandAll, collapseAll, setExpandCollapse])
+
   const totals = useMemo(() => {
     let activeCount = 0
     let completedCount = 0
@@ -442,6 +480,29 @@ export function IndustryJobsTab() {
 
     return { activeCount, completedCount, totalCost }
   }, [locationGroups])
+
+  const totalJobCount = useMemo(() => {
+    let count = 0
+    for (const { jobs } of jobsByOwner) {
+      count += jobs.length
+    }
+    return count
+  }, [jobsByOwner])
+
+  useEffect(() => {
+    setResultCount({ showing: totals.activeCount + totals.completedCount, total: totalJobCount })
+    return () => setResultCount(null)
+  }, [totals.activeCount, totals.completedCount, totalJobCount, setResultCount])
+
+  useEffect(() => {
+    setTotalValue(totals.totalCost)
+    return () => setTotalValue(null)
+  }, [totals.totalCost, setTotalValue])
+
+  useEffect(() => {
+    setColumns(getColumnsForDropdown())
+    return () => setColumns([])
+  }, [getColumnsForDropdown, setColumns])
 
   if (owners.length === 0) {
     return (
@@ -473,90 +534,28 @@ export function IndustryJobsTab() {
             </>
           )}
           {!updateError && (
-            <p className="text-slate-400 mb-4">No industry jobs loaded. Click Update to fetch from ESI.</p>
+            <p className="text-slate-400">No industry jobs loaded. Use the Update button in the header to fetch from ESI.</p>
           )}
-          <button
-            onClick={() => update()}
-            disabled={!canUpdate}
-            className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50"
-          >
-            {canUpdate ? 'Update Jobs' : `Update in ${formatTimeRemaining(timeUntilUpdate)}`}
-          </button>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-6 text-sm">
-          <div>
-            <span className="text-slate-400">Active: </span>
-            <span className="font-medium text-blue-400">{totals.activeCount}</span>
-          </div>
-          <div>
-            <span className="text-slate-400">Completed: </span>
-            <span className="font-medium text-slate-500">{totals.completedCount}</span>
-          </div>
-          <div>
-            <span className="text-slate-400">Total Cost: </span>
-            <span className="font-medium text-amber-400">{formatISK(totals.totalCost)}</span>
-          </div>
+    <div className="h-full rounded-lg border border-slate-700 overflow-auto">
+      {locationGroups.length === 0 ? (
+        <div className="flex items-center justify-center h-full">
+          <p className="text-slate-400">No industry jobs.</p>
         </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={expandAll}
-            className="rounded border border-slate-600 bg-slate-700 px-2 py-1 text-xs hover:bg-slate-600"
-          >
-            Expand All
-          </button>
-          <button
-            onClick={collapseAll}
-            className="rounded border border-slate-600 bg-slate-700 px-2 py-1 text-xs hover:bg-slate-600"
-          >
-            Collapse All
-          </button>
-          <button
-            onClick={() => update()}
-            disabled={!canUpdate || isUpdating}
-            className="flex items-center gap-1.5 rounded bg-blue-600 px-3 py-1 text-sm hover:bg-blue-500 disabled:opacity-50"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${isUpdating ? 'animate-spin' : ''}`} />
-            {isUpdating
-              ? 'Updating...'
-              : canUpdate
-                ? 'Update'
-                : formatTimeRemaining(timeUntilUpdate)}
-          </button>
-        </div>
-      </div>
-
-      <div
-        className="rounded-lg border border-slate-700 overflow-auto"
-        style={{ height: 'calc(100vh - 220px)', minHeight: '400px' }}
-      >
-        {locationGroups.length === 0 ? (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-slate-400">No industry jobs.</p>
-          </div>
-        ) : (
-          locationGroups.map((group) => (
-            <LocationGroupRow
-              key={group.locationId}
-              group={group}
-              isExpanded={expandedLocations.has(group.locationId)}
-              onToggle={() => toggleLocation(group.locationId)}
-            />
-          ))
-        )}
-      </div>
-
-      {lastUpdated && (
-        <p className="text-xs text-slate-500 text-right">
-          Last updated: {new Date(lastUpdated).toLocaleString()}
-        </p>
+      ) : (
+        locationGroups.map((group) => (
+          <LocationGroupRow
+            key={group.locationId}
+            group={group}
+            isExpanded={expandedLocations.has(group.locationId)}
+            onToggle={() => toggleLocation(group.locationId)}
+          />
+        ))
       )}
     </div>
   )

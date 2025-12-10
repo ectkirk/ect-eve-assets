@@ -11,7 +11,8 @@ vi.mock('./auth-store', () => ({
 
 vi.mock('@/api/endpoints/assets', () => ({
   getCharacterAssets: vi.fn(),
-  getAssetNames: vi.fn(),
+  getCharacterAssetNames: vi.fn(),
+  getCorporationAssetNames: vi.fn(),
 }))
 
 vi.mock('@/api/endpoints/corporation', () => ({
@@ -125,7 +126,7 @@ describe('asset-store', () => {
 
     it('fetches assets for character owners', async () => {
       const { useAuthStore } = await import('./auth-store')
-      const { getCharacterAssets, getAssetNames } = await import('@/api/endpoints/assets')
+      const { getCharacterAssets, getCharacterAssetNames } = await import('@/api/endpoints/assets')
       const { fetchPrices } = await import('@/api/ref-client')
 
       const mockOwner = createMockOwner({ id: 12345, name: 'Test Character', type: 'character' })
@@ -134,7 +135,7 @@ describe('asset-store', () => {
       vi.mocked(getCharacterAssets).mockResolvedValue([
         { item_id: 1, type_id: 34, location_id: 60003760, location_type: 'station', location_flag: 'Hangar', quantity: 100, is_singleton: false },
       ])
-      vi.mocked(getAssetNames).mockResolvedValue([])
+      vi.mocked(getCharacterAssetNames).mockResolvedValue([])
       vi.mocked(fetchPrices).mockResolvedValue(new Map([[34, 5]]))
 
       await useAssetStore.getState().update(true)
