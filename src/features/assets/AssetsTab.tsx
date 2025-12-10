@@ -533,11 +533,12 @@ export function AssetsTab() {
 
     const aggregated = new Map<string, AssetRow>()
     for (const row of rows) {
-      if (isAbyssalTypeId(row.typeId) || row.isSingleton) {
+      const isBlueprint = row.categoryId === CategoryIds.BLUEPRINT
+      if (isAbyssalTypeId(row.typeId) || (row.isSingleton && !isBlueprint)) {
         aggregated.set(`unique-${row.itemId}`, row)
         continue
       }
-      const key = `${row.ownerId}-${row.typeId}-${row.locationId}-${row.locationFlag}-${row.isBlueprintCopy}`
+      const key = `${row.ownerId}-${row.typeId}-${row.locationId}-${row.locationFlag}-${row.typeName}`
       const existing = aggregated.get(key)
       if (existing) {
         existing.quantity += row.quantity
