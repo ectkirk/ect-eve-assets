@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import {
   Loader2,
-  RefreshCw,
   ChevronRight,
   ChevronDown,
   User,
@@ -48,17 +47,6 @@ interface CharacterClones {
   homeLocation: { locationId: number; locationName: string } | null
   activeClone: CloneInfo
   jumpClones: CloneInfo[]
-}
-
-function formatTimeRemaining(ms: number): string {
-  if (ms <= 0) return ''
-  const minutes = Math.ceil(ms / 60000)
-  if (minutes >= 60) {
-    const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
-    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
-  }
-  return `${minutes}m`
 }
 
 function getImplantSlot(typeId: number): number {
@@ -200,7 +188,7 @@ export function ClonesTab() {
   const init = useClonesStore((s) => s.init)
   const initialized = useClonesStore((s) => s.initialized)
 
-  const { update, canUpdate, timeUntilUpdate, isLoading: assetsUpdating } = useAssetData()
+  const { isLoading: assetsUpdating } = useAssetData()
   const isUpdating = assetsUpdating || clonesUpdating
 
   useEffect(() => {
@@ -409,15 +397,8 @@ export function ClonesTab() {
             </>
           )}
           {!updateError && (
-            <p className="text-slate-400 mb-4">No clone data loaded. Click Update to fetch from ESI.</p>
+            <p className="text-slate-400">No clone data loaded. Use the Update button in the header to fetch from ESI.</p>
           )}
-          <button
-            onClick={() => update()}
-            disabled={!canUpdate}
-            className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50"
-          >
-            {canUpdate ? 'Update Clones' : `Update in ${formatTimeRemaining(timeUntilUpdate)}`}
-          </button>
         </div>
       </div>
     )
@@ -453,18 +434,6 @@ export function ClonesTab() {
             className="rounded border border-slate-600 bg-slate-700 px-2 py-1 text-xs hover:bg-slate-600"
           >
             Collapse All
-          </button>
-          <button
-            onClick={() => update()}
-            disabled={!canUpdate || isUpdating}
-            className="flex items-center gap-1.5 rounded bg-blue-600 px-3 py-1 text-sm hover:bg-blue-500 disabled:opacity-50"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${isUpdating ? 'animate-spin' : ''}`} />
-            {isUpdating
-              ? 'Updating...'
-              : canUpdate
-                ? 'Update'
-                : formatTimeRemaining(timeUntilUpdate)}
           </button>
         </div>
       </div>
