@@ -243,18 +243,25 @@ export async function startAuth(includeCorporationScopes = false): Promise<AuthR
       }
     })
 
-    authWindow.webContents.on('will-navigate', async (_event, navigationUrl) => {
-      await handleCallback(navigationUrl, state, codeVerifier, resolve)
+    authWindow.webContents.on('will-navigate', (_event, navigationUrl) => {
+      logger.debug('Auth window will-navigate', { module: 'Auth', url: navigationUrl })
+      handleCallback(navigationUrl, state, codeVerifier, resolve)
     })
 
-    authWindow.webContents.on('will-redirect', async (_event, navigationUrl) => {
-      await handleCallback(navigationUrl, state, codeVerifier, resolve)
+    authWindow.webContents.on('will-redirect', (_event, navigationUrl) => {
+      logger.debug('Auth window will-redirect', { module: 'Auth', url: navigationUrl })
+      handleCallback(navigationUrl, state, codeVerifier, resolve)
+    })
+
+    authWindow.webContents.on('did-navigate', (_event, navigationUrl) => {
+      logger.debug('Auth window did-navigate', { module: 'Auth', url: navigationUrl })
+      handleCallback(navigationUrl, state, codeVerifier, resolve)
     })
 
     authWindow.loadURL(authUrl.toString())
 
     setTimeout(() => {
-      if (authWindow) {
+      if (authWindow && !authWindow.isDestroyed()) {
         logger.warn('Authentication timed out', { module: 'Auth' })
         authWindow.close()
         authWindow = null

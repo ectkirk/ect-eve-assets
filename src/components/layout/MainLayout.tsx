@@ -13,7 +13,8 @@ import { IndustryJobsTab } from '@/features/industry-jobs'
 import { ClonesTab } from '@/features/clones'
 import { ContractsTab } from '@/features/contracts'
 import { WalletTab } from '@/features/wallet'
-import { Plus, Loader2, RefreshCw, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp, Search, X, User } from 'lucide-react'
+import { Loader2, RefreshCw, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp, Search, X, User } from 'lucide-react'
+import eveSsoLoginWhite from '/eve-sso-login-white.png'
 import { OwnerIcon } from '@/components/ui/type-icon'
 import { OwnerManagementModal } from './OwnerManagementModal'
 import { useTotalAssets } from '@/hooks'
@@ -75,6 +76,7 @@ function TabContent({ tab }: { tab: Tab }) {
 function OwnerButton() {
   const [modalOpen, setModalOpen] = useState(false)
   const [isAddingOwner, setIsAddingOwner] = useState(false)
+  const [isUpdatingData, setIsUpdatingData] = useState(false)
 
   const ownersRecord = useAuthStore((state) => state.owners)
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
@@ -121,12 +123,24 @@ function OwnerButton() {
             corporationId: result.corporationId,
           },
         })
-        setModalOpen(true)
-        useAssetStore.getState().updateForOwner(newOwner)
+        setIsAddingOwner(false)
+        setIsUpdatingData(true)
+        await useAssetStore.getState().updateForOwner(newOwner)
+        setIsUpdatingData(false)
       }
     } finally {
       setIsAddingOwner(false)
+      setIsUpdatingData(false)
     }
+  }
+
+  if (isUpdatingData) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-slate-400">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Updating data...
+      </div>
+    )
   }
 
   if (owners.length === 0) {
@@ -134,18 +148,15 @@ function OwnerButton() {
       <button
         onClick={handleAddFirstCharacter}
         disabled={isAddingOwner}
-        className="flex items-center gap-2 rounded bg-blue-600 px-3 py-1.5 text-sm hover:bg-blue-500 disabled:opacity-50"
+        className="transition-opacity hover:opacity-80 disabled:opacity-50"
       >
         {isAddingOwner ? (
-          <>
+          <div className="flex items-center gap-2 text-sm text-slate-400">
             <Loader2 className="h-4 w-4 animate-spin" />
             Logging in...
-          </>
+          </div>
         ) : (
-          <>
-            <Plus className="h-4 w-4" />
-            Add Character
-          </>
+          <img src={eveSsoLoginWhite} alt="Log in with EVE Online" className="h-8" />
         )}
       </button>
     )
