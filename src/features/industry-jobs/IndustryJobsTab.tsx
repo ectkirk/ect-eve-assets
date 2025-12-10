@@ -315,6 +315,8 @@ export function IndustryJobsTab() {
 
   const [expandedLocations, setExpandedLocations] = useState<Set<number>>(new Set())
 
+  const { setExpandCollapse, search } = useTabControls()
+
   const locationGroups = useMemo(() => {
     void cacheVersion
 
@@ -372,7 +374,7 @@ export function IndustryJobsTab() {
       }
     }
 
-    const sorted = Array.from(groups.values()).sort((a, b) => {
+    let sorted = Array.from(groups.values()).sort((a, b) => {
       if (a.activeCount !== b.activeCount) return b.activeCount - a.activeCount
       return a.locationName.localeCompare(b.locationName)
     })
@@ -387,8 +389,27 @@ export function IndustryJobsTab() {
       })
     }
 
+    if (search) {
+      const searchLower = search.toLowerCase()
+      sorted = sorted.map((group) => {
+        const filteredJobs = group.jobs.filter((j) =>
+          j.blueprintName.toLowerCase().includes(searchLower) ||
+          j.productName.toLowerCase().includes(searchLower) ||
+          j.ownerName.toLowerCase().includes(searchLower) ||
+          j.locationName.toLowerCase().includes(searchLower) ||
+          j.activityName.toLowerCase().includes(searchLower)
+        )
+        return {
+          ...group,
+          jobs: filteredJobs,
+          activeCount: filteredJobs.filter((j) => j.job.status === 'active' || j.job.status === 'paused').length,
+          completedCount: filteredJobs.filter((j) => j.job.status !== 'active' && j.job.status !== 'paused').length,
+        }
+      }).filter((g) => g.jobs.length > 0)
+    }
+
     return sorted
-  }, [jobsByOwner, cacheVersion, prices])
+  }, [jobsByOwner, cacheVersion, prices, search])
 
   const toggleLocation = useCallback((locationId: number) => {
     setExpandedLocations((prev) => {
@@ -407,8 +428,6 @@ export function IndustryJobsTab() {
   const collapseAll = useCallback(() => {
     setExpandedLocations(new Set())
   }, [])
-
-  const { setExpandCollapse } = useTabControls()
 
   const expandableIds = useMemo(() => locationGroups.map((g) => g.locationId), [locationGroups])
   const isAllExpanded = expandableIds.length > 0 && expandableIds.every((id) => expandedLocations.has(id))

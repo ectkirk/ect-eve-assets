@@ -72,7 +72,7 @@ export function WalletTab() {
     setExpandedOwners(new Set())
   }, [])
 
-  const { setExpandCollapse } = useTabControls()
+  const { setExpandCollapse, search } = useTabControls()
 
   const expandableKeys = useMemo(
     () => walletsByOwner.filter((w) => isCorporationWallet(w)).map((w) => `${w.owner.type}-${w.owner.id}`),
@@ -116,13 +116,18 @@ export function WalletTab() {
   }, [walletsByOwner])
 
   const sortedWallets = useMemo(() => {
-    return [...walletsByOwner].sort((a, b) => {
+    const sorted = [...walletsByOwner].sort((a, b) => {
       if (a.owner.type !== b.owner.type) {
         return a.owner.type === 'character' ? -1 : 1
       }
       return a.owner.name.localeCompare(b.owner.name)
     })
-  }, [walletsByOwner])
+
+    if (!search) return sorted
+
+    const searchLower = search.toLowerCase()
+    return sorted.filter((wallet) => wallet.owner.name.toLowerCase().includes(searchLower))
+  }, [walletsByOwner, search])
 
   if (owners.length === 0) {
     return (

@@ -255,6 +255,8 @@ export function ClonesTab() {
 
   const [expandedCharacters, setExpandedCharacters] = useState<Set<number>>(new Set())
 
+  const { setExpandCollapse, search } = useTabControls()
+
   const characterClones = useMemo(() => {
     void cacheVersion
 
@@ -332,8 +334,24 @@ export function ClonesTab() {
       })
     }
 
-    return result.sort((a, b) => a.ownerName.localeCompare(b.ownerName))
-  }, [clonesByOwner, cacheVersion])
+    let sorted = result.sort((a, b) => a.ownerName.localeCompare(b.ownerName))
+
+    if (search) {
+      const searchLower = search.toLowerCase()
+      sorted = sorted.filter((char) =>
+        char.ownerName.toLowerCase().includes(searchLower) ||
+        char.activeClone.locationName.toLowerCase().includes(searchLower) ||
+        char.activeClone.implants.some((i) => i.name.toLowerCase().includes(searchLower)) ||
+        char.jumpClones.some((jc) =>
+          jc.locationName.toLowerCase().includes(searchLower) ||
+          jc.name.toLowerCase().includes(searchLower) ||
+          jc.implants.some((i) => i.name.toLowerCase().includes(searchLower))
+        )
+      )
+    }
+
+    return sorted
+  }, [clonesByOwner, cacheVersion, search])
 
   const toggleCharacter = useCallback((ownerId: number) => {
     setExpandedCharacters((prev) => {
@@ -352,8 +370,6 @@ export function ClonesTab() {
   const collapseAll = useCallback(() => {
     setExpandedCharacters(new Set())
   }, [])
-
-  const { setExpandCollapse } = useTabControls()
 
   const expandableIds = useMemo(() => characterClones.map((c) => c.ownerId), [characterClones])
   const isAllExpanded = expandableIds.length > 0 && expandableIds.every((id) => expandedCharacters.has(id))

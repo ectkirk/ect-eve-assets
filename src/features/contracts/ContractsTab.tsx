@@ -463,6 +463,8 @@ export function ContractsTab() {
   const [expandedDirections, setExpandedDirections] = useState<Set<string>>(new Set(['in', 'out']))
   const [showCourier, setShowCourier] = useState(true)
 
+  const { setExpandCollapse, search } = useTabControls()
+
   const { directionGroups, courierGroup } = useMemo(() => {
     void cacheVersion
 
@@ -489,7 +491,6 @@ export function ContractsTab() {
     }
 
     const courier: ContractRow[] = []
-    let courierValue = 0
 
     const seenContracts = new Set<number>()
 
@@ -550,7 +551,6 @@ export function ContractsTab() {
 
         if (isCourier) {
           courier.push(row)
-          courierValue += getContractValue(contract)
         } else {
           groups[direction].contracts.push(row)
           groups[direction].totalValue += getContractValue(contract)
@@ -558,13 +558,31 @@ export function ContractsTab() {
       }
     }
 
+    const filterContracts = (contracts: ContractRow[]): ContractRow[] => {
+      if (!search) return contracts
+      const searchLower = search.toLowerCase()
+      return contracts.filter((row) =>
+        row.typeName.toLowerCase().includes(searchLower) ||
+        row.ownerName.toLowerCase().includes(searchLower) ||
+        row.locationName.toLowerCase().includes(searchLower) ||
+        row.assigneeName.toLowerCase().includes(searchLower)
+      )
+    }
+
+    const filteredIn = filterContracts(groups.in.contracts)
+    const filteredOut = filterContracts(groups.out.contracts)
+    const filteredCourier = filterContracts(courier)
+
     return {
-      directionGroups: [groups.in, groups.out].filter((g) => g.contracts.length > 0),
-      courierGroup: courier.length > 0
-        ? { direction: 'out' as ContractDirection, displayName: 'Active Couriers', contracts: courier, totalValue: courierValue }
+      directionGroups: [
+        { ...groups.in, contracts: filteredIn, totalValue: filteredIn.reduce((acc, c) => acc + getContractValue(c.contractWithItems.contract), 0) },
+        { ...groups.out, contracts: filteredOut, totalValue: filteredOut.reduce((acc, c) => acc + getContractValue(c.contractWithItems.contract), 0) },
+      ].filter((g) => g.contracts.length > 0),
+      courierGroup: filteredCourier.length > 0
+        ? { direction: 'out' as ContractDirection, displayName: 'Active Couriers', contracts: filteredCourier, totalValue: filteredCourier.reduce((acc, c) => acc + getContractValue(c.contractWithItems.contract), 0) }
         : null,
     }
-  }, [contractsByOwner, cacheVersion, owners, prices])
+  }, [contractsByOwner, cacheVersion, owners, prices, search])
 
   const toggleDirection = useCallback((direction: string) => {
     setExpandedDirections((prev) => {
@@ -582,8 +600,6 @@ export function ContractsTab() {
   const collapseAll = useCallback(() => {
     setExpandedDirections(new Set())
   }, [])
-
-  const { setExpandCollapse } = useTabControls()
 
   const expandableDirections = ['in', 'out'] as const
   const isAllExpanded = expandableDirections.every((d) => expandedDirections.has(d))

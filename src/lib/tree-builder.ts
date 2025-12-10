@@ -636,3 +636,34 @@ export function getAllNodeIds(nodes: TreeNode[], result: string[] = []): string[
   }
   return result
 }
+
+function nodeMatchesSearch(node: TreeNode, searchLower: string): boolean {
+  if (node.name.toLowerCase().includes(searchLower)) return true
+  if (node.typeName?.toLowerCase().includes(searchLower)) return true
+  if (node.groupName?.toLowerCase().includes(searchLower)) return true
+  if (node.regionName?.toLowerCase().includes(searchLower)) return true
+  if (node.systemName?.toLowerCase().includes(searchLower)) return true
+  return false
+}
+
+export function filterTree(nodes: TreeNode[], search: string): TreeNode[] {
+  if (!search) return nodes
+
+  const searchLower = search.toLowerCase()
+  const result: TreeNode[] = []
+
+  for (const node of nodes) {
+    const filteredChildren = filterTree(node.children, search)
+    const selfMatches = nodeMatchesSearch(node, searchLower)
+
+    if (selfMatches || filteredChildren.length > 0) {
+      const filteredNode: TreeNode = {
+        ...node,
+        children: selfMatches ? node.children : filteredChildren,
+      }
+      result.push(filteredNode)
+    }
+  }
+
+  return result
+}

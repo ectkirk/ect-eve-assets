@@ -232,6 +232,8 @@ export function MarketOrdersTab() {
 
   const [expandedLocations, setExpandedLocations] = useState<Set<number>>(new Set())
 
+  const { setExpandCollapse, search } = useTabControls()
+
   const locationGroups = useMemo(() => {
     void cacheVersion
 
@@ -294,7 +296,7 @@ export function MarketOrdersTab() {
       }
     }
 
-    const sorted = Array.from(groups.values()).sort((a, b) => {
+    let sorted = Array.from(groups.values()).sort((a, b) => {
       const aTotal = a.totalBuyValue + a.totalSellValue
       const bTotal = b.totalBuyValue + b.totalSellValue
       return bTotal - aTotal
@@ -309,8 +311,27 @@ export function MarketOrdersTab() {
       })
     }
 
+    if (search) {
+      const searchLower = search.toLowerCase()
+      sorted = sorted.map((group) => {
+        const filteredOrders = group.orders.filter((o) =>
+          o.typeName.toLowerCase().includes(searchLower) ||
+          o.ownerName.toLowerCase().includes(searchLower) ||
+          o.locationName.toLowerCase().includes(searchLower) ||
+          o.regionName.toLowerCase().includes(searchLower) ||
+          o.systemName.toLowerCase().includes(searchLower)
+        )
+        return {
+          ...group,
+          orders: filteredOrders,
+          totalBuyValue: filteredOrders.filter((o) => o.order.is_buy_order).reduce((acc, o) => acc + o.order.price * o.order.volume_remain, 0),
+          totalSellValue: filteredOrders.filter((o) => !o.order.is_buy_order).reduce((acc, o) => acc + o.order.price * o.order.volume_remain, 0),
+        }
+      }).filter((g) => g.orders.length > 0)
+    }
+
     return sorted
-  }, [ordersByOwner, cacheVersion])
+  }, [ordersByOwner, cacheVersion, search])
 
   const toggleLocation = useCallback((locationId: number) => {
     setExpandedLocations((prev) => {
@@ -329,8 +350,6 @@ export function MarketOrdersTab() {
   const collapseAll = useCallback(() => {
     setExpandedLocations(new Set())
   }, [])
-
-  const { setExpandCollapse } = useTabControls()
 
   const expandableIds = useMemo(() => locationGroups.map((g) => g.locationId), [locationGroups])
   const isAllExpanded = expandableIds.length > 0 && expandableIds.every((id) => expandedLocations.has(id))

@@ -12,7 +12,7 @@ import {
   type ColumnOrderState,
 } from '@tanstack/react-table'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { ArrowUpDown, Loader2, X } from 'lucide-react'
+import { ArrowUpDown, Loader2 } from 'lucide-react'
 import {
   Table,
   TableBody,
@@ -286,11 +286,10 @@ export function AssetsTab() {
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(loadColumnVisibility)
   const [columnOrder, setColumnOrder] = useState<ColumnOrderState>(loadColumnOrder)
-  const [globalFilter, setGlobalFilter] = useState('')
-  const [categoryFilter, setCategoryFilter] = useState('')
+  const [categoryFilterValue, setCategoryFilterValue] = useState('')
   const draggedColumnRef = useRef<string | null>(null)
 
-  const { setColumns } = useTabControls()
+  const { setColumns, search, setCategoryFilter } = useTabControls()
 
   useEffect(() => {
     saveColumnVisibility(columnVisibility)
@@ -563,10 +562,10 @@ export function AssetsTab() {
   }, [data])
 
   const filteredData = useMemo(() => {
-    const searchLower = globalFilter.toLowerCase()
+    const searchLower = search.toLowerCase()
     return data.filter((row) => {
-      if (categoryFilter && row.categoryName !== categoryFilter) return false
-      if (globalFilter) {
+      if (categoryFilterValue && row.categoryName !== categoryFilterValue) return false
+      if (search) {
         const matchesType = row.typeName.toLowerCase().includes(searchLower)
         const matchesGroup = row.groupName.toLowerCase().includes(searchLower)
         const matchesLocation = row.locationName.toLowerCase().includes(searchLower)
@@ -576,7 +575,7 @@ export function AssetsTab() {
       }
       return true
     })
-  }, [data, categoryFilter, globalFilter])
+  }, [data, categoryFilterValue, search])
 
   const table = useReactTable({
     data: filteredData,
@@ -608,6 +607,15 @@ export function AssetsTab() {
     setColumns(cols)
     return () => setColumns([])
   }, [table, columnVisibility, setColumns])
+
+  useEffect(() => {
+    setCategoryFilter({
+      categories,
+      value: categoryFilterValue,
+      onChange: setCategoryFilterValue,
+    })
+    return () => setCategoryFilter(null)
+  }, [categories, categoryFilterValue, setCategoryFilter])
 
   const handleDragStart = (e: React.DragEvent, columnId: string) => {
     draggedColumnRef.current = columnId
@@ -690,53 +698,17 @@ export function AssetsTab() {
   }
 
   return (
-    <div className="space-y-4">
-      {/* Summary Bar */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-6 text-sm">
-          {isRefreshingAbyssals && (
-            <div className="flex items-center gap-1 text-blue-400">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              <span>Fetching abyssal prices...</span>
-            </div>
-          )}
-        </div>
-
-      </div>
-
-      <div className="flex items-center gap-3">
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="Search name, group, station, system, region..."
-            value={globalFilter}
-            onChange={(e) => setGlobalFilter(e.target.value)}
-            className="w-72 rounded border border-slate-600 bg-slate-700 px-3 py-1.5 pr-8 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none"
-          />
-          {globalFilter && (
-            <button
-              onClick={() => setGlobalFilter('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-
-        <select
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-          className="w-40 rounded border border-slate-600 bg-slate-700 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
-        >
-          <option value="">All Categories</option>
-          {categories.map((cat) => (
-            <option key={cat} value={cat}>{cat}</option>
-          ))}
-        </select>
-
-        <span className="text-sm text-slate-400">
+    <div className="space-y-3">
+      <div className="flex items-center gap-6 text-sm">
+        <span className="text-slate-400">
           Showing {filteredRows.length} of {data.length} assets
         </span>
+        {isRefreshingAbyssals && (
+          <div className="flex items-center gap-1 text-blue-400">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            <span>Fetching abyssal prices...</span>
+          </div>
+        )}
       </div>
 
       {/* Table with Virtual Scrolling */}

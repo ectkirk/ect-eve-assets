@@ -12,11 +12,21 @@ interface ExpandCollapseConfig {
   toggle: () => void
 }
 
+interface CategoryFilterConfig {
+  categories: string[]
+  value: string
+  onChange: (value: string) => void
+}
+
 interface TabControlsContextValue {
   columns: ColumnConfig[]
   setColumns: (columns: ColumnConfig[]) => void
   expandCollapse: ExpandCollapseConfig | null
   setExpandCollapse: (config: ExpandCollapseConfig | null) => void
+  search: string
+  setSearch: (value: string) => void
+  categoryFilter: CategoryFilterConfig | null
+  setCategoryFilter: (config: CategoryFilterConfig | null) => void
 }
 
 const TabControlsContext = createContext<TabControlsContextValue | null>(null)
@@ -24,9 +34,20 @@ const TabControlsContext = createContext<TabControlsContextValue | null>(null)
 export function TabControlsProvider({ children }: { children: ReactNode }) {
   const [columns, setColumns] = useState<ColumnConfig[]>([])
   const [expandCollapse, setExpandCollapse] = useState<ExpandCollapseConfig | null>(null)
+  const [search, setSearch] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilterConfig | null>(null)
 
   return (
-    <TabControlsContext.Provider value={{ columns, setColumns, expandCollapse, setExpandCollapse }}>
+    <TabControlsContext.Provider value={{
+      columns,
+      setColumns,
+      expandCollapse,
+      setExpandCollapse,
+      search,
+      setSearch,
+      categoryFilter,
+      setCategoryFilter,
+    }}>
       {children}
     </TabControlsContext.Provider>
   )
