@@ -1,22 +1,29 @@
 import { create } from 'zustand'
 import { useAuthStore, type Owner } from './auth-store'
-import { getCharacterOrders, type ESIMarketOrder } from '@/api/endpoints/market'
+import {
+  getCharacterOrders,
+  getCorporationOrders,
+  type ESIMarketOrder,
+  type ESICorporationMarketOrder,
+} from '@/api/endpoints/market'
 import { logger } from '@/lib/logger'
 
 const DB_NAME = 'ecteveassets-market-orders'
-const DB_VERSION = 1
+const DB_VERSION = 2
 const STORE_ORDERS = 'orders'
 const STORE_META = 'meta'
 
+export type MarketOrder = ESIMarketOrder | ESICorporationMarketOrder
+
 export interface OwnerOrders {
   owner: Owner
-  orders: ESIMarketOrder[]
+  orders: MarketOrder[]
 }
 
 interface StoredOwnerOrders {
   ownerKey: string
   owner: Owner
-  orders: ESIMarketOrder[]
+  orders: MarketOrder[]
 }
 
 interface MarketOrdersState {
@@ -187,11 +194,9 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
       return
     }
 
-    const owners = Object.values(useAuthStore.getState().owners).filter(
-      (o) => o.type === 'character'
-    )
+    const owners = Object.values(useAuthStore.getState().owners)
     if (owners.length === 0) {
-      set({ updateError: 'No characters logged in' })
+      set({ updateError: 'No owners logged in' })
       return
     }
 
@@ -203,7 +208,12 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
       for (const owner of owners) {
         try {
           logger.info('Fetching market orders', { module: 'MarketOrdersStore', owner: owner.name })
-          const orders = await getCharacterOrders(owner.characterId)
+          let orders: MarketOrder[]
+          if (owner.type === 'corporation') {
+            orders = await getCorporationOrders(owner.characterId, owner.id)
+          } else {
+            orders = await getCharacterOrders(owner.characterId)
+          }
           results.push({ owner, orders })
         } catch (err) {
           logger.error('Failed to fetch market orders', err instanceof Error ? err : undefined, {
@@ -238,12 +248,15 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
   },
 
   updateForOwner: async (owner: Owner) => {
-    if (owner.type !== 'character') return
-
     const state = get()
     try {
       logger.info('Fetching market orders for new owner', { module: 'MarketOrdersStore', owner: owner.name })
-      const orders = await getCharacterOrders(owner.characterId)
+      let orders: MarketOrder[]
+      if (owner.type === 'corporation') {
+        orders = await getCorporationOrders(owner.characterId, owner.id)
+      } else {
+        orders = await getCharacterOrders(owner.characterId)
+      }
 
       const ownerKey = `${owner.type}-${owner.id}`
       const updated = state.ordersByOwner.filter(

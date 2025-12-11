@@ -5,7 +5,7 @@ import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useTabControls } from '@/context'
 import { useColumnSettings, type ColumnConfig } from '@/hooks'
-import { type ESIMarketOrder } from '@/api/endpoints/market'
+import { type MarketOrder } from '@/store/market-orders-store'
 import {
   hasType,
   getType,
@@ -28,7 +28,7 @@ import {
 import { TypeIcon } from '@/components/ui/type-icon'
 
 interface OrderRow {
-  order: ESIMarketOrder
+  order: MarketOrder
   ownerName: string
   typeId: number
   typeName: string

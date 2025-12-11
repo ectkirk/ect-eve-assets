@@ -1,9 +1,15 @@
 import { esiClient } from '../esi-client'
 import { logger } from '@/lib/logger'
-import { ESIMarketOrderSchema, ESIRegionOrderSchema, ESIMarketPriceSchema } from '../schemas'
+import {
+  ESIMarketOrderSchema,
+  ESICorporationMarketOrderSchema,
+  ESIRegionOrderSchema,
+  ESIMarketPriceSchema,
+} from '../schemas'
 import { z } from 'zod'
 
 export type ESIMarketOrder = z.infer<typeof ESIMarketOrderSchema>
+export type ESICorporationMarketOrder = z.infer<typeof ESICorporationMarketOrderSchema>
 export type ESIRegionOrder = z.infer<typeof ESIRegionOrderSchema>
 export type ESIMarketPrice = z.infer<typeof ESIMarketPriceSchema>
 
@@ -42,10 +48,23 @@ export const CAPITAL_GROUP_IDS = new Set([
 ])
 
 export async function getCharacterOrders(characterId: number): Promise<ESIMarketOrder[]> {
-  return esiClient.fetch<ESIMarketOrder[]>(`/characters/${characterId}/orders/`, {
+  return esiClient.fetchWithPagination<ESIMarketOrder>(`/characters/${characterId}/orders/`, {
     characterId,
-    schema: z.array(ESIMarketOrderSchema),
+    schema: ESIMarketOrderSchema,
   })
+}
+
+export async function getCorporationOrders(
+  characterId: number,
+  corporationId: number
+): Promise<ESICorporationMarketOrder[]> {
+  return esiClient.fetchWithPagination<ESICorporationMarketOrder>(
+    `/corporations/${corporationId}/orders/`,
+    {
+      characterId,
+      schema: ESICorporationMarketOrderSchema,
+    }
+  )
 }
 
 export async function getMarketPrices(): Promise<ESIMarketPrice[]> {

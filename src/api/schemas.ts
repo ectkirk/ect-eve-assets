@@ -86,6 +86,24 @@ export const ESIMarketOrderSchema = z.object({
   volume_total: z.number(),
 })
 
+export const ESICorporationMarketOrderSchema = z.object({
+  duration: z.number(),
+  escrow: z.number().optional(),
+  is_buy_order: z.boolean().optional().default(false),
+  issued: z.string(),
+  issued_by: z.number(),
+  location_id: z.number(),
+  min_volume: z.number().optional(),
+  order_id: z.number(),
+  price: z.number(),
+  range: z.string(),
+  region_id: z.number(),
+  type_id: z.number(),
+  volume_remain: z.number(),
+  volume_total: z.number(),
+  wallet_division: z.number(),
+})
+
 export const ESIRegionOrderSchema = z.object({
   duration: z.number(),
   is_buy_order: z.boolean(),

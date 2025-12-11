@@ -11,6 +11,7 @@ vi.mock('./auth-store', () => ({
 
 vi.mock('@/api/endpoints/market', () => ({
   getCharacterOrders: vi.fn(),
+  getCorporationOrders: vi.fn(),
 }))
 
 vi.mock('@/lib/logger', () => ({
@@ -78,18 +79,18 @@ describe('market-orders-store', () => {
   })
 
   describe('update', () => {
-    it('sets error when no characters logged in', async () => {
+    it('sets error when no owners logged in', async () => {
       const { useAuthStore } = await import('./auth-store')
       vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({}))
 
       await useMarketOrdersStore.getState().update(true)
 
-      expect(useMarketOrdersStore.getState().updateError).toBe('No characters logged in')
+      expect(useMarketOrdersStore.getState().updateError).toBe('No owners logged in')
     })
 
-    it('only fetches for character owners, not corporations', async () => {
+    it('fetches for both character and corporation owners', async () => {
       const { useAuthStore } = await import('./auth-store')
-      const { getCharacterOrders } = await import('@/api/endpoints/market')
+      const { getCharacterOrders, getCorporationOrders } = await import('@/api/endpoints/market')
 
       const charOwner = createMockOwner({ id: 12345, name: 'Test Character', type: 'character' })
       const corpOwner = createMockOwner({ id: 98000001, characterId: 12345, name: 'Test Corp', type: 'corporation' })
@@ -99,11 +100,14 @@ describe('market-orders-store', () => {
       }))
 
       vi.mocked(getCharacterOrders).mockResolvedValue([])
+      vi.mocked(getCorporationOrders).mockResolvedValue([])
 
       await useMarketOrdersStore.getState().update(true)
 
       expect(getCharacterOrders).toHaveBeenCalledTimes(1)
       expect(getCharacterOrders).toHaveBeenCalledWith(12345)
+      expect(getCorporationOrders).toHaveBeenCalledTimes(1)
+      expect(getCorporationOrders).toHaveBeenCalledWith(12345, 98000001)
     })
 
     it('fetches orders successfully', async () => {
