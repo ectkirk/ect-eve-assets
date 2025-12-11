@@ -269,36 +269,28 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
         }
       }
 
-      const results = Array.from(existingOrders.values())
-
-      const corpIds = new Set(
-        results.filter((r) => r.owner.type === 'corporation').map((r) => r.owner.id)
-      )
-      const deduped = results.map((ownerOrders) => {
-        if (ownerOrders.owner.type === 'character' && corpIds.has(ownerOrders.owner.corporationId)) {
-          const filtered = ownerOrders.orders.filter((order) => {
-            if ('is_corporation' in order && order.is_corporation) {
-              return false
-            }
-            return true
-          })
+      const results = Array.from(existingOrders.values()).map((ownerOrders) => {
+        if (ownerOrders.owner.type === 'character') {
+          const filtered = ownerOrders.orders.filter(
+            (order) => !('is_corporation' in order && order.is_corporation)
+          )
           return { ...ownerOrders, orders: filtered }
         }
         return ownerOrders
       })
 
-      await saveToDB(deduped)
+      await saveToDB(results)
 
       set({
-        ordersByOwner: deduped,
+        ordersByOwner: results,
         isUpdating: false,
-        updateError: deduped.length === 0 ? 'Failed to fetch any orders' : null,
+        updateError: results.length === 0 ? 'Failed to fetch any orders' : null,
       })
 
       logger.info('Market orders updated', {
         module: 'MarketOrdersStore',
         owners: ownersToUpdate.length,
-        totalOrders: deduped.reduce((sum, r) => sum + r.orders.length, 0),
+        totalOrders: results.reduce((sum, r) => sum + r.orders.length, 0),
       })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error'

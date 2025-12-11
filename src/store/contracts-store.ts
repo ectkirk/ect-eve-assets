@@ -389,7 +389,16 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
         }
       }
 
-      const results = Array.from(existingContracts.values())
+      const results = Array.from(existingContracts.values()).map((ownerContracts) => {
+        if (ownerContracts.owner.type === 'character') {
+          const filtered = ownerContracts.contracts.filter(
+            ({ contract }) => !contract.for_corporation
+          )
+          return { ...ownerContracts, contracts: filtered }
+        }
+        return ownerContracts
+      })
+
       await saveToDB(results)
 
       set({
