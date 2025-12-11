@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import { useAuthStore } from '@/store/auth-store'
+import { useExpiryCacheStore } from '@/store/expiry-cache-store'
 import { useAssetStore } from '@/store/asset-store'
 import { useBlueprintsStore } from '@/store/blueprints-store'
 import { useClonesStore } from '@/store/clones-store'
@@ -9,7 +10,7 @@ import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { useWalletStore } from '@/store/wallet-store'
 import { logger } from '@/lib/logger'
 
-const CHECK_INTERVAL_MS = 5000
+const MIN_REFRESH_DELAY_MS = 1000
 
 const STORES = [
   { name: 'assets', getState: () => useAssetStore.getState() },
@@ -23,19 +24,17 @@ const STORES = [
 
 export function useAutoRefresh() {
   const hasOwners = useAuthStore((s) => Object.keys(s.owners).length > 0)
-  const updatingRef = useRef<Set<string>>(new Set())
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const updatingRef = useRef(false)
 
-  useEffect(() => {
-    if (!hasOwners) return
+  const refreshStores = useCallback(async () => {
+    if (updatingRef.current) return
+    updatingRef.current = true
 
-    const checkAndRefresh = async () => {
+    try {
       for (const { name, getState } of STORES) {
-        if (updatingRef.current.has(name)) continue
-
         const state = getState()
         if (state.isUpdating) continue
-
-        updatingRef.current.add(name)
 
         try {
           await state.update(false)
@@ -44,14 +43,57 @@ export function useAutoRefresh() {
             module: 'AutoRefresh',
             store: name,
           })
-        } finally {
-          updatingRef.current.delete(name)
         }
       }
+    } finally {
+      updatingRef.current = false
+    }
+  }, [])
+
+  const scheduleNext = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
     }
 
-    checkAndRefresh()
-    const interval = setInterval(checkAndRefresh, CHECK_INTERVAL_MS)
-    return () => clearInterval(interval)
-  }, [hasOwners])
+    const next = useExpiryCacheStore.getState().getNextExpiry()
+    if (!next) return
+
+    const delay = Math.max(MIN_REFRESH_DELAY_MS, next.expiresAt - Date.now())
+
+    logger.debug('Scheduling next refresh', {
+      module: 'AutoRefresh',
+      delayMs: delay,
+      expiresAt: new Date(next.expiresAt).toISOString(),
+    })
+
+    timerRef.current = setTimeout(async () => {
+      await refreshStores()
+      scheduleNext()
+    }, delay)
+  }, [refreshStores])
+
+  useEffect(() => {
+    if (!hasOwners) {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current)
+        timerRef.current = null
+      }
+      return
+    }
+
+    refreshStores().then(() => scheduleNext())
+
+    const unsubscribe = useExpiryCacheStore.subscribe(() => {
+      scheduleNext()
+    })
+
+    return () => {
+      unsubscribe()
+      if (timerRef.current) {
+        clearTimeout(timerRef.current)
+        timerRef.current = null
+      }
+    }
+  }, [hasOwners, refreshStores, scheduleNext])
 }

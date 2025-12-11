@@ -210,9 +210,11 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
 
   getNextExpiry: () => {
     const { endpoints } = get()
+    const now = Date.now()
     let next: { key: string; expiresAt: number } | null = null
 
     for (const [key, expiry] of endpoints) {
+      if (expiry.expiresAt <= now) continue
       if (!next || expiry.expiresAt < next.expiresAt) {
         next = { key, expiresAt: expiry.expiresAt }
       }
