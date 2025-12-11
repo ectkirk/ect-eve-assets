@@ -2,9 +2,14 @@
 
 High-level overview of the store architecture. For detailed per-store documentation (endpoints, schemas, data flows), see [stores/](./stores/).
 
+**Related**: [Authentication](./auth/AUTH.md) - OAuth flow and auth store
+
 ## Store Hierarchy
 
 ```
+useAuthStore (authentication)
+  └── Manages owners (characters/corporations), tokens, persistence
+
 useAssetStore (orchestrator)
 ├── useMarketOrdersStore
 ├── useIndustryJobsStore
