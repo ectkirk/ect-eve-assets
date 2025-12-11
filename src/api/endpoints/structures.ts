@@ -1,4 +1,4 @@
-import { esiClient } from '../esi-client'
+import { esi } from '../esi'
 import { logger } from '@/lib/logger'
 import { ESICorporationStructureSchema } from '../schemas'
 import { z } from 'zod'
@@ -15,7 +15,7 @@ export async function getCorporationStructures(
     corporationId,
     endpoint,
   })
-  const result = await esiClient.fetchWithPagination<ESICorporationStructure>(endpoint, {
+  const result = await esi.fetchPaginated<ESICorporationStructure>(endpoint, {
     characterId,
     schema: ESICorporationStructureSchema,
   })

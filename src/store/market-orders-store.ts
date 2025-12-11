@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { useAuthStore, type Owner } from './auth-store'
 import { useExpiryCacheStore } from './expiry-cache-store'
-import { esiClient, type ESIResponseMeta } from '@/api/esi-client'
+import { esi, type ESIResponseMeta } from '@/api/esi'
 import {
   ESIMarketOrderSchema,
   ESICorporationMarketOrderSchema,
@@ -58,12 +58,12 @@ function getOrdersEndpoint(owner: Owner): string {
 async function fetchOwnerOrdersWithMeta(owner: Owner): Promise<ESIResponseMeta<MarketOrder[]>> {
   const endpoint = getOrdersEndpoint(owner)
   if (owner.type === 'corporation') {
-    return esiClient.fetchWithPaginationMeta<ESICorporationMarketOrder>(endpoint, {
+    return esi.fetchPaginatedWithMeta<ESICorporationMarketOrder>(endpoint, {
       characterId: owner.characterId,
       schema: ESICorporationMarketOrderSchema,
     })
   }
-  return esiClient.fetchWithPaginationMeta<ESIMarketOrder>(endpoint, {
+  return esi.fetchPaginatedWithMeta<ESIMarketOrder>(endpoint, {
     characterId: owner.characterId,
     schema: ESIMarketOrderSchema,
   })

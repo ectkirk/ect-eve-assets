@@ -1,4 +1,4 @@
-import { esiClient } from '../esi-client'
+import { esi } from '../esi'
 import { logger } from '@/lib/logger'
 import { ESIIndustryJobSchema } from '../schemas'
 import { z } from 'zod'
@@ -14,7 +14,7 @@ export async function getCharacterIndustryJobs(
     characterId,
     endpoint,
   })
-  const result = await esiClient.fetch<ESIIndustryJob[]>(endpoint, {
+  const result = await esi.fetch<ESIIndustryJob[]>(endpoint, {
     characterId,
     schema: z.array(ESIIndustryJobSchema),
   })
@@ -31,7 +31,7 @@ export async function getCorporationIndustryJobs(
   corporationId: number
 ): Promise<ESIIndustryJob[]> {
   const endpoint = `/corporations/${corporationId}/industry/jobs`
-  return esiClient.fetchWithPagination<ESIIndustryJob>(endpoint, {
+  return esi.fetchPaginated<ESIIndustryJob>(endpoint, {
     characterId,
     schema: ESIIndustryJobSchema,
   })

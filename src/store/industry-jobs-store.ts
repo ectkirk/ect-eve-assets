@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { useAuthStore, type Owner } from './auth-store'
 import { useExpiryCacheStore } from './expiry-cache-store'
-import { esiClient, type ESIResponseMeta } from '@/api/esi-client'
+import { esi, type ESIResponseMeta } from '@/api/esi'
 import { ESIIndustryJobSchema } from '@/api/schemas'
 import { logger } from '@/lib/logger'
 import { z } from 'zod'
@@ -53,12 +53,12 @@ function getJobsEndpoint(owner: Owner): string {
 async function fetchOwnerJobsWithMeta(owner: Owner): Promise<ESIResponseMeta<ESIIndustryJob[]>> {
   const endpoint = getJobsEndpoint(owner)
   if (owner.type === 'corporation') {
-    return esiClient.fetchWithPaginationMeta<ESIIndustryJob>(endpoint, {
+    return esi.fetchPaginatedWithMeta<ESIIndustryJob>(endpoint, {
       characterId: owner.characterId,
       schema: ESIIndustryJobSchema,
     })
   }
-  return esiClient.fetchWithMeta<ESIIndustryJob[]>(endpoint, {
+  return esi.fetchWithMeta<ESIIndustryJob[]>(endpoint, {
     characterId: owner.characterId,
     schema: z.array(ESIIndustryJobSchema),
   })

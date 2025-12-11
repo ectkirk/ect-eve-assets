@@ -54,25 +54,27 @@ interface ESIRequestOptions {
   etag?: string
 }
 
-interface ESISuccessResponse<T> {
-  success: true
+interface ESIResponseMeta<T> {
   data: T
-  meta?: { expiresAt: number; etag: string | null; notModified: boolean }
+  expiresAt: number
+  etag: string | null
+  notModified: boolean
 }
-
-interface ESIErrorResponse {
-  success: false
-  error: string
-  status?: number
-  retryAfter?: number
-}
-
-type ESIResponse<T> = ESISuccessResponse<T> | ESIErrorResponse
 
 interface ESIRateLimitInfo {
   globalRetryAfter: number | null
-  groups: Record<string, unknown>
   queueLength: number
+}
+
+interface ESIAPI {
+  fetch: <T>(endpoint: string, options?: ESIRequestOptions) => Promise<T>
+  fetchWithMeta: <T>(endpoint: string, options?: ESIRequestOptions) => Promise<ESIResponseMeta<T>>
+  fetchPaginated: <T>(endpoint: string, options?: ESIRequestOptions) => Promise<T[]>
+  fetchPaginatedWithMeta: <T>(endpoint: string, options?: ESIRequestOptions) => Promise<ESIResponseMeta<T[]>>
+  clearCache: () => Promise<void>
+  getRateLimitInfo: () => Promise<ESIRateLimitInfo>
+  provideToken: (characterId: number, token: string | null) => Promise<void>
+  onRequestToken: (callback: (characterId: number) => void) => () => void
 }
 
 interface ElectronAPI {
@@ -92,11 +94,7 @@ interface ElectronAPI {
   onUpdateDownloadProgress: (callback: (percent: number) => void) => () => void
   onUpdateDownloaded: (callback: (version: string) => void) => () => void
   installUpdate: () => Promise<void>
-  esiRequest: <T>(method: string, endpoint: string, options?: ESIRequestOptions) => Promise<ESIResponse<T>>
-  esiProvideToken: (characterId: number, token: string | null) => Promise<void>
-  esiClearCache: () => Promise<{ success: boolean }>
-  esiRateLimitInfo: () => Promise<ESIRateLimitInfo>
-  onEsiRequestToken: (callback: (characterId: number) => void) => () => void
+  esi: ESIAPI
 }
 
 declare global {

@@ -19,8 +19,8 @@ vi.mock('./expiry-cache-store', () => ({
   },
 }))
 
-vi.mock('@/api/esi-client', () => ({
-  esiClient: {
+vi.mock('@/api/esi', () => ({
+  esi: {
     fetchWithMeta: vi.fn(),
   },
 }))
@@ -62,7 +62,7 @@ describe('clones-store', () => {
 
     it('only fetches for character owners', async () => {
       const { useAuthStore } = await import('./auth-store')
-      const { esiClient } = await import('@/api/esi-client')
+      const { esi } = await import('@/api/esi')
 
       const charOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
       const corpOwner = createMockOwner({ id: 98000001, characterId: 12345, name: 'Corp', type: 'corporation' })
@@ -71,7 +71,7 @@ describe('clones-store', () => {
         'corporation-98000001': corpOwner,
       }))
 
-      vi.mocked(esiClient.fetchWithMeta).mockResolvedValue({
+      vi.mocked(esi.fetchWithMeta).mockResolvedValue({
         data: { jump_clones: [], home_location: { location_id: 60003760, location_type: 'station' } },
         expiresAt: Date.now() + 300000,
         etag: 'test-etag',
@@ -80,17 +80,17 @@ describe('clones-store', () => {
 
       await useClonesStore.getState().update(true)
 
-      expect(esiClient.fetchWithMeta).toHaveBeenCalledTimes(2)
+      expect(esi.fetchWithMeta).toHaveBeenCalledTimes(2)
     })
 
     it('fetches clones and implants together', async () => {
       const { useAuthStore } = await import('./auth-store')
-      const { esiClient } = await import('@/api/esi-client')
+      const { esi } = await import('@/api/esi')
 
       const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
       vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
 
-      vi.mocked(esiClient.fetchWithMeta)
+      vi.mocked(esi.fetchWithMeta)
         .mockResolvedValueOnce({
           data: {
             jump_clones: [{ jump_clone_id: 1, location_id: 60003760, location_type: 'station', implants: [22118] }],
@@ -115,12 +115,12 @@ describe('clones-store', () => {
 
     it('handles fetch errors gracefully', async () => {
       const { useAuthStore } = await import('./auth-store')
-      const { esiClient } = await import('@/api/esi-client')
+      const { esi } = await import('@/api/esi')
 
       const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
       vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
 
-      vi.mocked(esiClient.fetchWithMeta).mockRejectedValue(new Error('API Error'))
+      vi.mocked(esi.fetchWithMeta).mockRejectedValue(new Error('API Error'))
 
       await useClonesStore.getState().update(true)
 

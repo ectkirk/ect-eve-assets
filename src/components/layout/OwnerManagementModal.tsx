@@ -9,7 +9,7 @@ import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { useWalletStore } from '@/store/wallet-store'
 import { useStructuresStore } from '@/store/structures-store'
 import { useExpiryCacheStore } from '@/store/expiry-cache-store'
-import { esiClient } from '@/api/esi-client'
+import { esi } from '@/api/esi'
 import {
   Dialog,
   DialogContent,
@@ -37,8 +37,9 @@ interface OwnerManagementModalProps {
 
 async function fetchCorpName(corpId: number): Promise<string> {
   try {
-    const data = await esiClient.fetchPublic<{ name: string }>(
-      `/corporations/${corpId}/`
+    const data = await esi.fetch<{ name: string }>(
+      `/corporations/${corpId}/`,
+      { requiresAuth: false }
     )
     return data.name
   } catch {

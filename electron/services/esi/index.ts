@@ -4,6 +4,7 @@ import * as path from 'path'
 import { ESICache } from './cache'
 import { RateLimitTracker } from './rate-limit'
 import { RequestQueue } from './queue'
+import { logger } from '../logger.js'
 import {
   ESI_BASE_URL,
   ESI_COMPATIBILITY_DATE,
@@ -12,8 +13,8 @@ import {
   type ESIResponse,
   type ESIResponseMeta,
 } from './types'
+import { ESIError } from '../../../shared/esi-types'
 
-const DEFAULT_CACHE_MS = 5 * 60 * 1000
 const RATE_LIMIT_FILE = 'rate-limits.json'
 const CACHE_FILE = 'esi-cache.json'
 
@@ -38,26 +39,24 @@ export class MainESIService {
     this.tokenProvider = provider
   }
 
-  async request<T>(endpoint: string, options: ESIRequestOptions = {}): Promise<ESIResponse<T>> {
-    return this.queue.enqueue(endpoint, options) as Promise<ESIResponse<T>>
+  async fetch<T>(endpoint: string, options: ESIRequestOptions = {}): Promise<T> {
+    const result = await this.queue.enqueue(endpoint, options)
+    if (!result.success) {
+      throw new ESIError(result.error, result.status ?? 500, result.retryAfter)
+    }
+    return result.data as T
   }
 
-  async requestWithMeta<T>(
-    endpoint: string,
-    options: ESIRequestOptions = {}
-  ): Promise<ESIResponse<ESIResponseMeta<T>>> {
+  async fetchWithMeta<T>(endpoint: string, options: ESIRequestOptions = {}): Promise<ESIResponseMeta<T>> {
     const cacheKey = this.cache.makeKey(options.characterId, endpoint)
     const cached = this.cache.get(cacheKey)
 
     if (cached && !options.etag) {
       return {
-        success: true,
-        data: {
-          data: cached.data as T,
-          expiresAt: cached.expires,
-          etag: cached.etag,
-          notModified: true,
-        },
+        data: cached.data as T,
+        expiresAt: cached.expires,
+        etag: cached.etag,
+        notModified: true,
       }
     }
 
@@ -66,26 +65,34 @@ export class MainESIService {
       etag: options.etag ?? cached?.etag,
     })
 
-    if (!result.success) return result as ESIResponse<ESIResponseMeta<T>>
+    if (!result.success) {
+      throw new ESIError(result.error, result.status ?? 500, result.retryAfter)
+    }
+
+    if (!result.meta?.expiresAt) {
+      const error = `ESI meta missing: expiresAt not returned for ${endpoint}`
+      logger.error(error, undefined, { module: 'ESI', endpoint })
+      throw new Error(error)
+    }
 
     return {
-      success: true,
-      data: {
-        data: result.data as T,
-        expiresAt: result.meta?.expiresAt ?? Date.now() + DEFAULT_CACHE_MS,
-        etag: result.meta?.etag ?? null,
-        notModified: result.meta?.notModified ?? false,
-      },
+      data: result.data as T,
+      expiresAt: result.meta.expiresAt,
+      etag: result.meta.etag ?? null,
+      notModified: result.meta.notModified ?? false,
     }
   }
 
-  async requestPaginated<T>(
-    endpoint: string,
-    options: ESIRequestOptions = {}
-  ): Promise<ESIResponse<T[]>> {
+  async fetchPaginated<T>(endpoint: string, options: ESIRequestOptions = {}): Promise<T[]> {
+    const result = await this.fetchPaginatedWithMeta<T>(endpoint, options)
+    return result.data
+  }
+
+  async fetchPaginatedWithMeta<T>(endpoint: string, options: ESIRequestOptions = {}): Promise<ESIResponseMeta<T[]>> {
     const results: T[] = []
     let page = 1
     let totalPages = 1
+    let lastMeta: { expiresAt: number; etag: string | null; notModified: boolean } | undefined
 
     while (page <= totalPages) {
       const separator = endpoint.includes('?') ? '&' : '?'
@@ -93,12 +100,15 @@ export class MainESIService {
 
       const result = await this.queue.enqueue(pagedEndpoint, options)
 
-      if (!result.success) return result as ESIResponse<T[]>
+      if (!result.success) {
+        throw new ESIError(result.error, result.status ?? 500, result.retryAfter)
+      }
 
       const pageData = result.data as T[]
       results.push(...pageData)
 
-      if (result.meta?.expiresAt) {
+      if (result.meta) {
+        lastMeta = result.meta
         const xPages = (result as { xPages?: number }).xPages
         if (xPages) totalPages = xPages
       }
@@ -106,7 +116,18 @@ export class MainESIService {
       page++
     }
 
-    return { success: true, data: results }
+    if (!lastMeta?.expiresAt) {
+      const error = `ESI meta missing: expiresAt not returned for ${endpoint}`
+      logger.error(error, undefined, { module: 'ESI', endpoint })
+      throw new Error(error)
+    }
+
+    return {
+      data: results,
+      expiresAt: lastMeta.expiresAt,
+      etag: lastMeta.etag ?? null,
+      notModified: lastMeta.notModified ?? false,
+    }
   }
 
   private async executeRequest(
@@ -160,20 +181,31 @@ export class MainESIService {
         this.rateLimiter.setGlobalRetryAfter(waitSec)
         return {
           success: false,
-          error: `Rate limited`,
+          error: 'Rate limited',
           status: response.status,
           retryAfter: waitSec,
         }
       }
 
       const expiresHeader = response.headers.get('Expires')
-      const expiresAt = expiresHeader ? new Date(expiresHeader).getTime() : Date.now() + DEFAULT_CACHE_MS
+      const expiresAt = expiresHeader ? new Date(expiresHeader).getTime() : null
       const etag = response.headers.get('ETag')
+
+      if (expiresAt) {
+        logger.debug('ESI response headers', {
+          module: 'ESI',
+          url,
+          status: response.status,
+          expiresHeader,
+          expiresAt,
+          expiresIn: Math.round((expiresAt - Date.now()) / 1000),
+        })
+      }
       const xPages = response.headers.get('X-Pages')
 
       if (response.status === 304) {
         const cached = this.cache.get(cacheKey)
-        if (cached) {
+        if (cached && expiresAt) {
           this.cache.updateExpires(cacheKey, expiresAt)
           return {
             success: true,
@@ -196,14 +228,14 @@ export class MainESIService {
 
       const data = await response.json()
 
-      if (etag) {
+      if (etag && expiresAt) {
         this.cache.set(cacheKey, data, etag, expiresAt)
       }
 
       const result: ESIResponse<unknown> = {
         success: true,
         data,
-        meta: { expiresAt, etag, notModified: false },
+        meta: expiresAt ? { expiresAt, etag, notModified: false } : undefined,
       }
 
       if (xPages) {
@@ -212,6 +244,7 @@ export class MainESIService {
 
       return result
     } catch (error) {
+      if (error instanceof ESIError) throw error
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Network error',
@@ -223,10 +256,9 @@ export class MainESIService {
     this.cache.clear()
   }
 
-  getRateLimitInfo(): Record<string, unknown> {
+  getRateLimitInfo(): { globalRetryAfter: number | null; queueLength: number } {
     return {
       globalRetryAfter: this.rateLimiter.getGlobalRetryAfter(),
-      groups: Object.fromEntries(this.rateLimiter.getAllStates()),
       queueLength: this.queue.length,
     }
   }

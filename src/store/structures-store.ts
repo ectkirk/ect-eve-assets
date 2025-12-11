@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { useAuthStore, type Owner } from './auth-store'
 import { useExpiryCacheStore } from './expiry-cache-store'
-import { esiClient, type ESIResponseMeta } from '@/api/esi-client'
+import { esi, type ESIResponseMeta } from '@/api/esi'
 import { ESICorporationStructureSchema } from '@/api/schemas'
 import { logger } from '@/lib/logger'
 import { z } from 'zod'
@@ -48,7 +48,7 @@ function getStructuresEndpoint(owner: Owner): string {
 
 async function fetchOwnerStructuresWithMeta(owner: Owner): Promise<ESIResponseMeta<ESICorporationStructure[]>> {
   const endpoint = getStructuresEndpoint(owner)
-  return esiClient.fetchWithPaginationMeta<ESICorporationStructure>(endpoint, {
+  return esi.fetchPaginatedWithMeta<ESICorporationStructure>(endpoint, {
     characterId: owner.characterId,
     schema: ESICorporationStructureSchema,
   })

@@ -19,8 +19,8 @@ vi.mock('./expiry-cache-store', () => ({
   },
 }))
 
-vi.mock('@/api/esi-client', () => ({
-  esiClient: {
+vi.mock('@/api/esi', () => ({
+  esi: {
     fetchWithMeta: vi.fn(),
   },
 }))
@@ -124,12 +124,12 @@ describe('wallet-store', () => {
 
     it('fetches character wallet', async () => {
       const { useAuthStore } = await import('./auth-store')
-      const { esiClient } = await import('@/api/esi-client')
+      const { esi } = await import('@/api/esi')
 
       const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
       vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
 
-      vi.mocked(esiClient.fetchWithMeta).mockResolvedValue({
+      vi.mocked(esi.fetchWithMeta).mockResolvedValue({
         data: 5000000,
         expiresAt: Date.now() + 300000,
         etag: 'test-etag',
@@ -138,19 +138,19 @@ describe('wallet-store', () => {
 
       await useWalletStore.getState().update(true)
 
-      expect(esiClient.fetchWithMeta).toHaveBeenCalled()
+      expect(esi.fetchWithMeta).toHaveBeenCalled()
       expect(useWalletStore.getState().walletsByOwner).toHaveLength(1)
       expect((useWalletStore.getState().walletsByOwner[0] as { balance: number }).balance).toBe(5000000)
     })
 
     it('fetches corporation wallets', async () => {
       const { useAuthStore } = await import('./auth-store')
-      const { esiClient } = await import('@/api/esi-client')
+      const { esi } = await import('@/api/esi')
 
       const mockCorpOwner = createMockOwner({ id: 98000001, characterId: 12345, name: 'Test Corp', type: 'corporation' })
       vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'corporation-98000001': mockCorpOwner }))
 
-      vi.mocked(esiClient.fetchWithMeta).mockResolvedValue({
+      vi.mocked(esi.fetchWithMeta).mockResolvedValue({
         data: [
           { division: 1, balance: 10000000 },
           { division: 2, balance: 5000000 },
@@ -162,18 +162,18 @@ describe('wallet-store', () => {
 
       await useWalletStore.getState().update(true)
 
-      expect(esiClient.fetchWithMeta).toHaveBeenCalled()
+      expect(esi.fetchWithMeta).toHaveBeenCalled()
       expect(useWalletStore.getState().walletsByOwner).toHaveLength(1)
     })
 
     it('handles fetch errors gracefully', async () => {
       const { useAuthStore } = await import('./auth-store')
-      const { esiClient } = await import('@/api/esi-client')
+      const { esi } = await import('@/api/esi')
 
       const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
       vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
 
-      vi.mocked(esiClient.fetchWithMeta).mockRejectedValue(new Error('API Error'))
+      vi.mocked(esi.fetchWithMeta).mockRejectedValue(new Error('API Error'))
 
       await useWalletStore.getState().update(true)
 

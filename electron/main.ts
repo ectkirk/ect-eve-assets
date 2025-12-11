@@ -443,7 +443,7 @@ function setupESIService() {
         existing.push({ resolve: wrappedResolve, timeout })
       } else {
         pendingTokenRequests.set(characterId, [{ resolve: wrappedResolve, timeout }])
-        win.webContents.send('esi:request-token', characterId)
+        win.webContents.send('esi:requestToken', characterId)
       }
     })
   })
@@ -451,7 +451,7 @@ function setupESIService() {
   return esiService
 }
 
-ipcMain.handle('esi:provide-token', (_event, characterId: unknown, token: unknown) => {
+ipcMain.handle('esi:provideToken', (_event, characterId: unknown, token: unknown) => {
   if (typeof characterId !== 'number' || !Number.isInteger(characterId) || characterId <= 0) {
     return
   }
@@ -466,49 +466,44 @@ ipcMain.handle('esi:provide-token', (_event, characterId: unknown, token: unknow
   }
 })
 
-ipcMain.handle(
-  'esi:request',
-  async (_event, method: unknown, endpoint: unknown, options: unknown) => {
-    if (typeof method !== 'string' || typeof endpoint !== 'string') {
-      return { success: false, error: 'Invalid parameters' }
-    }
-
-    const validMethods = ['fetch', 'fetchWithMeta', 'fetchPaginated']
-    if (!validMethods.includes(method)) {
-      return { success: false, error: 'Invalid method' }
-    }
-
-    const esiOptions: ESIRequestOptions = {}
-    if (options && typeof options === 'object' && !Array.isArray(options)) {
-      const opts = options as Record<string, unknown>
-      if (opts.method === 'GET' || opts.method === 'POST') esiOptions.method = opts.method
-      if (typeof opts.body === 'string') esiOptions.body = opts.body
-      if (typeof opts.characterId === 'number') esiOptions.characterId = opts.characterId
-      if (typeof opts.requiresAuth === 'boolean') esiOptions.requiresAuth = opts.requiresAuth
-      if (typeof opts.etag === 'string') esiOptions.etag = opts.etag
-    }
-
-    const esiService = getESIService()
-
-    switch (method) {
-      case 'fetch':
-        return esiService.request(endpoint, esiOptions)
-      case 'fetchWithMeta':
-        return esiService.requestWithMeta(endpoint, esiOptions)
-      case 'fetchPaginated':
-        return esiService.requestPaginated(endpoint, esiOptions)
-      default:
-        return { success: false, error: 'Unknown method' }
-    }
+function parseESIOptions(options: unknown): ESIRequestOptions {
+  const esiOptions: ESIRequestOptions = {}
+  if (options && typeof options === 'object' && !Array.isArray(options)) {
+    const opts = options as Record<string, unknown>
+    if (opts.method === 'GET' || opts.method === 'POST') esiOptions.method = opts.method
+    if (typeof opts.body === 'string') esiOptions.body = opts.body
+    if (typeof opts.characterId === 'number') esiOptions.characterId = opts.characterId
+    if (typeof opts.requiresAuth === 'boolean') esiOptions.requiresAuth = opts.requiresAuth
+    if (typeof opts.etag === 'string') esiOptions.etag = opts.etag
   }
-)
+  return esiOptions
+}
 
-ipcMain.handle('esi:clear-cache', () => {
-  getESIService().clearCache()
-  return { success: true }
+ipcMain.handle('esi:fetch', async (_event, endpoint: unknown, options: unknown) => {
+  if (typeof endpoint !== 'string') throw new Error('Invalid endpoint')
+  return getESIService().fetch(endpoint, parseESIOptions(options))
 })
 
-ipcMain.handle('esi:rate-limit-info', () => {
+ipcMain.handle('esi:fetchWithMeta', async (_event, endpoint: unknown, options: unknown) => {
+  if (typeof endpoint !== 'string') throw new Error('Invalid endpoint')
+  return getESIService().fetchWithMeta(endpoint, parseESIOptions(options))
+})
+
+ipcMain.handle('esi:fetchPaginated', async (_event, endpoint: unknown, options: unknown) => {
+  if (typeof endpoint !== 'string') throw new Error('Invalid endpoint')
+  return getESIService().fetchPaginated(endpoint, parseESIOptions(options))
+})
+
+ipcMain.handle('esi:fetchPaginatedWithMeta', async (_event, endpoint: unknown, options: unknown) => {
+  if (typeof endpoint !== 'string') throw new Error('Invalid endpoint')
+  return getESIService().fetchPaginatedWithMeta(endpoint, parseESIOptions(options))
+})
+
+ipcMain.handle('esi:clearCache', () => {
+  getESIService().clearCache()
+})
+
+ipcMain.handle('esi:getRateLimitInfo', () => {
   return getESIService().getRateLimitInfo()
 })
 

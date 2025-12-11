@@ -56,25 +56,27 @@ export interface ESIRequestOptions {
   etag?: string
 }
 
-export interface ESISuccessResponse<T> {
-  success: true
+export interface ESIResponseMeta<T> {
   data: T
-  meta?: { expiresAt: number; etag: string | null; notModified: boolean }
+  expiresAt: number
+  etag: string | null
+  notModified: boolean
 }
-
-export interface ESIErrorResponse {
-  success: false
-  error: string
-  status?: number
-  retryAfter?: number
-}
-
-export type ESIResponse<T> = ESISuccessResponse<T> | ESIErrorResponse
 
 export interface ESIRateLimitInfo {
   globalRetryAfter: number | null
-  groups: Record<string, unknown>
   queueLength: number
+}
+
+export interface ESIAPI {
+  fetch: <T>(endpoint: string, options?: ESIRequestOptions) => Promise<T>
+  fetchWithMeta: <T>(endpoint: string, options?: ESIRequestOptions) => Promise<ESIResponseMeta<T>>
+  fetchPaginated: <T>(endpoint: string, options?: ESIRequestOptions) => Promise<T[]>
+  fetchPaginatedWithMeta: <T>(endpoint: string, options?: ESIRequestOptions) => Promise<ESIResponseMeta<T[]>>
+  clearCache: () => Promise<void>
+  getRateLimitInfo: () => Promise<ESIRateLimitInfo>
+  provideToken: (characterId: number, token: string | null) => Promise<void>
+  onRequestToken: (callback: (characterId: number) => void) => () => void
 }
 
 export interface ElectronAPI {
@@ -94,11 +96,27 @@ export interface ElectronAPI {
   onUpdateDownloadProgress: (callback: (percent: number) => void) => () => void
   onUpdateDownloaded: (callback: (version: string) => void) => () => void
   installUpdate: () => Promise<void>
-  esiRequest: <T>(method: string, endpoint: string, options?: ESIRequestOptions) => Promise<ESIResponse<T>>
-  esiProvideToken: (characterId: number, token: string | null) => Promise<void>
-  esiClearCache: () => Promise<{ success: boolean }>
-  esiRateLimitInfo: () => Promise<ESIRateLimitInfo>
-  onEsiRequestToken: (callback: (characterId: number) => void) => () => void
+  esi: ESIAPI
+}
+
+const esi: ESIAPI = {
+  fetch: <T>(endpoint: string, options?: ESIRequestOptions) =>
+    ipcRenderer.invoke('esi:fetch', endpoint, options) as Promise<T>,
+  fetchWithMeta: <T>(endpoint: string, options?: ESIRequestOptions) =>
+    ipcRenderer.invoke('esi:fetchWithMeta', endpoint, options) as Promise<ESIResponseMeta<T>>,
+  fetchPaginated: <T>(endpoint: string, options?: ESIRequestOptions) =>
+    ipcRenderer.invoke('esi:fetchPaginated', endpoint, options) as Promise<T[]>,
+  fetchPaginatedWithMeta: <T>(endpoint: string, options?: ESIRequestOptions) =>
+    ipcRenderer.invoke('esi:fetchPaginatedWithMeta', endpoint, options) as Promise<ESIResponseMeta<T[]>>,
+  clearCache: () => ipcRenderer.invoke('esi:clearCache'),
+  getRateLimitInfo: () => ipcRenderer.invoke('esi:getRateLimitInfo'),
+  provideToken: (characterId: number, token: string | null) =>
+    ipcRenderer.invoke('esi:provideToken', characterId, token),
+  onRequestToken: (callback: (characterId: number) => void) => {
+    const handler = (_event: unknown, characterId: number) => callback(characterId)
+    ipcRenderer.on('esi:requestToken', handler)
+    return () => ipcRenderer.removeListener('esi:requestToken', handler)
+  },
 }
 
 const electronAPI: ElectronAPI = {
@@ -134,17 +152,7 @@ const electronAPI: ElectronAPI = {
     return () => ipcRenderer.removeListener('updater:update-downloaded', handler)
   },
   installUpdate: () => ipcRenderer.invoke('updater:install'),
-  esiRequest: <T>(method: string, endpoint: string, options?: ESIRequestOptions) =>
-    ipcRenderer.invoke('esi:request', method, endpoint, options) as Promise<ESIResponse<T>>,
-  esiProvideToken: (characterId: number, token: string | null) =>
-    ipcRenderer.invoke('esi:provide-token', characterId, token),
-  esiClearCache: () => ipcRenderer.invoke('esi:clear-cache'),
-  esiRateLimitInfo: () => ipcRenderer.invoke('esi:rate-limit-info'),
-  onEsiRequestToken: (callback: (characterId: number) => void) => {
-    const handler = (_event: unknown, characterId: number) => callback(characterId)
-    ipcRenderer.on('esi:request-token', handler)
-    return () => ipcRenderer.removeListener('esi:request-token', handler)
-  },
+  esi,
 }
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI)

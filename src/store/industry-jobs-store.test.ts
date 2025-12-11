@@ -19,10 +19,10 @@ vi.mock('./expiry-cache-store', () => ({
   },
 }))
 
-vi.mock('@/api/esi-client', () => ({
-  esiClient: {
+vi.mock('@/api/esi', () => ({
+  esi: {
     fetchWithMeta: vi.fn(),
-    fetchWithPaginationMeta: vi.fn(),
+    fetchPaginatedWithMeta: vi.fn(),
   },
 }))
 
@@ -63,12 +63,12 @@ describe('industry-jobs-store', () => {
 
     it('fetches character jobs for character owners', async () => {
       const { useAuthStore } = await import('./auth-store')
-      const { esiClient } = await import('@/api/esi-client')
+      const { esi } = await import('@/api/esi')
 
       const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
       vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
 
-      vi.mocked(esiClient.fetchWithMeta).mockResolvedValue({
+      vi.mocked(esi.fetchWithMeta).mockResolvedValue({
         data: [
           {
             job_id: 1,
@@ -95,18 +95,18 @@ describe('industry-jobs-store', () => {
 
       await useIndustryJobsStore.getState().update(true)
 
-      expect(esiClient.fetchWithMeta).toHaveBeenCalled()
+      expect(esi.fetchWithMeta).toHaveBeenCalled()
       expect(useIndustryJobsStore.getState().jobsByOwner).toHaveLength(1)
     })
 
     it('fetches corporation jobs for corporation owners', async () => {
       const { useAuthStore } = await import('./auth-store')
-      const { esiClient } = await import('@/api/esi-client')
+      const { esi } = await import('@/api/esi')
 
       const mockCorpOwner = createMockOwner({ id: 98000001, characterId: 12345, name: 'Test Corp', type: 'corporation' })
       vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'corporation-98000001': mockCorpOwner }))
 
-      vi.mocked(esiClient.fetchWithPaginationMeta).mockResolvedValue({
+      vi.mocked(esi.fetchPaginatedWithMeta).mockResolvedValue({
         data: [],
         expiresAt: Date.now() + 300000,
         etag: 'test-etag',
@@ -115,17 +115,17 @@ describe('industry-jobs-store', () => {
 
       await useIndustryJobsStore.getState().update(true)
 
-      expect(esiClient.fetchWithPaginationMeta).toHaveBeenCalled()
+      expect(esi.fetchPaginatedWithMeta).toHaveBeenCalled()
     })
 
     it('handles fetch errors gracefully', async () => {
       const { useAuthStore } = await import('./auth-store')
-      const { esiClient } = await import('@/api/esi-client')
+      const { esi } = await import('@/api/esi')
 
       const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
       vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
 
-      vi.mocked(esiClient.fetchWithMeta).mockRejectedValue(new Error('API Error'))
+      vi.mocked(esi.fetchWithMeta).mockRejectedValue(new Error('API Error'))
 
       await useIndustryJobsStore.getState().update(true)
 

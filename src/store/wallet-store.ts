@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { useAuthStore, type Owner } from './auth-store'
 import { useExpiryCacheStore } from './expiry-cache-store'
-import { esiClient, type ESIResponseMeta } from '@/api/esi-client'
+import { esi, type ESIResponseMeta } from '@/api/esi'
 import { ESICorporationWalletDivisionSchema } from '@/api/schemas'
 import { logger } from '@/lib/logger'
 import { z } from 'zod'
@@ -65,7 +65,7 @@ function getWalletEndpoint(owner: Owner): string {
 
 async function fetchOwnerWalletWithMeta(owner: Owner): Promise<ESIResponseMeta<CharacterWallet | CorporationWallet>> {
   if (owner.type === 'corporation') {
-    const result = await esiClient.fetchWithMeta<ESICorporationWalletDivision[]>(
+    const result = await esi.fetchWithMeta<ESICorporationWalletDivision[]>(
       `/corporations/${owner.id}/wallets/`,
       { characterId: owner.characterId, schema: z.array(ESICorporationWalletDivisionSchema) }
     )
@@ -76,7 +76,7 @@ async function fetchOwnerWalletWithMeta(owner: Owner): Promise<ESIResponseMeta<C
       notModified: result.notModified,
     }
   }
-  const result = await esiClient.fetchWithMeta<number>(
+  const result = await esi.fetchWithMeta<number>(
     `/characters/${owner.characterId}/wallet/`,
     { characterId: owner.characterId, schema: z.number() }
   )

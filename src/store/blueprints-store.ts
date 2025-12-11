@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { useAuthStore, type Owner } from './auth-store'
 import { useExpiryCacheStore } from './expiry-cache-store'
-import { esiClient, type ESIResponseMeta } from '@/api/esi-client'
+import { esi, type ESIResponseMeta } from '@/api/esi'
 import { ESIBlueprintSchema } from '@/api/schemas'
 import { logger } from '@/lib/logger'
 import { z } from 'zod'
@@ -60,7 +60,7 @@ function getBlueprintsEndpoint(owner: Owner): string {
 
 async function fetchOwnerBlueprintsWithMeta(owner: Owner): Promise<ESIResponseMeta<ESIBlueprint[]>> {
   const endpoint = getBlueprintsEndpoint(owner)
-  return esiClient.fetchWithPaginationMeta<ESIBlueprint>(endpoint, {
+  return esi.fetchPaginatedWithMeta<ESIBlueprint>(endpoint, {
     characterId: owner.characterId,
     schema: ESIBlueprintSchema,
   })

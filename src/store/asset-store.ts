@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { useAuthStore, type Owner } from './auth-store'
 import { useExpiryCacheStore } from './expiry-cache-store'
 import { getCharacterAssetNames, getCorporationAssetNames, type ESIAsset, type ESIAssetName } from '@/api/endpoints/assets'
-import { esiClient, type ESIResponseMeta } from '@/api/esi-client'
+import { esi, type ESIResponseMeta } from '@/api/esi'
 import { ESIAssetSchema } from '@/api/schemas'
 import { fetchPrices, resolveTypes } from '@/api/ref-client'
 import { fetchAbyssalPrices, isAbyssalTypeId, hasCachedAbyssalPrice } from '@/api/mutamarket-client'
@@ -163,7 +163,7 @@ function getAssetEndpoint(owner: Owner): string {
 
 async function fetchOwnerAssetsWithMeta(owner: Owner): Promise<ESIResponseMeta<ESIAsset[]>> {
   const endpoint = getAssetEndpoint(owner)
-  return esiClient.fetchWithPaginationMeta<ESIAsset>(endpoint, {
+  return esi.fetchPaginatedWithMeta<ESIAsset>(endpoint, {
     characterId: owner.characterId,
     schema: ESIAssetSchema,
   })

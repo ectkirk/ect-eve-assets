@@ -1,4 +1,4 @@
-import { esiClient } from '../esi-client'
+import { esi } from '../esi'
 import { logger } from '@/lib/logger'
 import {
   ESIMarketOrderSchema,
@@ -48,7 +48,7 @@ export const CAPITAL_GROUP_IDS = new Set([
 ])
 
 export async function getCharacterOrders(characterId: number): Promise<ESIMarketOrder[]> {
-  return esiClient.fetchWithPagination<ESIMarketOrder>(`/characters/${characterId}/orders/`, {
+  return esi.fetchPaginated<ESIMarketOrder>(`/characters/${characterId}/orders/`, {
     characterId,
     schema: ESIMarketOrderSchema,
   })
@@ -58,7 +58,7 @@ export async function getCorporationOrders(
   characterId: number,
   corporationId: number
 ): Promise<ESICorporationMarketOrder[]> {
-  return esiClient.fetchWithPagination<ESICorporationMarketOrder>(
+  return esi.fetchPaginated<ESICorporationMarketOrder>(
     `/corporations/${corporationId}/orders/`,
     {
       characterId,
@@ -68,7 +68,7 @@ export async function getCorporationOrders(
 }
 
 export async function getMarketPrices(): Promise<ESIMarketPrice[]> {
-  return esiClient.fetch<ESIMarketPrice[]>('/markets/prices/', {
+  return esi.fetch<ESIMarketPrice[]>('/markets/prices/', {
     requiresAuth: false,
     schema: z.array(ESIMarketPriceSchema),
   })
@@ -156,7 +156,7 @@ function calculatePriceData(orders: ESIRegionOrder[]): PriceData {
 async function fetchAllRegionOrders(regionId: number): Promise<ESIRegionOrder[]> {
   logger.debug('Fetching regional market orders', { module: 'ESI', regionId })
 
-  return esiClient.fetchWithPagination<ESIRegionOrder>(
+  return esi.fetchPaginated<ESIRegionOrder>(
     `/markets/${regionId}/orders/?order_type=all`,
     { requiresAuth: false, schema: ESIRegionOrderSchema }
   )

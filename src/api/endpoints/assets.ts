@@ -1,4 +1,4 @@
-import { esiClient } from '../esi-client'
+import { esi } from '../esi'
 import { ESIAssetSchema, ESIAssetNameSchema } from '../schemas'
 import { z } from 'zod'
 
@@ -9,7 +9,7 @@ export async function getCharacterAssets(
   characterId: number,
   authCharacterId?: number
 ): Promise<ESIAsset[]> {
-  return esiClient.fetchWithPagination<ESIAsset>(
+  return esi.fetchPaginated<ESIAsset>(
     `/characters/${characterId}/assets/`,
     { characterId: authCharacterId ?? characterId, schema: ESIAssetSchema }
   )
@@ -27,7 +27,7 @@ export async function getCharacterAssetNames(
 
   const results: ESIAssetName[] = []
   for (const chunk of chunks) {
-    const names = await esiClient.fetch<ESIAssetName[]>(
+    const names = await esi.fetch<ESIAssetName[]>(
       `/characters/${characterId}/assets/names/`,
       {
         method: 'POST',
@@ -54,7 +54,7 @@ export async function getCorporationAssetNames(
 
   const results: ESIAssetName[] = []
   for (const chunk of chunks) {
-    const names = await esiClient.fetch<ESIAssetName[]>(
+    const names = await esi.fetch<ESIAssetName[]>(
       `/corporations/${corporationId}/assets/names/`,
       {
         method: 'POST',

@@ -10,9 +10,9 @@ vi.mock('./auth-store', () => ({
   },
 }))
 
-vi.mock('@/api/esi-client', () => ({
-  esiClient: {
-    fetchWithPaginationMeta: vi.fn(),
+vi.mock('@/api/esi', () => ({
+  esi: {
+    fetchPaginatedWithMeta: vi.fn(),
   },
 }))
 
@@ -57,13 +57,13 @@ describe('market-orders-store', () => {
 
     it('fetches orders when data is expired', async () => {
       const { useAuthStore } = await import('./auth-store')
-      const { esiClient } = await import('@/api/esi-client')
+      const { esi } = await import('@/api/esi')
 
       const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
       vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
 
       const futureExpiry = Date.now() + 300000
-      vi.mocked(esiClient.fetchWithPaginationMeta).mockResolvedValue({
+      vi.mocked(esi.fetchPaginatedWithMeta).mockResolvedValue({
         data: [
           {
             order_id: 1,
@@ -95,7 +95,7 @@ describe('market-orders-store', () => {
 
       await useMarketOrdersStore.getState().update(false)
 
-      expect(esiClient.fetchWithPaginationMeta).toHaveBeenCalled()
+      expect(esi.fetchPaginatedWithMeta).toHaveBeenCalled()
       expect(useMarketOrdersStore.getState().ordersByOwner).toHaveLength(1)
       expect(useMarketOrdersStore.getState().ordersByOwner[0]?.orders).toHaveLength(1)
 
@@ -105,7 +105,7 @@ describe('market-orders-store', () => {
 
     it('skips owners whose data is not expired when not forced', async () => {
       const { useAuthStore } = await import('./auth-store')
-      const { esiClient } = await import('@/api/esi-client')
+      const { esi } = await import('@/api/esi')
 
       const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
       vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
@@ -119,17 +119,17 @@ describe('market-orders-store', () => {
 
       await useMarketOrdersStore.getState().update(false)
 
-      expect(esiClient.fetchWithPaginationMeta).not.toHaveBeenCalled()
+      expect(esi.fetchPaginatedWithMeta).not.toHaveBeenCalled()
     })
 
     it('force=true bypasses expiry check', async () => {
       const { useAuthStore } = await import('./auth-store')
-      const { esiClient } = await import('@/api/esi-client')
+      const { esi } = await import('@/api/esi')
 
       const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
       vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
 
-      vi.mocked(esiClient.fetchWithPaginationMeta).mockResolvedValue({
+      vi.mocked(esi.fetchPaginatedWithMeta).mockResolvedValue({
         data: [],
         expiresAt: Date.now() + 300000,
         etag: null,
@@ -145,17 +145,17 @@ describe('market-orders-store', () => {
 
       await useMarketOrdersStore.getState().update(true)
 
-      expect(esiClient.fetchWithPaginationMeta).toHaveBeenCalled()
+      expect(esi.fetchPaginatedWithMeta).toHaveBeenCalled()
     })
 
     it('handles fetch errors gracefully', async () => {
       const { useAuthStore } = await import('./auth-store')
-      const { esiClient } = await import('@/api/esi-client')
+      const { esi } = await import('@/api/esi')
 
       const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
       vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
 
-      vi.mocked(esiClient.fetchWithPaginationMeta).mockRejectedValue(new Error('API Error'))
+      vi.mocked(esi.fetchPaginatedWithMeta).mockRejectedValue(new Error('API Error'))
 
       await useMarketOrdersStore.getState().update(true)
 

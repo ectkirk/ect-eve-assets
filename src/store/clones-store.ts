@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { useAuthStore, type Owner } from './auth-store'
 import { useExpiryCacheStore } from './expiry-cache-store'
-import { esiClient, type ESIResponseMeta } from '@/api/esi-client'
+import { esi, type ESIResponseMeta } from '@/api/esi'
 import { ESICloneSchema } from '@/api/schemas'
 import { logger } from '@/lib/logger'
 import { z } from 'zod'
@@ -51,14 +51,14 @@ function getClonesEndpoint(owner: Owner): string {
 
 async function fetchClonesWithMeta(owner: Owner): Promise<ESIResponseMeta<ESIClone>> {
   const endpoint = getClonesEndpoint(owner)
-  return esiClient.fetchWithMeta<ESIClone>(endpoint, {
+  return esi.fetchWithMeta<ESIClone>(endpoint, {
     characterId: owner.characterId,
     schema: ESICloneSchema,
   })
 }
 
 async function fetchImplantsWithMeta(owner: Owner): Promise<ESIResponseMeta<number[]>> {
-  return esiClient.fetchWithMeta<number[]>(`/characters/${owner.characterId}/implants/`, {
+  return esi.fetchWithMeta<number[]>(`/characters/${owner.characterId}/implants/`, {
     characterId: owner.characterId,
     schema: z.array(z.number()),
   })

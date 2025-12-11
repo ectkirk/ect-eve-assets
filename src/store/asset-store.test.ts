@@ -10,9 +10,9 @@ vi.mock('./auth-store', () => ({
   },
 }))
 
-vi.mock('@/api/esi-client', () => ({
-  esiClient: {
-    fetchWithPaginationMeta: vi.fn(),
+vi.mock('@/api/esi', () => ({
+  esi: {
+    fetchPaginatedWithMeta: vi.fn(),
   },
   ESI_BASE_URL: 'https://esi.evetech.net',
   ESI_COMPATIBILITY_DATE: '2025-11-06',
@@ -90,7 +90,7 @@ describe('asset-store', () => {
 
     it('skips owners whose data is not expired when not forced', async () => {
       const { useAuthStore } = await import('./auth-store')
-      const { esiClient } = await import('@/api/esi-client')
+      const { esi } = await import('@/api/esi')
 
       const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
       vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
@@ -104,12 +104,12 @@ describe('asset-store', () => {
 
       await useAssetStore.getState().update(false)
 
-      expect(esiClient.fetchWithPaginationMeta).not.toHaveBeenCalled()
+      expect(esi.fetchPaginatedWithMeta).not.toHaveBeenCalled()
     })
 
     it('fetches assets when data is expired', async () => {
       const { useAuthStore } = await import('./auth-store')
-      const { esiClient } = await import('@/api/esi-client')
+      const { esi } = await import('@/api/esi')
       const { getCharacterAssetNames } = await import('@/api/endpoints/assets')
       const { fetchPrices, resolveTypes } = await import('@/api/ref-client')
 
@@ -117,7 +117,7 @@ describe('asset-store', () => {
       vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
 
       const futureExpiry = Date.now() + 3600000
-      vi.mocked(esiClient.fetchWithPaginationMeta).mockResolvedValue({
+      vi.mocked(esi.fetchPaginatedWithMeta).mockResolvedValue({
         data: [{ item_id: 1, type_id: 34, location_id: 60003760, location_type: 'station', location_flag: 'Hangar', quantity: 100, is_singleton: false }],
         expiresAt: futureExpiry,
         etag: '"abc123"',
@@ -136,7 +136,7 @@ describe('asset-store', () => {
 
       await useAssetStore.getState().update(false)
 
-      expect(esiClient.fetchWithPaginationMeta).toHaveBeenCalled()
+      expect(esi.fetchPaginatedWithMeta).toHaveBeenCalled()
       expect(useAssetStore.getState().assetsByOwner).toHaveLength(1)
       expect(useAssetStore.getState().isUpdating).toBe(false)
 
@@ -147,14 +147,14 @@ describe('asset-store', () => {
 
     it('force=true bypasses expiry check', async () => {
       const { useAuthStore } = await import('./auth-store')
-      const { esiClient } = await import('@/api/esi-client')
+      const { esi } = await import('@/api/esi')
       const { getCharacterAssetNames } = await import('@/api/endpoints/assets')
       const { fetchPrices, resolveTypes } = await import('@/api/ref-client')
 
       const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
       vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
 
-      vi.mocked(esiClient.fetchWithPaginationMeta).mockResolvedValue({
+      vi.mocked(esi.fetchPaginatedWithMeta).mockResolvedValue({
         data: [],
         expiresAt: Date.now() + 3600000,
         etag: null,
@@ -173,17 +173,17 @@ describe('asset-store', () => {
 
       await useAssetStore.getState().update(true)
 
-      expect(esiClient.fetchWithPaginationMeta).toHaveBeenCalled()
+      expect(esi.fetchPaginatedWithMeta).toHaveBeenCalled()
     })
 
     it('handles fetch errors gracefully', async () => {
       const { useAuthStore } = await import('./auth-store')
-      const { esiClient } = await import('@/api/esi-client')
+      const { esi } = await import('@/api/esi')
 
       const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
       vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
 
-      vi.mocked(esiClient.fetchWithPaginationMeta).mockRejectedValue(new Error('API Error'))
+      vi.mocked(esi.fetchPaginatedWithMeta).mockRejectedValue(new Error('API Error'))
 
       await useAssetStore.getState().update(true)
 

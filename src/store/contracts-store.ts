@@ -8,7 +8,7 @@ import {
   type ESIContract,
   type ESIContractItem,
 } from '@/api/endpoints/contracts'
-import { esiClient, type ESIResponseMeta } from '@/api/esi-client'
+import { esi, type ESIResponseMeta } from '@/api/esi'
 import { ESIContractSchema } from '@/api/schemas'
 import { logger } from '@/lib/logger'
 
@@ -58,14 +58,14 @@ function getContractsEndpoint(owner: Owner): string {
 
 async function fetchOwnerContractsWithMeta(owner: Owner): Promise<ESIResponseMeta<ESIContract[]>> {
   const endpoint = getContractsEndpoint(owner)
-  return esiClient.fetchWithPaginationMeta<ESIContract>(endpoint, {
+  return esi.fetchPaginatedWithMeta<ESIContract>(endpoint, {
     characterId: owner.characterId,
     schema: ESIContractSchema,
   })
 }
 
 async function fetchCorpContractsWithMeta(characterId: number, corporationId: number): Promise<ESIResponseMeta<ESIContract[]>> {
-  return esiClient.fetchWithPaginationMeta<ESIContract>(`/corporations/${corporationId}/contracts/`, {
+  return esi.fetchPaginatedWithMeta<ESIContract>(`/corporations/${corporationId}/contracts/`, {
     characterId,
     schema: ESIContractSchema,
   })
@@ -300,7 +300,7 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
               skipped,
             })
 
-            const fetchedItems = await esiClient.fetchBatch(
+            const fetchedItems = await esi.fetchBatch(
               contractsToFetch,
               async (contract) => {
                 if (contract.availability === 'public') {

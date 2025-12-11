@@ -1,4 +1,4 @@
-import { esiClient } from '../esi-client'
+import { esi } from '../esi'
 import type { ESIAsset } from './assets'
 import {
   ESIAssetSchema,
@@ -16,7 +16,7 @@ export async function getCorporationAssets(
   corporationId: number,
   characterId: number
 ): Promise<ESIAsset[]> {
-  return esiClient.fetchWithPagination<ESIAsset>(
+  return esi.fetchPaginated<ESIAsset>(
     `/corporations/${corporationId}/assets/`,
     { characterId, schema: ESIAssetSchema }
   )
@@ -25,7 +25,7 @@ export async function getCorporationAssets(
 export async function getCharacterRoles(
   characterId: number
 ): Promise<ESICharacterRoles> {
-  return esiClient.fetch<ESICharacterRoles>(
+  return esi.fetch<ESICharacterRoles>(
     `/characters/${characterId}/roles/`,
     { characterId, schema: ESICharacterRolesSchema }
   )
@@ -50,7 +50,7 @@ export async function getCorporationDivisions(
   corporationId: number,
   characterId: number
 ): Promise<ESICorporationDivisions> {
-  return esiClient.fetch<ESICorporationDivisions>(
+  return esi.fetch<ESICorporationDivisions>(
     `/corporations/${corporationId}/divisions/`,
     { characterId, schema: ESICorporationDivisionsSchema }
   )

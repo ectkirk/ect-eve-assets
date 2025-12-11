@@ -1,4 +1,4 @@
-import { esiClient, ESIError } from '../esi-client'
+import { esi, ESIError } from '../esi'
 import { resolveLocations } from '../ref-client'
 import {
   hasStructure,
@@ -23,7 +23,7 @@ async function getStructureFromESI(
   characterId: number
 ): Promise<StructureResult> {
   try {
-    const data = await esiClient.fetch<ESIStructure>(
+    const data = await esi.fetch<ESIStructure>(
       `/universe/structures/${structureId}/`,
       { characterId, schema: ESIStructureSchema }
     )
@@ -87,7 +87,8 @@ export async function resolveStructures(
     })
 
     for (const [structureId, characterId] of playerStructures) {
-      if (esiClient.isRateLimited()) {
+      const rateLimitInfo = await esi.getRateLimitInfo()
+      if (rateLimitInfo.globalRetryAfter !== null) {
         logger.warn('Stopping structure resolution due to rate limit', { module: 'ESI' })
         break
       }
@@ -161,7 +162,7 @@ export async function resolveNames(ids: number[]): Promise<Map<number, ESIName>>
   for (let i = 0; i < uncached.length; i += 1000) {
     const chunk = uncached.slice(i, i + 1000)
     try {
-      const names = await esiClient.fetch<ESIName[]>('/universe/names/', {
+      const names = await esi.fetch<ESIName[]>('/universe/names/', {
         method: 'POST',
         body: JSON.stringify(chunk),
         requiresAuth: false,

@@ -25,9 +25,9 @@ vi.mock('@/api/endpoints/contracts', () => ({
   getCorporationContractItems: vi.fn(),
 }))
 
-vi.mock('@/api/esi-client', () => ({
-  esiClient: {
-    fetchWithPaginationMeta: vi.fn(),
+vi.mock('@/api/esi', () => ({
+  esi: {
+    fetchPaginatedWithMeta: vi.fn(),
     fetchBatch: vi.fn(),
   },
 }))
@@ -69,7 +69,7 @@ describe('contracts-store', () => {
 
     it('only updates character owners from auth store', async () => {
       const { useAuthStore } = await import('./auth-store')
-      const { esiClient } = await import('@/api/esi-client')
+      const { esi } = await import('@/api/esi')
 
       const charOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
       const corpOwner = createMockOwner({ id: 98000001, characterId: 12345, name: 'Corp', type: 'corporation' })
@@ -78,7 +78,7 @@ describe('contracts-store', () => {
         'corporation-98000001': corpOwner,
       }))
 
-      vi.mocked(esiClient.fetchWithPaginationMeta).mockResolvedValue({
+      vi.mocked(esi.fetchPaginatedWithMeta).mockResolvedValue({
         data: [],
         expiresAt: Date.now() + 300000,
         etag: 'test-etag',
@@ -93,12 +93,12 @@ describe('contracts-store', () => {
 
     it('fetches contracts successfully', async () => {
       const { useAuthStore } = await import('./auth-store')
-      const { esiClient } = await import('@/api/esi-client')
+      const { esi } = await import('@/api/esi')
 
       const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
       vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
 
-      vi.mocked(esiClient.fetchWithPaginationMeta).mockResolvedValue({
+      vi.mocked(esi.fetchPaginatedWithMeta).mockResolvedValue({
         data: [
           {
             contract_id: 1,
@@ -134,7 +134,7 @@ describe('contracts-store', () => {
 
     it('merges character and corp contracts, deduplicating', async () => {
       const { useAuthStore } = await import('./auth-store')
-      const { esiClient } = await import('@/api/esi-client')
+      const { esi } = await import('@/api/esi')
 
       const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character', corporationId: 98000001 })
       vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
@@ -147,7 +147,7 @@ describe('contracts-store', () => {
         date_issued: new Date().toISOString(),
       }
 
-      vi.mocked(esiClient.fetchWithPaginationMeta)
+      vi.mocked(esi.fetchPaginatedWithMeta)
         .mockResolvedValueOnce({
           data: [sharedContract as never],
           expiresAt: Date.now() + 300000,
@@ -160,7 +160,7 @@ describe('contracts-store', () => {
           etag: 'test-etag-2',
           notModified: false,
         })
-      vi.mocked(esiClient.fetchBatch).mockResolvedValue(new Map())
+      vi.mocked(esi.fetchBatch).mockResolvedValue(new Map())
 
       await useContractsStore.getState().update(true)
 
@@ -170,12 +170,12 @@ describe('contracts-store', () => {
 
     it('handles fetch errors gracefully', async () => {
       const { useAuthStore } = await import('./auth-store')
-      const { esiClient } = await import('@/api/esi-client')
+      const { esi } = await import('@/api/esi')
 
       const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
       vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
 
-      vi.mocked(esiClient.fetchWithPaginationMeta).mockRejectedValue(new Error('API Error'))
+      vi.mocked(esi.fetchPaginatedWithMeta).mockRejectedValue(new Error('API Error'))
 
       await useContractsStore.getState().update(true)
 
