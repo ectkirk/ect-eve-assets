@@ -86,46 +86,30 @@ For endpoints without new rate limiting:
 
 ---
 
-## Endpoint Cache Analysis
+## Endpoint Cache Times
 
-Cache times are **dynamic** per-response via `Expires` header. These are typical observed values:
+From ESI OpenAPI spec (`x-cached-seconds`). Verified 2025-12-11.
 
-| Endpoint | Typical Cache | Rate Group |
-|----------|---------------|------------|
-| `/characters/{id}/assets` | 1 hour | char-asset |
-| `/corporations/{id}/assets` | 1 hour | corp-asset |
-| `/characters/{id}/orders` | 5 min | char-market |
-| `/corporations/{id}/orders` | 5 min | corp-market |
-| `/characters/{id}/industry/jobs` | 5 min | char-industry |
-| `/corporations/{id}/industry/jobs` | 5 min | corp-industry |
-| `/characters/{id}/contracts` | 5 min | char-contract |
-| `/corporations/{id}/contracts` | 5 min | corp-contract |
-| `/characters/{id}/clones` | 2 min | char-location |
-| `/characters/{id}/implants` | 5 min | char-detail |
-| `/characters/{id}/wallet` | 2 min | char-wallet |
-| `/corporations/{id}/wallets` | 5 min | corp-wallet |
-| `/characters/{id}/blueprints` | 1 hour | char-industry |
-| `/corporations/{id}/blueprints` | 1 hour | corp-industry |
+| Endpoint | Cache (seconds) | Cache (human) | Rate Group |
+|----------|-----------------|---------------|------------|
+| `/characters/{id}/assets/` | 3600 | 1 hour | char-asset |
+| `/corporations/{id}/assets/` | 3600 | 1 hour | corp-asset |
+| `/characters/{id}/orders/` | 1200 | 20 min | char-market |
+| `/corporations/{id}/orders/` | 1200 | 20 min | corp-market |
+| `/characters/{id}/industry/jobs/` | 300 | 5 min | char-industry |
+| `/corporations/{id}/industry/jobs/` | 300 | 5 min | corp-industry |
+| `/characters/{id}/contracts/` | 300 | 5 min | char-contract |
+| `/corporations/{id}/contracts/` | 300 | 5 min | corp-contract |
+| `/characters/{id}/clones/` | 120 | 2 min | char-location |
+| `/characters/{id}/implants/` | 120 | 2 min | char-detail |
+| `/characters/{id}/wallet/` | 120 | 2 min | char-wallet |
+| `/corporations/{id}/wallets/` | 300 | 5 min | corp-wallet |
+| `/characters/{id}/blueprints/` | 3600 | 1 hour | char-industry |
+| `/corporations/{id}/blueprints/` | 3600 | 1 hour | corp-industry |
 
-**Note:** Always use the actual `Expires` header, not these estimates.
+**Source:** `https://esi.evetech.net/latest/swagger.json` → `paths[endpoint].get["x-cached-seconds"]`
 
----
-
-## Current Implementation Gap
-
-Our stores use hardcoded cooldowns that ignore actual ESI `Expires`:
-
-| Store | Hardcoded Cooldown | Issue |
-|-------|-------------------|-------|
-| Assets | 60 min | May be too conservative |
-| Market Orders | 5 min | Ignores actual expiry |
-| Industry Jobs | 5 min | Ignores actual expiry |
-| Contracts | 5 min | Ignores actual expiry |
-| Clones | 5 min | May miss 2-min cache window |
-| Wallet | 5 min | May miss 2-min cache window |
-| Blueprints | 60 min | Matches typical cache |
-
-The ESI client (`src/api/esi-client.ts`) already caches based on `Expires` header, but store cooldowns are applied on top.
+**Note:** Implementation uses actual `Expires` header from responses, not these values.
 
 ---
 
