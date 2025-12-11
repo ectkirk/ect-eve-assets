@@ -21,6 +21,16 @@ export type RefType = z.infer<typeof RefTypeSchema>
 export type RefUniverseItem = z.infer<typeof RefUniverseItemSchema>
 export type UniverseEntityType = RefUniverseItem['type']
 
+// Request coalescing - batches requests within a 50ms window to prevent duplicate API calls
+let pendingLocationIds = new Set<number>()
+let locationBatchPromise: Promise<Map<number, CachedLocation>> | null = null
+const LOCATION_BATCH_DELAY_MS = 50
+
+let pendingTypeIds = new Set<number>()
+let pendingTypeMarket: 'jita' | 'the_forge' = 'jita'
+let typeBatchPromise: Promise<Map<number, CachedType>> | null = null
+const TYPE_BATCH_DELAY_MS = 50
+
 async function fetchTypesFromAPI(
   ids: number[],
   market: 'jita' | 'the_forge' = 'jita'
@@ -94,14 +104,16 @@ async function fetchUniverseFromAPI(ids: number[]): Promise<Map<number, RefUnive
   return results
 }
 
-export async function resolveTypes(
-  typeIds: number[],
-  market: 'jita' | 'the_forge' = 'jita'
-): Promise<Map<number, CachedType>> {
+async function executeTypeBatch(): Promise<Map<number, CachedType>> {
+  const idsToFetch = Array.from(pendingTypeIds)
+  const market = pendingTypeMarket
+  pendingTypeIds = new Set()
+  pendingTypeMarket = 'jita'
+
   const results = new Map<number, CachedType>()
   const uncachedIds: number[] = []
 
-  for (const id of typeIds) {
+  for (const id of idsToFetch) {
     const cached = getType(id)
     if (cached && !cached.name.startsWith('Unknown Type ')) {
       results.set(id, cached)
@@ -131,7 +143,6 @@ export async function resolveTypes(
     }
 
     // Cache placeholder entries for types not returned by API (BPCs, abyssals, etc.)
-    // This prevents re-fetching them every time
     for (const id of uncachedIds) {
       if (!fetched.has(id)) {
         const placeholder: CachedType = {
@@ -150,18 +161,56 @@ export async function resolveTypes(
 
     if (toCache.length > 0) {
       await saveTypes(toCache)
-      logger.debug(`Cached ${toCache.length} types (${fetched.size} resolved, ${uncachedIds.length - fetched.size} unknown)`, { module: 'RefAPI' })
+      logger.debug(
+        `Cached ${toCache.length} types (${fetched.size} resolved, ${uncachedIds.length - fetched.size} unknown)`,
+        { module: 'RefAPI' }
+      )
     }
   }
 
   return results
 }
 
-export async function resolveLocations(locationIds: number[]): Promise<Map<number, CachedLocation>> {
+export async function resolveTypes(
+  typeIds: number[],
+  market: 'jita' | 'the_forge' = 'jita'
+): Promise<Map<number, CachedType>> {
+  if (typeIds.length === 0) return new Map()
+
+  for (const id of typeIds) {
+    pendingTypeIds.add(id)
+  }
+  pendingTypeMarket = market
+
+  if (!typeBatchPromise) {
+    typeBatchPromise = new Promise((resolve) => {
+      setTimeout(async () => {
+        const result = await executeTypeBatch()
+        typeBatchPromise = null
+        resolve(result)
+      }, TYPE_BATCH_DELAY_MS)
+    })
+  }
+
+  const allResults = await typeBatchPromise
+  const results = new Map<number, CachedType>()
+  for (const id of typeIds) {
+    const cached = allResults.get(id) ?? getType(id)
+    if (cached) {
+      results.set(id, cached)
+    }
+  }
+  return results
+}
+
+async function executeLocationBatch(): Promise<Map<number, CachedLocation>> {
+  const idsToFetch = Array.from(pendingLocationIds)
+  pendingLocationIds = new Set()
+
   const results = new Map<number, CachedLocation>()
   const uncachedIds: number[] = []
 
-  for (const id of locationIds) {
+  for (const id of idsToFetch) {
     if (id > 1_000_000_000_000) continue
     if (hasLocation(id)) {
       results.set(id, getLocation(id)!)
@@ -198,6 +247,37 @@ export async function resolveLocations(locationIds: number[]): Promise<Map<numbe
   return results
 }
 
+export async function resolveLocations(
+  locationIds: number[]
+): Promise<Map<number, CachedLocation>> {
+  if (locationIds.length === 0) return new Map()
+
+  for (const id of locationIds) {
+    pendingLocationIds.add(id)
+  }
+
+  if (!locationBatchPromise) {
+    locationBatchPromise = new Promise((resolve) => {
+      setTimeout(async () => {
+        const result = await executeLocationBatch()
+        locationBatchPromise = null
+        resolve(result)
+      }, LOCATION_BATCH_DELAY_MS)
+    })
+  }
+
+  const allResults = await locationBatchPromise
+  const results = new Map<number, CachedLocation>()
+  for (const id of locationIds) {
+    if (id > 1_000_000_000_000) continue
+    const cached = allResults.get(id) ?? getLocation(id)
+    if (cached) {
+      results.set(id, cached)
+    }
+  }
+  return results
+}
+
 export async function fetchPrices(
   typeIds: number[],
   market: 'jita' | 'the_forge' = 'jita'
@@ -231,4 +311,13 @@ export async function fetchPrices(
   }
 
   return prices
+}
+
+// Export for testing
+export function _resetBatchState(): void {
+  pendingLocationIds = new Set()
+  locationBatchPromise = null
+  pendingTypeIds = new Set()
+  pendingTypeMarket = 'jita'
+  typeBatchPromise = null
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { resolveTypes, resolveLocations, fetchPrices } from './ref-client'
+import { resolveTypes, resolveLocations, fetchPrices, _resetBatchState } from './ref-client'
 
 vi.mock('@/store/reference-cache', () => ({
   getType: vi.fn(),
@@ -14,9 +14,16 @@ import { getType, saveTypes, hasLocation, getLocation, saveLocations } from '@/s
 const mockRefTypes = vi.fn()
 const mockRefUniverse = vi.fn()
 
+async function runWithTimers<T>(promise: Promise<T>): Promise<T> {
+  await vi.advanceTimersByTimeAsync(100)
+  return promise
+}
+
 describe('ref-client', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.useFakeTimers()
+    _resetBatchState()
     window.electronAPI = {
       refTypes: mockRefTypes,
       refUniverse: mockRefUniverse,
@@ -46,7 +53,7 @@ describe('ref-client', () => {
         return undefined
       })
 
-      const result = await resolveTypes([34])
+      const result = await runWithTimers(resolveTypes([34]))
 
       expect(result.size).toBe(1)
       expect(result.get(34)?.name).toBe('Tritanium')
@@ -71,7 +78,7 @@ describe('ref-client', () => {
         },
       })
 
-      const result = await resolveTypes([34])
+      const result = await runWithTimers(resolveTypes([34]))
 
       expect(result.size).toBe(1)
       expect(result.get(34)?.name).toBe('Tritanium')
@@ -83,7 +90,7 @@ describe('ref-client', () => {
 
       mockRefTypes.mockResolvedValueOnce({ items: {} })
 
-      const result = await resolveTypes([99999])
+      const result = await runWithTimers(resolveTypes([99999]))
 
       expect(result.size).toBe(1)
       expect(result.get(99999)?.name).toBe('Unknown Type 99999')
@@ -108,7 +115,7 @@ describe('ref-client', () => {
 
       mockRefTypes.mockResolvedValueOnce({ items: {} })
 
-      await resolveTypes([99999])
+      await runWithTimers(resolveTypes([99999]))
 
       expect(mockRefTypes).toHaveBeenCalled()
     })
@@ -118,7 +125,7 @@ describe('ref-client', () => {
 
       mockRefTypes.mockResolvedValueOnce({ error: 'HTTP 500' })
 
-      const result = await resolveTypes([34])
+      const result = await runWithTimers(resolveTypes([34]))
 
       expect(result.size).toBe(1)
       expect(result.get(34)?.name).toBe('Unknown Type 34')
@@ -129,7 +136,7 @@ describe('ref-client', () => {
 
       mockRefTypes.mockRejectedValueOnce(new Error('Network error'))
 
-      const result = await resolveTypes([34])
+      const result = await runWithTimers(resolveTypes([34]))
 
       expect(result.size).toBe(1)
       expect(result.get(34)?.name).toBe('Unknown Type 34')
@@ -142,7 +149,7 @@ describe('ref-client', () => {
 
       mockRefTypes.mockResolvedValue({ items: {} })
 
-      await resolveTypes(largeList)
+      await runWithTimers(resolveTypes(largeList))
 
       expect(mockRefTypes).toHaveBeenCalledTimes(2)
     })
@@ -156,7 +163,7 @@ describe('ref-client', () => {
     })
 
     it('skips player structure IDs (> 1 trillion)', async () => {
-      const result = await resolveLocations([1000000000001])
+      const result = await runWithTimers(resolveLocations([1000000000001]))
       expect(result.size).toBe(0)
       expect(mockRefUniverse).not.toHaveBeenCalled()
     })
@@ -173,7 +180,7 @@ describe('ref-client', () => {
         regionName: 'The Forge',
       })
 
-      const result = await resolveLocations([60003760])
+      const result = await runWithTimers(resolveLocations([60003760]))
 
       expect(result.size).toBe(1)
       expect(result.get(60003760)?.name).toContain('Jita')
@@ -196,7 +203,7 @@ describe('ref-client', () => {
         },
       })
 
-      const result = await resolveLocations([60003760])
+      const result = await runWithTimers(resolveLocations([60003760]))
 
       expect(result.size).toBe(1)
       expect(result.get(60003760)?.name).toContain('Jita')
@@ -205,10 +212,11 @@ describe('ref-client', () => {
 
     it('handles API errors gracefully', async () => {
       vi.mocked(hasLocation).mockReturnValue(false)
+      vi.mocked(getLocation).mockReturnValue(undefined)
 
       mockRefUniverse.mockResolvedValueOnce({ error: 'HTTP 500' })
 
-      const result = await resolveLocations([60003760])
+      const result = await runWithTimers(resolveLocations([60003760]))
 
       expect(result.size).toBe(0)
     })
