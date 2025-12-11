@@ -2,7 +2,10 @@
 
 High-level overview of the store architecture. For detailed per-store documentation (endpoints, schemas, data flows), see [stores/](./stores/).
 
-**Related**: [Authentication](./auth/AUTH.md) - OAuth flow and auth store
+**Related:**
+- [Authentication](./auth/AUTH.md) - OAuth flow and auth store
+- [ESI Caching](./ESI_CACHING.md) - Cache headers, rate limits, best practices
+- [Auto-Refresh Design](./AUTO_REFRESH_DESIGN.md) - Proposed Expires-based refresh system
 
 ## Store Hierarchy
 
@@ -67,15 +70,17 @@ interface DataStoreActions {
 
 ## Quick Reference
 
-| Store | Cooldown | Character | Corporation |
-|-------|----------|-----------|-------------|
-| Assets | 1 hour | ✓ | ✓ |
-| Market Orders | 5 min | ✓ | ✗ |
-| Industry Jobs | 5 min | ✓ | ✓ |
-| Contracts | 5 min | ✓ | ✓ (via char) |
-| Clones | 5 min | ✓ | ✗ |
-| Wallet | 5 min | ✓ | ✓ |
-| Blueprints | 1 hour | ✓ | ✓ |
+| Store | Current Cooldown | Character | Corporation | ESI Rate Group |
+|-------|------------------|-----------|-------------|----------------|
+| Assets | 1 hour | ✓ | ✓ | char/corp-asset |
+| Market Orders | 5 min | ✓ | ✓ | char/corp-market |
+| Industry Jobs | 5 min | ✓ | ✓ | char/corp-industry |
+| Contracts | 5 min | ✓ | ✓ (via char) | char/corp-contract |
+| Clones | 5 min | ✓ | ✗ | char-location |
+| Wallet | 5 min | ✓ | ✓ | char/corp-wallet |
+| Blueprints | 1 hour | ✓ | ✓ | char/corp-industry |
+
+> **Note:** Current cooldowns are hardcoded. See [Auto-Refresh Design](./AUTO_REFRESH_DESIGN.md) for planned Expires-based refresh.
 
 ## App Initialization
 

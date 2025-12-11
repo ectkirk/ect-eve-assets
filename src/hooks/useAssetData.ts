@@ -26,7 +26,6 @@ export interface AssetDataResult {
   hasData: boolean
   hasError: boolean
   errorMessage: string | null
-  lastUpdated: number | null
   prices: Map<number, number>
   assetNames: Map<number, string>
   cacheVersion: number
@@ -45,7 +44,6 @@ export function useAssetData(): AssetDataResult {
   const assetsByOwner = useAssetStore((s) => s.assetsByOwner)
   const assetNames = useAssetStore((s) => s.assetNames)
   const prices = useAssetStore((s) => s.prices)
-  const lastUpdated = useAssetStore((s) => s.lastUpdated)
   const isUpdating = useAssetStore((s) => s.isUpdating)
   const updateError = useAssetStore((s) => s.updateError)
   const updateProgress = useAssetStore((s) => s.updateProgress)
@@ -226,7 +224,6 @@ export function useAssetData(): AssetDataResult {
     hasData,
     hasError: !!updateError,
     errorMessage: updateError,
-    lastUpdated,
     prices,
     assetNames,
     cacheVersion,

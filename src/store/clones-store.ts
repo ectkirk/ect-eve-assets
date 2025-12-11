@@ -1,7 +1,12 @@
 import { create } from 'zustand'
 import { useAuthStore, type Owner } from './auth-store'
-import { getCharacterClones, getCharacterImplants, type ESIClone } from '@/api/endpoints/clones'
+import { useExpiryCacheStore } from './expiry-cache-store'
+import { esiClient, type ESIResponseMeta } from '@/api/esi-client'
+import { ESICloneSchema } from '@/api/schemas'
 import { logger } from '@/lib/logger'
+import { z } from 'zod'
+
+export type ESIClone = z.infer<typeof ESICloneSchema>
 
 const DB_NAME = 'ecteveassets-clones'
 const DB_VERSION = 1
@@ -23,13 +28,10 @@ interface StoredCharacterCloneData {
 
 interface ClonesState {
   clonesByOwner: CharacterCloneData[]
-  lastUpdated: number | null
   isUpdating: boolean
   updateError: string | null
   initialized: boolean
 }
-
-const UPDATE_COOLDOWN_MS = 5 * 60 * 1000
 
 interface ClonesActions {
   init: () => Promise<void>
@@ -44,6 +46,25 @@ interface ClonesActions {
 type ClonesStore = ClonesState & ClonesActions
 
 let db: IDBDatabase | null = null
+
+function getClonesEndpoint(owner: Owner): string {
+  return `/characters/${owner.characterId}/clones/`
+}
+
+async function fetchClonesWithMeta(owner: Owner): Promise<ESIResponseMeta<ESIClone>> {
+  const endpoint = getClonesEndpoint(owner)
+  return esiClient.fetchWithMeta<ESIClone>(endpoint, {
+    characterId: owner.characterId,
+    schema: ESICloneSchema,
+  })
+}
+
+async function fetchImplantsWithMeta(owner: Owner): Promise<ESIResponseMeta<number[]>> {
+  return esiClient.fetchWithMeta<number[]>(`/characters/${owner.characterId}/implants/`, {
+    characterId: owner.characterId,
+    schema: z.array(z.number()),
+  })
+}
 
 async function openDB(): Promise<IDBDatabase> {
   if (db) return db
@@ -73,20 +94,15 @@ async function openDB(): Promise<IDBDatabase> {
   })
 }
 
-async function loadFromDB(): Promise<{
-  clonesByOwner: CharacterCloneData[]
-  lastUpdated: number | null
-}> {
+async function loadFromDB(): Promise<{ clonesByOwner: CharacterCloneData[] }> {
   const database = await openDB()
 
   return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_CLONES, STORE_META], 'readonly')
+    const tx = database.transaction([STORE_CLONES], 'readonly')
     const clonesStore = tx.objectStore(STORE_CLONES)
-    const metaStore = tx.objectStore(STORE_META)
 
     const clonesByOwner: CharacterCloneData[] = []
     const clonesRequest = clonesStore.getAll()
-    const metaRequest = metaStore.getAll()
 
     tx.oncomplete = () => {
       for (const stored of clonesRequest.result as StoredCharacterCloneData[]) {
@@ -96,34 +112,25 @@ async function loadFromDB(): Promise<{
           activeImplants: stored.activeImplants,
         })
       }
-
-      let lastUpdated: number | null = null
-      for (const meta of metaRequest.result) {
-        if (meta.key === 'lastUpdated') lastUpdated = meta.value
-      }
-
-      resolve({ clonesByOwner, lastUpdated })
+      resolve({ clonesByOwner })
     }
 
     tx.onerror = () => reject(tx.error)
   })
 }
 
-async function saveToDB(clonesByOwner: CharacterCloneData[], lastUpdated: number): Promise<void> {
+async function saveToDB(clonesByOwner: CharacterCloneData[]): Promise<void> {
   const database = await openDB()
 
   return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_CLONES, STORE_META], 'readwrite')
+    const tx = database.transaction([STORE_CLONES], 'readwrite')
     const clonesStore = tx.objectStore(STORE_CLONES)
-    const metaStore = tx.objectStore(STORE_META)
 
     clonesStore.clear()
     for (const { owner, clones, activeImplants } of clonesByOwner) {
       const ownerKey = `${owner.type}-${owner.id}`
       clonesStore.put({ ownerKey, owner, clones, activeImplants } as StoredCharacterCloneData)
     }
-
-    metaStore.put({ key: 'lastUpdated', value: lastUpdated })
 
     tx.oncomplete = () => resolve()
     tx.onerror = () => reject(tx.error)
@@ -144,7 +151,6 @@ async function clearDB(): Promise<void> {
 
 export const useClonesStore = create<ClonesStore>((set, get) => ({
   clonesByOwner: [],
-  lastUpdated: null,
   isUpdating: false,
   updateError: null,
   initialized: false,
@@ -153,8 +159,8 @@ export const useClonesStore = create<ClonesStore>((set, get) => ({
     if (get().initialized) return
 
     try {
-      const { clonesByOwner, lastUpdated } = await loadFromDB()
-      set({ clonesByOwner, lastUpdated, initialized: true })
+      const { clonesByOwner } = await loadFromDB()
+      set({ clonesByOwner, initialized: true })
       logger.info('Clones store initialized', {
         module: 'ClonesStore',
         owners: clonesByOwner.length,
@@ -168,51 +174,100 @@ export const useClonesStore = create<ClonesStore>((set, get) => ({
   },
 
   canUpdate: () => {
-    const { lastUpdated, isUpdating } = get()
+    const { isUpdating, clonesByOwner } = get()
     if (isUpdating) return false
-    if (!lastUpdated) return true
-    return Date.now() - lastUpdated >= UPDATE_COOLDOWN_MS
+
+    const expiryCacheStore = useExpiryCacheStore.getState()
+
+    for (const { owner } of clonesByOwner) {
+      const ownerKey = `${owner.type}-${owner.id}`
+      const endpoint = getClonesEndpoint(owner)
+      if (expiryCacheStore.isExpired(ownerKey, endpoint)) {
+        return true
+      }
+    }
+
+    const owners = Object.values(useAuthStore.getState().owners).filter((o) => o.type === 'character')
+    for (const owner of owners) {
+      if (!owner) continue
+      const ownerKey = `${owner.type}-${owner.id}`
+      const endpoint = getClonesEndpoint(owner)
+      if (expiryCacheStore.isExpired(ownerKey, endpoint)) {
+        return true
+      }
+    }
+
+    return false
   },
 
   getTimeUntilUpdate: () => {
-    const { lastUpdated } = get()
-    if (!lastUpdated) return 0
-    const elapsed = Date.now() - lastUpdated
-    const remaining = UPDATE_COOLDOWN_MS - elapsed
-    return remaining > 0 ? remaining : 0
+    const { clonesByOwner } = get()
+    const expiryCacheStore = useExpiryCacheStore.getState()
+
+    let minTime = Infinity
+    for (const { owner } of clonesByOwner) {
+      const ownerKey = `${owner.type}-${owner.id}`
+      const endpoint = getClonesEndpoint(owner)
+      const time = expiryCacheStore.getTimeUntilExpiry(ownerKey, endpoint)
+      if (time < minTime) minTime = time
+    }
+
+    return minTime === Infinity ? 0 : minTime
   },
 
   update: async (force = false) => {
     const state = get()
     if (state.isUpdating) return
 
-    if (!force && state.lastUpdated && Date.now() - state.lastUpdated < UPDATE_COOLDOWN_MS) {
-      const minutes = Math.ceil((UPDATE_COOLDOWN_MS - (Date.now() - state.lastUpdated)) / 60000)
-      set({ updateError: `Update available in ${minutes} minute${minutes === 1 ? '' : 's'}` })
+    const allOwners = Object.values(useAuthStore.getState().owners).filter(
+      (o) => o.type === 'character'
+    )
+    if (allOwners.length === 0) {
+      set({ updateError: 'No characters logged in' })
       return
     }
 
-    const owners = Object.values(useAuthStore.getState().owners).filter(
-      (o) => o.type === 'character'
-    )
-    if (owners.length === 0) {
-      set({ updateError: 'No characters logged in' })
+    const expiryCacheStore = useExpiryCacheStore.getState()
+
+    const ownersToUpdate = force
+      ? allOwners.filter((o): o is Owner => o !== undefined)
+      : allOwners.filter((owner): owner is Owner => {
+          if (!owner) return false
+          const ownerKey = `${owner.type}-${owner.id}`
+          const endpoint = getClonesEndpoint(owner)
+          return expiryCacheStore.isExpired(ownerKey, endpoint)
+        })
+
+    if (ownersToUpdate.length === 0) {
+      logger.debug('No owners need clones update', { module: 'ClonesStore' })
       return
     }
 
     set({ isUpdating: true, updateError: null })
 
     try {
-      const results: CharacterCloneData[] = []
+      const existingClones = new Map(
+        state.clonesByOwner.map((oc) => [`${oc.owner.type}-${oc.owner.id}`, oc])
+      )
 
-      for (const owner of owners) {
+      for (const owner of ownersToUpdate) {
+        const ownerKey = `${owner.type}-${owner.id}`
+        const endpoint = getClonesEndpoint(owner)
+
         try {
           logger.info('Fetching clones', { module: 'ClonesStore', owner: owner.name })
-          const [clones, activeImplants] = await Promise.all([
-            getCharacterClones(owner.characterId),
-            getCharacterImplants(owner.characterId),
+          const [clonesResult, implantsResult] = await Promise.all([
+            fetchClonesWithMeta(owner),
+            fetchImplantsWithMeta(owner),
           ])
-          results.push({ owner, clones, activeImplants })
+
+          existingClones.set(ownerKey, {
+            owner,
+            clones: clonesResult.data,
+            activeImplants: implantsResult.data,
+          })
+
+          useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, clonesResult.expiresAt, clonesResult.etag)
         } catch (err) {
           logger.error('Failed to fetch clones', err instanceof Error ? err : undefined, {
             module: 'ClonesStore',
@@ -221,19 +276,18 @@ export const useClonesStore = create<ClonesStore>((set, get) => ({
         }
       }
 
-      const lastUpdated = Date.now()
-      await saveToDB(results, lastUpdated)
+      const results = Array.from(existingClones.values())
+      await saveToDB(results)
 
       set({
         clonesByOwner: results,
-        lastUpdated,
         isUpdating: false,
         updateError: results.length === 0 ? 'Failed to fetch any clones' : null,
       })
 
       logger.info('Clones updated', {
         module: 'ClonesStore',
-        owners: results.length,
+        owners: ownersToUpdate.length,
       })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error'
@@ -248,24 +302,28 @@ export const useClonesStore = create<ClonesStore>((set, get) => ({
     if (owner.type !== 'character') return
 
     const state = get()
-    try {
-      logger.info('Fetching clones for new owner', { module: 'ClonesStore', owner: owner.name })
 
-      const [clones, activeImplants] = await Promise.all([
-        getCharacterClones(owner.characterId),
-        getCharacterImplants(owner.characterId),
+    try {
+      const ownerKey = `${owner.type}-${owner.id}`
+      const endpoint = getClonesEndpoint(owner)
+
+      logger.info('Fetching clones for owner', { module: 'ClonesStore', owner: owner.name })
+
+      const [clonesResult, implantsResult] = await Promise.all([
+        fetchClonesWithMeta(owner),
+        fetchImplantsWithMeta(owner),
       ])
 
-      const ownerKey = `${owner.type}-${owner.id}`
+      useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, clonesResult.expiresAt, clonesResult.etag)
+
       const updated = state.clonesByOwner.filter(
         (oc) => `${oc.owner.type}-${oc.owner.id}` !== ownerKey
       )
-      updated.push({ owner, clones, activeImplants })
+      updated.push({ owner, clones: clonesResult.data, activeImplants: implantsResult.data })
 
-      const lastUpdated = Date.now()
-      await saveToDB(updated, lastUpdated)
+      await saveToDB(updated)
 
-      set({ clonesByOwner: updated, lastUpdated })
+      set({ clonesByOwner: updated })
 
       logger.info('Clones updated for owner', {
         module: 'ClonesStore',
@@ -288,8 +346,10 @@ export const useClonesStore = create<ClonesStore>((set, get) => ({
 
     if (updated.length === state.clonesByOwner.length) return
 
-    await saveToDB(updated, state.lastUpdated ?? Date.now())
+    await saveToDB(updated)
     set({ clonesByOwner: updated })
+
+    useExpiryCacheStore.getState().clearForOwner(ownerKey)
 
     logger.info('Clones removed for owner', { module: 'ClonesStore', ownerKey })
   },
@@ -298,7 +358,6 @@ export const useClonesStore = create<ClonesStore>((set, get) => ({
     await clearDB()
     set({
       clonesByOwner: [],
-      lastUpdated: null,
       updateError: null,
     })
   },

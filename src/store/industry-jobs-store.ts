@@ -1,11 +1,12 @@
 import { create } from 'zustand'
 import { useAuthStore, type Owner } from './auth-store'
-import {
-  getCharacterIndustryJobs,
-  getCorporationIndustryJobs,
-  type ESIIndustryJob,
-} from '@/api/endpoints/industry'
+import { useExpiryCacheStore } from './expiry-cache-store'
+import { esiClient, type ESIResponseMeta } from '@/api/esi-client'
+import { ESIIndustryJobSchema } from '@/api/schemas'
 import { logger } from '@/lib/logger'
+import { z } from 'zod'
+
+export type ESIIndustryJob = z.infer<typeof ESIIndustryJobSchema>
 
 const DB_NAME = 'ecteveassets-industry-jobs'
 const DB_VERSION = 1
@@ -25,13 +26,10 @@ interface StoredOwnerJobs {
 
 interface IndustryJobsState {
   jobsByOwner: OwnerJobs[]
-  lastUpdated: number | null
   isUpdating: boolean
   updateError: string | null
   initialized: boolean
 }
-
-const UPDATE_COOLDOWN_MS = 5 * 60 * 1000
 
 interface IndustryJobsActions {
   init: () => Promise<void>
@@ -46,6 +44,27 @@ interface IndustryJobsActions {
 type IndustryJobsStore = IndustryJobsState & IndustryJobsActions
 
 let db: IDBDatabase | null = null
+
+function getJobsEndpoint(owner: Owner): string {
+  if (owner.type === 'corporation') {
+    return `/corporations/${owner.id}/industry/jobs/`
+  }
+  return `/characters/${owner.characterId}/industry/jobs/`
+}
+
+async function fetchOwnerJobsWithMeta(owner: Owner): Promise<ESIResponseMeta<ESIIndustryJob[]>> {
+  const endpoint = getJobsEndpoint(owner)
+  if (owner.type === 'corporation') {
+    return esiClient.fetchWithPaginationMeta<ESIIndustryJob>(endpoint, {
+      characterId: owner.characterId,
+      schema: ESIIndustryJobSchema,
+    })
+  }
+  return esiClient.fetchWithMeta<ESIIndustryJob[]>(endpoint, {
+    characterId: owner.characterId,
+    schema: z.array(ESIIndustryJobSchema),
+  })
+}
 
 async function openDB(): Promise<IDBDatabase> {
   if (db) return db
@@ -75,53 +94,39 @@ async function openDB(): Promise<IDBDatabase> {
   })
 }
 
-async function loadFromDB(): Promise<{
-  jobsByOwner: OwnerJobs[]
-  lastUpdated: number | null
-}> {
+async function loadFromDB(): Promise<{ jobsByOwner: OwnerJobs[] }> {
   const database = await openDB()
 
   return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_JOBS, STORE_META], 'readonly')
+    const tx = database.transaction([STORE_JOBS], 'readonly')
     const jobsStore = tx.objectStore(STORE_JOBS)
-    const metaStore = tx.objectStore(STORE_META)
 
     const jobsByOwner: OwnerJobs[] = []
     const jobsRequest = jobsStore.getAll()
-    const metaRequest = metaStore.getAll()
 
     tx.oncomplete = () => {
       for (const stored of jobsRequest.result as StoredOwnerJobs[]) {
         jobsByOwner.push({ owner: stored.owner, jobs: stored.jobs })
       }
-
-      let lastUpdated: number | null = null
-      for (const meta of metaRequest.result) {
-        if (meta.key === 'lastUpdated') lastUpdated = meta.value
-      }
-
-      resolve({ jobsByOwner, lastUpdated })
+      resolve({ jobsByOwner })
     }
 
     tx.onerror = () => reject(tx.error)
   })
 }
 
-async function saveToDB(jobsByOwner: OwnerJobs[], lastUpdated: number): Promise<void> {
+async function saveToDB(jobsByOwner: OwnerJobs[]): Promise<void> {
   const database = await openDB()
 
   return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_JOBS, STORE_META], 'readwrite')
+    const tx = database.transaction([STORE_JOBS], 'readwrite')
     const jobsStore = tx.objectStore(STORE_JOBS)
-    const metaStore = tx.objectStore(STORE_META)
 
     jobsStore.clear()
     for (const { owner, jobs } of jobsByOwner) {
       const ownerKey = `${owner.type}-${owner.id}`
       jobsStore.put({ ownerKey, owner, jobs } as StoredOwnerJobs)
     }
-
-    metaStore.put({ key: 'lastUpdated', value: lastUpdated })
 
     tx.oncomplete = () => resolve()
     tx.onerror = () => reject(tx.error)
@@ -142,7 +147,6 @@ async function clearDB(): Promise<void> {
 
 export const useIndustryJobsStore = create<IndustryJobsStore>((set, get) => ({
   jobsByOwner: [],
-  lastUpdated: null,
   isUpdating: false,
   updateError: null,
   initialized: false,
@@ -151,8 +155,8 @@ export const useIndustryJobsStore = create<IndustryJobsStore>((set, get) => ({
     if (get().initialized) return
 
     try {
-      const { jobsByOwner, lastUpdated } = await loadFromDB()
-      set({ jobsByOwner, lastUpdated, initialized: true })
+      const { jobsByOwner } = await loadFromDB()
+      set({ jobsByOwner, initialized: true })
       logger.info('Industry jobs store initialized', {
         module: 'IndustryJobsStore',
         owners: jobsByOwner.length,
@@ -167,65 +171,91 @@ export const useIndustryJobsStore = create<IndustryJobsStore>((set, get) => ({
   },
 
   canUpdate: () => {
-    const { lastUpdated, isUpdating } = get()
+    const { isUpdating, jobsByOwner } = get()
     if (isUpdating) return false
-    if (!lastUpdated) return true
-    return Date.now() - lastUpdated >= UPDATE_COOLDOWN_MS
+
+    const expiryCacheStore = useExpiryCacheStore.getState()
+
+    for (const { owner } of jobsByOwner) {
+      const ownerKey = `${owner.type}-${owner.id}`
+      const endpoint = getJobsEndpoint(owner)
+      if (expiryCacheStore.isExpired(ownerKey, endpoint)) {
+        return true
+      }
+    }
+
+    const owners = Object.values(useAuthStore.getState().owners)
+    for (const owner of owners) {
+      if (!owner) continue
+      const ownerKey = `${owner.type}-${owner.id}`
+      const endpoint = getJobsEndpoint(owner)
+      if (expiryCacheStore.isExpired(ownerKey, endpoint)) {
+        return true
+      }
+    }
+
+    return false
   },
 
   getTimeUntilUpdate: () => {
-    const { lastUpdated } = get()
-    if (!lastUpdated) return 0
-    const elapsed = Date.now() - lastUpdated
-    const remaining = UPDATE_COOLDOWN_MS - elapsed
-    return remaining > 0 ? remaining : 0
+    const { jobsByOwner } = get()
+    const expiryCacheStore = useExpiryCacheStore.getState()
+
+    let minTime = Infinity
+    for (const { owner } of jobsByOwner) {
+      const ownerKey = `${owner.type}-${owner.id}`
+      const endpoint = getJobsEndpoint(owner)
+      const time = expiryCacheStore.getTimeUntilExpiry(ownerKey, endpoint)
+      if (time < minTime) minTime = time
+    }
+
+    return minTime === Infinity ? 0 : minTime
   },
 
   update: async (force = false) => {
     const state = get()
     if (state.isUpdating) return
 
-    if (!force && state.lastUpdated && Date.now() - state.lastUpdated < UPDATE_COOLDOWN_MS) {
-      const minutes = Math.ceil((UPDATE_COOLDOWN_MS - (Date.now() - state.lastUpdated)) / 60000)
-      set({ updateError: `Update available in ${minutes} minute${minutes === 1 ? '' : 's'}` })
+    const owners = Object.values(useAuthStore.getState().owners)
+    if (owners.length === 0) {
+      set({ updateError: 'No owners logged in' })
       return
     }
 
-    const owners = Object.values(useAuthStore.getState().owners)
-    if (owners.length === 0) {
-      set({ updateError: 'No characters logged in' })
+    const expiryCacheStore = useExpiryCacheStore.getState()
+
+    const ownersToUpdate = force
+      ? owners.filter((o): o is Owner => o !== undefined)
+      : owners.filter((owner): owner is Owner => {
+          if (!owner) return false
+          const ownerKey = `${owner.type}-${owner.id}`
+          const endpoint = getJobsEndpoint(owner)
+          return expiryCacheStore.isExpired(ownerKey, endpoint)
+        })
+
+    if (ownersToUpdate.length === 0) {
+      logger.debug('No owners need industry jobs update', { module: 'IndustryJobsStore' })
       return
     }
 
     set({ isUpdating: true, updateError: null })
 
     try {
-      const results: OwnerJobs[] = []
+      const existingJobs = new Map(
+        state.jobsByOwner.map((oj) => [`${oj.owner.type}-${oj.owner.id}`, oj])
+      )
 
-      for (const owner of owners) {
+      for (const owner of ownersToUpdate) {
+        const ownerKey = `${owner.type}-${owner.id}`
+        const endpoint = getJobsEndpoint(owner)
+
         try {
-          logger.info('Fetching industry jobs', {
-            module: 'IndustryJobsStore',
-            owner: owner.name,
-            type: owner.type,
-          })
+          logger.info('Fetching industry jobs', { module: 'IndustryJobsStore', owner: owner.name })
+          const { data: jobs, expiresAt, etag } = await fetchOwnerJobsWithMeta(owner)
 
-          let jobs: ESIIndustryJob[] = []
+          existingJobs.set(ownerKey, { owner, jobs })
 
-          if (owner.type === 'corporation') {
-            jobs = await getCorporationIndustryJobs(owner.characterId, owner.id)
-          } else {
-            jobs = await getCharacterIndustryJobs(owner.characterId)
-          }
-
-          logger.debug('Industry jobs fetched', {
-            module: 'IndustryJobsStore',
-            owner: owner.name,
-            type: owner.type,
-            count: jobs.length,
-          })
-
-          results.push({ owner, jobs })
+          useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag)
         } catch (err) {
           logger.error('Failed to fetch industry jobs', err instanceof Error ? err : undefined, {
             module: 'IndustryJobsStore',
@@ -234,19 +264,18 @@ export const useIndustryJobsStore = create<IndustryJobsStore>((set, get) => ({
         }
       }
 
-      const lastUpdated = Date.now()
-      await saveToDB(results, lastUpdated)
+      const results = Array.from(existingJobs.values())
+      await saveToDB(results)
 
       set({
         jobsByOwner: results,
-        lastUpdated,
         isUpdating: false,
         updateError: results.length === 0 ? 'Failed to fetch any jobs' : null,
       })
 
       logger.info('Industry jobs updated', {
         module: 'IndustryJobsStore',
-        owners: results.length,
+        owners: ownersToUpdate.length,
         totalJobs: results.reduce((sum, r) => sum + r.jobs.length, 0),
       })
     } catch (err) {
@@ -260,26 +289,24 @@ export const useIndustryJobsStore = create<IndustryJobsStore>((set, get) => ({
 
   updateForOwner: async (owner: Owner) => {
     const state = get()
+
     try {
-      logger.info('Fetching industry jobs for new owner', { module: 'IndustryJobsStore', owner: owner.name })
-
-      let jobs: ESIIndustryJob[]
-      if (owner.type === 'character') {
-        jobs = await getCharacterIndustryJobs(owner.characterId)
-      } else {
-        jobs = await getCorporationIndustryJobs(owner.characterId, owner.id)
-      }
-
       const ownerKey = `${owner.type}-${owner.id}`
+      const endpoint = getJobsEndpoint(owner)
+
+      logger.info('Fetching industry jobs for owner', { module: 'IndustryJobsStore', owner: owner.name })
+      const { data: jobs, expiresAt, etag } = await fetchOwnerJobsWithMeta(owner)
+
+      useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag)
+
       const updated = state.jobsByOwner.filter(
         (oj) => `${oj.owner.type}-${oj.owner.id}` !== ownerKey
       )
       updated.push({ owner, jobs })
 
-      const lastUpdated = Date.now()
-      await saveToDB(updated, lastUpdated)
+      await saveToDB(updated)
 
-      set({ jobsByOwner: updated, lastUpdated })
+      set({ jobsByOwner: updated })
 
       logger.info('Industry jobs updated for owner', {
         module: 'IndustryJobsStore',
@@ -303,8 +330,10 @@ export const useIndustryJobsStore = create<IndustryJobsStore>((set, get) => ({
 
     if (updated.length === state.jobsByOwner.length) return
 
-    await saveToDB(updated, state.lastUpdated ?? Date.now())
+    await saveToDB(updated)
     set({ jobsByOwner: updated })
+
+    useExpiryCacheStore.getState().clearForOwner(ownerKey)
 
     logger.info('Industry jobs removed for owner', { module: 'IndustryJobsStore', ownerKey })
   },
@@ -313,7 +342,6 @@ export const useIndustryJobsStore = create<IndustryJobsStore>((set, get) => ({
     await clearDB()
     set({
       jobsByOwner: [],
-      lastUpdated: null,
       updateError: null,
     })
   },

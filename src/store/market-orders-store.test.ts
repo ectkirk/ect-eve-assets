@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import 'fake-indexeddb/auto'
 import { useMarketOrdersStore } from './market-orders-store'
+import { useExpiryCacheStore } from './expiry-cache-store'
 import { createMockOwner, createMockAuthState } from '@/test/helpers'
 
 vi.mock('./auth-store', () => ({
@@ -9,9 +10,10 @@ vi.mock('./auth-store', () => ({
   },
 }))
 
-vi.mock('@/api/endpoints/market', () => ({
-  getCharacterOrders: vi.fn(),
-  getCorporationOrders: vi.fn(),
+vi.mock('@/api/esi-client', () => ({
+  esiClient: {
+    fetchWithPaginationMeta: vi.fn(),
+  },
 }))
 
 vi.mock('@/lib/logger', () => ({
@@ -23,10 +25,13 @@ describe('market-orders-store', () => {
     vi.clearAllMocks()
     useMarketOrdersStore.setState({
       ordersByOwner: [],
-      lastUpdated: null,
       isUpdating: false,
       updateError: null,
       initialized: false,
+    })
+    useExpiryCacheStore.setState({
+      endpoints: new Map(),
+      initialized: true,
     })
   })
 
@@ -34,16 +39,21 @@ describe('market-orders-store', () => {
     it('has correct initial values', () => {
       const state = useMarketOrdersStore.getState()
       expect(state.ordersByOwner).toEqual([])
-      expect(state.lastUpdated).toBeNull()
       expect(state.isUpdating).toBe(false)
       expect(state.updateError).toBeNull()
       expect(state.initialized).toBe(false)
     })
   })
 
-  describe('canUpdate', () => {
-    it('returns true when never updated', () => {
-      useMarketOrdersStore.setState({ lastUpdated: null, isUpdating: false })
+  describe('canUpdate (expiry-based)', () => {
+    it('returns true when no expiry data exists', async () => {
+      const { useAuthStore } = await import('./auth-store')
+      const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
+      vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
+
+      useMarketOrdersStore.setState({ isUpdating: false })
+      useExpiryCacheStore.setState({ endpoints: new Map() })
+
       expect(useMarketOrdersStore.getState().canUpdate()).toBe(true)
     })
 
@@ -52,29 +62,70 @@ describe('market-orders-store', () => {
       expect(useMarketOrdersStore.getState().canUpdate()).toBe(false)
     })
 
-    it('returns false when updated recently', () => {
-      useMarketOrdersStore.setState({ lastUpdated: Date.now(), isUpdating: false })
+    it('returns false when data is not expired', async () => {
+      const { useAuthStore } = await import('./auth-store')
+      const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
+      vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
+
+      useMarketOrdersStore.setState({
+        isUpdating: false,
+        ordersByOwner: [{ owner: mockOwner, orders: [] }],
+      })
+
+      useExpiryCacheStore.setState({
+        endpoints: new Map([
+          ['character-12345:/characters/12345/orders/', { expiresAt: Date.now() + 60000, etag: null }],
+        ]),
+        initialized: true,
+      })
+
       expect(useMarketOrdersStore.getState().canUpdate()).toBe(false)
     })
 
-    it('returns true when cooldown has passed (5 min)', () => {
-      useMarketOrdersStore.setState({ lastUpdated: Date.now() - 6 * 60 * 1000, isUpdating: false })
+    it('returns true when data is expired', async () => {
+      const { useAuthStore } = await import('./auth-store')
+      const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
+      vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
+
+      useMarketOrdersStore.setState({
+        isUpdating: false,
+        ordersByOwner: [{ owner: mockOwner, orders: [] }],
+      })
+
+      useExpiryCacheStore.setState({
+        endpoints: new Map([
+          ['character-12345:/characters/12345/orders/', { expiresAt: Date.now() - 1000, etag: null }],
+        ]),
+        initialized: true,
+      })
+
       expect(useMarketOrdersStore.getState().canUpdate()).toBe(true)
     })
   })
 
   describe('getTimeUntilUpdate', () => {
-    it('returns 0 when never updated', () => {
-      useMarketOrdersStore.setState({ lastUpdated: null })
+    it('returns 0 when no owners', () => {
+      useMarketOrdersStore.setState({ ordersByOwner: [] })
       expect(useMarketOrdersStore.getState().getTimeUntilUpdate()).toBe(0)
     })
 
-    it('returns remaining time when in cooldown', () => {
-      const twoMinutesAgo = Date.now() - 2 * 60 * 1000
-      useMarketOrdersStore.setState({ lastUpdated: twoMinutesAgo })
+    it('returns remaining time until expiry', async () => {
+      const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
+      useMarketOrdersStore.setState({
+        ordersByOwner: [{ owner: mockOwner, orders: [] }],
+      })
+
+      const futureExpiry = Date.now() + 30000
+      useExpiryCacheStore.setState({
+        endpoints: new Map([
+          ['character-12345:/characters/12345/orders/', { expiresAt: futureExpiry, etag: null }],
+        ]),
+        initialized: true,
+      })
+
       const remaining = useMarketOrdersStore.getState().getTimeUntilUpdate()
-      expect(remaining).toBeGreaterThan(2 * 60 * 1000)
-      expect(remaining).toBeLessThanOrEqual(3 * 60 * 1000)
+      expect(remaining).toBeGreaterThan(29000)
+      expect(remaining).toBeLessThanOrEqual(30000)
     })
   })
 
@@ -88,80 +139,112 @@ describe('market-orders-store', () => {
       expect(useMarketOrdersStore.getState().updateError).toBe('No owners logged in')
     })
 
-    it('fetches for both character and corporation owners', async () => {
+    it('fetches orders when data is expired', async () => {
       const { useAuthStore } = await import('./auth-store')
-      const { getCharacterOrders, getCorporationOrders } = await import('@/api/endpoints/market')
-
-      const charOwner = createMockOwner({ id: 12345, name: 'Test Character', type: 'character' })
-      const corpOwner = createMockOwner({ id: 98000001, characterId: 12345, name: 'Test Corp', type: 'corporation' })
-      vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({
-        'character-12345': charOwner,
-        'corporation-98000001': corpOwner,
-      }))
-
-      vi.mocked(getCharacterOrders).mockResolvedValue([])
-      vi.mocked(getCorporationOrders).mockResolvedValue([])
-
-      await useMarketOrdersStore.getState().update(true)
-
-      expect(getCharacterOrders).toHaveBeenCalledTimes(1)
-      expect(getCharacterOrders).toHaveBeenCalledWith(12345)
-      expect(getCorporationOrders).toHaveBeenCalledTimes(1)
-      expect(getCorporationOrders).toHaveBeenCalledWith(12345, 98000001)
-    })
-
-    it('fetches orders successfully', async () => {
-      const { useAuthStore } = await import('./auth-store')
-      const { getCharacterOrders } = await import('@/api/endpoints/market')
+      const { esiClient } = await import('@/api/esi-client')
 
       const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
       vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
 
-      vi.mocked(getCharacterOrders).mockResolvedValue([
-        {
-          order_id: 1,
-          type_id: 34,
-          location_id: 60003760,
-          price: 5,
-          volume_remain: 100,
-          volume_total: 100,
-          is_buy_order: false,
-          duration: 90,
-          issued: '2024-01-01T00:00:00Z',
-          range: 'station',
-          region_id: 10000002,
-          min_volume: 1,
-          is_corporation: false,
-        },
-      ])
+      const futureExpiry = Date.now() + 300000
+      vi.mocked(esiClient.fetchWithPaginationMeta).mockResolvedValue({
+        data: [
+          {
+            order_id: 1,
+            type_id: 34,
+            location_id: 60003760,
+            price: 5,
+            volume_remain: 100,
+            volume_total: 100,
+            is_buy_order: false,
+            duration: 90,
+            issued: '2024-01-01T00:00:00Z',
+            range: 'station',
+            region_id: 10000002,
+            min_volume: 1,
+            is_corporation: false,
+          },
+        ],
+        expiresAt: futureExpiry,
+        etag: '"abc123"',
+        notModified: false,
+      })
+
+      useExpiryCacheStore.setState({
+        endpoints: new Map([
+          ['character-12345:/characters/12345/orders/', { expiresAt: Date.now() - 1000, etag: null }],
+        ]),
+        initialized: true,
+      })
+
+      await useMarketOrdersStore.getState().update(false)
+
+      expect(esiClient.fetchWithPaginationMeta).toHaveBeenCalled()
+      expect(useMarketOrdersStore.getState().ordersByOwner).toHaveLength(1)
+      expect(useMarketOrdersStore.getState().ordersByOwner[0]?.orders).toHaveLength(1)
+
+      const expiry = useExpiryCacheStore.getState().endpoints.get('character-12345:/characters/12345/orders/')
+      expect(expiry?.expiresAt).toBe(futureExpiry)
+    })
+
+    it('skips owners whose data is not expired when not forced', async () => {
+      const { useAuthStore } = await import('./auth-store')
+      const { esiClient } = await import('@/api/esi-client')
+
+      const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
+      vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
+
+      useExpiryCacheStore.setState({
+        endpoints: new Map([
+          ['character-12345:/characters/12345/orders/', { expiresAt: Date.now() + 60000, etag: null }],
+        ]),
+        initialized: true,
+      })
+
+      await useMarketOrdersStore.getState().update(false)
+
+      expect(esiClient.fetchWithPaginationMeta).not.toHaveBeenCalled()
+    })
+
+    it('force=true bypasses expiry check', async () => {
+      const { useAuthStore } = await import('./auth-store')
+      const { esiClient } = await import('@/api/esi-client')
+
+      const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
+      vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
+
+      vi.mocked(esiClient.fetchWithPaginationMeta).mockResolvedValue({
+        data: [],
+        expiresAt: Date.now() + 300000,
+        etag: null,
+        notModified: false,
+      })
+
+      useExpiryCacheStore.setState({
+        endpoints: new Map([
+          ['character-12345:/characters/12345/orders/', { expiresAt: Date.now() + 60000, etag: null }],
+        ]),
+        initialized: true,
+      })
 
       await useMarketOrdersStore.getState().update(true)
 
-      expect(useMarketOrdersStore.getState().ordersByOwner).toHaveLength(1)
-      expect(useMarketOrdersStore.getState().ordersByOwner[0]?.orders).toHaveLength(1)
+      expect(esiClient.fetchWithPaginationMeta).toHaveBeenCalled()
     })
 
     it('handles fetch errors gracefully', async () => {
       const { useAuthStore } = await import('./auth-store')
-      const { getCharacterOrders } = await import('@/api/endpoints/market')
+      const { esiClient } = await import('@/api/esi-client')
 
       const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
       vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
 
-      vi.mocked(getCharacterOrders).mockRejectedValue(new Error('API Error'))
+      vi.mocked(esiClient.fetchWithPaginationMeta).mockRejectedValue(new Error('API Error'))
 
       await useMarketOrdersStore.getState().update(true)
 
       expect(useMarketOrdersStore.getState().ordersByOwner).toHaveLength(0)
       expect(useMarketOrdersStore.getState().isUpdating).toBe(false)
-    })
-
-    it('shows cooldown message when not forced', async () => {
-      useMarketOrdersStore.setState({ lastUpdated: Date.now() })
-
-      await useMarketOrdersStore.getState().update(false)
-
-      expect(useMarketOrdersStore.getState().updateError).toMatch(/Update available in/)
     })
   })
 
@@ -169,7 +252,6 @@ describe('market-orders-store', () => {
     it('resets store state', async () => {
       useMarketOrdersStore.setState({
         ordersByOwner: [{ owner: {} as never, orders: [] }],
-        lastUpdated: Date.now(),
         updateError: 'some error',
       })
 
@@ -177,7 +259,6 @@ describe('market-orders-store', () => {
 
       const state = useMarketOrdersStore.getState()
       expect(state.ordersByOwner).toHaveLength(0)
-      expect(state.lastUpdated).toBeNull()
       expect(state.updateError).toBeNull()
     })
   })

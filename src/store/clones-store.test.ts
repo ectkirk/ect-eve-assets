@@ -9,9 +9,21 @@ vi.mock('./auth-store', () => ({
   },
 }))
 
-vi.mock('@/api/endpoints/clones', () => ({
-  getCharacterClones: vi.fn(),
-  getCharacterImplants: vi.fn(),
+vi.mock('./expiry-cache-store', () => ({
+  useExpiryCacheStore: {
+    getState: vi.fn(() => ({
+      isExpired: () => true,
+      getTimeUntilExpiry: () => 0,
+      setExpiry: vi.fn(),
+      clearForOwner: vi.fn(),
+    })),
+  },
+}))
+
+vi.mock('@/api/esi-client', () => ({
+  esiClient: {
+    fetchWithMeta: vi.fn(),
+  },
 }))
 
 vi.mock('@/lib/logger', () => ({
@@ -23,7 +35,6 @@ describe('clones-store', () => {
     vi.clearAllMocks()
     useClonesStore.setState({
       clonesByOwner: [],
-      lastUpdated: null,
       isUpdating: false,
       updateError: null,
       initialized: false,
@@ -34,7 +45,6 @@ describe('clones-store', () => {
     it('has correct initial values', () => {
       const state = useClonesStore.getState()
       expect(state.clonesByOwner).toEqual([])
-      expect(state.lastUpdated).toBeNull()
       expect(state.isUpdating).toBe(false)
       expect(state.updateError).toBeNull()
       expect(state.initialized).toBe(false)
@@ -42,8 +52,12 @@ describe('clones-store', () => {
   })
 
   describe('canUpdate', () => {
-    it('returns true when never updated', () => {
-      useClonesStore.setState({ lastUpdated: null, isUpdating: false })
+    it('returns true when there are character owners and expiry cache says expired', async () => {
+      const { useAuthStore } = await import('./auth-store')
+      const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
+      vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
+
+      useClonesStore.setState({ clonesByOwner: [], isUpdating: false })
       expect(useClonesStore.getState().canUpdate()).toBe(true)
     })
 
@@ -52,15 +66,11 @@ describe('clones-store', () => {
       expect(useClonesStore.getState().canUpdate()).toBe(false)
     })
 
-    it('returns false when updated recently', () => {
-      useClonesStore.setState({ lastUpdated: Date.now(), isUpdating: false })
-      expect(useClonesStore.getState().canUpdate()).toBe(false)
-    })
   })
 
   describe('getTimeUntilUpdate', () => {
-    it('returns 0 when never updated', () => {
-      useClonesStore.setState({ lastUpdated: null })
+    it('returns 0 when no data cached', () => {
+      useClonesStore.setState({ clonesByOwner: [] })
       expect(useClonesStore.getState().getTimeUntilUpdate()).toBe(0)
     })
   })
@@ -77,7 +87,7 @@ describe('clones-store', () => {
 
     it('only fetches for character owners', async () => {
       const { useAuthStore } = await import('./auth-store')
-      const { getCharacterClones, getCharacterImplants } = await import('@/api/endpoints/clones')
+      const { esiClient } = await import('@/api/esi-client')
 
       const charOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
       const corpOwner = createMockOwner({ id: 98000001, characterId: 12345, name: 'Corp', type: 'corporation' })
@@ -86,32 +96,41 @@ describe('clones-store', () => {
         'corporation-98000001': corpOwner,
       }))
 
-      vi.mocked(getCharacterClones).mockResolvedValue({
-        jump_clones: [],
-        home_location: { location_id: 60003760, location_type: 'station' },
+      vi.mocked(esiClient.fetchWithMeta).mockResolvedValue({
+        data: { jump_clones: [], home_location: { location_id: 60003760, location_type: 'station' } },
+        expiresAt: Date.now() + 300000,
+        etag: 'test-etag',
+        notModified: false,
       })
-      vi.mocked(getCharacterImplants).mockResolvedValue([])
 
       await useClonesStore.getState().update(true)
 
-      expect(getCharacterClones).toHaveBeenCalledTimes(1)
-      expect(getCharacterImplants).toHaveBeenCalledTimes(1)
+      expect(esiClient.fetchWithMeta).toHaveBeenCalledTimes(2)
     })
 
     it('fetches clones and implants together', async () => {
       const { useAuthStore } = await import('./auth-store')
-      const { getCharacterClones, getCharacterImplants } = await import('@/api/endpoints/clones')
+      const { esiClient } = await import('@/api/esi-client')
 
       const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
       vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
 
-      vi.mocked(getCharacterClones).mockResolvedValue({
-        jump_clones: [
-          { jump_clone_id: 1, location_id: 60003760, location_type: 'station', implants: [22118] },
-        ],
-        home_location: { location_id: 60003760, location_type: 'station' },
-      })
-      vi.mocked(getCharacterImplants).mockResolvedValue([22118, 22119])
+      vi.mocked(esiClient.fetchWithMeta)
+        .mockResolvedValueOnce({
+          data: {
+            jump_clones: [{ jump_clone_id: 1, location_id: 60003760, location_type: 'station', implants: [22118] }],
+            home_location: { location_id: 60003760, location_type: 'station' },
+          },
+          expiresAt: Date.now() + 300000,
+          etag: 'test-etag',
+          notModified: false,
+        })
+        .mockResolvedValueOnce({
+          data: [22118, 22119],
+          expiresAt: Date.now() + 300000,
+          etag: 'test-etag-2',
+          notModified: false,
+        })
 
       await useClonesStore.getState().update(true)
 
@@ -121,12 +140,12 @@ describe('clones-store', () => {
 
     it('handles fetch errors gracefully', async () => {
       const { useAuthStore } = await import('./auth-store')
-      const { getCharacterClones } = await import('@/api/endpoints/clones')
+      const { esiClient } = await import('@/api/esi-client')
 
       const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
       vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
 
-      vi.mocked(getCharacterClones).mockRejectedValue(new Error('API Error'))
+      vi.mocked(esiClient.fetchWithMeta).mockRejectedValue(new Error('API Error'))
 
       await useClonesStore.getState().update(true)
 
@@ -139,7 +158,6 @@ describe('clones-store', () => {
     it('resets store state', async () => {
       useClonesStore.setState({
         clonesByOwner: [{ owner: {} as never, clones: {} as never, activeImplants: [] }],
-        lastUpdated: Date.now(),
         updateError: 'error',
       })
 
@@ -147,7 +165,6 @@ describe('clones-store', () => {
 
       const state = useClonesStore.getState()
       expect(state.clonesByOwner).toHaveLength(0)
-      expect(state.lastUpdated).toBeNull()
       expect(state.updateError).toBeNull()
     })
   })

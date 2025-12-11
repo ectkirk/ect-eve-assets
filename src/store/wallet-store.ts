@@ -1,11 +1,12 @@
 import { create } from 'zustand'
 import { useAuthStore, type Owner } from './auth-store'
-import {
-  getCharacterWallet,
-  getCorporationWallets,
-  type ESICorporationWalletDivision,
-} from '@/api/endpoints/wallet'
+import { useExpiryCacheStore } from './expiry-cache-store'
+import { esiClient, type ESIResponseMeta } from '@/api/esi-client'
+import { ESICorporationWalletDivisionSchema } from '@/api/schemas'
 import { logger } from '@/lib/logger'
+import { z } from 'zod'
+
+export type ESICorporationWalletDivision = z.infer<typeof ESICorporationWalletDivisionSchema>
 
 const DB_NAME = 'ecteveassets-wallet'
 const DB_VERSION = 1
@@ -37,13 +38,10 @@ interface StoredOwnerWallet {
 
 interface WalletState {
   walletsByOwner: OwnerWallet[]
-  lastUpdated: number | null
   isUpdating: boolean
   updateError: string | null
   initialized: boolean
 }
-
-const UPDATE_COOLDOWN_MS = 5 * 60 * 1000
 
 interface WalletActions {
   init: () => Promise<void>
@@ -59,6 +57,38 @@ interface WalletActions {
 type WalletStore = WalletState & WalletActions
 
 let db: IDBDatabase | null = null
+
+function getWalletEndpoint(owner: Owner): string {
+  if (owner.type === 'corporation') {
+    return `/corporations/${owner.id}/wallets/`
+  }
+  return `/characters/${owner.characterId}/wallet/`
+}
+
+async function fetchOwnerWalletWithMeta(owner: Owner): Promise<ESIResponseMeta<CharacterWallet | CorporationWallet>> {
+  if (owner.type === 'corporation') {
+    const result = await esiClient.fetchWithMeta<ESICorporationWalletDivision[]>(
+      `/corporations/${owner.id}/wallets/`,
+      { characterId: owner.characterId, schema: z.array(ESICorporationWalletDivisionSchema) }
+    )
+    return {
+      data: { owner, divisions: result.data } as CorporationWallet,
+      expiresAt: result.expiresAt,
+      etag: result.etag,
+      notModified: result.notModified,
+    }
+  }
+  const result = await esiClient.fetchWithMeta<number>(
+    `/characters/${owner.characterId}/wallet/`,
+    { characterId: owner.characterId, schema: z.number() }
+  )
+  return {
+    data: { owner, balance: result.data } as CharacterWallet,
+    expiresAt: result.expiresAt,
+    etag: result.etag,
+    notModified: result.notModified,
+  }
+}
 
 async function openDB(): Promise<IDBDatabase> {
   if (db) return db
@@ -88,20 +118,15 @@ async function openDB(): Promise<IDBDatabase> {
   })
 }
 
-async function loadFromDB(): Promise<{
-  walletsByOwner: OwnerWallet[]
-  lastUpdated: number | null
-}> {
+async function loadFromDB(): Promise<{ walletsByOwner: OwnerWallet[] }> {
   const database = await openDB()
 
   return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_WALLET, STORE_META], 'readonly')
+    const tx = database.transaction([STORE_WALLET], 'readonly')
     const walletStore = tx.objectStore(STORE_WALLET)
-    const metaStore = tx.objectStore(STORE_META)
 
     const walletsByOwner: OwnerWallet[] = []
     const walletRequest = walletStore.getAll()
-    const metaRequest = metaStore.getAll()
 
     tx.oncomplete = () => {
       for (const stored of walletRequest.result as StoredOwnerWallet[]) {
@@ -111,26 +136,19 @@ async function loadFromDB(): Promise<{
           walletsByOwner.push({ owner: stored.owner, balance: stored.balance ?? 0 })
         }
       }
-
-      let lastUpdated: number | null = null
-      for (const meta of metaRequest.result) {
-        if (meta.key === 'lastUpdated') lastUpdated = meta.value
-      }
-
-      resolve({ walletsByOwner, lastUpdated })
+      resolve({ walletsByOwner })
     }
 
     tx.onerror = () => reject(tx.error)
   })
 }
 
-async function saveToDB(walletsByOwner: OwnerWallet[], lastUpdated: number): Promise<void> {
+async function saveToDB(walletsByOwner: OwnerWallet[]): Promise<void> {
   const database = await openDB()
 
   return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_WALLET, STORE_META], 'readwrite')
+    const tx = database.transaction([STORE_WALLET], 'readwrite')
     const walletStore = tx.objectStore(STORE_WALLET)
-    const metaStore = tx.objectStore(STORE_META)
 
     walletStore.clear()
     for (const wallet of walletsByOwner) {
@@ -141,8 +159,6 @@ async function saveToDB(walletsByOwner: OwnerWallet[], lastUpdated: number): Pro
         walletStore.put({ ownerKey, owner: wallet.owner, balance: wallet.balance })
       }
     }
-
-    metaStore.put({ key: 'lastUpdated', value: lastUpdated })
 
     tx.oncomplete = () => resolve()
     tx.onerror = () => reject(tx.error)
@@ -163,7 +179,6 @@ async function clearDB(): Promise<void> {
 
 export const useWalletStore = create<WalletStore>((set, get) => ({
   walletsByOwner: [],
-  lastUpdated: null,
   isUpdating: false,
   updateError: null,
   initialized: false,
@@ -172,8 +187,8 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
     if (get().initialized) return
 
     try {
-      const { walletsByOwner, lastUpdated } = await loadFromDB()
-      set({ walletsByOwner, lastUpdated, initialized: true })
+      const { walletsByOwner } = await loadFromDB()
+      set({ walletsByOwner, initialized: true })
       logger.info('Wallet store initialized', {
         module: 'WalletStore',
         owners: walletsByOwner.length,
@@ -187,18 +202,45 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
   },
 
   canUpdate: () => {
-    const { lastUpdated, isUpdating } = get()
+    const { isUpdating, walletsByOwner } = get()
     if (isUpdating) return false
-    if (!lastUpdated) return true
-    return Date.now() - lastUpdated >= UPDATE_COOLDOWN_MS
+
+    const expiryCacheStore = useExpiryCacheStore.getState()
+
+    for (const { owner } of walletsByOwner) {
+      const ownerKey = `${owner.type}-${owner.id}`
+      const endpoint = getWalletEndpoint(owner)
+      if (expiryCacheStore.isExpired(ownerKey, endpoint)) {
+        return true
+      }
+    }
+
+    const owners = Object.values(useAuthStore.getState().owners)
+    for (const owner of owners) {
+      if (!owner) continue
+      const ownerKey = `${owner.type}-${owner.id}`
+      const endpoint = getWalletEndpoint(owner)
+      if (expiryCacheStore.isExpired(ownerKey, endpoint)) {
+        return true
+      }
+    }
+
+    return false
   },
 
   getTimeUntilUpdate: () => {
-    const { lastUpdated } = get()
-    if (!lastUpdated) return 0
-    const elapsed = Date.now() - lastUpdated
-    const remaining = UPDATE_COOLDOWN_MS - elapsed
-    return remaining > 0 ? remaining : 0
+    const { walletsByOwner } = get()
+    const expiryCacheStore = useExpiryCacheStore.getState()
+
+    let minTime = Infinity
+    for (const { owner } of walletsByOwner) {
+      const ownerKey = `${owner.type}-${owner.id}`
+      const endpoint = getWalletEndpoint(owner)
+      const time = expiryCacheStore.getTimeUntilExpiry(ownerKey, endpoint)
+      if (time < minTime) minTime = time
+    }
+
+    return minTime === Infinity ? 0 : minTime
   },
 
   getTotalBalance: () => {
@@ -220,34 +262,46 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
     const state = get()
     if (state.isUpdating) return
 
-    if (!force && state.lastUpdated && Date.now() - state.lastUpdated < UPDATE_COOLDOWN_MS) {
-      const minutes = Math.ceil((UPDATE_COOLDOWN_MS - (Date.now() - state.lastUpdated)) / 60000)
-      set({ updateError: `Update available in ${minutes} minute${minutes === 1 ? '' : 's'}` })
+    const owners = Object.values(useAuthStore.getState().owners)
+    if (owners.length === 0) {
+      set({ updateError: 'No owners logged in' })
       return
     }
 
-    const owners = Object.values(useAuthStore.getState().owners)
-    if (owners.length === 0) {
-      set({ updateError: 'No characters logged in' })
+    const expiryCacheStore = useExpiryCacheStore.getState()
+
+    const ownersToUpdate = force
+      ? owners.filter((o): o is Owner => o !== undefined)
+      : owners.filter((owner): owner is Owner => {
+          if (!owner) return false
+          const ownerKey = `${owner.type}-${owner.id}`
+          const endpoint = getWalletEndpoint(owner)
+          return expiryCacheStore.isExpired(ownerKey, endpoint)
+        })
+
+    if (ownersToUpdate.length === 0) {
+      logger.debug('No owners need wallet update', { module: 'WalletStore' })
       return
     }
 
     set({ isUpdating: true, updateError: null })
 
     try {
-      const results: OwnerWallet[] = []
+      const existingWallets = new Map(
+        state.walletsByOwner.map((ow) => [`${ow.owner.type}-${ow.owner.id}`, ow])
+      )
 
-      for (const owner of owners) {
+      for (const owner of ownersToUpdate) {
+        const ownerKey = `${owner.type}-${owner.id}`
+        const endpoint = getWalletEndpoint(owner)
+
         try {
-          if (owner.type === 'corporation') {
-            logger.info('Fetching corporation wallet', { module: 'WalletStore', owner: owner.name })
-            const divisions = await getCorporationWallets(owner.characterId, owner.id)
-            results.push({ owner, divisions })
-          } else {
-            logger.info('Fetching character wallet', { module: 'WalletStore', owner: owner.name })
-            const balance = await getCharacterWallet(owner.characterId)
-            results.push({ owner, balance })
-          }
+          logger.info('Fetching wallet', { module: 'WalletStore', owner: owner.name })
+          const { data: walletData, expiresAt, etag } = await fetchOwnerWalletWithMeta(owner)
+
+          existingWallets.set(ownerKey, walletData)
+
+          useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag)
         } catch (err) {
           logger.error('Failed to fetch wallet', err instanceof Error ? err : undefined, {
             module: 'WalletStore',
@@ -256,19 +310,18 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
         }
       }
 
-      const lastUpdated = Date.now()
-      await saveToDB(results, lastUpdated)
+      const results = Array.from(existingWallets.values())
+      await saveToDB(results)
 
       set({
         walletsByOwner: results,
-        lastUpdated,
         isUpdating: false,
         updateError: results.length === 0 ? 'Failed to fetch any wallets' : null,
       })
 
       logger.info('Wallet updated', {
         module: 'WalletStore',
-        owners: results.length,
+        owners: ownersToUpdate.length,
       })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error'
@@ -281,28 +334,24 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
 
   updateForOwner: async (owner: Owner) => {
     const state = get()
+
     try {
-      logger.info('Fetching wallet for new owner', { module: 'WalletStore', owner: owner.name })
-
-      let walletData: CharacterWallet | CorporationWallet
-      if (owner.type === 'character') {
-        const balance = await getCharacterWallet(owner.characterId)
-        walletData = { owner, balance }
-      } else {
-        const divisions = await getCorporationWallets(owner.characterId, owner.id)
-        walletData = { owner, divisions }
-      }
-
       const ownerKey = `${owner.type}-${owner.id}`
+      const endpoint = getWalletEndpoint(owner)
+
+      logger.info('Fetching wallet for owner', { module: 'WalletStore', owner: owner.name })
+      const { data: walletData, expiresAt, etag } = await fetchOwnerWalletWithMeta(owner)
+
+      useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag)
+
       const updated = state.walletsByOwner.filter(
         (ow) => `${ow.owner.type}-${ow.owner.id}` !== ownerKey
       )
       updated.push(walletData)
 
-      const lastUpdated = Date.now()
-      await saveToDB(updated, lastUpdated)
+      await saveToDB(updated)
 
-      set({ walletsByOwner: updated, lastUpdated })
+      set({ walletsByOwner: updated })
 
       logger.info('Wallet updated for owner', {
         module: 'WalletStore',
@@ -325,8 +374,10 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
 
     if (updated.length === state.walletsByOwner.length) return
 
-    await saveToDB(updated, state.lastUpdated ?? Date.now())
+    await saveToDB(updated)
     set({ walletsByOwner: updated })
+
+    useExpiryCacheStore.getState().clearForOwner(ownerKey)
 
     logger.info('Wallet removed for owner', { module: 'WalletStore', ownerKey })
   },
@@ -335,7 +386,6 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
     await clearDB()
     set({
       walletsByOwner: [],
-      lastUpdated: null,
       updateError: null,
     })
   },

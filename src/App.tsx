@@ -3,8 +3,10 @@ import { useAssetStore } from './store/asset-store'
 import { useMarketOrdersStore } from './store/market-orders-store'
 import { useIndustryJobsStore } from './store/industry-jobs-store'
 import { useContractsStore } from './store/contracts-store'
+import { useClonesStore } from './store/clones-store'
 import { useWalletStore } from './store/wallet-store'
 import { useBlueprintsStore } from './store/blueprints-store'
+import { useExpiryCacheStore } from './store/expiry-cache-store'
 import { MainLayout } from './components/layout/MainLayout'
 import { initCache } from './store/reference-cache'
 import { logger } from './lib/logger'
@@ -62,6 +64,10 @@ function App() {
     initCache()
       .then(() => {
         logger.info('Cache initialized', { module: 'App' })
+        return useExpiryCacheStore.getState().init()
+      })
+      .then(() => {
+        logger.info('Expiry cache initialized', { module: 'App' })
         return useAssetStore.getState().init()
       })
       .then(() => {
@@ -70,6 +76,7 @@ function App() {
           useMarketOrdersStore.getState().init(),
           useIndustryJobsStore.getState().init(),
           useContractsStore.getState().init(),
+          useClonesStore.getState().init(),
           useWalletStore.getState().init(),
           useBlueprintsStore.getState().init(),
         ])

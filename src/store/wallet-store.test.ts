@@ -9,9 +9,21 @@ vi.mock('./auth-store', () => ({
   },
 }))
 
-vi.mock('@/api/endpoints/wallet', () => ({
-  getCharacterWallet: vi.fn(),
-  getCorporationWallets: vi.fn(),
+vi.mock('./expiry-cache-store', () => ({
+  useExpiryCacheStore: {
+    getState: vi.fn(() => ({
+      isExpired: () => true,
+      getTimeUntilExpiry: () => 0,
+      setExpiry: vi.fn(),
+      clearForOwner: vi.fn(),
+    })),
+  },
+}))
+
+vi.mock('@/api/esi-client', () => ({
+  esiClient: {
+    fetchWithMeta: vi.fn(),
+  },
 }))
 
 vi.mock('@/lib/logger', () => ({
@@ -23,7 +35,6 @@ describe('wallet-store', () => {
     vi.clearAllMocks()
     useWalletStore.setState({
       walletsByOwner: [],
-      lastUpdated: null,
       isUpdating: false,
       updateError: null,
       initialized: false,
@@ -52,7 +63,6 @@ describe('wallet-store', () => {
     it('has correct initial values', () => {
       const state = useWalletStore.getState()
       expect(state.walletsByOwner).toEqual([])
-      expect(state.lastUpdated).toBeNull()
       expect(state.isUpdating).toBe(false)
       expect(state.updateError).toBeNull()
       expect(state.initialized).toBe(false)
@@ -60,8 +70,12 @@ describe('wallet-store', () => {
   })
 
   describe('canUpdate', () => {
-    it('returns true when never updated', () => {
-      useWalletStore.setState({ lastUpdated: null, isUpdating: false })
+    it('returns true when there are owners and expiry cache says expired', async () => {
+      const { useAuthStore } = await import('./auth-store')
+      const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
+      vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
+
+      useWalletStore.setState({ walletsByOwner: [], isUpdating: false })
       expect(useWalletStore.getState().canUpdate()).toBe(true)
     })
 
@@ -69,11 +83,12 @@ describe('wallet-store', () => {
       useWalletStore.setState({ isUpdating: true })
       expect(useWalletStore.getState().canUpdate()).toBe(false)
     })
+
   })
 
   describe('getTimeUntilUpdate', () => {
-    it('returns 0 when never updated', () => {
-      useWalletStore.setState({ lastUpdated: null })
+    it('returns 0 when no data cached', () => {
+      useWalletStore.setState({ walletsByOwner: [] })
       expect(useWalletStore.getState().getTimeUntilUpdate()).toBe(0)
     })
   })
@@ -123,57 +138,67 @@ describe('wallet-store', () => {
   })
 
   describe('update', () => {
-    it('sets error when no characters logged in', async () => {
+    it('sets error when no owners logged in', async () => {
       const { useAuthStore } = await import('./auth-store')
       vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({}))
 
       await useWalletStore.getState().update(true)
 
-      expect(useWalletStore.getState().updateError).toBe('No characters logged in')
+      expect(useWalletStore.getState().updateError).toBe('No owners logged in')
     })
 
     it('fetches character wallet', async () => {
       const { useAuthStore } = await import('./auth-store')
-      const { getCharacterWallet } = await import('@/api/endpoints/wallet')
+      const { esiClient } = await import('@/api/esi-client')
 
       const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
       vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
 
-      vi.mocked(getCharacterWallet).mockResolvedValue(5000000)
+      vi.mocked(esiClient.fetchWithMeta).mockResolvedValue({
+        data: 5000000,
+        expiresAt: Date.now() + 300000,
+        etag: 'test-etag',
+        notModified: false,
+      })
 
       await useWalletStore.getState().update(true)
 
-      expect(getCharacterWallet).toHaveBeenCalledWith(12345)
+      expect(esiClient.fetchWithMeta).toHaveBeenCalled()
       expect(useWalletStore.getState().walletsByOwner).toHaveLength(1)
       expect((useWalletStore.getState().walletsByOwner[0] as { balance: number }).balance).toBe(5000000)
     })
 
     it('fetches corporation wallets', async () => {
       const { useAuthStore } = await import('./auth-store')
-      const { getCorporationWallets } = await import('@/api/endpoints/wallet')
+      const { esiClient } = await import('@/api/esi-client')
 
       const mockCorpOwner = createMockOwner({ id: 98000001, characterId: 12345, name: 'Test Corp', type: 'corporation' })
       vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'corporation-98000001': mockCorpOwner }))
 
-      vi.mocked(getCorporationWallets).mockResolvedValue([
-        { division: 1, balance: 10000000 },
-        { division: 2, balance: 5000000 },
-      ])
+      vi.mocked(esiClient.fetchWithMeta).mockResolvedValue({
+        data: [
+          { division: 1, balance: 10000000 },
+          { division: 2, balance: 5000000 },
+        ],
+        expiresAt: Date.now() + 300000,
+        etag: 'test-etag',
+        notModified: false,
+      })
 
       await useWalletStore.getState().update(true)
 
-      expect(getCorporationWallets).toHaveBeenCalledWith(12345, 98000001)
+      expect(esiClient.fetchWithMeta).toHaveBeenCalled()
       expect(useWalletStore.getState().walletsByOwner).toHaveLength(1)
     })
 
     it('handles fetch errors gracefully', async () => {
       const { useAuthStore } = await import('./auth-store')
-      const { getCharacterWallet } = await import('@/api/endpoints/wallet')
+      const { esiClient } = await import('@/api/esi-client')
 
       const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
       vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
 
-      vi.mocked(getCharacterWallet).mockRejectedValue(new Error('API Error'))
+      vi.mocked(esiClient.fetchWithMeta).mockRejectedValue(new Error('API Error'))
 
       await useWalletStore.getState().update(true)
 
@@ -186,7 +211,6 @@ describe('wallet-store', () => {
     it('resets store state', async () => {
       useWalletStore.setState({
         walletsByOwner: [{ owner: {} as never, balance: 1000000 }],
-        lastUpdated: Date.now(),
         updateError: 'error',
       })
 
@@ -194,7 +218,6 @@ describe('wallet-store', () => {
 
       const state = useWalletStore.getState()
       expect(state.walletsByOwner).toHaveLength(0)
-      expect(state.lastUpdated).toBeNull()
       expect(state.updateError).toBeNull()
     })
   })

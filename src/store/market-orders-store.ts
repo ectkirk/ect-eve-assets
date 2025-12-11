@@ -1,18 +1,21 @@
 import { create } from 'zustand'
 import { useAuthStore, type Owner } from './auth-store'
+import { useExpiryCacheStore } from './expiry-cache-store'
+import { esiClient, type ESIResponseMeta } from '@/api/esi-client'
 import {
-  getCharacterOrders,
-  getCorporationOrders,
-  type ESIMarketOrder,
-  type ESICorporationMarketOrder,
-} from '@/api/endpoints/market'
+  ESIMarketOrderSchema,
+  ESICorporationMarketOrderSchema,
+} from '@/api/schemas'
 import { logger } from '@/lib/logger'
+import { z } from 'zod'
 
 const DB_NAME = 'ecteveassets-market-orders'
 const DB_VERSION = 2
 const STORE_ORDERS = 'orders'
 const STORE_META = 'meta'
 
+export type ESIMarketOrder = z.infer<typeof ESIMarketOrderSchema>
+export type ESICorporationMarketOrder = z.infer<typeof ESICorporationMarketOrderSchema>
 export type MarketOrder = ESIMarketOrder | ESICorporationMarketOrder
 
 export interface OwnerOrders {
@@ -28,13 +31,10 @@ interface StoredOwnerOrders {
 
 interface MarketOrdersState {
   ordersByOwner: OwnerOrders[]
-  lastUpdated: number | null
   isUpdating: boolean
   updateError: string | null
   initialized: boolean
 }
-
-const UPDATE_COOLDOWN_MS = 5 * 60 * 1000
 
 interface MarketOrdersActions {
   init: () => Promise<void>
@@ -49,6 +49,27 @@ interface MarketOrdersActions {
 type MarketOrdersStore = MarketOrdersState & MarketOrdersActions
 
 let db: IDBDatabase | null = null
+
+function getOrdersEndpoint(owner: Owner): string {
+  if (owner.type === 'corporation') {
+    return `/corporations/${owner.id}/orders/`
+  }
+  return `/characters/${owner.characterId}/orders/`
+}
+
+async function fetchOwnerOrdersWithMeta(owner: Owner): Promise<ESIResponseMeta<MarketOrder[]>> {
+  const endpoint = getOrdersEndpoint(owner)
+  if (owner.type === 'corporation') {
+    return esiClient.fetchWithPaginationMeta<ESICorporationMarketOrder>(endpoint, {
+      characterId: owner.characterId,
+      schema: ESICorporationMarketOrderSchema,
+    })
+  }
+  return esiClient.fetchWithPaginationMeta<ESIMarketOrder>(endpoint, {
+    characterId: owner.characterId,
+    schema: ESIMarketOrderSchema,
+  })
+}
 
 async function openDB(): Promise<IDBDatabase> {
   if (db) return db
@@ -78,53 +99,39 @@ async function openDB(): Promise<IDBDatabase> {
   })
 }
 
-async function loadFromDB(): Promise<{
-  ordersByOwner: OwnerOrders[]
-  lastUpdated: number | null
-}> {
+async function loadFromDB(): Promise<{ ordersByOwner: OwnerOrders[] }> {
   const database = await openDB()
 
   return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_ORDERS, STORE_META], 'readonly')
+    const tx = database.transaction([STORE_ORDERS], 'readonly')
     const ordersStore = tx.objectStore(STORE_ORDERS)
-    const metaStore = tx.objectStore(STORE_META)
 
     const ordersByOwner: OwnerOrders[] = []
     const ordersRequest = ordersStore.getAll()
-    const metaRequest = metaStore.getAll()
 
     tx.oncomplete = () => {
       for (const stored of ordersRequest.result as StoredOwnerOrders[]) {
         ordersByOwner.push({ owner: stored.owner, orders: stored.orders })
       }
-
-      let lastUpdated: number | null = null
-      for (const meta of metaRequest.result) {
-        if (meta.key === 'lastUpdated') lastUpdated = meta.value
-      }
-
-      resolve({ ordersByOwner, lastUpdated })
+      resolve({ ordersByOwner })
     }
 
     tx.onerror = () => reject(tx.error)
   })
 }
 
-async function saveToDB(ordersByOwner: OwnerOrders[], lastUpdated: number): Promise<void> {
+async function saveToDB(ordersByOwner: OwnerOrders[]): Promise<void> {
   const database = await openDB()
 
   return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_ORDERS, STORE_META], 'readwrite')
+    const tx = database.transaction([STORE_ORDERS], 'readwrite')
     const ordersStore = tx.objectStore(STORE_ORDERS)
-    const metaStore = tx.objectStore(STORE_META)
 
     ordersStore.clear()
     for (const { owner, orders } of ordersByOwner) {
       const ownerKey = `${owner.type}-${owner.id}`
       ordersStore.put({ ownerKey, owner, orders } as StoredOwnerOrders)
     }
-
-    metaStore.put({ key: 'lastUpdated', value: lastUpdated })
 
     tx.oncomplete = () => resolve()
     tx.onerror = () => reject(tx.error)
@@ -145,7 +152,6 @@ async function clearDB(): Promise<void> {
 
 export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
   ordersByOwner: [],
-  lastUpdated: null,
   isUpdating: false,
   updateError: null,
   initialized: false,
@@ -154,8 +160,8 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
     if (get().initialized) return
 
     try {
-      const { ordersByOwner, lastUpdated } = await loadFromDB()
-      set({ ordersByOwner, lastUpdated, initialized: true })
+      const { ordersByOwner } = await loadFromDB()
+      set({ ordersByOwner, initialized: true })
       logger.info('Market orders store initialized', {
         module: 'MarketOrdersStore',
         owners: ordersByOwner.length,
@@ -170,29 +176,50 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
   },
 
   canUpdate: () => {
-    const { lastUpdated, isUpdating } = get()
+    const { isUpdating, ordersByOwner } = get()
     if (isUpdating) return false
-    if (!lastUpdated) return true
-    return Date.now() - lastUpdated >= UPDATE_COOLDOWN_MS
+
+    const expiryCacheStore = useExpiryCacheStore.getState()
+
+    for (const { owner } of ordersByOwner) {
+      const ownerKey = `${owner.type}-${owner.id}`
+      const endpoint = getOrdersEndpoint(owner)
+      if (expiryCacheStore.isExpired(ownerKey, endpoint)) {
+        return true
+      }
+    }
+
+    const owners = Object.values(useAuthStore.getState().owners)
+    for (const owner of owners) {
+      if (!owner) continue
+      const ownerKey = `${owner.type}-${owner.id}`
+      const endpoint = getOrdersEndpoint(owner)
+      if (expiryCacheStore.isExpired(ownerKey, endpoint)) {
+        return true
+      }
+    }
+
+    return false
   },
 
   getTimeUntilUpdate: () => {
-    const { lastUpdated } = get()
-    if (!lastUpdated) return 0
-    const elapsed = Date.now() - lastUpdated
-    const remaining = UPDATE_COOLDOWN_MS - elapsed
-    return remaining > 0 ? remaining : 0
+    const { ordersByOwner } = get()
+    const expiryCacheStore = useExpiryCacheStore.getState()
+
+    let minTime = Infinity
+    for (const { owner } of ordersByOwner) {
+      const ownerKey = `${owner.type}-${owner.id}`
+      const endpoint = getOrdersEndpoint(owner)
+      const time = expiryCacheStore.getTimeUntilExpiry(ownerKey, endpoint)
+      if (time < minTime) minTime = time
+    }
+
+    return minTime === Infinity ? 0 : minTime
   },
 
   update: async (force = false) => {
     const state = get()
     if (state.isUpdating) return
-
-    if (!force && state.lastUpdated && Date.now() - state.lastUpdated < UPDATE_COOLDOWN_MS) {
-      const minutes = Math.ceil((UPDATE_COOLDOWN_MS - (Date.now() - state.lastUpdated)) / 60000)
-      set({ updateError: `Update available in ${minutes} minute${minutes === 1 ? '' : 's'}` })
-      return
-    }
 
     const owners = Object.values(useAuthStore.getState().owners)
     if (owners.length === 0) {
@@ -200,21 +227,40 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
       return
     }
 
+    const expiryCacheStore = useExpiryCacheStore.getState()
+
+    const ownersToUpdate = force
+      ? owners.filter((o): o is Owner => o !== undefined)
+      : owners.filter((owner): owner is Owner => {
+          if (!owner) return false
+          const ownerKey = `${owner.type}-${owner.id}`
+          const endpoint = getOrdersEndpoint(owner)
+          return expiryCacheStore.isExpired(ownerKey, endpoint)
+        })
+
+    if (ownersToUpdate.length === 0) {
+      logger.debug('No owners need market orders update', { module: 'MarketOrdersStore' })
+      return
+    }
+
     set({ isUpdating: true, updateError: null })
 
     try {
-      const results: OwnerOrders[] = []
+      const existingOrders = new Map(
+        state.ordersByOwner.map((oo) => [`${oo.owner.type}-${oo.owner.id}`, oo])
+      )
 
-      for (const owner of owners) {
+      for (const owner of ownersToUpdate) {
+        const ownerKey = `${owner.type}-${owner.id}`
+        const endpoint = getOrdersEndpoint(owner)
+
         try {
           logger.info('Fetching market orders', { module: 'MarketOrdersStore', owner: owner.name })
-          let orders: MarketOrder[]
-          if (owner.type === 'corporation') {
-            orders = await getCorporationOrders(owner.characterId, owner.id)
-          } else {
-            orders = await getCharacterOrders(owner.characterId)
-          }
-          results.push({ owner, orders })
+          const { data: orders, expiresAt, etag } = await fetchOwnerOrdersWithMeta(owner)
+
+          existingOrders.set(ownerKey, { owner, orders })
+
+          useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag)
         } catch (err) {
           logger.error('Failed to fetch market orders', err instanceof Error ? err : undefined, {
             module: 'MarketOrdersStore',
@@ -223,19 +269,18 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
         }
       }
 
-      const lastUpdated = Date.now()
-      await saveToDB(results, lastUpdated)
+      const results = Array.from(existingOrders.values())
+      await saveToDB(results)
 
       set({
         ordersByOwner: results,
-        lastUpdated,
         isUpdating: false,
         updateError: results.length === 0 ? 'Failed to fetch any orders' : null,
       })
 
       logger.info('Market orders updated', {
         module: 'MarketOrdersStore',
-        owners: results.length,
+        owners: ownersToUpdate.length,
         totalOrders: results.reduce((sum, r) => sum + r.orders.length, 0),
       })
     } catch (err) {
@@ -249,25 +294,24 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
 
   updateForOwner: async (owner: Owner) => {
     const state = get()
-    try {
-      logger.info('Fetching market orders for new owner', { module: 'MarketOrdersStore', owner: owner.name })
-      let orders: MarketOrder[]
-      if (owner.type === 'corporation') {
-        orders = await getCorporationOrders(owner.characterId, owner.id)
-      } else {
-        orders = await getCharacterOrders(owner.characterId)
-      }
 
+    try {
       const ownerKey = `${owner.type}-${owner.id}`
+      const endpoint = getOrdersEndpoint(owner)
+
+      logger.info('Fetching market orders for owner', { module: 'MarketOrdersStore', owner: owner.name })
+      const { data: orders, expiresAt, etag } = await fetchOwnerOrdersWithMeta(owner)
+
+      useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag)
+
       const updated = state.ordersByOwner.filter(
         (oo) => `${oo.owner.type}-${oo.owner.id}` !== ownerKey
       )
       updated.push({ owner, orders })
 
-      const lastUpdated = Date.now()
-      await saveToDB(updated, lastUpdated)
+      await saveToDB(updated)
 
-      set({ ordersByOwner: updated, lastUpdated })
+      set({ ordersByOwner: updated })
 
       logger.info('Market orders updated for owner', {
         module: 'MarketOrdersStore',
@@ -291,8 +335,10 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
 
     if (updated.length === state.ordersByOwner.length) return
 
-    await saveToDB(updated, state.lastUpdated ?? Date.now())
+    await saveToDB(updated)
     set({ ordersByOwner: updated })
+
+    useExpiryCacheStore.getState().clearForOwner(ownerKey)
 
     logger.info('Market orders removed for owner', { module: 'MarketOrdersStore', ownerKey })
   },
@@ -301,7 +347,6 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
     await clearDB()
     set({
       ordersByOwner: [],
-      lastUpdated: null,
       updateError: null,
     })
   },

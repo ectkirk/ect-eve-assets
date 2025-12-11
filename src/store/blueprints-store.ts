@@ -1,7 +1,12 @@
 import { create } from 'zustand'
 import { useAuthStore, type Owner } from './auth-store'
-import { getCharacterBlueprints, getCorporationBlueprints, type ESIBlueprint } from '@/api/endpoints/blueprints'
+import { useExpiryCacheStore } from './expiry-cache-store'
+import { esiClient, type ESIResponseMeta } from '@/api/esi-client'
+import { ESIBlueprintSchema } from '@/api/schemas'
 import { logger } from '@/lib/logger'
+import { z } from 'zod'
+
+export type ESIBlueprint = z.infer<typeof ESIBlueprintSchema>
 
 const DB_NAME = 'ecteveassets-blueprints'
 const DB_VERSION = 1
@@ -29,13 +34,10 @@ export interface BlueprintInfo {
 interface BlueprintsState {
   blueprintsByOwner: OwnerBlueprints[]
   blueprintsByItemId: Map<number, BlueprintInfo>
-  lastUpdated: number | null
   isUpdating: boolean
   updateError: string | null
   initialized: boolean
 }
-
-const UPDATE_COOLDOWN_MS = 60 * 60 * 1000
 
 interface BlueprintsActions {
   init: () => Promise<void>
@@ -50,6 +52,21 @@ interface BlueprintsActions {
 type BlueprintsStore = BlueprintsState & BlueprintsActions
 
 let db: IDBDatabase | null = null
+
+function getBlueprintsEndpoint(owner: Owner): string {
+  if (owner.type === 'corporation') {
+    return `/corporations/${owner.id}/blueprints/`
+  }
+  return `/characters/${owner.id}/blueprints/`
+}
+
+async function fetchOwnerBlueprintsWithMeta(owner: Owner): Promise<ESIResponseMeta<ESIBlueprint[]>> {
+  const endpoint = getBlueprintsEndpoint(owner)
+  return esiClient.fetchWithPaginationMeta<ESIBlueprint>(endpoint, {
+    characterId: owner.characterId,
+    schema: ESIBlueprintSchema,
+  })
+}
 
 async function openDB(): Promise<IDBDatabase> {
   if (db) return db
@@ -94,53 +111,39 @@ function buildBlueprintMap(blueprintsByOwner: OwnerBlueprints[]): Map<number, Bl
   return map
 }
 
-async function loadFromDB(): Promise<{
-  blueprintsByOwner: OwnerBlueprints[]
-  lastUpdated: number | null
-}> {
+async function loadFromDB(): Promise<{ blueprintsByOwner: OwnerBlueprints[] }> {
   const database = await openDB()
 
   return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_BLUEPRINTS, STORE_META], 'readonly')
+    const tx = database.transaction([STORE_BLUEPRINTS], 'readonly')
     const bpStore = tx.objectStore(STORE_BLUEPRINTS)
-    const metaStore = tx.objectStore(STORE_META)
 
     const blueprintsByOwner: OwnerBlueprints[] = []
     const bpRequest = bpStore.getAll()
-    const metaRequest = metaStore.getAll()
 
     tx.oncomplete = () => {
       for (const stored of bpRequest.result as StoredOwnerBlueprints[]) {
         blueprintsByOwner.push({ owner: stored.owner, blueprints: stored.blueprints })
       }
-
-      let lastUpdated: number | null = null
-      for (const meta of metaRequest.result) {
-        if (meta.key === 'lastUpdated') lastUpdated = meta.value
-      }
-
-      resolve({ blueprintsByOwner, lastUpdated })
+      resolve({ blueprintsByOwner })
     }
 
     tx.onerror = () => reject(tx.error)
   })
 }
 
-async function saveToDB(blueprintsByOwner: OwnerBlueprints[], lastUpdated: number): Promise<void> {
+async function saveToDB(blueprintsByOwner: OwnerBlueprints[]): Promise<void> {
   const database = await openDB()
 
   return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_BLUEPRINTS, STORE_META], 'readwrite')
+    const tx = database.transaction([STORE_BLUEPRINTS], 'readwrite')
     const bpStore = tx.objectStore(STORE_BLUEPRINTS)
-    const metaStore = tx.objectStore(STORE_META)
 
     bpStore.clear()
     for (const { owner, blueprints } of blueprintsByOwner) {
       const ownerKey = `${owner.type}-${owner.id}`
       bpStore.put({ ownerKey, owner, blueprints } as StoredOwnerBlueprints)
     }
-
-    metaStore.put({ key: 'lastUpdated', value: lastUpdated })
 
     tx.oncomplete = () => resolve()
     tx.onerror = () => reject(tx.error)
@@ -159,17 +162,9 @@ async function clearDB(): Promise<void> {
   })
 }
 
-async function fetchOwnerBlueprints(owner: Owner): Promise<ESIBlueprint[]> {
-  if (owner.type === 'corporation') {
-    return getCorporationBlueprints(owner.id, owner.characterId)
-  }
-  return getCharacterBlueprints(owner.id, owner.characterId)
-}
-
 export const useBlueprintsStore = create<BlueprintsStore>((set, get) => ({
   blueprintsByOwner: [],
   blueprintsByItemId: new Map(),
-  lastUpdated: null,
   isUpdating: false,
   updateError: null,
   initialized: false,
@@ -178,9 +173,9 @@ export const useBlueprintsStore = create<BlueprintsStore>((set, get) => ({
     if (get().initialized) return
 
     try {
-      const { blueprintsByOwner, lastUpdated } = await loadFromDB()
+      const { blueprintsByOwner } = await loadFromDB()
       const blueprintsByItemId = buildBlueprintMap(blueprintsByOwner)
-      set({ blueprintsByOwner, blueprintsByItemId, lastUpdated, initialized: true })
+      set({ blueprintsByOwner, blueprintsByItemId, initialized: true })
       logger.info('Blueprints store initialized', {
         module: 'BlueprintsStore',
         owners: blueprintsByOwner.length,
@@ -195,46 +190,91 @@ export const useBlueprintsStore = create<BlueprintsStore>((set, get) => ({
   },
 
   canUpdate: () => {
-    const { lastUpdated, isUpdating } = get()
+    const { isUpdating, blueprintsByOwner } = get()
     if (isUpdating) return false
-    if (!lastUpdated) return true
-    return Date.now() - lastUpdated >= UPDATE_COOLDOWN_MS
+
+    const expiryCacheStore = useExpiryCacheStore.getState()
+
+    for (const { owner } of blueprintsByOwner) {
+      const ownerKey = `${owner.type}-${owner.id}`
+      const endpoint = getBlueprintsEndpoint(owner)
+      if (expiryCacheStore.isExpired(ownerKey, endpoint)) {
+        return true
+      }
+    }
+
+    const owners = Object.values(useAuthStore.getState().owners)
+    for (const owner of owners) {
+      if (!owner) continue
+      const ownerKey = `${owner.type}-${owner.id}`
+      const endpoint = getBlueprintsEndpoint(owner)
+      if (expiryCacheStore.isExpired(ownerKey, endpoint)) {
+        return true
+      }
+    }
+
+    return false
   },
 
   getTimeUntilUpdate: () => {
-    const { lastUpdated } = get()
-    if (!lastUpdated) return 0
-    const elapsed = Date.now() - lastUpdated
-    const remaining = UPDATE_COOLDOWN_MS - elapsed
-    return remaining > 0 ? remaining : 0
+    const { blueprintsByOwner } = get()
+    const expiryCacheStore = useExpiryCacheStore.getState()
+
+    let minTime = Infinity
+    for (const { owner } of blueprintsByOwner) {
+      const ownerKey = `${owner.type}-${owner.id}`
+      const endpoint = getBlueprintsEndpoint(owner)
+      const time = expiryCacheStore.getTimeUntilExpiry(ownerKey, endpoint)
+      if (time < minTime) minTime = time
+    }
+
+    return minTime === Infinity ? 0 : minTime
   },
 
   update: async (force = false) => {
     const state = get()
     if (state.isUpdating) return
 
-    if (!force && state.lastUpdated && Date.now() - state.lastUpdated < UPDATE_COOLDOWN_MS) {
-      const minutes = Math.ceil((UPDATE_COOLDOWN_MS - (Date.now() - state.lastUpdated)) / 60000)
-      set({ updateError: `Update available in ${minutes} minute${minutes === 1 ? '' : 's'}` })
+    const owners = Object.values(useAuthStore.getState().owners)
+    if (owners.length === 0) {
+      set({ updateError: 'No owners logged in' })
       return
     }
 
-    const owners = Object.values(useAuthStore.getState().owners)
-    if (owners.length === 0) {
-      set({ updateError: 'No characters logged in' })
+    const expiryCacheStore = useExpiryCacheStore.getState()
+
+    const ownersToUpdate = force
+      ? owners.filter((o): o is Owner => o !== undefined)
+      : owners.filter((owner): owner is Owner => {
+          if (!owner) return false
+          const ownerKey = `${owner.type}-${owner.id}`
+          const endpoint = getBlueprintsEndpoint(owner)
+          return expiryCacheStore.isExpired(ownerKey, endpoint)
+        })
+
+    if (ownersToUpdate.length === 0) {
+      logger.debug('No owners need blueprints update', { module: 'BlueprintsStore' })
       return
     }
 
     set({ isUpdating: true, updateError: null })
 
     try {
-      const results: OwnerBlueprints[] = []
+      const existingBlueprints = new Map(
+        state.blueprintsByOwner.map((ob) => [`${ob.owner.type}-${ob.owner.id}`, ob])
+      )
 
-      for (const owner of owners) {
+      for (const owner of ownersToUpdate) {
+        const ownerKey = `${owner.type}-${owner.id}`
+        const endpoint = getBlueprintsEndpoint(owner)
+
         try {
-          logger.info('Fetching blueprints', { module: 'BlueprintsStore', owner: owner.name, type: owner.type })
-          const blueprints = await fetchOwnerBlueprints(owner)
-          results.push({ owner, blueprints })
+          logger.info('Fetching blueprints', { module: 'BlueprintsStore', owner: owner.name })
+          const { data: blueprints, expiresAt, etag } = await fetchOwnerBlueprintsWithMeta(owner)
+
+          existingBlueprints.set(ownerKey, { owner, blueprints })
+
+          useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag)
         } catch (err) {
           logger.error('Failed to fetch blueprints', err instanceof Error ? err : undefined, {
             module: 'BlueprintsStore',
@@ -243,22 +283,21 @@ export const useBlueprintsStore = create<BlueprintsStore>((set, get) => ({
         }
       }
 
-      const lastUpdated = Date.now()
-      await saveToDB(results, lastUpdated)
+      const results = Array.from(existingBlueprints.values())
+      await saveToDB(results)
 
       const blueprintsByItemId = buildBlueprintMap(results)
 
       set({
         blueprintsByOwner: results,
         blueprintsByItemId,
-        lastUpdated,
         isUpdating: false,
         updateError: results.length === 0 ? 'Failed to fetch any blueprints' : null,
       })
 
       logger.info('Blueprints updated', {
         module: 'BlueprintsStore',
-        owners: results.length,
+        owners: ownersToUpdate.length,
         totalBlueprints: blueprintsByItemId.size,
       })
     } catch (err) {
@@ -272,22 +311,26 @@ export const useBlueprintsStore = create<BlueprintsStore>((set, get) => ({
 
   updateForOwner: async (owner: Owner) => {
     const state = get()
-    try {
-      logger.info('Fetching blueprints for owner', { module: 'BlueprintsStore', owner: owner.name, type: owner.type })
-      const blueprints = await fetchOwnerBlueprints(owner)
 
+    try {
       const ownerKey = `${owner.type}-${owner.id}`
+      const endpoint = getBlueprintsEndpoint(owner)
+
+      logger.info('Fetching blueprints for owner', { module: 'BlueprintsStore', owner: owner.name })
+      const { data: blueprints, expiresAt, etag } = await fetchOwnerBlueprintsWithMeta(owner)
+
+      useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag)
+
       const updated = state.blueprintsByOwner.filter(
         (ob) => `${ob.owner.type}-${ob.owner.id}` !== ownerKey
       )
       updated.push({ owner, blueprints })
 
-      const lastUpdated = Date.now()
-      await saveToDB(updated, lastUpdated)
+      await saveToDB(updated)
 
       const blueprintsByItemId = buildBlueprintMap(updated)
 
-      set({ blueprintsByOwner: updated, blueprintsByItemId, lastUpdated })
+      set({ blueprintsByOwner: updated, blueprintsByItemId })
 
       logger.info('Blueprints updated for owner', {
         module: 'BlueprintsStore',
@@ -311,9 +354,11 @@ export const useBlueprintsStore = create<BlueprintsStore>((set, get) => ({
 
     if (updated.length === state.blueprintsByOwner.length) return
 
-    await saveToDB(updated, state.lastUpdated ?? Date.now())
+    await saveToDB(updated)
     const blueprintsByItemId = buildBlueprintMap(updated)
     set({ blueprintsByOwner: updated, blueprintsByItemId })
+
+    useExpiryCacheStore.getState().clearForOwner(ownerKey)
 
     logger.info('Blueprints removed for owner', { module: 'BlueprintsStore', ownerKey })
   },
@@ -323,7 +368,6 @@ export const useBlueprintsStore = create<BlueprintsStore>((set, get) => ({
     set({
       blueprintsByOwner: [],
       blueprintsByItemId: new Map(),
-      lastUpdated: null,
       updateError: null,
     })
   },
