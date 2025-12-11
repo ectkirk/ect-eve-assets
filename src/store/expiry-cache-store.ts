@@ -5,8 +5,6 @@ const DB_NAME = 'ecteveassets-expiry'
 const DB_VERSION = 1
 const STORE_EXPIRY = 'expiry'
 
-const THROTTLE_DELAY_MS = 500
-
 export interface EndpointExpiry {
   expiresAt: number
   etag: string | null
@@ -44,7 +42,7 @@ let db: IDBDatabase | null = null
 const timers = new Map<string, NodeJS.Timeout>()
 const callbacks = new Map<string, RefreshCallback>()
 const initialQueue: Array<{ ownerKey: string; endpoint: string }> = []
-let isProcessingQueue = false
+let processingQueuePromise: Promise<void> | null = null
 
 function makeKey(ownerKey: string, endpoint: string): string {
   return `${ownerKey}:${endpoint}`
@@ -186,10 +184,7 @@ function scheduleTimer(key: string, ownerKey: string, endpoint: string, expiresA
   })
 }
 
-async function processInitialQueue() {
-  if (isProcessingQueue || initialQueue.length === 0) return
-  isProcessingQueue = true
-
+async function doProcessQueue(): Promise<void> {
   logger.info('Processing initial refresh queue', {
     module: 'ExpiryCacheStore',
     count: initialQueue.length,
@@ -210,13 +205,15 @@ async function processInitialQueue() {
           endpoint: item.endpoint,
         })
       }
-      if (initialQueue.length > 0) {
-        await new Promise((resolve) => setTimeout(resolve, THROTTLE_DELAY_MS))
-      }
     }
   }
+}
 
-  isProcessingQueue = false
+function processInitialQueue() {
+  if (processingQueuePromise || initialQueue.length === 0) return
+  processingQueuePromise = doProcessQueue().finally(() => {
+    processingQueuePromise = null
+  })
 }
 
 export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
@@ -231,6 +228,8 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
       set({ endpoints, initialized: true })
 
       const now = Date.now()
+      const expiredEntries: Array<{ ownerKey: string; endpoint: string }> = []
+
       for (const [key, expiry] of endpoints) {
         const colonIdx = key.indexOf(':')
         if (colonIdx === -1) continue
@@ -239,10 +238,19 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
 
         if (expiry.expiresAt > now) {
           scheduleTimer(key, ownerKey, endpoint, expiry.expiresAt)
+        } else {
+          expiredEntries.push({ ownerKey, endpoint })
         }
       }
 
-      logger.info('Expiry cache initialized', { module: 'ExpiryCacheStore', count: endpoints.size })
+      logger.info('Expiry cache initialized', { module: 'ExpiryCacheStore', count: endpoints.size, expired: expiredEntries.length })
+
+      for (const { ownerKey, endpoint } of expiredEntries) {
+        initialQueue.push({ ownerKey, endpoint })
+      }
+      if (expiredEntries.length > 0) {
+        processInitialQueue()
+      }
     } catch (error) {
       logger.error('Failed to initialize expiry cache', error, { module: 'ExpiryCacheStore' })
       set({ initialized: true })
