@@ -1,6 +1,14 @@
 import { useState, useMemo } from 'react'
 import { useAuthStore, type Owner, ownerKey } from '@/store/auth-store'
 import { useAssetStore } from '@/store/asset-store'
+import { useBlueprintsStore } from '@/store/blueprints-store'
+import { useClonesStore } from '@/store/clones-store'
+import { useContractsStore } from '@/store/contracts-store'
+import { useIndustryJobsStore } from '@/store/industry-jobs-store'
+import { useMarketOrdersStore } from '@/store/market-orders-store'
+import { useWalletStore } from '@/store/wallet-store'
+import { useStructuresStore } from '@/store/structures-store'
+import { useExpiryCacheStore } from '@/store/expiry-cache-store'
 import { esiClient } from '@/api/esi-client'
 import {
   Dialog,
@@ -203,7 +211,16 @@ export function OwnerManagementModal({
         await window.electronAPI.logout(owner.id)
       }
       useAuthStore.getState().removeOwner(key)
-      await useAssetStore.getState().removeForOwner(owner.type, owner.id)
+      await Promise.all([
+        useAssetStore.getState().removeForOwner(owner.type, owner.id),
+        useBlueprintsStore.getState().removeForOwner(owner.type, owner.id),
+        useClonesStore.getState().removeForOwner(owner.type, owner.id),
+        useContractsStore.getState().removeForOwner(owner.type, owner.id),
+        useIndustryJobsStore.getState().removeForOwner(owner.type, owner.id),
+        useMarketOrdersStore.getState().removeForOwner(owner.type, owner.id),
+        useWalletStore.getState().removeForOwner(owner.type, owner.id),
+        useStructuresStore.getState().removeForOwner(owner.type, owner.id),
+      ])
     } finally {
       setIsUpdatingData(false)
     }
@@ -261,7 +278,17 @@ export function OwnerManagementModal({
         }
       }
       useAuthStore.getState().clearAuth()
-      await useAssetStore.getState().clear()
+      await Promise.all([
+        useAssetStore.getState().clear(),
+        useBlueprintsStore.getState().clear(),
+        useClonesStore.getState().clear(),
+        useContractsStore.getState().clear(),
+        useIndustryJobsStore.getState().clear(),
+        useMarketOrdersStore.getState().clear(),
+        useWalletStore.getState().clear(),
+        useStructuresStore.getState().clear(),
+        useExpiryCacheStore.getState().clear(),
+      ])
       onOpenChange(false)
     } finally {
       setIsUpdatingData(false)
