@@ -1,5 +1,19 @@
 # ESI Client Implementation
 
+## Official Documentation
+
+- **ESI Overview**: https://developers.eveonline.com/docs/services/esi/overview/
+- **Rate Limiting**: https://developers.eveonline.com/docs/services/esi/rate-limiting/
+- **SSO Guide**: https://developers.eveonline.com/docs/services/sso/
+- **OpenAPI Spec**: https://esi.evetech.net/meta/openapi.json?compatibility_date=2025-11-06
+- **API Explorer**: https://developers.eveonline.com/api-explorer
+
+## Related Project Documentation
+
+- [ESI API Documentation](./ESI_API_DOCUMENTATION.md) - Full API reference with endpoint specs
+- [ESI Caching & Rate Limiting](./ESI_CACHING.md) - Cache times and rate limit details
+- [EVE SSO Reference](./eve-sso.md) - OAuth authentication flow
+
 ## Overview
 
 All ESI requests go through `src/api/esi-client.ts`, which delegates to the Electron main process via IPC. Never use raw `fetch()` for ESI endpoints.

@@ -2,6 +2,18 @@
 
 EVE Single Sign-On (SSO) uses OAuth 2.0 for third-party application access.
 
+## Official Documentation
+
+- **SSO Guide**: https://developers.eveonline.com/docs/services/sso/
+- **API Explorer**: https://developers.eveonline.com/api-explorer
+- **Developer Portal**: https://developers.eveonline.com/
+
+## Related Project Documentation
+
+- [ESI API Documentation](./ESI_API_DOCUMENTATION.md) - Full ESI API reference
+- [ESI Caching & Rate Limiting](./ESI_CACHING.md) - Cache times and rate limits
+- [ESI Client Implementation](./ESI_CLIENT.md) - Our client implementation
+
 ## Endpoints
 
 | Endpoint      | URL                                                                  |

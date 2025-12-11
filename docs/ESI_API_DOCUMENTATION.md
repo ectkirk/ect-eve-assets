@@ -4,9 +4,24 @@
 
 The **ESI (EVE Swagger Interface)** is the official RESTful API for EVE Online third-party development. It replaces the older XML API and CREST systems.
 
+## Official Documentation
+
+- **ESI Overview**: https://developers.eveonline.com/docs/services/esi/overview/
+- **Rate Limiting**: https://developers.eveonline.com/docs/services/esi/rate-limiting/
+- **SSO Guide**: https://developers.eveonline.com/docs/services/sso/
 - **API Explorer**: https://developers.eveonline.com/api-explorer
 - **OpenAPI Spec**: https://esi.evetech.net/meta/openapi.json?compatibility_date=2025-11-06
+- **Swagger UI**: https://esi.evetech.net/ui/
 - **Issues/Support**: https://github.com/esi/esi-issues
+- **Developer Portal**: https://developers.eveonline.com/
+
+## Related Project Documentation
+
+- [ESI Client Implementation](./ESI_CLIENT.md) - Our ESI client implementation
+- [ESI Caching & Rate Limiting](./ESI_CACHING.md) - Cache times and rate limit groups
+- [EVE SSO Reference](./eve-sso.md) - OAuth authentication flow
+- [ref.edencom.net API](./REF_API_DOCUMENTATION.md) - Types, prices, universe names
+- [everef.net API](./EVEREF_API_DOCUMENTATION.md) - Static data dumps
 
 ---
 
@@ -637,14 +652,165 @@ Returns the full OpenAPI 3.0 specification for ESI.
 
 ---
 
+## Endpoint Specifications
+
+This section provides detailed response schemas for commonly used endpoints. For the complete OpenAPI spec, see: `https://esi.evetech.net/latest/swagger.json`
+
+### Market Orders
+
+#### GET /characters/{character_id}/orders/
+
+List open market orders placed by a character.
+
+| Property | Required | Type | Description |
+|----------|----------|------|-------------|
+| `order_id` | ✓ | int64 | Unique order ID |
+| `type_id` | ✓ | int32 | Item type ID |
+| `location_id` | ✓ | int64 | Station/structure ID where order was placed |
+| `region_id` | ✓ | int32 | Region ID |
+| `price` | ✓ | double | Cost per unit |
+| `volume_total` | ✓ | int32 | Original quantity |
+| `volume_remain` | ✓ | int32 | Remaining quantity |
+| `duration` | ✓ | int32 | Days order is valid |
+| `issued` | ✓ | datetime | When order was created |
+| `range` | ✓ | string | Order range: `station`, `solarsystem`, `region`, `1`-`40` (jumps) |
+| `is_corporation` | ✓ | boolean | **True if placed on behalf of a corporation** |
+| `is_buy_order` | | boolean | True if buy order (default false = sell) |
+| `escrow` | | double | ISK in escrow (buy orders only) |
+| `min_volume` | | int32 | Minimum fill quantity (buy orders only) |
+
+- **Scope**: `esi-markets.read_character_orders.v1`
+- **Cache**: 1200 seconds (20 minutes)
+- **Paginated**: No (max 305 items)
+
+---
+
+#### GET /characters/{character_id}/orders/history/
+
+List cancelled and expired market orders (up to 90 days).
+
+Same fields as `/orders/` plus:
+
+| Property | Required | Type | Description |
+|----------|----------|------|-------------|
+| `state` | ✓ | string | `cancelled` or `expired` |
+
+- **Scope**: `esi-markets.read_character_orders.v1`
+- **Cache**: 3600 seconds (1 hour)
+- **Paginated**: Yes (X-Pages)
+
+---
+
+#### GET /corporations/{corporation_id}/orders/
+
+List open market orders placed on behalf of a corporation.
+
+| Property | Required | Type | Description |
+|----------|----------|------|-------------|
+| `order_id` | ✓ | int64 | Unique order ID |
+| `type_id` | ✓ | int32 | Item type ID |
+| `location_id` | ✓ | int64 | Station/structure ID where order was placed |
+| `region_id` | ✓ | int32 | Region ID |
+| `price` | ✓ | double | Cost per unit |
+| `volume_total` | ✓ | int32 | Original quantity |
+| `volume_remain` | ✓ | int32 | Remaining quantity |
+| `duration` | ✓ | int32 | Days order is valid |
+| `issued` | ✓ | datetime | When order was created |
+| `range` | ✓ | string | Order range |
+| `issued_by` | ✓ | int32 | **Character ID who placed the order** |
+| `wallet_division` | ✓ | int32 | **Corporation wallet division (1-7)** |
+| `is_buy_order` | | boolean | True if buy order |
+| `escrow` | | double | ISK in escrow (buy orders only) |
+| `min_volume` | | int32 | Minimum fill quantity (buy orders only) |
+
+**Note**: Corp orders do NOT have `is_corporation` field (implicitly always true).
+
+- **Scope**: `esi-markets.read_corporation_orders.v1`
+- **Roles Required**: `Accountant` or `Trader`
+- **Cache**: 1200 seconds (20 minutes)
+- **Paginated**: Yes (X-Pages)
+
+---
+
+#### GET /corporations/{corporation_id}/orders/history/
+
+List cancelled and expired corporation market orders (up to 90 days).
+
+Same fields as `/corporations/{corporation_id}/orders/` plus:
+
+| Property | Required | Type | Description |
+|----------|----------|------|-------------|
+| `state` | ✓ | string | `cancelled` or `expired` |
+
+- **Scope**: `esi-markets.read_corporation_orders.v1`
+- **Roles Required**: `Accountant` or `Trader`
+- **Cache**: 3600 seconds (1 hour)
+- **Paginated**: Yes (X-Pages)
+
+---
+
+#### GET /markets/{region_id}/orders/
+
+List all public market orders in a region.
+
+| Property | Required | Type | Description |
+|----------|----------|------|-------------|
+| `order_id` | ✓ | int64 | Unique order ID |
+| `type_id` | ✓ | int32 | Item type ID |
+| `location_id` | ✓ | int64 | Station/structure ID |
+| `system_id` | ✓ | int32 | Solar system ID |
+| `price` | ✓ | double | Cost per unit |
+| `volume_total` | ✓ | int32 | Original quantity |
+| `volume_remain` | ✓ | int32 | Remaining quantity |
+| `duration` | ✓ | int32 | Days order is valid |
+| `issued` | ✓ | datetime | When order was created |
+| `range` | ✓ | string | Order range |
+| `is_buy_order` | ✓ | boolean | True if buy order |
+| `min_volume` | ✓ | int32 | Minimum fill quantity |
+
+Query parameters:
+- `order_type`: `buy`, `sell`, or `all` (default: `all`)
+- `type_id`: Filter by item type (optional)
+
+- **Scope**: None (public)
+- **Cache**: 300 seconds (5 minutes)
+- **Paginated**: Yes (X-Pages)
+
+---
+
+#### Character vs Corporation Orders: Key Differences
+
+| Field | Character Orders | Corporation Orders |
+|-------|------------------|-------------------|
+| `is_corporation` | ✓ Present (indicates if corp order) | ✗ Not present (always corp) |
+| `issued_by` | ✗ Not present | ✓ Present (who placed it) |
+| `wallet_division` | ✗ Not present | ✓ Present (1-7) |
+
+**Important**: Character orders include both personal AND corporation orders placed by that character. Use `is_corporation: true` to identify corp orders in the character endpoint response.
+
+---
+
 ## Resources
 
-- **API Explorer**: https://developers.eveonline.com/api-explorer
-- **Developer Portal**: https://developers.eveonline.com/
-- **ESI Issues**: https://github.com/esi/esi-issues
-- **SSO Metadata**: https://login.eveonline.com/.well-known/oauth-authorization-server
-- **Login Button Assets**:
-  - White Large: https://web.ccpgamescdn.com/eveonlineassets/developers/eve-sso-login-white-large.png
-  - White Small: https://web.ccpgamescdn.com/eveonlineassets/developers/eve-sso-login-white-small.png
-  - Black Large: https://web.ccpgamescdn.com/eveonlineassets/developers/eve-sso-login-black-large.png
-  - Black Small: https://web.ccpgamescdn.com/eveonlineassets/developers/eve-sso-login-black-small.png
+### Official EVE Developer Resources
+
+| Resource | URL |
+|----------|-----|
+| ESI Overview | https://developers.eveonline.com/docs/services/esi/overview/ |
+| Rate Limiting Guide | https://developers.eveonline.com/docs/services/esi/rate-limiting/ |
+| SSO Documentation | https://developers.eveonline.com/docs/services/sso/ |
+| API Explorer | https://developers.eveonline.com/api-explorer |
+| Developer Portal | https://developers.eveonline.com/ |
+| ESI Issues (GitHub) | https://github.com/esi/esi-issues |
+| SSO Metadata | https://login.eveonline.com/.well-known/oauth-authorization-server |
+| OpenAPI Spec (JSON) | https://esi.evetech.net/meta/openapi.json?compatibility_date=2025-11-06 |
+| Swagger UI | https://esi.evetech.net/ui/ |
+
+### Login Button Assets
+
+| Style | URL |
+|-------|-----|
+| White Large | https://web.ccpgamescdn.com/eveonlineassets/developers/eve-sso-login-white-large.png |
+| White Small | https://web.ccpgamescdn.com/eveonlineassets/developers/eve-sso-login-white-small.png |
+| Black Large | https://web.ccpgamescdn.com/eveonlineassets/developers/eve-sso-login-black-large.png |
+| Black Small | https://web.ccpgamescdn.com/eveonlineassets/developers/eve-sso-login-black-small.png |

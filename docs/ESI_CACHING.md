@@ -2,10 +2,20 @@
 
 Reference documentation for ESI cache behavior and rate limiting. This informs our auto-refresh architecture.
 
-**Sources:**
-- [ESI Best Practices](https://github.com/esi/esi-docs/blob/main/docs/services/esi/best-practices.md)
-- [ESI Rate Limiting](https://github.com/esi/esi-docs/blob/main/docs/services/esi/rate-limiting.md)
-- [ESI OpenAPI Spec](https://esi.evetech.net/meta/openapi.json)
+## Official Documentation
+
+- **ESI Overview**: https://developers.eveonline.com/docs/services/esi/overview/
+- **Rate Limiting**: https://developers.eveonline.com/docs/services/esi/rate-limiting/
+- **OpenAPI Spec**: https://esi.evetech.net/meta/openapi.json?compatibility_date=2025-11-06
+- **API Explorer**: https://developers.eveonline.com/api-explorer
+- **ESI Issues**: https://github.com/esi/esi-issues
+
+## Related Project Documentation
+
+- [ESI API Documentation](./ESI_API_DOCUMENTATION.md) - Full API reference with endpoint specs
+- [ESI Client Implementation](./ESI_CLIENT.md) - Our client implementation
+- [EVE SSO Reference](./eve-sso.md) - OAuth authentication
+- [Store Architecture](./STORES.md) - How we use cached data
 
 ---
 
