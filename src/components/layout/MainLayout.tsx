@@ -18,7 +18,7 @@ import eveSsoLoginWhite from '/eve-sso-login-white.png'
 import { OwnerIcon } from '@/components/ui/type-icon'
 import { OwnerManagementModal } from './OwnerManagementModal'
 import { UpdateBanner } from './UpdateBanner'
-import { useTotalAssets, useAutoRefresh } from '@/hooks'
+import { useTotalAssets } from '@/hooks'
 import { formatNumber } from '@/lib/utils'
 import { TabControlsProvider, useTabControls } from '@/context'
 
@@ -389,7 +389,6 @@ function HeaderControls() {
 
 function MainLayoutInner() {
   const [activeTab, setActiveTab] = useState<Tab>('Assets')
-  useAutoRefresh()
 
   return (
     <div className="flex h-full flex-col">

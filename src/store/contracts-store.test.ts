@@ -16,6 +16,7 @@ vi.mock('./expiry-cache-store', () => ({
       isExpired: () => true,
       setExpiry: vi.fn(),
       clearForOwner: vi.fn(),
+      registerRefreshCallback: vi.fn(() => vi.fn()),
     })),
   },
 }))

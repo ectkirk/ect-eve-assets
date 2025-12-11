@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { useAuthStore, type Owner } from './auth-store'
+import { useAuthStore, type Owner, ownerKey as makeOwnerKey } from './auth-store'
 import { useExpiryCacheStore } from './expiry-cache-store'
 import { esi, type ESIResponseMeta } from '@/api/esi'
 import { ESIIndustryJobSchema } from '@/api/schemas'
@@ -7,6 +7,8 @@ import { logger } from '@/lib/logger'
 import { z } from 'zod'
 
 export type ESIIndustryJob = z.infer<typeof ESIIndustryJobSchema>
+
+const ENDPOINT_PATTERN = '/industry/jobs/'
 
 const DB_NAME = 'ecteveassets-industry-jobs'
 const DB_VERSION = 1
@@ -302,3 +304,22 @@ export const useIndustryJobsStore = create<IndustryJobsStore>((set, get) => ({
     })
   },
 }))
+
+function findOwnerByKey(ownerKeyStr: string): Owner | undefined {
+  const owners = useAuthStore.getState().owners
+  for (const owner of Object.values(owners)) {
+    if (owner && makeOwnerKey(owner.type, owner.id) === ownerKeyStr) {
+      return owner
+    }
+  }
+  return undefined
+}
+
+useExpiryCacheStore.getState().registerRefreshCallback(ENDPOINT_PATTERN, async (ownerKeyStr) => {
+  const owner = findOwnerByKey(ownerKeyStr)
+  if (!owner) {
+    logger.warn('Owner not found for refresh', { module: 'IndustryJobsStore', ownerKey: ownerKeyStr })
+    return
+  }
+  await useIndustryJobsStore.getState().updateForOwner(owner)
+})

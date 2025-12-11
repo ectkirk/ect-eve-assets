@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { useAuthStore, type Owner } from './auth-store'
+import { useAuthStore, type Owner, ownerKey as makeOwnerKey } from './auth-store'
 import { useExpiryCacheStore } from './expiry-cache-store'
 import { esi, type ESIResponseMeta } from '@/api/esi'
 import { ESIBlueprintSchema } from '@/api/schemas'
@@ -7,6 +7,8 @@ import { logger } from '@/lib/logger'
 import { z } from 'zod'
 
 export type ESIBlueprint = z.infer<typeof ESIBlueprintSchema>
+
+const ENDPOINT_PATTERN = '/blueprints/'
 
 const DB_NAME = 'ecteveassets-blueprints'
 const DB_VERSION = 1
@@ -342,3 +344,22 @@ export function formatBlueprintName(baseName: string, itemId: number): string {
   }
   return `${baseName} (ME${info.materialEfficiency} TE${info.timeEfficiency})`
 }
+
+function findOwnerByKey(ownerKeyStr: string): Owner | undefined {
+  const owners = useAuthStore.getState().owners
+  for (const owner of Object.values(owners)) {
+    if (owner && makeOwnerKey(owner.type, owner.id) === ownerKeyStr) {
+      return owner
+    }
+  }
+  return undefined
+}
+
+useExpiryCacheStore.getState().registerRefreshCallback(ENDPOINT_PATTERN, async (ownerKeyStr) => {
+  const owner = findOwnerByKey(ownerKeyStr)
+  if (!owner) {
+    logger.warn('Owner not found for refresh', { module: 'BlueprintsStore', ownerKey: ownerKeyStr })
+    return
+  }
+  await useBlueprintsStore.getState().updateForOwner(owner)
+})

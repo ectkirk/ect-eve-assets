@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { useAuthStore, type Owner } from './auth-store'
+import { useAuthStore, type Owner, ownerKey as makeOwnerKey } from './auth-store'
 import { useExpiryCacheStore } from './expiry-cache-store'
 import { getCharacterAssetNames, getCorporationAssetNames, type ESIAsset, type ESIAssetName } from '@/api/endpoints/assets'
 import { esi, type ESIResponseMeta } from '@/api/esi'
@@ -12,6 +12,7 @@ import { logger } from '@/lib/logger'
 
 const NAMEABLE_CATEGORIES = new Set([6, 22, 65])
 const NAMEABLE_GROUPS = new Set([12, 14, 340, 448, 649])
+const ENDPOINT_PATTERN = '/assets/'
 
 const DB_NAME = 'ecteveassets-assets'
 const DB_VERSION = 1
@@ -457,3 +458,22 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
     })
   },
 }))
+
+function findOwnerByKey(ownerKeyStr: string): Owner | undefined {
+  const owners = useAuthStore.getState().owners
+  for (const owner of Object.values(owners)) {
+    if (owner && makeOwnerKey(owner.type, owner.id) === ownerKeyStr) {
+      return owner
+    }
+  }
+  return undefined
+}
+
+useExpiryCacheStore.getState().registerRefreshCallback(ENDPOINT_PATTERN, async (ownerKeyStr) => {
+  const owner = findOwnerByKey(ownerKeyStr)
+  if (!owner) {
+    logger.warn('Owner not found for refresh', { module: 'AssetStore', ownerKey: ownerKeyStr })
+    return
+  }
+  await useAssetStore.getState().updateForOwner(owner)
+})

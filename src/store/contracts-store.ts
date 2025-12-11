@@ -12,6 +12,8 @@ import { esi, type ESIResponseMeta } from '@/api/esi'
 import { ESIContractSchema } from '@/api/schemas'
 import { logger } from '@/lib/logger'
 
+const ENDPOINT_PATTERN = '/contracts/'
+
 const DB_NAME = 'ecteveassets-contracts'
 const DB_VERSION = 1
 const STORE_CONTRACTS = 'contracts'
@@ -514,3 +516,22 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
     })
   },
 }))
+
+function findOwnerByKey(ownerKeyStr: string): Owner | undefined {
+  const owners = useAuthStore.getState().owners
+  for (const owner of Object.values(owners)) {
+    if (owner && ownerKey(owner.type, owner.id) === ownerKeyStr) {
+      return owner
+    }
+  }
+  return undefined
+}
+
+useExpiryCacheStore.getState().registerRefreshCallback(ENDPOINT_PATTERN, async (ownerKeyStr) => {
+  const owner = findOwnerByKey(ownerKeyStr)
+  if (!owner) {
+    logger.warn('Owner not found for refresh', { module: 'ContractsStore', ownerKey: ownerKeyStr })
+    return
+  }
+  await useContractsStore.getState().updateForOwner(owner)
+})
