@@ -4,6 +4,7 @@ import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { useIndustryJobsStore } from '@/store/industry-jobs-store'
 import { useContractsStore } from '@/store/contracts-store'
 import { useWalletStore } from '@/store/wallet-store'
+import { useStructuresStore } from '@/store/structures-store'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { isAbyssalTypeId, getCachedAbyssalPrice } from '@/api/mutamarket-client'
 
@@ -14,6 +15,7 @@ export interface AssetTotals {
   industryTotal: number
   contractsTotal: number
   walletTotal: number
+  structuresTotal: number
 }
 
 export function useTotalAssets(): AssetTotals {
@@ -23,6 +25,7 @@ export function useTotalAssets(): AssetTotals {
   const jobsByOwner = useIndustryJobsStore((s) => s.jobsByOwner)
   const contractsByOwner = useContractsStore((s) => s.contractsByOwner)
   const walletsByOwner = useWalletStore((s) => s.walletsByOwner)
+  const structuresByOwner = useStructuresStore((s) => s.structuresByOwner)
   const ownersRecord = useAuthStore((s) => s.owners)
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
   const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
@@ -35,6 +38,7 @@ export function useTotalAssets(): AssetTotals {
     for (const { owner, assets } of assetsByOwner) {
       if (!matchesOwner(owner.type, owner.id)) continue
       for (const asset of assets) {
+        if (asset.location_flag === 'AutoFit') continue
         const abyssalPrice = isAbyssalTypeId(asset.type_id)
           ? getCachedAbyssalPrice(asset.item_id)
           : undefined
@@ -112,7 +116,16 @@ export function useTotalAssets(): AssetTotals {
       }
     }
 
-    const total = assetsTotal + marketTotal + industryTotal + contractsTotal + walletTotal
+    let structuresTotal = 0
+    for (const { owner, structures } of structuresByOwner) {
+      if (!matchesOwner(owner.type, owner.id)) continue
+      for (const structure of structures) {
+        const price = prices.get(structure.type_id) ?? 0
+        structuresTotal += price
+      }
+    }
+
+    const total = assetsTotal + marketTotal + industryTotal + contractsTotal + walletTotal + structuresTotal
 
     return {
       total,
@@ -121,6 +134,7 @@ export function useTotalAssets(): AssetTotals {
       industryTotal,
       contractsTotal,
       walletTotal,
+      structuresTotal,
     }
-  }, [assetsByOwner, prices, ordersByOwner, jobsByOwner, contractsByOwner, walletsByOwner, owners, activeOwnerId])
+  }, [assetsByOwner, prices, ordersByOwner, jobsByOwner, contractsByOwner, walletsByOwner, structuresByOwner, owners, activeOwnerId])
 }

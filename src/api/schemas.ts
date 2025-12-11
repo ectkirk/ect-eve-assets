@@ -203,6 +203,44 @@ export const ESINameSchema = z.object({
   ]),
 })
 
+// ESI Corporation Structures
+export const ESICorporationStructureServiceSchema = z.object({
+  name: z.string(),
+  state: z.enum(['online', 'offline', 'cleanup']),
+})
+
+export const ESICorporationStructureSchema = z.object({
+  corporation_id: z.number(),
+  fuel_expires: z.string().optional(),
+  name: z.string().optional(),
+  next_reinforce_apply: z.string().optional(),
+  next_reinforce_hour: z.number().optional(),
+  profile_id: z.number(),
+  reinforce_hour: z.number().optional(),
+  services: z.array(ESICorporationStructureServiceSchema).optional(),
+  state: z.enum([
+    'anchor_vulnerable',
+    'anchoring',
+    'armor_reinforce',
+    'armor_vulnerable',
+    'deploy_vulnerable',
+    'fitting_invulnerable',
+    'hull_reinforce',
+    'hull_vulnerable',
+    'online_deprecated',
+    'onlining_vulnerable',
+    'shield_vulnerable',
+    'unanchored',
+    'unknown',
+  ]),
+  state_timer_end: z.string().optional(),
+  state_timer_start: z.string().optional(),
+  structure_id: z.number(),
+  system_id: z.number(),
+  type_id: z.number(),
+  unanchors_at: z.string().optional(),
+})
+
 // ESI Blueprints
 export const ESIBlueprintSchema = z.object({
   item_id: z.number(),

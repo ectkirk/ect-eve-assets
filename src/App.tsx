@@ -6,6 +6,7 @@ import { useContractsStore } from './store/contracts-store'
 import { useClonesStore } from './store/clones-store'
 import { useWalletStore } from './store/wallet-store'
 import { useBlueprintsStore } from './store/blueprints-store'
+import { useStructuresStore } from './store/structures-store'
 import { useExpiryCacheStore } from './store/expiry-cache-store'
 import { MainLayout } from './components/layout/MainLayout'
 import { initCache } from './store/reference-cache'
@@ -81,6 +82,7 @@ function App() {
           useClonesStore.getState().init(),
           useWalletStore.getState().init(),
           useBlueprintsStore.getState().init(),
+          useStructuresStore.getState().init(),
         ])
       })
       .then(() => {

@@ -8,6 +8,7 @@ import { useContractsStore } from '@/store/contracts-store'
 import { useIndustryJobsStore } from '@/store/industry-jobs-store'
 import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { useWalletStore } from '@/store/wallet-store'
+import { useStructuresStore } from '@/store/structures-store'
 import { logger } from '@/lib/logger'
 
 const MIN_REFRESH_DELAY_MS = 1000
@@ -20,6 +21,7 @@ const STORES = [
   { name: 'industryJobs', getState: () => useIndustryJobsStore.getState() },
   { name: 'marketOrders', getState: () => useMarketOrdersStore.getState() },
   { name: 'wallet', getState: () => useWalletStore.getState() },
+  { name: 'structures', getState: () => useStructuresStore.getState() },
 ] as const
 
 export function useAutoRefresh() {

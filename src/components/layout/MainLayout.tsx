@@ -343,8 +343,12 @@ function HeaderControls() {
       {hasData && (
         <div className="flex items-center gap-4 text-sm">
           <div>
-            <span className="text-slate-400">Total Assets: </span>
+            <span className="text-slate-400">Total: </span>
             <span className="font-medium text-green-400">{formatNumber(totals.total)} ISK</span>
+          </div>
+          <div>
+            <span className="text-slate-400">Assets: </span>
+            <span className="font-medium text-purple-400">{formatNumber(totals.assetsTotal)}</span>
           </div>
           <div>
             <span className="text-slate-400">Market: </span>
@@ -361,6 +365,10 @@ function HeaderControls() {
           <div>
             <span className="text-slate-400">Wallet: </span>
             <span className="font-medium text-emerald-400">{formatNumber(totals.walletTotal)}</span>
+          </div>
+          <div>
+            <span className="text-slate-400">Structures: </span>
+            <span className="font-medium text-cyan-400">{formatNumber(totals.structuresTotal)}</span>
           </div>
         </div>
       )}
