@@ -31,10 +31,7 @@ export interface AssetDataResult {
   cacheVersion: number
   isRefreshingAbyssals: boolean
   refreshAbyssalPrices: () => Promise<void>
-  update: (force?: boolean) => Promise<void>
   updateProgress: { current: number; total: number } | null
-  canUpdate: boolean
-  timeUntilUpdate: number
 }
 
 export function useAssetData(): AssetDataResult {
@@ -47,18 +44,6 @@ export function useAssetData(): AssetDataResult {
   const isUpdating = useAssetStore((s) => s.isUpdating)
   const updateError = useAssetStore((s) => s.updateError)
   const updateProgress = useAssetStore((s) => s.updateProgress)
-  const update = useAssetStore((s) => s.update)
-  const canUpdateFn = useAssetStore((s) => s.canUpdate)
-  const getTimeUntilUpdateFn = useAssetStore((s) => s.getTimeUntilUpdate)
-
-  const [, setTick] = useState(0)
-  useEffect(() => {
-    const interval = setInterval(() => setTick((t) => t + 1), 1000)
-    return () => clearInterval(interval)
-  }, [])
-
-  const canUpdate = canUpdateFn()
-  const timeUntilUpdate = getTimeUntilUpdateFn()
 
   const [cacheVersion, setCacheVersion] = useState(0)
   useEffect(() => {
@@ -229,9 +214,6 @@ export function useAssetData(): AssetDataResult {
     cacheVersion,
     isRefreshingAbyssals,
     refreshAbyssalPrices,
-    update,
     updateProgress,
-    canUpdate,
-    timeUntilUpdate,
   }
 }

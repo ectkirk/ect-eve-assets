@@ -39,8 +39,6 @@ interface ClonesActions {
   updateForOwner: (owner: Owner) => Promise<void>
   removeForOwner: (ownerType: string, ownerId: number) => Promise<void>
   clear: () => Promise<void>
-  canUpdate: () => boolean
-  getTimeUntilUpdate: () => number
 }
 
 type ClonesStore = ClonesState & ClonesActions
@@ -171,48 +169,6 @@ export const useClonesStore = create<ClonesStore>((set, get) => ({
       })
       set({ initialized: true })
     }
-  },
-
-  canUpdate: () => {
-    const { isUpdating, clonesByOwner } = get()
-    if (isUpdating) return false
-
-    const expiryCacheStore = useExpiryCacheStore.getState()
-
-    for (const { owner } of clonesByOwner) {
-      const ownerKey = `${owner.type}-${owner.id}`
-      const endpoint = getClonesEndpoint(owner)
-      if (expiryCacheStore.isExpired(ownerKey, endpoint)) {
-        return true
-      }
-    }
-
-    const owners = Object.values(useAuthStore.getState().owners).filter((o) => o.type === 'character')
-    for (const owner of owners) {
-      if (!owner) continue
-      const ownerKey = `${owner.type}-${owner.id}`
-      const endpoint = getClonesEndpoint(owner)
-      if (expiryCacheStore.isExpired(ownerKey, endpoint)) {
-        return true
-      }
-    }
-
-    return false
-  },
-
-  getTimeUntilUpdate: () => {
-    const { clonesByOwner } = get()
-    const expiryCacheStore = useExpiryCacheStore.getState()
-
-    let minTime = Infinity
-    for (const { owner } of clonesByOwner) {
-      const ownerKey = `${owner.type}-${owner.id}`
-      const endpoint = getClonesEndpoint(owner)
-      const time = expiryCacheStore.getTimeUntilExpiry(ownerKey, endpoint)
-      if (time < minTime) minTime = time
-    }
-
-    return minTime === Infinity ? 0 : minTime
   },
 
   update: async (force = false) => {

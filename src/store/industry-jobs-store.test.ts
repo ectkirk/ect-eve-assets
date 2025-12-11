@@ -13,7 +13,6 @@ vi.mock('./expiry-cache-store', () => ({
   useExpiryCacheStore: {
     getState: vi.fn(() => ({
       isExpired: () => true,
-      getTimeUntilExpiry: () => 0,
       setExpiry: vi.fn(),
       clearForOwner: vi.fn(),
     })),
@@ -50,23 +49,6 @@ describe('industry-jobs-store', () => {
       expect(state.updateError).toBeNull()
       expect(state.initialized).toBe(false)
     })
-  })
-
-  describe('canUpdate', () => {
-    it('returns true when there are owners and expiry cache says expired', async () => {
-      const { useAuthStore } = await import('./auth-store')
-      const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
-      vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
-
-      useIndustryJobsStore.setState({ jobsByOwner: [], isUpdating: false })
-      expect(useIndustryJobsStore.getState().canUpdate()).toBe(true)
-    })
-
-    it('returns false when currently updating', () => {
-      useIndustryJobsStore.setState({ isUpdating: true })
-      expect(useIndustryJobsStore.getState().canUpdate()).toBe(false)
-    })
-
   })
 
   describe('update', () => {

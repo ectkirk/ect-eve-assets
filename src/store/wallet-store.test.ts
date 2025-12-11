@@ -13,7 +13,6 @@ vi.mock('./expiry-cache-store', () => ({
   useExpiryCacheStore: {
     getState: vi.fn(() => ({
       isExpired: () => true,
-      getTimeUntilExpiry: () => 0,
       setExpiry: vi.fn(),
       clearForOwner: vi.fn(),
     })),
@@ -66,30 +65,6 @@ describe('wallet-store', () => {
       expect(state.isUpdating).toBe(false)
       expect(state.updateError).toBeNull()
       expect(state.initialized).toBe(false)
-    })
-  })
-
-  describe('canUpdate', () => {
-    it('returns true when there are owners and expiry cache says expired', async () => {
-      const { useAuthStore } = await import('./auth-store')
-      const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
-      vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
-
-      useWalletStore.setState({ walletsByOwner: [], isUpdating: false })
-      expect(useWalletStore.getState().canUpdate()).toBe(true)
-    })
-
-    it('returns false when currently updating', () => {
-      useWalletStore.setState({ isUpdating: true })
-      expect(useWalletStore.getState().canUpdate()).toBe(false)
-    })
-
-  })
-
-  describe('getTimeUntilUpdate', () => {
-    it('returns 0 when no data cached', () => {
-      useWalletStore.setState({ walletsByOwner: [] })
-      expect(useWalletStore.getState().getTimeUntilUpdate()).toBe(0)
     })
   })
 

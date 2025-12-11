@@ -63,8 +63,6 @@ interface DataStoreActions {
   updateForOwner: (owner: Owner) => Promise<void>
   removeForOwner: (ownerType: string, ownerId: number) => Promise<void>
   clear: () => Promise<void>
-  canUpdate: () => boolean
-  getTimeUntilUpdate: () => number
 }
 ```
 

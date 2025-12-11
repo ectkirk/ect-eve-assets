@@ -26,7 +26,6 @@ interface ExpiryCacheActions {
   setExpiry: (ownerKey: string, endpoint: string, expiresAt: number, etag?: string | null) => void
   getExpiry: (ownerKey: string, endpoint: string) => EndpointExpiry | undefined
   isExpired: (ownerKey: string, endpoint: string) => boolean
-  getTimeUntilExpiry: (ownerKey: string, endpoint: string) => number
   getNextExpiry: () => { key: string; expiresAt: number } | null
   clearForOwner: (ownerKey: string) => void
   clear: () => Promise<void>
@@ -182,30 +181,8 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
   isExpired: (ownerKey: string, endpoint: string) => {
     const key = makeKey(ownerKey, endpoint)
     const expiry = get().endpoints.get(key)
-
-    if (!expiry) {
-      return true
-    }
-
-    const expired = Date.now() >= expiry.expiresAt
-    logger.debug('Expiry check', {
-      module: 'ExpiryCacheStore',
-      ownerKey,
-      endpoint,
-      expiresAt: expiry.expiresAt,
-      now: Date.now(),
-      expired,
-    })
-
-    return expired
-  },
-
-  getTimeUntilExpiry: (ownerKey: string, endpoint: string) => {
-    const key = makeKey(ownerKey, endpoint)
-    const expiry = get().endpoints.get(key)
-
-    if (!expiry) return 0
-    return Math.max(0, expiry.expiresAt - Date.now())
+    if (!expiry) return true
+    return Date.now() >= expiry.expiresAt
   },
 
   getNextExpiry: () => {

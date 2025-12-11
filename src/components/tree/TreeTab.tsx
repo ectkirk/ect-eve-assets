@@ -12,17 +12,6 @@ interface TreeTabProps {
   mode: TreeMode
 }
 
-function formatTimeRemaining(ms: number): string {
-  if (ms <= 0) return ''
-  const minutes = Math.ceil(ms / 60000)
-  if (minutes >= 60) {
-    const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
-    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
-  }
-  return `${minutes}m`
-}
-
 export function TreeTab({ mode }: TreeTabProps) {
   const {
     assetsByOwner,
@@ -34,10 +23,7 @@ export function TreeTab({ mode }: TreeTabProps) {
     prices,
     assetNames,
     cacheVersion,
-    update,
     updateProgress,
-    canUpdate,
-    timeUntilUpdate,
   } = useAssetData()
 
   const { search, setResultCount } = useTabControls()
@@ -138,15 +124,8 @@ export function TreeTab({ mode }: TreeTabProps) {
             </>
           )}
           {!hasError && (
-            <p className="text-slate-400 mb-4">No asset data loaded. Click Update to fetch from ESI.</p>
+            <p className="text-slate-400">No asset data loaded yet.</p>
           )}
-          <button
-            onClick={() => update()}
-            disabled={!canUpdate}
-            className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {canUpdate ? 'Update Assets' : `Update in ${formatTimeRemaining(timeUntilUpdate)}`}
-          </button>
         </div>
       </div>
     )

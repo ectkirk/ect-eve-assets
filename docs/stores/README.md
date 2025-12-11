@@ -42,7 +42,6 @@ All stores implement:
 - `updateForOwner(owner)` - Fetch for single owner
 - `removeForOwner(type, id)` - Remove owner's data
 - `clear()` - Clear all data
-- `canUpdate()` / `getTimeUntilUpdate()` - Cooldown checks
 
 **IndexedDB Schema**
 Each store uses two object stores:

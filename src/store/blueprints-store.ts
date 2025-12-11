@@ -45,8 +45,6 @@ interface BlueprintsActions {
   updateForOwner: (owner: Owner) => Promise<void>
   removeForOwner: (ownerType: string, ownerId: number) => Promise<void>
   clear: () => Promise<void>
-  canUpdate: () => boolean
-  getTimeUntilUpdate: () => number
 }
 
 type BlueprintsStore = BlueprintsState & BlueprintsActions
@@ -187,48 +185,6 @@ export const useBlueprintsStore = create<BlueprintsStore>((set, get) => ({
       })
       set({ initialized: true })
     }
-  },
-
-  canUpdate: () => {
-    const { isUpdating, blueprintsByOwner } = get()
-    if (isUpdating) return false
-
-    const expiryCacheStore = useExpiryCacheStore.getState()
-
-    for (const { owner } of blueprintsByOwner) {
-      const ownerKey = `${owner.type}-${owner.id}`
-      const endpoint = getBlueprintsEndpoint(owner)
-      if (expiryCacheStore.isExpired(ownerKey, endpoint)) {
-        return true
-      }
-    }
-
-    const owners = Object.values(useAuthStore.getState().owners)
-    for (const owner of owners) {
-      if (!owner) continue
-      const ownerKey = `${owner.type}-${owner.id}`
-      const endpoint = getBlueprintsEndpoint(owner)
-      if (expiryCacheStore.isExpired(ownerKey, endpoint)) {
-        return true
-      }
-    }
-
-    return false
-  },
-
-  getTimeUntilUpdate: () => {
-    const { blueprintsByOwner } = get()
-    const expiryCacheStore = useExpiryCacheStore.getState()
-
-    let minTime = Infinity
-    for (const { owner } of blueprintsByOwner) {
-      const ownerKey = `${owner.type}-${owner.id}`
-      const endpoint = getBlueprintsEndpoint(owner)
-      const time = expiryCacheStore.getTimeUntilExpiry(ownerKey, endpoint)
-      if (time < minTime) minTime = time
-    }
-
-    return minTime === Infinity ? 0 : minTime
   },
 
   update: async (force = false) => {

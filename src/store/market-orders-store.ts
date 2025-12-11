@@ -42,8 +42,6 @@ interface MarketOrdersActions {
   updateForOwner: (owner: Owner) => Promise<void>
   removeForOwner: (ownerType: string, ownerId: number) => Promise<void>
   clear: () => Promise<void>
-  canUpdate: () => boolean
-  getTimeUntilUpdate: () => number
 }
 
 type MarketOrdersStore = MarketOrdersState & MarketOrdersActions
@@ -173,48 +171,6 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
       })
       set({ initialized: true })
     }
-  },
-
-  canUpdate: () => {
-    const { isUpdating, ordersByOwner } = get()
-    if (isUpdating) return false
-
-    const expiryCacheStore = useExpiryCacheStore.getState()
-
-    for (const { owner } of ordersByOwner) {
-      const ownerKey = `${owner.type}-${owner.id}`
-      const endpoint = getOrdersEndpoint(owner)
-      if (expiryCacheStore.isExpired(ownerKey, endpoint)) {
-        return true
-      }
-    }
-
-    const owners = Object.values(useAuthStore.getState().owners)
-    for (const owner of owners) {
-      if (!owner) continue
-      const ownerKey = `${owner.type}-${owner.id}`
-      const endpoint = getOrdersEndpoint(owner)
-      if (expiryCacheStore.isExpired(ownerKey, endpoint)) {
-        return true
-      }
-    }
-
-    return false
-  },
-
-  getTimeUntilUpdate: () => {
-    const { ordersByOwner } = get()
-    const expiryCacheStore = useExpiryCacheStore.getState()
-
-    let minTime = Infinity
-    for (const { owner } of ordersByOwner) {
-      const ownerKey = `${owner.type}-${owner.id}`
-      const endpoint = getOrdersEndpoint(owner)
-      const time = expiryCacheStore.getTimeUntilExpiry(ownerKey, endpoint)
-      if (time < minTime) minTime = time
-    }
-
-    return minTime === Infinity ? 0 : minTime
   },
 
   update: async (force = false) => {

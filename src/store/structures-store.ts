@@ -36,8 +36,6 @@ interface StructuresActions {
   updateForOwner: (owner: Owner) => Promise<void>
   removeForOwner: (ownerType: string, ownerId: number) => Promise<void>
   clear: () => Promise<void>
-  canUpdate: () => boolean
-  getTimeUntilUpdate: () => number
 }
 
 type StructuresStore = StructuresState & StructuresActions
@@ -154,50 +152,6 @@ export const useStructuresStore = create<StructuresStore>((set, get) => ({
       })
       set({ initialized: true })
     }
-  },
-
-  canUpdate: () => {
-    const { isUpdating, structuresByOwner } = get()
-    if (isUpdating) return false
-
-    const expiryCacheStore = useExpiryCacheStore.getState()
-
-    for (const { owner } of structuresByOwner) {
-      if (owner.type !== 'corporation') continue
-      const ownerKey = `${owner.type}-${owner.id}`
-      const endpoint = getStructuresEndpoint(owner)
-      if (expiryCacheStore.isExpired(ownerKey, endpoint)) {
-        return true
-      }
-    }
-
-    const owners = Object.values(useAuthStore.getState().owners)
-    for (const owner of owners) {
-      if (!owner || owner.type !== 'corporation') continue
-      const ownerKey = `${owner.type}-${owner.id}`
-      const endpoint = getStructuresEndpoint(owner)
-      if (expiryCacheStore.isExpired(ownerKey, endpoint)) {
-        return true
-      }
-    }
-
-    return false
-  },
-
-  getTimeUntilUpdate: () => {
-    const { structuresByOwner } = get()
-    const expiryCacheStore = useExpiryCacheStore.getState()
-
-    let minTime = Infinity
-    for (const { owner } of structuresByOwner) {
-      if (owner.type !== 'corporation') continue
-      const ownerKey = `${owner.type}-${owner.id}`
-      const endpoint = getStructuresEndpoint(owner)
-      const time = expiryCacheStore.getTimeUntilExpiry(ownerKey, endpoint)
-      if (time < minTime) minTime = time
-    }
-
-    return minTime === Infinity ? 0 : minTime
   },
 
   update: async (force = false) => {
