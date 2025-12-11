@@ -1,4 +1,5 @@
 import { useEffect, useState, Component, type ReactNode } from 'react'
+import { useAuthStore } from './store/auth-store'
 import { useAssetStore } from './store/asset-store'
 import { useMarketOrdersStore } from './store/market-orders-store'
 import { useIndustryJobsStore } from './store/industry-jobs-store'
@@ -87,6 +88,8 @@ function App() {
       })
       .then(() => {
         logger.info('All stores initialized', { module: 'App' })
+        const ownerKeys = Object.keys(useAuthStore.getState().owners)
+        useExpiryCacheStore.getState().queueMissingEndpoints(ownerKeys)
         setCacheReady(true)
       })
       .catch((err) => {

@@ -31,6 +31,8 @@ interface ExpiryCacheActions {
   registerRefreshCallback: (endpointPattern: string, callback: RefreshCallback) => () => void
   triggerRefresh: (ownerKey: string, endpoint: string) => void
   queueInitialRefresh: (ownerKey: string, endpoint: string) => void
+  queueAllEndpointsForOwner: (ownerKey: string) => void
+  queueMissingEndpoints: (ownerKeys: string[]) => void
   clearForOwner: (ownerKey: string) => void
   clear: () => Promise<void>
 }
@@ -311,6 +313,42 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
   queueInitialRefresh: (ownerKey: string, endpoint: string) => {
     initialQueue.push({ ownerKey, endpoint })
     processInitialQueue()
+  },
+
+  queueAllEndpointsForOwner: (ownerKey: string) => {
+    for (const pattern of callbacks.keys()) {
+      initialQueue.push({ ownerKey, endpoint: pattern })
+    }
+    logger.info('Queued all endpoints for owner', {
+      module: 'ExpiryCacheStore',
+      ownerKey,
+      count: callbacks.size,
+    })
+    processInitialQueue()
+  },
+
+  queueMissingEndpoints: (ownerKeys: string[]) => {
+    const { endpoints } = get()
+    let queued = 0
+
+    for (const ownerKey of ownerKeys) {
+      for (const pattern of callbacks.keys()) {
+        const key = makeKey(ownerKey, pattern)
+        if (!endpoints.has(key)) {
+          initialQueue.push({ ownerKey, endpoint: pattern })
+          queued++
+        }
+      }
+    }
+
+    if (queued > 0) {
+      logger.info('Queued missing endpoints', {
+        module: 'ExpiryCacheStore',
+        queued,
+        owners: ownerKeys.length,
+      })
+      processInitialQueue()
+    }
   },
 
   clearForOwner: (ownerKey: string) => {

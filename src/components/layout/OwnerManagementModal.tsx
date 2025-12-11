@@ -113,12 +113,7 @@ export function OwnerManagementModal({
         })
         setIsAddingCharacter(false)
         setIsUpdatingData(true)
-        await useAssetStore.getState().updateForOwner({
-          ...newOwner,
-          accessToken: result.accessToken,
-          refreshToken: result.refreshToken,
-          expiresAt: result.expiresAt ?? Date.now() + 1200000,
-        })
+        useExpiryCacheStore.getState().queueAllEndpointsForOwner(ownerKey(newOwner.type, newOwner.id))
         setIsUpdatingData(false)
       } else if (result.error && result.error !== 'Authentication cancelled') {
         setError(result.error)
@@ -187,12 +182,7 @@ export function OwnerManagementModal({
         })
         setIsAddingCorporation(false)
         setIsUpdatingData(true)
-        await useAssetStore.getState().updateForOwner({
-          ...newCorpOwner,
-          accessToken: result.accessToken,
-          refreshToken: result.refreshToken,
-          expiresAt: result.expiresAt ?? Date.now() + 1200000,
-        })
+        useExpiryCacheStore.getState().queueAllEndpointsForOwner(ownerKey(newCorpOwner.type, newCorpOwner.id))
         setIsUpdatingData(false)
       } else if (result.error && result.error !== 'Authentication cancelled') {
         setError(result.error)
@@ -216,6 +206,7 @@ export function OwnerManagementModal({
         await window.electronAPI.logout(owner.id)
       }
       useAuthStore.getState().removeOwner(key)
+      useExpiryCacheStore.getState().clearForOwner(key)
       await Promise.all([
         useAssetStore.getState().removeForOwner(owner.type, owner.id),
         useBlueprintsStore.getState().removeForOwner(owner.type, owner.id),
