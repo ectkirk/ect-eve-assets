@@ -55,7 +55,6 @@ interface ElectronAPI {
   storageSet: (data: Record<string, unknown>) => Promise<boolean>
   writeLog: (level: LogLevel, message: string, context?: LogContext) => Promise<void>
   getLogDir: () => Promise<string>
-  onOpenUpdateDialog: (callback: () => void) => () => void
   refTypes: (ids: number[], market: 'jita' | 'the_forge') => Promise<RefApiResult>
   refUniverse: (ids: number[]) => Promise<RefApiResult>
   refShips: (ids: number[]) => Promise<RefShipsResult>

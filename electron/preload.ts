@@ -57,7 +57,6 @@ export interface ElectronAPI {
   storageSet: (data: Record<string, unknown>) => Promise<boolean>
   writeLog: (level: LogLevel, message: string, context?: LogContext) => Promise<void>
   getLogDir: () => Promise<string>
-  onOpenUpdateDialog: (callback: () => void) => () => void
   refTypes: (ids: number[], market: 'jita' | 'the_forge') => Promise<RefApiResult>
   refUniverse: (ids: number[]) => Promise<RefApiResult>
   refShips: (ids: number[]) => Promise<RefShipsResult>
@@ -80,11 +79,6 @@ const electronAPI: ElectronAPI = {
   writeLog: (level: LogLevel, message: string, context?: LogContext) =>
     ipcRenderer.invoke('log:write', level, message, context),
   getLogDir: () => ipcRenderer.invoke('log:getDir'),
-  onOpenUpdateDialog: (callback: () => void) => {
-    const handler = () => callback()
-    ipcRenderer.on('data:openUpdateDialog', handler)
-    return () => ipcRenderer.removeListener('data:openUpdateDialog', handler)
-  },
   refTypes: (ids: number[], market: 'jita' | 'the_forge') =>
     ipcRenderer.invoke('ref:types', ids, market),
   refUniverse: (ids: number[]) => ipcRenderer.invoke('ref:universe', ids),

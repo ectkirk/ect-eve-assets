@@ -1,14 +1,11 @@
-import { useEffect, useState, useCallback, Component, type ReactNode } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useEffect, useState, Component, type ReactNode } from 'react'
 import { useAssetStore } from './store/asset-store'
 import { useMarketOrdersStore } from './store/market-orders-store'
 import { useIndustryJobsStore } from './store/industry-jobs-store'
 import { useContractsStore } from './store/contracts-store'
 import { useWalletStore } from './store/wallet-store'
 import { useBlueprintsStore } from './store/blueprints-store'
-import { useDataCacheStore, type DataType } from './store/data-cache-store'
 import { MainLayout } from './components/layout/MainLayout'
-import { UpdateDialog } from './components/dialogs/UpdateDialog'
 import { initCache } from './store/reference-cache'
 import { logger } from './lib/logger'
 
@@ -57,57 +54,8 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
 }
 
 function App() {
-  const queryClient = useQueryClient()
-  const setFetching = useDataCacheStore((state) => state.setFetching)
-  const setFetched = useDataCacheStore((state) => state.setFetched)
-  const setError = useDataCacheStore((state) => state.setError)
-
   const [cacheReady, setCacheReady] = useState(false)
   const [cacheError, setCacheError] = useState<string | null>(null)
-  const [updateDialogOpen, setUpdateDialogOpen] = useState(false)
-
-  const handleDataUpdate = useCallback(async (selected: DataType[]) => {
-    logger.info('Starting data update', { module: 'App', dataTypes: selected })
-
-    for (const dataType of selected) {
-      setFetching(dataType, true)
-    }
-
-    try {
-      if (selected.includes('assets')) {
-        await queryClient.invalidateQueries({ queryKey: ['assets'] })
-        setFetched('assets', null)
-      }
-      if (selected.includes('marketOrders')) {
-        await queryClient.invalidateQueries({ queryKey: ['marketOrders'] })
-        setFetched('marketOrders', null)
-      }
-      if (selected.includes('industryJobs')) {
-        await queryClient.invalidateQueries({ queryKey: ['industryJobs'] })
-        setFetched('industryJobs', null)
-      }
-      if (selected.includes('contracts')) {
-        await queryClient.invalidateQueries({ queryKey: ['contracts'] })
-        setFetched('contracts', null)
-      }
-      if (selected.includes('clones')) {
-        await queryClient.invalidateQueries({ queryKey: ['clones'] })
-        setFetched('clones', null)
-      }
-      if (selected.includes('prices')) {
-        await queryClient.invalidateQueries({ queryKey: ['marketPrices'] })
-        await queryClient.invalidateQueries({ queryKey: ['capitalPrices'] })
-        setFetched('prices', null)
-      }
-
-      logger.info('Data update completed', { module: 'App', dataTypes: selected })
-    } catch (err) {
-      logger.error('Data update failed', err as Error, { module: 'App' })
-      for (const dataType of selected) {
-        setError(dataType, (err as Error).message)
-      }
-    }
-  }, [queryClient, setFetching, setFetched, setError])
 
   useEffect(() => {
     logger.info('App starting', { module: 'App' })
@@ -136,11 +84,6 @@ function App() {
       })
   }, [])
 
-  useEffect(() => {
-    if (!window.electronAPI) return
-    return window.electronAPI.onOpenUpdateDialog(() => setUpdateDialogOpen(true))
-  }, [])
-
   if (cacheError) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-900 text-slate-50">
@@ -164,11 +107,6 @@ function App() {
     <ErrorBoundary>
       <div className="h-screen bg-slate-900 text-slate-50">
         <MainLayout />
-        <UpdateDialog
-          open={updateDialogOpen}
-          onOpenChange={setUpdateDialogOpen}
-          onUpdate={handleDataUpdate}
-        />
       </div>
     </ErrorBoundary>
   )
