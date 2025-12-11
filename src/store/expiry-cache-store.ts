@@ -159,7 +159,8 @@ function scheduleTimer(key: string, ownerKey: string, endpoint: string, expiresA
     clearTimeout(existingTimer)
   }
 
-  const delay = Math.max(100, expiresAt - Date.now())
+  const timeUntilExpiry = expiresAt - Date.now()
+  const delay = timeUntilExpiry < 1000 ? 300000 : timeUntilExpiry
 
   const timer = setTimeout(() => {
     timers.delete(key)
