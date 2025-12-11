@@ -1,4 +1,5 @@
-import { BrowserWindow } from 'electron'
+import { shell } from 'electron'
+import { createServer, type Server, type IncomingMessage, type ServerResponse } from 'node:http'
 import { randomBytes, createHash } from 'node:crypto'
 import { URL } from 'node:url'
 import * as jose from 'jose'
@@ -38,7 +39,19 @@ const EVE_SSO = {
   clientId: 'ff72276da5e947b3a64763038d22ef53',
 }
 
+const CALLBACK_PORT = 52742
+const CALLBACK_URL = `http://localhost:${CALLBACK_PORT}/callback`
+const AUTH_TIMEOUT_MS = 5 * 60 * 1000
+
 const JWKS = jose.createRemoteJWKSet(new URL(EVE_SSO.jwksUrl))
+
+let callbackServer: Server | null = null
+let pendingAuth: {
+  state: string
+  codeVerifier: string
+  resolve: (result: AuthResult) => void
+  timeoutId: NodeJS.Timeout
+} | null = null
 
 function generateCodeVerifier(): string {
   const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-._~'
@@ -75,13 +88,10 @@ interface AuthResult {
 interface ESICharacterInfo {
   corporation_id: number
   name: string
-  // other fields exist but we don't need them
 }
 
 async function fetchCharacterInfo(characterId: number): Promise<ESICharacterInfo> {
-  const response = await fetch(
-    `https://esi.evetech.net/characters/${characterId}/`
-  )
+  const response = await fetch(`https://esi.evetech.net/characters/${characterId}/`)
   if (!response.ok) {
     throw new Error('Failed to fetch character info')
   }
@@ -101,21 +111,6 @@ interface JWTPayload {
   scp: string | string[]
   iss: string
   exp: number
-}
-
-let authWindow: BrowserWindow | null = null
-let pendingResolve: ((result: AuthResult) => void) | null = null
-
-const AUTH_TIMEOUT_MS = 2 * 60 * 1000
-
-export function cancelAuth(): void {
-  if (authWindow) {
-    logger.info('Authentication cancelled by user', { module: 'Auth' })
-    authWindow.close()
-    authWindow = null
-    pendingResolve?.({ success: false, error: 'Authentication cancelled' })
-    pendingResolve = null
-  }
 }
 
 async function verifyToken(token: string): Promise<JWTPayload> {
@@ -157,9 +152,264 @@ async function exchangeCodeForTokens(code: string, codeVerifier: string): Promis
   return (await response.json()) as TokenResponse
 }
 
-export async function refreshAccessToken(
-  refreshToken: string
-): Promise<AuthResult> {
+const SUCCESS_HTML = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Authentication Successful</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #e0e0e0;
+    }
+    .container {
+      text-align: center;
+      padding: 40px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    h1 { color: #4ade80; margin-bottom: 16px; }
+    p { color: #a0a0a0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>✓ Authentication Successful</h1>
+    <p>You can close this tab and return to the application.</p>
+  </div>
+  <script>window.close();</script>
+</body>
+</html>`
+
+const ERROR_HTML = (error: string) => `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Authentication Failed</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #e0e0e0;
+    }
+    .container {
+      text-align: center;
+      padding: 40px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    h1 { color: #f87171; margin-bottom: 16px; }
+    p { color: #a0a0a0; }
+    .error { color: #fca5a5; font-size: 14px; margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>✗ Authentication Failed</h1>
+    <p>Please close this tab and try again.</p>
+    <p class="error">${error}</p>
+  </div>
+</body>
+</html>`
+
+function sendHtmlResponse(res: ServerResponse, statusCode: number, html: string): void {
+  res.writeHead(statusCode, { 'Content-Type': 'text/html; charset=utf-8' })
+  res.end(html)
+}
+
+async function handleCallbackRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const url = new URL(req.url || '/', `http://localhost:${CALLBACK_PORT}`)
+
+  if (url.pathname !== '/callback') {
+    res.writeHead(404)
+    res.end('Not found')
+    return
+  }
+
+  if (!pendingAuth) {
+    sendHtmlResponse(res, 400, ERROR_HTML('No pending authentication'))
+    return
+  }
+
+  const { state: expectedState, codeVerifier, resolve, timeoutId } = pendingAuth
+  pendingAuth = null
+  clearTimeout(timeoutId)
+
+  const code = url.searchParams.get('code')
+  const returnedState = url.searchParams.get('state')
+  const error = url.searchParams.get('error')
+
+  if (error) {
+    logger.error('SSO callback returned error', undefined, { module: 'Auth', error })
+    sendHtmlResponse(res, 400, ERROR_HTML(error))
+    resolve({ success: false, error })
+    stopCallbackServer()
+    return
+  }
+
+  if (returnedState !== expectedState) {
+    logger.error('SSO state mismatch', undefined, { module: 'Auth' })
+    sendHtmlResponse(res, 400, ERROR_HTML('State mismatch - possible security issue'))
+    resolve({ success: false, error: 'State mismatch - possible CSRF' })
+    stopCallbackServer()
+    return
+  }
+
+  if (!code) {
+    logger.error('No authorization code received', undefined, { module: 'Auth' })
+    sendHtmlResponse(res, 400, ERROR_HTML('No authorization code received'))
+    resolve({ success: false, error: 'No authorization code received' })
+    stopCallbackServer()
+    return
+  }
+
+  try {
+    logger.debug('Exchanging auth code for tokens', { module: 'Auth' })
+    const tokens = await exchangeCodeForTokens(code, codeVerifier)
+    const jwt = await verifyToken(tokens.access_token)
+    const expiresAt = Date.now() + tokens.expires_in * 1000
+    const characterId = extractCharacterId(jwt.sub)
+    const charInfo = await fetchCharacterInfo(characterId)
+
+    logger.info('Authentication successful', {
+      module: 'Auth',
+      characterId,
+      characterName: jwt.name,
+      corporationId: charInfo.corporation_id,
+    })
+
+    sendHtmlResponse(res, 200, SUCCESS_HTML)
+    resolve({
+      success: true,
+      accessToken: tokens.access_token,
+      refreshToken: tokens.refresh_token,
+      expiresAt,
+      characterId,
+      characterName: jwt.name,
+      corporationId: charInfo.corporation_id,
+    })
+  } catch (err) {
+    logger.error('Token exchange failed', err, { module: 'Auth' })
+    const errorMsg = err instanceof Error ? err.message : 'Token exchange failed'
+    sendHtmlResponse(res, 500, ERROR_HTML(errorMsg))
+    resolve({ success: false, error: errorMsg })
+  }
+
+  stopCallbackServer()
+}
+
+function startCallbackServer(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (callbackServer) {
+      resolve()
+      return
+    }
+
+    callbackServer = createServer((req, res) => {
+      handleCallbackRequest(req, res).catch((err) => {
+        logger.error('Callback request handler error', err, { module: 'Auth' })
+        res.writeHead(500)
+        res.end('Internal server error')
+      })
+    })
+
+    callbackServer.on('error', (err) => {
+      logger.error('Callback server error', err, { module: 'Auth' })
+      callbackServer = null
+      reject(err)
+    })
+
+    callbackServer.listen(CALLBACK_PORT, '127.0.0.1', () => {
+      logger.debug('Callback server started', { module: 'Auth', port: CALLBACK_PORT })
+      resolve()
+    })
+  })
+}
+
+function stopCallbackServer(): void {
+  if (callbackServer) {
+    callbackServer.close()
+    callbackServer = null
+    logger.debug('Callback server stopped', { module: 'Auth' })
+  }
+}
+
+export function cancelAuth(): void {
+  if (pendingAuth) {
+    logger.info('Authentication cancelled by user', { module: 'Auth' })
+    clearTimeout(pendingAuth.timeoutId)
+    pendingAuth.resolve({ success: false, error: 'Authentication cancelled' })
+    pendingAuth = null
+  }
+  stopCallbackServer()
+}
+
+export async function startAuth(includeCorporationScopes = false): Promise<AuthResult> {
+  logger.info('Starting EVE SSO authentication', { module: 'Auth', includeCorporationScopes })
+
+  if (pendingAuth) {
+    cancelAuth()
+  }
+
+  try {
+    await startCallbackServer()
+  } catch (err) {
+    return {
+      success: false,
+      error: `Failed to start callback server: ${err instanceof Error ? err.message : 'Unknown error'}`,
+    }
+  }
+
+  const state = randomBytes(32).toString('hex')
+  const codeVerifier = generateCodeVerifier()
+  const codeChallenge = generateCodeChallenge(codeVerifier)
+  const scopes = includeCorporationScopes ? CORPORATION_SCOPES : CHARACTER_SCOPES
+
+  const authUrl = new URL(EVE_SSO.authUrl)
+  authUrl.searchParams.set('response_type', 'code')
+  authUrl.searchParams.set('client_id', EVE_SSO.clientId)
+  authUrl.searchParams.set('redirect_uri', CALLBACK_URL)
+  authUrl.searchParams.set('scope', scopes.join(' '))
+  authUrl.searchParams.set('state', state)
+  authUrl.searchParams.set('code_challenge', codeChallenge)
+  authUrl.searchParams.set('code_challenge_method', 'S256')
+
+  return new Promise((resolve) => {
+    const timeoutId = setTimeout(() => {
+      if (pendingAuth) {
+        logger.warn('Authentication timed out', { module: 'Auth' })
+        pendingAuth = null
+        stopCallbackServer()
+        resolve({ success: false, error: 'Authentication timed out' })
+      }
+    }, AUTH_TIMEOUT_MS)
+
+    pendingAuth = { state, codeVerifier, resolve, timeoutId }
+
+    shell.openExternal(authUrl.toString()).catch((err) => {
+      logger.error('Failed to open browser', err, { module: 'Auth' })
+      clearTimeout(timeoutId)
+      pendingAuth = null
+      stopCallbackServer()
+      resolve({ success: false, error: 'Failed to open browser' })
+    })
+  })
+}
+
+export async function refreshAccessToken(refreshToken: string): Promise<AuthResult> {
   logger.debug('Refreshing access token', { module: 'Auth' })
 
   try {
@@ -186,7 +436,6 @@ export async function refreshAccessToken(
     const jwt = await verifyToken(tokens.access_token)
     const expiresAt = Date.now() + tokens.expires_in * 1000
     const characterId = extractCharacterId(jwt.sub)
-
     const charInfo = await fetchCharacterInfo(characterId)
 
     logger.info('Token refreshed successfully', { module: 'Auth', characterId, characterName: jwt.name })
@@ -206,145 +455,6 @@ export async function refreshAccessToken(
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
     }
-  }
-}
-
-const CALLBACK_URL = 'http://localhost/callback'
-
-export async function startAuth(includeCorporationScopes = false): Promise<AuthResult> {
-  logger.info('Starting EVE SSO authentication', { module: 'Auth', includeCorporationScopes })
-
-  const state = randomBytes(32).toString('hex')
-  const codeVerifier = generateCodeVerifier()
-  const codeChallenge = generateCodeChallenge(codeVerifier)
-  const scopes = includeCorporationScopes ? CORPORATION_SCOPES : CHARACTER_SCOPES
-
-  const authUrl = new URL(EVE_SSO.authUrl)
-  authUrl.searchParams.set('response_type', 'code')
-  authUrl.searchParams.set('client_id', EVE_SSO.clientId)
-  authUrl.searchParams.set('redirect_uri', CALLBACK_URL)
-  authUrl.searchParams.set('scope', scopes.join(' '))
-  authUrl.searchParams.set('state', state)
-  authUrl.searchParams.set('code_challenge', codeChallenge)
-  authUrl.searchParams.set('code_challenge_method', 'S256')
-
-  return new Promise((resolve) => {
-    pendingResolve = resolve
-
-    authWindow = new BrowserWindow({
-      width: 500,
-      height: 700,
-      webPreferences: {
-        nodeIntegration: false,
-        contextIsolation: true,
-      },
-      autoHideMenuBar: true,
-      title: 'EVE Online Login',
-    })
-
-    authWindow.on('closed', () => {
-      authWindow = null
-      if (pendingResolve) {
-        pendingResolve({ success: false, error: 'Authentication cancelled' })
-        pendingResolve = null
-      }
-    })
-
-    authWindow.webContents.on('will-navigate', (_event, navigationUrl) => {
-      logger.debug('Auth window will-navigate', { module: 'Auth', url: navigationUrl })
-      handleCallback(navigationUrl, state, codeVerifier, resolve)
-    })
-
-    authWindow.webContents.on('will-redirect', (_event, navigationUrl) => {
-      logger.debug('Auth window will-redirect', { module: 'Auth', url: navigationUrl })
-      handleCallback(navigationUrl, state, codeVerifier, resolve)
-    })
-
-    authWindow.webContents.on('did-navigate', (_event, navigationUrl) => {
-      logger.debug('Auth window did-navigate', { module: 'Auth', url: navigationUrl })
-      handleCallback(navigationUrl, state, codeVerifier, resolve)
-    })
-
-    authWindow.loadURL(authUrl.toString())
-
-    setTimeout(() => {
-      if (authWindow && !authWindow.isDestroyed()) {
-        logger.warn('Authentication timed out', { module: 'Auth' })
-        authWindow.close()
-        authWindow = null
-        pendingResolve = null
-        resolve({ success: false, error: 'Authentication timed out' })
-      }
-    }, AUTH_TIMEOUT_MS)
-  })
-}
-
-async function handleCallback(
-  url: string,
-  expectedState: string,
-  codeVerifier: string,
-  resolve: (result: AuthResult) => void
-): Promise<void> {
-  if (!url.startsWith(CALLBACK_URL)) return
-
-  const callbackUrl = new URL(url)
-  const code = callbackUrl.searchParams.get('code')
-  const returnedState = callbackUrl.searchParams.get('state')
-  const error = callbackUrl.searchParams.get('error')
-
-  authWindow?.close()
-  authWindow = null
-  pendingResolve = null
-
-  if (error) {
-    logger.error('SSO callback returned error', undefined, { module: 'Auth', error })
-    resolve({ success: false, error })
-    return
-  }
-
-  if (returnedState !== expectedState) {
-    logger.error('SSO state mismatch', undefined, { module: 'Auth' })
-    resolve({ success: false, error: 'State mismatch - possible CSRF' })
-    return
-  }
-
-  if (!code) {
-    logger.error('No authorization code received', undefined, { module: 'Auth' })
-    resolve({ success: false, error: 'No authorization code received' })
-    return
-  }
-
-  try {
-    logger.debug('Exchanging auth code for tokens', { module: 'Auth' })
-    const tokens = await exchangeCodeForTokens(code, codeVerifier)
-    const jwt = await verifyToken(tokens.access_token)
-    const expiresAt = Date.now() + tokens.expires_in * 1000
-    const characterId = extractCharacterId(jwt.sub)
-
-    const charInfo = await fetchCharacterInfo(characterId)
-
-    logger.info('Authentication successful', {
-      module: 'Auth',
-      characterId,
-      characterName: jwt.name,
-      corporationId: charInfo.corporation_id,
-    })
-
-    resolve({
-      success: true,
-      accessToken: tokens.access_token,
-      refreshToken: tokens.refresh_token,
-      expiresAt,
-      characterId,
-      characterName: jwt.name,
-      corporationId: charInfo.corporation_id,
-    })
-  } catch (err) {
-    logger.error('Token exchange failed', err, { module: 'Auth' })
-    resolve({
-      success: false,
-      error: err instanceof Error ? err.message : 'Token exchange failed',
-    })
   }
 }
 
