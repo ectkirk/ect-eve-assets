@@ -337,7 +337,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         }
       }
 
-      let prices = new Map(state.prices)
+      const prices = new Map(state.prices)
       if (typeIds.size > 0) {
         try {
           const fetchedPrices = await fetchPrices(Array.from(typeIds))
