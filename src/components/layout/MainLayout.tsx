@@ -13,7 +13,7 @@ import { IndustryJobsTab } from '@/features/industry-jobs'
 import { ClonesTab } from '@/features/clones'
 import { ContractsTab } from '@/features/contracts'
 import { WalletTab } from '@/features/wallet'
-import { Loader2, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp, Search, X, User } from 'lucide-react'
+import { Loader2, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp, Search, X, User, AlertTriangle } from 'lucide-react'
 import eveSsoLoginWhite from '/eve-sso-login-white.png'
 import { OwnerIcon } from '@/components/ui/type-icon'
 import { OwnerManagementModal } from './OwnerManagementModal'
@@ -86,6 +86,11 @@ function OwnerButton() {
   const activeOwner = useMemo(
     () => owners.find((o) => ownerKey(o.type, o.id) === activeOwnerId),
     [owners, activeOwnerId]
+  )
+
+  const hasAuthFailure = useMemo(
+    () => owners.some((o) => o.authFailed),
+    [owners]
   )
 
   const handleAddFirstCharacter = async () => {
@@ -169,6 +174,11 @@ function OwnerButton() {
         onClick={() => setModalOpen(true)}
         className="flex items-center gap-2 rounded px-2 py-1 hover:bg-slate-700"
       >
+        {hasAuthFailure && (
+          <span title="Auth failure - click to re-authenticate">
+            <AlertTriangle className="h-4 w-4 text-amber-500" />
+          </span>
+        )}
         {activeOwnerId === null ? (
           <>
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-600">
