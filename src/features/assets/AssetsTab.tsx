@@ -13,14 +13,11 @@ import {
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { ArrowUpDown, Loader2 } from 'lucide-react'
 import { type ESIAsset } from '@/api/endpoints/assets'
-import { isAbyssalTypeId, getCachedAbyssalPrice } from '@/api/mutamarket-client'
+import { isAbyssalTypeId } from '@/api/mutamarket-client'
 import { getAbyssalPrice, getTypeName, getType, getStructure, getLocation, CategoryIds } from '@/store/reference-cache'
 import { formatBlueprintName } from '@/store/blueprints-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
-import { useMarketOrdersStore } from '@/store/market-orders-store'
-import { useIndustryJobsStore } from '@/store/industry-jobs-store'
-import { useContractsStore } from '@/store/contracts-store'
 import { TypeIcon, OwnerIcon } from '@/components/ui/type-icon'
 import { formatNumber } from '@/lib/utils'
 import { useTabControls } from '@/context'
@@ -274,10 +271,6 @@ export function AssetsTab() {
     saveColumnVisibility(columnVisibility)
   }, [columnVisibility])
 
-  const ordersByOwner = useMarketOrdersStore((s) => s.ordersByOwner)
-  const jobsByOwner = useIndustryJobsStore((s) => s.jobsByOwner)
-  const contractsByOwner = useContractsStore((s) => s.contractsByOwner)
-
   const data = useMemo<AssetRow[]>(() => {
     void cacheVersion
     const rows: AssetRow[] = []
@@ -382,157 +375,6 @@ export function AssetsTab() {
       }
     }
 
-    const resolveLocationById = (locationId: number): { locationName: string; systemName: string; regionName: string } => {
-      if (locationId > 1_000_000_000_000) {
-        const structure = getStructure(locationId)
-        const locationName = structure?.name ?? `Structure ${locationId}`
-        let systemName = ''
-        let regionName = ''
-        if (structure?.solarSystemId) {
-          const system = getLocation(structure.solarSystemId)
-          systemName = system?.name ?? ''
-          regionName = system?.regionName ?? ''
-        }
-        return { locationName, systemName, regionName }
-      }
-      const location = getLocation(locationId)
-      return {
-        locationName: location?.name ?? `Location ${locationId}`,
-        systemName: location?.solarSystemName ?? '',
-        regionName: location?.regionName ?? '',
-      }
-    }
-
-    for (const { owner, orders } of ordersByOwner) {
-      for (const order of orders) {
-        const sdeType = getType(order.type_id)
-        const typeName = getTypeName(order.type_id)
-        const volume = sdeType?.packagedVolume ?? sdeType?.volume ?? 0
-        const quantity = order.volume_remain
-        const { locationName, systemName, regionName } = resolveLocationById(order.location_id)
-
-        rows.push({
-          itemId: order.order_id,
-          typeId: order.type_id,
-          typeName,
-          quantity,
-          locationId: order.location_id,
-          locationName,
-          systemName,
-          regionName,
-          locationFlag: order.is_buy_order ? 'Buy Order' : 'Sell Order',
-          isSingleton: false,
-          isBlueprintCopy: false,
-          price: order.price,
-          totalValue: order.is_buy_order ? (order.escrow ?? 0) : order.price * quantity,
-          volume,
-          totalVolume: volume * quantity,
-          categoryId: sdeType?.categoryId ?? 0,
-          categoryName: sdeType?.categoryName ?? '',
-          groupName: sdeType?.groupName ?? '',
-          ownerId: owner.id,
-          ownerName: owner.name,
-          ownerType: owner.type,
-        })
-      }
-    }
-
-    for (const { owner, jobs } of jobsByOwner) {
-      for (const job of jobs) {
-        if (job.status !== 'active' && job.status !== 'ready') continue
-        const productTypeId = job.product_type_id ?? job.blueprint_type_id
-        const sdeType = getType(productTypeId)
-        const typeName = getTypeName(productTypeId)
-        const volume = sdeType?.packagedVolume ?? sdeType?.volume ?? 0
-        const price = prices.get(productTypeId) ?? 0
-        const { locationName, systemName, regionName } = resolveLocationById(job.facility_id)
-
-        rows.push({
-          itemId: job.job_id,
-          typeId: productTypeId,
-          typeName,
-          quantity: job.runs,
-          locationId: job.facility_id,
-          locationName,
-          systemName,
-          regionName,
-          locationFlag: 'Industry Job',
-          isSingleton: false,
-          isBlueprintCopy: false,
-          price,
-          totalValue: price * job.runs,
-          volume,
-          totalVolume: volume * job.runs,
-          categoryId: sdeType?.categoryId ?? 0,
-          categoryName: sdeType?.categoryName ?? '',
-          groupName: sdeType?.groupName ?? '',
-          ownerId: owner.id,
-          ownerName: owner.name,
-          ownerType: owner.type,
-        })
-      }
-    }
-
-    const ownerIds = new Set(owners.map((o) => o.characterId))
-    const ownerCorpIds = new Set(owners.filter((o) => o.corporationId).map((o) => o.corporationId!))
-    const seenContracts = new Set<number>()
-
-    for (const { owner, contracts } of contractsByOwner) {
-      for (const { contract, items } of contracts) {
-        if (seenContracts.has(contract.contract_id)) continue
-        seenContracts.add(contract.contract_id)
-        if (contract.status !== 'outstanding' && contract.status !== 'in_progress') continue
-        if (contract.type === 'courier') continue
-
-        const isIssuer = ownerIds.has(contract.issuer_id)
-        const isAssignee = ownerIds.has(contract.assignee_id) || ownerCorpIds.has(contract.assignee_id)
-
-        if (isIssuer && !isAssignee) continue
-
-        const flag = isAssignee ? 'Contract In' : 'Contract'
-        const valueMultiplier = !isIssuer ? -1 : 1
-
-        for (const item of items) {
-          if (!item.is_included) continue
-          const sdeType = getType(item.type_id)
-          const typeName = getTypeName(item.type_id)
-          const volume = sdeType?.packagedVolume ?? sdeType?.volume ?? 0
-          let price: number
-          if (isAbyssalTypeId(item.type_id) && item.item_id) {
-            price = getCachedAbyssalPrice(item.item_id) ?? 0
-          } else {
-            price = prices.get(item.type_id) ?? 0
-          }
-          const contractLocationId = contract.start_location_id ?? 0
-          const { locationName, systemName, regionName } = resolveLocationById(contractLocationId)
-
-          rows.push({
-            itemId: item.record_id,
-            typeId: item.type_id,
-            typeName,
-            quantity: item.quantity,
-            locationId: contractLocationId,
-            locationName,
-            systemName,
-            regionName,
-            locationFlag: flag,
-            isSingleton: item.is_singleton ?? false,
-            isBlueprintCopy: item.is_blueprint_copy ?? false,
-            price,
-            totalValue: price * item.quantity * valueMultiplier,
-            volume,
-            totalVolume: volume * item.quantity,
-            categoryId: sdeType?.categoryId ?? 0,
-            categoryName: sdeType?.categoryName ?? '',
-            groupName: sdeType?.groupName ?? '',
-            ownerId: owner.id,
-            ownerName: owner.name,
-            ownerType: owner.type,
-          })
-        }
-      }
-    }
-
     const aggregated = new Map<string, AssetRow>()
     for (const row of rows) {
       const isBlueprint = row.categoryId === CategoryIds.BLUEPRINT
@@ -552,7 +394,7 @@ export function AssetsTab() {
     }
 
     return Array.from(aggregated.values())
-  }, [assetsByOwner, prices, assetNames, cacheVersion, ordersByOwner, jobsByOwner, contractsByOwner, owners])
+  }, [assetsByOwner, prices, assetNames, cacheVersion])
 
   const categories = useMemo(() => {
     const cats = new Set<string>()
