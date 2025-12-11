@@ -10,6 +10,7 @@ import { useExpiryCacheStore } from './store/expiry-cache-store'
 import { MainLayout } from './components/layout/MainLayout'
 import { initCache } from './store/reference-cache'
 import { logger } from './lib/logger'
+import { setupESITokenProvider } from './api/esi-client'
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null; errorInfo: React.ErrorInfo | null }> {
   constructor(props: { children: ReactNode }) {
@@ -61,6 +62,7 @@ function App() {
 
   useEffect(() => {
     logger.info('App starting', { module: 'App' })
+    const cleanupTokenProvider = setupESITokenProvider()
     initCache()
       .then(() => {
         logger.info('Cache initialized', { module: 'App' })
@@ -89,6 +91,8 @@ function App() {
         logger.error('Failed to initialize cache', err, { module: 'App' })
         setCacheError(err.message)
       })
+
+    return cleanupTokenProvider
   }, [])
 
   if (cacheError) {

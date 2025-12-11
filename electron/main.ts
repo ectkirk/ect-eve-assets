@@ -6,6 +6,8 @@ import { config } from 'dotenv'
 import { startAuth, refreshAccessToken, revokeToken, cancelAuth } from './services/auth.js'
 import { logger, initLogger, type LogLevel, type LogContext } from './services/logger.js'
 import { initUpdater, installUpdate } from './services/updater.js'
+import { getESIService } from './services/esi/index.js'
+import type { ESIRequestOptions } from './services/esi/types.js'
 
 // User data storage path
 const userDataPath = app.getPath('userData')
@@ -407,9 +409,96 @@ ipcMain.handle('mutamarket:module', async (_event, itemId: unknown) => {
   }
 })
 
+const pendingTokenRequests = new Map<number, { resolve: (token: string | null) => void }>()
+
+function setupESIService() {
+  const esiService = getESIService()
+
+  esiService.setTokenProvider(async (characterId: number) => {
+    const win = mainWindow
+    if (!win) return null
+
+    return new Promise<string | null>((resolve) => {
+      const timeout = setTimeout(() => {
+        pendingTokenRequests.delete(characterId)
+        resolve(null)
+      }, 10000)
+
+      pendingTokenRequests.set(characterId, {
+        resolve: (token) => {
+          clearTimeout(timeout)
+          pendingTokenRequests.delete(characterId)
+          resolve(token)
+        },
+      })
+
+      win.webContents.send('esi:request-token', characterId)
+    })
+  })
+
+  return esiService
+}
+
+ipcMain.handle('esi:provide-token', (_event, characterId: unknown, token: unknown) => {
+  if (typeof characterId !== 'number' || !Number.isInteger(characterId) || characterId <= 0) {
+    return
+  }
+  const pending = pendingTokenRequests.get(characterId)
+  if (pending) {
+    pending.resolve(typeof token === 'string' ? token : null)
+  }
+})
+
+ipcMain.handle(
+  'esi:request',
+  async (_event, method: unknown, endpoint: unknown, options: unknown) => {
+    if (typeof method !== 'string' || typeof endpoint !== 'string') {
+      return { success: false, error: 'Invalid parameters' }
+    }
+
+    const validMethods = ['fetch', 'fetchWithMeta', 'fetchPaginated']
+    if (!validMethods.includes(method)) {
+      return { success: false, error: 'Invalid method' }
+    }
+
+    const esiOptions: ESIRequestOptions = {}
+    if (options && typeof options === 'object' && !Array.isArray(options)) {
+      const opts = options as Record<string, unknown>
+      if (opts.method === 'GET' || opts.method === 'POST') esiOptions.method = opts.method
+      if (typeof opts.body === 'string') esiOptions.body = opts.body
+      if (typeof opts.characterId === 'number') esiOptions.characterId = opts.characterId
+      if (typeof opts.requiresAuth === 'boolean') esiOptions.requiresAuth = opts.requiresAuth
+      if (typeof opts.etag === 'string') esiOptions.etag = opts.etag
+    }
+
+    const esiService = getESIService()
+
+    switch (method) {
+      case 'fetch':
+        return esiService.request(endpoint, esiOptions)
+      case 'fetchWithMeta':
+        return esiService.requestWithMeta(endpoint, esiOptions)
+      case 'fetchPaginated':
+        return esiService.requestPaginated(endpoint, esiOptions)
+      default:
+        return { success: false, error: 'Unknown method' }
+    }
+  }
+)
+
+ipcMain.handle('esi:clear-cache', () => {
+  getESIService().clearCache()
+  return { success: true }
+})
+
+ipcMain.handle('esi:rate-limit-info', () => {
+  return getESIService().getRateLimitInfo()
+})
+
 app.whenReady().then(() => {
   initLogger()
   logger.info('App starting', { module: 'Main', version: app.getVersion() })
+  setupESIService()
   createMenu()
   createWindow()
   logger.info('Main window created', { module: 'Main' })

@@ -48,6 +48,35 @@ export interface RefShipsResult {
   error?: string
 }
 
+export interface ESIRequestOptions {
+  method?: 'GET' | 'POST'
+  body?: string
+  characterId?: number
+  requiresAuth?: boolean
+  etag?: string
+}
+
+export interface ESISuccessResponse<T> {
+  success: true
+  data: T
+  meta?: { expiresAt: number; etag: string | null; notModified: boolean }
+}
+
+export interface ESIErrorResponse {
+  success: false
+  error: string
+  status?: number
+  retryAfter?: number
+}
+
+export type ESIResponse<T> = ESISuccessResponse<T> | ESIErrorResponse
+
+export interface ESIRateLimitInfo {
+  globalRetryAfter: number | null
+  groups: Record<string, unknown>
+  queueLength: number
+}
+
 export interface ElectronAPI {
   startAuth: (includeCorporationScopes?: boolean) => Promise<AuthResult>
   cancelAuth: () => Promise<void>
@@ -65,6 +94,11 @@ export interface ElectronAPI {
   onUpdateDownloadProgress: (callback: (percent: number) => void) => () => void
   onUpdateDownloaded: (callback: (version: string) => void) => () => void
   installUpdate: () => Promise<void>
+  esiRequest: <T>(method: string, endpoint: string, options?: ESIRequestOptions) => Promise<ESIResponse<T>>
+  esiProvideToken: (characterId: number, token: string | null) => Promise<void>
+  esiClearCache: () => Promise<{ success: boolean }>
+  esiRateLimitInfo: () => Promise<ESIRateLimitInfo>
+  onEsiRequestToken: (callback: (characterId: number) => void) => () => void
 }
 
 const electronAPI: ElectronAPI = {
@@ -100,6 +134,17 @@ const electronAPI: ElectronAPI = {
     return () => ipcRenderer.removeListener('updater:update-downloaded', handler)
   },
   installUpdate: () => ipcRenderer.invoke('updater:install'),
+  esiRequest: <T>(method: string, endpoint: string, options?: ESIRequestOptions) =>
+    ipcRenderer.invoke('esi:request', method, endpoint, options) as Promise<ESIResponse<T>>,
+  esiProvideToken: (characterId: number, token: string | null) =>
+    ipcRenderer.invoke('esi:provide-token', characterId, token),
+  esiClearCache: () => ipcRenderer.invoke('esi:clear-cache'),
+  esiRateLimitInfo: () => ipcRenderer.invoke('esi:rate-limit-info'),
+  onEsiRequestToken: (callback: (characterId: number) => void) => {
+    const handler = (_event: unknown, characterId: number) => callback(characterId)
+    ipcRenderer.on('esi:request-token', handler)
+    return () => ipcRenderer.removeListener('esi:request-token', handler)
+  },
 }
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI)
