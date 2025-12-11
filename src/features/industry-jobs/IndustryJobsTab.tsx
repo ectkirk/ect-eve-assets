@@ -28,7 +28,7 @@ import {
   getStructure,
   subscribe,
 } from '@/store/reference-cache'
-import { resolveTypes, resolveLocations } from '@/api/ref-client'
+import { resolveTypes, resolveLocations, fetchPrices } from '@/api/ref-client'
 import { resolveStructures } from '@/api/endpoints/universe'
 import {
   Table,
@@ -274,12 +274,15 @@ export function IndustryJobsTab() {
   const [cacheVersion, setCacheVersion] = useState(0)
   useEffect(() => subscribe(() => setCacheVersion((v) => v + 1)), [])
 
+  const setPrices = useAssetStore((s) => s.setPrices)
+
   useEffect(() => {
     if (jobsByOwner.length === 0) return
 
     const unresolvedTypeIds = new Set<number>()
     const unknownLocationIds = new Set<number>()
     const structureToCharacter = new Map<number, number>()
+    const missingPriceTypeIds = new Set<number>()
 
     for (const { owner, jobs } of jobsByOwner) {
       for (const job of jobs) {
@@ -291,6 +294,9 @@ export function IndustryJobsTab() {
           const productType = getType(job.product_type_id)
           if (!productType || productType.name.startsWith('Unknown Type ')) {
             unresolvedTypeIds.add(job.product_type_id)
+          }
+          if (!prices.has(job.product_type_id)) {
+            missingPriceTypeIds.add(job.product_type_id)
           }
         }
         if (job.facility_id > 1_000_000_000_000) {
@@ -312,7 +318,16 @@ export function IndustryJobsTab() {
     if (structureToCharacter.size > 0) {
       resolveStructures(structureToCharacter).catch(() => {})
     }
-  }, [jobsByOwner])
+    if (missingPriceTypeIds.size > 0) {
+      fetchPrices(Array.from(missingPriceTypeIds))
+        .then((fetchedPrices) => {
+          if (fetchedPrices.size > 0) {
+            setPrices(fetchedPrices)
+          }
+        })
+        .catch(() => {})
+    }
+  }, [jobsByOwner, prices, setPrices])
 
   const [expandedLocations, setExpandedLocations] = useState<Set<number>>(new Set())
 

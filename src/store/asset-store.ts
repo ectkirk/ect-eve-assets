@@ -45,6 +45,7 @@ interface AssetActions {
   update: (force?: boolean) => Promise<void>
   updateForOwner: (owner: Owner) => Promise<void>
   removeForOwner: (ownerType: string, ownerId: number) => Promise<void>
+  setPrices: (newPrices: Map<number, number>) => void
   clear: () => Promise<void>
 }
 
@@ -445,6 +446,15 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
     useExpiryCacheStore.getState().clearForOwner(ownerKey)
 
     logger.info('Assets removed for owner', { module: 'AssetStore', ownerKey })
+  },
+
+  setPrices: (newPrices: Map<number, number>) => {
+    const state = get()
+    const merged = new Map(state.prices)
+    for (const [id, price] of newPrices) {
+      merged.set(id, price)
+    }
+    set({ prices: merged })
   },
 
   clear: async () => {
