@@ -133,7 +133,7 @@ describe('contracts-store', () => {
       expect(useContractsStore.getState().contractsByOwner).toHaveLength(1)
     })
 
-    it('filters character contracts to only owned ones', async () => {
+    it('filters out corporation contracts from character results', async () => {
       const { useAuthStore } = await import('./auth-store')
       const { esi } = await import('@/api/esi')
 
@@ -145,7 +145,7 @@ describe('contracts-store', () => {
       })
       vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
 
-      const ownedContract = {
+      const personalContract = {
         contract_id: 1,
         issuer_id: 12345,
         issuer_corporation_id: 98000001,
@@ -159,14 +159,13 @@ describe('contracts-store', () => {
         date_expired: new Date(Date.now() + 86400000).toISOString(),
       }
       const corpContract = {
-        ...ownedContract,
+        ...personalContract,
         contract_id: 2,
-        issuer_id: 99999,
         for_corporation: true,
       }
 
       vi.mocked(esi.fetchPaginatedWithMeta).mockResolvedValue({
-        data: [ownedContract as never, corpContract as never],
+        data: [personalContract as never, corpContract as never],
         expiresAt: Date.now() + 300000,
         etag: 'test-etag',
         notModified: false,
@@ -177,7 +176,7 @@ describe('contracts-store', () => {
 
       const contracts = useContractsStore.getState().contractsByOwner[0]?.contracts
       expect(contracts).toHaveLength(1)
-      expect(contracts?.[0]?.contract.contract_id).toBe(1)
+      expect(contracts?.[0]?.contract.for_corporation).toBe(false)
     })
 
     it('handles fetch errors gracefully', async () => {

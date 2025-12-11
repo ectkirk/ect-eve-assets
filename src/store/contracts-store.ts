@@ -61,32 +61,14 @@ function getContractsEndpoint(owner: Owner): string {
   return `/characters/${owner.characterId}/contracts/`
 }
 
-function isOwnedByCharacter(contract: ESIContract, characterId: number): boolean {
-  if (contract.for_corporation) return false
-  return (
-    contract.issuer_id === characterId ||
-    contract.assignee_id === characterId ||
-    contract.acceptor_id === characterId
-  )
-}
-
-function isOwnedByCorporation(contract: ESIContract, corporationId: number): boolean {
-  return (
-    (contract.for_corporation && contract.issuer_corporation_id === corporationId) ||
-    contract.assignee_id === corporationId
-  )
-}
-
 async function fetchOwnerContractsWithMeta(owner: Owner): Promise<ESIResponseMeta<ESIContract[]>> {
   const endpoint = getContractsEndpoint(owner)
   const result = await esi.fetchPaginatedWithMeta<ESIContract>(endpoint, {
     characterId: owner.characterId,
     schema: ESIContractSchema,
   })
-  if (owner.type === 'corporation') {
-    result.data = result.data.filter((c) => isOwnedByCorporation(c, owner.id))
-  } else {
-    result.data = result.data.filter((c) => isOwnedByCharacter(c, owner.characterId))
+  if (owner.type === 'character') {
+    result.data = result.data.filter((c) => !c.for_corporation)
   }
   return result
 }
