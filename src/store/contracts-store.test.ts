@@ -5,8 +5,9 @@ import { createMockOwner, createMockAuthState } from '@/test/helpers'
 
 vi.mock('./auth-store', () => ({
   useAuthStore: {
-    getState: vi.fn(() => ({ owners: {} })),
+    getState: vi.fn(() => ({ owners: {}, ownerHasScope: () => false })),
   },
+  ownerKey: (type: string, id: number) => `${type}-${id}`,
 }))
 
 vi.mock('./expiry-cache-store', () => ({
@@ -136,7 +137,13 @@ describe('contracts-store', () => {
       const { useAuthStore } = await import('./auth-store')
       const { esi } = await import('@/api/esi')
 
-      const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character', corporationId: 98000001 })
+      const mockOwner = createMockOwner({
+        id: 12345,
+        name: 'Test',
+        type: 'character',
+        corporationId: 98000001,
+        scopes: ['esi-contracts.read_character_contracts.v1', 'esi-contracts.read_corporation_contracts.v1'],
+      })
       vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
 
       const sharedContract = {

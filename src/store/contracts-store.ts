@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { useAuthStore, type Owner } from './auth-store'
+import { useAuthStore, type Owner, ownerKey } from './auth-store'
 import { useExpiryCacheStore } from './expiry-cache-store'
 import {
   getContractItems,
@@ -220,7 +220,7 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
       )
 
       for (const owner of ownersToUpdate) {
-        const ownerKey = `${owner.type}-${owner.id}`
+        const currentOwnerKey = ownerKey(owner.type, owner.id)
         const endpoint = getContractsEndpoint(owner)
 
         try {
@@ -229,7 +229,11 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
           const { data: characterContracts, expiresAt, etag } = await fetchOwnerContractsWithMeta(owner)
 
           let corpContracts: ESIContract[] = []
-          if (owner.corporationId) {
+          const hasCorpContractScope = useAuthStore.getState().ownerHasScope(
+            currentOwnerKey,
+            'esi-contracts.read_corporation_contracts.v1'
+          )
+          if (owner.corporationId && hasCorpContractScope) {
             try {
               const corpResult = await fetchCorpContractsWithMeta(owner.characterId, owner.corporationId)
               corpContracts = corpResult.data
@@ -240,7 +244,7 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
                 count: corpContracts.length,
               })
             } catch (err) {
-              logger.debug('No corp contract access', {
+              logger.debug('Corp contract fetch failed', {
                 module: 'ContractsStore',
                 owner: owner.name,
                 error: err instanceof Error ? err.message : 'Unknown',
@@ -326,9 +330,9 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
             items: contractItemsMap.get(contract.contract_id) ?? [],
           }))
 
-          existingContracts.set(ownerKey, { owner, contracts: contractsWithItems })
+          existingContracts.set(currentOwnerKey, { owner, contracts: contractsWithItems })
 
-          useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag)
+          useExpiryCacheStore.getState().setExpiry(currentOwnerKey, endpoint, expiresAt, etag)
 
           logger.debug('Contract items', {
             module: 'ContractsStore',
@@ -381,7 +385,7 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
     const state = get()
 
     try {
-      const ownerKey = `${owner.type}-${owner.id}`
+      const currentOwnerKey = ownerKey(owner.type, owner.id)
       const endpoint = getContractsEndpoint(owner)
 
       logger.info('Fetching contracts for owner', { module: 'ContractsStore', owner: owner.name })
@@ -398,12 +402,16 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
       const { data: characterContracts, expiresAt, etag } = await fetchOwnerContractsWithMeta(owner)
 
       let corpContracts: ESIContract[] = []
-      if (owner.corporationId) {
+      const hasCorpContractScope = useAuthStore.getState().ownerHasScope(
+        currentOwnerKey,
+        'esi-contracts.read_corporation_contracts.v1'
+      )
+      if (owner.corporationId && hasCorpContractScope) {
         try {
           const corpResult = await fetchCorpContractsWithMeta(owner.characterId, owner.corporationId)
           corpContracts = corpResult.data
         } catch {
-          // No corp access
+          // Corp contract fetch failed
         }
       }
 
@@ -457,10 +465,10 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
         items: contractItemsMap.get(contract.contract_id) ?? [],
       }))
 
-      useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag)
+      useExpiryCacheStore.getState().setExpiry(currentOwnerKey, endpoint, expiresAt, etag)
 
       const updated = state.contractsByOwner.filter(
-        (oc) => `${oc.owner.type}-${oc.owner.id}` !== ownerKey
+        (oc) => `${oc.owner.type}-${oc.owner.id}` !== currentOwnerKey
       )
       updated.push({ owner, contracts: contractsWithItems })
 

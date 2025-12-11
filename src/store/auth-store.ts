@@ -46,7 +46,9 @@ export interface Owner {
   accessToken: string | null
   refreshToken: string
   expiresAt: number | null
+  scopes?: string[]
   authFailed?: boolean
+  scopesOutdated?: boolean
 }
 
 // Helper to create owner key
@@ -67,6 +69,7 @@ interface AuthState {
     accessToken: string
     refreshToken: string
     expiresAt: number
+    scopes?: string[]
     owner: {
       id: number
       type: OwnerType
@@ -79,7 +82,7 @@ interface AuthState {
   switchOwner: (ownerId: string | null) => void
   updateOwnerTokens: (
     ownerId: string,
-    tokens: { accessToken: string; refreshToken: string; expiresAt: number }
+    tokens: { accessToken: string; refreshToken: string; expiresAt: number; scopes?: string[] }
   ) => void
   setOwnerAuthFailed: (ownerId: string, failed: boolean) => void
   clearAuth: () => void
@@ -87,6 +90,8 @@ interface AuthState {
   // Helpers
   getActiveOwner: () => Owner | null
   hasOwnerAuthFailed: (ownerId: string) => boolean
+  hasOwnerScopesOutdated: (ownerId: string) => boolean
+  ownerHasScope: (ownerId: string, scope: string) => boolean
   getOwner: (ownerId: string) => Owner | null
   getOwnerByCharacterId: (characterId: number) => Owner | null
   getAllOwners: () => Owner[]
@@ -121,7 +126,7 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
 
       // New Owner-based API
-      addOwner: ({ accessToken, refreshToken, expiresAt, owner }) => {
+      addOwner: ({ accessToken, refreshToken, expiresAt, scopes, owner }) => {
         const key = ownerKey(owner.type, owner.id)
         set((state) => {
           const hadOwners = Object.keys(state.owners).length > 0
@@ -136,6 +141,7 @@ export const useAuthStore = create<AuthState>()(
               accessToken,
               refreshToken,
               expiresAt,
+              scopes,
             },
           }
           return {
@@ -172,7 +178,7 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      updateOwnerTokens: (ownerId, { accessToken, refreshToken, expiresAt }) => {
+      updateOwnerTokens: (ownerId, { accessToken, refreshToken, expiresAt, scopes }) => {
         set((state) => {
           const owner = state.owners[ownerId]
           if (!owner) return state
@@ -184,7 +190,9 @@ export const useAuthStore = create<AuthState>()(
                 accessToken,
                 refreshToken,
                 expiresAt,
+                scopes: scopes ?? owner.scopes,
                 authFailed: false,
+                scopesOutdated: false,
               },
             },
           }
@@ -224,6 +232,17 @@ export const useAuthStore = create<AuthState>()(
       hasOwnerAuthFailed: (ownerId) => {
         const owner = get().owners[ownerId]
         return owner?.authFailed === true
+      },
+
+      hasOwnerScopesOutdated: (ownerId) => {
+        const owner = get().owners[ownerId]
+        return owner?.scopesOutdated === true
+      },
+
+      ownerHasScope: (ownerId, scope) => {
+        const owner = get().owners[ownerId]
+        if (!owner?.scopes) return false
+        return owner.scopes.includes(scope)
       },
 
       getOwner: (ownerId) => {
@@ -322,6 +341,8 @@ export const useAuthStore = create<AuthState>()(
               characterId: owner.characterId,
               corporationId: owner.corporationId,
               refreshToken: owner.refreshToken,
+              scopes: owner.scopes,
+              scopesOutdated: owner.scopesOutdated,
               // Don't persist tokens - they'll be refreshed
               accessToken: null,
               expiresAt: null,

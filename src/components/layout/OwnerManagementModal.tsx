@@ -108,6 +108,7 @@ export function OwnerManagementModal({
           accessToken: result.accessToken,
           refreshToken: result.refreshToken,
           expiresAt: result.expiresAt ?? Date.now() + 1200000,
+          scopes: result.scopes,
           owner: newOwner,
         })
         setIsAddingCharacter(false)
@@ -151,6 +152,7 @@ export function OwnerManagementModal({
             accessToken: result.accessToken,
             refreshToken: result.refreshToken,
             expiresAt: result.expiresAt ?? Date.now() + 1200000,
+            scopes: result.scopes,
             owner: {
               id: result.characterId,
               type: 'character',
@@ -164,6 +166,7 @@ export function OwnerManagementModal({
             accessToken: result.accessToken,
             refreshToken: result.refreshToken,
             expiresAt: result.expiresAt ?? Date.now() + 1200000,
+            scopes: result.scopes,
           })
         }
 
@@ -179,6 +182,7 @@ export function OwnerManagementModal({
           accessToken: result.accessToken,
           refreshToken: result.refreshToken,
           expiresAt: result.expiresAt ?? Date.now() + 1200000,
+          scopes: result.scopes,
           owner: newCorpOwner,
         })
         setIsAddingCorporation(false)
@@ -260,6 +264,7 @@ export function OwnerManagementModal({
           accessToken: result.accessToken,
           refreshToken: result.refreshToken,
           expiresAt: result.expiresAt ?? Date.now() + 1200000,
+          scopes: result.scopes,
         })
       } else if (result.error && result.error !== 'Authentication cancelled') {
         setError(result.error)
@@ -466,13 +471,14 @@ interface OwnerRowProps {
 
 function OwnerRow({ owner, isActive, disabled, onSelect, onRemove, onReauth }: OwnerRowProps) {
   const isCorp = owner.type === 'corporation'
+  const needsAttention = owner.authFailed || owner.scopesOutdated
 
   return (
     <div
       onClick={disabled ? undefined : onSelect}
       className={`flex items-center justify-between rounded-md px-3 py-2 transition-colors ${
         disabled ? 'opacity-50' : 'hover:bg-slate-700'
-      } ${isActive ? 'bg-slate-700/50 ring-1 ring-blue-500/50' : ''} ${owner.authFailed ? 'ring-1 ring-red-500/50' : ''}`}
+      } ${isActive ? 'bg-slate-700/50 ring-1 ring-blue-500/50' : ''} ${owner.authFailed ? 'ring-1 ring-red-500/50' : ''} ${owner.scopesOutdated && !owner.authFailed ? 'ring-1 ring-amber-500/50' : ''}`}
     >
       <div className="flex items-center gap-2">
         <OwnerIcon ownerId={owner.id} ownerType={owner.type} size="lg" />
@@ -485,14 +491,20 @@ function OwnerRow({ owner, isActive, disabled, onSelect, onRemove, onReauth }: O
             Re-auth needed
           </span>
         )}
-        {isActive && !owner.authFailed && <CheckCircle2 className="h-4 w-4 text-blue-400" />}
+        {owner.scopesOutdated && !owner.authFailed && (
+          <span className="flex items-center gap-1 text-xs text-amber-400">
+            <AlertCircle className="h-3 w-3" />
+            Upgrade scopes
+          </span>
+        )}
+        {isActive && !needsAttention && <CheckCircle2 className="h-4 w-4 text-blue-400" />}
       </div>
       <div className="flex items-center gap-1">
-        {owner.authFailed && !disabled && (
+        {needsAttention && !disabled && (
           <button
             onClick={onReauth}
             className="rounded p-1 text-amber-400 hover:bg-slate-600 hover:text-amber-300"
-            title="Re-authenticate"
+            title={owner.authFailed ? 'Re-authenticate' : 'Upgrade scopes'}
           >
             <RefreshCw className="h-4 w-4" />
           </button>

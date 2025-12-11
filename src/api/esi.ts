@@ -148,6 +148,7 @@ export function setupESITokenProvider(): () => void {
             accessToken: result.accessToken,
             refreshToken: result.refreshToken,
             expiresAt: result.expiresAt ?? Date.now() + 1200000,
+            scopes: result.scopes,
           })
           window.electronAPI!.esi.provideToken(characterId, result.accessToken)
           return

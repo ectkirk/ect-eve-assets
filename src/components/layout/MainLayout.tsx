@@ -93,6 +93,11 @@ function OwnerButton() {
     [owners]
   )
 
+  const hasScopesOutdated = useMemo(
+    () => owners.some((o) => o.scopesOutdated && !o.authFailed),
+    [owners]
+  )
+
   const handleAddFirstCharacter = async () => {
     if (!window.electronAPI) return
 
@@ -121,6 +126,7 @@ function OwnerButton() {
           accessToken: result.accessToken,
           refreshToken: result.refreshToken,
           expiresAt: result.expiresAt ?? Date.now() + 1200000,
+          scopes: result.scopes,
           owner: {
             id: result.characterId,
             type: 'character',
@@ -176,6 +182,11 @@ function OwnerButton() {
       >
         {hasAuthFailure && (
           <span title="Auth failure - click to re-authenticate">
+            <AlertTriangle className="h-4 w-4 text-red-500" />
+          </span>
+        )}
+        {hasScopesOutdated && !hasAuthFailure && (
+          <span title="Scopes outdated - click to upgrade">
             <AlertTriangle className="h-4 w-4 text-amber-500" />
           </span>
         )}

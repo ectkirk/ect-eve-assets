@@ -82,6 +82,7 @@ interface AuthResult {
   characterId?: number
   characterName?: string
   corporationId?: number
+  scopes?: string[]
   error?: string
 }
 
@@ -127,6 +128,11 @@ function extractCharacterId(sub: string): number {
     throw new Error('Invalid sub claim format')
   }
   return parseInt(idPart, 10)
+}
+
+function extractScopes(scp: string | string[]): string[] {
+  if (Array.isArray(scp)) return scp
+  return scp.split(' ')
 }
 
 async function exchangeCodeForTokens(code: string, codeVerifier: string): Promise<TokenResponse> {
@@ -300,6 +306,7 @@ async function handleCallbackRequest(req: IncomingMessage, res: ServerResponse):
       characterId,
       characterName: jwt.name,
       corporationId: charInfo.corporation_id,
+      scopes: extractScopes(jwt.scp),
     })
   } catch (err) {
     logger.error('Token exchange failed', err, { module: 'Auth' })
@@ -448,6 +455,7 @@ export async function refreshAccessToken(refreshToken: string): Promise<AuthResu
       characterId,
       characterName: jwt.name,
       corporationId: charInfo.corporation_id,
+      scopes: extractScopes(jwt.scp),
     }
   } catch (error) {
     logger.error('Token refresh exception', error, { module: 'Auth' })

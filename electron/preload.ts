@@ -8,6 +8,7 @@ export interface AuthResult {
   characterId?: number
   characterName?: string
   corporationId?: number
+  scopes?: string[]
   error?: string
 }
 

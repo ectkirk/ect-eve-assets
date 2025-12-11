@@ -10,9 +10,16 @@ export function createMockOwner(overrides: Partial<Owner> & { id: number; name: 
     accessToken: overrides.accessToken ?? 'mock-token',
     refreshToken: overrides.refreshToken ?? 'mock-refresh',
     expiresAt: overrides.expiresAt ?? Date.now() + 3600000,
+    scopes: overrides.scopes ?? ['esi-contracts.read_character_contracts.v1'],
   }
 }
 
 export function createMockAuthState(owners: Record<string, Owner>) {
-  return { owners } as never
+  return {
+    owners,
+    ownerHasScope: (ownerId: string, scope: string) => {
+      const owner = owners[ownerId]
+      return owner?.scopes?.includes(scope) ?? false
+    },
+  } as never
 }
