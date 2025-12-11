@@ -60,6 +60,10 @@ interface ElectronAPI {
   refUniverse: (ids: number[]) => Promise<RefApiResult>
   refShips: (ids: number[]) => Promise<RefShipsResult>
   mutamarketModule: (itemId: number) => Promise<MutamarketResult>
+  onUpdateAvailable: (callback: (version: string) => void) => () => void
+  onUpdateDownloadProgress: (callback: (percent: number) => void) => () => void
+  onUpdateDownloaded: (callback: (version: string) => void) => () => void
+  installUpdate: () => Promise<void>
 }
 
 declare global {

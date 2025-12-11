@@ -62,6 +62,10 @@ export interface ElectronAPI {
   refUniverse: (ids: number[]) => Promise<RefApiResult>
   refShips: (ids: number[]) => Promise<RefShipsResult>
   mutamarketModule: (itemId: number) => Promise<MutamarketResult>
+  onUpdateAvailable: (callback: (version: string) => void) => () => void
+  onUpdateDownloadProgress: (callback: (percent: number) => void) => () => void
+  onUpdateDownloaded: (callback: (version: string) => void) => () => void
+  installUpdate: () => Promise<void>
 }
 
 const electronAPI: ElectronAPI = {
@@ -86,6 +90,22 @@ const electronAPI: ElectronAPI = {
   refUniverse: (ids: number[]) => ipcRenderer.invoke('ref:universe', ids),
   refShips: (ids: number[]) => ipcRenderer.invoke('ref:ships', ids),
   mutamarketModule: (itemId: number) => ipcRenderer.invoke('mutamarket:module', itemId),
+  onUpdateAvailable: (callback: (version: string) => void) => {
+    const handler = (_event: unknown, version: string) => callback(version)
+    ipcRenderer.on('updater:update-available', handler)
+    return () => ipcRenderer.removeListener('updater:update-available', handler)
+  },
+  onUpdateDownloadProgress: (callback: (percent: number) => void) => {
+    const handler = (_event: unknown, percent: number) => callback(percent)
+    ipcRenderer.on('updater:download-progress', handler)
+    return () => ipcRenderer.removeListener('updater:download-progress', handler)
+  },
+  onUpdateDownloaded: (callback: (version: string) => void) => {
+    const handler = (_event: unknown, version: string) => callback(version)
+    ipcRenderer.on('updater:update-downloaded', handler)
+    return () => ipcRenderer.removeListener('updater:update-downloaded', handler)
+  },
+  installUpdate: () => ipcRenderer.invoke('updater:install'),
 }
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI)

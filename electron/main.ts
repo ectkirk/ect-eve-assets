@@ -5,6 +5,7 @@ import fs from 'node:fs'
 import { config } from 'dotenv'
 import { startAuth, refreshAccessToken, revokeToken, cancelAuth } from './services/auth.js'
 import { logger, initLogger, type LogLevel, type LogContext } from './services/logger.js'
+import { initUpdater, installUpdate } from './services/updater.js'
 
 // User data storage path
 const userDataPath = app.getPath('userData')
@@ -294,6 +295,10 @@ ipcMain.handle('log:getDir', () => {
   return logger.getLogDir()
 })
 
+ipcMain.handle('updater:install', () => {
+  installUpdate()
+})
+
 const REF_API_BASE = 'https://ref.edencom.net/api/v1'
 const MAX_REF_IDS = 1000
 
@@ -408,6 +413,10 @@ app.whenReady().then(() => {
   createMenu()
   createWindow()
   logger.info('Main window created', { module: 'Main' })
+
+  if (app.isPackaged && mainWindow) {
+    initUpdater(mainWindow)
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

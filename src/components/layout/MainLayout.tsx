@@ -17,6 +17,7 @@ import { Loader2, RefreshCw, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp,
 import eveSsoLoginWhite from '/eve-sso-login-white.png'
 import { OwnerIcon } from '@/components/ui/type-icon'
 import { OwnerManagementModal } from './OwnerManagementModal'
+import { UpdateBanner } from './UpdateBanner'
 import { useTotalAssets } from '@/hooks'
 import { formatNumber } from '@/lib/utils'
 import { TabControlsProvider, useTabControls } from '@/context'
@@ -390,6 +391,7 @@ function MainLayoutInner() {
 
   return (
     <div className="flex h-full flex-col">
+      <UpdateBanner />
       {/* Header */}
       <header className="flex items-center justify-between border-b border-slate-700 bg-slate-800 px-4 py-2">
         <div className="flex flex-col">
