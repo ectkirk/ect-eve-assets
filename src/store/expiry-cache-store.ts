@@ -160,7 +160,8 @@ function scheduleTimer(key: string, ownerKey: string, endpoint: string, expiresA
   }
 
   const timeUntilExpiry = expiresAt - Date.now()
-  const delay = timeUntilExpiry < 1000 ? 300000 : timeUntilExpiry
+  const MIN_REFRESH_DELAY = 15 * 60 * 1000 // 15 minutes
+  const delay = timeUntilExpiry < MIN_REFRESH_DELAY ? MIN_REFRESH_DELAY : timeUntilExpiry
 
   const timer = setTimeout(() => {
     timers.delete(key)
