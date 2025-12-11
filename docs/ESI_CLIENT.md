@@ -2,7 +2,21 @@
 
 ## Overview
 
-All ESI requests go through `src/api/esi-client.ts`. Never use raw `fetch()` for ESI endpoints.
+All ESI requests go through `src/api/esi-client.ts`, which delegates to the Electron main process via IPC. Never use raw `fetch()` for ESI endpoints.
+
+## Architecture
+
+```
+Renderer (esi-client.ts) → IPC → Main Process (electron/services/esi/) → fetch() → ESI API
+                                        ↓
+                          Rate limit state (persisted to disk)
+```
+
+The main process handles:
+- Per-group rate limit tracking from response headers
+- ETag/Expires caching
+- Request queuing with throttling
+- Token acquisition via IPC callback to renderer
 
 ## Usage
 
@@ -22,6 +36,12 @@ const prices = await esiClient.fetchPublic<ESIMarketPrice[]>('/markets/prices/')
 
 // Paginated endpoint
 const allAssets = await esiClient.fetchWithPagination<ESIAsset>('/characters/123/assets/')
+
+// With metadata (expiresAt, etag, notModified)
+const result = await esiClient.fetchWithMeta<ESIAsset[]>('/characters/123/assets/', {
+  characterId: 123,
+  etag: '"previous-etag"'  // Optional: for conditional requests
+})
 
 // Batch parallel requests (20 concurrent by default)
 const results = await esiClient.fetchBatch(
@@ -44,16 +64,27 @@ The client implements ESI rate limiting per https://developers.eveonline.com/doc
 | 429/5XX | 0 tokens |
 
 ### What the Client Does
-1. **Sequential queue** - Single requests process one at a time with 100ms delays
-2. **Batch parallel** - `fetchBatch()` processes up to 20 requests concurrently per batch
-3. **Tracks X-Ratelimit-Remaining** - Logs warning when < 20 tokens remain
+1. **Request queue** - Processes requests sequentially with throttle delays
+2. **Per-group tracking** - Tracks X-Ratelimit-Remaining per character and group
+3. **Proactive throttling** - Slows down as limits approach (< 20% remaining)
 4. **Honors Retry-After** - On 420/429, pauses ALL requests for specified duration
 5. **ETag caching** - Sends `If-None-Match` for conditional requests (costs 1 token vs 2)
 6. **Respects Expires** - Returns cached data without hitting ESI if not expired
+7. **State persistence** - Rate limit state saved across app restarts
 
 ### Error Codes
 - **420** - Legacy error rate limit (100 errors/minute across all ESI)
 - **429** - Per-route rate limit exceeded
+
+## Token Flow
+
+Authentication tokens are managed in the renderer (auth-store) and provided to main on demand:
+
+1. Main process needs to make authenticated request
+2. Main sends `esi:request-token` IPC with characterId
+3. Renderer's `setupESITokenProvider()` responds with token
+4. If token expired, renderer refreshes it first
+5. Main receives token and makes request
 
 ## Headers Sent
 
@@ -103,9 +134,21 @@ export async function getPublicFoo(): Promise<Foo> {
 }
 ```
 
+## Key Files
+
+| File | Purpose |
+|------|---------|
+| `src/api/esi-client.ts` | Renderer-side IPC wrapper |
+| `electron/services/esi/index.ts` | Main process service |
+| `electron/services/esi/cache.ts` | ETag/Expires cache |
+| `electron/services/esi/queue.ts` | Request queue with throttling |
+| `electron/services/esi/rate-limit.ts` | Per-group rate limit tracking |
+| `electron/services/esi/types.ts` | Shared TypeScript types |
+
 ## DO NOT
 
 - Use raw `fetch()` for ESI endpoints
 - Fire parallel requests to the same rate limit group
 - Ignore 420/429 responses
 - Make requests before `Expires` header time
+- Call ESI directly from renderer (always use esiClient)

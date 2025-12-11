@@ -1,5 +1,21 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { ESI_BASE_URL, ESI_COMPATIBILITY_DATE, ESI_USER_AGENT } from './esi-client'
+import { z } from 'zod'
+import { ESI_BASE_URL, ESI_COMPATIBILITY_DATE, ESI_USER_AGENT, ESIError } from './esi-client'
+
+const mockEsiRequest = vi.fn()
+const mockEsiClearCache = vi.fn()
+const mockOnEsiRequestToken = vi.fn(() => vi.fn())
+const mockEsiProvideToken = vi.fn()
+
+vi.stubGlobal('window', {
+  electronAPI: {
+    esiRequest: mockEsiRequest,
+    esiClearCache: mockEsiClearCache,
+    onEsiRequestToken: mockOnEsiRequestToken,
+    esiProvideToken: mockEsiProvideToken,
+    refreshToken: vi.fn(),
+  },
+})
 
 vi.mock('@/store/auth-store', () => ({
   useAuthStore: {
@@ -48,358 +64,346 @@ describe('ESI Client Constants', () => {
 })
 
 describe('ESIClient', () => {
-  let fetchSpy: ReturnType<typeof vi.spyOn>
-
   beforeEach(() => {
     vi.resetModules()
-    fetchSpy = vi.spyOn(globalThis, 'fetch')
+    mockEsiRequest.mockReset()
+    mockEsiClearCache.mockReset()
   })
 
   afterEach(() => {
-    fetchSpy.mockRestore()
     vi.clearAllMocks()
   })
 
   describe('fetch', () => {
-    it('adds required headers to requests', async () => {
-      fetchSpy.mockResolvedValueOnce(
-        new Response(JSON.stringify({ test: 'data' }), {
-          status: 200,
-          headers: {
-            'Content-Type': 'application/json',
-            ETag: '"abc123"',
-            Expires: new Date(Date.now() + 60000).toUTCString(),
-          },
-        })
-      )
+    it('calls IPC with correct parameters', async () => {
+      mockEsiRequest.mockResolvedValueOnce({
+        success: true,
+        data: { test: 'data' },
+      })
 
       const { esiClient } = await import('./esi-client')
-      await esiClient.fetch('/test/endpoint')
+      await esiClient.fetch('/test/endpoint', { characterId: 12345 })
 
-      expect(fetchSpy).toHaveBeenCalledWith(
-        expect.stringContaining('/test/endpoint'),
-        expect.objectContaining({
-          headers: expect.objectContaining({
-            'Content-Type': 'application/json',
-            'X-Compatibility-Date': ESI_COMPATIBILITY_DATE,
-            'User-Agent': ESI_USER_AGENT,
-            Authorization: 'Bearer test-token',
-          }),
-        })
-      )
+      expect(mockEsiRequest).toHaveBeenCalledWith('fetch', '/test/endpoint', {
+        method: 'GET',
+        body: undefined,
+        characterId: 12345,
+        requiresAuth: true,
+      })
     })
 
-    it('caches responses with ETag and Expires', async () => {
-      const futureDate = new Date(Date.now() + 60000).toUTCString()
-      fetchSpy.mockResolvedValue(
-        new Response(JSON.stringify({ cached: true }), {
-          status: 200,
-          headers: {
-            'Content-Type': 'application/json',
-            ETag: '"etag123"',
-            Expires: futureDate,
-          },
-        })
-      )
+    it('passes POST method and body', async () => {
+      mockEsiRequest.mockResolvedValueOnce({
+        success: true,
+        data: { created: true },
+      })
 
       const { esiClient } = await import('./esi-client')
-      esiClient.clearCache()
+      await esiClient.fetch('/post/endpoint', {
+        method: 'POST',
+        body: JSON.stringify({ foo: 'bar' }),
+        characterId: 123,
+      })
 
-      await esiClient.fetch('/cacheable')
-      fetchSpy.mockClear()
-      const result = await esiClient.fetch('/cacheable')
-
-      expect(result).toEqual({ cached: true })
-      expect(fetchSpy).not.toHaveBeenCalled()
+      expect(mockEsiRequest).toHaveBeenCalledWith('fetch', '/post/endpoint', {
+        method: 'POST',
+        body: '{"foo":"bar"}',
+        characterId: 123,
+        requiresAuth: true,
+      })
     })
 
-    it('sends If-None-Match header for cached requests with stale data', async () => {
-      const pastDate = new Date(Date.now() - 1000).toUTCString()
-      fetchSpy.mockResolvedValue(
-        new Response(JSON.stringify({ initial: true }), {
-          status: 200,
-          headers: {
-            'Content-Type': 'application/json',
-            ETag: '"first-etag"',
-            Expires: pastDate,
-          },
-        })
-      )
+    it('returns data from successful IPC response', async () => {
+      mockEsiRequest.mockResolvedValueOnce({
+        success: true,
+        data: { id: 42, name: 'Test' },
+      })
 
       const { esiClient } = await import('./esi-client')
-      esiClient.clearCache()
+      const result = await esiClient.fetch<{ id: number; name: string }>('/test')
 
-      await esiClient.fetch('/etag-test')
-
-      fetchSpy.mockResolvedValueOnce(
-        new Response(null, {
-          status: 304,
-          headers: { Expires: new Date(Date.now() + 60000).toUTCString() },
-        })
-      )
-
-      await esiClient.fetch('/etag-test')
-
-      const calls = fetchSpy.mock.calls
-      const lastCall = calls[calls.length - 1]
-      expect(lastCall).toBeDefined()
-      const headers = lastCall![1]?.headers as Record<string, string>
-      expect(headers['If-None-Match']).toBe('"first-etag"')
+      expect(result).toEqual({ id: 42, name: 'Test' })
     })
 
-    it('handles 304 Not Modified responses', async () => {
-      const pastDate = new Date(Date.now() - 1000).toUTCString()
-      fetchSpy.mockResolvedValueOnce(
-        new Response(JSON.stringify({ data: 'original' }), {
-          status: 200,
-          headers: {
-            'Content-Type': 'application/json',
-            ETag: '"orig"',
-            Expires: pastDate,
-          },
-        })
-      )
+    it('throws ESIError on IPC failure', async () => {
+      mockEsiRequest.mockResolvedValueOnce({
+        success: false,
+        error: 'Not found',
+        status: 404,
+      })
 
       const { esiClient } = await import('./esi-client')
-      esiClient.clearCache()
 
-      await esiClient.fetch('/not-modified-test')
-
-      fetchSpy.mockResolvedValueOnce(
-        new Response(null, {
-          status: 304,
-          headers: { Expires: new Date(Date.now() + 60000).toUTCString() },
-        })
-      )
-
-      const result = await esiClient.fetch('/not-modified-test')
-      expect(result).toEqual({ data: 'original' })
+      try {
+        await esiClient.fetch('/not-found')
+        expect.fail('Should have thrown')
+      } catch (e) {
+        expect((e as Error).name).toBe('ESIError')
+        expect((e as Error).message).toBe('Not found')
+        expect((e as ESIError).status).toBe(404)
+      }
     })
 
-    it('throws on rate limit (420)', async () => {
-      fetchSpy.mockResolvedValueOnce(
-        new Response(JSON.stringify({ error: 'Rate limited' }), {
-          status: 420,
-          headers: { 'Retry-After': '60' },
-        })
-      )
+    it('validates response with schema', async () => {
+      mockEsiRequest.mockResolvedValueOnce({
+        success: true,
+        data: { id: 1, name: 'Valid' },
+      })
 
+      const schema = z.object({ id: z.number(), name: z.string() })
       const { esiClient } = await import('./esi-client')
-      esiClient.clearCache()
+      const result = await esiClient.fetch('/validated', { schema })
 
-      await expect(esiClient.fetch('/rate-limited', { skipQueue: true })).rejects.toThrow(
-        /Rate limited/
-      )
+      expect(result).toEqual({ id: 1, name: 'Valid' })
     })
 
-    it('throws on rate limit (429)', async () => {
-      fetchSpy.mockResolvedValueOnce(
-        new Response(JSON.stringify({ error: 'Too many requests' }), {
-          status: 429,
-          headers: { 'Retry-After': '30' },
-        })
-      )
+    it('throws on schema validation failure', async () => {
+      mockEsiRequest.mockResolvedValueOnce({
+        success: true,
+        data: { id: 'not-a-number', name: 'Invalid' },
+      })
 
+      const schema = z.object({ id: z.number(), name: z.string() })
       const { esiClient } = await import('./esi-client')
-      esiClient.clearCache()
 
-      await expect(esiClient.fetch('/too-many', { skipQueue: true })).rejects.toThrow(/Rate limited/)
+      await expect(esiClient.fetch('/invalid', { schema })).rejects.toThrow(/validation failed/)
     })
 
-    it('throws on error responses', async () => {
-      fetchSpy.mockResolvedValueOnce(
-        new Response(JSON.stringify({ error: 'Character not found' }), {
-          status: 404,
-        })
-      )
+    it('uses 500 status when none provided', async () => {
+      mockEsiRequest.mockResolvedValueOnce({
+        success: false,
+        error: 'Unknown error',
+      })
 
       const { esiClient } = await import('./esi-client')
 
-      await expect(esiClient.fetch('/not-found', { skipQueue: true })).rejects.toThrow(
-        'Character not found'
-      )
-    })
-
-    it('throws generic error for non-JSON error responses', async () => {
-      fetchSpy.mockResolvedValueOnce(
-        new Response('Internal Server Error', { status: 500 })
-      )
-
-      const { esiClient } = await import('./esi-client')
-
-      await expect(esiClient.fetch('/server-error', { skipQueue: true })).rejects.toThrow(
-        /ESI request failed: 500/
-      )
+      try {
+        await esiClient.fetch('/error')
+        expect.fail('Should have thrown')
+      } catch (e) {
+        expect((e as Error).name).toBe('ESIError')
+        expect((e as ESIError).status).toBe(500)
+      }
     })
   })
 
-  describe('fetchPublic', () => {
-    it('does not add Authorization header', async () => {
-      fetchSpy.mockResolvedValueOnce(
-        new Response(JSON.stringify({ public: true }), {
-          status: 200,
-          headers: {
-            'Content-Type': 'application/json',
-            ETag: '"pub"',
-            Expires: new Date(Date.now() + 60000).toUTCString(),
-          },
-        })
-      )
+  describe('fetchWithMeta', () => {
+    it('calls IPC with fetchWithMeta method', async () => {
+      mockEsiRequest.mockResolvedValueOnce({
+        success: true,
+        data: {
+          data: [{ id: 1 }],
+          expiresAt: Date.now() + 60000,
+          etag: '"abc123"',
+          notModified: false,
+        },
+      })
 
       const { esiClient } = await import('./esi-client')
-      await esiClient.fetchPublic('/public/endpoint')
+      await esiClient.fetchWithMeta('/assets', { characterId: 123 })
 
-      const headers = fetchSpy.mock.calls[0]![1]?.headers as Record<string, string>
-      expect(headers['Authorization']).toBeUndefined()
-    })
-  })
-
-  describe('rate limit tracking', () => {
-    it('reports not rate limited initially', async () => {
-      const { esiClient } = await import('./esi-client')
-      expect(esiClient.isRateLimited()).toBe(false)
+      expect(mockEsiRequest).toHaveBeenCalledWith('fetchWithMeta', '/assets', {
+        method: 'GET',
+        body: undefined,
+        characterId: 123,
+        requiresAuth: true,
+        etag: undefined,
+      })
     })
 
-    it('returns rate limit info', async () => {
+    it('passes etag to IPC', async () => {
+      mockEsiRequest.mockResolvedValueOnce({
+        success: true,
+        data: {
+          data: [],
+          expiresAt: Date.now() + 60000,
+          etag: '"new-etag"',
+          notModified: true,
+        },
+      })
+
       const { esiClient } = await import('./esi-client')
-      const info = esiClient.getRateLimitInfo()
-      expect(info).toHaveProperty('isLimited')
-      expect(info).toHaveProperty('retryAfter')
+      await esiClient.fetchWithMeta('/assets', { characterId: 123, etag: '"old-etag"' })
+
+      expect(mockEsiRequest).toHaveBeenCalledWith('fetchWithMeta', '/assets', {
+        method: 'GET',
+        body: undefined,
+        characterId: 123,
+        requiresAuth: true,
+        etag: '"old-etag"',
+      })
     })
-  })
 
-  describe('clearCache', () => {
-    it('clears the cache', async () => {
-      const createResponse = () =>
-        new Response(JSON.stringify({ data: 'test' }), {
-          status: 200,
-          headers: {
-            'Content-Type': 'application/json',
-            ETag: '"clear"',
-            Expires: new Date(Date.now() + 60000).toUTCString(),
-          },
-        })
-
-      fetchSpy.mockResolvedValueOnce(createResponse())
+    it('returns meta information', async () => {
+      const expiresAt = Date.now() + 60000
+      mockEsiRequest.mockResolvedValueOnce({
+        success: true,
+        data: {
+          data: { id: 1 },
+          expiresAt,
+          etag: '"etag"',
+          notModified: false,
+        },
+      })
 
       const { esiClient } = await import('./esi-client')
-      esiClient.clearCache()
+      const result = await esiClient.fetchWithMeta<{ id: number }>('/test')
 
-      await esiClient.fetch('/clear-test')
-      const callCount1 = fetchSpy.mock.calls.length
+      expect(result.expiresAt).toBe(expiresAt)
+      expect(result.etag).toBe('"etag"')
+      expect(result.notModified).toBe(false)
+      expect(result.data).toEqual({ id: 1 })
+    })
 
-      esiClient.clearCache()
-      fetchSpy.mockResolvedValueOnce(createResponse())
-      await esiClient.fetch('/clear-test')
-      const callCount2 = fetchSpy.mock.calls.length
+    it('validates data with schema when not notModified', async () => {
+      mockEsiRequest.mockResolvedValueOnce({
+        success: true,
+        data: {
+          data: { id: 'invalid' },
+          expiresAt: Date.now(),
+          etag: null,
+          notModified: false,
+        },
+      })
 
-      expect(callCount2).toBe(callCount1 + 1)
+      const schema = z.object({ id: z.number() })
+      const { esiClient } = await import('./esi-client')
+
+      await expect(esiClient.fetchWithMeta('/test', { schema })).rejects.toThrow(/validation failed/)
+    })
+
+    it('skips validation when notModified', async () => {
+      mockEsiRequest.mockResolvedValueOnce({
+        success: true,
+        data: {
+          data: { id: 'anything' },
+          expiresAt: Date.now(),
+          etag: '"etag"',
+          notModified: true,
+        },
+      })
+
+      const schema = z.object({ id: z.number() })
+      const { esiClient } = await import('./esi-client')
+      const result = await esiClient.fetchWithMeta('/test', { schema })
+
+      expect(result.notModified).toBe(true)
     })
   })
 
   describe('fetchWithPagination', () => {
-    it('fetches single page when X-Pages is 1', async () => {
-      fetchSpy.mockResolvedValueOnce(
-        new Response(JSON.stringify([{ id: 1 }, { id: 2 }]), {
-          status: 200,
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Pages': '1',
-          },
-        })
-      )
+    it('calls IPC with fetchPaginated method', async () => {
+      mockEsiRequest.mockResolvedValueOnce({
+        success: true,
+        data: [{ id: 1 }, { id: 2 }],
+      })
 
       const { esiClient } = await import('./esi-client')
-      const results = await esiClient.fetchWithPagination<{ id: number }>('/paginated')
+      await esiClient.fetchWithPagination('/assets', { characterId: 123 })
 
-      expect(results).toEqual([{ id: 1 }, { id: 2 }])
-      expect(fetchSpy).toHaveBeenCalledTimes(1)
+      expect(mockEsiRequest).toHaveBeenCalledWith('fetchPaginated', '/assets', {
+        characterId: 123,
+        requiresAuth: undefined,
+      })
     })
 
-    it('fetches multiple pages and concatenates results', async () => {
-      fetchSpy
-        .mockResolvedValueOnce(
-          new Response(JSON.stringify([{ id: 1 }]), {
-            status: 200,
-            headers: { 'X-Pages': '3' },
-          })
-        )
-        .mockResolvedValueOnce(
-          new Response(JSON.stringify([{ id: 2 }]), {
-            status: 200,
-            headers: { 'X-Pages': '3' },
-          })
-        )
-        .mockResolvedValueOnce(
-          new Response(JSON.stringify([{ id: 3 }]), {
-            status: 200,
-            headers: { 'X-Pages': '3' },
-          })
-        )
+    it('returns array data', async () => {
+      mockEsiRequest.mockResolvedValueOnce({
+        success: true,
+        data: [{ id: 1 }, { id: 2 }, { id: 3 }],
+      })
 
       const { esiClient } = await import('./esi-client')
-      const results = await esiClient.fetchWithPagination<{ id: number }>('/multi-page')
+      const result = await esiClient.fetchWithPagination<{ id: number }>('/test')
 
-      expect(results).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }])
-      expect(fetchSpy).toHaveBeenCalledTimes(3)
+      expect(result).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }])
     })
 
-    it('appends page parameter correctly to URLs with existing query', async () => {
-      fetchSpy.mockResolvedValueOnce(
-        new Response(JSON.stringify([]), {
-          status: 200,
-          headers: { 'X-Pages': '1' },
-        })
-      )
+    it('validates with schema array', async () => {
+      mockEsiRequest.mockResolvedValueOnce({
+        success: true,
+        data: [{ id: 1 }, { id: 2 }],
+      })
 
+      const schema = z.object({ id: z.number() })
       const { esiClient } = await import('./esi-client')
-      await esiClient.fetchWithPagination('/endpoint?filter=active')
+      const result = await esiClient.fetchWithPagination('/test', { schema })
 
-      expect(fetchSpy).toHaveBeenCalledWith(
-        expect.stringContaining('?filter=active&page=1'),
-        expect.any(Object)
-      )
+      expect(result).toEqual([{ id: 1 }, { id: 2 }])
     })
 
-    it('throws on rate limit during pagination', async () => {
-      fetchSpy.mockResolvedValueOnce(
-        new Response(JSON.stringify({ error: 'Rate limited' }), {
-          status: 420,
-          headers: { 'Retry-After': '60' },
-        })
-      )
+    it('throws on validation failure', async () => {
+      mockEsiRequest.mockResolvedValueOnce({
+        success: true,
+        data: [{ id: 'not-number' }],
+      })
 
+      const schema = z.object({ id: z.number() })
       const { esiClient } = await import('./esi-client')
 
-      await expect(esiClient.fetchWithPagination('/rate-limited-page')).rejects.toThrow(
-        /Rate limited/
-      )
+      await expect(esiClient.fetchWithPagination('/test', { schema })).rejects.toThrow(/validation failed/)
     })
 
-    it('throws on error response during pagination', async () => {
-      fetchSpy.mockResolvedValueOnce(
-        new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 })
-      )
+    it('throws on IPC error', async () => {
+      mockEsiRequest.mockResolvedValueOnce({
+        success: false,
+        error: 'Forbidden',
+        status: 403,
+      })
 
       const { esiClient } = await import('./esi-client')
 
       await expect(esiClient.fetchWithPagination('/forbidden')).rejects.toThrow('Forbidden')
     })
+  })
 
-    it('works without auth when requiresAuth is false', async () => {
-      fetchSpy.mockResolvedValueOnce(
-        new Response(JSON.stringify([{ public: true }]), {
-          status: 200,
-          headers: { 'X-Pages': '1' },
-        })
-      )
+  describe('fetchWithPaginationMeta', () => {
+    it('returns data with meta information', async () => {
+      const expiresAt = Date.now() + 60000
+      mockEsiRequest.mockResolvedValueOnce({
+        success: true,
+        data: [{ id: 1 }],
+        meta: { expiresAt, etag: '"etag"' },
+      })
 
       const { esiClient } = await import('./esi-client')
-      const results = await esiClient.fetchWithPagination('/public', { requiresAuth: false })
+      const result = await esiClient.fetchWithPaginationMeta<{ id: number }>('/test')
 
-      expect(results).toEqual([{ public: true }])
-      const headers = fetchSpy.mock.calls[0]![1]?.headers as Record<string, string>
-      expect(headers['Authorization']).toBeUndefined()
+      expect(result.data).toEqual([{ id: 1 }])
+      expect(result.expiresAt).toBe(expiresAt)
+      expect(result.etag).toBe('"etag"')
+    })
+
+    it('uses default cache time when meta not provided', async () => {
+      const before = Date.now()
+      mockEsiRequest.mockResolvedValueOnce({
+        success: true,
+        data: [],
+      })
+
+      const { esiClient } = await import('./esi-client')
+      const result = await esiClient.fetchWithPaginationMeta('/test')
+
+      expect(result.expiresAt).toBeGreaterThanOrEqual(before + 5 * 60 * 1000 - 100)
+    })
+  })
+
+  describe('fetchPublic', () => {
+    it('calls fetch with requiresAuth false', async () => {
+      mockEsiRequest.mockResolvedValueOnce({
+        success: true,
+        data: { public: true },
+      })
+
+      const { esiClient } = await import('./esi-client')
+      await esiClient.fetchPublic('/public/endpoint')
+
+      expect(mockEsiRequest).toHaveBeenCalledWith('fetch', '/public/endpoint', {
+        method: 'GET',
+        body: undefined,
+        characterId: undefined,
+        requiresAuth: false,
+      })
     })
   })
 
@@ -454,110 +458,39 @@ describe('ESIClient', () => {
     })
   })
 
-  describe('rate limit state tracking', () => {
-    it('tracks rate limit from response headers', async () => {
-      fetchSpy.mockResolvedValueOnce(
-        new Response(JSON.stringify({ data: 'test' }), {
-          status: 200,
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Ratelimit-Remaining': '100',
-            'X-Ratelimit-Limit': '150; window=60',
-            'X-Ratelimit-Group': 'esi-characters',
-            ETag: '"test"',
-            Expires: new Date(Date.now() + 60000).toUTCString(),
-          },
-        })
-      )
-
+  describe('rate limit info', () => {
+    it('reports not rate limited', async () => {
       const { esiClient } = await import('./esi-client')
-      await esiClient.fetch('/tracked', { skipQueue: true })
-
       expect(esiClient.isRateLimited()).toBe(false)
     })
 
-    it('sets global retry after on rate limit', async () => {
-      fetchSpy.mockResolvedValueOnce(
-        new Response(JSON.stringify({ error: 'Rate limited' }), {
-          status: 420,
-          headers: { 'Retry-After': '30' },
-        })
-      )
-
+    it('returns rate limit info', async () => {
       const { esiClient } = await import('./esi-client')
-
-      try {
-        await esiClient.fetch('/trigger-limit', { skipQueue: true })
-      } catch {
-        // Expected
-      }
-
-      expect(esiClient.isRateLimited()).toBe(true)
       const info = esiClient.getRateLimitInfo()
-      expect(info.isLimited).toBe(true)
-      expect(info.retryAfter).toBeGreaterThan(0)
-    })
-
-    it('uses default 60s retry when Retry-After header missing', async () => {
-      fetchSpy.mockResolvedValueOnce(
-        new Response(JSON.stringify({ error: 'Rate limited' }), {
-          status: 429,
-          headers: {},
-        })
-      )
-
-      const { esiClient } = await import('./esi-client')
-
-      try {
-        await esiClient.fetch('/no-retry-header', { skipQueue: true })
-      } catch {
-        // Expected
-      }
-
-      const info = esiClient.getRateLimitInfo()
-      expect(info.retryAfter).toBeGreaterThanOrEqual(59000)
+      expect(info).toEqual({ isLimited: false, retryAfter: null })
     })
   })
 
-  describe('request queue', () => {
-    it('queues requests by default', async () => {
-      const responses = [
-        new Response(JSON.stringify({ n: 1 }), {
-          status: 200,
-          headers: { ETag: '"1"', Expires: new Date(Date.now() + 60000).toUTCString() },
-        }),
-        new Response(JSON.stringify({ n: 2 }), {
-          status: 200,
-          headers: { ETag: '"2"', Expires: new Date(Date.now() + 60000).toUTCString() },
-        }),
-      ]
-      fetchSpy.mockResolvedValueOnce(responses[0]).mockResolvedValueOnce(responses[1])
-
+  describe('clearCache', () => {
+    it('calls IPC clearCache', async () => {
       const { esiClient } = await import('./esi-client')
       esiClient.clearCache()
 
-      const [r1, r2] = await Promise.all([
-        esiClient.fetch('/queue-1'),
-        esiClient.fetch('/queue-2'),
-      ])
-
-      expect(r1).toEqual({ n: 1 })
-      expect(r2).toEqual({ n: 2 })
+      expect(mockEsiClearCache).toHaveBeenCalled()
     })
+  })
 
-    it('skips queue when skipQueue is true', async () => {
-      fetchSpy.mockResolvedValueOnce(
-        new Response(JSON.stringify({ immediate: true }), {
-          status: 200,
-          headers: { ETag: '"skip"', Expires: new Date(Date.now() + 60000).toUTCString() },
-        })
-      )
+  describe('error handling', () => {
+    it('throws when electronAPI is not available', async () => {
+      const originalWindow = global.window
+      vi.stubGlobal('window', { electronAPI: undefined })
 
+      vi.resetModules()
       const { esiClient } = await import('./esi-client')
-      esiClient.clearCache()
 
-      const result = await esiClient.fetch('/skip-queue', { skipQueue: true })
-      expect(result).toEqual({ immediate: true })
+      await expect(esiClient.fetch('/test')).rejects.toThrow('ESI requests require Electron environment')
+
+      vi.stubGlobal('window', originalWindow)
     })
   })
 })
