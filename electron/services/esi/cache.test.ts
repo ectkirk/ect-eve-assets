@@ -1,11 +1,19 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import * as fs from 'fs'
+import * as path from 'path'
+import * as os from 'os'
 import { ESICache } from './cache'
 
 describe('ESICache', () => {
   let cache: ESICache
 
   beforeEach(() => {
+    vi.useFakeTimers()
     cache = new ESICache()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   describe('get/set', () => {
@@ -68,6 +76,63 @@ describe('ESICache', () => {
 
     it('creates key with public for undefined characterId', () => {
       expect(cache.makeKey(undefined, '/public')).toBe('public:/public')
+    })
+  })
+
+  describe('persistence', () => {
+    let testFilePath: string
+
+    beforeEach(() => {
+      vi.useRealTimers()
+      testFilePath = path.join(os.tmpdir(), `esi-cache-test-${Date.now()}.json`)
+    })
+
+    afterEach(() => {
+      try {
+        fs.unlinkSync(testFilePath)
+      } catch {
+        // Ignore cleanup errors
+      }
+    })
+
+    it('saves and loads cache from file', async () => {
+      const futureTime = Date.now() + 60000
+      cache.setFilePath(testFilePath)
+      cache.set('test:key', { foo: 'bar' }, 'abc', futureTime)
+
+      await new Promise((r) => setTimeout(r, 1100))
+
+      const newCache = new ESICache()
+      newCache.setFilePath(testFilePath)
+      newCache.load()
+
+      const entry = newCache.get('test:key')
+      expect(entry).toBeDefined()
+      expect(entry?.data).toEqual({ foo: 'bar' })
+      expect(entry?.etag).toBe('abc')
+    })
+
+    it('skips expired entries when loading', async () => {
+      const pastTime = Date.now() - 1000
+      const savedData = JSON.stringify({
+        version: 1,
+        entries: [
+          { key: 'expired:key', entry: { data: 'old', etag: 'xyz', expires: pastTime } },
+        ],
+      })
+      fs.writeFileSync(testFilePath, savedData)
+
+      const newCache = new ESICache()
+      newCache.setFilePath(testFilePath)
+      newCache.load()
+
+      expect(newCache.size()).toBe(0)
+    })
+
+    it('does not save if no file path set', async () => {
+      cache.set('key', { data: 'value' }, 'etag', Date.now() + 60000)
+      await new Promise((r) => setTimeout(r, 1100))
+      expect(fs.existsSync(testFilePath)).toBe(false)
     })
   })
 })

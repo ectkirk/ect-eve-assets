@@ -14,7 +14,8 @@ import {
 } from './types'
 
 const DEFAULT_CACHE_MS = 5 * 60 * 1000
-const STATE_FILE = 'rate-limits.json'
+const RATE_LIMIT_FILE = 'rate-limits.json'
+const CACHE_FILE = 'esi-cache.json'
 
 type TokenProvider = (characterId: number) => Promise<string | null>
 
@@ -23,10 +24,12 @@ export class MainESIService {
   private rateLimiter = new RateLimitTracker()
   private queue: RequestQueue
   private tokenProvider: TokenProvider | null = null
-  private stateFilePath: string
+  private rateLimitFilePath: string
 
   constructor() {
-    this.stateFilePath = path.join(app.getPath('userData'), STATE_FILE)
+    const userData = app.getPath('userData')
+    this.rateLimitFilePath = path.join(userData, RATE_LIMIT_FILE)
+    this.cache.setFilePath(path.join(userData, CACHE_FILE))
     this.queue = new RequestQueue(this.rateLimiter, this.executeRequest.bind(this))
     this.loadState()
   }
@@ -230,20 +233,21 @@ export class MainESIService {
 
   private loadState(): void {
     try {
-      if (fs.existsSync(this.stateFilePath)) {
-        const data = fs.readFileSync(this.stateFilePath, 'utf-8')
+      if (fs.existsSync(this.rateLimitFilePath)) {
+        const data = fs.readFileSync(this.rateLimitFilePath, 'utf-8')
         const states = JSON.parse(data)
         this.rateLimiter.loadStates(states)
       }
     } catch {
       // Ignore load errors
     }
+    this.cache.load()
   }
 
   private saveState(): void {
     try {
       const states = this.rateLimiter.exportStates()
-      fs.writeFileSync(this.stateFilePath, JSON.stringify(states, null, 2))
+      fs.writeFileSync(this.rateLimitFilePath, JSON.stringify(states, null, 2))
     } catch {
       // Ignore save errors
     }
