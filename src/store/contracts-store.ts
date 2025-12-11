@@ -55,22 +55,40 @@ type ContractsStore = ContractsState & ContractsActions
 let db: IDBDatabase | null = null
 
 function getContractsEndpoint(owner: Owner): string {
+  if (owner.type === 'corporation') {
+    return `/corporations/${owner.id}/contracts/`
+  }
   return `/characters/${owner.characterId}/contracts/`
+}
+
+function isOwnedByCharacter(contract: ESIContract, characterId: number): boolean {
+  if (contract.for_corporation) return false
+  return (
+    contract.issuer_id === characterId ||
+    contract.assignee_id === characterId ||
+    contract.acceptor_id === characterId
+  )
+}
+
+function isOwnedByCorporation(contract: ESIContract, corporationId: number): boolean {
+  return (
+    (contract.for_corporation && contract.issuer_corporation_id === corporationId) ||
+    contract.assignee_id === corporationId
+  )
 }
 
 async function fetchOwnerContractsWithMeta(owner: Owner): Promise<ESIResponseMeta<ESIContract[]>> {
   const endpoint = getContractsEndpoint(owner)
-  return esi.fetchPaginatedWithMeta<ESIContract>(endpoint, {
+  const result = await esi.fetchPaginatedWithMeta<ESIContract>(endpoint, {
     characterId: owner.characterId,
     schema: ESIContractSchema,
   })
-}
-
-async function fetchCorpContractsWithMeta(characterId: number, corporationId: number): Promise<ESIResponseMeta<ESIContract[]>> {
-  return esi.fetchPaginatedWithMeta<ESIContract>(`/corporations/${corporationId}/contracts/`, {
-    characterId,
-    schema: ESIContractSchema,
-  })
+  if (owner.type === 'corporation') {
+    result.data = result.data.filter((c) => isOwnedByCorporation(c, owner.id))
+  } else {
+    result.data = result.data.filter((c) => isOwnedByCharacter(c, owner.characterId))
+  }
+  return result
 }
 
 async function openDB(): Promise<IDBDatabase> {
@@ -181,11 +199,9 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
     const state = get()
     if (state.isUpdating) return
 
-    const allOwners = Object.values(useAuthStore.getState().owners).filter(
-      (o) => o.type === 'character'
-    )
+    const allOwners = Object.values(useAuthStore.getState().owners)
     if (allOwners.length === 0) {
-      set({ updateError: 'No characters logged in' })
+      set({ updateError: 'No owners logged in' })
       return
     }
 
@@ -228,35 +244,7 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
         try {
           logger.info('Fetching contracts', { module: 'ContractsStore', owner: owner.name })
 
-          const { data: characterContracts, expiresAt, etag } = await fetchOwnerContractsWithMeta(owner)
-
-          let corpContracts: ESIContract[] = []
-          const hasCorpContractScope = useAuthStore.getState().ownerHasScope(
-            currentOwnerKey,
-            'esi-contracts.read_corporation_contracts.v1'
-          )
-          if (owner.corporationId && hasCorpContractScope) {
-            try {
-              const corpResult = await fetchCorpContractsWithMeta(owner.characterId, owner.corporationId)
-              corpContracts = corpResult.data
-              logger.debug('Fetched corporation contracts', {
-                module: 'ContractsStore',
-                owner: owner.name,
-                corpId: owner.corporationId,
-                count: corpContracts.length,
-              })
-            } catch (err) {
-              logger.debug('Corp contract fetch failed', {
-                module: 'ContractsStore',
-                owner: owner.name,
-                error: err instanceof Error ? err.message : 'Unknown',
-              })
-            }
-          }
-
-          const seenIds = new Set(characterContracts.map(c => c.contract_id))
-          const uniqueCorpContracts = corpContracts.filter(c => !seenIds.has(c.contract_id))
-          const contracts = [...characterContracts, ...uniqueCorpContracts]
+          const { data: contracts, expiresAt, etag } = await fetchOwnerContractsWithMeta(owner)
 
           const contractsToFetch: ESIContract[] = []
           const contractItemsMap = new Map<number, ESIContractItem[]>()
@@ -351,15 +339,7 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
         }
       }
 
-      const results = Array.from(existingContracts.values()).map((ownerContracts) => {
-        if (ownerContracts.owner.type === 'character') {
-          const filtered = ownerContracts.contracts.filter(
-            ({ contract }) => !contract.for_corporation
-          )
-          return { ...ownerContracts, contracts: filtered }
-        }
-        return ownerContracts
-      })
+      const results = Array.from(existingContracts.values())
 
       await saveToDB(results)
 
@@ -401,25 +381,7 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
         }
       }
 
-      const { data: characterContracts, expiresAt, etag } = await fetchOwnerContractsWithMeta(owner)
-
-      let corpContracts: ESIContract[] = []
-      const hasCorpContractScope = useAuthStore.getState().ownerHasScope(
-        currentOwnerKey,
-        'esi-contracts.read_corporation_contracts.v1'
-      )
-      if (owner.corporationId && hasCorpContractScope) {
-        try {
-          const corpResult = await fetchCorpContractsWithMeta(owner.characterId, owner.corporationId)
-          corpContracts = corpResult.data
-        } catch {
-          // Corp contract fetch failed
-        }
-      }
-
-      const seenIds = new Set(characterContracts.map(c => c.contract_id))
-      const uniqueCorpContracts = corpContracts.filter(c => !seenIds.has(c.contract_id))
-      const contracts = [...characterContracts, ...uniqueCorpContracts]
+      const { data: contracts, expiresAt, etag } = await fetchOwnerContractsWithMeta(owner)
 
       const contractsToFetch: ESIContract[] = []
       const contractItemsMap = new Map<number, ESIContractItem[]>()

@@ -301,7 +301,7 @@ function aggregateTotals(node: TreeNode): void {
     totalVolume += child.totalVolume
   }
 
-  if (node.nodeType === 'station' || node.nodeType === 'system' || node.nodeType === 'region') {
+  if (node.nodeType === 'station') {
     totalCount = countItemLines(node)
   }
 
@@ -399,9 +399,8 @@ export function buildTree(
     }
   }
 
-  // Build region -> system -> station -> items hierarchy
-  const regionNodes = new Map<string, TreeNode>()
-  // Track items that have been added to the tree (to prevent duplicates)
+  // Build flat station -> items hierarchy
+  const stationNodes = new Map<string, TreeNode>()
   const addedItemIds = new Set<number>()
 
   for (const aw of filteredAssets) {
@@ -484,46 +483,22 @@ export function buildTree(
       regionId = location?.regionId
     }
 
-    // Use "Unknown" for missing region/system
+    // Use "Unknown" for missing region
     if (!regionName) regionName = 'Unknown Region'
-    if (!systemName) systemName = 'Unknown System'
 
-    // Create or get region node
-    const regionKey = regionId ? `region-${regionId}` : `region-${regionName}`
-    let regionNode = regionNodes.get(regionKey)
-    if (!regionNode) {
-      regionNode = createLocationNode('region', regionKey, regionName, 0, {
-        regionId,
-        regionName,
-      })
-      regionNodes.set(regionKey, regionNode)
-    }
-
-    // Create or get system node
-    const systemKey = systemId ? `system-${systemId}` : `system-${systemName}-${regionKey}`
-    let systemNode = regionNode.children.find((n) => n.id === systemKey)
-    if (!systemNode) {
-      systemNode = createLocationNode('system', systemKey, systemName, 1, {
-        regionId,
-        regionName,
-        systemId,
-        systemName,
-      })
-      regionNode.children.push(systemNode)
-    }
-
-    // Create or get station node
+    // Create or get station node (flat, no region/system hierarchy)
     const stationKey = `station-${stationLocationId}`
-    let stationNode = systemNode.children.find((n) => n.id === stationKey)
+    let stationNode = stationNodes.get(stationKey)
     if (!stationNode) {
-      stationNode = createLocationNode('station', stationKey, locationName, 2, {
+      const stationDisplayName = `${locationName} (${regionName})`
+      stationNode = createLocationNode('station', stationKey, stationDisplayName, 0, {
         locationId: stationLocationId,
         regionId,
         regionName,
         systemId,
         systemName,
       })
-      systemNode.children.push(stationNode)
+      stationNodes.set(stationKey, stationNode)
     }
 
     // Get the full parent chain (from immediate parent up to root container in hangar)
@@ -551,7 +526,7 @@ export function buildTree(
 
     // Build nested structure: station -> [parent chain with division inserted] -> item
     let currentParent: TreeNode = stationNode
-    let currentDepth = 3
+    let currentDepth = 1
     let divisionInserted = false
 
     // Process parent chain in reverse (from outermost to innermost)
@@ -617,12 +592,8 @@ export function buildTree(
     return stacked
   }
 
-  for (const regionNode of regionNodes.values()) {
-    for (const systemNode of regionNode.children) {
-      for (const stationNode of systemNode.children) {
-        stationNode.children = stackRecursive(stationNode.children)
-      }
-    }
+  for (const stationNode of stationNodes.values()) {
+    stationNode.children = stackRecursive(stationNode.children)
   }
 
   // Sort and aggregate
@@ -640,13 +611,13 @@ export function buildTree(
     return sorted
   }
 
-  for (const regionNode of regionNodes.values()) {
-    regionNode.children = sortRecursive(regionNode.children)
-    aggregateTotals(regionNode)
+  for (const stationNode of stationNodes.values()) {
+    stationNode.children = sortRecursive(stationNode.children)
+    aggregateTotals(stationNode)
   }
 
-  // Return sorted region nodes
-  return sortNodes(Array.from(regionNodes.values()))
+  // Return sorted station nodes
+  return sortNodes(Array.from(stationNodes.values()))
 }
 
 export function flattenTree(

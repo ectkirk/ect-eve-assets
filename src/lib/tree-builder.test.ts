@@ -67,7 +67,7 @@ describe('buildTree', () => {
   })
 
   describe('basic tree structure', () => {
-    it('creates region -> system -> station hierarchy', () => {
+    it('creates flat station hierarchy with region in name', () => {
       const assets: AssetWithOwner[] = [
         createAssetWithOwner(createAsset({ item_id: 1, type_id: 34, quantity: 100 })),
       ]
@@ -78,18 +78,9 @@ describe('buildTree', () => {
       })
 
       expect(tree).toHaveLength(1)
-      expect(tree[0]!.nodeType).toBe('region')
-      expect(tree[0]!.name).toBe('The Forge')
-      expect(tree[0]!.children).toHaveLength(1)
-
-      const systemNode = tree[0]!.children[0]!
-      expect(systemNode.nodeType).toBe('system')
-      expect(systemNode.name).toBe('Jita')
-      expect(systemNode.children).toHaveLength(1)
-
-      const stationNode = systemNode.children[0]!
-      expect(stationNode.nodeType).toBe('station')
-      expect(stationNode.name).toContain('Jita')
+      expect(tree[0]!.nodeType).toBe('station')
+      expect(tree[0]!.name).toContain('Jita')
+      expect(tree[0]!.name).toContain('The Forge')
     })
 
     it('aggregates totals up the tree', () => {
@@ -120,7 +111,7 @@ describe('buildTree', () => {
       })
 
       expect(tree).toHaveLength(1)
-      const stationNode = tree[0]!.children[0]!.children[0]!
+      const stationNode = tree[0]!
       expect(stationNode.children).toHaveLength(1)
     })
 
@@ -178,7 +169,7 @@ describe('buildTree', () => {
       })
 
       expect(tree).toHaveLength(1)
-      const stationNode = tree[0]!.children[0]!.children[0]!
+      const stationNode = tree[0]!
       expect(stationNode.children).toHaveLength(1)
       expect(stationNode.children[0]!.nodeType).toBe('ship')
       expect(stationNode.children[0]!.children).toHaveLength(1)
@@ -198,7 +189,7 @@ describe('buildTree', () => {
       })
 
       expect(tree).toHaveLength(1)
-      const stationNode = tree[0]!.children[0]!.children[0]!
+      const stationNode = tree[0]!
       expect(stationNode.children).toHaveLength(1)
       expect(stationNode.children[0]!.typeId).toBe(587)
     })
@@ -217,7 +208,7 @@ describe('buildTree', () => {
       })
 
       expect(tree).toHaveLength(1)
-      const stationNode = tree[0]!.children[0]!.children[0]!
+      const stationNode = tree[0]!
       expect(stationNode.children).toHaveLength(1)
       const shipNode = stationNode.children[0]!
       expect(shipNode.typeId).toBe(587)
@@ -252,7 +243,7 @@ describe('buildTree', () => {
       })
 
       expect(tree).toHaveLength(1)
-      const stationNode = tree[0]!.children[0]!.children[0]!
+      const stationNode = tree[0]!
       expect(stationNode.children).toHaveLength(1)
       const shipNode = stationNode.children[0]!
       expect(shipNode.typeId).toBe(587)
@@ -285,7 +276,7 @@ describe('buildTree', () => {
       })
 
       expect(tree).toHaveLength(1)
-      const stationNode = tree[0]!.children[0]!.children[0]!
+      const stationNode = tree[0]!
       expect(stationNode.children).toHaveLength(1)
       const shipNode = stationNode.children[0]!
       expect(shipNode.typeId).toBe(587)
@@ -367,7 +358,7 @@ describe('buildTree', () => {
       })
 
       expect(tree).toHaveLength(1)
-      const stationNode = tree[0]!.children[0]!.children[0]!
+      const stationNode = tree[0]!
       const officeNode = stationNode.children.find(c => c.nodeType === 'office')
       expect(officeNode).toBeDefined()
     })
@@ -385,7 +376,7 @@ describe('buildTree', () => {
         prices: new Map([[34, 5]]),
       })
 
-      const stationNode = tree[0]!.children[0]!.children[0]!
+      const stationNode = tree[0]!
       expect(stationNode.children).toHaveLength(1)
       expect(stationNode.children[0]!.quantity).toBe(150)
       expect(stationNode.children[0]!.totalValue).toBe(750)
@@ -402,7 +393,7 @@ describe('buildTree', () => {
         prices: new Map(),
       })
 
-      const stationNode = tree[0]!.children[0]!.children[0]!
+      const stationNode = tree[0]!
       expect(stationNode.children).toHaveLength(2)
     })
 
@@ -417,7 +408,7 @@ describe('buildTree', () => {
         prices: new Map(),
       })
 
-      const stationNode = tree[0]!.children[0]!.children[0]!
+      const stationNode = tree[0]!
       expect(stationNode.children).toHaveLength(2)
     })
   })
@@ -437,7 +428,7 @@ describe('buildTree', () => {
         prices: new Map([[34, 5]]),
       })
 
-      const stationNode = tree[0]!.children[0]!.children[0]!
+      const stationNode = tree[0]!
       expect(stationNode.children).toHaveLength(1)
       expect(stationNode.children[0]!.nodeType).toBe('container')
       expect(stationNode.children[0]!.children).toHaveLength(1)
@@ -460,7 +451,7 @@ describe('buildTree', () => {
         prices: new Map(),
       })
 
-      const stationNode = tree[0]!.children[0]!.children[0]!
+      const stationNode = tree[0]!
       const firstContainer = stationNode.children[0]!
       expect(firstContainer.nodeType).toBe('container')
       expect(firstContainer.children).toHaveLength(1)
@@ -481,7 +472,7 @@ describe('buildTree', () => {
         assetNames: new Map([[1, 'My Favorite Rifter']]),
       })
 
-      const stationNode = tree[0]!.children[0]!.children[0]!
+      const stationNode = tree[0]!
       expect(stationNode.children[0]!.name).toContain('My Favorite Rifter')
     })
 
@@ -496,7 +487,7 @@ describe('buildTree', () => {
         assetNames: new Map([[1, 'Minerals']]),
       })
 
-      const stationNode = tree[0]!.children[0]!.children[0]!
+      const stationNode = tree[0]!
       expect(stationNode.children[0]!.name).toContain('Minerals')
     })
   })
@@ -512,7 +503,7 @@ describe('buildTree', () => {
         prices: new Map([[34, 4.5]]),
       })
 
-      const stationNode = tree[0]!.children[0]!.children[0]!
+      const stationNode = tree[0]!
       expect(stationNode.children[0]!.totalValue).toBe(4500)
     })
 
@@ -526,7 +517,7 @@ describe('buildTree', () => {
         prices: new Map(),
       })
 
-      const stationNode = tree[0]!.children[0]!.children[0]!
+      const stationNode = tree[0]!
       expect(stationNode.children[0]!.totalValue).toBe(0)
     })
   })
@@ -555,7 +546,7 @@ describe('buildTree', () => {
         prices: new Map(),
       })
 
-      const stationNode = tree[0]!.children[0]!.children[0]!
+      const stationNode = tree[0]!
       expect(stationNode.children).toHaveLength(1)
       expect(stationNode.children[0]!.quantity).toBe(100)
     })
@@ -573,7 +564,7 @@ describe('buildTree', () => {
         prices: new Map(),
       })
 
-      const stationNode = tree[0]!.children[0]!.children[0]!
+      const stationNode = tree[0]!
       expect(stationNode.children[0]!.name).toBe('Pyerite')
       expect(stationNode.children[1]!.name).toBe('Tritanium')
     })
@@ -592,7 +583,7 @@ describe('flattenTree', () => {
     const flattened = flattenTree(tree, expanded)
 
     expect(flattened.length).toBeGreaterThan(1)
-    expect(flattened[0]!.nodeType).toBe('region')
+    expect(flattened[0]!.nodeType).toBe('station')
     expect(flattened.some(n => n.nodeType === 'item')).toBe(true)
   })
 
@@ -606,7 +597,7 @@ describe('flattenTree', () => {
     const flattened = flattenTree(tree, expanded)
 
     expect(flattened).toHaveLength(1)
-    expect(flattened[0]!.nodeType).toBe('region')
+    expect(flattened[0]!.nodeType).toBe('station')
   })
 
   it('shows direct children when expanded', () => {
@@ -619,7 +610,7 @@ describe('flattenTree', () => {
     const flattened = flattenTree(tree, expanded)
 
     expect(flattened).toHaveLength(2)
-    expect(flattened[1]!.nodeType).toBe('system')
+    expect(flattened[1]!.nodeType).toBe('item')
   })
 })
 
@@ -643,7 +634,7 @@ describe('getAllNodeIds', () => {
     )
 
     const ids = getAllNodeIds(tree)
-    const stationNode = tree[0]!.children[0]!.children[0]!
+    const stationNode = tree[0]!
     const itemNode = stationNode.children[0]!
 
     expect(ids).not.toContain(itemNode.id)
@@ -668,7 +659,7 @@ describe('TreeMode.STRUCTURES', () => {
     })
 
     expect(tree).toHaveLength(1)
-    const stationNode = tree[0]!.children[0]!.children[0]!
+    const stationNode = tree[0]!
     expect(stationNode.children).toHaveLength(1)
   })
 
@@ -727,7 +718,7 @@ describe('TreeMode.STRUCTURES', () => {
       prices: new Map(),
     })
 
-    const stationNode = tree[0]!.children[0]!.children[0]!
+    const stationNode = tree[0]!
     expect(stationNode.children).toHaveLength(1)
     expect(stationNode.children[0]!.typeId).toBe(35832)
   })
@@ -758,7 +749,7 @@ describe('TreeMode.STRUCTURES', () => {
       prices: new Map(),
     })
 
-    const stationNode = tree[0]!.children[0]!.children[0]!
+    const stationNode = tree[0]!
     expect(stationNode.children).toHaveLength(1)
     expect(stationNode.children[0]!.typeId).toBe(35832)
   })
@@ -784,10 +775,9 @@ describe('player structure locations', () => {
     })
 
     expect(tree).toHaveLength(1)
-    const systemNode = tree[0]!.children[0]!
-    expect(systemNode.name).toBe('Jita')
-    const stationNode = systemNode.children[0]!
-    expect(stationNode.name).toBe('Test Citadel')
+    const stationNode = tree[0]!
+    expect(stationNode.name).toContain('Test Citadel')
+    expect(stationNode.name).toContain('The Forge')
   })
 
   it('falls back to structure ID when not cached', () => {
@@ -809,8 +799,7 @@ describe('player structure locations', () => {
     })
 
     expect(tree).toHaveLength(1)
-    const systemNode = tree[0]!.children[0]!
-    const stationNode = systemNode.children[0]!
+    const stationNode = tree[0]!
     expect(stationNode.name).toContain('1000000000002')
   })
 })
@@ -829,7 +818,7 @@ describe('abyssal price support', () => {
       prices: new Map([[34, 5]]),
     })
 
-    const stationNode = tree[0]!.children[0]!.children[0]!
+    const stationNode = tree[0]!
     expect(stationNode.children[0]!.totalValue).toBe(5000000)
   })
 
@@ -843,7 +832,7 @@ describe('abyssal price support', () => {
       prices: new Map([[34, 5]]),
     })
 
-    const stationNode = tree[0]!.children[0]!.children[0]!
+    const stationNode = tree[0]!
     expect(stationNode.children[0]!.totalValue).toBe(500)
   })
 })
@@ -863,7 +852,7 @@ describe('blueprint copy stacking', () => {
       prices: new Map(),
     })
 
-    const stationNode = tree[0]!.children[0]!.children[0]!
+    const stationNode = tree[0]!
     expect(stationNode.children).toHaveLength(2)
   })
 
@@ -881,7 +870,7 @@ describe('blueprint copy stacking', () => {
       prices: new Map(),
     })
 
-    const stationNode = tree[0]!.children[0]!.children[0]!
+    const stationNode = tree[0]!
     expect(stationNode.children).toHaveLength(1)
     expect(stationNode.children[0]!.quantity).toBe(2)
   })
@@ -900,7 +889,7 @@ describe('blueprint copy stacking', () => {
       prices: new Map(),
     })
 
-    const stationNode = tree[0]!.children[0]!.children[0]!
+    const stationNode = tree[0]!
     const stackedNode = stationNode.children[0]!
     expect(stackedNode.stackedAssets).toBeDefined()
     expect(stackedNode.stackedAssets).toHaveLength(2)
@@ -928,26 +917,15 @@ describe('unknown location handling', () => {
       prices: new Map(),
     })
 
-    expect(tree[0]!.name).toBe('Unknown Region')
+    expect(tree[0]!.name).toContain('Unknown Region')
   })
 
-  it('uses Unknown System for missing system', async () => {
-    const refCache = await import('@/store/reference-cache')
-    vi.mocked(refCache.getLocation).mockReturnValueOnce({
-      id: 99999999,
-      name: 'Test Station',
-      type: 'station',
-      regionId: 10000002,
-      regionName: 'The Forge',
-    })
-
+  it('stores region info on station node', async () => {
     const assets: AssetWithOwner[] = [
       createAssetWithOwner(
         createAsset({
           item_id: 1,
           type_id: 34,
-          location_id: 99999999,
-          location_type: 'station',
         })
       ),
     ]
@@ -957,8 +935,9 @@ describe('unknown location handling', () => {
       prices: new Map(),
     })
 
-    const systemNode = tree[0]!.children[0]!
-    expect(systemNode.name).toBe('Unknown System')
+    const stationNode = tree[0]!
+    expect(stationNode.regionName).toBe('The Forge')
+    expect(stationNode.systemName).toBe('Jita')
   })
 })
 
@@ -988,7 +967,7 @@ describe('items nested in deliveries', () => {
     })
 
     expect(tree).toHaveLength(1)
-    const stationNode = tree[0]!.children[0]!.children[0]!
+    const stationNode = tree[0]!
     const shipNode = stationNode.children[0]!
     expect(shipNode.nodeType).toBe('ship')
     expect(shipNode.children).toHaveLength(1)
@@ -1021,7 +1000,7 @@ describe('items nested in asset safety', () => {
     })
 
     expect(tree).toHaveLength(1)
-    const stationNode = tree[0]!.children[0]!.children[0]!
+    const stationNode = tree[0]!
     const shipNode = stationNode.children[0]!
     expect(shipNode.nodeType).toBe('ship')
     expect(shipNode.children).toHaveLength(1)
@@ -1057,7 +1036,7 @@ describe('office division grouping', () => {
       prices: new Map(),
     })
 
-    const stationNode = tree[0]!.children[0]!.children[0]!
+    const stationNode = tree[0]!
     const officeNode = stationNode.children.find((c) => c.nodeType === 'office')
     expect(officeNode).toBeDefined()
     const divisions = officeNode!.children.filter((c) => c.nodeType === 'division')
@@ -1122,7 +1101,7 @@ describe('filterTree', () => {
     })
 
     const filtered = filterTree(tree, 'Tritanium')
-    const stationNode = filtered[0]!.children[0]!.children[0]!
+    const stationNode = filtered[0]!
     expect(stationNode.children).toHaveLength(1)
     expect(stationNode.children[0]!.name).toBe('Tritanium')
   })
@@ -1138,7 +1117,7 @@ describe('filterTree', () => {
     })
 
     const filtered = filterTree(tree, 'TRITANIUM')
-    const stationNode = filtered[0]!.children[0]!.children[0]!
+    const stationNode = filtered[0]!
     expect(stationNode.children).toHaveLength(1)
   })
 
@@ -1154,7 +1133,7 @@ describe('filterTree', () => {
 
     const filtered = filterTree(tree, 'Tritanium')
     expect(filtered).toHaveLength(1)
-    expect(filtered[0]!.name).toBe('The Forge')
+    expect(filtered[0]!.name).toContain('Jita')
   })
 
   it('filters by region name', () => {
@@ -1169,7 +1148,7 @@ describe('filterTree', () => {
 
     const filtered = filterTree(tree, 'Forge')
     expect(filtered).toHaveLength(1)
-    expect(filtered[0]!.name).toBe('The Forge')
+    expect(filtered[0]!.name).toContain('Forge')
   })
 
   it('returns empty when no matches', () => {

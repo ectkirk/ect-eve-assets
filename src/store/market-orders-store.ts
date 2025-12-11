@@ -65,10 +65,13 @@ async function fetchOwnerOrdersWithMeta(owner: Owner): Promise<ESIResponseMeta<M
       schema: ESICorporationMarketOrderSchema,
     })
   }
-  return esi.fetchPaginatedWithMeta<ESIMarketOrder>(endpoint, {
+  const result = await esi.fetchPaginatedWithMeta<ESIMarketOrder>(endpoint, {
     characterId: owner.characterId,
     schema: ESIMarketOrderSchema,
   })
+  // Filter out corporation orders - they'll be fetched via corporation endpoint
+  result.data = result.data.filter((order) => !order.is_corporation)
+  return result
 }
 
 async function openDB(): Promise<IDBDatabase> {
@@ -227,15 +230,7 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
         }
       }
 
-      const results = Array.from(existingOrders.values()).map((ownerOrders) => {
-        if (ownerOrders.owner.type === 'character') {
-          const filtered = ownerOrders.orders.filter(
-            (order) => !('is_corporation' in order && order.is_corporation)
-          )
-          return { ...ownerOrders, orders: filtered }
-        }
-        return ownerOrders
-      })
+      const results = Array.from(existingOrders.values())
 
       await saveToDB(results)
 
