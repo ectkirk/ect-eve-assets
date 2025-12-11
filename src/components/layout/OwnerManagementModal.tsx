@@ -17,6 +17,8 @@ import {
   User,
   Search,
   CheckCircle2,
+  AlertCircle,
+  RefreshCw,
 } from 'lucide-react'
 import { OwnerIcon } from '@/components/ui/type-icon'
 
@@ -215,6 +217,41 @@ export function OwnerManagementModal({
     }
   }
 
+  const handleReauth = async (owner: Owner, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!window.electronAPI) return
+
+    const isCorp = owner.type === 'corporation'
+    if (isCorp) {
+      setIsAddingCorporation(true)
+    } else {
+      setIsAddingCharacter(true)
+    }
+    setError(null)
+
+    try {
+      const result = await window.electronAPI.startAuth(isCorp)
+      if (
+        result.success &&
+        result.accessToken &&
+        result.refreshToken &&
+        result.characterId
+      ) {
+        const key = ownerKey(owner.type, owner.id)
+        useAuthStore.getState().updateOwnerTokens(key, {
+          accessToken: result.accessToken,
+          refreshToken: result.refreshToken,
+          expiresAt: result.expiresAt ?? Date.now() + 1200000,
+        })
+      } else if (result.error && result.error !== 'Authentication cancelled') {
+        setError(result.error)
+      }
+    } finally {
+      setIsAddingCharacter(false)
+      setIsAddingCorporation(false)
+    }
+  }
+
   const handleLogoutAll = async () => {
     setIsUpdatingData(true)
     try {
@@ -300,6 +337,7 @@ export function OwnerManagementModal({
                       disabled={isUpdatingData}
                       onSelect={() => handleSwitchOwner(owner)}
                       onRemove={(e) => handleRemoveOwner(owner, e)}
+                      onReauth={(e) => handleReauth(owner, e)}
                     />
                   ))}
                 </div>
@@ -328,6 +366,7 @@ export function OwnerManagementModal({
                       disabled={isUpdatingData}
                       onSelect={() => handleSwitchOwner(owner)}
                       onRemove={(e) => handleRemoveOwner(owner, e)}
+                      onReauth={(e) => handleReauth(owner, e)}
                     />
                   ))}
                 </div>
@@ -394,9 +433,10 @@ interface OwnerRowProps {
   disabled?: boolean
   onSelect: () => void
   onRemove: (e: React.MouseEvent) => void
+  onReauth: (e: React.MouseEvent) => void
 }
 
-function OwnerRow({ owner, isActive, disabled, onSelect, onRemove }: OwnerRowProps) {
+function OwnerRow({ owner, isActive, disabled, onSelect, onRemove, onReauth }: OwnerRowProps) {
   const isCorp = owner.type === 'corporation'
 
   return (
@@ -404,24 +444,41 @@ function OwnerRow({ owner, isActive, disabled, onSelect, onRemove }: OwnerRowPro
       onClick={disabled ? undefined : onSelect}
       className={`flex items-center justify-between rounded-md px-3 py-2 transition-colors ${
         disabled ? 'opacity-50' : 'hover:bg-slate-700'
-      } ${isActive ? 'bg-slate-700/50 ring-1 ring-blue-500/50' : ''}`}
+      } ${isActive ? 'bg-slate-700/50 ring-1 ring-blue-500/50' : ''} ${owner.authFailed ? 'ring-1 ring-red-500/50' : ''}`}
     >
       <div className="flex items-center gap-2">
         <OwnerIcon ownerId={owner.id} ownerType={owner.type} size="lg" />
         <span className={`text-sm ${isCorp ? 'text-yellow-400' : ''}`}>
           {owner.name}
         </span>
-        {isActive && <CheckCircle2 className="h-4 w-4 text-blue-400" />}
+        {owner.authFailed && (
+          <span className="flex items-center gap-1 text-xs text-red-400">
+            <AlertCircle className="h-3 w-3" />
+            Re-auth needed
+          </span>
+        )}
+        {isActive && !owner.authFailed && <CheckCircle2 className="h-4 w-4 text-blue-400" />}
       </div>
-      {!disabled && (
-        <button
-          onClick={onRemove}
-          className="rounded p-1 text-slate-400 hover:bg-slate-600 hover:text-red-400"
-          title={`Remove ${owner.type}`}
-        >
-          <X className="h-4 w-4" />
-        </button>
-      )}
+      <div className="flex items-center gap-1">
+        {owner.authFailed && !disabled && (
+          <button
+            onClick={onReauth}
+            className="rounded p-1 text-amber-400 hover:bg-slate-600 hover:text-amber-300"
+            title="Re-authenticate"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </button>
+        )}
+        {!disabled && (
+          <button
+            onClick={onRemove}
+            className="rounded p-1 text-slate-400 hover:bg-slate-600 hover:text-red-400"
+            title={`Remove ${owner.type}`}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
     </div>
   )
 }

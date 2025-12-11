@@ -123,7 +123,12 @@ export class MainESIService {
       if (!this.tokenProvider) {
         return { success: false, error: 'No token provider configured' }
       }
-      const token = await this.tokenProvider(options.characterId)
+      let token: string | null
+      try {
+        token = await this.tokenProvider(options.characterId)
+      } catch {
+        return { success: false, error: 'Token provider error', status: 401 }
+      }
       if (!token) {
         return { success: false, error: 'Failed to get access token', status: 401 }
       }

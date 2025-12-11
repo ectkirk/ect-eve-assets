@@ -13,12 +13,12 @@ import { IndustryJobsTab } from '@/features/industry-jobs'
 import { ClonesTab } from '@/features/clones'
 import { ContractsTab } from '@/features/contracts'
 import { WalletTab } from '@/features/wallet'
-import { Loader2, RefreshCw, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp, Search, X, User } from 'lucide-react'
+import { Loader2, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp, Search, X, User } from 'lucide-react'
 import eveSsoLoginWhite from '/eve-sso-login-white.png'
 import { OwnerIcon } from '@/components/ui/type-icon'
 import { OwnerManagementModal } from './OwnerManagementModal'
 import { UpdateBanner } from './UpdateBanner'
-import { useTotalAssets } from '@/hooks'
+import { useTotalAssets, useAutoRefresh } from '@/hooks'
 import { formatNumber } from '@/lib/utils'
 import { TabControlsProvider, useTabControls } from '@/context'
 
@@ -198,12 +198,6 @@ function OwnerButton() {
   )
 }
 
-function formatTimeRemaining(ms: number): string {
-  const minutes = Math.floor(ms / 60000)
-  const seconds = Math.floor((ms % 60000) / 1000)
-  if (minutes > 0) return `${minutes}m ${seconds}s`
-  return `${seconds}s`
-}
 
 function ExpandCollapseButton() {
   const { expandCollapse } = useTabControls()
@@ -332,20 +326,7 @@ function SearchBar() {
 
 function HeaderControls() {
   const totals = useTotalAssets()
-  const isUpdating = useAssetStore((s) => s.isUpdating)
-  const update = useAssetStore((s) => s.update)
-  const canUpdateFn = useAssetStore((s) => s.canUpdate)
-  const getTimeUntilUpdateFn = useAssetStore((s) => s.getTimeUntilUpdate)
   const hasData = useAssetStore((s) => s.assetsByOwner.length > 0)
-
-  const [, setTick] = useState(0)
-  useEffect(() => {
-    const interval = setInterval(() => setTick((t) => t + 1), 1000)
-    return () => clearInterval(interval)
-  }, [])
-
-  const canUpdate = canUpdateFn()
-  const timeUntilUpdate = getTimeUntilUpdateFn()
 
   return (
     <div className="flex items-center gap-4">
@@ -373,21 +354,13 @@ function HeaderControls() {
           </div>
         </div>
       )}
-      <button
-        onClick={() => update()}
-        disabled={!canUpdate}
-        title={canUpdate ? 'Update assets from ESI' : `Available in ${formatTimeRemaining(timeUntilUpdate)}`}
-        className="flex items-center gap-1.5 rounded border border-slate-600 bg-slate-700 px-2.5 py-1 text-sm hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        <RefreshCw className={`h-3.5 w-3.5 ${isUpdating ? 'animate-spin' : ''}`} />
-        {canUpdate ? 'Update' : formatTimeRemaining(timeUntilUpdate)}
-      </button>
     </div>
   )
 }
 
 function MainLayoutInner() {
   const [activeTab, setActiveTab] = useState<Tab>('Assets')
+  useAutoRefresh()
 
   return (
     <div className="flex h-full flex-col">

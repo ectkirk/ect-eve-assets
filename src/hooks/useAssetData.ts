@@ -220,7 +220,7 @@ export function useAssetData(): AssetDataResult {
   return {
     assetsByOwner,
     owners,
-    isLoading: isUpdating,
+    isLoading: isUpdating && !hasData,
     hasData,
     hasError: !!updateError,
     errorMessage: updateError,

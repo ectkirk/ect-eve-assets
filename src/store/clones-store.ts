@@ -230,9 +230,9 @@ export const useClonesStore = create<ClonesStore>((set, get) => ({
     const expiryCacheStore = useExpiryCacheStore.getState()
 
     const ownersToUpdate = force
-      ? allOwners.filter((o): o is Owner => o !== undefined)
+      ? allOwners.filter((o): o is Owner => o !== undefined && !o.authFailed)
       : allOwners.filter((owner): owner is Owner => {
-          if (!owner) return false
+          if (!owner || owner.authFailed) return false
           const ownerKey = `${owner.type}-${owner.id}`
           const endpoint = getClonesEndpoint(owner)
           return expiryCacheStore.isExpired(ownerKey, endpoint)

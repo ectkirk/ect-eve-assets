@@ -409,7 +409,11 @@ ipcMain.handle('mutamarket:module', async (_event, itemId: unknown) => {
   }
 })
 
-const pendingTokenRequests = new Map<number, { resolve: (token: string | null) => void }>()
+interface PendingTokenRequest {
+  resolve: (token: string | null) => void
+  timeout: NodeJS.Timeout
+}
+const pendingTokenRequests = new Map<number, PendingTokenRequest[]>()
 
 function setupESIService() {
   const esiService = getESIService()
@@ -420,19 +424,27 @@ function setupESIService() {
 
     return new Promise<string | null>((resolve) => {
       const timeout = setTimeout(() => {
-        pendingTokenRequests.delete(characterId)
+        const pending = pendingTokenRequests.get(characterId)
+        if (pending) {
+          const idx = pending.findIndex((p) => p.resolve === wrappedResolve)
+          if (idx !== -1) pending.splice(idx, 1)
+          if (pending.length === 0) pendingTokenRequests.delete(characterId)
+        }
         resolve(null)
       }, 10000)
 
-      pendingTokenRequests.set(characterId, {
-        resolve: (token) => {
-          clearTimeout(timeout)
-          pendingTokenRequests.delete(characterId)
-          resolve(token)
-        },
-      })
+      const wrappedResolve = (token: string | null) => {
+        clearTimeout(timeout)
+        resolve(token)
+      }
 
-      win.webContents.send('esi:request-token', characterId)
+      const existing = pendingTokenRequests.get(characterId)
+      if (existing) {
+        existing.push({ resolve: wrappedResolve, timeout })
+      } else {
+        pendingTokenRequests.set(characterId, [{ resolve: wrappedResolve, timeout }])
+        win.webContents.send('esi:request-token', characterId)
+      }
     })
   })
 
@@ -445,7 +457,12 @@ ipcMain.handle('esi:provide-token', (_event, characterId: unknown, token: unknow
   }
   const pending = pendingTokenRequests.get(characterId)
   if (pending) {
-    pending.resolve(typeof token === 'string' ? token : null)
+    const resolvedToken = typeof token === 'string' ? token : null
+    for (const p of pending) {
+      clearTimeout(p.timeout)
+      p.resolve(resolvedToken)
+    }
+    pendingTokenRequests.delete(characterId)
   }
 })
 

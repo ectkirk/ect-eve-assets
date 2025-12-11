@@ -244,6 +244,12 @@ export function setupESITokenProvider(): () => void {
     }
 
     const ownerId = ownerKey(owner.type, owner.id)
+
+    if (owner.authFailed) {
+      window.electronAPI!.esiProvideToken(characterId, null)
+      return
+    }
+
     const needsRefresh = !owner.accessToken || store.isOwnerTokenExpired(ownerId)
 
     if (needsRefresh && owner.refreshToken) {
@@ -261,6 +267,8 @@ export function setupESITokenProvider(): () => void {
       } catch {
         logger.error('Token refresh failed for ESI provider', undefined, { module: 'ESI', characterId })
       }
+      store.setOwnerAuthFailed(ownerId, true)
+      logger.warn('Owner auth failed, marking for re-authentication', { module: 'ESI', ownerId })
       window.electronAPI!.esiProvideToken(characterId, null)
       return
     }

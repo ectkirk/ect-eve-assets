@@ -244,9 +244,9 @@ export const useBlueprintsStore = create<BlueprintsStore>((set, get) => ({
     const expiryCacheStore = useExpiryCacheStore.getState()
 
     const ownersToUpdate = force
-      ? owners.filter((o): o is Owner => o !== undefined)
+      ? owners.filter((o): o is Owner => o !== undefined && !o.authFailed)
       : owners.filter((owner): owner is Owner => {
-          if (!owner) return false
+          if (!owner || owner.authFailed) return false
           const ownerKey = `${owner.type}-${owner.id}`
           const endpoint = getBlueprintsEndpoint(owner)
           return expiryCacheStore.isExpired(ownerKey, endpoint)

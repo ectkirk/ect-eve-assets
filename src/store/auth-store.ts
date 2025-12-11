@@ -46,6 +46,7 @@ export interface Owner {
   accessToken: string | null
   refreshToken: string
   expiresAt: number | null
+  authFailed?: boolean
 }
 
 // Helper to create owner key
@@ -80,10 +81,12 @@ interface AuthState {
     ownerId: string,
     tokens: { accessToken: string; refreshToken: string; expiresAt: number }
   ) => void
+  setOwnerAuthFailed: (ownerId: string, failed: boolean) => void
   clearAuth: () => void
 
   // Helpers
   getActiveOwner: () => Owner | null
+  hasOwnerAuthFailed: (ownerId: string) => boolean
   getOwner: (ownerId: string) => Owner | null
   getOwnerByCharacterId: (characterId: number) => Owner | null
   getAllOwners: () => Owner[]
@@ -181,6 +184,23 @@ export const useAuthStore = create<AuthState>()(
                 accessToken,
                 refreshToken,
                 expiresAt,
+                authFailed: false,
+              },
+            },
+          }
+        })
+      },
+
+      setOwnerAuthFailed: (ownerId, failed) => {
+        set((state) => {
+          const owner = state.owners[ownerId]
+          if (!owner) return state
+          return {
+            owners: {
+              ...state.owners,
+              [ownerId]: {
+                ...owner,
+                authFailed: failed,
               },
             },
           }
@@ -199,6 +219,11 @@ export const useAuthStore = create<AuthState>()(
         const { owners, activeOwnerId } = get()
         if (!activeOwnerId) return null
         return owners[activeOwnerId] ?? null
+      },
+
+      hasOwnerAuthFailed: (ownerId) => {
+        const owner = get().owners[ownerId]
+        return owner?.authFailed === true
       },
 
       getOwner: (ownerId) => {
