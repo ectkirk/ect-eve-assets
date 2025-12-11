@@ -45,7 +45,7 @@ export function useTotalAssets(): AssetTotals {
 
     let marketTotal = 0
     for (const { owner, orders } of ordersByOwner) {
-      if (!matchesOwner(owner.type, owner.characterId)) continue
+      if (!matchesOwner(owner.type, owner.id)) continue
       for (const order of orders) {
         marketTotal += order.is_buy_order ? (order.escrow ?? 0) : order.price * order.volume_remain
       }
@@ -53,7 +53,7 @@ export function useTotalAssets(): AssetTotals {
 
     let industryTotal = 0
     for (const { owner, jobs } of jobsByOwner) {
-      if (!matchesOwner(owner.type, owner.characterId)) continue
+      if (!matchesOwner(owner.type, owner.id)) continue
       for (const job of jobs) {
         if (job.status !== 'active' && job.status !== 'ready') continue
         const productTypeId = job.product_type_id ?? job.blueprint_type_id
