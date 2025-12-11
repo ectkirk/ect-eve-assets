@@ -25,13 +25,15 @@ jobs:
         run: npm ci
 
       - name: Build Electron app
-        run: npm run dist:win
+        run: npm run dist:win -- --publish never
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v5
         with:
           name: win-build
-          path: release/*.exe
+          path: |
+            release/*.exe
+            release/*.yml
           if-no-files-found: error
 
   release:
