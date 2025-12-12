@@ -32,7 +32,7 @@
   },
   "build": {
     "appId": "net.edencom.ecteveassets",
-    "productName": "ECTEVEAssets",
+    "productName": "ECT EVE Assets",
     "copyright": "Copyright © 2025 EC Trade (edencom.net)",
     "directories": {
       "output": "release"

@@ -129,7 +129,7 @@ function createWindow() {
       sandbox: true,
     },
     icon: path.join(VITE_PUBLIC, 'icon.png'),
-    title: 'ECTEVEAssets',
+    title: 'ECT EVE Assets',
     backgroundColor: '#0f172a',
   })
 

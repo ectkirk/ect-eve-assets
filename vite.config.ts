@@ -6,6 +6,7 @@ import electronRenderer from 'vite-plugin-electron-renderer'
 import path from 'node:path'
 
 export default defineConfig({
+  base: './',
   plugins: [
     react(),
     tailwindcss(),
