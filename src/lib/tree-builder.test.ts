@@ -31,6 +31,21 @@ vi.mock('@/store/reference-cache', () => ({
     return locations[id]
   }),
   getAbyssalPrice: vi.fn(() => undefined),
+  CategoryIds: {
+    SHIP: 6,
+    MODULE: 7,
+    CHARGE: 8,
+    BLUEPRINT: 9,
+    SKILL: 16,
+    DRONE: 18,
+    IMPLANT: 20,
+    STRUCTURE: 65,
+    SKIN: 91,
+  },
+}))
+
+vi.mock('@/store/blueprints-store', () => ({
+  formatBlueprintName: vi.fn((baseName: string) => baseName),
 }))
 
 const testOwner: Owner = {

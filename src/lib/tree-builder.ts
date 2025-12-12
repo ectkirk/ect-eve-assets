@@ -18,8 +18,10 @@ import {
   getStructure,
   getLocation,
   getAbyssalPrice,
+  CategoryIds as RefCategoryIds,
   type CachedType,
 } from '@/store/reference-cache'
+import { formatBlueprintName } from '@/store/blueprints-store'
 
 export interface AssetWithOwner {
   asset: ESIAsset
@@ -160,11 +162,11 @@ function getAssetPrice(
   asset: ESIAsset,
   prices: Map<number, number>
 ): number {
-  // Check abyssal price first (by item_id)
+  if (asset.is_blueprint_copy) return 0
+
   const abyssalPrice = getAbyssalPrice(asset.item_id)
   if (abyssalPrice !== undefined) return abyssalPrice
 
-  // Fall back to type price
   return prices.get(asset.type_id) ?? 0
 }
 
@@ -180,20 +182,22 @@ function createItemNode(
   const price = getAssetPrice(asset, prices)
   const volume = type?.packagedVolume ?? type?.volume ?? 0
   const customName = assetNames?.get(asset.item_id)
-  const typeName = type?.name || `Unknown Type ${asset.type_id}`
+  const rawTypeName = type?.name || `Unknown Type ${asset.type_id}`
+  const isBlueprint = type?.categoryId === RefCategoryIds.BLUEPRINT
+  const typeName = isBlueprint ? formatBlueprintName(rawTypeName, asset.item_id) : rawTypeName
 
   let nodeType: TreeNodeType = 'item'
-  let displayName = customName || typeName
+  let displayName = customName ? `${typeName} (${customName})` : typeName
 
   if (isOffice(asset.type_id)) {
     nodeType = 'office'
     displayName = stationName ? `Office @ ${stationName}` : 'Office'
   } else if (isShip(type)) {
     nodeType = 'ship'
-    displayName = customName ? `${typeName} (${customName})` : typeName
+    displayName = customName ? `${rawTypeName} (${customName})` : rawTypeName
   } else if (isContainer(type)) {
     nodeType = 'container'
-    displayName = customName ? `${typeName} (${customName})` : typeName
+    displayName = customName ? `${rawTypeName} (${customName})` : rawTypeName
   }
 
   return {
