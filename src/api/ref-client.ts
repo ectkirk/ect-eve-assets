@@ -216,7 +216,7 @@ async function executeLocationBatch(): Promise<Map<number, CachedLocation>> {
   }
 
   if (uncachedIds.length > 0) {
-    logger.debug(`Fetching ${uncachedIds.length} locations from ref API`, { module: 'RefAPI' })
+    logger.debug(`Fetching ${uncachedIds.length} locations from ref API: ${uncachedIds.join(', ')}`, { module: 'RefAPI' })
     const fetched = await fetchUniverseFromAPI(uncachedIds)
     const toCache: CachedLocation[] = []
 

@@ -150,7 +150,7 @@ export function useAssetData(): AssetDataResult {
           if (structure?.solarSystemId && !hasLocation(structure.solarSystemId)) {
             unknownLocationIds.add(structure.solarSystemId)
           }
-        } else if (!hasLocation(root.locationId)) {
+        } else if (root.locationId >= 60_000_000 && !hasLocation(root.locationId)) {
           unknownLocationIds.add(root.locationId)
         }
       }
