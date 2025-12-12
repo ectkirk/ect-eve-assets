@@ -1,8 +1,10 @@
 import { create } from 'zustand'
 import { useAuthStore, type Owner, ownerKey as makeOwnerKey } from './auth-store'
 import { useExpiryCacheStore } from './expiry-cache-store'
+import { useAssetStore } from './asset-store'
 import { esi, type ESIResponseMeta } from '@/api/esi'
 import { ESIIndustryJobSchema } from '@/api/schemas'
+import { fetchPrices } from '@/api/ref-client'
 import { logger } from '@/lib/logger'
 import { z } from 'zod'
 
@@ -235,6 +237,28 @@ export const useIndustryJobsStore = create<IndustryJobsStore>((set, get) => ({
 
       const results = Array.from(existingJobs.values())
 
+      const productTypeIds = new Set<number>()
+      for (const { jobs } of results) {
+        for (const job of jobs) {
+          if (job.product_type_id) {
+            productTypeIds.add(job.product_type_id)
+          }
+        }
+      }
+
+      if (productTypeIds.size > 0) {
+        try {
+          const prices = await fetchPrices(Array.from(productTypeIds))
+          if (prices.size > 0) {
+            await useAssetStore.getState().setPrices(prices)
+          }
+        } catch (err) {
+          logger.error('Failed to fetch industry job prices', err instanceof Error ? err : undefined, {
+            module: 'IndustryJobsStore',
+          })
+        }
+      }
+
       set({
         jobsByOwner: results,
         isUpdating: false,
@@ -267,6 +291,26 @@ export const useIndustryJobsStore = create<IndustryJobsStore>((set, get) => ({
 
       await saveOwnerToDB(ownerKey, owner, jobs)
       useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag)
+
+      const productTypeIds = new Set<number>()
+      for (const job of jobs) {
+        if (job.product_type_id) {
+          productTypeIds.add(job.product_type_id)
+        }
+      }
+
+      if (productTypeIds.size > 0) {
+        try {
+          const prices = await fetchPrices(Array.from(productTypeIds))
+          if (prices.size > 0) {
+            await useAssetStore.getState().setPrices(prices)
+          }
+        } catch (err) {
+          logger.error('Failed to fetch industry job prices', err instanceof Error ? err : undefined, {
+            module: 'IndustryJobsStore',
+          })
+        }
+      }
 
       const updated = state.jobsByOwner.filter(
         (oj) => `${oj.owner.type}-${oj.owner.id}` !== ownerKey
