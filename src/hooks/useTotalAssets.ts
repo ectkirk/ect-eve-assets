@@ -39,6 +39,7 @@ export function useTotalAssets(): AssetTotals {
       if (!matchesOwner(owner.type, owner.id)) continue
       for (const asset of assets) {
         if (asset.location_flag === 'AutoFit') continue
+        if (asset.is_blueprint_copy) continue
         const abyssalPrice = isAbyssalTypeId(asset.type_id)
           ? getCachedAbyssalPrice(asset.item_id)
           : undefined
@@ -86,6 +87,7 @@ export function useTotalAssets(): AssetTotals {
         let itemValue = 0
         for (const item of items) {
           if (!item.is_included) continue
+          if (item.is_blueprint_copy) continue
           let itemPrice: number
           if (isAbyssalTypeId(item.type_id) && item.item_id) {
             itemPrice = getCachedAbyssalPrice(item.item_id) ?? 0

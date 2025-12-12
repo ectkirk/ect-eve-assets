@@ -574,6 +574,7 @@ export function ContractsTab() {
 
       let itemValue = 0
       for (const item of items) {
+        if (item.is_blueprint_copy) continue
         let price: number
         if (isAbyssalTypeId(item.type_id) && item.item_id) {
           price = getCachedAbyssalPrice(item.item_id) ?? 0
