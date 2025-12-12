@@ -21,11 +21,12 @@ export type RefType = z.infer<typeof RefTypeSchema>
 export type RefUniverseItem = z.infer<typeof RefUniverseItemSchema>
 export type UniverseEntityType = RefUniverseItem['type']
 
-// Request coalescing - batches requests within a 50ms window to prevent duplicate API calls
+// Request coalescing for locations - batches requests within a window
 let pendingLocationIds = new Set<number>()
 let locationBatchPromise: Promise<Map<number, CachedLocation>> | null = null
 const LOCATION_BATCH_DELAY_MS = 50
 
+// Request coalescing for types - batches requests within a window
 let pendingTypeIds = new Set<number>()
 let pendingTypeMarket: 'jita' | 'the_forge' = 'jita'
 let typeBatchPromise: Promise<Map<number, CachedType>> | null = null
@@ -161,10 +162,7 @@ async function executeTypeBatch(): Promise<Map<number, CachedType>> {
 
     if (toCache.length > 0) {
       await saveTypes(toCache)
-      logger.debug(
-        `Cached ${toCache.length} types (${fetched.size} resolved, ${uncachedIds.length - fetched.size} unknown)`,
-        { module: 'RefAPI' }
-      )
+      logger.debug(`Cached ${toCache.length} types (${fetched.size} resolved, ${uncachedIds.length - fetched.size} unknown)`, { module: 'RefAPI' })
     }
   }
 
@@ -175,8 +173,6 @@ export async function resolveTypes(
   typeIds: number[],
   market: 'jita' | 'the_forge' = 'jita'
 ): Promise<Map<number, CachedType>> {
-  if (typeIds.length === 0) return new Map()
-
   for (const id of typeIds) {
     pendingTypeIds.add(id)
   }
@@ -247,11 +243,7 @@ async function executeLocationBatch(): Promise<Map<number, CachedLocation>> {
   return results
 }
 
-export async function resolveLocations(
-  locationIds: number[]
-): Promise<Map<number, CachedLocation>> {
-  if (locationIds.length === 0) return new Map()
-
+export async function resolveLocations(locationIds: number[]): Promise<Map<number, CachedLocation>> {
   for (const id of locationIds) {
     pendingLocationIds.add(id)
   }
@@ -269,7 +261,6 @@ export async function resolveLocations(
   const allResults = await locationBatchPromise
   const results = new Map<number, CachedLocation>()
   for (const id of locationIds) {
-    if (id > 1_000_000_000_000) continue
     const cached = allResults.get(id) ?? getLocation(id)
     if (cached) {
       results.set(id, cached)
@@ -311,13 +302,4 @@ export async function fetchPrices(
   }
 
   return prices
-}
-
-// Export for testing
-export function _resetBatchState(): void {
-  pendingLocationIds = new Set()
-  locationBatchPromise = null
-  pendingTypeIds = new Set()
-  pendingTypeMarket = 'jita'
-  typeBatchPromise = null
 }

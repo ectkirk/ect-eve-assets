@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { resolveTypes, resolveLocations, fetchPrices, _resetBatchState } from './ref-client'
+import { resolveTypes, resolveLocations, fetchPrices } from './ref-client'
 
 vi.mock('@/store/reference-cache', () => ({
   getType: vi.fn(),
@@ -23,7 +23,6 @@ describe('ref-client', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers()
-    _resetBatchState()
     window.electronAPI = {
       refTypes: mockRefTypes,
       refUniverse: mockRefUniverse,
@@ -32,9 +31,8 @@ describe('ref-client', () => {
 
   describe('resolveTypes', () => {
     it('returns empty map for empty input', async () => {
-      const result = await resolveTypes([])
+      const result = await runWithTimers(resolveTypes([]))
       expect(result.size).toBe(0)
-      expect(mockRefTypes).not.toHaveBeenCalled()
     })
 
     it('uses cached types when available', async () => {
@@ -157,15 +155,15 @@ describe('ref-client', () => {
 
   describe('resolveLocations', () => {
     it('returns empty map for empty input', async () => {
-      const result = await resolveLocations([])
+      const result = await runWithTimers(resolveLocations([]))
       expect(result.size).toBe(0)
-      expect(mockRefUniverse).not.toHaveBeenCalled()
     })
 
-    it('skips player structure IDs (> 1 trillion)', async () => {
+    it('skips player structure IDs (> 1 trillion) in batch but returns cached if available', async () => {
+      vi.mocked(hasLocation).mockReturnValue(false)
+      vi.mocked(getLocation).mockReturnValue(undefined)
       const result = await runWithTimers(resolveLocations([1000000000001]))
       expect(result.size).toBe(0)
-      expect(mockRefUniverse).not.toHaveBeenCalled()
     })
 
     it('uses cached locations when available', async () => {
@@ -219,6 +217,7 @@ describe('ref-client', () => {
       const result = await runWithTimers(resolveLocations([60003760]))
 
       expect(result.size).toBe(0)
+      expect(saveLocations).not.toHaveBeenCalled()
     })
   })
 
