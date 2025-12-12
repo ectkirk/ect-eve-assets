@@ -183,21 +183,20 @@ function createItemNode(
   const volume = type?.packagedVolume ?? type?.volume ?? 0
   const customName = assetNames?.get(asset.item_id)
   const rawTypeName = type?.name || `Unknown Type ${asset.type_id}`
+  const baseName = customName ? `${rawTypeName} (${customName})` : rawTypeName
   const isBlueprint = type?.categoryId === RefCategoryIds.BLUEPRINT
-  const typeName = isBlueprint ? formatBlueprintName(rawTypeName, asset.item_id) : rawTypeName
+  const typeName = isBlueprint ? formatBlueprintName(baseName, asset.item_id) : baseName
 
   let nodeType: TreeNodeType = 'item'
-  let displayName = customName ? `${typeName} (${customName})` : typeName
+  let displayName = typeName
 
   if (isOffice(asset.type_id)) {
     nodeType = 'office'
     displayName = stationName ? `Office @ ${stationName}` : 'Office'
   } else if (isShip(type)) {
     nodeType = 'ship'
-    displayName = customName ? `${rawTypeName} (${customName})` : rawTypeName
   } else if (isContainer(type)) {
     nodeType = 'container'
-    displayName = customName ? `${rawTypeName} (${customName})` : rawTypeName
   }
 
   return {
