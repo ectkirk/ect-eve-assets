@@ -140,6 +140,7 @@ export const ESIIndustryJobSchema = z.object({
   installer_id: z.number(),
   job_id: z.number(),
   licensed_runs: z.number().optional(),
+  location_id: z.number().optional(),
   output_location_id: z.number(),
   pause_date: z.string().optional(),
   probability: z.number().optional(),

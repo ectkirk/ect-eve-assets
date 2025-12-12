@@ -80,6 +80,7 @@ describe('industry-jobs-store', () => {
             blueprint_id: 100,
             blueprint_type_id: 1000,
             blueprint_location_id: 60003760,
+            location_id: 60003760,
             output_location_id: 60003760,
             runs: 1,
             status: 'active',

@@ -455,6 +455,9 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
       merged.set(id, price)
     }
     set({ prices: merged })
+    saveToDB(state.assetsByOwner, state.assetNames, merged).catch((err) => {
+      logger.error('Failed to persist prices', err instanceof Error ? err : undefined, { module: 'AssetStore' })
+    })
   },
 
   clear: async () => {

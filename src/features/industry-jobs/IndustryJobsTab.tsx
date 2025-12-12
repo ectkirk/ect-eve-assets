@@ -299,12 +299,13 @@ export function IndustryJobsTab() {
             missingPriceTypeIds.add(job.product_type_id)
           }
         }
-        if (job.facility_id > 1_000_000_000_000) {
-          if (!hasStructure(job.facility_id)) {
-            structureToCharacter.set(job.facility_id, owner.characterId)
+        const locationId = job.location_id ?? job.facility_id
+        if (locationId > 1_000_000_000_000) {
+          if (!hasStructure(locationId)) {
+            structureToCharacter.set(locationId, owner.characterId)
           }
-        } else if (!hasLocation(job.facility_id)) {
-          unknownLocationIds.add(job.facility_id)
+        } else if (!hasLocation(locationId)) {
+          unknownLocationIds.add(locationId)
         }
       }
     }
@@ -377,28 +378,30 @@ export function IndustryJobsTab() {
         const productPrice = job.product_type_id ? (prices.get(job.product_type_id) ?? 0) : 0
         const productValue = productPrice * job.runs
 
+        const locationId = job.location_id ?? job.facility_id
+
         const row: JobRow = {
           job,
           ownerName: owner.name,
           blueprintName: bpType?.name ?? `Unknown Type ${job.blueprint_type_id}`,
           productName: productType?.name ?? (job.product_type_id ? `Unknown Type ${job.product_type_id}` : ''),
           productCategoryId: productType?.categoryId,
-          locationName: getLocationName(job.facility_id),
+          locationName: getLocationName(locationId),
           activityName: ACTIVITY_NAMES[job.activity_id] ?? `Activity ${job.activity_id}`,
           productValue,
         }
 
-        let group = groups.get(job.facility_id)
+        let group = groups.get(locationId)
         if (!group) {
           group = {
-            locationId: job.facility_id,
+            locationId,
             locationName: row.locationName,
             jobs: [],
             activeCount: 0,
             completedCount: 0,
             totalValue: 0,
           }
-          groups.set(job.facility_id, group)
+          groups.set(locationId, group)
         }
 
         group.jobs.push(row)
