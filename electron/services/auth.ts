@@ -194,6 +194,11 @@ const SUCCESS_HTML = `<!DOCTYPE html>
 </body>
 </html>`
 
+function escapeHtml(str: string): string {
+  const map: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
+  return str.replace(/[&<>"']/g, (c) => map[c]!)
+}
+
 const ERROR_HTML = (error: string) => `<!DOCTYPE html>
 <html>
 <head>
@@ -226,7 +231,7 @@ const ERROR_HTML = (error: string) => `<!DOCTYPE html>
   <div class="container">
     <h1>✗ Authentication Failed</h1>
     <p>Please close this tab and try again.</p>
-    <p class="error">${error}</p>
+    <p class="error">${escapeHtml(error)}</p>
   </div>
 </body>
 </html>`

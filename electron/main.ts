@@ -133,9 +133,16 @@ function createWindow() {
     backgroundColor: '#0f172a',
   })
 
-  // Open external links in default browser
+  // Open external links in default browser (validate protocol)
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url)
+    try {
+      const parsed = new URL(url)
+      if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+        shell.openExternal(url)
+      }
+    } catch {
+      // Invalid URL, ignore
+    }
     return { action: 'deny' }
   })
 
