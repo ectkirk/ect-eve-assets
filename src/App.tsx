@@ -14,6 +14,9 @@ import { initCache } from './store/reference-cache'
 import { logger } from './lib/logger'
 import { setupESITokenProvider } from './api/esi'
 
+let appInitStarted = false
+let appInitComplete = false
+
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null; errorInfo: React.ErrorInfo | null }> {
   constructor(props: { children: ReactNode }) {
     super(props)
@@ -59,10 +62,13 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
 }
 
 function App() {
-  const [cacheReady, setCacheReady] = useState(false)
+  const [cacheReady, setCacheReady] = useState(appInitComplete)
   const [cacheError, setCacheError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (appInitStarted) return
+    appInitStarted = true
+
     logger.info('App starting', { module: 'App' })
     const cleanupTokenProvider = setupESITokenProvider()
     initCache()
@@ -90,6 +96,7 @@ function App() {
         logger.info('All stores initialized', { module: 'App' })
         const ownerKeys = Object.keys(useAuthStore.getState().owners)
         useExpiryCacheStore.getState().queueMissingEndpoints(ownerKeys)
+        appInitComplete = true
         setCacheReady(true)
       })
       .catch((err) => {
