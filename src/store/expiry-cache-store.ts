@@ -334,9 +334,16 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
     let queued = 0
 
     for (const ownerKey of ownerKeys) {
+      const prefix = `${ownerKey}:`
       for (const pattern of callbacks.keys()) {
-        const key = makeKey(ownerKey, pattern)
-        if (!endpoints.has(key)) {
+        let found = false
+        for (const key of endpoints.keys()) {
+          if (key.startsWith(prefix) && key.includes(pattern)) {
+            found = true
+            break
+          }
+        }
+        if (!found) {
           initialQueue.push({ ownerKey, endpoint: pattern })
           queued++
         }
