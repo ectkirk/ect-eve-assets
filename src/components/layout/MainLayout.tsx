@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useAssetStore } from '@/store/asset-store'
+import { useExpiryCacheStore } from '@/store/expiry-cache-store'
 import { AssetsTab } from '@/features/assets'
 import { ItemHangarTab } from '@/features/item-hangar'
 import { ShipHangarTab } from '@/features/ship-hangar'
@@ -112,16 +113,6 @@ function OwnerButton() {
         result.characterName &&
         result.corporationId
       ) {
-        const newOwner = {
-          id: result.characterId,
-          type: 'character' as const,
-          name: result.characterName,
-          characterId: result.characterId,
-          corporationId: result.corporationId,
-          accessToken: result.accessToken,
-          refreshToken: result.refreshToken,
-          expiresAt: result.expiresAt ?? Date.now() + 1200000,
-        }
         useAuthStore.getState().addOwner({
           accessToken: result.accessToken,
           refreshToken: result.refreshToken,
@@ -137,7 +128,7 @@ function OwnerButton() {
         })
         setIsAddingOwner(false)
         setIsUpdatingData(true)
-        await useAssetStore.getState().updateForOwner(newOwner)
+        useExpiryCacheStore.getState().queueAllEndpointsForOwner(ownerKey('character', result.characterId))
         setIsUpdatingData(false)
       }
     } finally {

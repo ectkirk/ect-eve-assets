@@ -40,6 +40,7 @@ interface ExpiryCacheActions {
 type ExpiryCacheStore = ExpiryCacheState & ExpiryCacheActions
 
 let db: IDBDatabase | null = null
+let moduleInitialized = false
 
 const timers = new Map<string, NodeJS.Timeout>()
 const callbacks = new Map<string, RefreshCallback>()
@@ -57,6 +58,13 @@ function findCallbackForEndpoint(endpoint: string): RefreshCallback | undefined 
     }
   }
   return undefined
+}
+
+function isPatternApplicable(pattern: string, ownerKey: string): boolean {
+  const isCharacter = ownerKey.startsWith('character-')
+  if (pattern === '/structures' && isCharacter) return false
+  if (pattern === '/clones/' && !isCharacter) return false
+  return true
 }
 
 async function openDB(): Promise<IDBDatabase> {
@@ -159,9 +167,9 @@ function scheduleTimer(key: string, ownerKey: string, endpoint: string, expiresA
     clearTimeout(existingTimer)
   }
 
+  const MIN_DELAY = 15 * 60 * 1000
   const timeUntilExpiry = expiresAt - Date.now()
-  const MIN_REFRESH_DELAY = 15 * 60 * 1000 // 15 minutes
-  const delay = timeUntilExpiry < MIN_REFRESH_DELAY ? MIN_REFRESH_DELAY : timeUntilExpiry
+  const delay = timeUntilExpiry < MIN_DELAY ? MIN_DELAY : timeUntilExpiry
 
   const timer = setTimeout(() => {
     timers.delete(key)
@@ -225,7 +233,8 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
   initialized: false,
 
   init: async () => {
-    if (get().initialized) return
+    if (moduleInitialized) return
+    moduleInitialized = true
 
     try {
       const endpoints = await loadFromDB()
@@ -263,7 +272,10 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
 
   setExpiry: (ownerKey: string, endpoint: string, expiresAt: number, etag?: string | null) => {
     const key = makeKey(ownerKey, endpoint)
-    const expiry: EndpointExpiry = { expiresAt, etag: etag ?? null }
+    const MIN_EXPIRY = 15 * 60 * 1000
+    const minExpiry = Date.now() + MIN_EXPIRY
+    const effectiveExpiry = expiresAt < minExpiry ? minExpiry : expiresAt
+    const expiry: EndpointExpiry = { expiresAt: effectiveExpiry, etag: etag ?? null }
 
     set((state) => {
       const endpoints = new Map(state.endpoints)
@@ -275,7 +287,7 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
       logger.error('Failed to save expiry to DB', error, { module: 'ExpiryCacheStore', key })
     })
 
-    scheduleTimer(key, ownerKey, endpoint, expiresAt)
+    scheduleTimer(key, ownerKey, endpoint, effectiveExpiry)
   },
 
   getExpiry: (ownerKey: string, endpoint: string) => {
@@ -318,13 +330,16 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
   },
 
   queueAllEndpointsForOwner: (ownerKey: string) => {
+    let count = 0
     for (const pattern of callbacks.keys()) {
+      if (!isPatternApplicable(pattern, ownerKey)) continue
       initialQueue.push({ ownerKey, endpoint: pattern })
+      count++
     }
     logger.info('Queued all endpoints for owner', {
       module: 'ExpiryCacheStore',
       ownerKey,
-      count: callbacks.size,
+      count,
     })
     processInitialQueue()
   },
@@ -336,6 +351,7 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
     for (const ownerKey of ownerKeys) {
       const prefix = `${ownerKey}:`
       for (const pattern of callbacks.keys()) {
+        if (!isPatternApplicable(pattern, ownerKey)) continue
         let found = false
         for (const key of endpoints.keys()) {
           if (key.startsWith(prefix) && key.includes(pattern)) {
