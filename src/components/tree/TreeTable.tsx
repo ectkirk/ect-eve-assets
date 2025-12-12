@@ -77,22 +77,35 @@ const NODE_TYPE_COLORS: Record<TreeNodeType, string> = {
   system: 'text-yellow-400',
   station: 'text-blue-400',
   office: 'text-amber-400',
-  division: 'text-amber-300',
+  division: 'text-slate-400',
   container: 'text-orange-400',
   ship: 'text-cyan-400',
   item: 'text-slate-400',
   stack: 'text-slate-400',
 }
 
-function TreeNodeIcon({ nodeType }: { nodeType: TreeNodeType }) {
+const DIVISION_COLORS = [
+  'text-rose-400',
+  'text-orange-400',
+  'text-yellow-400',
+  'text-lime-400',
+  'text-emerald-400',
+  'text-cyan-400',
+  'text-violet-400',
+]
+
+function TreeNodeIcon({ nodeType, divisionNumber }: { nodeType: TreeNodeType; divisionNumber?: number }) {
   const Icon = NODE_TYPE_ICONS[nodeType]
-  const colorClass = NODE_TYPE_COLORS[nodeType]
+  let colorClass = NODE_TYPE_COLORS[nodeType]
+  if (nodeType === 'division' && divisionNumber !== undefined && divisionNumber >= 1 && divisionNumber <= 7) {
+    colorClass = DIVISION_COLORS[divisionNumber - 1]!
+  }
   return <Icon className={cn('h-4 w-4 flex-shrink-0', colorClass)} />
 }
 
 function ItemIcon({ node }: { node: TreeNode }) {
   if (!node.typeId) {
-    return <TreeNodeIcon nodeType={node.nodeType} />
+    return <TreeNodeIcon nodeType={node.nodeType} divisionNumber={node.divisionNumber} />
   }
 
   return (
@@ -158,7 +171,7 @@ function TreeRowContent({ node, isExpanded, onToggle, visibleColumns }: {
                 {isAssetNode ? (
                   <ItemIcon node={node} />
                 ) : (
-                  <TreeNodeIcon nodeType={node.nodeType} />
+                  <TreeNodeIcon nodeType={node.nodeType} divisionNumber={node.divisionNumber} />
                 )}
 
                 <span
@@ -167,13 +180,18 @@ function TreeRowContent({ node, isExpanded, onToggle, visibleColumns }: {
                     isLocationNode && node.nodeType === 'region' && 'font-semibold text-purple-300',
                     isLocationNode && node.nodeType === 'system' && 'font-medium text-yellow-300',
                     isLocationNode && node.nodeType === 'station' && 'text-blue-300',
-                    isOfficeNode && 'font-medium text-amber-300',
-                    isDivisionNode && 'text-amber-200',
+                    isOfficeNode && 'font-medium',
+                    isDivisionNode && node.divisionNumber && DIVISION_COLORS[node.divisionNumber - 1],
                     node.isBlueprintCopy && 'text-cyan-400'
                   )}
                   title={node.name}
                 >
-                  {node.name}
+                  {isOfficeNode ? (
+                    <>
+                      <span className="text-amber-300">{node.name}</span>
+                      <span className="text-slate-500 italic ml-1">Office</span>
+                    </>
+                  ) : node.name}
                 </span>
               </div>
             </TableCell>

@@ -192,7 +192,7 @@ function createItemNode(
 
   if (isOffice(asset.type_id)) {
     nodeType = 'office'
-    displayName = stationName ? `Office @ ${stationName}` : 'Office'
+    displayName = stationName ?? 'Unknown Location'
   } else if (isShip(type)) {
     nodeType = 'ship'
   } else if (isContainer(type)) {
@@ -248,6 +248,7 @@ function createDivisionNode(
     totalCount: 0,
     totalValue: 0,
     totalVolume: 0,
+    divisionNumber: divisionNum,
   }
 }
 
@@ -617,6 +618,29 @@ export function buildTree(
   for (const stationNode of stationNodes.values()) {
     stationNode.children = sortRecursive(stationNode.children)
     aggregateTotals(stationNode)
+  }
+
+  // For OFFICE mode, promote offices to root level
+  if (mode === TreeMode.OFFICE) {
+    const officeNodes: TreeNode[] = []
+    for (const stationNode of stationNodes.values()) {
+      for (const child of stationNode.children) {
+        if (child.nodeType === 'office') {
+          const officeName = `${child.name} (${stationNode.regionName ?? 'Unknown Region'})`
+          const adjustDepth = (node: TreeNode, delta: number): void => {
+            node.depth += delta
+            for (const c of node.children) adjustDepth(c, delta)
+          }
+          adjustDepth(child, -1)
+          child.name = officeName
+          child.regionName = stationNode.regionName
+          child.systemName = stationNode.systemName
+          child.locationId = stationNode.locationId
+          officeNodes.push(child)
+        }
+      }
+    }
+    return sortNodes(officeNodes)
   }
 
   // Return sorted station nodes

@@ -358,7 +358,7 @@ describe('buildTree', () => {
   })
 
   describe('TreeMode.OFFICE', () => {
-    it('includes office and contents', () => {
+    it('includes office and contents as root', () => {
       const office = createAsset({ item_id: 1, type_id: 27, location_flag: 'Hangar' })
       const itemInOffice = createAsset({ item_id: 2, type_id: 34, location_id: 1, location_type: 'item', location_flag: 'CorpSAG1' })
 
@@ -373,9 +373,8 @@ describe('buildTree', () => {
       })
 
       expect(tree).toHaveLength(1)
-      const stationNode = tree[0]!
-      const officeNode = stationNode.children.find(c => c.nodeType === 'office')
-      expect(officeNode).toBeDefined()
+      const officeNode = tree[0]!
+      expect(officeNode.nodeType).toBe('office')
     })
   })
 
@@ -1051,10 +1050,10 @@ describe('office division grouping', () => {
       prices: new Map(),
     })
 
-    const stationNode = tree[0]!
-    const officeNode = stationNode.children.find((c) => c.nodeType === 'office')
-    expect(officeNode).toBeDefined()
-    const divisions = officeNode!.children.filter((c) => c.nodeType === 'division')
+    expect(tree).toHaveLength(1)
+    const officeNode = tree[0]!
+    expect(officeNode.nodeType).toBe('office')
+    const divisions = officeNode.children.filter((c) => c.nodeType === 'division')
     expect(divisions.length).toBeGreaterThanOrEqual(2)
   })
 

@@ -63,6 +63,9 @@ export interface TreeNode {
   // Blueprint info
   isBlueprintCopy?: boolean
 
+  // Division info (for division nodes)
+  divisionNumber?: number
+
   // Price info (for leaf items)
   price?: number
 }
