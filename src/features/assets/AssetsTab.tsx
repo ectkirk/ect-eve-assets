@@ -265,7 +265,7 @@ export function AssetsTab() {
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(loadColumnVisibility)
   const [categoryFilterValue, setCategoryFilterValue] = useState('')
 
-  const { setColumns, search, setCategoryFilter, setResultCount } = useTabControls()
+  const { setColumns, search, setCategoryFilter, setResultCount, setTotalValue } = useTabControls()
 
   useEffect(() => {
     saveColumnVisibility(columnVisibility)
@@ -468,6 +468,15 @@ export function AssetsTab() {
     setResultCount({ showing: filteredData.length, total: data.length })
     return () => setResultCount(null)
   }, [filteredData.length, data.length, setResultCount])
+
+  const filteredTotalValue = useMemo(() => {
+    return filteredData.reduce((sum, row) => sum + row.totalValue, 0)
+  }, [filteredData])
+
+  useEffect(() => {
+    setTotalValue(filteredTotalValue)
+    return () => setTotalValue(null)
+  }, [filteredTotalValue, setTotalValue])
 
   const tableContainerRef = useRef<HTMLDivElement>(null)
   const { rows } = table.getRowModel()
