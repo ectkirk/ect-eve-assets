@@ -106,7 +106,7 @@ Authentication tokens are managed in the renderer (auth-store) and provided to m
 Authorization: Bearer <token>         (authenticated only)
 Content-Type: application/json
 X-Compatibility-Date: 2025-11-06
-User-Agent: ECTEVEAssets/0.2.0 (...)
+User-Agent: ECTEVEAssets/<version> (...)
 If-None-Match: "<etag>"               (if cached)
 ```
 

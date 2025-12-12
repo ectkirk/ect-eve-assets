@@ -1,7 +1,9 @@
 export const ESI_BASE_URL = 'https://esi.evetech.net'
 export const ESI_COMPATIBILITY_DATE = '2025-11-06'
-export const ESI_USER_AGENT =
-  'ECTEVEAssets/0.2.0 (ecteveassets@edencom.net; +https://github.com/ectkirk/ect-eve-assets)'
+
+export function makeUserAgent(version: string): string {
+  return `ECTEVEAssets/${version} (ecteveassets@edencom.net; +https://github.com/ectkirk/ect-eve-assets)`
+}
 
 export interface ESIRequestOptions {
   method?: 'GET' | 'POST'

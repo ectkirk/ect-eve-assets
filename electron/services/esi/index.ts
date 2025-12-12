@@ -8,7 +8,7 @@ import { logger } from '../logger.js'
 import {
   ESI_BASE_URL,
   ESI_COMPATIBILITY_DATE,
-  ESI_USER_AGENT,
+  makeUserAgent,
   type ESIRequestOptions,
   type ESIResponse,
   type ESIResponseMeta,
@@ -26,12 +26,14 @@ export class MainESIService {
   private queue: RequestQueue
   private tokenProvider: TokenProvider | null = null
   private rateLimitFilePath: string
+  private userAgent: string
 
   constructor() {
     const userData = app.getPath('userData')
     this.rateLimitFilePath = path.join(userData, RATE_LIMIT_FILE)
     this.cache.setFilePath(path.join(userData, CACHE_FILE))
     this.queue = new RequestQueue(this.rateLimiter, this.executeRequest.bind(this))
+    this.userAgent = makeUserAgent(app.getVersion())
     this.loadState()
   }
 
@@ -140,7 +142,7 @@ export class MainESIService {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'X-Compatibility-Date': ESI_COMPATIBILITY_DATE,
-      'User-Agent': ESI_USER_AGENT,
+      'User-Agent': this.userAgent,
     }
 
     if (options.requiresAuth !== false && options.characterId) {
