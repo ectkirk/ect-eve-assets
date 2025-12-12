@@ -118,6 +118,8 @@ export function setupESITokenProvider(): () => void {
   if (!window.electronAPI) return () => {}
 
   const cleanup = window.electronAPI.esi.onRequestToken(async (characterId: number) => {
+    logger.debug('Token requested', { module: 'ESI', characterId })
+
     const store = useAuthStore.getState()
     const charOwnerKey = ownerKey('character', characterId)
     let owner = store.getOwner(charOwnerKey)
@@ -127,6 +129,7 @@ export function setupESITokenProvider(): () => void {
     }
 
     if (!owner) {
+      logger.warn('No owner found for token request', { module: 'ESI', characterId })
       window.electronAPI!.esi.provideToken(characterId, null)
       return
     }
@@ -134,14 +137,17 @@ export function setupESITokenProvider(): () => void {
     const ownerId = ownerKey(owner.type, owner.id)
 
     if (owner.authFailed) {
+      logger.debug('Owner auth already failed, skipping', { module: 'ESI', ownerId })
       window.electronAPI!.esi.provideToken(characterId, null)
       return
     }
 
     const needsRefresh = !owner.accessToken || store.isOwnerTokenExpired(ownerId)
+    logger.debug('Token status', { module: 'ESI', ownerId, needsRefresh, hasAccessToken: !!owner.accessToken })
 
     if (needsRefresh && owner.refreshToken) {
       try {
+        logger.debug('Refreshing token', { module: 'ESI', ownerId })
         const result = await window.electronAPI!.refreshToken(owner.refreshToken, owner.characterId)
         if (result.success && result.accessToken && result.refreshToken) {
           store.updateOwnerTokens(ownerId, {
@@ -150,11 +156,13 @@ export function setupESITokenProvider(): () => void {
             expiresAt: result.expiresAt ?? Date.now() + 1200000,
             scopes: result.scopes,
           })
+          logger.debug('Token refreshed successfully', { module: 'ESI', ownerId })
           window.electronAPI!.esi.provideToken(characterId, result.accessToken)
           return
         }
-      } catch {
-        logger.error('Token refresh failed for ESI provider', undefined, { module: 'ESI', characterId })
+        logger.warn('Token refresh returned failure', { module: 'ESI', ownerId, success: result.success })
+      } catch (err) {
+        logger.error('Token refresh threw error', err instanceof Error ? err : undefined, { module: 'ESI', characterId })
       }
       store.setOwnerAuthFailed(ownerId, true)
       logger.warn('Owner auth failed, marking for re-authentication', { module: 'ESI', ownerId })

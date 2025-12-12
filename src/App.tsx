@@ -66,11 +66,15 @@ function App() {
   const [cacheError, setCacheError] = useState<string | null>(null)
 
   useEffect(() => {
+    const cleanupTokenProvider = setupESITokenProvider()
+    return cleanupTokenProvider
+  }, [])
+
+  useEffect(() => {
     if (appInitStarted) return
     appInitStarted = true
 
     logger.info('App starting', { module: 'App' })
-    const cleanupTokenProvider = setupESITokenProvider()
     initCache()
       .then(() => {
         logger.info('Cache initialized', { module: 'App' })
@@ -103,8 +107,6 @@ function App() {
         logger.error('Failed to initialize cache', err, { module: 'App' })
         setCacheError(err.message)
       })
-
-    return cleanupTokenProvider
   }, [])
 
   if (cacheError) {

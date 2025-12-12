@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { logger } from '@/lib/logger'
+import { useAuthStore } from '@/store/auth-store'
 
 const DB_NAME = 'ecteveassets-expiry'
 const DB_VERSION = 1
@@ -202,9 +203,23 @@ async function doProcessQueue(): Promise<void> {
     count: initialQueue.length,
   })
 
+  const skippedOwners = new Set<string>()
+
   while (initialQueue.length > 0) {
     const item = initialQueue.shift()
     if (!item) continue
+
+    if (skippedOwners.has(item.ownerKey)) continue
+
+    const owner = useAuthStore.getState().getOwner(item.ownerKey)
+    if (owner?.authFailed) {
+      skippedOwners.add(item.ownerKey)
+      logger.info('Skipping queued endpoints for auth-failed owner', {
+        module: 'ExpiryCacheStore',
+        ownerKey: item.ownerKey,
+      })
+      continue
+    }
 
     const callback = findCallbackForEndpoint(item.endpoint)
     if (callback) {
