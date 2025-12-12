@@ -143,22 +143,32 @@ async function loadFromDB(): Promise<{ walletsByOwner: OwnerWallet[] }> {
   })
 }
 
-async function saveToDB(walletsByOwner: OwnerWallet[]): Promise<void> {
+async function saveOwnerToDB(ownerKey: string, wallet: OwnerWallet): Promise<void> {
   const database = await openDB()
 
   return new Promise((resolve, reject) => {
     const tx = database.transaction([STORE_WALLET], 'readwrite')
     const walletStore = tx.objectStore(STORE_WALLET)
 
-    walletStore.clear()
-    for (const wallet of walletsByOwner) {
-      const ownerKey = `${wallet.owner.type}-${wallet.owner.id}`
-      if (isCorporationWallet(wallet)) {
-        walletStore.put({ ownerKey, owner: wallet.owner, divisions: wallet.divisions })
-      } else {
-        walletStore.put({ ownerKey, owner: wallet.owner, balance: wallet.balance })
-      }
+    if (isCorporationWallet(wallet)) {
+      walletStore.put({ ownerKey, owner: wallet.owner, divisions: wallet.divisions })
+    } else {
+      walletStore.put({ ownerKey, owner: wallet.owner, balance: wallet.balance })
     }
+
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
+async function deleteOwnerFromDB(ownerKey: string): Promise<void> {
+  const database = await openDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction([STORE_WALLET], 'readwrite')
+    const walletStore = tx.objectStore(STORE_WALLET)
+
+    walletStore.delete(ownerKey)
 
     tx.oncomplete = () => resolve()
     tx.onerror = () => reject(tx.error)
@@ -257,6 +267,7 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
           logger.info('Fetching wallet', { module: 'WalletStore', owner: owner.name })
           const { data: walletData, expiresAt, etag } = await fetchOwnerWalletWithMeta(owner)
 
+          await saveOwnerToDB(ownerKey, walletData)
           existingWallets.set(ownerKey, walletData)
 
           useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag)
@@ -269,7 +280,6 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
       }
 
       const results = Array.from(existingWallets.values())
-      await saveToDB(results)
 
       set({
         walletsByOwner: results,
@@ -300,14 +310,13 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
       logger.info('Fetching wallet for owner', { module: 'WalletStore', owner: owner.name })
       const { data: walletData, expiresAt, etag } = await fetchOwnerWalletWithMeta(owner)
 
+      await saveOwnerToDB(ownerKey, walletData)
       useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag)
 
       const updated = state.walletsByOwner.filter(
         (ow) => `${ow.owner.type}-${ow.owner.id}` !== ownerKey
       )
       updated.push(walletData)
-
-      await saveToDB(updated)
 
       set({ walletsByOwner: updated })
 
@@ -332,7 +341,7 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
 
     if (updated.length === state.walletsByOwner.length) return
 
-    await saveToDB(updated)
+    await deleteOwnerFromDB(ownerKey)
     set({ walletsByOwner: updated })
 
     useExpiryCacheStore.getState().clearForOwner(ownerKey)
@@ -345,6 +354,7 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
     set({
       walletsByOwner: [],
       updateError: null,
+      initialized: false,
     })
   },
 }))

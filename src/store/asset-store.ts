@@ -45,7 +45,7 @@ interface AssetActions {
   update: (force?: boolean) => Promise<void>
   updateForOwner: (owner: Owner) => Promise<void>
   removeForOwner: (ownerType: string, ownerId: number) => Promise<void>
-  setPrices: (newPrices: Map<number, number>) => void
+  setPrices: (newPrices: Map<number, number>) => Promise<void>
   clear: () => Promise<void>
 }
 
@@ -118,23 +118,43 @@ async function loadFromDB(): Promise<{
   })
 }
 
-async function saveToDB(
-  assetsByOwner: OwnerAssets[],
+async function saveOwnerAssetsToDB(ownerKey: string, owner: Owner, assets: ESIAsset[]): Promise<void> {
+  const database = await openDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction([STORE_ASSETS], 'readwrite')
+    const assetsStore = tx.objectStore(STORE_ASSETS)
+
+    assetsStore.put({ ownerKey, owner, assets } as StoredOwnerAssets)
+
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
+async function deleteOwnerFromDB(ownerKey: string): Promise<void> {
+  const database = await openDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction([STORE_ASSETS], 'readwrite')
+    const assetsStore = tx.objectStore(STORE_ASSETS)
+
+    assetsStore.delete(ownerKey)
+
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
+async function saveMetaToDB(
   assetNames: Map<number, string>,
   prices: Map<number, number>
 ): Promise<void> {
   const database = await openDB()
 
   return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_ASSETS, STORE_META], 'readwrite')
-    const assetsStore = tx.objectStore(STORE_ASSETS)
+    const tx = database.transaction([STORE_META], 'readwrite')
     const metaStore = tx.objectStore(STORE_META)
-
-    assetsStore.clear()
-    for (const { owner, assets } of assetsByOwner) {
-      const ownerKey = `${owner.type}-${owner.id}`
-      assetsStore.put({ ownerKey, owner, assets } as StoredOwnerAssets)
-    }
 
     metaStore.put({ key: 'assetNames', value: Array.from(assetNames.entries()) })
     metaStore.put({ key: 'prices', value: Array.from(prices.entries()) })
@@ -268,6 +288,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
           logger.info('Fetching assets', { module: 'AssetStore', owner: owner.name, type: owner.type })
           const { data: assets, expiresAt, etag } = await fetchOwnerAssetsWithMeta(owner)
 
+          await saveOwnerAssetsToDB(ownerKey, owner, assets)
           existingAssets.set(ownerKey, { owner, assets })
 
           useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag)
@@ -325,7 +346,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         }
       }
 
-      await saveToDB(results, allNames, prices)
+      await saveMetaToDB(allNames, prices)
 
       set({
         assetsByOwner: results,
@@ -361,6 +382,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
       logger.info('Fetching assets for owner', { module: 'AssetStore', owner: owner.name, type: owner.type })
       const { data: assets, expiresAt, etag } = await fetchOwnerAssetsWithMeta(owner)
 
+      await saveOwnerAssetsToDB(ownerKey, owner, assets)
       useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag)
 
       await resolveTypes(Array.from(new Set(assets.map((a) => a.type_id))))
@@ -403,12 +425,12 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         }
       }
 
+      await saveMetaToDB(newNames, newPrices)
+
       const updatedAssets = state.assetsByOwner.filter(
         (oa) => `${oa.owner.type}-${oa.owner.id}` !== ownerKey
       )
       updatedAssets.push({ owner, assets })
-
-      await saveToDB(updatedAssets, newNames, newPrices)
 
       set({
         assetsByOwner: updatedAssets,
@@ -440,7 +462,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
 
     if (updated.length === state.assetsByOwner.length) return
 
-    await saveToDB(updated, state.assetNames, state.prices)
+    await deleteOwnerFromDB(ownerKey)
     set({ assetsByOwner: updated })
 
     useExpiryCacheStore.getState().clearForOwner(ownerKey)
@@ -448,16 +470,18 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
     logger.info('Assets removed for owner', { module: 'AssetStore', ownerKey })
   },
 
-  setPrices: (newPrices: Map<number, number>) => {
+  setPrices: async (newPrices: Map<number, number>) => {
     const state = get()
     const merged = new Map(state.prices)
     for (const [id, price] of newPrices) {
       merged.set(id, price)
     }
-    set({ prices: merged })
-    saveToDB(state.assetsByOwner, state.assetNames, merged).catch((err) => {
+    try {
+      await saveMetaToDB(state.assetNames, merged)
+      set({ prices: merged })
+    } catch (err) {
       logger.error('Failed to persist prices', err instanceof Error ? err : undefined, { module: 'AssetStore' })
-    })
+    }
   },
 
   clear: async () => {
@@ -468,6 +492,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
       prices: new Map(),
       updateError: null,
       updateProgress: null,
+      initialized: false,
     })
   },
 }))

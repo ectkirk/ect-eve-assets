@@ -119,18 +119,28 @@ async function loadFromDB(): Promise<{ clonesByOwner: CharacterCloneData[] }> {
   })
 }
 
-async function saveToDB(clonesByOwner: CharacterCloneData[]): Promise<void> {
+async function saveOwnerToDB(ownerKey: string, owner: Owner, clones: ESIClone, activeImplants: number[]): Promise<void> {
   const database = await openDB()
 
   return new Promise((resolve, reject) => {
     const tx = database.transaction([STORE_CLONES], 'readwrite')
     const clonesStore = tx.objectStore(STORE_CLONES)
 
-    clonesStore.clear()
-    for (const { owner, clones, activeImplants } of clonesByOwner) {
-      const ownerKey = `${owner.type}-${owner.id}`
-      clonesStore.put({ ownerKey, owner, clones, activeImplants } as StoredCharacterCloneData)
-    }
+    clonesStore.put({ ownerKey, owner, clones, activeImplants } as StoredCharacterCloneData)
+
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
+async function deleteOwnerFromDB(ownerKey: string): Promise<void> {
+  const database = await openDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction([STORE_CLONES], 'readwrite')
+    const clonesStore = tx.objectStore(STORE_CLONES)
+
+    clonesStore.delete(ownerKey)
 
     tx.oncomplete = () => resolve()
     tx.onerror = () => reject(tx.error)
@@ -219,6 +229,7 @@ export const useClonesStore = create<ClonesStore>((set, get) => ({
             fetchImplantsWithMeta(owner),
           ])
 
+          await saveOwnerToDB(ownerKey, owner, clonesResult.data, implantsResult.data)
           existingClones.set(ownerKey, {
             owner,
             clones: clonesResult.data,
@@ -235,7 +246,6 @@ export const useClonesStore = create<ClonesStore>((set, get) => ({
       }
 
       const results = Array.from(existingClones.values())
-      await saveToDB(results)
 
       set({
         clonesByOwner: results,
@@ -272,14 +282,13 @@ export const useClonesStore = create<ClonesStore>((set, get) => ({
         fetchImplantsWithMeta(owner),
       ])
 
+      await saveOwnerToDB(ownerKey, owner, clonesResult.data, implantsResult.data)
       useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, clonesResult.expiresAt, clonesResult.etag)
 
       const updated = state.clonesByOwner.filter(
         (oc) => `${oc.owner.type}-${oc.owner.id}` !== ownerKey
       )
       updated.push({ owner, clones: clonesResult.data, activeImplants: implantsResult.data })
-
-      await saveToDB(updated)
 
       set({ clonesByOwner: updated })
 
@@ -304,7 +313,7 @@ export const useClonesStore = create<ClonesStore>((set, get) => ({
 
     if (updated.length === state.clonesByOwner.length) return
 
-    await saveToDB(updated)
+    await deleteOwnerFromDB(ownerKey)
     set({ clonesByOwner: updated })
 
     useExpiryCacheStore.getState().clearForOwner(ownerKey)
@@ -317,6 +326,7 @@ export const useClonesStore = create<ClonesStore>((set, get) => ({
     set({
       clonesByOwner: [],
       updateError: null,
+      initialized: false,
     })
   },
 }))

@@ -123,18 +123,28 @@ async function loadFromDB(): Promise<{ ordersByOwner: OwnerOrders[] }> {
   })
 }
 
-async function saveToDB(ordersByOwner: OwnerOrders[]): Promise<void> {
+async function saveOwnerToDB(ownerKey: string, owner: Owner, orders: MarketOrder[]): Promise<void> {
   const database = await openDB()
 
   return new Promise((resolve, reject) => {
     const tx = database.transaction([STORE_ORDERS], 'readwrite')
     const ordersStore = tx.objectStore(STORE_ORDERS)
 
-    ordersStore.clear()
-    for (const { owner, orders } of ordersByOwner) {
-      const ownerKey = `${owner.type}-${owner.id}`
-      ordersStore.put({ ownerKey, owner, orders } as StoredOwnerOrders)
-    }
+    ordersStore.put({ ownerKey, owner, orders } as StoredOwnerOrders)
+
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
+async function deleteOwnerFromDB(ownerKey: string): Promise<void> {
+  const database = await openDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction([STORE_ORDERS], 'readwrite')
+    const ordersStore = tx.objectStore(STORE_ORDERS)
+
+    ordersStore.delete(ownerKey)
 
     tx.oncomplete = () => resolve()
     tx.onerror = () => reject(tx.error)
@@ -219,6 +229,7 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
           logger.info('Fetching market orders', { module: 'MarketOrdersStore', owner: owner.name })
           const { data: orders, expiresAt, etag } = await fetchOwnerOrdersWithMeta(owner)
 
+          await saveOwnerToDB(ownerKey, owner, orders)
           existingOrders.set(ownerKey, { owner, orders })
 
           useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag)
@@ -231,8 +242,6 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
       }
 
       const results = Array.from(existingOrders.values())
-
-      await saveToDB(results)
 
       set({
         ordersByOwner: results,
@@ -264,14 +273,13 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
       logger.info('Fetching market orders for owner', { module: 'MarketOrdersStore', owner: owner.name })
       const { data: orders, expiresAt, etag } = await fetchOwnerOrdersWithMeta(owner)
 
+      await saveOwnerToDB(ownerKey, owner, orders)
       useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag)
 
       const updated = state.ordersByOwner.filter(
         (oo) => `${oo.owner.type}-${oo.owner.id}` !== ownerKey
       )
       updated.push({ owner, orders })
-
-      await saveToDB(updated)
 
       set({ ordersByOwner: updated })
 
@@ -297,7 +305,7 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
 
     if (updated.length === state.ordersByOwner.length) return
 
-    await saveToDB(updated)
+    await deleteOwnerFromDB(ownerKey)
     set({ ordersByOwner: updated })
 
     useExpiryCacheStore.getState().clearForOwner(ownerKey)
@@ -310,6 +318,7 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
     set({
       ordersByOwner: [],
       updateError: null,
+      initialized: false,
     })
   },
 }))

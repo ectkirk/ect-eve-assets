@@ -122,18 +122,28 @@ async function loadFromDB(): Promise<{ contractsByOwner: OwnerContracts[] }> {
   })
 }
 
-async function saveToDB(contractsByOwner: OwnerContracts[]): Promise<void> {
+async function saveOwnerToDB(ownerKey: string, owner: Owner, contracts: ContractWithItems[]): Promise<void> {
   const database = await openDB()
 
   return new Promise((resolve, reject) => {
     const tx = database.transaction([STORE_CONTRACTS], 'readwrite')
     const contractsStore = tx.objectStore(STORE_CONTRACTS)
 
-    contractsStore.clear()
-    for (const { owner, contracts } of contractsByOwner) {
-      const ownerKey = `${owner.type}-${owner.id}`
-      contractsStore.put({ ownerKey, owner, contracts } as StoredOwnerContracts)
-    }
+    contractsStore.put({ ownerKey, owner, contracts } as StoredOwnerContracts)
+
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
+async function deleteOwnerFromDB(ownerKeyToDelete: string): Promise<void> {
+  const database = await openDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction([STORE_CONTRACTS], 'readwrite')
+    const contractsStore = tx.objectStore(STORE_CONTRACTS)
+
+    contractsStore.delete(ownerKeyToDelete)
 
     tx.oncomplete = () => resolve()
     tx.onerror = () => reject(tx.error)
@@ -302,6 +312,7 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
             items: contractItemsMap.get(contract.contract_id) ?? [],
           }))
 
+          await saveOwnerToDB(currentOwnerKey, owner, contractsWithItems)
           existingContracts.set(currentOwnerKey, { owner, contracts: contractsWithItems })
 
           useExpiryCacheStore.getState().setExpiry(currentOwnerKey, endpoint, expiresAt, etag)
@@ -322,8 +333,6 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
       }
 
       const results = Array.from(existingContracts.values())
-
-      await saveToDB(results)
 
       set({
         contractsByOwner: results,
@@ -411,14 +420,13 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
         items: contractItemsMap.get(contract.contract_id) ?? [],
       }))
 
+      await saveOwnerToDB(currentOwnerKey, owner, contractsWithItems)
       useExpiryCacheStore.getState().setExpiry(currentOwnerKey, endpoint, expiresAt, etag)
 
       const updated = state.contractsByOwner.filter(
         (oc) => `${oc.owner.type}-${oc.owner.id}` !== currentOwnerKey
       )
       updated.push({ owner, contracts: contractsWithItems })
-
-      await saveToDB(updated)
 
       set({ contractsByOwner: updated })
 
@@ -437,19 +445,19 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
 
   removeForOwner: async (ownerType: string, ownerId: number) => {
     const state = get()
-    const ownerKey = `${ownerType}-${ownerId}`
+    const currentOwnerKey = `${ownerType}-${ownerId}`
     const updated = state.contractsByOwner.filter(
-      (oc) => `${oc.owner.type}-${oc.owner.id}` !== ownerKey
+      (oc) => `${oc.owner.type}-${oc.owner.id}` !== currentOwnerKey
     )
 
     if (updated.length === state.contractsByOwner.length) return
 
-    await saveToDB(updated)
+    await deleteOwnerFromDB(currentOwnerKey)
     set({ contractsByOwner: updated })
 
-    useExpiryCacheStore.getState().clearForOwner(ownerKey)
+    useExpiryCacheStore.getState().clearForOwner(currentOwnerKey)
 
-    logger.info('Contracts removed for owner', { module: 'ContractsStore', ownerKey })
+    logger.info('Contracts removed for owner', { module: 'ContractsStore', ownerKey: currentOwnerKey })
   },
 
   clear: async () => {
@@ -457,6 +465,7 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
     set({
       contractsByOwner: [],
       updateError: null,
+      initialized: false,
     })
   },
 }))

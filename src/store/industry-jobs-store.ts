@@ -115,18 +115,28 @@ async function loadFromDB(): Promise<{ jobsByOwner: OwnerJobs[] }> {
   })
 }
 
-async function saveToDB(jobsByOwner: OwnerJobs[]): Promise<void> {
+async function saveOwnerToDB(ownerKey: string, owner: Owner, jobs: ESIIndustryJob[]): Promise<void> {
   const database = await openDB()
 
   return new Promise((resolve, reject) => {
     const tx = database.transaction([STORE_JOBS], 'readwrite')
     const jobsStore = tx.objectStore(STORE_JOBS)
 
-    jobsStore.clear()
-    for (const { owner, jobs } of jobsByOwner) {
-      const ownerKey = `${owner.type}-${owner.id}`
-      jobsStore.put({ ownerKey, owner, jobs } as StoredOwnerJobs)
-    }
+    jobsStore.put({ ownerKey, owner, jobs } as StoredOwnerJobs)
+
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
+async function deleteOwnerFromDB(ownerKey: string): Promise<void> {
+  const database = await openDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction([STORE_JOBS], 'readwrite')
+    const jobsStore = tx.objectStore(STORE_JOBS)
+
+    jobsStore.delete(ownerKey)
 
     tx.oncomplete = () => resolve()
     tx.onerror = () => reject(tx.error)
@@ -211,6 +221,7 @@ export const useIndustryJobsStore = create<IndustryJobsStore>((set, get) => ({
           logger.info('Fetching industry jobs', { module: 'IndustryJobsStore', owner: owner.name })
           const { data: jobs, expiresAt, etag } = await fetchOwnerJobsWithMeta(owner)
 
+          await saveOwnerToDB(ownerKey, owner, jobs)
           existingJobs.set(ownerKey, { owner, jobs })
 
           useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag)
@@ -223,7 +234,6 @@ export const useIndustryJobsStore = create<IndustryJobsStore>((set, get) => ({
       }
 
       const results = Array.from(existingJobs.values())
-      await saveToDB(results)
 
       set({
         jobsByOwner: results,
@@ -255,14 +265,13 @@ export const useIndustryJobsStore = create<IndustryJobsStore>((set, get) => ({
       logger.info('Fetching industry jobs for owner', { module: 'IndustryJobsStore', owner: owner.name })
       const { data: jobs, expiresAt, etag } = await fetchOwnerJobsWithMeta(owner)
 
+      await saveOwnerToDB(ownerKey, owner, jobs)
       useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag)
 
       const updated = state.jobsByOwner.filter(
         (oj) => `${oj.owner.type}-${oj.owner.id}` !== ownerKey
       )
       updated.push({ owner, jobs })
-
-      await saveToDB(updated)
 
       set({ jobsByOwner: updated })
 
@@ -288,7 +297,7 @@ export const useIndustryJobsStore = create<IndustryJobsStore>((set, get) => ({
 
     if (updated.length === state.jobsByOwner.length) return
 
-    await saveToDB(updated)
+    await deleteOwnerFromDB(ownerKey)
     set({ jobsByOwner: updated })
 
     useExpiryCacheStore.getState().clearForOwner(ownerKey)
@@ -301,6 +310,7 @@ export const useIndustryJobsStore = create<IndustryJobsStore>((set, get) => ({
     set({
       jobsByOwner: [],
       updateError: null,
+      initialized: false,
     })
   },
 }))
