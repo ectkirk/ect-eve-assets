@@ -122,35 +122,34 @@ export function ManufacturingTab() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm text-slate-400 mb-1">ME Level</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="range"
-                  min="0"
-                  max="10"
-                  value={me}
-                  onChange={(e) => setMe(parseInt(e.target.value, 10))}
-                  className="flex-1"
-                />
-                <span className="w-6 text-sm text-right">{me}</span>
-              </div>
+          <div>
+            <label className="block text-sm text-slate-400 mb-1">ME Level</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="range"
+                min="0"
+                max="10"
+                value={me}
+                onChange={(e) => setMe(parseInt(e.target.value, 10))}
+                className="flex-1"
+              />
+              <span className="w-6 text-sm text-right">{me}</span>
             </div>
-            <div>
-              <label className="block text-sm text-slate-400 mb-1">TE Level</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="range"
-                  min="0"
-                  max="20"
-                  step="2"
-                  value={te}
-                  onChange={(e) => setTe(parseInt(e.target.value, 10))}
-                  className="flex-1"
-                />
-                <span className="w-6 text-sm text-right">{te}</span>
-              </div>
+          </div>
+
+          <div>
+            <label className="block text-sm text-slate-400 mb-1">TE Level</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="range"
+                min="0"
+                max="20"
+                step="2"
+                value={te}
+                onChange={(e) => setTe(parseInt(e.target.value, 10))}
+                className="flex-1"
+              />
+              <span className="w-6 text-sm text-right">{te}</span>
             </div>
           </div>
 

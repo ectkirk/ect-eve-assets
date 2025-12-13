@@ -113,12 +113,13 @@ export function BlueprintSearch({ mode, value, onChange, placeholder, className 
   }
 
   const displayPlaceholder = placeholder || (mode === 'product' ? 'Search products...' : 'Search blueprints...')
+  const iconCategoryId = mode === 'blueprint' ? 9 : undefined
 
   return (
     <div ref={containerRef} className={`relative ${className}`}>
       {value ? (
         <div className="flex items-center gap-2 rounded border border-slate-600 bg-slate-700 px-3 py-2">
-          <TypeIcon typeId={value.id} size="sm" />
+          <TypeIcon typeId={value.id} categoryId={iconCategoryId} size="sm" />
           <span className="flex-1 text-sm truncate">{value.name}</span>
           <button
             onClick={handleClear}
@@ -171,7 +172,7 @@ export function BlueprintSearch({ mode, value, onChange, placeholder, className 
                   i === highlightIndex ? 'bg-slate-700' : ''
                 }`}
               >
-                <TypeIcon typeId={id} size="sm" />
+                <TypeIcon typeId={id} categoryId={iconCategoryId} size="sm" />
                 <span className="truncate">{name}</span>
               </button>
             )

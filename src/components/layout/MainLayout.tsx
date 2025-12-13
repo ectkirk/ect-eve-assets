@@ -112,6 +112,12 @@ function ModeSwitcher({ mode, onModeChange }: { mode: AppMode; onModeChange: (mo
       >
         Tools
       </button>
+      <button
+        onClick={() => window.open('https://edencom.net/buyback', '_blank')}
+        className="rounded px-3 py-1 text-sm font-medium transition-colors text-slate-400 hover:text-slate-200"
+      >
+        Buyback
+      </button>
     </div>
   )
 }
