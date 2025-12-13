@@ -236,7 +236,7 @@ export const useClonesStore = create<ClonesStore>((set, get) => ({
             activeImplants: implantsResult.data,
           })
 
-          useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, clonesResult.expiresAt, clonesResult.etag)
+          useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, clonesResult.expiresAt, clonesResult.etag, true)
         } catch (err) {
           logger.error('Failed to fetch clones', err instanceof Error ? err : undefined, {
             module: 'ClonesStore',
@@ -283,7 +283,7 @@ export const useClonesStore = create<ClonesStore>((set, get) => ({
       ])
 
       await saveOwnerToDB(ownerKey, owner, clonesResult.data, implantsResult.data)
-      useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, clonesResult.expiresAt, clonesResult.etag)
+      useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, clonesResult.expiresAt, clonesResult.etag, true)
 
       const updated = state.clonesByOwner.filter(
         (oc) => `${oc.owner.type}-${oc.owner.id}` !== ownerKey
