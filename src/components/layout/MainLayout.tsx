@@ -122,16 +122,6 @@ function ModeSwitcher({ mode, onModeChange }: { mode: AppMode; onModeChange: (mo
   )
 }
 
-const ENDPOINT_LABELS: Record<string, string> = {
-  '/assets/': 'assets',
-  '/market/': 'market orders',
-  '/industry/': 'industry jobs',
-  '/contracts/': 'contracts',
-  '/clones/': 'clones',
-  '/structures': 'structures',
-  '/wallet/': 'wallet',
-}
-
 function RefreshStatus() {
   const currentlyRefreshing = useExpiryCacheStore((s) => s.currentlyRefreshing)
   const owners = useAuthStore((s) => s.owners)
@@ -140,13 +130,11 @@ function RefreshStatus() {
 
   const owner = owners[currentlyRefreshing.ownerKey]
   const ownerName = owner?.name ?? 'Unknown'
-  const endpointLabel = ENDPOINT_LABELS[currentlyRefreshing.endpoint] ?? currentlyRefreshing.endpoint
 
   return (
     <div className="flex items-center gap-2 text-sm text-slate-400">
       <Loader2 className="h-3.5 w-3.5 animate-spin" />
       <span>Updating {ownerName}</span>
-      <span className="text-slate-500">{endpointLabel}</span>
     </div>
   )
 }
