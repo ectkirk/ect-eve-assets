@@ -429,24 +429,48 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
         items: contractItemsMap.get(contract.contract_id) ?? [],
       }))
 
-      if (previousStatusMap.size > 0) {
-        const toastStore = useToastStore.getState()
-        for (const contract of contracts) {
-          const prevStatus = previousStatusMap.get(contract.contract_id)
-          const wasActive = prevStatus === 'outstanding' || prevStatus === 'in_progress'
-          if (wasActive && contract.status === 'finished') {
-            const price = contract.price ?? 0
-            toastStore.addToast(
-              'contract-accepted',
-              'Contract Accepted',
-              price > 0 ? `${formatNumber(price)} ISK` : 'Item exchange'
-            )
-            logger.info('Contract completed', {
-              module: 'ContractsStore',
-              owner: owner.name,
-              contractId: contract.contract_id,
-            })
-          }
+      const toastStore = useToastStore.getState()
+      const ownerId = owner.type === 'corporation' ? owner.id : owner.characterId
+      const allOwners = Object.values(useAuthStore.getState().owners).filter((o): o is Owner => !!o)
+      const allOwnerIds = new Set(allOwners.map((o) => o.type === 'corporation' ? o.id : o.characterId))
+
+      for (const contract of contracts) {
+        const prevStatus = previousStatusMap.get(contract.contract_id)
+        const isNewContract = !previousStatusMap.has(contract.contract_id)
+        const wasActive = prevStatus === 'outstanding' || prevStatus === 'in_progress'
+
+        const weAreIssuer = owner.type === 'corporation'
+          ? contract.issuer_corporation_id === owner.id
+          : contract.issuer_id === owner.characterId
+        const weAreAssignee = contract.assignee_id === ownerId
+        const issuerIsOurOwner = allOwnerIds.has(contract.issuer_id)
+
+        if (isNewContract && weAreAssignee && !issuerIsOurOwner && contract.status === 'outstanding') {
+          const price = contract.price ?? 0
+          toastStore.addToast(
+            'contract-accepted',
+            'New Contract Assigned',
+            price > 0 ? `${formatNumber(price)} ISK` : 'Item exchange'
+          )
+          logger.info('New contract assigned', {
+            module: 'ContractsStore',
+            owner: owner.name,
+            contractId: contract.contract_id,
+          })
+        }
+
+        if (wasActive && contract.status === 'finished' && weAreIssuer && !allOwnerIds.has(contract.acceptor_id)) {
+          const price = contract.price ?? 0
+          toastStore.addToast(
+            'contract-accepted',
+            'Contract Completed',
+            price > 0 ? `${formatNumber(price)} ISK` : 'Item exchange'
+          )
+          logger.info('Contract completed', {
+            module: 'ContractsStore',
+            owner: owner.name,
+            contractId: contract.contract_id,
+          })
         }
       }
 
