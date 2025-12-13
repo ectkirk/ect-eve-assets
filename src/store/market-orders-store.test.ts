@@ -100,7 +100,7 @@ describe('market-orders-store', () => {
       expect(useMarketOrdersStore.getState().ordersByOwner[0]?.orders).toHaveLength(1)
 
       const expiry = useExpiryCacheStore.getState().endpoints.get('character-12345:/characters/12345/orders/')
-      expect(expiry?.expiresAt).toBeGreaterThanOrEqual(Date.now() + 15 * 60 * 1000 - 1000)
+      expect(expiry?.expiresAt).toBeGreaterThanOrEqual(futureExpiry - 1000)
     })
 
     it('skips owners whose data is not expired when not forced', async () => {
