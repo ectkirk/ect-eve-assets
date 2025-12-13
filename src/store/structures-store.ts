@@ -3,6 +3,7 @@ import { useAuthStore, type Owner, findOwnerByKey } from './auth-store'
 import { useExpiryCacheStore } from './expiry-cache-store'
 import { esi, type ESIResponseMeta } from '@/api/esi'
 import { ESICorporationStructureSchema } from '@/api/schemas'
+import { createOwnerDB } from '@/lib/owner-indexed-db'
 import { logger } from '@/lib/logger'
 import { z } from 'zod'
 
@@ -10,17 +11,7 @@ export type ESICorporationStructure = z.infer<typeof ESICorporationStructureSche
 
 const ENDPOINT_PATTERN = '/structures'
 
-const DB_NAME = 'ecteveassets-structures'
-const DB_VERSION = 1
-const STORE_STRUCTURES = 'structures'
-
 export interface OwnerStructures {
-  owner: Owner
-  structures: ESICorporationStructure[]
-}
-
-interface StoredOwnerStructures {
-  ownerKey: string
   owner: Owner
   structures: ESICorporationStructure[]
 }
@@ -42,7 +33,12 @@ interface StructuresActions {
 
 type StructuresStore = StructuresState & StructuresActions
 
-let db: IDBDatabase | null = null
+const db = createOwnerDB<ESICorporationStructure[]>({
+  dbName: 'ecteveassets-structures',
+  storeName: 'structures',
+  dataKey: 'structures',
+  moduleName: 'StructuresStore',
+})
 
 function getStructuresEndpoint(owner: Owner): string {
   return `/corporations/${owner.id}/structures`
@@ -56,91 +52,6 @@ async function fetchOwnerStructuresWithMeta(owner: Owner): Promise<ESIResponseMe
   })
 }
 
-async function openDB(): Promise<IDBDatabase> {
-  if (db) return db
-
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION)
-
-    request.onerror = () => {
-      logger.error('Failed to open structures DB', request.error, { module: 'StructuresStore' })
-      reject(request.error)
-    }
-
-    request.onsuccess = () => {
-      db = request.result
-      resolve(db)
-    }
-
-    request.onupgradeneeded = (event) => {
-      const database = (event.target as IDBOpenDBRequest).result
-      if (!database.objectStoreNames.contains(STORE_STRUCTURES)) {
-        database.createObjectStore(STORE_STRUCTURES, { keyPath: 'ownerKey' })
-      }
-    }
-  })
-}
-
-async function loadFromDB(): Promise<{ structuresByOwner: OwnerStructures[] }> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_STRUCTURES], 'readonly')
-    const structuresStore = tx.objectStore(STORE_STRUCTURES)
-
-    const structuresByOwner: OwnerStructures[] = []
-    const structuresRequest = structuresStore.getAll()
-
-    tx.oncomplete = () => {
-      for (const stored of structuresRequest.result as StoredOwnerStructures[]) {
-        structuresByOwner.push({ owner: stored.owner, structures: stored.structures })
-      }
-      resolve({ structuresByOwner })
-    }
-
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
-async function saveOwnerToDB(ownerKey: string, owner: Owner, structures: ESICorporationStructure[]): Promise<void> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_STRUCTURES], 'readwrite')
-    const structuresStore = tx.objectStore(STORE_STRUCTURES)
-
-    structuresStore.put({ ownerKey, owner, structures } as StoredOwnerStructures)
-
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
-async function deleteOwnerFromDB(ownerKey: string): Promise<void> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_STRUCTURES], 'readwrite')
-    const structuresStore = tx.objectStore(STORE_STRUCTURES)
-
-    structuresStore.delete(ownerKey)
-
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
-async function clearDB(): Promise<void> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_STRUCTURES], 'readwrite')
-    tx.objectStore(STORE_STRUCTURES).clear()
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
 export const useStructuresStore = create<StructuresStore>((set, get) => ({
   structuresByOwner: [],
   isUpdating: false,
@@ -151,7 +62,8 @@ export const useStructuresStore = create<StructuresStore>((set, get) => ({
     if (get().initialized) return
 
     try {
-      const { structuresByOwner } = await loadFromDB()
+      const loaded = await db.loadAll()
+      const structuresByOwner = loaded.map((d) => ({ owner: d.owner, structures: d.data }))
       set({ structuresByOwner, initialized: true })
       logger.info('Structures store initialized', {
         module: 'StructuresStore',
@@ -208,7 +120,7 @@ export const useStructuresStore = create<StructuresStore>((set, get) => ({
           logger.info('Fetching structures', { module: 'StructuresStore', owner: owner.name })
           const { data: structures, expiresAt, etag } = await fetchOwnerStructuresWithMeta(owner)
 
-          await saveOwnerToDB(ownerKey, owner, structures)
+          await db.save(ownerKey, owner, structures)
           existingStructures.set(ownerKey, { owner, structures })
 
           useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag, structures.length === 0)
@@ -254,7 +166,7 @@ export const useStructuresStore = create<StructuresStore>((set, get) => ({
       logger.info('Fetching structures for owner', { module: 'StructuresStore', owner: owner.name })
       const { data: structures, expiresAt, etag } = await fetchOwnerStructuresWithMeta(owner)
 
-      await saveOwnerToDB(ownerKey, owner, structures)
+      await db.save(ownerKey, owner, structures)
       useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag, structures.length === 0)
 
       const updated = state.structuresByOwner.filter(
@@ -286,7 +198,7 @@ export const useStructuresStore = create<StructuresStore>((set, get) => ({
 
     if (updated.length === state.structuresByOwner.length) return
 
-    await deleteOwnerFromDB(ownerKey)
+    await db.delete(ownerKey)
     set({ structuresByOwner: updated })
 
     useExpiryCacheStore.getState().clearForOwner(ownerKey)
@@ -295,7 +207,7 @@ export const useStructuresStore = create<StructuresStore>((set, get) => ({
   },
 
   clear: async () => {
-    await clearDB()
+    await db.clear()
     set({
       structuresByOwner: [],
       updateError: null,

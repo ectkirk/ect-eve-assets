@@ -3,6 +3,7 @@ import { useAuthStore, type Owner, findOwnerByKey } from './auth-store'
 import { useExpiryCacheStore } from './expiry-cache-store'
 import { esi, type ESIResponseMeta } from '@/api/esi'
 import { ESIBlueprintSchema } from '@/api/schemas'
+import { createOwnerDB } from '@/lib/owner-indexed-db'
 import { logger } from '@/lib/logger'
 import { z } from 'zod'
 
@@ -10,18 +11,7 @@ export type ESIBlueprint = z.infer<typeof ESIBlueprintSchema>
 
 const ENDPOINT_PATTERN = '/blueprints/'
 
-const DB_NAME = 'ecteveassets-blueprints'
-const DB_VERSION = 1
-const STORE_BLUEPRINTS = 'blueprints'
-const STORE_META = 'meta'
-
 export interface OwnerBlueprints {
-  owner: Owner
-  blueprints: ESIBlueprint[]
-}
-
-interface StoredOwnerBlueprints {
-  ownerKey: string
   owner: Owner
   blueprints: ESIBlueprint[]
 }
@@ -51,7 +41,13 @@ interface BlueprintsActions {
 
 type BlueprintsStore = BlueprintsState & BlueprintsActions
 
-let db: IDBDatabase | null = null
+const db = createOwnerDB<ESIBlueprint[]>({
+  dbName: 'ecteveassets-blueprints',
+  storeName: 'blueprints',
+  dataKey: 'blueprints',
+  metaStoreName: 'meta',
+  moduleName: 'BlueprintsStore',
+})
 
 function getBlueprintsEndpoint(owner: Owner): string {
   if (owner.type === 'corporation') {
@@ -65,34 +61,6 @@ async function fetchOwnerBlueprintsWithMeta(owner: Owner): Promise<ESIResponseMe
   return esi.fetchPaginatedWithMeta<ESIBlueprint>(endpoint, {
     characterId: owner.characterId,
     schema: ESIBlueprintSchema,
-  })
-}
-
-async function openDB(): Promise<IDBDatabase> {
-  if (db) return db
-
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION)
-
-    request.onerror = () => {
-      logger.error('Failed to open blueprints DB', request.error, { module: 'BlueprintsStore' })
-      reject(request.error)
-    }
-
-    request.onsuccess = () => {
-      db = request.result
-      resolve(db)
-    }
-
-    request.onupgradeneeded = (event) => {
-      const database = (event.target as IDBOpenDBRequest).result
-      if (!database.objectStoreNames.contains(STORE_BLUEPRINTS)) {
-        database.createObjectStore(STORE_BLUEPRINTS, { keyPath: 'ownerKey' })
-      }
-      if (!database.objectStoreNames.contains(STORE_META)) {
-        database.createObjectStore(STORE_META, { keyPath: 'key' })
-      }
-    }
   })
 }
 
@@ -111,67 +79,6 @@ function buildBlueprintMap(blueprintsByOwner: OwnerBlueprints[]): Map<number, Bl
   return map
 }
 
-async function loadFromDB(): Promise<{ blueprintsByOwner: OwnerBlueprints[] }> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_BLUEPRINTS], 'readonly')
-    const bpStore = tx.objectStore(STORE_BLUEPRINTS)
-
-    const blueprintsByOwner: OwnerBlueprints[] = []
-    const bpRequest = bpStore.getAll()
-
-    tx.oncomplete = () => {
-      for (const stored of bpRequest.result as StoredOwnerBlueprints[]) {
-        blueprintsByOwner.push({ owner: stored.owner, blueprints: stored.blueprints })
-      }
-      resolve({ blueprintsByOwner })
-    }
-
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
-async function saveOwnerToDB(ownerKey: string, owner: Owner, blueprints: ESIBlueprint[]): Promise<void> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_BLUEPRINTS], 'readwrite')
-    const bpStore = tx.objectStore(STORE_BLUEPRINTS)
-
-    bpStore.put({ ownerKey, owner, blueprints } as StoredOwnerBlueprints)
-
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
-async function deleteOwnerFromDB(ownerKey: string): Promise<void> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_BLUEPRINTS], 'readwrite')
-    const bpStore = tx.objectStore(STORE_BLUEPRINTS)
-
-    bpStore.delete(ownerKey)
-
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
-async function clearDB(): Promise<void> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_BLUEPRINTS, STORE_META], 'readwrite')
-    tx.objectStore(STORE_BLUEPRINTS).clear()
-    tx.objectStore(STORE_META).clear()
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
 export const useBlueprintsStore = create<BlueprintsStore>((set, get) => ({
   blueprintsByOwner: [],
   blueprintsByItemId: new Map(),
@@ -183,7 +90,8 @@ export const useBlueprintsStore = create<BlueprintsStore>((set, get) => ({
     if (get().initialized) return
 
     try {
-      const { blueprintsByOwner } = await loadFromDB()
+      const loaded = await db.loadAll()
+      const blueprintsByOwner = loaded.map((d) => ({ owner: d.owner, blueprints: d.data }))
       const blueprintsByItemId = buildBlueprintMap(blueprintsByOwner)
       set({ blueprintsByOwner, blueprintsByItemId, initialized: true })
       logger.info('Blueprints store initialized', {
@@ -240,7 +148,7 @@ export const useBlueprintsStore = create<BlueprintsStore>((set, get) => ({
           logger.info('Fetching blueprints', { module: 'BlueprintsStore', owner: owner.name })
           const { data: blueprints, expiresAt, etag } = await fetchOwnerBlueprintsWithMeta(owner)
 
-          await saveOwnerToDB(ownerKey, owner, blueprints)
+          await db.save(ownerKey, owner, blueprints)
           existingBlueprints.set(ownerKey, { owner, blueprints })
 
           useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag)
@@ -287,7 +195,7 @@ export const useBlueprintsStore = create<BlueprintsStore>((set, get) => ({
       logger.info('Fetching blueprints for owner', { module: 'BlueprintsStore', owner: owner.name })
       const { data: blueprints, expiresAt, etag } = await fetchOwnerBlueprintsWithMeta(owner)
 
-      await saveOwnerToDB(ownerKey, owner, blueprints)
+      await db.save(ownerKey, owner, blueprints)
       useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag)
 
       const updated = state.blueprintsByOwner.filter(
@@ -321,7 +229,7 @@ export const useBlueprintsStore = create<BlueprintsStore>((set, get) => ({
 
     if (updated.length === state.blueprintsByOwner.length) return
 
-    await deleteOwnerFromDB(ownerKey)
+    await db.delete(ownerKey)
     const blueprintsByItemId = buildBlueprintMap(updated)
     set({ blueprintsByOwner: updated, blueprintsByItemId })
 
@@ -331,7 +239,7 @@ export const useBlueprintsStore = create<BlueprintsStore>((set, get) => ({
   },
 
   clear: async () => {
-    await clearDB()
+    await db.clear()
     set({
       blueprintsByOwner: [],
       blueprintsByItemId: new Map(),

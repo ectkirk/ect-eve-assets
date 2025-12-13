@@ -11,15 +11,11 @@ import {
 } from '@/api/endpoints/contracts'
 import { esi, type ESIResponseMeta } from '@/api/esi'
 import { ESIContractSchema } from '@/api/schemas'
+import { createOwnerDB } from '@/lib/owner-indexed-db'
 import { logger } from '@/lib/logger'
 import { formatNumber } from '@/lib/utils'
 
 const ENDPOINT_PATTERN = '/contracts/'
-
-const DB_NAME = 'ecteveassets-contracts'
-const DB_VERSION = 1
-const STORE_CONTRACTS = 'contracts'
-const STORE_META = 'meta'
 
 export interface ContractWithItems {
   contract: ESIContract
@@ -27,12 +23,6 @@ export interface ContractWithItems {
 }
 
 export interface OwnerContracts {
-  owner: Owner
-  contracts: ContractWithItems[]
-}
-
-interface StoredOwnerContracts {
-  ownerKey: string
   owner: Owner
   contracts: ContractWithItems[]
 }
@@ -55,7 +45,13 @@ interface ContractsActions {
 
 type ContractsStore = ContractsState & ContractsActions
 
-let db: IDBDatabase | null = null
+const db = createOwnerDB<ContractWithItems[]>({
+  dbName: 'ecteveassets-contracts',
+  storeName: 'contracts',
+  dataKey: 'contracts',
+  metaStoreName: 'meta',
+  moduleName: 'ContractsStore',
+})
 
 function getContractsEndpoint(owner: Owner): string {
   if (owner.type === 'corporation') {
@@ -76,95 +72,6 @@ async function fetchOwnerContractsWithMeta(owner: Owner): Promise<ESIResponseMet
   return result
 }
 
-async function openDB(): Promise<IDBDatabase> {
-  if (db) return db
-
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION)
-
-    request.onerror = () => {
-      logger.error('Failed to open contracts DB', request.error, { module: 'ContractsStore' })
-      reject(request.error)
-    }
-
-    request.onsuccess = () => {
-      db = request.result
-      resolve(db)
-    }
-
-    request.onupgradeneeded = (event) => {
-      const database = (event.target as IDBOpenDBRequest).result
-      if (!database.objectStoreNames.contains(STORE_CONTRACTS)) {
-        database.createObjectStore(STORE_CONTRACTS, { keyPath: 'ownerKey' })
-      }
-      if (!database.objectStoreNames.contains(STORE_META)) {
-        database.createObjectStore(STORE_META, { keyPath: 'key' })
-      }
-    }
-  })
-}
-
-async function loadFromDB(): Promise<{ contractsByOwner: OwnerContracts[] }> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_CONTRACTS], 'readonly')
-    const contractsStore = tx.objectStore(STORE_CONTRACTS)
-
-    const contractsByOwner: OwnerContracts[] = []
-    const contractsRequest = contractsStore.getAll()
-
-    tx.oncomplete = () => {
-      for (const stored of contractsRequest.result as StoredOwnerContracts[]) {
-        contractsByOwner.push({ owner: stored.owner, contracts: stored.contracts })
-      }
-      resolve({ contractsByOwner })
-    }
-
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
-async function saveOwnerToDB(ownerKey: string, owner: Owner, contracts: ContractWithItems[]): Promise<void> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_CONTRACTS], 'readwrite')
-    const contractsStore = tx.objectStore(STORE_CONTRACTS)
-
-    contractsStore.put({ ownerKey, owner, contracts } as StoredOwnerContracts)
-
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
-async function deleteOwnerFromDB(ownerKeyToDelete: string): Promise<void> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_CONTRACTS], 'readwrite')
-    const contractsStore = tx.objectStore(STORE_CONTRACTS)
-
-    contractsStore.delete(ownerKeyToDelete)
-
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
-async function clearDB(): Promise<void> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_CONTRACTS, STORE_META], 'readwrite')
-    tx.objectStore(STORE_CONTRACTS).clear()
-    tx.objectStore(STORE_META).clear()
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
 export const useContractsStore = create<ContractsStore>((set, get) => ({
   contractsByOwner: [],
   isUpdating: false,
@@ -176,7 +83,8 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
     if (get().initialized) return
 
     try {
-      const { contractsByOwner } = await loadFromDB()
+      const loaded = await db.loadAll()
+      const contractsByOwner = loaded.map((d) => ({ owner: d.owner, contracts: d.data }))
       set({ contractsByOwner, initialized: true })
       logger.info('Contracts store initialized', {
         module: 'ContractsStore',
@@ -316,7 +224,7 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
             items: contractItemsMap.get(contract.contract_id) ?? [],
           }))
 
-          await saveOwnerToDB(currentOwnerKey, owner, contractsWithItems)
+          await db.save(currentOwnerKey, owner, contractsWithItems)
           existingContracts.set(currentOwnerKey, { owner, contracts: contractsWithItems })
 
           useExpiryCacheStore.getState().setExpiry(currentOwnerKey, endpoint, expiresAt, etag, contracts.length === 0)
@@ -477,7 +385,7 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
         }
       }
 
-      await saveOwnerToDB(currentOwnerKey, owner, contractsWithItems)
+      await db.save(currentOwnerKey, owner, contractsWithItems)
       useExpiryCacheStore.getState().setExpiry(currentOwnerKey, endpoint, expiresAt, etag, contracts.length === 0)
 
       const updated = get().contractsByOwner.filter(
@@ -509,7 +417,7 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
 
     if (updated.length === state.contractsByOwner.length) return
 
-    await deleteOwnerFromDB(currentOwnerKey)
+    await db.delete(currentOwnerKey)
     set({ contractsByOwner: updated })
 
     useExpiryCacheStore.getState().clearForOwner(currentOwnerKey)
@@ -518,7 +426,7 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
   },
 
   clear: async () => {
-    await clearDB()
+    await db.clear()
     set({
       contractsByOwner: [],
       updateError: null,

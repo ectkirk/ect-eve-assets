@@ -5,6 +5,7 @@ import { useAssetStore } from './asset-store'
 import { esi, type ESIResponseMeta } from '@/api/esi'
 import { ESIIndustryJobSchema } from '@/api/schemas'
 import { fetchPrices } from '@/api/ref-client'
+import { createOwnerDB } from '@/lib/owner-indexed-db'
 import { logger } from '@/lib/logger'
 import { z } from 'zod'
 
@@ -12,18 +13,7 @@ export type ESIIndustryJob = z.infer<typeof ESIIndustryJobSchema>
 
 const ENDPOINT_PATTERN = '/industry/jobs/'
 
-const DB_NAME = 'ecteveassets-industry-jobs'
-const DB_VERSION = 1
-const STORE_JOBS = 'jobs'
-const STORE_META = 'meta'
-
 export interface OwnerJobs {
-  owner: Owner
-  jobs: ESIIndustryJob[]
-}
-
-interface StoredOwnerJobs {
-  ownerKey: string
   owner: Owner
   jobs: ESIIndustryJob[]
 }
@@ -45,7 +35,13 @@ interface IndustryJobsActions {
 
 type IndustryJobsStore = IndustryJobsState & IndustryJobsActions
 
-let db: IDBDatabase | null = null
+const db = createOwnerDB<ESIIndustryJob[]>({
+  dbName: 'ecteveassets-industry-jobs',
+  storeName: 'jobs',
+  dataKey: 'jobs',
+  metaStoreName: 'meta',
+  moduleName: 'IndustryJobsStore',
+})
 
 function getJobsEndpoint(owner: Owner): string {
   if (owner.type === 'corporation') {
@@ -68,95 +64,6 @@ async function fetchOwnerJobsWithMeta(owner: Owner): Promise<ESIResponseMeta<ESI
   })
 }
 
-async function openDB(): Promise<IDBDatabase> {
-  if (db) return db
-
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION)
-
-    request.onerror = () => {
-      logger.error('Failed to open industry jobs DB', request.error, { module: 'IndustryJobsStore' })
-      reject(request.error)
-    }
-
-    request.onsuccess = () => {
-      db = request.result
-      resolve(db)
-    }
-
-    request.onupgradeneeded = (event) => {
-      const database = (event.target as IDBOpenDBRequest).result
-      if (!database.objectStoreNames.contains(STORE_JOBS)) {
-        database.createObjectStore(STORE_JOBS, { keyPath: 'ownerKey' })
-      }
-      if (!database.objectStoreNames.contains(STORE_META)) {
-        database.createObjectStore(STORE_META, { keyPath: 'key' })
-      }
-    }
-  })
-}
-
-async function loadFromDB(): Promise<{ jobsByOwner: OwnerJobs[] }> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_JOBS], 'readonly')
-    const jobsStore = tx.objectStore(STORE_JOBS)
-
-    const jobsByOwner: OwnerJobs[] = []
-    const jobsRequest = jobsStore.getAll()
-
-    tx.oncomplete = () => {
-      for (const stored of jobsRequest.result as StoredOwnerJobs[]) {
-        jobsByOwner.push({ owner: stored.owner, jobs: stored.jobs })
-      }
-      resolve({ jobsByOwner })
-    }
-
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
-async function saveOwnerToDB(ownerKey: string, owner: Owner, jobs: ESIIndustryJob[]): Promise<void> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_JOBS], 'readwrite')
-    const jobsStore = tx.objectStore(STORE_JOBS)
-
-    jobsStore.put({ ownerKey, owner, jobs } as StoredOwnerJobs)
-
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
-async function deleteOwnerFromDB(ownerKey: string): Promise<void> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_JOBS], 'readwrite')
-    const jobsStore = tx.objectStore(STORE_JOBS)
-
-    jobsStore.delete(ownerKey)
-
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
-async function clearDB(): Promise<void> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_JOBS, STORE_META], 'readwrite')
-    tx.objectStore(STORE_JOBS).clear()
-    tx.objectStore(STORE_META).clear()
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
 export const useIndustryJobsStore = create<IndustryJobsStore>((set, get) => ({
   jobsByOwner: [],
   isUpdating: false,
@@ -167,7 +74,8 @@ export const useIndustryJobsStore = create<IndustryJobsStore>((set, get) => ({
     if (get().initialized) return
 
     try {
-      const { jobsByOwner } = await loadFromDB()
+      const loaded = await db.loadAll()
+      const jobsByOwner = loaded.map((d) => ({ owner: d.owner, jobs: d.data }))
       set({ jobsByOwner, initialized: true })
       logger.info('Industry jobs store initialized', {
         module: 'IndustryJobsStore',
@@ -223,7 +131,7 @@ export const useIndustryJobsStore = create<IndustryJobsStore>((set, get) => ({
           logger.info('Fetching industry jobs', { module: 'IndustryJobsStore', owner: owner.name })
           const { data: jobs, expiresAt, etag } = await fetchOwnerJobsWithMeta(owner)
 
-          await saveOwnerToDB(ownerKey, owner, jobs)
+          await db.save(ownerKey, owner, jobs)
           existingJobs.set(ownerKey, { owner, jobs })
 
           useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag, jobs.length === 0)
@@ -289,7 +197,7 @@ export const useIndustryJobsStore = create<IndustryJobsStore>((set, get) => ({
       logger.info('Fetching industry jobs for owner', { module: 'IndustryJobsStore', owner: owner.name })
       const { data: jobs, expiresAt, etag } = await fetchOwnerJobsWithMeta(owner)
 
-      await saveOwnerToDB(ownerKey, owner, jobs)
+      await db.save(ownerKey, owner, jobs)
       useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag, jobs.length === 0)
 
       const productTypeIds = new Set<number>()
@@ -341,7 +249,7 @@ export const useIndustryJobsStore = create<IndustryJobsStore>((set, get) => ({
 
     if (updated.length === state.jobsByOwner.length) return
 
-    await deleteOwnerFromDB(ownerKey)
+    await db.delete(ownerKey)
     set({ jobsByOwner: updated })
 
     useExpiryCacheStore.getState().clearForOwner(ownerKey)
@@ -350,7 +258,7 @@ export const useIndustryJobsStore = create<IndustryJobsStore>((set, get) => ({
   },
 
   clear: async () => {
-    await clearDB()
+    await db.clear()
     set({
       jobsByOwner: [],
       updateError: null,

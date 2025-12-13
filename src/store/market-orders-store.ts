@@ -8,27 +8,17 @@ import {
   ESICorporationMarketOrderSchema,
 } from '@/api/schemas'
 import { getTypeName } from '@/store/reference-cache'
+import { createOwnerDB } from '@/lib/owner-indexed-db'
 import { logger } from '@/lib/logger'
 import { z } from 'zod'
 
 const ENDPOINT_PATTERN = '/orders/'
-
-const DB_NAME = 'ecteveassets-market-orders'
-const DB_VERSION = 2
-const STORE_ORDERS = 'orders'
-const STORE_META = 'meta'
 
 export type ESIMarketOrder = z.infer<typeof ESIMarketOrderSchema>
 export type ESICorporationMarketOrder = z.infer<typeof ESICorporationMarketOrderSchema>
 export type MarketOrder = ESIMarketOrder | ESICorporationMarketOrder
 
 export interface OwnerOrders {
-  owner: Owner
-  orders: MarketOrder[]
-}
-
-interface StoredOwnerOrders {
-  ownerKey: string
   owner: Owner
   orders: MarketOrder[]
 }
@@ -50,7 +40,14 @@ interface MarketOrdersActions {
 
 type MarketOrdersStore = MarketOrdersState & MarketOrdersActions
 
-let db: IDBDatabase | null = null
+const db = createOwnerDB<MarketOrder[]>({
+  dbName: 'ecteveassets-market-orders',
+  storeName: 'orders',
+  dataKey: 'orders',
+  metaStoreName: 'meta',
+  version: 2,
+  moduleName: 'MarketOrdersStore',
+})
 
 function getOrdersEndpoint(owner: Owner): string {
   if (owner.type === 'corporation') {
@@ -71,98 +68,8 @@ async function fetchOwnerOrdersWithMeta(owner: Owner): Promise<ESIResponseMeta<M
     characterId: owner.characterId,
     schema: ESIMarketOrderSchema,
   })
-  // Filter out corporation orders - they'll be fetched via corporation endpoint
   result.data = result.data.filter((order) => !order.is_corporation)
   return result
-}
-
-async function openDB(): Promise<IDBDatabase> {
-  if (db) return db
-
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION)
-
-    request.onerror = () => {
-      logger.error('Failed to open market orders DB', request.error, { module: 'MarketOrdersStore' })
-      reject(request.error)
-    }
-
-    request.onsuccess = () => {
-      db = request.result
-      resolve(db)
-    }
-
-    request.onupgradeneeded = (event) => {
-      const database = (event.target as IDBOpenDBRequest).result
-      if (!database.objectStoreNames.contains(STORE_ORDERS)) {
-        database.createObjectStore(STORE_ORDERS, { keyPath: 'ownerKey' })
-      }
-      if (!database.objectStoreNames.contains(STORE_META)) {
-        database.createObjectStore(STORE_META, { keyPath: 'key' })
-      }
-    }
-  })
-}
-
-async function loadFromDB(): Promise<{ ordersByOwner: OwnerOrders[] }> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_ORDERS], 'readonly')
-    const ordersStore = tx.objectStore(STORE_ORDERS)
-
-    const ordersByOwner: OwnerOrders[] = []
-    const ordersRequest = ordersStore.getAll()
-
-    tx.oncomplete = () => {
-      for (const stored of ordersRequest.result as StoredOwnerOrders[]) {
-        ordersByOwner.push({ owner: stored.owner, orders: stored.orders })
-      }
-      resolve({ ordersByOwner })
-    }
-
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
-async function saveOwnerToDB(ownerKey: string, owner: Owner, orders: MarketOrder[]): Promise<void> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_ORDERS], 'readwrite')
-    const ordersStore = tx.objectStore(STORE_ORDERS)
-
-    ordersStore.put({ ownerKey, owner, orders } as StoredOwnerOrders)
-
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
-async function deleteOwnerFromDB(ownerKey: string): Promise<void> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_ORDERS], 'readwrite')
-    const ordersStore = tx.objectStore(STORE_ORDERS)
-
-    ordersStore.delete(ownerKey)
-
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
-async function clearDB(): Promise<void> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_ORDERS, STORE_META], 'readwrite')
-    tx.objectStore(STORE_ORDERS).clear()
-    tx.objectStore(STORE_META).clear()
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
 }
 
 export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
@@ -175,7 +82,8 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
     if (get().initialized) return
 
     try {
-      const { ordersByOwner } = await loadFromDB()
+      const loaded = await db.loadAll()
+      const ordersByOwner = loaded.map((d) => ({ owner: d.owner, orders: d.data }))
       set({ ordersByOwner, initialized: true })
       logger.info('Market orders store initialized', {
         module: 'MarketOrdersStore',
@@ -231,7 +139,7 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
           logger.info('Fetching market orders', { module: 'MarketOrdersStore', owner: owner.name })
           const { data: orders, expiresAt, etag } = await fetchOwnerOrdersWithMeta(owner)
 
-          await saveOwnerToDB(ownerKey, owner, orders)
+          await db.save(ownerKey, owner, orders)
           existingOrders.set(ownerKey, { owner, orders })
 
           useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag, orders.length === 0)
@@ -301,7 +209,7 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
         })
       }
 
-      await saveOwnerToDB(ownerKey, owner, orders)
+      await db.save(ownerKey, owner, orders)
       useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag, orders.length === 0)
 
       const updated = state.ordersByOwner.filter(
@@ -333,7 +241,7 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
 
     if (updated.length === state.ordersByOwner.length) return
 
-    await deleteOwnerFromDB(ownerKey)
+    await db.delete(ownerKey)
     set({ ordersByOwner: updated })
 
     useExpiryCacheStore.getState().clearForOwner(ownerKey)
@@ -342,7 +250,7 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
   },
 
   clear: async () => {
-    await clearDB()
+    await db.clear()
     set({
       ordersByOwner: [],
       updateError: null,
