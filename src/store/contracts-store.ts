@@ -42,6 +42,7 @@ interface ContractsState {
   isUpdating: boolean
   updateError: string | null
   initialized: boolean
+  updateCounter: number
 }
 
 interface ContractsActions {
@@ -169,6 +170,7 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
   isUpdating: false,
   updateError: null,
   initialized: false,
+  updateCounter: 0,
 
   init: async () => {
     if (get().initialized) return
@@ -336,11 +338,12 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
 
       const results = Array.from(existingContracts.values())
 
-      set({
+      set((s) => ({
         contractsByOwner: results,
         isUpdating: false,
         updateError: results.length === 0 ? 'Failed to fetch any contracts' : null,
-      })
+        updateCounter: s.updateCounter + 1,
+      }))
 
       logger.info('Contracts updated', {
         module: 'ContractsStore',
@@ -477,12 +480,12 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
       await saveOwnerToDB(currentOwnerKey, owner, contractsWithItems)
       useExpiryCacheStore.getState().setExpiry(currentOwnerKey, endpoint, expiresAt, etag, contracts.length === 0)
 
-      const updated = state.contractsByOwner.filter(
+      const updated = get().contractsByOwner.filter(
         (oc) => `${oc.owner.type}-${oc.owner.id}` !== currentOwnerKey
       )
       updated.push({ owner, contracts: contractsWithItems })
 
-      set({ contractsByOwner: updated })
+      set((s) => ({ contractsByOwner: updated, updateCounter: s.updateCounter + 1 }))
 
       logger.info('Contracts updated for owner', {
         module: 'ContractsStore',
