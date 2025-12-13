@@ -3,6 +3,7 @@ import { useAuthStore, type Owner, findOwnerByKey } from './auth-store'
 import { useExpiryCacheStore } from './expiry-cache-store'
 import { esi, type ESIResponseMeta } from '@/api/esi'
 import { ESICloneSchema } from '@/api/schemas'
+import { createOwnerDB } from '@/lib/owner-indexed-db'
 import { logger } from '@/lib/logger'
 import { z } from 'zod'
 
@@ -10,19 +11,12 @@ export type ESIClone = z.infer<typeof ESICloneSchema>
 
 const ENDPOINT_PATTERN = '/clones/'
 
-const DB_NAME = 'ecteveassets-clones'
-const DB_VERSION = 1
-const STORE_CLONES = 'clones'
-const STORE_META = 'meta'
-
-export interface CharacterCloneData {
-  owner: Owner
+interface CloneData {
   clones: ESIClone
   activeImplants: number[]
 }
 
-interface StoredCharacterCloneData {
-  ownerKey: string
+export interface CharacterCloneData {
   owner: Owner
   clones: ESIClone
   activeImplants: number[]
@@ -45,7 +39,17 @@ interface ClonesActions {
 
 type ClonesStore = ClonesState & ClonesActions
 
-let db: IDBDatabase | null = null
+const db = createOwnerDB<CloneData>({
+  dbName: 'ecteveassets-clones',
+  storeName: 'clones',
+  metaStoreName: 'meta',
+  moduleName: 'ClonesStore',
+  serialize: (data) => ({ clones: data.clones, activeImplants: data.activeImplants }),
+  deserialize: (stored) => ({
+    clones: stored.clones as ESIClone,
+    activeImplants: stored.activeImplants as number[],
+  }),
+})
 
 function getClonesEndpoint(owner: Owner): string {
   return `/characters/${owner.characterId}/clones/`
@@ -66,99 +70,6 @@ async function fetchImplantsWithMeta(owner: Owner): Promise<ESIResponseMeta<numb
   })
 }
 
-async function openDB(): Promise<IDBDatabase> {
-  if (db) return db
-
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION)
-
-    request.onerror = () => {
-      logger.error('Failed to open clones DB', request.error, { module: 'ClonesStore' })
-      reject(request.error)
-    }
-
-    request.onsuccess = () => {
-      db = request.result
-      resolve(db)
-    }
-
-    request.onupgradeneeded = (event) => {
-      const database = (event.target as IDBOpenDBRequest).result
-      if (!database.objectStoreNames.contains(STORE_CLONES)) {
-        database.createObjectStore(STORE_CLONES, { keyPath: 'ownerKey' })
-      }
-      if (!database.objectStoreNames.contains(STORE_META)) {
-        database.createObjectStore(STORE_META, { keyPath: 'key' })
-      }
-    }
-  })
-}
-
-async function loadFromDB(): Promise<{ clonesByOwner: CharacterCloneData[] }> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_CLONES], 'readonly')
-    const clonesStore = tx.objectStore(STORE_CLONES)
-
-    const clonesByOwner: CharacterCloneData[] = []
-    const clonesRequest = clonesStore.getAll()
-
-    tx.oncomplete = () => {
-      for (const stored of clonesRequest.result as StoredCharacterCloneData[]) {
-        clonesByOwner.push({
-          owner: stored.owner,
-          clones: stored.clones,
-          activeImplants: stored.activeImplants,
-        })
-      }
-      resolve({ clonesByOwner })
-    }
-
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
-async function saveOwnerToDB(ownerKey: string, owner: Owner, clones: ESIClone, activeImplants: number[]): Promise<void> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_CLONES], 'readwrite')
-    const clonesStore = tx.objectStore(STORE_CLONES)
-
-    clonesStore.put({ ownerKey, owner, clones, activeImplants } as StoredCharacterCloneData)
-
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
-async function deleteOwnerFromDB(ownerKey: string): Promise<void> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_CLONES], 'readwrite')
-    const clonesStore = tx.objectStore(STORE_CLONES)
-
-    clonesStore.delete(ownerKey)
-
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
-async function clearDB(): Promise<void> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_CLONES, STORE_META], 'readwrite')
-    tx.objectStore(STORE_CLONES).clear()
-    tx.objectStore(STORE_META).clear()
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
 export const useClonesStore = create<ClonesStore>((set, get) => ({
   clonesByOwner: [],
   isUpdating: false,
@@ -169,7 +80,12 @@ export const useClonesStore = create<ClonesStore>((set, get) => ({
     if (get().initialized) return
 
     try {
-      const { clonesByOwner } = await loadFromDB()
+      const loaded = await db.loadAll()
+      const clonesByOwner = loaded.map((d) => ({
+        owner: d.owner,
+        clones: d.data.clones,
+        activeImplants: d.data.activeImplants,
+      }))
       set({ clonesByOwner, initialized: true })
       logger.info('Clones store initialized', {
         module: 'ClonesStore',
@@ -229,7 +145,7 @@ export const useClonesStore = create<ClonesStore>((set, get) => ({
             fetchImplantsWithMeta(owner),
           ])
 
-          await saveOwnerToDB(ownerKey, owner, clonesResult.data, implantsResult.data)
+          await db.save(ownerKey, owner, { clones: clonesResult.data, activeImplants: implantsResult.data })
           existingClones.set(ownerKey, {
             owner,
             clones: clonesResult.data,
@@ -282,7 +198,7 @@ export const useClonesStore = create<ClonesStore>((set, get) => ({
         fetchImplantsWithMeta(owner),
       ])
 
-      await saveOwnerToDB(ownerKey, owner, clonesResult.data, implantsResult.data)
+      await db.save(ownerKey, owner, { clones: clonesResult.data, activeImplants: implantsResult.data })
       useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, clonesResult.expiresAt, clonesResult.etag, true)
 
       const updated = state.clonesByOwner.filter(
@@ -313,7 +229,7 @@ export const useClonesStore = create<ClonesStore>((set, get) => ({
 
     if (updated.length === state.clonesByOwner.length) return
 
-    await deleteOwnerFromDB(ownerKey)
+    await db.delete(ownerKey)
     set({ clonesByOwner: updated })
 
     useExpiryCacheStore.getState().clearForOwner(ownerKey)
@@ -322,7 +238,7 @@ export const useClonesStore = create<ClonesStore>((set, get) => ({
   },
 
   clear: async () => {
-    await clearDB()
+    await db.clear()
     set({
       clonesByOwner: [],
       updateError: null,

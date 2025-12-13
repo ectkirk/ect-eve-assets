@@ -6,13 +6,15 @@ export interface OwnerData<T> {
   data: T
 }
 
-export interface OwnerDBConfig {
+export interface OwnerDBConfig<T> {
   dbName: string
   storeName: string
-  dataKey: string
+  dataKey?: string
   metaStoreName?: string
   version?: number
   moduleName: string
+  serialize?: (data: T) => Record<string, unknown>
+  deserialize?: (stored: Record<string, unknown>) => T
 }
 
 export interface OwnerDB<T> {
@@ -24,8 +26,8 @@ export interface OwnerDB<T> {
   saveMeta: <M>(key: string, value: M) => Promise<void>
 }
 
-export function createOwnerDB<T>(config: OwnerDBConfig): OwnerDB<T> {
-  const { dbName, storeName, dataKey, metaStoreName, version = 1, moduleName } = config
+export function createOwnerDB<T>(config: OwnerDBConfig<T>): OwnerDB<T> {
+  const { dbName, storeName, dataKey, metaStoreName, version = 1, moduleName, serialize, deserialize } = config
   let db: IDBDatabase | null = null
 
   const openDB = async (): Promise<IDBDatabase> => {
@@ -67,7 +69,11 @@ export function createOwnerDB<T>(config: OwnerDBConfig): OwnerDB<T> {
       tx.oncomplete = () => {
         const results: OwnerData<T>[] = []
         for (const stored of request.result) {
-          results.push({ owner: stored.owner, data: stored[dataKey] })
+          if (deserialize) {
+            results.push({ owner: stored.owner, data: deserialize(stored) })
+          } else if (dataKey) {
+            results.push({ owner: stored.owner, data: stored[dataKey] })
+          }
         }
         resolve(results)
       }
@@ -83,7 +89,11 @@ export function createOwnerDB<T>(config: OwnerDBConfig): OwnerDB<T> {
       const tx = database.transaction([storeName], 'readwrite')
       const store = tx.objectStore(storeName)
 
-      store.put({ ownerKey, owner, [dataKey]: data })
+      if (serialize) {
+        store.put({ ownerKey, owner, ...serialize(data) })
+      } else if (dataKey) {
+        store.put({ ownerKey, owner, [dataKey]: data })
+      }
 
       tx.oncomplete = () => resolve()
       tx.onerror = () => reject(tx.error)

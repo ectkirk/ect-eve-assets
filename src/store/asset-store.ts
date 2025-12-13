@@ -7,25 +7,14 @@ import { ESIAssetSchema } from '@/api/schemas'
 import { fetchPrices, resolveTypes } from '@/api/ref-client'
 import { fetchAbyssalPrices, isAbyssalTypeId, hasCachedAbyssalPrice } from '@/api/mutamarket-client'
 import { getType } from '@/store/reference-cache'
-
+import { createOwnerDB } from '@/lib/owner-indexed-db'
 import { logger } from '@/lib/logger'
 
 const NAMEABLE_CATEGORIES = new Set([6, 22, 65])
 const NAMEABLE_GROUPS = new Set([12, 14, 340, 448, 649])
 const ENDPOINT_PATTERN = '/assets/'
 
-const DB_NAME = 'ecteveassets-assets'
-const DB_VERSION = 1
-const STORE_ASSETS = 'assets'
-const STORE_META = 'meta'
-
 export interface OwnerAssets {
-  owner: Owner
-  assets: ESIAsset[]
-}
-
-interface StoredOwnerAssets {
-  ownerKey: string
   owner: Owner
   assets: ESIAsset[]
 }
@@ -51,129 +40,20 @@ interface AssetActions {
 
 type AssetStore = AssetState & AssetActions
 
-let db: IDBDatabase | null = null
-
-async function openDB(): Promise<IDBDatabase> {
-  if (db) return db
-
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION)
-
-    request.onerror = () => {
-      logger.error('Failed to open asset DB', request.error, { module: 'AssetStore' })
-      reject(request.error)
-    }
-
-    request.onsuccess = () => {
-      db = request.result
-      resolve(db)
-    }
-
-    request.onupgradeneeded = (event) => {
-      const database = (event.target as IDBOpenDBRequest).result
-
-      if (!database.objectStoreNames.contains(STORE_ASSETS)) {
-        database.createObjectStore(STORE_ASSETS, { keyPath: 'ownerKey' })
-      }
-      if (!database.objectStoreNames.contains(STORE_META)) {
-        database.createObjectStore(STORE_META, { keyPath: 'key' })
-      }
-    }
-  })
-}
-
-async function loadFromDB(): Promise<{
-  assetsByOwner: OwnerAssets[]
-  assetNames: Map<number, string>
-  prices: Map<number, number>
-}> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_ASSETS, STORE_META], 'readonly')
-    const assetsStore = tx.objectStore(STORE_ASSETS)
-    const metaStore = tx.objectStore(STORE_META)
-
-    const assetsByOwner: OwnerAssets[] = []
-    const assetsRequest = assetsStore.getAll()
-    const metaRequest = metaStore.getAll()
-
-    tx.oncomplete = () => {
-      for (const stored of assetsRequest.result as StoredOwnerAssets[]) {
-        assetsByOwner.push({ owner: stored.owner, assets: stored.assets })
-      }
-
-      let assetNames = new Map<number, string>()
-      let prices = new Map<number, number>()
-
-      for (const meta of metaRequest.result) {
-        if (meta.key === 'assetNames') assetNames = new Map(meta.value)
-        if (meta.key === 'prices') prices = new Map(meta.value)
-      }
-
-      resolve({ assetsByOwner, assetNames, prices })
-    }
-
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
-async function saveOwnerAssetsToDB(ownerKey: string, owner: Owner, assets: ESIAsset[]): Promise<void> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_ASSETS], 'readwrite')
-    const assetsStore = tx.objectStore(STORE_ASSETS)
-
-    assetsStore.put({ ownerKey, owner, assets } as StoredOwnerAssets)
-
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
-async function deleteOwnerFromDB(ownerKey: string): Promise<void> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_ASSETS], 'readwrite')
-    const assetsStore = tx.objectStore(STORE_ASSETS)
-
-    assetsStore.delete(ownerKey)
-
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
+const db = createOwnerDB<ESIAsset[]>({
+  dbName: 'ecteveassets-assets',
+  storeName: 'assets',
+  dataKey: 'assets',
+  metaStoreName: 'meta',
+  moduleName: 'AssetStore',
+})
 
 async function saveMetaToDB(
   assetNames: Map<number, string>,
   prices: Map<number, number>
 ): Promise<void> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_META], 'readwrite')
-    const metaStore = tx.objectStore(STORE_META)
-
-    metaStore.put({ key: 'assetNames', value: Array.from(assetNames.entries()) })
-    metaStore.put({ key: 'prices', value: Array.from(prices.entries()) })
-
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
-async function clearDB(): Promise<void> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_ASSETS, STORE_META], 'readwrite')
-    tx.objectStore(STORE_ASSETS).clear()
-    tx.objectStore(STORE_META).clear()
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
+  await db.saveMeta('assetNames', Array.from(assetNames.entries()))
+  await db.saveMeta('prices', Array.from(prices.entries()))
 }
 
 function getAssetEndpoint(owner: Owner): string {
@@ -229,7 +109,14 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
     if (get().initialized) return
 
     try {
-      const { assetsByOwner, assetNames, prices } = await loadFromDB()
+      const loaded = await db.loadAll()
+      const assetsByOwner = loaded.map((d) => ({ owner: d.owner, assets: d.data }))
+
+      const assetNamesEntries = await db.loadMeta<[number, string][]>('assetNames')
+      const pricesEntries = await db.loadMeta<[number, number][]>('prices')
+      const assetNames = new Map(assetNamesEntries ?? [])
+      const prices = new Map(pricesEntries ?? [])
+
       set({ assetsByOwner, assetNames, prices, initialized: true })
       logger.info('Asset store initialized from DB', {
         module: 'AssetStore',
@@ -288,7 +175,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
           logger.info('Fetching assets', { module: 'AssetStore', owner: owner.name, type: owner.type })
           const { data: assets, expiresAt, etag } = await fetchOwnerAssetsWithMeta(owner)
 
-          await saveOwnerAssetsToDB(ownerKey, owner, assets)
+          await db.save(ownerKey, owner, assets)
           existingAssets.set(ownerKey, { owner, assets })
 
           useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag)
@@ -382,7 +269,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
       logger.info('Fetching assets for owner', { module: 'AssetStore', owner: owner.name, type: owner.type })
       const { data: assets, expiresAt, etag } = await fetchOwnerAssetsWithMeta(owner)
 
-      await saveOwnerAssetsToDB(ownerKey, owner, assets)
+      await db.save(ownerKey, owner, assets)
       useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag)
 
       await resolveTypes(Array.from(new Set(assets.map((a) => a.type_id))))
@@ -462,7 +349,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
 
     if (updated.length === state.assetsByOwner.length) return
 
-    await deleteOwnerFromDB(ownerKey)
+    await db.delete(ownerKey)
     set({ assetsByOwner: updated })
 
     useExpiryCacheStore.getState().clearForOwner(ownerKey)
@@ -485,7 +372,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
   },
 
   clear: async () => {
-    await clearDB()
+    await db.clear()
     set({
       assetsByOwner: [],
       assetNames: new Map(),
