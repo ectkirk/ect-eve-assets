@@ -1,6 +1,6 @@
-# ref.edencom.net API Documentation
+# edencom.net API Documentation
 
-Base URL: `https://ref.edencom.net/api/v1`
+Base URL: `https://edencom.net/api/v1`
 
 ## Endpoints
 

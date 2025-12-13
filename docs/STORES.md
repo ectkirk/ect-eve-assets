@@ -33,7 +33,7 @@ All stores use Zustand + IndexedDB persistence.
 ```
 useAssetStore.update()
   ├── Fetch assets for all owners
-  ├── Resolve types (ref.edencom.net)
+  ├── Resolve types (edencom.net)
   ├── Fetch asset names
   ├── Trigger secondary stores in parallel:
   │   ├── useMarketOrdersStore.update(true)
@@ -42,7 +42,7 @@ useAssetStore.update()
   │   ├── useClonesStore.update(true)
   │   ├── useWalletStore.update(true)
   │   └── useBlueprintsStore.update(true)
-  ├── Fetch prices (ref.edencom.net)
+  ├── Fetch prices (edencom.net)
   └── Fetch abyssal prices (Mutamarket)
 ```
 

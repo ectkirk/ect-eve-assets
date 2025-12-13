@@ -308,7 +308,7 @@ ipcMain.handle('updater:install', () => {
   installUpdate()
 })
 
-const REF_API_BASE = 'https://ref.edencom.net/api/v1'
+const REF_API_BASE = 'https://edencom.net/api/v1'
 const MAX_REF_IDS = 1000
 
 ipcMain.handle('ref:types', async (_event, ids: unknown, market: unknown) => {

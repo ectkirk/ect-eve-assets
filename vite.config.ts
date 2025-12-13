@@ -37,7 +37,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/ref-api': {
-        target: 'https://ref.edencom.net',
+        target: 'https://edencom.net',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/ref-api/, '/api'),
       },

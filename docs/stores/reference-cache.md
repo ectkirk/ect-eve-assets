@@ -21,7 +21,7 @@ Unlike other stores, reference-cache uses a **write-through pattern**:
 
 ## External APIs
 
-### ref.edencom.net
+### edencom.net
 
 Accessed via Electron IPC bridge (`window.electronAPI`).
 
@@ -152,7 +152,7 @@ interface CachedAbyssal {
 ```
 1. Check in-memory cache for each structureId
 2. For NPC stations (ID < 1 trillion):
-   a. Call resolveLocations() via ref.edencom.net
+   a. Call resolveLocations() via edencom.net
    b. Convert to CachedStructure
 3. For player structures (ID > 1 trillion):
    a. Call ESI /universe/structures/{id}/ with character auth
@@ -185,7 +185,7 @@ interface CachedAbyssal {
 
 ## API Response Schemas
 
-### ref.edencom.net /types
+### edencom.net /types
 
 ```typescript
 interface RefType {
@@ -210,7 +210,7 @@ interface RefType {
 }
 ```
 
-### ref.edencom.net /universe
+### edencom.net /universe
 
 ```typescript
 interface RefUniverseItem {

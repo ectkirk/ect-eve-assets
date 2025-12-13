@@ -63,7 +63,7 @@ All ESI requests use `esiClient` singleton:
 | API | Client | Base URL |
 |-----|--------|----------|
 | ESI | `esi-client.ts` | `https://esi.evetech.net` |
-| ref.edencom.net | `ref-client.ts` | Via Electron IPC |
+| edencom.net | `ref-client.ts` | Via Electron IPC |
 | Mutamarket | `mutamarket-client.ts` | Via Electron IPC |
 
 ## Update Flow
@@ -73,6 +73,6 @@ All ESI requests use `esiClient` singleton:
 3. Asset store fetches assets for all owners
 4. Asset store triggers parallel updates on all secondary stores
 5. Type IDs collected from assets + industry jobs
-6. Prices fetched from ref.edencom.net
+6. Prices fetched from edencom.net
 7. Abyssal prices fetched from Mutamarket (for uncached items)
 8. Everything persisted to IndexedDB

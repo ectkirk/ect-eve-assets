@@ -89,7 +89,7 @@ Called when user clicks "Update" button.
 2. Get all owners from auth store
 3. For each owner:
    a. Fetch assets via ESI (paginated)
-   b. Resolve type names via ref.edencom.net
+   b. Resolve type names via edencom.net
    c. Fetch custom asset names for nameable items
 4. Trigger parallel updates on secondary stores:
    - market-orders-store
@@ -99,7 +99,7 @@ Called when user clicks "Update" button.
    - wallet-store
    - blueprints-store
 5. Collect all type IDs (from assets + industry job products)
-6. Fetch prices from ref.edencom.net
+6. Fetch prices from edencom.net
 7. Fetch abyssal prices from Mutamarket (uncached only)
 8. Save to IndexedDB
 ```
@@ -184,7 +184,7 @@ metaStore.put({ key: 'prices', value: Array.from(prices.entries()) })
 
 ## External API Calls
 
-### ref.edencom.net
+### edencom.net
 
 | Function | Purpose |
 |----------|---------|

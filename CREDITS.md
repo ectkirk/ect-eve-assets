@@ -6,7 +6,7 @@
 
 ## Third-Party Services
 
-### ref.edencom.net
+### edencom.net
 Type data and market prices API provided by EC Trade.
 
 ### Mutamarket

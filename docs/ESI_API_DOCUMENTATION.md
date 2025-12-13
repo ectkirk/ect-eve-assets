@@ -20,7 +20,7 @@ The **ESI (EVE Swagger Interface)** is the official RESTful API for EVE Online t
 - [ESI Client Implementation](./ESI_CLIENT.md) - Our ESI client implementation
 - [ESI Caching & Rate Limiting](./ESI_CACHING.md) - Cache times and rate limit groups
 - [EVE SSO Reference](./eve-sso.md) - OAuth authentication flow
-- [ref.edencom.net API](./REF_API_DOCUMENTATION.md) - Types, prices, universe names
+- [edencom.net API](./REF_API_DOCUMENTATION.md) - Types, prices, universe names
 - [everef.net API](./EVEREF_API_DOCUMENTATION.md) - Static data dumps
 
 ---

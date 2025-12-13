@@ -20,7 +20,7 @@ Electron desktop app for EVE Online asset management.
 | Wallet | Character and corp balances |
 
 - Tree navigation: Region → System → Station → Container
-- Market prices from ref.edencom.net and Mutamarket
+- Market prices from edencom.net and Mutamarket
 - Multi-character and corporation support
 
 ## Tech Stack
