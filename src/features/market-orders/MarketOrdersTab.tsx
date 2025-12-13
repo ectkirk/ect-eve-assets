@@ -423,7 +423,7 @@ export function MarketOrdersTab() {
   }, [totals.buyCount, totals.sellCount, totalOrderCount, setResultCount])
 
   useEffect(() => {
-    setTotalValue(totals.buyValue + totals.sellValue)
+    setTotalValue({ value: totals.buyValue + totals.sellValue })
     return () => setTotalValue(null)
   }, [totals.buyValue, totals.sellValue, setTotalValue])
 

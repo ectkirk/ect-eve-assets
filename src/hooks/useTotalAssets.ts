@@ -26,8 +26,6 @@ export function useTotalAssets(): AssetTotals {
   const contractsByOwner = useContractsStore((s) => s.contractsByOwner)
   const walletsByOwner = useWalletStore((s) => s.walletsByOwner)
   const structuresByOwner = useStructuresStore((s) => s.structuresByOwner)
-  const ownersRecord = useAuthStore((s) => s.owners)
-  const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
   const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
 
   return useMemo(() => {
@@ -68,9 +66,6 @@ export function useTotalAssets(): AssetTotals {
     }
 
     let contractsTotal = 0
-    const filteredOwners = activeOwnerId === null ? owners : owners.filter((o) => ownerKey(o.type, o.id) === activeOwnerId)
-    const ownerIds = new Set(filteredOwners.map((o) => o.characterId))
-    const ownerCorpIds = new Set(filteredOwners.filter((o) => o.corporationId).map((o) => o.corporationId!))
     const seenContracts = new Set<number>()
 
     for (const { owner, contracts } of contractsByOwner) {
@@ -80,9 +75,6 @@ export function useTotalAssets(): AssetTotals {
         seenContracts.add(contract.contract_id)
         if (contract.status !== 'outstanding' && contract.status !== 'in_progress') continue
         if (contract.type === 'courier') continue
-
-        const isIssuer = ownerIds.has(contract.issuer_id)
-        const isAssignee = ownerIds.has(contract.assignee_id) || ownerCorpIds.has(contract.assignee_id)
 
         let itemValue = 0
         for (const item of items) {
@@ -97,12 +89,7 @@ export function useTotalAssets(): AssetTotals {
           itemValue += itemPrice * item.quantity
         }
 
-        const contractPrice = contract.price ?? 0
-        if (isIssuer && !isAssignee) {
-          contractsTotal += contractPrice - itemValue
-        } else if (isAssignee && !isIssuer) {
-          contractsTotal += itemValue - contractPrice
-        }
+        contractsTotal += itemValue
       }
     }
 
@@ -138,5 +125,5 @@ export function useTotalAssets(): AssetTotals {
       walletTotal,
       structuresTotal,
     }
-  }, [assetsByOwner, prices, ordersByOwner, jobsByOwner, contractsByOwner, walletsByOwner, structuresByOwner, owners, activeOwnerId])
+  }, [assetsByOwner, prices, ordersByOwner, jobsByOwner, contractsByOwner, walletsByOwner, structuresByOwner, activeOwnerId])
 }

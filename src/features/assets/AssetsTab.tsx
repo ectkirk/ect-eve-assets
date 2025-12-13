@@ -474,7 +474,7 @@ export function AssetsTab() {
   }, [filteredData])
 
   useEffect(() => {
-    setTotalValue(filteredTotalValue)
+    setTotalValue({ value: filteredTotalValue })
     return () => setTotalValue(null)
   }, [filteredTotalValue, setTotalValue])
 

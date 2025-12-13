@@ -168,7 +168,7 @@ export function WalletTab() {
   }, [sortedWallets.length, walletsByOwner.length, setResultCount])
 
   useEffect(() => {
-    setTotalValue(totalBalance)
+    setTotalValue({ value: totalBalance })
     return () => setTotalValue(null)
   }, [totalBalance, setTotalValue])
 

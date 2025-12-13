@@ -296,7 +296,7 @@ export function TreeTable({
   const { setExpandCollapse, setTotalValue, setColumns } = useTabControls()
 
   useEffect(() => {
-    setTotalValue(totals.totalValue)
+    setTotalValue({ value: totals.totalValue })
     return () => setTotalValue(null)
   }, [totals.totalValue, setTotalValue])
 

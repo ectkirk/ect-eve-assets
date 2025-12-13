@@ -498,7 +498,7 @@ export function IndustryJobsTab() {
   }, [totals.activeCount, totals.completedCount, totalJobCount, setResultCount])
 
   useEffect(() => {
-    setTotalValue(totals.totalCost)
+    setTotalValue({ value: totals.totalCost })
     return () => setTotalValue(null)
   }, [totals.totalCost, setTotalValue])
 

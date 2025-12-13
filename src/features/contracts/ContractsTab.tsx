@@ -29,7 +29,7 @@ import {
   subscribe,
 } from '@/store/reference-cache'
 import { useAssetStore } from '@/store/asset-store'
-import { resolveTypes, resolveLocations } from '@/api/ref-client'
+import { resolveTypes, resolveLocations, fetchPrices } from '@/api/ref-client'
 import { resolveStructures, resolveNames, hasName, getName } from '@/api/endpoints/universe'
 import { isAbyssalTypeId, fetchAbyssalPrices, hasCachedAbyssalPrice, getCachedAbyssalPrice } from '@/api/mutamarket-client'
 import {
@@ -409,6 +409,7 @@ export function ContractsTab() {
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
 
   const prices = useAssetStore((s) => s.prices)
+  const setPrices = useAssetStore((s) => s.setPrices)
   const contractsByOwner = useContractsStore((s) => s.contractsByOwner)
   const contractsUpdating = useContractsStore((s) => s.isUpdating)
   const updateError = useContractsStore((s) => s.updateError)
@@ -470,7 +471,9 @@ export function ContractsTab() {
       resolveStructures(structureToCharacter).catch(() => {})
     }
     if (unresolvedEntityIds.size > 0) {
-      resolveNames(Array.from(unresolvedEntityIds)).catch(() => {})
+      resolveNames(Array.from(unresolvedEntityIds))
+        .then(() => setCacheVersion((v) => v + 1))
+        .catch(() => {})
     }
   }, [contractsByOwner])
 
@@ -494,6 +497,31 @@ export function ContractsTab() {
         .catch(() => {})
     }
   }, [contractsByOwner])
+
+  useEffect(() => {
+    if (contractsByOwner.length === 0) return
+
+    const missingPriceTypeIds = new Set<number>()
+    for (const { contracts } of contractsByOwner) {
+      for (const { items } of contracts) {
+        for (const item of items) {
+          if (!isAbyssalTypeId(item.type_id) && !prices.has(item.type_id)) {
+            missingPriceTypeIds.add(item.type_id)
+          }
+        }
+      }
+    }
+
+    if (missingPriceTypeIds.size > 0) {
+      fetchPrices(Array.from(missingPriceTypeIds))
+        .then((fetched) => {
+          if (fetched.size > 0) {
+            setPrices(fetched)
+          }
+        })
+        .catch(() => {})
+    }
+  }, [contractsByOwner, prices, setPrices])
 
   const [expandedDirections, setExpandedDirections] = useState<Set<string>>(new Set(['in', 'out']))
   const [showCourier, setShowCourier] = useState(true)
@@ -652,11 +680,11 @@ export function ContractsTab() {
 
     return {
       directionGroups: [
-        { ...groups.in, contracts: filteredIn, totalValue: filteredIn.reduce((acc, c) => acc + getContractValue(c.contractWithItems.contract), 0) },
-        { ...groups.out, contracts: filteredOut, totalValue: filteredOut.reduce((acc, c) => acc + getContractValue(c.contractWithItems.contract), 0) },
+        { ...groups.in, contracts: filteredIn, totalValue: filteredIn.reduce((acc, c) => acc + c.itemValue, 0) },
+        { ...groups.out, contracts: filteredOut, totalValue: filteredOut.reduce((acc, c) => acc + c.itemValue, 0) },
       ].filter((g) => g.contracts.length > 0),
       courierGroup: filteredCourier.length > 0
-        ? { direction: 'out' as ContractDirection, displayName: 'Active Couriers', contracts: filteredCourier, totalValue: filteredCourier.reduce((acc, c) => acc + getContractValue(c.contractWithItems.contract), 0) }
+        ? { direction: 'out' as ContractDirection, displayName: 'Active Couriers', contracts: filteredCourier, totalValue: filteredCourier.reduce((acc, c) => acc + c.itemValue, 0) }
         : null,
       completedContracts: filteredCompleted,
     }
@@ -728,10 +756,25 @@ export function ContractsTab() {
     return () => setResultCount(null)
   }, [totals.activeCount, totals.courierCount, totals.completedCount, setResultCount])
 
+  const contractPrice = useMemo(() => {
+    let total = 0
+    for (const group of directionGroups) {
+      for (const row of group.contracts) {
+        total += (row.contractWithItems.contract.price ?? 0) + (row.contractWithItems.contract.reward ?? 0)
+      }
+    }
+    return total
+  }, [directionGroups])
+
   useEffect(() => {
-    setTotalValue(totals.valueIn + totals.valueOut)
+    setTotalValue({
+      value: totals.valueIn + totals.valueOut,
+      label: 'Contract Items',
+      secondaryValue: contractPrice,
+      secondaryLabel: 'Contract Price',
+    })
     return () => setTotalValue(null)
-  }, [totals.valueIn, totals.valueOut, setTotalValue])
+  }, [totals.valueIn, totals.valueOut, contractPrice, setTotalValue])
 
   useEffect(() => {
     setColumns(getColumnsForDropdown())

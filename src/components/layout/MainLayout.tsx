@@ -322,8 +322,15 @@ function SearchBar() {
 
       {totalValue !== null && (
         <span className="text-sm">
-          <span className="text-slate-400">Value: </span>
-          <span className="text-green-400">{formatNumber(totalValue)} ISK</span>
+          <span className="text-slate-400">{totalValue.label ?? 'Value'}: </span>
+          <span className="text-green-400">{formatNumber(totalValue.value)} ISK</span>
+          {totalValue.secondaryValue !== undefined && (
+            <>
+              <span className="text-slate-500 mx-2">|</span>
+              <span className="text-slate-400">{totalValue.secondaryLabel ?? 'Secondary'}: </span>
+              <span className="text-amber-400">{formatNumber(totalValue.secondaryValue)} ISK</span>
+            </>
+          )}
         </span>
       )}
 
