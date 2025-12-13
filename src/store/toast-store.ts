@@ -1,46 +1,90 @@
 import { create } from 'zustand'
 
-export type ToastType = 'order-filled' | 'contract-accepted'
+export type NotificationType = 'order-filled' | 'contract-accepted'
 
-export interface Toast {
+export interface Notification {
   id: string
-  type: ToastType
+  type: NotificationType
   title: string
   message: string
   timestamp: number
 }
 
-interface ToastState {
-  toasts: Toast[]
+interface NotificationState {
+  notifications: Notification[]
+  unseenCount: number
+  isPanelOpen: boolean
 }
 
-interface ToastActions {
-  addToast: (type: ToastType, title: string, message: string) => void
-  dismissToast: (id: string) => void
+interface NotificationActions {
+  addNotification: (type: NotificationType, title: string, message: string) => void
+  dismissNotification: (id: string) => void
   clearAll: () => void
+  openPanel: () => void
+  closePanel: () => void
+  togglePanel: () => void
 }
 
-type ToastStore = ToastState & ToastActions
+type NotificationStore = NotificationState & NotificationActions
 
-export const useToastStore = create<ToastStore>((set) => ({
-  toasts: [],
+export const useNotificationStore = create<NotificationStore>((set, get) => ({
+  notifications: [],
+  unseenCount: 0,
+  isPanelOpen: false,
 
-  addToast: (type, title, message) => {
-    const toast: Toast = {
+  addNotification: (type, title, message) => {
+    const notification: Notification = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
       type,
       title,
       message,
       timestamp: Date.now(),
     }
-    set((state) => ({ toasts: [...state.toasts, toast] }))
+    set((state) => ({
+      notifications: [...state.notifications, notification],
+      unseenCount: state.isPanelOpen ? state.unseenCount : state.unseenCount + 1,
+    }))
   },
 
-  dismissToast: (id) => {
-    set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) }))
+  dismissNotification: (id) => {
+    set((state) => ({
+      notifications: state.notifications.filter((n) => n.id !== id),
+    }))
   },
 
   clearAll: () => {
-    set({ toasts: [] })
+    set({ notifications: [], unseenCount: 0 })
+  },
+
+  openPanel: () => {
+    set({ isPanelOpen: true, unseenCount: 0 })
+  },
+
+  closePanel: () => {
+    set({ isPanelOpen: false })
+  },
+
+  togglePanel: () => {
+    const { isPanelOpen } = get()
+    if (isPanelOpen) {
+      set({ isPanelOpen: false })
+    } else {
+      set({ isPanelOpen: true, unseenCount: 0 })
+    }
   },
 }))
+
+// Backwards compatibility
+export const useToastStore = {
+  getState: () => {
+    const state = useNotificationStore.getState()
+    return {
+      ...state,
+      toasts: state.notifications,
+      addToast: state.addNotification,
+      dismissToast: state.dismissNotification,
+    }
+  },
+}
+export type Toast = Notification
+export type ToastType = NotificationType
