@@ -1,0 +1,1 @@
+export { ManufacturingTab } from './ManufacturingTab'

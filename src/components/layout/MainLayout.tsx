@@ -14,6 +14,8 @@ import { IndustryJobsTab } from '@/features/industry-jobs'
 import { ClonesTab } from '@/features/clones'
 import { ContractsTab } from '@/features/contracts'
 import { WalletTab } from '@/features/wallet'
+import { ManufacturingTab } from '@/features/manufacturing'
+import { ResearchTab } from '@/features/research'
 import { Loader2, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp, Search, X, User, AlertTriangle, Minus, Square, Copy } from 'lucide-react'
 import eveSsoLoginWhite from '/eve-sso-login-white.png'
 import { OwnerIcon } from '@/components/ui/type-icon'
@@ -81,17 +83,9 @@ function AssetTabContent({ tab }: { tab: AssetTab }) {
 function ToolTabContent({ tab }: { tab: ToolTab }) {
   switch (tab) {
     case 'Manufacturing':
-      return (
-        <div className="text-slate-400">
-          Manufacturing Cost Calculator - Coming soon
-        </div>
-      )
+      return <ManufacturingTab />
     case 'Research':
-      return (
-        <div className="text-slate-400">
-          Blueprint Research Calculator - Coming soon
-        </div>
-      )
+      return <ResearchTab />
   }
 }
 

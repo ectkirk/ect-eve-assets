@@ -1,0 +1,1 @@
+export { ResearchTab } from './ResearchTab'
