@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { useAuthStore, type Owner, ownerKey } from './auth-store'
+import { useAuthStore, type Owner, ownerKey, findOwnerByKey } from './auth-store'
 import { useExpiryCacheStore } from './expiry-cache-store'
 import { useToastStore } from './toast-store'
 import {
@@ -526,16 +526,6 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
     })
   },
 }))
-
-function findOwnerByKey(ownerKeyStr: string): Owner | undefined {
-  const owners = useAuthStore.getState().owners
-  for (const owner of Object.values(owners)) {
-    if (owner && ownerKey(owner.type, owner.id) === ownerKeyStr) {
-      return owner
-    }
-  }
-  return undefined
-}
 
 useExpiryCacheStore.getState().registerRefreshCallback(ENDPOINT_PATTERN, async (ownerKeyStr) => {
   const owner = findOwnerByKey(ownerKeyStr)

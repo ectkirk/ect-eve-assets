@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { cn } from './utils'
+import { cn, formatNumber, formatISK } from './utils'
 
 describe('cn', () => {
   it('merges class names', () => {
@@ -39,5 +39,52 @@ describe('cn', () => {
 
   it('returns empty string for all falsy inputs', () => {
     expect(cn(false, null, undefined, '')).toBe('')
+  })
+})
+
+describe('formatNumber', () => {
+  it('formats trillions', () => {
+    expect(formatNumber(1_500_000_000_000)).toBe('1.50T')
+    expect(formatNumber(2_000_000_000_000)).toBe('2.00T')
+  })
+
+  it('formats billions', () => {
+    expect(formatNumber(1_500_000_000)).toBe('1.50B')
+    expect(formatNumber(999_000_000)).toBe('999.00M')
+  })
+
+  it('formats millions', () => {
+    expect(formatNumber(1_500_000)).toBe('1.50M')
+    expect(formatNumber(999_000)).toBe('999.00K')
+  })
+
+  it('formats thousands', () => {
+    expect(formatNumber(1_500)).toBe('1.50K')
+    expect(formatNumber(999)).toBe('999')
+  })
+
+  it('formats small numbers with locale', () => {
+    expect(formatNumber(500)).toBe('500')
+    expect(formatNumber(0)).toBe('0')
+  })
+
+  it('handles negative numbers', () => {
+    expect(formatNumber(-1_500_000_000)).toBe('-1.50B')
+    expect(formatNumber(-1_500_000)).toBe('-1.50M')
+    expect(formatNumber(-1_500)).toBe('-1.50K')
+    expect(formatNumber(-500)).toBe('-500')
+  })
+})
+
+describe('formatISK', () => {
+  it('appends ISK suffix', () => {
+    expect(formatISK(1_500_000_000)).toBe('1.50B ISK')
+    expect(formatISK(1_500_000)).toBe('1.50M ISK')
+    expect(formatISK(1_500)).toBe('1.50K ISK')
+    expect(formatISK(500)).toBe('500 ISK')
+  })
+
+  it('handles negative values', () => {
+    expect(formatISK(-1_500_000)).toBe('-1.50M ISK')
   })
 })

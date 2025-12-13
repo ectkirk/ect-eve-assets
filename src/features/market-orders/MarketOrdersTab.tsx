@@ -10,9 +10,7 @@ import {
   hasType,
   getType,
   hasLocation,
-  getLocation,
   hasStructure,
-  getStructure,
   subscribe,
 } from '@/store/reference-cache'
 import { resolveTypes, resolveLocations } from '@/api/ref-client'
@@ -26,6 +24,8 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { TypeIcon } from '@/components/ui/type-icon'
+import { formatNumber } from '@/lib/utils'
+import { getLocationInfo } from '@/lib/location-utils'
 
 interface OrderRow {
   order: MarketOrder
@@ -46,13 +46,6 @@ interface LocationGroup {
   orders: OrderRow[]
   totalBuyValue: number
   totalSellValue: number
-}
-
-function formatISK(value: number): string {
-  if (value >= 1_000_000_000) return (value / 1_000_000_000).toFixed(2) + 'B'
-  if (value >= 1_000_000) return (value / 1_000_000).toFixed(2) + 'M'
-  if (value >= 1_000) return (value / 1_000).toFixed(2) + 'K'
-  return value.toLocaleString()
 }
 
 function formatExpiry(issued: string, duration: number): string {
@@ -105,7 +98,7 @@ function OrdersTable({ orders }: { orders: OrderRow[] }) {
                 </div>
               </TableCell>
               <TableCell className="py-1.5 text-right tabular-nums">
-                {formatISK(row.order.price)}
+                {formatNumber(row.order.price)}
               </TableCell>
               <TableCell className="py-1.5 text-right tabular-nums">
                 {row.order.volume_remain.toLocaleString()}
@@ -116,7 +109,7 @@ function OrdersTable({ orders }: { orders: OrderRow[] }) {
                 )}
               </TableCell>
               <TableCell className="py-1.5 text-right tabular-nums text-amber-400">
-                {formatISK(total)}
+                {formatNumber(total)}
               </TableCell>
               <TableCell className="py-1.5 text-right tabular-nums text-slate-400">
                 {formatExpiry(row.order.issued, row.order.duration)}
@@ -164,7 +157,7 @@ function LocationGroupRow({
           {sellOrders.length > 0 && `${sellOrders.length} sell`}
         </span>
         <span className="text-xs text-amber-400 w-28 text-right tabular-nums">
-          {formatISK(group.totalBuyValue + group.totalSellValue)}
+          {formatNumber(group.totalBuyValue + group.totalSellValue)}
         </span>
       </button>
       {isExpanded && (
@@ -249,23 +242,6 @@ export function MarketOrdersTab() {
 
   const locationGroups = useMemo(() => {
     void cacheVersion
-
-    const getLocationInfo = (locationId: number) => {
-      if (locationId > 1_000_000_000_000) {
-        const structure = hasStructure(locationId) ? getStructure(locationId) : undefined
-        return {
-          name: structure?.name ?? `Structure ${locationId}`,
-          regionName: '',
-          systemName: '',
-        }
-      }
-      const location = hasLocation(locationId) ? getLocation(locationId) : undefined
-      return {
-        name: location?.name ?? `Location ${locationId}`,
-        regionName: location?.regionName ?? '',
-        systemName: location?.solarSystemName ?? '',
-      }
-    }
 
     const filteredOrdersByOwner = activeOwnerId === null
       ? ordersByOwner

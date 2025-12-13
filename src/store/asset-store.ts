@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { useAuthStore, type Owner, ownerKey as makeOwnerKey } from './auth-store'
+import { useAuthStore, type Owner, findOwnerByKey } from './auth-store'
 import { useExpiryCacheStore } from './expiry-cache-store'
 import { getCharacterAssetNames, getCorporationAssetNames, type ESIAsset, type ESIAssetName } from '@/api/endpoints/assets'
 import { esi, type ESIResponseMeta } from '@/api/esi'
@@ -496,16 +496,6 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
     })
   },
 }))
-
-function findOwnerByKey(ownerKeyStr: string): Owner | undefined {
-  const owners = useAuthStore.getState().owners
-  for (const owner of Object.values(owners)) {
-    if (owner && makeOwnerKey(owner.type, owner.id) === ownerKeyStr) {
-      return owner
-    }
-  }
-  return undefined
-}
 
 useExpiryCacheStore.getState().registerRefreshCallback(ENDPOINT_PATTERN, async (ownerKeyStr) => {
   const owner = findOwnerByKey(ownerKeyStr)

@@ -23,9 +23,7 @@ import {
   hasType,
   getType,
   hasLocation,
-  getLocation,
   hasStructure,
-  getStructure,
   subscribe,
 } from '@/store/reference-cache'
 import { useAssetStore } from '@/store/asset-store'
@@ -40,7 +38,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { cn } from '@/lib/utils'
+import { cn, formatNumber } from '@/lib/utils'
+import { getLocationName } from '@/lib/location-utils'
 import { TypeIcon as ItemTypeIcon } from '@/components/ui/type-icon'
 
 const CONTRACT_TYPE_NAMES: Record<ESIContract['type'], string> = {
@@ -81,13 +80,6 @@ interface DirectionGroup {
   displayName: string
   contracts: ContractRow[]
   totalValue: number
-}
-
-function formatISK(value: number): string {
-  if (value >= 1_000_000_000) return (value / 1_000_000_000).toFixed(2) + 'B'
-  if (value >= 1_000_000) return (value / 1_000_000).toFixed(2) + 'M'
-  if (value >= 1_000) return (value / 1_000).toFixed(2) + 'K'
-  return value.toLocaleString()
 }
 
 function formatExpiry(dateExpired: string): { text: string; isExpired: boolean } {
@@ -288,11 +280,11 @@ function ContractsTable({
                 </TableCell>
                 <TableCell className="py-1.5 text-slate-400">{row.assigneeName}</TableCell>
                 <TableCell className="py-1.5 text-right tabular-nums text-amber-400">
-                  {value > 0 ? formatISK(value) : '-'}
+                  {value > 0 ? formatNumber(value) : '-'}
                 </TableCell>
                 {!showCourierColumns && !showCompletedDate && (
                   <TableCell className="py-1.5 text-right tabular-nums text-green-400">
-                    {row.itemValue > 0 ? formatISK(row.itemValue) : '-'}
+                    {row.itemValue > 0 ? formatNumber(row.itemValue) : '-'}
                   </TableCell>
                 )}
                 {showCourierColumns && (() => {
@@ -314,7 +306,7 @@ function ContractsTable({
                         {contract.volume ? `${contract.volume.toLocaleString()} m³` : '-'}
                       </TableCell>
                       <TableCell className="py-1.5 text-right tabular-nums text-amber-400">
-                        {contract.collateral ? formatISK(contract.collateral) : '-'}
+                        {contract.collateral ? formatNumber(contract.collateral) : '-'}
                       </TableCell>
                       <TableCell className={cn('py-1.5 text-right tabular-nums', daysColor)}>
                         {daysDisplay}
@@ -392,7 +384,7 @@ function DirectionGroupRow({
           {group.contracts.length} contract{group.contracts.length !== 1 ? 's' : ''}
         </span>
         <span className="text-xs text-amber-400 w-28 text-right tabular-nums">
-          {group.totalValue > 0 && formatISK(group.totalValue)}
+          {group.totalValue > 0 && formatNumber(group.totalValue)}
         </span>
       </button>
       {isExpanded && (
@@ -546,16 +538,6 @@ export function ContractsTab() {
 
   const { directionGroups, courierGroup, completedContracts } = useMemo(() => {
     void cacheVersion
-
-    const getLocationName = (locationId: number | undefined): string => {
-      if (!locationId) return '-'
-      if (locationId > 1_000_000_000_000) {
-        const structure = hasStructure(locationId) ? getStructure(locationId) : undefined
-        return structure?.name ?? `Structure ${locationId}`
-      }
-      const location = hasLocation(locationId) ? getLocation(locationId) : undefined
-      return location?.name ?? `Location ${locationId}`
-    }
 
     const filteredContractsByOwner = activeOwnerId === null
       ? contractsByOwner
@@ -853,7 +835,7 @@ export function ContractsTab() {
                   {courierGroup.contracts.length !== 1 ? 's' : ''}
                 </span>
                 <span className="text-xs text-amber-400 w-28 text-right tabular-nums">
-                  {courierGroup.totalValue > 0 && formatISK(courierGroup.totalValue)}
+                  {courierGroup.totalValue > 0 && formatNumber(courierGroup.totalValue)}
                 </span>
               </button>
               {showCourier && (

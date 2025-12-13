@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { useAuthStore, ownerKey } from './auth-store'
+import { useAuthStore, ownerKey, findOwnerByKey } from './auth-store'
 
 describe('ownerKey', () => {
   it('creates key for character', () => {
@@ -601,5 +601,79 @@ describe('useAuthStore', () => {
       const owner = useAuthStore.getState().owners['character-12345']
       expect(owner?.accessToken).toBe('new')
     })
+  })
+})
+
+describe('findOwnerByKey', () => {
+  beforeEach(() => {
+    useAuthStore.setState({
+      owners: {},
+      activeOwnerId: null,
+      isAuthenticated: false,
+    })
+  })
+
+  it('returns undefined when no owners', () => {
+    expect(findOwnerByKey('character-12345')).toBeUndefined()
+  })
+
+  it('returns undefined for non-existent owner', () => {
+    const { addOwner } = useAuthStore.getState()
+    addOwner({
+      accessToken: 'token',
+      refreshToken: 'refresh',
+      expiresAt: Date.now() + 3600000,
+      owner: {
+        id: 12345,
+        type: 'character',
+        name: 'Test',
+        characterId: 12345,
+        corporationId: 98000001,
+      },
+    })
+
+    expect(findOwnerByKey('character-99999')).toBeUndefined()
+  })
+
+  it('finds character owner by key', () => {
+    const { addOwner } = useAuthStore.getState()
+    addOwner({
+      accessToken: 'token',
+      refreshToken: 'refresh',
+      expiresAt: Date.now() + 3600000,
+      owner: {
+        id: 12345,
+        type: 'character',
+        name: 'Test Character',
+        characterId: 12345,
+        corporationId: 98000001,
+      },
+    })
+
+    const owner = findOwnerByKey('character-12345')
+    expect(owner).toBeDefined()
+    expect(owner?.name).toBe('Test Character')
+    expect(owner?.type).toBe('character')
+  })
+
+  it('finds corporation owner by key', () => {
+    const { addOwner } = useAuthStore.getState()
+    addOwner({
+      accessToken: 'token',
+      refreshToken: 'refresh',
+      expiresAt: Date.now() + 3600000,
+      owner: {
+        id: 98000001,
+        type: 'corporation',
+        name: 'Test Corp',
+        characterId: 12345,
+        corporationId: 98000001,
+      },
+    })
+
+    const owner = findOwnerByKey('corporation-98000001')
+    expect(owner).toBeDefined()
+    expect(owner?.name).toBe('Test Corp')
+    expect(owner?.type).toBe('corporation')
   })
 })

@@ -5,24 +5,9 @@ import { useWalletStore, isCorporationWallet } from '@/store/wallet-store'
 import { useDivisionsStore } from '@/store/divisions-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { OwnerIcon } from '@/components/ui/type-icon'
-import { cn } from '@/lib/utils'
+import { cn, formatISK } from '@/lib/utils'
 import { useTabControls } from '@/context'
 import { useColumnSettings, type ColumnConfig } from '@/hooks'
-
-function formatISK(value: number): string {
-  const abs = Math.abs(value)
-  const sign = value < 0 ? '-' : ''
-  if (abs >= 1_000_000_000_000) {
-    return sign + (abs / 1_000_000_000_000).toFixed(2) + 'T ISK'
-  }
-  if (abs >= 1_000_000_000) {
-    return sign + (abs / 1_000_000_000).toFixed(2) + 'B ISK'
-  }
-  if (abs >= 1_000_000) {
-    return sign + (abs / 1_000_000).toFixed(2) + 'M ISK'
-  }
-  return value.toLocaleString() + ' ISK'
-}
 
 const DEFAULT_WALLET_NAMES = [
   'Master Wallet',

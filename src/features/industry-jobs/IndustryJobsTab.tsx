@@ -23,9 +23,7 @@ import {
   hasType,
   getType,
   hasLocation,
-  getLocation,
   hasStructure,
-  getStructure,
   subscribe,
 } from '@/store/reference-cache'
 import { resolveTypes, resolveLocations } from '@/api/ref-client'
@@ -38,7 +36,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { cn } from '@/lib/utils'
+import { cn, formatNumber } from '@/lib/utils'
+import { getLocationName } from '@/lib/location-utils'
 import { TypeIcon } from '@/components/ui/type-icon'
 
 const BLUEPRINT_CATEGORY_ID = 9
@@ -83,13 +82,6 @@ interface LocationGroup {
   activeCount: number
   completedCount: number
   totalValue: number
-}
-
-function formatISK(value: number): string {
-  if (value >= 1_000_000_000) return (value / 1_000_000_000).toFixed(2) + 'B'
-  if (value >= 1_000_000) return (value / 1_000_000).toFixed(2) + 'M'
-  if (value >= 1_000) return (value / 1_000).toFixed(2) + 'K'
-  return value.toLocaleString()
 }
 
 function formatDuration(endDate: string): { text: string; isComplete: boolean; isPast: boolean } {
@@ -193,10 +185,10 @@ function JobsTable({ jobs }: { jobs: JobRow[] }) {
                 {row.job.runs.toLocaleString()}
               </TableCell>
               <TableCell className="py-1.5 text-right tabular-nums text-green-400">
-                {row.productValue > 0 ? formatISK(row.productValue) : '-'}
+                {row.productValue > 0 ? formatNumber(row.productValue) : '-'}
               </TableCell>
               <TableCell className="py-1.5 text-right tabular-nums text-amber-400">
-                {row.job.cost ? formatISK(row.job.cost) : '-'}
+                {row.job.cost ? formatNumber(row.job.cost) : '-'}
               </TableCell>
               <TableCell
                 className={cn(
@@ -336,15 +328,6 @@ export function IndustryJobsTab() {
 
   const locationGroups = useMemo(() => {
     void cacheVersion
-
-    const getLocationName = (locationId: number): string => {
-      if (locationId > 1_000_000_000_000) {
-        const structure = hasStructure(locationId) ? getStructure(locationId) : undefined
-        return structure?.name ?? `Structure ${locationId}`
-      }
-      const location = hasLocation(locationId) ? getLocation(locationId) : undefined
-      return location?.name ?? `Location ${locationId}`
-    }
 
     const groups = new Map<number, LocationGroup>()
 

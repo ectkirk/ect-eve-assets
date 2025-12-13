@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { useAuthStore, type Owner, ownerKey as makeOwnerKey } from './auth-store'
+import { useAuthStore, type Owner, findOwnerByKey } from './auth-store'
 import { useExpiryCacheStore } from './expiry-cache-store'
 import { esi, type ESIResponseMeta } from '@/api/esi'
 import { ESIBlueprintSchema } from '@/api/schemas'
@@ -353,16 +353,6 @@ export function formatBlueprintName(baseName: string, itemId: number): string {
     return `${baseName} (ME${info.materialEfficiency} TE${info.timeEfficiency} R${info.runs})`
   }
   return `${baseName} (ME${info.materialEfficiency} TE${info.timeEfficiency})`
-}
-
-function findOwnerByKey(ownerKeyStr: string): Owner | undefined {
-  const owners = useAuthStore.getState().owners
-  for (const owner of Object.values(owners)) {
-    if (owner && makeOwnerKey(owner.type, owner.id) === ownerKeyStr) {
-      return owner
-    }
-  }
-  return undefined
 }
 
 useExpiryCacheStore.getState().registerRefreshCallback(ENDPOINT_PATTERN, async (ownerKeyStr) => {

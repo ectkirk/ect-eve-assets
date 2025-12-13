@@ -368,3 +368,13 @@ export function useActiveCharacter() {
   const owner = owners[activeOwnerId]
   return owner?.type === 'character' ? owner : null
 }
+
+export function findOwnerByKey(ownerKeyStr: string): Owner | undefined {
+  const owners = useAuthStore.getState().owners
+  for (const owner of Object.values(owners)) {
+    if (owner && ownerKey(owner.type, owner.id) === ownerKeyStr) {
+      return owner
+    }
+  }
+  return undefined
+}
