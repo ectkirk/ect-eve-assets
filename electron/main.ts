@@ -537,6 +537,32 @@ ipcMain.handle('ref:blueprintResearch', async (_event, params: unknown) => {
   }
 })
 
+ipcMain.handle('ref:blueprints', async () => {
+  try {
+    const response = await fetch(`${REF_API_BASE}/blueprints`)
+    if (!response.ok) {
+      return { error: `HTTP ${response.status}` }
+    }
+    return await response.json()
+  } catch (err) {
+    logger.error('ref:blueprints fetch failed', err, { module: 'Main' })
+    return { error: String(err) }
+  }
+})
+
+ipcMain.handle('ref:systems', async () => {
+  try {
+    const response = await fetch(`${REF_API_BASE}/systems`)
+    if (!response.ok) {
+      return { error: `HTTP ${response.status}` }
+    }
+    return await response.json()
+  } catch (err) {
+    logger.error('ref:systems fetch failed', err, { module: 'Main' })
+    return { error: String(err) }
+  }
+})
+
 const MUTAMARKET_API_BASE = 'https://mutamarket.com/api'
 const MUTAMARKET_TIMEOUT_MS = 5000
 

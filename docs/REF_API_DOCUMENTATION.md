@@ -276,6 +276,83 @@ Calculate manufacturing costs including materials, job fees, and time with all m
 
 ---
 
+### GET /blueprints
+
+List all published blueprints with their product information. Ideal for autocomplete/search functionality.
+
+**URL**: `GET /blueprints`
+
+**Response**:
+```json
+[
+  {
+    "id": 691,
+    "name": "Rifter Blueprint",
+    "productId": 587,
+    "productName": "Rifter"
+  },
+  {
+    "id": 692,
+    "name": "Rifter Fleet Issue Blueprint",
+    "productId": 17703,
+    "productName": "Rifter Fleet Issue"
+  }
+]
+```
+
+**Response Fields**:
+| Field | Type | Description |
+|-------|------|-------------|
+| id | number | Blueprint type ID |
+| name | string | Blueprint name |
+| productId | number | Product type ID (manufactured item) |
+| productName | string | Product name |
+
+**Notes**:
+- Returns ~4,150 blueprints
+- Sorted alphabetically by name
+- Use for autocomplete in manufacturing/research calculators
+- For Manufacturing: search by `productName`, use `productId`
+- For Research: search by `name`, use `id`
+
+---
+
+### GET /systems
+
+List all empire solar systems for autocomplete/location selection.
+
+**URL**: `GET /systems`
+
+**Response**:
+```json
+[
+  {
+    "id": 30000142,
+    "name": "Jita",
+    "security": 0.9
+  },
+  {
+    "id": 30002187,
+    "name": "Amarr",
+    "security": 1.0
+  }
+]
+```
+
+**Response Fields**:
+| Field | Type | Description |
+|-------|------|-------------|
+| id | number | Solar system ID |
+| name | string | System name (English) |
+| security | number | Security status rounded to 1 decimal |
+
+**Notes**:
+- Returns ~5,430 systems (empire space only, excludes wormholes)
+- Use for autocomplete in industry calculators
+- Security values: 1.0 to -1.0 (highsec ≥0.5, lowsec 0.1-0.4, nullsec ≤0)
+
+---
+
 ### POST /ships
 
 Bulk lookup ship/structure slot counts for fitting display.

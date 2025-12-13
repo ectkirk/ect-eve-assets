@@ -1,18 +1,9 @@
 import { useState, useMemo } from 'react'
 import { Loader2, Calculator, Package, Clock, Coins } from 'lucide-react'
 import { TypeIcon } from '@/components/ui/type-icon'
+import { BlueprintSearch } from '@/components/ui/BlueprintSearch'
+import { SystemSearch } from '@/components/ui/SystemSearch'
 import { formatNumber } from '@/lib/utils'
-
-const COMMON_SYSTEMS = [
-  { id: 30000142, name: 'Jita' },
-  { id: 30002187, name: 'Amarr' },
-  { id: 30002659, name: 'Dodixie' },
-  { id: 30002510, name: 'Rens' },
-  { id: 30002053, name: 'Hek' },
-  { id: 30003795, name: 'Perimeter' },
-  { id: 30045352, name: 'Ashab' },
-  { id: 30045346, name: 'Atreen' },
-] as const
 
 const FACILITIES = [
   { id: 0, name: 'NPC Station' },
@@ -48,9 +39,8 @@ function formatDuration(isoStr: string | undefined): string {
 }
 
 export function ManufacturingTab() {
-  const [productId, setProductId] = useState('')
-  const [systemId, setSystemId] = useState<number>(COMMON_SYSTEMS[0].id)
-  const [customSystemId, setCustomSystemId] = useState('')
+  const [product, setProduct] = useState<{ id: number; name: string } | null>(null)
+  const [system, setSystem] = useState<{ id: number; name: string } | null>(null)
   const [me, setMe] = useState(10)
   const [te, setTe] = useState(20)
   const [runs, setRuns] = useState(1)
@@ -62,16 +52,13 @@ export function ManufacturingTab() {
   const [result, setResult] = useState<ManufacturingCostResult | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const effectiveSystemId = customSystemId ? parseInt(customSystemId, 10) : systemId
-
   const handleCalculate = async () => {
-    const pid = parseInt(productId, 10)
-    if (isNaN(pid) || pid <= 0) {
-      setError('Please enter a valid Product Type ID')
+    if (!product) {
+      setError('Please select a product')
       return
     }
-    if (isNaN(effectiveSystemId) || effectiveSystemId <= 0) {
-      setError('Please enter a valid System ID')
+    if (!system) {
+      setError('Please select a system')
       return
     }
 
@@ -81,8 +68,8 @@ export function ManufacturingTab() {
 
     try {
       const params: ManufacturingCostParams = {
-        product_id: pid,
-        system_id: effectiveSystemId,
+        product_id: product.id,
+        system_id: system.id,
         me,
         te,
         runs,
@@ -117,44 +104,22 @@ export function ManufacturingTab() {
           <h3 className="font-medium text-slate-200">Manufacturing Calculator</h3>
 
           <div>
-            <label className="block text-sm text-slate-400 mb-1">Product Type ID</label>
-            <input
-              type="text"
-              value={productId}
-              onChange={(e) => setProductId(e.target.value)}
-              placeholder="e.g. 587 (Rifter)"
-              className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            <label className="block text-sm text-slate-400 mb-1">Product</label>
+            <BlueprintSearch
+              mode="product"
+              value={product}
+              onChange={setProduct}
+              placeholder="Search products..."
             />
           </div>
 
           <div>
             <label className="block text-sm text-slate-400 mb-1">System</label>
-            <select
-              value={customSystemId ? 'custom' : systemId}
-              onChange={(e) => {
-                if (e.target.value === 'custom') {
-                  setCustomSystemId('')
-                } else {
-                  setCustomSystemId('')
-                  setSystemId(parseInt(e.target.value, 10))
-                }
-              }}
-              className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-            >
-              {COMMON_SYSTEMS.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-              <option value="custom">Custom System ID...</option>
-            </select>
-            {(customSystemId !== '' || !COMMON_SYSTEMS.some(s => s.id === systemId)) && (
-              <input
-                type="text"
-                value={customSystemId}
-                onChange={(e) => setCustomSystemId(e.target.value)}
-                placeholder="System ID"
-                className="w-full mt-2 rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-              />
-            )}
+            <SystemSearch
+              value={system}
+              onChange={setSystem}
+              placeholder="Search systems..."
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -258,7 +223,7 @@ export function ManufacturingTab() {
 
           <button
             onClick={handleCalculate}
-            disabled={loading || !productId}
+            disabled={loading || !product || !system}
             className="w-full flex items-center justify-center gap-2 rounded bg-blue-600 px-4 py-2 text-sm font-medium hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (

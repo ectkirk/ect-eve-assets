@@ -178,6 +178,23 @@ declare global {
     error?: string
   }
 
+  interface BlueprintListItem {
+    id: number
+    name: string
+    productId: number
+    productName: string
+  }
+
+  type BlueprintsResult = BlueprintListItem[] | { error: string }
+
+  interface SystemListItem {
+    id: number
+    name: string
+    security: number
+  }
+
+  type SystemsResult = SystemListItem[] | { error: string }
+
   interface ESIRequestOptions {
     method?: 'GET' | 'POST'
     body?: string
@@ -223,6 +240,8 @@ declare global {
     refShips: (ids: number[]) => Promise<RefShipsResult>
     refManufacturingCost: (params: ManufacturingCostParams) => Promise<ManufacturingCostResult>
     refBlueprintResearch: (params: BlueprintResearchParams) => Promise<BlueprintResearchResult>
+    refBlueprints: () => Promise<BlueprintsResult>
+    refSystems: () => Promise<SystemsResult>
     mutamarketModule: (itemId: number) => Promise<MutamarketResult>
     onUpdateAvailable: (callback: (version: string) => void) => () => void
     onUpdateDownloadProgress: (callback: (percent: number) => void) => () => void

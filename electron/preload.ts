@@ -177,6 +177,23 @@ export interface BlueprintResearchResult {
   error?: string
 }
 
+export interface BlueprintListItem {
+  id: number
+  name: string
+  productId: number
+  productName: string
+}
+
+export type BlueprintsResult = BlueprintListItem[] | { error: string }
+
+export interface SystemListItem {
+  id: number
+  name: string
+  security: number
+}
+
+export type SystemsResult = SystemListItem[] | { error: string }
+
 export interface ESIRequestOptions {
   method?: 'GET' | 'POST'
   body?: string
@@ -222,6 +239,8 @@ export interface ElectronAPI {
   refShips: (ids: number[]) => Promise<RefShipsResult>
   refManufacturingCost: (params: ManufacturingCostParams) => Promise<ManufacturingCostResult>
   refBlueprintResearch: (params: BlueprintResearchParams) => Promise<BlueprintResearchResult>
+  refBlueprints: () => Promise<BlueprintsResult>
+  refSystems: () => Promise<SystemsResult>
   mutamarketModule: (itemId: number) => Promise<MutamarketResult>
   onUpdateAvailable: (callback: (version: string) => void) => () => void
   onUpdateDownloadProgress: (callback: (percent: number) => void) => () => void
@@ -275,6 +294,8 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.invoke('ref:manufacturingCost', params),
   refBlueprintResearch: (params: BlueprintResearchParams) =>
     ipcRenderer.invoke('ref:blueprintResearch', params),
+  refBlueprints: () => ipcRenderer.invoke('ref:blueprints'),
+  refSystems: () => ipcRenderer.invoke('ref:systems'),
   mutamarketModule: (itemId: number) => ipcRenderer.invoke('mutamarket:module', itemId),
   onUpdateAvailable: (callback: (version: string) => void) => {
     const handler = (_event: unknown, version: string) => callback(version)
