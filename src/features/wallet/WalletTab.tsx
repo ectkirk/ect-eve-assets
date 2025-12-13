@@ -121,16 +121,14 @@ export function WalletTab() {
     return () => setColumns([])
   }, [getColumnsForDropdown, setColumns])
 
-  const loadingState = (
-    <TabLoadingState
-      dataType="wallets"
-      initialized={initialized}
-      isUpdating={isUpdating}
-      hasData={walletsByOwner.length > 0}
-      hasOwners={owners.length > 0}
-      updateError={updateError}
-    />
-  )
+  const loadingState = TabLoadingState({
+    dataType: 'wallets',
+    initialized,
+    isUpdating,
+    hasData: walletsByOwner.length > 0,
+    hasOwners: owners.length > 0,
+    updateError,
+  })
   if (loadingState) return loadingState
 
   return (

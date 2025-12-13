@@ -276,20 +276,18 @@ export function StructuresTab() {
 
   const corpOwners = useMemo(() => owners.filter((o) => o.type === 'corporation'), [owners])
 
-  const loadingState = (
-    <TabLoadingState
-      dataType="structures"
-      initialized={initialized}
-      isUpdating={isUpdating}
-      hasData={structuresByOwner.length > 0}
-      hasOwners={owners.length > 0}
-      updateError={updateError}
-      customEmptyCheck={{
-        condition: corpOwners.length === 0,
-        message: 'No corporation owners. Add a corporation to view structure data.',
-      }}
-    />
-  )
+  const loadingState = TabLoadingState({
+    dataType: 'structures',
+    initialized,
+    isUpdating,
+    hasData: structuresByOwner.length > 0,
+    hasOwners: owners.length > 0,
+    updateError,
+    customEmptyCheck: {
+      condition: corpOwners.length === 0,
+      message: 'No corporation owners. Add a corporation to view structure data.',
+    },
+  })
   if (loadingState) return loadingState
 
   return (

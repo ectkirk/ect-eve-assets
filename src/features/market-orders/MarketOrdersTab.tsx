@@ -362,16 +362,14 @@ export function MarketOrdersTab() {
     return () => setColumns([])
   }, [getColumnsForDropdown, setColumns])
 
-  const loadingState = (
-    <TabLoadingState
-      dataType="market orders"
-      initialized={initialized}
-      isUpdating={isUpdating}
-      hasData={ordersByOwner.length > 0}
-      hasOwners={owners.length > 0}
-      updateError={updateError}
-    />
-  )
+  const loadingState = TabLoadingState({
+    dataType: 'market orders',
+    initialized,
+    isUpdating,
+    hasData: ordersByOwner.length > 0,
+    hasOwners: owners.length > 0,
+    updateError,
+  })
   if (loadingState) return loadingState
 
   return (

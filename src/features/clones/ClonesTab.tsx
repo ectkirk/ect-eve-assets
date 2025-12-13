@@ -369,16 +369,14 @@ export function ClonesTab() {
     return () => setColumns([])
   }, [getColumnsForDropdown, setColumns])
 
-  const loadingState = (
-    <TabLoadingState
-      dataType="clones"
-      initialized={initialized}
-      isUpdating={isUpdating}
-      hasData={clonesByOwner.length > 0}
-      hasOwners={owners.length > 0}
-      updateError={updateError}
-    />
-  )
+  const loadingState = TabLoadingState({
+    dataType: 'clones',
+    initialized,
+    isUpdating,
+    hasData: clonesByOwner.length > 0,
+    hasOwners: owners.length > 0,
+    updateError,
+  })
   if (loadingState) return loadingState
 
   return (

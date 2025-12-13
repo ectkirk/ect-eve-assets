@@ -757,16 +757,14 @@ export function ContractsTab() {
     return () => setColumns([])
   }, [getColumnsForDropdown, setColumns])
 
-  const loadingState = (
-    <TabLoadingState
-      dataType="contracts"
-      initialized={initialized}
-      isUpdating={isUpdating}
-      hasData={contractsByOwner.length > 0}
-      hasOwners={owners.length > 0}
-      updateError={updateError}
-    />
-  )
+  const loadingState = TabLoadingState({
+    dataType: 'contracts',
+    initialized,
+    isUpdating,
+    hasData: contractsByOwner.length > 0,
+    hasOwners: owners.length > 0,
+    updateError,
+  })
   if (loadingState) return loadingState
 
   return (

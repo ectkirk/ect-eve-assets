@@ -443,16 +443,14 @@ export function IndustryJobsTab() {
     return () => setColumns([])
   }, [getColumnsForDropdown, setColumns])
 
-  const loadingState = (
-    <TabLoadingState
-      dataType="industry jobs"
-      initialized={initialized}
-      isUpdating={isUpdating}
-      hasData={jobsByOwner.length > 0}
-      hasOwners={owners.length > 0}
-      updateError={updateError}
-    />
-  )
+  const loadingState = TabLoadingState({
+    dataType: 'industry jobs',
+    initialized,
+    isUpdating,
+    hasData: jobsByOwner.length > 0,
+    hasOwners: owners.length > 0,
+    updateError,
+  })
   if (loadingState) return loadingState
 
   return (
