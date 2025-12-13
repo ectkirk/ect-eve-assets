@@ -75,6 +75,35 @@ function TabContent({ tab }: { tab: Tab }) {
   }
 }
 
+const ENDPOINT_LABELS: Record<string, string> = {
+  '/assets/': 'assets',
+  '/market/': 'market orders',
+  '/industry/': 'industry jobs',
+  '/contracts/': 'contracts',
+  '/clones/': 'clones',
+  '/structures': 'structures',
+  '/wallet/': 'wallet',
+}
+
+function RefreshStatus() {
+  const currentlyRefreshing = useExpiryCacheStore((s) => s.currentlyRefreshing)
+  const owners = useAuthStore((s) => s.owners)
+
+  if (!currentlyRefreshing) return null
+
+  const owner = owners[currentlyRefreshing.ownerKey]
+  const ownerName = owner?.name ?? 'Unknown'
+  const endpointLabel = ENDPOINT_LABELS[currentlyRefreshing.endpoint] ?? currentlyRefreshing.endpoint
+
+  return (
+    <div className="flex items-center gap-2 text-sm text-slate-400">
+      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+      <span>Updating {ownerName}</span>
+      <span className="text-slate-500">{endpointLabel}</span>
+    </div>
+  )
+}
+
 function OwnerButton() {
   const [modalOpen, setModalOpen] = useState(false)
   const [isAddingOwner, setIsAddingOwner] = useState(false)
@@ -426,7 +455,7 @@ function MainLayoutInner() {
       <UpdateBanner />
       {/* Header */}
       <header
-        className="flex items-center justify-between border-b border-slate-700 bg-slate-800 px-4 py-2"
+        className="flex items-center border-b border-slate-700 bg-slate-800 px-4 py-2"
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
       >
         <div className="flex flex-col" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
@@ -437,6 +466,10 @@ function MainLayoutInner() {
             We Like The Data
           </span>
         </div>
+        <div className="mx-4">
+          <RefreshStatus />
+        </div>
+        <div className="flex-1" />
         <div className="flex items-center gap-4" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
           <HeaderControls />
           <OwnerButton />

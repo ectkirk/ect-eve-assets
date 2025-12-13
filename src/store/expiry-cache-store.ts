@@ -28,6 +28,7 @@ interface ExpiryCacheState {
   initialized: boolean
   isProcessingQueue: boolean
   pollingGeneration: number
+  currentlyRefreshing: { ownerKey: string; endpoint: string } | null
 }
 
 interface ExpiryCacheActions {
@@ -208,7 +209,7 @@ function processQueue() {
   const processNext = async () => {
     const { refreshQueue, callbacks } = useExpiryCacheStore.getState()
     if (refreshQueue.length === 0) {
-      useExpiryCacheStore.setState({ isProcessingQueue: false })
+      useExpiryCacheStore.setState({ isProcessingQueue: false, currentlyRefreshing: null })
       return
     }
 
@@ -233,6 +234,7 @@ function processQueue() {
 
     const callback = findCallback(callbacks, item.endpoint)
     if (callback) {
+      useExpiryCacheStore.setState({ currentlyRefreshing: item })
       try {
         await callback(item.ownerKey, item.endpoint)
       } catch (err) {
@@ -241,6 +243,8 @@ function processQueue() {
           ownerKey: item.ownerKey,
           endpoint: item.endpoint,
         })
+      } finally {
+        useExpiryCacheStore.setState({ currentlyRefreshing: null })
       }
     }
 
@@ -257,6 +261,7 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
   initialized: false,
   isProcessingQueue: false,
   pollingGeneration: 0,
+  currentlyRefreshing: null,
 
   init: async () => {
     const currentGen = get().pollingGeneration
