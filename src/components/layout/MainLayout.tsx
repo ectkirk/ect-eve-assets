@@ -19,11 +19,14 @@ import eveSsoLoginWhite from '/eve-sso-login-white.png'
 import { OwnerIcon } from '@/components/ui/type-icon'
 import { OwnerManagementModal } from './OwnerManagementModal'
 import { UpdateBanner } from './UpdateBanner'
+import { ToastContainer } from './ToastContainer'
 import { useTotalAssets } from '@/hooks'
 import { formatNumber } from '@/lib/utils'
 import { TabControlsProvider, useTabControls } from '@/context'
 
-const TABS = [
+type AppMode = 'assets' | 'tools'
+
+const ASSET_TABS = [
   'Assets',
   'Item Hangar',
   'Ship Hangar',
@@ -38,9 +41,15 @@ const TABS = [
   'Wallet',
 ] as const
 
-type Tab = (typeof TABS)[number]
+const TOOL_TABS = [
+  'Manufacturing',
+  'Research',
+] as const
 
-function TabContent({ tab }: { tab: Tab }) {
+type AssetTab = (typeof ASSET_TABS)[number]
+type ToolTab = (typeof TOOL_TABS)[number]
+
+function AssetTabContent({ tab }: { tab: AssetTab }) {
   switch (tab) {
     case 'Assets':
       return <AssetsTab />
@@ -66,13 +75,51 @@ function TabContent({ tab }: { tab: Tab }) {
       return <ContractsTab />
     case 'Wallet':
       return <WalletTab />
-    default:
+  }
+}
+
+function ToolTabContent({ tab }: { tab: ToolTab }) {
+  switch (tab) {
+    case 'Manufacturing':
       return (
         <div className="text-slate-400">
-          Content for {tab} tab will be displayed here.
+          Manufacturing Cost Calculator - Coming soon
+        </div>
+      )
+    case 'Research':
+      return (
+        <div className="text-slate-400">
+          Blueprint Research Calculator - Coming soon
         </div>
       )
   }
+}
+
+function ModeSwitcher({ mode, onModeChange }: { mode: AppMode; onModeChange: (mode: AppMode) => void }) {
+  return (
+    <div className="flex rounded-md bg-slate-700/50 p-0.5">
+      <button
+        onClick={() => onModeChange('assets')}
+        className={`rounded px-3 py-1 text-sm font-medium transition-colors ${
+          mode === 'assets'
+            ? 'bg-slate-600 text-white'
+            : 'text-slate-400 hover:text-slate-200'
+        }`}
+      >
+        Assets
+      </button>
+      <button
+        onClick={() => onModeChange('tools')}
+        className={`rounded px-3 py-1 text-sm font-medium transition-colors ${
+          mode === 'tools'
+            ? 'bg-slate-600 text-white'
+            : 'text-slate-400 hover:text-slate-200'
+        }`}
+      >
+        Tools
+      </button>
+    </div>
+  )
 }
 
 const ENDPOINT_LABELS: Record<string, string> = {
@@ -448,10 +495,13 @@ function WindowControls() {
 }
 
 function MainLayoutInner() {
-  const [activeTab, setActiveTab] = useState<Tab>('Assets')
+  const [mode, setMode] = useState<AppMode>('assets')
+  const [activeAssetTab, setActiveAssetTab] = useState<AssetTab>('Assets')
+  const [activeToolTab, setActiveToolTab] = useState<ToolTab>('Manufacturing')
 
   return (
     <div className="flex h-full flex-col">
+      <ToastContainer />
       <UpdateBanner />
       {/* Header */}
       <header
@@ -466,12 +516,15 @@ function MainLayoutInner() {
             We Like The Data
           </span>
         </div>
+        <div className="mx-4" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+          <ModeSwitcher mode={mode} onModeChange={setMode} />
+        </div>
         <div className="mx-4">
           <RefreshStatus />
         </div>
         <div className="flex-1" />
         <div className="flex items-center gap-4" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
-          <HeaderControls />
+          {mode === 'assets' && <HeaderControls />}
           <OwnerButton />
           <WindowControls />
         </div>
@@ -480,32 +533,54 @@ function MainLayoutInner() {
       {/* Tab Navigation */}
       <nav className="flex items-center justify-between border-b border-slate-700 bg-slate-800 px-2">
         <div className="flex gap-1">
-          {TABS.map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-3 py-2 text-sm transition-colors ${
-                activeTab === tab
-                  ? 'border-b-2 border-blue-500 text-blue-500'
-                  : 'text-slate-400 hover:text-slate-50'
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
+          {mode === 'assets' ? (
+            ASSET_TABS.map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveAssetTab(tab)}
+                className={`px-3 py-2 text-sm transition-colors ${
+                  activeAssetTab === tab
+                    ? 'border-b-2 border-blue-500 text-blue-500'
+                    : 'text-slate-400 hover:text-slate-50'
+                }`}
+              >
+                {tab}
+              </button>
+            ))
+          ) : (
+            TOOL_TABS.map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveToolTab(tab)}
+                className={`px-3 py-2 text-sm transition-colors ${
+                  activeToolTab === tab
+                    ? 'border-b-2 border-blue-500 text-blue-500'
+                    : 'text-slate-400 hover:text-slate-50'
+                }`}
+              >
+                {tab}
+              </button>
+            ))
+          )}
         </div>
-        <div className="flex items-center gap-2 py-1">
-          <ExpandCollapseButton />
-          <ColumnsDropdown />
-        </div>
+        {mode === 'assets' && (
+          <div className="flex items-center gap-2 py-1">
+            <ExpandCollapseButton />
+            <ColumnsDropdown />
+          </div>
+        )}
       </nav>
 
-      {/* Search Bar */}
-      <SearchBar />
+      {/* Search Bar - only for assets mode */}
+      {mode === 'assets' && <SearchBar />}
 
       {/* Content Area */}
       <main className="flex-1 overflow-auto p-4">
-        <TabContent tab={activeTab} />
+        {mode === 'assets' ? (
+          <AssetTabContent tab={activeAssetTab} />
+        ) : (
+          <ToolTabContent tab={activeToolTab} />
+        )}
       </main>
     </div>
   )

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { useAuthStore, type Owner, ownerKey } from './auth-store'
 import { useExpiryCacheStore } from './expiry-cache-store'
+import { useToastStore } from './toast-store'
 import {
   getContractItems,
   getPublicContractItems,
@@ -11,6 +12,7 @@ import {
 import { esi, type ESIResponseMeta } from '@/api/esi'
 import { ESIContractSchema } from '@/api/schemas'
 import { logger } from '@/lib/logger'
+import { formatNumber } from '@/lib/utils'
 
 const ENDPOINT_PATTERN = '/contracts/'
 
@@ -361,6 +363,13 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
       const currentOwnerKey = ownerKey(owner.type, owner.id)
       const endpoint = getContractsEndpoint(owner)
 
+      const previousContracts = state.contractsByOwner.find(
+        (oc) => `${oc.owner.type}-${oc.owner.id}` === currentOwnerKey
+      )?.contracts ?? []
+      const previousStatusMap = new Map(
+        previousContracts.map((c) => [c.contract.contract_id, c.contract.status])
+      )
+
       logger.info('Fetching contracts for owner', { module: 'ContractsStore', owner: owner.name })
 
       const globalItemsCache = new Map<number, ESIContractItem[]>()
@@ -419,6 +428,27 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
         contract,
         items: contractItemsMap.get(contract.contract_id) ?? [],
       }))
+
+      if (previousStatusMap.size > 0) {
+        const toastStore = useToastStore.getState()
+        for (const contract of contracts) {
+          const prevStatus = previousStatusMap.get(contract.contract_id)
+          const wasActive = prevStatus === 'outstanding' || prevStatus === 'in_progress'
+          if (wasActive && contract.status === 'finished') {
+            const price = contract.price ?? 0
+            toastStore.addToast(
+              'contract-accepted',
+              'Contract Accepted',
+              price > 0 ? `${formatNumber(price)} ISK` : 'Item exchange'
+            )
+            logger.info('Contract completed', {
+              module: 'ContractsStore',
+              owner: owner.name,
+              contractId: contract.contract_id,
+            })
+          }
+        }
+      }
 
       await saveOwnerToDB(currentOwnerKey, owner, contractsWithItems)
       useExpiryCacheStore.getState().setExpiry(currentOwnerKey, endpoint, expiresAt, etag, contracts.length === 0)

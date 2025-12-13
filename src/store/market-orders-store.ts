@@ -1,11 +1,13 @@
 import { create } from 'zustand'
 import { useAuthStore, type Owner, ownerKey as makeOwnerKey } from './auth-store'
 import { useExpiryCacheStore } from './expiry-cache-store'
+import { useToastStore } from './toast-store'
 import { esi, type ESIResponseMeta } from '@/api/esi'
 import {
   ESIMarketOrderSchema,
   ESICorporationMarketOrderSchema,
 } from '@/api/schemas'
+import { getTypeName } from '@/store/reference-cache'
 import { logger } from '@/lib/logger'
 import { z } from 'zod'
 
@@ -270,8 +272,34 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
       const ownerKey = `${owner.type}-${owner.id}`
       const endpoint = getOrdersEndpoint(owner)
 
+      const previousOrders = state.ordersByOwner.find(
+        (oo) => `${oo.owner.type}-${oo.owner.id}` === ownerKey
+      )?.orders ?? []
+      const previousOrderIds = new Set(previousOrders.map((o) => o.order_id))
+
       logger.info('Fetching market orders for owner', { module: 'MarketOrdersStore', owner: owner.name })
       const { data: orders, expiresAt, etag } = await fetchOwnerOrdersWithMeta(owner)
+
+      const newOrderIds = new Set(orders.map((o) => o.order_id))
+      const completedOrders = previousOrders.filter((o) => !newOrderIds.has(o.order_id))
+
+      if (completedOrders.length > 0 && previousOrderIds.size > 0) {
+        const toastStore = useToastStore.getState()
+        for (const order of completedOrders) {
+          const typeName = getTypeName(order.type_id)
+          const action = order.is_buy_order ? 'Buy' : 'Sell'
+          toastStore.addToast(
+            'order-filled',
+            `${action} Order Filled`,
+            `${order.volume_total.toLocaleString()}x ${typeName}`
+          )
+        }
+        logger.info('Market orders completed', {
+          module: 'MarketOrdersStore',
+          owner: owner.name,
+          count: completedOrders.length,
+        })
+      }
 
       await saveOwnerToDB(ownerKey, owner, orders)
       useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag, orders.length === 0)

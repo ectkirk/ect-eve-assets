@@ -49,6 +49,134 @@ export interface RefShipsResult {
   error?: string
 }
 
+export interface ManufacturingCostParams {
+  product_id?: number
+  blueprint_id?: number
+  system_id: number
+  me?: number
+  te?: number
+  runs?: number
+  facility?: number
+  facility_type_id?: number
+  me_rig?: number
+  te_rig?: number
+  rig_type_id?: number
+  rig_type_ids?: string
+  security_status?: 'h' | 'l' | 'n'
+  facility_tax?: number
+  use_buy_orders?: boolean
+  alpha_clone?: boolean
+  system_cost_bonus?: number
+  industry?: number
+  advanced_industry?: number
+}
+
+export interface ManufacturingCostResult {
+  productId?: number
+  blueprintId?: number
+  runs?: number
+  me?: number
+  te?: number
+  units?: number
+  unitsPerRun?: number
+  time?: string
+  timePerRun?: string
+  timePerUnit?: string
+  materials?: Record<string, {
+    type_id: number
+    type_name: string
+    quantity: number
+    volume_per_unit: number
+    volume: number
+    cost_per_unit: number
+    cost: number
+  }>
+  materialsVolume?: number
+  productVolume?: number
+  estimatedItemValue?: number
+  systemCostIndex?: number
+  systemCostBonuses?: number
+  facilityTax?: number
+  sccSurcharge?: number
+  alphaCloneTax?: number
+  totalJobCost?: number
+  totalMaterialCost?: number
+  totalCost?: number
+  totalCostPerRun?: number
+  totalCostPerUnit?: number
+  error?: string
+}
+
+export interface BlueprintResearchParams {
+  blueprint_id: number
+  system_id: number
+  facility?: number
+  metallurgy_level?: number
+  research_level?: number
+  science_level?: number
+  advanced_industry_level?: number
+  me_implant?: number
+  te_implant?: number
+  copy_implant?: number
+  me_rig?: number
+  te_rig?: number
+  copy_rig?: number
+  security_status?: 'h' | 'l' | 'n'
+  facility_tax?: number
+  faction_warfare_bonus?: boolean
+  runs_per_copy?: number
+}
+
+export interface BlueprintResearchResult {
+  blueprint?: { id: number; name: string }
+  systemId?: number
+  facility?: string
+  costIndices?: {
+    researching_material_efficiency: number
+    researching_time_efficiency: number
+    copying: number
+  }
+  modifiers?: {
+    facility: string
+    skills: { metallurgy: number; research: number; science: number; advancedIndustry: number }
+    implants: { me: number; te: number; copy: number }
+    rigs: { me: string; te: string; copy: string }
+    securityStatus: string
+    factionWarfareBonus: boolean
+  }
+  meResearch?: Array<{
+    level: number
+    duration: number
+    durationFormatted: string
+    cost: number
+    cumulativeDuration: number
+    cumulativeDurationFormatted: string
+    cumulativeCost: number
+  }>
+  teResearch?: Array<{
+    level: number
+    duration: number
+    durationFormatted: string
+    cost: number
+    cumulativeDuration: number
+    cumulativeDurationFormatted: string
+    cumulativeCost: number
+  }>
+  copying?: {
+    baseTime: number
+    runsPerCopy: number
+    duration: number
+    durationFormatted: string
+    installationCost: number
+    materials: Array<{ typeId: number; name: string; quantity: number; price: number; total: number }>
+    materialsCost: number
+    totalCost: number
+    maxRuns: number
+    copiesIn30Days: number
+  }
+  error?: string
+}
+
 export interface ESIRequestOptions {
   method?: 'GET' | 'POST'
   body?: string
@@ -92,6 +220,8 @@ export interface ElectronAPI {
   refTypes: (ids: number[], market: 'jita' | 'the_forge') => Promise<RefApiResult>
   refUniverse: (ids: number[]) => Promise<RefApiResult>
   refShips: (ids: number[]) => Promise<RefShipsResult>
+  refManufacturingCost: (params: ManufacturingCostParams) => Promise<ManufacturingCostResult>
+  refBlueprintResearch: (params: BlueprintResearchParams) => Promise<BlueprintResearchResult>
   mutamarketModule: (itemId: number) => Promise<MutamarketResult>
   onUpdateAvailable: (callback: (version: string) => void) => () => void
   onUpdateDownloadProgress: (callback: (percent: number) => void) => () => void
@@ -141,6 +271,10 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.invoke('ref:types', ids, market),
   refUniverse: (ids: number[]) => ipcRenderer.invoke('ref:universe', ids),
   refShips: (ids: number[]) => ipcRenderer.invoke('ref:ships', ids),
+  refManufacturingCost: (params: ManufacturingCostParams) =>
+    ipcRenderer.invoke('ref:manufacturingCost', params),
+  refBlueprintResearch: (params: BlueprintResearchParams) =>
+    ipcRenderer.invoke('ref:blueprintResearch', params),
   mutamarketModule: (itemId: number) => ipcRenderer.invoke('mutamarket:module', itemId),
   onUpdateAvailable: (callback: (version: string) => void) => {
     const handler = (_event: unknown, version: string) => callback(version)
