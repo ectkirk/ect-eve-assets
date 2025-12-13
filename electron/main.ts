@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell, Menu, safeStorage } from 'electron'
+import { app, BrowserWindow, ipcMain, shell, safeStorage, screen } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import fs from 'node:fs'
@@ -75,46 +75,9 @@ export const VITE_PUBLIC = VITE_DEV_SERVER_URL
   : RENDERER_DIST
 
 let mainWindow: BrowserWindow | null = null
+let isManuallyMaximized = false
+let restoreBounds: Electron.Rectangle | null = null
 const characterTokens = new Map<number, string>()
-
-function createMenu() {
-  const template: Electron.MenuItemConstructorOptions[] = [
-    {
-      label: 'File',
-      submenu: [
-        { role: 'quit' }
-      ]
-    },
-    {
-      label: 'View',
-      submenu: [
-        { role: 'reload' },
-        { role: 'forceReload' },
-        ...(app.isPackaged ? [] : [{ role: 'toggleDevTools' as const }]),
-        { type: 'separator' },
-        { role: 'resetZoom' },
-        { role: 'zoomIn' },
-        { role: 'zoomOut' },
-        { type: 'separator' },
-        { role: 'togglefullscreen' }
-      ]
-    },
-    {
-      label: 'Help',
-      submenu: [
-        {
-          label: 'Open Logs Folder',
-          click: () => {
-            shell.openPath(logger.getLogDir())
-          }
-        }
-      ]
-    }
-  ]
-
-  const menu = Menu.buildFromTemplate(template)
-  Menu.setApplicationMenu(menu)
-}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -122,6 +85,7 @@ function createWindow() {
     height: 900,
     minWidth: 1024,
     minHeight: 768,
+    frame: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
@@ -153,18 +117,72 @@ function createWindow() {
     mainWindow.loadFile(path.join(RENDERER_DIST, 'index.html'))
   }
 
-  if (!app.isPackaged) {
-    mainWindow.webContents.on('before-input-event', (event, input) => {
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    // Dev tools (development only)
+    if (!app.isPackaged) {
       if (input.key === 'F12') {
         mainWindow?.webContents.toggleDevTools()
         event.preventDefault()
+        return
       }
       if (input.control && input.shift && input.key.toLowerCase() === 'i') {
         mainWindow?.webContents.toggleDevTools()
         event.preventDefault()
+        return
       }
-    })
-  }
+    }
+
+    // Quit: Ctrl+Q
+    if (input.control && input.key.toLowerCase() === 'q') {
+      app.quit()
+      event.preventDefault()
+      return
+    }
+
+    // Reload: Ctrl+R
+    if (input.control && input.key.toLowerCase() === 'r' && !input.shift) {
+      mainWindow?.webContents.reload()
+      event.preventDefault()
+      return
+    }
+
+    // Force Reload: Ctrl+Shift+R
+    if (input.control && input.shift && input.key.toLowerCase() === 'r') {
+      mainWindow?.webContents.reloadIgnoringCache()
+      event.preventDefault()
+      return
+    }
+
+    // Fullscreen: F11
+    if (input.key === 'F11') {
+      mainWindow?.setFullScreen(!mainWindow.isFullScreen())
+      event.preventDefault()
+      return
+    }
+
+    // Zoom In: Ctrl++ or Ctrl+=
+    if (input.control && (input.key === '+' || input.key === '=')) {
+      const currentZoom = mainWindow?.webContents.getZoomLevel() ?? 0
+      mainWindow?.webContents.setZoomLevel(currentZoom + 0.5)
+      event.preventDefault()
+      return
+    }
+
+    // Zoom Out: Ctrl+-
+    if (input.control && input.key === '-') {
+      const currentZoom = mainWindow?.webContents.getZoomLevel() ?? 0
+      mainWindow?.webContents.setZoomLevel(currentZoom - 0.5)
+      event.preventDefault()
+      return
+    }
+
+    // Reset Zoom: Ctrl+0
+    if (input.control && input.key === '0') {
+      mainWindow?.webContents.setZoomLevel(0)
+      event.preventDefault()
+      return
+    }
+  })
 
   // Log ALL renderer console messages to terminal
   mainWindow.webContents.on('console-message', (event) => {
@@ -176,6 +194,16 @@ function createWindow() {
   // Catch renderer crashes
   mainWindow.webContents.on('render-process-gone', (_event, details) => {
     console.error('[CRASH] Renderer process gone:', details.reason)
+  })
+
+  // Sync state when native maximize/unmaximize occurs (e.g., Windows snap)
+  mainWindow.on('maximize', () => {
+    isManuallyMaximized = true
+    mainWindow?.webContents.send('window:maximizeChange', true)
+  })
+  mainWindow.on('unmaximize', () => {
+    isManuallyMaximized = false
+    mainWindow?.webContents.send('window:maximizeChange', false)
   })
 }
 
@@ -514,11 +542,40 @@ ipcMain.handle('esi:getRateLimitInfo', () => {
   return getESIService().getRateLimitInfo()
 })
 
+ipcMain.handle('window:minimize', () => {
+  mainWindow?.minimize()
+})
+
+ipcMain.handle('window:maximize', () => {
+  if (!mainWindow) return
+
+  if (isManuallyMaximized) {
+    if (restoreBounds) {
+      mainWindow.setBounds(restoreBounds)
+    }
+    isManuallyMaximized = false
+    mainWindow.webContents.send('window:maximizeChange', false)
+  } else {
+    restoreBounds = mainWindow.getBounds()
+    const display = screen.getDisplayMatching(restoreBounds)
+    mainWindow.setBounds(display.workArea)
+    isManuallyMaximized = true
+    mainWindow.webContents.send('window:maximizeChange', true)
+  }
+})
+
+ipcMain.handle('window:close', () => {
+  mainWindow?.close()
+})
+
+ipcMain.handle('window:isMaximized', () => {
+  return isManuallyMaximized
+})
+
 app.whenReady().then(() => {
   initLogger()
   logger.info('App starting', { module: 'Main', version: app.getVersion() })
   setupESIService()
-  createMenu()
   createWindow()
   logger.info('Main window created', { module: 'Main' })
 

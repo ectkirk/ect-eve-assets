@@ -40,11 +40,18 @@ export interface CachedAbyssal {
   fetchedAt: number // timestamp
 }
 
+export interface CachedName {
+  id: number
+  name: string
+  category: 'alliance' | 'character' | 'constellation' | 'corporation' | 'inventory_type' | 'region' | 'solar_system' | 'station' | 'faction'
+}
+
 let db: IDBDatabase | null = null
 let typesCache = new Map<number, CachedType>()
 let structuresCache = new Map<number, CachedStructure>()
 let locationsCache = new Map<number, CachedLocation>()
 let abyssalsCache = new Map<number, CachedAbyssal>()
+const namesCache = new Map<number, CachedName>()
 let initialized = false
 
 const listeners = new Set<() => void>()
@@ -191,6 +198,22 @@ export function hasAbyssal(itemId: number): boolean {
 
 export function getAbyssalPrice(itemId: number): number | undefined {
   return abyssalsCache.get(itemId)?.price
+}
+
+export function getName(id: number): CachedName | undefined {
+  return namesCache.get(id)
+}
+
+export function hasName(id: number): boolean {
+  return namesCache.has(id)
+}
+
+export function saveNames(names: CachedName[]): void {
+  if (names.length === 0) return
+  for (const name of names) {
+    namesCache.set(name.id, name)
+  }
+  notifyListeners()
 }
 
 export async function saveTypes(types: CachedType[]): Promise<void> {

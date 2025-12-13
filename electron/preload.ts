@@ -97,6 +97,11 @@ export interface ElectronAPI {
   onUpdateDownloadProgress: (callback: (percent: number) => void) => () => void
   onUpdateDownloaded: (callback: (version: string) => void) => () => void
   installUpdate: () => Promise<void>
+  windowMinimize: () => Promise<void>
+  windowMaximize: () => Promise<void>
+  windowClose: () => Promise<void>
+  windowIsMaximized: () => Promise<boolean>
+  onWindowMaximizeChange: (callback: (isMaximized: boolean) => void) => () => void
   esi: ESIAPI
 }
 
@@ -153,6 +158,15 @@ const electronAPI: ElectronAPI = {
     return () => ipcRenderer.removeListener('updater:update-downloaded', handler)
   },
   installUpdate: () => ipcRenderer.invoke('updater:install'),
+  windowMinimize: () => ipcRenderer.invoke('window:minimize'),
+  windowMaximize: () => ipcRenderer.invoke('window:maximize'),
+  windowClose: () => ipcRenderer.invoke('window:close'),
+  windowIsMaximized: () => ipcRenderer.invoke('window:isMaximized'),
+  onWindowMaximizeChange: (callback: (isMaximized: boolean) => void) => {
+    const handler = (_event: unknown, isMaximized: boolean) => callback(isMaximized)
+    ipcRenderer.on('window:maximizeChange', handler)
+    return () => ipcRenderer.removeListener('window:maximizeChange', handler)
+  },
   esi,
 }
 

@@ -14,7 +14,7 @@ import { IndustryJobsTab } from '@/features/industry-jobs'
 import { ClonesTab } from '@/features/clones'
 import { ContractsTab } from '@/features/contracts'
 import { WalletTab } from '@/features/wallet'
-import { Loader2, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp, Search, X, User, AlertTriangle } from 'lucide-react'
+import { Loader2, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp, Search, X, User, AlertTriangle, Minus, Square, Copy } from 'lucide-react'
 import eveSsoLoginWhite from '/eve-sso-login-white.png'
 import { OwnerIcon } from '@/components/ui/type-icon'
 import { OwnerManagementModal } from './OwnerManagementModal'
@@ -378,6 +378,39 @@ function HeaderControls() {
   )
 }
 
+function WindowControls() {
+  const [isMaximized, setIsMaximized] = useState(false)
+
+  useEffect(() => {
+    if (!window.electronAPI) return
+    window.electronAPI.windowIsMaximized().then(setIsMaximized)
+    return window.electronAPI.onWindowMaximizeChange(setIsMaximized)
+  }, [])
+
+  return (
+    <div className="flex items-center -mr-4" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+      <button
+        onClick={() => window.electronAPI?.windowMinimize()}
+        className="flex h-10 w-12 items-center justify-center text-slate-400 hover:bg-slate-700 hover:text-white"
+      >
+        <Minus className="h-4 w-4" />
+      </button>
+      <button
+        onClick={() => window.electronAPI?.windowMaximize()}
+        className="flex h-10 w-12 items-center justify-center text-slate-400 hover:bg-slate-700 hover:text-white"
+      >
+        {isMaximized ? <Copy className="h-3.5 w-3.5" /> : <Square className="h-3.5 w-3.5" />}
+      </button>
+      <button
+        onClick={() => window.electronAPI?.windowClose()}
+        className="flex h-10 w-12 items-center justify-center text-slate-400 hover:bg-red-600 hover:text-white"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  )
+}
+
 function MainLayoutInner() {
   const [activeTab, setActiveTab] = useState<Tab>('Assets')
 
@@ -385,8 +418,11 @@ function MainLayoutInner() {
     <div className="flex h-full flex-col">
       <UpdateBanner />
       {/* Header */}
-      <header className="flex items-center justify-between border-b border-slate-700 bg-slate-800 px-4 py-2">
-        <div className="flex flex-col">
+      <header
+        className="flex items-center justify-between border-b border-slate-700 bg-slate-800 px-4 py-2"
+        style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+      >
+        <div className="flex flex-col" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
           <span className="text-lg font-bold tracking-tight text-white">
             <span className="text-blue-400">ECT</span> EVE Assets
           </span>
@@ -394,9 +430,10 @@ function MainLayoutInner() {
             We Like The Data
           </span>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
           <HeaderControls />
           <OwnerButton />
+          <WindowControls />
         </div>
       </header>
 

@@ -95,6 +95,11 @@ interface ElectronAPI {
   onUpdateDownloadProgress: (callback: (percent: number) => void) => () => void
   onUpdateDownloaded: (callback: (version: string) => void) => () => void
   installUpdate: () => Promise<void>
+  windowMinimize: () => Promise<void>
+  windowMaximize: () => Promise<void>
+  windowClose: () => Promise<void>
+  windowIsMaximized: () => Promise<boolean>
+  onWindowMaximizeChange: (callback: (isMaximized: boolean) => void) => () => void
   esi: ESIAPI
 }
 
