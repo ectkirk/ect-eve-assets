@@ -395,6 +395,13 @@ function SearchBar() {
               <span className="text-amber-400">{formatNumber(totalValue.secondaryValue)} ISK</span>
             </>
           )}
+          {totalValue.tertiaryValue !== undefined && (
+            <>
+              <span className="text-slate-500 mx-2">|</span>
+              <span className="text-slate-400">{totalValue.tertiaryLabel ?? 'Tertiary'}: </span>
+              <span className="text-blue-400">{formatNumber(totalValue.tertiaryValue)} ISK</span>
+            </>
+          )}
         </span>
       )}
 

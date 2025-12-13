@@ -282,10 +282,21 @@ function ContractsTable({
                   </TableCell>
                 )}
                 {showCourierColumns && (() => {
-                  let daysDisplay: string | number = contract.days_to_complete ?? '-'
+                  let daysDisplay = '-'
                   let daysColor = 'text-slate-400'
 
-                  if (contract.status === 'in_progress' && contract.date_accepted && contract.days_to_complete) {
+                  if (contract.status === 'outstanding') {
+                    const expiryTime = new Date(contract.date_expired).getTime()
+                    const remaining = expiryTime - Date.now()
+                    const daysLeft = Math.ceil(remaining / (24 * 60 * 60 * 1000))
+                    if (daysLeft <= 0) {
+                      daysDisplay = 'Expired'
+                      daysColor = 'text-red-400'
+                    } else {
+                      daysDisplay = `${daysLeft}d`
+                      daysColor = daysLeft <= 1 ? 'text-red-400' : daysLeft <= 3 ? 'text-yellow-400' : 'text-slate-400'
+                    }
+                  } else if (contract.status === 'in_progress' && contract.date_accepted && contract.days_to_complete) {
                     const acceptedDate = new Date(contract.date_accepted).getTime()
                     const deadline = acceptedDate + contract.days_to_complete * 24 * 60 * 60 * 1000
                     const remaining = deadline - Date.now()
@@ -742,15 +753,26 @@ export function ContractsTab() {
     return total
   }, [directionGroups])
 
+  const totalCollateral = useMemo(() => {
+    if (!courierGroup) return 0
+    let total = 0
+    for (const row of courierGroup.contracts) {
+      total += row.contractWithItems.contract.collateral ?? 0
+    }
+    return total
+  }, [courierGroup])
+
   useEffect(() => {
     setTotalValue({
       value: totals.valueIn + totals.valueOut,
       label: 'Contract Items',
       secondaryValue: contractPrice,
       secondaryLabel: 'Contract Price',
+      tertiaryValue: totalCollateral > 0 ? totalCollateral : undefined,
+      tertiaryLabel: 'Collateral',
     })
     return () => setTotalValue(null)
-  }, [totals.valueIn, totals.valueOut, contractPrice, setTotalValue])
+  }, [totals.valueIn, totals.valueOut, contractPrice, totalCollateral, setTotalValue])
 
   useEffect(() => {
     setColumns(getColumnsForDropdown())

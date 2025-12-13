@@ -75,7 +75,11 @@ export function useTotalAssets(): AssetTotals {
         if (seenContracts.has(contract.contract_id)) continue
         seenContracts.add(contract.contract_id)
         if (contract.status !== 'outstanding' && contract.status !== 'in_progress') continue
-        if (contract.type === 'courier') continue
+
+        if (contract.type === 'courier') {
+          contractsTotal += contract.collateral ?? 0
+          continue
+        }
 
         let itemValue = 0
         for (const item of items) {

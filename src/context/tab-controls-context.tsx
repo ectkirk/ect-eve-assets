@@ -28,6 +28,8 @@ export interface TotalValueConfig {
   label?: string
   secondaryValue?: number
   secondaryLabel?: string
+  tertiaryValue?: number
+  tertiaryLabel?: string
 }
 
 interface TabControlsContextValue {
