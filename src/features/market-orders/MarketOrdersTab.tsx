@@ -1,18 +1,13 @@
-import { useEffect, useMemo, useState, useCallback } from 'react'
-import { Loader2, TrendingUp, TrendingDown, ChevronRight, ChevronDown } from 'lucide-react'
+import { useEffect, useMemo } from 'react'
+import { TrendingUp, TrendingDown, ChevronRight, ChevronDown } from 'lucide-react'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useTabControls } from '@/context'
-import { useColumnSettings, type ColumnConfig } from '@/hooks'
+import { useColumnSettings, useCacheVersion, useExpandCollapse, type ColumnConfig } from '@/hooks'
 import { type MarketOrder } from '@/store/market-orders-store'
-import {
-  hasType,
-  getType,
-  hasLocation,
-  hasStructure,
-  subscribe,
-} from '@/store/reference-cache'
+import { hasType, getType, hasLocation, hasStructure } from '@/store/reference-cache'
+import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import { resolveTypes, resolveLocations } from '@/api/ref-client'
 import { resolveStructures } from '@/api/endpoints/universe'
 import {
@@ -186,8 +181,7 @@ export function MarketOrdersTab() {
     init()
   }, [init])
 
-  const [cacheVersion, setCacheVersion] = useState(0)
-  useEffect(() => subscribe(() => setCacheVersion((v) => v + 1)), [])
+  const cacheVersion = useCacheVersion()
 
   useEffect(() => {
     if (ordersByOwner.length === 0) return
@@ -222,8 +216,6 @@ export function MarketOrdersTab() {
       resolveStructures(structureToCharacter).catch(() => {})
     }
   }, [ordersByOwner])
-
-  const [expandedLocations, setExpandedLocations] = useState<Set<number>>(new Set())
 
   const { setExpandCollapse, search, setResultCount, setTotalValue, setColumns } = useTabControls()
   const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
@@ -326,46 +318,8 @@ export function MarketOrdersTab() {
     return sorted
   }, [ordersByOwner, cacheVersion, search, activeOwnerId])
 
-  const toggleLocation = useCallback((locationId: number) => {
-    setExpandedLocations((prev) => {
-      const next = new Set(prev)
-      if (next.has(locationId)) next.delete(locationId)
-      else next.add(locationId)
-      return next
-    })
-  }, [])
-
-  const expandAll = useCallback(() => {
-    const allIds = locationGroups.map((g) => g.locationId)
-    setExpandedLocations(new Set(allIds))
-  }, [locationGroups])
-
-  const collapseAll = useCallback(() => {
-    setExpandedLocations(new Set())
-  }, [])
-
   const expandableIds = useMemo(() => locationGroups.map((g) => g.locationId), [locationGroups])
-  const isAllExpanded = expandableIds.length > 0 && expandableIds.every((id) => expandedLocations.has(id))
-
-  useEffect(() => {
-    if (expandableIds.length === 0) {
-      setExpandCollapse(null)
-      return
-    }
-
-    setExpandCollapse({
-      isExpanded: isAllExpanded,
-      toggle: () => {
-        if (isAllExpanded) {
-          collapseAll()
-        } else {
-          expandAll()
-        }
-      },
-    })
-
-    return () => setExpandCollapse(null)
-  }, [expandableIds, isAllExpanded, expandAll, collapseAll, setExpandCollapse])
+  const { isExpanded, toggle } = useExpandCollapse(expandableIds, setExpandCollapse)
 
   const totals = useMemo(() => {
     let buyValue = 0
@@ -408,42 +362,17 @@ export function MarketOrdersTab() {
     return () => setColumns([])
   }, [getColumnsForDropdown, setColumns])
 
-  if (owners.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-slate-400">No characters logged in. Add a character to view orders.</p>
-      </div>
-    )
-  }
-
-  if (!initialized || (isUpdating && ordersByOwner.length === 0)) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-500 mx-auto" />
-          <p className="mt-2 text-slate-400">Loading market orders...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (ordersByOwner.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          {updateError && (
-            <>
-              <p className="text-red-500">Failed to load market orders</p>
-              <p className="text-sm text-slate-400 mb-4">{updateError}</p>
-            </>
-          )}
-          {!updateError && (
-            <p className="text-slate-400">No market orders loaded. Use the Update button in the header to fetch from ESI.</p>
-          )}
-        </div>
-      </div>
-    )
-  }
+  const loadingState = (
+    <TabLoadingState
+      dataType="market orders"
+      initialized={initialized}
+      isUpdating={isUpdating}
+      hasData={ordersByOwner.length > 0}
+      hasOwners={owners.length > 0}
+      updateError={updateError}
+    />
+  )
+  if (loadingState) return loadingState
 
   return (
     <div className="h-full rounded-lg border border-slate-700 overflow-auto">
@@ -456,8 +385,8 @@ export function MarketOrdersTab() {
           <LocationGroupRow
             key={group.locationId}
             group={group}
-            isExpanded={expandedLocations.has(group.locationId)}
-            onToggle={() => toggleLocation(group.locationId)}
+            isExpanded={isExpanded(group.locationId)}
+            onToggle={() => toggle(group.locationId)}
           />
         ))
       )}

@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react'
 import {
-  Loader2,
   ChevronRight,
   ChevronDown,
   ArrowRightLeft,
@@ -14,18 +13,13 @@ import {
   History,
 } from 'lucide-react'
 import { useTabControls } from '@/context'
-import { useColumnSettings, type ColumnConfig } from '@/hooks'
+import { useColumnSettings, useCacheVersion, type ColumnConfig } from '@/hooks'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useContractsStore, type ContractWithItems } from '@/store/contracts-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { type ESIContract } from '@/api/endpoints/contracts'
-import {
-  hasType,
-  getType,
-  hasLocation,
-  hasStructure,
-  subscribe,
-} from '@/store/reference-cache'
+import { hasType, getType, hasLocation, hasStructure } from '@/store/reference-cache'
+import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import { useAssetStore } from '@/store/asset-store'
 import { resolveTypes, resolveLocations, fetchPrices } from '@/api/ref-client'
 import { resolveStructures, resolveNames, hasName, getName } from '@/api/endpoints/universe'
@@ -415,8 +409,8 @@ export function ContractsTab() {
     init()
   }, [init])
 
-  const [cacheVersion, setCacheVersion] = useState(0)
-  useEffect(() => subscribe(() => setCacheVersion((v) => v + 1)), [])
+  const cacheVersion = useCacheVersion()
+  const [forceRender, setForceRender] = useState(0)
 
   useEffect(() => {
     if (contractsByOwner.length === 0) return
@@ -464,7 +458,7 @@ export function ContractsTab() {
     }
     if (unresolvedEntityIds.size > 0) {
       resolveNames(Array.from(unresolvedEntityIds))
-        .then(() => setCacheVersion((v) => v + 1))
+        .then(() => setForceRender((v) => v + 1))
         .catch(() => {})
     }
   }, [contractsByOwner])
@@ -485,7 +479,7 @@ export function ContractsTab() {
 
     if (abyssalItemIds.length > 0) {
       fetchAbyssalPrices(abyssalItemIds)
-        .then(() => setCacheVersion((v) => v + 1))
+        .then(() => setForceRender((v) => v + 1))
         .catch(() => {})
     }
   }, [contractsByOwner])
@@ -537,7 +531,7 @@ export function ContractsTab() {
   const { getColumnsForDropdown } = useColumnSettings('contracts', CONTRACT_COLUMNS)
 
   const { directionGroups, courierGroup, completedContracts } = useMemo(() => {
-    void cacheVersion
+    void (cacheVersion + forceRender)
 
     const filteredContractsByOwner = activeOwnerId === null
       ? contractsByOwner
@@ -670,7 +664,7 @@ export function ContractsTab() {
         : null,
       completedContracts: filteredCompleted,
     }
-  }, [contractsByOwner, cacheVersion, owners, prices, search, activeOwnerId])
+  }, [contractsByOwner, cacheVersion, forceRender, owners, prices, search, activeOwnerId])
 
   const toggleDirection = useCallback((direction: string) => {
     setExpandedDirections((prev) => {
@@ -763,42 +757,17 @@ export function ContractsTab() {
     return () => setColumns([])
   }, [getColumnsForDropdown, setColumns])
 
-  if (owners.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-slate-400">No characters logged in. Add a character to view contracts.</p>
-      </div>
-    )
-  }
-
-  if (!initialized || (isUpdating && contractsByOwner.length === 0)) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-500 mx-auto" />
-          <p className="mt-2 text-slate-400">Loading contracts...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (contractsByOwner.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          {updateError && (
-            <>
-              <p className="text-red-500">Failed to load contracts</p>
-              <p className="text-sm text-slate-400 mb-4">{updateError}</p>
-            </>
-          )}
-          {!updateError && (
-            <p className="text-slate-400">No contracts loaded. Use the Update button in the header to fetch from ESI.</p>
-          )}
-        </div>
-      </div>
-    )
-  }
+  const loadingState = (
+    <TabLoadingState
+      dataType="contracts"
+      initialized={initialized}
+      isUpdating={isUpdating}
+      hasData={contractsByOwner.length > 0}
+      hasOwners={owners.length > 0}
+      updateError={updateError}
+    />
+  )
+  if (loadingState) return loadingState
 
   return (
     <div className="h-full rounded-lg border border-slate-700 overflow-auto">

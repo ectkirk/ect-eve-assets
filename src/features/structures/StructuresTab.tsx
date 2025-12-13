@@ -1,16 +1,12 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
-import { Loader2, Fuel, Zap, ZapOff, AlertTriangle } from 'lucide-react'
+import { Fuel, Zap, ZapOff, AlertTriangle } from 'lucide-react'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useStructuresStore, type ESICorporationStructure } from '@/store/structures-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useTabControls } from '@/context'
-import {
-  hasType,
-  getType,
-  hasLocation,
-  getLocation,
-  subscribe,
-} from '@/store/reference-cache'
+import { useCacheVersion } from '@/hooks'
+import { hasType, getType, hasLocation, getLocation } from '@/store/reference-cache'
+import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import { resolveTypes, resolveLocations } from '@/api/ref-client'
 import {
   Table,
@@ -158,8 +154,7 @@ export function StructuresTab() {
     init()
   }, [init])
 
-  const [cacheVersion, setCacheVersion] = useState(0)
-  useEffect(() => subscribe(() => setCacheVersion((v) => v + 1)), [])
+  const cacheVersion = useCacheVersion()
 
   useEffect(() => {
     if (structuresByOwner.length === 0) return
@@ -281,54 +276,21 @@ export function StructuresTab() {
 
   const corpOwners = useMemo(() => owners.filter((o) => o.type === 'corporation'), [owners])
 
-  if (owners.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-slate-400">No characters logged in. Add a character to view structures.</p>
-      </div>
-    )
-  }
-
-  if (corpOwners.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-slate-400">
-          No corporation owners. Add a corporation to view structure data.
-        </p>
-      </div>
-    )
-  }
-
-  if (!initialized || (isUpdating && structuresByOwner.length === 0)) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-500 mx-auto" />
-          <p className="mt-2 text-slate-400">Loading structures...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (structuresByOwner.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          {updateError && (
-            <>
-              <p className="text-red-500">Failed to load structures</p>
-              <p className="text-sm text-slate-400 mb-4">{updateError}</p>
-            </>
-          )}
-          {!updateError && (
-            <p className="text-slate-400">
-              No structures loaded. Use the Update button in the header to fetch from ESI.
-            </p>
-          )}
-        </div>
-      </div>
-    )
-  }
+  const loadingState = (
+    <TabLoadingState
+      dataType="structures"
+      initialized={initialized}
+      isUpdating={isUpdating}
+      hasData={structuresByOwner.length > 0}
+      hasOwners={owners.length > 0}
+      updateError={updateError}
+      customEmptyCheck={{
+        condition: corpOwners.length === 0,
+        message: 'No corporation owners. Add a corporation to view structure data.',
+      }}
+    />
+  )
+  if (loadingState) return loadingState
 
   return (
     <>

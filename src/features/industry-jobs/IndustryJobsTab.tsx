@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useEffect, useMemo } from 'react'
 import {
-  Loader2,
   ChevronRight,
   ChevronDown,
   Hammer,
@@ -17,15 +16,10 @@ import { useAssetStore } from '@/store/asset-store'
 import { useIndustryJobsStore } from '@/store/industry-jobs-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useTabControls } from '@/context'
-import { useColumnSettings, type ColumnConfig } from '@/hooks'
+import { useColumnSettings, useCacheVersion, useExpandCollapse, type ColumnConfig } from '@/hooks'
 import { type ESIIndustryJob } from '@/api/endpoints/industry'
-import {
-  hasType,
-  getType,
-  hasLocation,
-  hasStructure,
-  subscribe,
-} from '@/store/reference-cache'
+import { hasType, getType, hasLocation, hasStructure } from '@/store/reference-cache'
+import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import { resolveTypes, resolveLocations } from '@/api/ref-client'
 import { resolveStructures } from '@/api/endpoints/universe'
 import {
@@ -263,8 +257,7 @@ export function IndustryJobsTab() {
     init()
   }, [init])
 
-  const [cacheVersion, setCacheVersion] = useState(0)
-  useEffect(() => subscribe(() => setCacheVersion((v) => v + 1)), [])
+  const cacheVersion = useCacheVersion()
 
   useEffect(() => {
     if (jobsByOwner.length === 0) return
@@ -306,8 +299,6 @@ export function IndustryJobsTab() {
       resolveStructures(structureToCharacter).catch(() => {})
     }
   }, [jobsByOwner])
-
-  const [expandedLocations, setExpandedLocations] = useState<Set<number>>(new Set())
 
   const { setExpandCollapse, search, setResultCount, setTotalValue, setColumns } = useTabControls()
   const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
@@ -410,46 +401,8 @@ export function IndustryJobsTab() {
     return sorted
   }, [jobsByOwner, cacheVersion, prices, search, activeOwnerId])
 
-  const toggleLocation = useCallback((locationId: number) => {
-    setExpandedLocations((prev) => {
-      const next = new Set(prev)
-      if (next.has(locationId)) next.delete(locationId)
-      else next.add(locationId)
-      return next
-    })
-  }, [])
-
-  const expandAll = useCallback(() => {
-    const allIds = locationGroups.map((g) => g.locationId)
-    setExpandedLocations(new Set(allIds))
-  }, [locationGroups])
-
-  const collapseAll = useCallback(() => {
-    setExpandedLocations(new Set())
-  }, [])
-
   const expandableIds = useMemo(() => locationGroups.map((g) => g.locationId), [locationGroups])
-  const isAllExpanded = expandableIds.length > 0 && expandableIds.every((id) => expandedLocations.has(id))
-
-  useEffect(() => {
-    if (expandableIds.length === 0) {
-      setExpandCollapse(null)
-      return
-    }
-
-    setExpandCollapse({
-      isExpanded: isAllExpanded,
-      toggle: () => {
-        if (isAllExpanded) {
-          collapseAll()
-        } else {
-          expandAll()
-        }
-      },
-    })
-
-    return () => setExpandCollapse(null)
-  }, [expandableIds, isAllExpanded, expandAll, collapseAll, setExpandCollapse])
+  const { isExpanded, toggle } = useExpandCollapse(expandableIds, setExpandCollapse)
 
   const totals = useMemo(() => {
     let activeCount = 0
@@ -490,42 +443,17 @@ export function IndustryJobsTab() {
     return () => setColumns([])
   }, [getColumnsForDropdown, setColumns])
 
-  if (owners.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-slate-400">No characters logged in. Add a character to view jobs.</p>
-      </div>
-    )
-  }
-
-  if (!initialized || (isUpdating && jobsByOwner.length === 0)) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-500 mx-auto" />
-          <p className="mt-2 text-slate-400">Loading industry jobs...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (jobsByOwner.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          {updateError && (
-            <>
-              <p className="text-red-500">Failed to load industry jobs</p>
-              <p className="text-sm text-slate-400 mb-4">{updateError}</p>
-            </>
-          )}
-          {!updateError && (
-            <p className="text-slate-400">No industry jobs loaded. Use the Update button in the header to fetch from ESI.</p>
-          )}
-        </div>
-      </div>
-    )
-  }
+  const loadingState = (
+    <TabLoadingState
+      dataType="industry jobs"
+      initialized={initialized}
+      isUpdating={isUpdating}
+      hasData={jobsByOwner.length > 0}
+      hasOwners={owners.length > 0}
+      updateError={updateError}
+    />
+  )
+  if (loadingState) return loadingState
 
   return (
     <div className="h-full rounded-lg border border-slate-700 overflow-auto">
@@ -538,8 +466,8 @@ export function IndustryJobsTab() {
           <LocationGroupRow
             key={group.locationId}
             group={group}
-            isExpanded={expandedLocations.has(group.locationId)}
-            onToggle={() => toggleLocation(group.locationId)}
+            isExpanded={isExpanded(group.locationId)}
+            onToggle={() => toggle(group.locationId)}
           />
         ))
       )}

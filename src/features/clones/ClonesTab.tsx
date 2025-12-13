@@ -1,17 +1,10 @@
-import { useEffect, useMemo, useState, useCallback } from 'react'
-import {
-  Loader2,
-  ChevronRight,
-  ChevronDown,
-  User,
-  Home,
-  MapPin,
-} from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { ChevronRight, ChevronDown, User, Home, MapPin } from 'lucide-react'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useClonesStore } from '@/store/clones-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useTabControls } from '@/context'
-import { useColumnSettings, type ColumnConfig } from '@/hooks'
+import { useColumnSettings, useCacheVersion, useExpandCollapse, type ColumnConfig } from '@/hooks'
 import {
   hasType,
   getType,
@@ -19,8 +12,8 @@ import {
   getLocation,
   hasStructure,
   getStructure,
-  subscribe,
 } from '@/store/reference-cache'
+import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import { resolveTypes, resolveLocations } from '@/api/ref-client'
 import { resolveStructures } from '@/api/endpoints/universe'
 import { cn } from '@/lib/utils'
@@ -196,8 +189,7 @@ export function ClonesTab() {
     init()
   }, [init])
 
-  const [cacheVersion, setCacheVersion] = useState(0)
-  useEffect(() => subscribe(() => setCacheVersion((v) => v + 1)), [])
+  const cacheVersion = useCacheVersion()
 
   useEffect(() => {
     if (clonesByOwner.length === 0) return
@@ -252,8 +244,6 @@ export function ClonesTab() {
       resolveStructures(structureToCharacter).catch(() => {})
     }
   }, [clonesByOwner])
-
-  const [expandedCharacters, setExpandedCharacters] = useState<Set<number>>(new Set())
 
   const { setExpandCollapse, search, setResultCount, setColumns } = useTabControls()
   const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
@@ -366,46 +356,8 @@ export function ClonesTab() {
     return sorted
   }, [clonesByOwner, cacheVersion, search, activeOwnerId])
 
-  const toggleCharacter = useCallback((ownerId: number) => {
-    setExpandedCharacters((prev) => {
-      const next = new Set(prev)
-      if (next.has(ownerId)) next.delete(ownerId)
-      else next.add(ownerId)
-      return next
-    })
-  }, [])
-
-  const expandAll = useCallback(() => {
-    const allIds = characterClones.map((c) => c.ownerId)
-    setExpandedCharacters(new Set(allIds))
-  }, [characterClones])
-
-  const collapseAll = useCallback(() => {
-    setExpandedCharacters(new Set())
-  }, [])
-
   const expandableIds = useMemo(() => characterClones.map((c) => c.ownerId), [characterClones])
-  const isAllExpanded = expandableIds.length > 0 && expandableIds.every((id) => expandedCharacters.has(id))
-
-  useEffect(() => {
-    if (expandableIds.length === 0) {
-      setExpandCollapse(null)
-      return
-    }
-
-    setExpandCollapse({
-      isExpanded: isAllExpanded,
-      toggle: () => {
-        if (isAllExpanded) {
-          collapseAll()
-        } else {
-          expandAll()
-        }
-      },
-    })
-
-    return () => setExpandCollapse(null)
-  }, [expandableIds, isAllExpanded, expandAll, collapseAll, setExpandCollapse])
+  const { isExpanded, toggle } = useExpandCollapse(expandableIds, setExpandCollapse)
 
   useEffect(() => {
     setResultCount({ showing: characterClones.length, total: clonesByOwner.length })
@@ -417,42 +369,17 @@ export function ClonesTab() {
     return () => setColumns([])
   }, [getColumnsForDropdown, setColumns])
 
-  if (owners.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-slate-400">No characters logged in. Add a character to view clones.</p>
-      </div>
-    )
-  }
-
-  if (!initialized || (isUpdating && clonesByOwner.length === 0)) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-500 mx-auto" />
-          <p className="mt-2 text-slate-400">Loading clones...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (clonesByOwner.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          {updateError && (
-            <>
-              <p className="text-red-500">Failed to load clones</p>
-              <p className="text-sm text-slate-400 mb-4">{updateError}</p>
-            </>
-          )}
-          {!updateError && (
-            <p className="text-slate-400">No clone data loaded. Use the Update button in the header to fetch from ESI.</p>
-          )}
-        </div>
-      </div>
-    )
-  }
+  const loadingState = (
+    <TabLoadingState
+      dataType="clones"
+      initialized={initialized}
+      isUpdating={isUpdating}
+      hasData={clonesByOwner.length > 0}
+      hasOwners={owners.length > 0}
+      updateError={updateError}
+    />
+  )
+  if (loadingState) return loadingState
 
   return (
     <div className="h-full rounded-lg border border-slate-700 overflow-auto">
@@ -465,8 +392,8 @@ export function ClonesTab() {
           <CharacterClonesSection
             key={data.ownerId}
             data={data}
-            isExpanded={expandedCharacters.has(data.ownerId)}
-            onToggle={() => toggleCharacter(data.ownerId)}
+            isExpanded={isExpanded(data.ownerId)}
+            onToggle={() => toggle(data.ownerId)}
           />
         ))
       )}

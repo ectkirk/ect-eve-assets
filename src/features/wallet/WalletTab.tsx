@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, useCallback } from 'react'
-import { Loader2, ChevronRight, ChevronDown, Wallet, Building2 } from 'lucide-react'
+import { useEffect, useMemo } from 'react'
+import { ChevronRight, ChevronDown, Wallet, Building2 } from 'lucide-react'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useWalletStore, isCorporationWallet } from '@/store/wallet-store'
 import { useDivisionsStore } from '@/store/divisions-store'
@@ -7,7 +7,8 @@ import { useAssetData } from '@/hooks/useAssetData'
 import { OwnerIcon } from '@/components/ui/type-icon'
 import { cn, formatISK } from '@/lib/utils'
 import { useTabControls } from '@/context'
-import { useColumnSettings, type ColumnConfig } from '@/hooks'
+import { useColumnSettings, useExpandCollapse, type ColumnConfig } from '@/hooks'
+import { TabLoadingState } from '@/components/ui/tab-loading-state'
 
 const DEFAULT_WALLET_NAMES = [
   'Master Wallet',
@@ -51,28 +52,6 @@ export function WalletTab() {
     }
   }, [divisionsInitialized, owners, fetchDivisionsForOwner])
 
-  const [expandedOwners, setExpandedOwners] = useState<Set<string>>(new Set())
-
-  const toggleOwner = useCallback((ownerKey: string) => {
-    setExpandedOwners((prev) => {
-      const next = new Set(prev)
-      if (next.has(ownerKey)) next.delete(ownerKey)
-      else next.add(ownerKey)
-      return next
-    })
-  }, [])
-
-  const expandAll = useCallback(() => {
-    const allKeys = walletsByOwner
-      .filter((w) => isCorporationWallet(w))
-      .map((w) => `${w.owner.type}-${w.owner.id}`)
-    setExpandedOwners(new Set(allKeys))
-  }, [walletsByOwner])
-
-  const collapseAll = useCallback(() => {
-    setExpandedOwners(new Set())
-  }, [])
-
   const { setExpandCollapse, search, setResultCount, setTotalValue, setColumns } = useTabControls()
 
   const WALLET_COLUMNS: ColumnConfig[] = useMemo(() => [
@@ -87,27 +66,7 @@ export function WalletTab() {
     [walletsByOwner]
   )
 
-  const isAllExpanded = expandableKeys.length > 0 && expandableKeys.every((k) => expandedOwners.has(k))
-
-  useEffect(() => {
-    if (expandableKeys.length === 0) {
-      setExpandCollapse(null)
-      return
-    }
-
-    setExpandCollapse({
-      isExpanded: isAllExpanded,
-      toggle: () => {
-        if (isAllExpanded) {
-          collapseAll()
-        } else {
-          expandAll()
-        }
-      },
-    })
-
-    return () => setExpandCollapse(null)
-  }, [expandableKeys, isAllExpanded, expandAll, collapseAll, setExpandCollapse])
+  const { isExpanded, toggle } = useExpandCollapse(expandableKeys, setExpandCollapse)
 
   const totalBalance = useMemo(() => {
     let total = 0
@@ -162,49 +121,24 @@ export function WalletTab() {
     return () => setColumns([])
   }, [getColumnsForDropdown, setColumns])
 
-  if (owners.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-slate-400">No characters logged in. Add a character to view wallets.</p>
-      </div>
-    )
-  }
-
-  if (!initialized || (isUpdating && walletsByOwner.length === 0)) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-500 mx-auto" />
-          <p className="mt-2 text-slate-400">Loading wallets...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (walletsByOwner.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          {updateError && (
-            <>
-              <p className="text-red-500">Failed to load wallets</p>
-              <p className="text-sm text-slate-400 mb-4">{updateError}</p>
-            </>
-          )}
-          {!updateError && (
-            <p className="text-slate-400">No wallet data loaded. Use the Update button in the header to fetch from ESI.</p>
-          )}
-        </div>
-      </div>
-    )
-  }
+  const loadingState = (
+    <TabLoadingState
+      dataType="wallets"
+      initialized={initialized}
+      isUpdating={isUpdating}
+      hasData={walletsByOwner.length > 0}
+      hasOwners={owners.length > 0}
+      updateError={updateError}
+    />
+  )
+  if (loadingState) return loadingState
 
   return (
     <div className="h-full rounded-lg border border-slate-700 overflow-auto">
       {sortedWallets.map((wallet) => {
         const key = `${wallet.owner.type}-${wallet.owner.id}`
         const isCorp = isCorporationWallet(wallet)
-        const isExpanded = expandedOwners.has(key)
+        const expanded = isExpanded(key)
 
         let ownerTotal = 0
         if (isCorp) {
@@ -218,14 +152,14 @@ export function WalletTab() {
         return (
           <div key={key} className="border-b border-slate-700 last:border-b-0">
             <button
-              onClick={() => isCorp && toggleOwner(key)}
+              onClick={() => isCorp && toggle(key)}
               className={cn(
                 'w-full flex items-center gap-3 px-4 py-3 text-left',
                 isCorp && 'hover:bg-slate-800/50'
               )}
             >
               {isCorp ? (
-                isExpanded ? (
+                expanded ? (
                   <ChevronDown className="h-4 w-4 text-slate-400" />
                 ) : (
                   <ChevronRight className="h-4 w-4 text-slate-400" />
@@ -249,7 +183,7 @@ export function WalletTab() {
               </span>
             </button>
 
-            {isCorp && isExpanded && (
+            {isCorp && expanded && (
               <div className="px-4 pb-3">
                 {wallet.divisions
                   .sort((a, b) => a.division - b.division)
