@@ -19,6 +19,7 @@ import { formatBlueprintName } from '@/store/blueprints-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useContractsStore } from '@/store/contracts-store'
+import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { useSettingsStore } from '@/store/settings-store'
 import { TypeIcon, OwnerIcon } from '@/components/ui/type-icon'
 import { formatNumber, cn } from '@/lib/utils'
@@ -47,6 +48,7 @@ interface AssetRow {
   ownerName: string
   ownerType: 'character' | 'corporation'
   isInContract?: boolean
+  isInMarketOrder?: boolean
 }
 
 
@@ -125,6 +127,7 @@ const columns: ColumnDef<AssetRow>[] = [
       const isBpc = row.original.isBlueprintCopy
       const categoryId = row.original.categoryId
       const isContract = row.original.isInContract
+      const isMarketOrder = row.original.isInMarketOrder
 
       return (
         <div className="flex items-center gap-2">
@@ -132,6 +135,9 @@ const columns: ColumnDef<AssetRow>[] = [
           <span className={isBpc ? 'text-cyan-400' : ''}>{typeName}</span>
           {isContract && (
             <span className="text-xs text-yellow-400 bg-yellow-500/20 px-1.5 py-0.5 rounded">In Contract</span>
+          )}
+          {isMarketOrder && (
+            <span className="text-xs text-blue-400 bg-blue-500/20 px-1.5 py-0.5 rounded">Sell Order</span>
           )}
         </div>
       )
@@ -268,7 +274,9 @@ export function AssetsTab() {
   } = useAssetData()
 
   const contractsByOwner = useContractsStore((s) => s.contractsByOwner)
+  const ordersByOwner = useMarketOrdersStore((s) => s.dataByOwner)
   const showContractItems = useSettingsStore((s) => s.showContractItemsInAssets)
+  const showMarketOrders = useSettingsStore((s) => s.showMarketOrdersInAssets)
 
   const [sorting, setSorting] = useState<SortingState>([{ id: 'totalValue', desc: true }])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
@@ -455,6 +463,66 @@ export function AssetsTab() {
       }
     }
 
+    if (showMarketOrders) {
+      for (const { owner, orders } of ordersByOwner) {
+        for (const order of orders) {
+          if (order.is_buy_order) continue
+          if (order.volume_remain <= 0) continue
+
+          const locationId = order.location_id
+          let locationName = ''
+          let systemName = ''
+          let regionName = ''
+
+          if (locationId > 1_000_000_000_000) {
+            const structure = getStructure(locationId)
+            locationName = structure?.name ?? `Structure ${locationId}`
+            if (structure?.solarSystemId) {
+              const system = getLocation(structure.solarSystemId)
+              systemName = system?.name ?? ''
+              regionName = system?.regionName ?? ''
+            }
+          } else if (locationId >= 60_000_000) {
+            const location = getLocation(locationId)
+            locationName = location?.name ?? `Location ${locationId}`
+            systemName = location?.solarSystemName ?? ''
+            regionName = location?.regionName ?? ''
+          }
+
+          const sdeType = getType(order.type_id)
+          const typeName = getTypeName(order.type_id)
+          const volume = sdeType?.packagedVolume ?? sdeType?.volume ?? 0
+          const price = prices.get(order.type_id) ?? 0
+          const isAbyssal = isAbyssalTypeId(order.type_id)
+
+          rows.push({
+            itemId: order.order_id,
+            typeId: order.type_id,
+            typeName,
+            quantity: order.volume_remain,
+            locationId,
+            locationName,
+            systemName,
+            regionName,
+            locationFlag: 'Sell Order',
+            isSingleton: false,
+            isBlueprintCopy: false,
+            price,
+            totalValue: price * order.volume_remain,
+            volume,
+            totalVolume: volume * order.volume_remain,
+            categoryId: sdeType?.categoryId ?? 0,
+            categoryName: isAbyssal ? 'Abyssals' : (sdeType?.categoryName ?? ''),
+            groupName: sdeType?.groupName ?? '',
+            ownerId: owner.id,
+            ownerName: owner.name,
+            ownerType: owner.type,
+            isInMarketOrder: true,
+          })
+        }
+      }
+    }
+
     const aggregated = new Map<string, AssetRow>()
     for (const row of rows) {
       const isBlueprint = row.categoryId === CategoryIds.BLUEPRINT
@@ -474,7 +542,7 @@ export function AssetsTab() {
     }
 
     return Array.from(aggregated.values())
-  }, [assetsByOwner, prices, assetNames, cacheVersion, showContractItems, contractsByOwner, owners])
+  }, [assetsByOwner, prices, assetNames, cacheVersion, showContractItems, contractsByOwner, owners, showMarketOrders, ordersByOwner])
 
   const categories = useMemo(() => {
     const cats = new Set<string>()
@@ -550,7 +618,7 @@ export function AssetsTab() {
   }, [filteredData.length, data.length, setResultCount])
 
   const filteredTotalValue = useMemo(() => {
-    return filteredData.reduce((sum, row) => row.isInContract ? sum : sum + row.totalValue, 0)
+    return filteredData.reduce((sum, row) => (row.isInContract || row.isInMarketOrder) ? sum : sum + row.totalValue, 0)
   }, [filteredData])
 
   useEffect(() => {
@@ -652,6 +720,7 @@ export function AssetsTab() {
                 const row = rows[virtualRow.index]
                 if (!row) return null
                 const isContract = row.original.isInContract
+                const isMarketOrder = row.original.isInMarketOrder
                 return (
                   <div key={row.id} data-index={virtualRow.index} className="contents group">
                     {row.getVisibleCells().map((cell) => (
@@ -660,7 +729,8 @@ export function AssetsTab() {
                         className={cn(
                           'py-2 text-sm border-b border-slate-700/50 group-hover:bg-slate-700/50 flex items-center',
                           cell.column.id === 'ownerName' ? 'px-2' : 'px-4',
-                          isContract && 'bg-yellow-500/10'
+                          isContract && 'bg-yellow-500/10',
+                          isMarketOrder && 'bg-blue-500/10'
                         )}
                       >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}

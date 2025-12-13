@@ -462,6 +462,8 @@ function SettingsButton() {
   const panelRef = useRef<HTMLDivElement>(null)
   const showContractItems = useSettingsStore((s) => s.showContractItemsInAssets)
   const setShowContractItems = useSettingsStore((s) => s.setShowContractItemsInAssets)
+  const showMarketOrders = useSettingsStore((s) => s.showMarketOrdersInAssets)
+  const setShowMarketOrders = useSettingsStore((s) => s.setShowMarketOrdersInAssets)
 
   useEffect(() => {
     if (!isOpen) return
@@ -497,6 +499,15 @@ function SettingsButton() {
                 {showContractItems && <Check className="h-4 w-4 text-blue-400" />}
               </span>
               Show contract items in Assets
+            </button>
+            <button
+              onClick={() => setShowMarketOrders(!showMarketOrders)}
+              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-slate-300 hover:bg-slate-700"
+            >
+              <span className="flex h-4 w-4 items-center justify-center">
+                {showMarketOrders && <Check className="h-4 w-4 text-blue-400" />}
+              </span>
+              Show sell orders in Assets
             </button>
           </div>
         </div>
