@@ -11,9 +11,9 @@ interface SettingsState {
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
-      showContractItemsInAssets: false,
+      showContractItemsInAssets: true,
       setShowContractItemsInAssets: (value) => set({ showContractItemsInAssets: value }),
-      showMarketOrdersInAssets: false,
+      showMarketOrdersInAssets: true,
       setShowMarketOrdersInAssets: (value) => set({ showMarketOrdersInAssets: value }),
     }),
     { name: 'settings' }
