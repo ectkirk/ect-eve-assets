@@ -21,12 +21,12 @@ export interface AssetTotals {
 export function useTotalAssets(): AssetTotals {
   const assetsByOwner = useAssetStore((s) => s.assetsByOwner)
   const prices = useAssetStore((s) => s.prices)
-  const ordersByOwner = useMarketOrdersStore((s) => s.ordersByOwner)
-  const jobsByOwner = useIndustryJobsStore((s) => s.jobsByOwner)
+  const ordersByOwner = useMarketOrdersStore((s) => s.dataByOwner)
+  const jobsByOwner = useIndustryJobsStore((s) => s.dataByOwner)
   const contractsByOwner = useContractsStore((s) => s.contractsByOwner)
   const contractsUpdateCounter = useContractsStore((s) => s.updateCounter)
-  const walletsByOwner = useWalletStore((s) => s.walletsByOwner)
-  const structuresByOwner = useStructuresStore((s) => s.structuresByOwner)
+  const walletsByOwner = useWalletStore((s) => s.dataByOwner)
+  const structuresByOwner = useStructuresStore((s) => s.dataByOwner)
   const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
 
   return useMemo(() => {

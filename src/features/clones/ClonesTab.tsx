@@ -183,7 +183,7 @@ export function ClonesTab() {
   const ownersRecord = useAuthStore((s) => s.owners)
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
 
-  const clonesByOwner = useClonesStore((s) => s.clonesByOwner)
+  const clonesByOwner = useClonesStore((s) => s.dataByOwner)
   const clonesUpdating = useClonesStore((s) => s.isUpdating)
   const updateError = useClonesStore((s) => s.updateError)
   const init = useClonesStore((s) => s.init)

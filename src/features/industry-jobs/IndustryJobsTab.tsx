@@ -250,7 +250,7 @@ export function IndustryJobsTab() {
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
 
   const prices = useAssetStore((s) => s.prices)
-  const jobsByOwner = useIndustryJobsStore((s) => s.jobsByOwner)
+  const jobsByOwner = useIndustryJobsStore((s) => s.dataByOwner)
   const jobsUpdating = useIndustryJobsStore((s) => s.isUpdating)
   const updateError = useIndustryJobsStore((s) => s.updateError)
   const init = useIndustryJobsStore((s) => s.init)

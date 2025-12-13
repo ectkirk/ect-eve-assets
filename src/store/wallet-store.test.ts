@@ -34,7 +34,7 @@ describe('wallet-store', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     useWalletStore.setState({
-      walletsByOwner: [],
+      dataByOwner: [],
       isUpdating: false,
       updateError: null,
       initialized: false,
@@ -62,7 +62,7 @@ describe('wallet-store', () => {
   describe('initial state', () => {
     it('has correct initial values', () => {
       const state = useWalletStore.getState()
-      expect(state.walletsByOwner).toEqual([])
+      expect(state.dataByOwner).toEqual([])
       expect(state.isUpdating).toBe(false)
       expect(state.updateError).toBeNull()
       expect(state.initialized).toBe(false)
@@ -76,7 +76,7 @@ describe('wallet-store', () => {
 
     it('sums character balances', () => {
       useWalletStore.setState({
-        walletsByOwner: [
+        dataByOwner: [
           { owner: createMockOwner({ id: 1, name: 'A', type: 'character' }), balance: 1000000 },
           { owner: createMockOwner({ id: 2, name: 'B', type: 'character' }), balance: 2000000 },
         ],
@@ -86,7 +86,7 @@ describe('wallet-store', () => {
 
     it('sums corporation division balances', () => {
       useWalletStore.setState({
-        walletsByOwner: [
+        dataByOwner: [
           {
             owner: createMockOwner({ id: 98000001, characterId: 12345, name: 'Corp', type: 'corporation' }),
             divisions: [
@@ -101,7 +101,7 @@ describe('wallet-store', () => {
 
     it('sums both character and corporation balances', () => {
       useWalletStore.setState({
-        walletsByOwner: [
+        dataByOwner: [
           { owner: createMockOwner({ id: 1, name: 'A', type: 'character' }), balance: 1000000 },
           {
             owner: createMockOwner({ id: 98000001, characterId: 1, name: 'Corp', type: 'corporation' }),
@@ -140,8 +140,8 @@ describe('wallet-store', () => {
       await useWalletStore.getState().update(true)
 
       expect(esi.fetchWithMeta).toHaveBeenCalled()
-      expect(useWalletStore.getState().walletsByOwner).toHaveLength(1)
-      expect((useWalletStore.getState().walletsByOwner[0] as { balance: number }).balance).toBe(5000000)
+      expect(useWalletStore.getState().dataByOwner).toHaveLength(1)
+      expect((useWalletStore.getState().dataByOwner[0] as { balance: number }).balance).toBe(5000000)
     })
 
     it('fetches corporation wallets', async () => {
@@ -164,7 +164,7 @@ describe('wallet-store', () => {
       await useWalletStore.getState().update(true)
 
       expect(esi.fetchWithMeta).toHaveBeenCalled()
-      expect(useWalletStore.getState().walletsByOwner).toHaveLength(1)
+      expect(useWalletStore.getState().dataByOwner).toHaveLength(1)
     })
 
     it('handles fetch errors gracefully', async () => {
@@ -178,7 +178,7 @@ describe('wallet-store', () => {
 
       await useWalletStore.getState().update(true)
 
-      expect(useWalletStore.getState().walletsByOwner).toHaveLength(0)
+      expect(useWalletStore.getState().dataByOwner).toHaveLength(0)
       expect(useWalletStore.getState().isUpdating).toBe(false)
     })
   })
@@ -186,14 +186,14 @@ describe('wallet-store', () => {
   describe('clear', () => {
     it('resets store state', async () => {
       useWalletStore.setState({
-        walletsByOwner: [{ owner: {} as never, balance: 1000000 }],
+        dataByOwner: [{ owner: {} as never, balance: 1000000 }],
         updateError: 'error',
       })
 
       await useWalletStore.getState().clear()
 
       const state = useWalletStore.getState()
-      expect(state.walletsByOwner).toHaveLength(0)
+      expect(state.dataByOwner).toHaveLength(0)
       expect(state.updateError).toBeNull()
     })
   })

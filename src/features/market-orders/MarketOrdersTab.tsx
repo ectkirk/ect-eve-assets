@@ -173,7 +173,7 @@ export function MarketOrdersTab() {
   const ownersRecord = useAuthStore((s) => s.owners)
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
 
-  const ordersByOwner = useMarketOrdersStore((s) => s.ordersByOwner)
+  const ordersByOwner = useMarketOrdersStore((s) => s.dataByOwner)
   const ordersUpdating = useMarketOrdersStore((s) => s.isUpdating)
   const updateError = useMarketOrdersStore((s) => s.updateError)
   const init = useMarketOrdersStore((s) => s.init)

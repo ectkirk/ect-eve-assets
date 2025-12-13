@@ -34,7 +34,7 @@ describe('clones-store', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     useClonesStore.setState({
-      clonesByOwner: [],
+      dataByOwner: [],
       isUpdating: false,
       updateError: null,
       initialized: false,
@@ -44,7 +44,7 @@ describe('clones-store', () => {
   describe('initial state', () => {
     it('has correct initial values', () => {
       const state = useClonesStore.getState()
-      expect(state.clonesByOwner).toEqual([])
+      expect(state.dataByOwner).toEqual([])
       expect(state.isUpdating).toBe(false)
       expect(state.updateError).toBeNull()
       expect(state.initialized).toBe(false)
@@ -52,13 +52,14 @@ describe('clones-store', () => {
   })
 
   describe('update', () => {
-    it('sets error when no characters logged in', async () => {
+    it('does nothing when no characters logged in', async () => {
       const { useAuthStore } = await import('./auth-store')
       vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({}))
 
       await useClonesStore.getState().update(true)
 
-      expect(useClonesStore.getState().updateError).toBe('No characters logged in')
+      expect(useClonesStore.getState().updateError).toBeNull()
+      expect(useClonesStore.getState().isUpdating).toBe(false)
     })
 
     it('only fetches for character owners', async () => {
@@ -110,8 +111,8 @@ describe('clones-store', () => {
 
       await useClonesStore.getState().update(true)
 
-      expect(useClonesStore.getState().clonesByOwner).toHaveLength(1)
-      expect(useClonesStore.getState().clonesByOwner[0]?.activeImplants).toEqual([22118, 22119])
+      expect(useClonesStore.getState().dataByOwner).toHaveLength(1)
+      expect(useClonesStore.getState().dataByOwner[0]?.activeImplants).toEqual([22118, 22119])
     })
 
     it('handles fetch errors gracefully', async () => {
@@ -125,7 +126,7 @@ describe('clones-store', () => {
 
       await useClonesStore.getState().update(true)
 
-      expect(useClonesStore.getState().clonesByOwner).toHaveLength(0)
+      expect(useClonesStore.getState().dataByOwner).toHaveLength(0)
       expect(useClonesStore.getState().isUpdating).toBe(false)
     })
   })
@@ -133,14 +134,14 @@ describe('clones-store', () => {
   describe('clear', () => {
     it('resets store state', async () => {
       useClonesStore.setState({
-        clonesByOwner: [{ owner: {} as never, clones: {} as never, activeImplants: [] }],
+        dataByOwner: [{ owner: {} as never, clones: {} as never, activeImplants: [] }],
         updateError: 'error',
       })
 
       await useClonesStore.getState().clear()
 
       const state = useClonesStore.getState()
-      expect(state.clonesByOwner).toHaveLength(0)
+      expect(state.dataByOwner).toHaveLength(0)
       expect(state.updateError).toBeNull()
     })
   })

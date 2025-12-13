@@ -24,7 +24,7 @@ describe('market-orders-store', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     useMarketOrdersStore.setState({
-      ordersByOwner: [],
+      dataByOwner: [],
       isUpdating: false,
       updateError: null,
       initialized: false,
@@ -38,7 +38,7 @@ describe('market-orders-store', () => {
   describe('initial state', () => {
     it('has correct initial values', () => {
       const state = useMarketOrdersStore.getState()
-      expect(state.ordersByOwner).toEqual([])
+      expect(state.dataByOwner).toEqual([])
       expect(state.isUpdating).toBe(false)
       expect(state.updateError).toBeNull()
       expect(state.initialized).toBe(false)
@@ -96,8 +96,8 @@ describe('market-orders-store', () => {
       await useMarketOrdersStore.getState().update(false)
 
       expect(esi.fetchPaginatedWithMeta).toHaveBeenCalled()
-      expect(useMarketOrdersStore.getState().ordersByOwner).toHaveLength(1)
-      expect(useMarketOrdersStore.getState().ordersByOwner[0]?.orders).toHaveLength(1)
+      expect(useMarketOrdersStore.getState().dataByOwner).toHaveLength(1)
+      expect(useMarketOrdersStore.getState().dataByOwner[0]?.orders).toHaveLength(1)
 
       const expiry = useExpiryCacheStore.getState().endpoints.get('character-12345:/characters/12345/orders/')
       expect(expiry?.expiresAt).toBeGreaterThanOrEqual(futureExpiry - 1000)
@@ -159,7 +159,7 @@ describe('market-orders-store', () => {
 
       await useMarketOrdersStore.getState().update(true)
 
-      expect(useMarketOrdersStore.getState().ordersByOwner).toHaveLength(0)
+      expect(useMarketOrdersStore.getState().dataByOwner).toHaveLength(0)
       expect(useMarketOrdersStore.getState().isUpdating).toBe(false)
     })
   })
@@ -167,14 +167,14 @@ describe('market-orders-store', () => {
   describe('clear', () => {
     it('resets store state', async () => {
       useMarketOrdersStore.setState({
-        ordersByOwner: [{ owner: {} as never, orders: [] }],
+        dataByOwner: [{ owner: {} as never, orders: [] }],
         updateError: 'some error',
       })
 
       await useMarketOrdersStore.getState().clear()
 
       const state = useMarketOrdersStore.getState()
-      expect(state.ordersByOwner).toHaveLength(0)
+      expect(state.dataByOwner).toHaveLength(0)
       expect(state.updateError).toBeNull()
     })
   })

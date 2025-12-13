@@ -35,7 +35,7 @@ describe('industry-jobs-store', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     useIndustryJobsStore.setState({
-      jobsByOwner: [],
+      dataByOwner: [],
       isUpdating: false,
       updateError: null,
       initialized: false,
@@ -45,7 +45,7 @@ describe('industry-jobs-store', () => {
   describe('initial state', () => {
     it('has correct initial values', () => {
       const state = useIndustryJobsStore.getState()
-      expect(state.jobsByOwner).toEqual([])
+      expect(state.dataByOwner).toEqual([])
       expect(state.isUpdating).toBe(false)
       expect(state.updateError).toBeNull()
       expect(state.initialized).toBe(false)
@@ -98,7 +98,7 @@ describe('industry-jobs-store', () => {
       await useIndustryJobsStore.getState().update(true)
 
       expect(esi.fetchWithMeta).toHaveBeenCalled()
-      expect(useIndustryJobsStore.getState().jobsByOwner).toHaveLength(1)
+      expect(useIndustryJobsStore.getState().dataByOwner).toHaveLength(1)
     })
 
     it('fetches corporation jobs for corporation owners', async () => {
@@ -131,7 +131,7 @@ describe('industry-jobs-store', () => {
 
       await useIndustryJobsStore.getState().update(true)
 
-      expect(useIndustryJobsStore.getState().jobsByOwner).toHaveLength(0)
+      expect(useIndustryJobsStore.getState().dataByOwner).toHaveLength(0)
       expect(useIndustryJobsStore.getState().isUpdating).toBe(false)
     })
   })
@@ -139,14 +139,14 @@ describe('industry-jobs-store', () => {
   describe('clear', () => {
     it('resets store state', async () => {
       useIndustryJobsStore.setState({
-        jobsByOwner: [{ owner: {} as never, jobs: [] }],
+        dataByOwner: [{ owner: {} as never, jobs: [] }],
         updateError: 'error',
       })
 
       await useIndustryJobsStore.getState().clear()
 
       const state = useIndustryJobsStore.getState()
-      expect(state.jobsByOwner).toHaveLength(0)
+      expect(state.dataByOwner).toHaveLength(0)
       expect(state.updateError).toBeNull()
     })
   })

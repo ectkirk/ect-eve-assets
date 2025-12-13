@@ -23,7 +23,7 @@ export function WalletTab() {
   const ownersRecord = useAuthStore((s) => s.owners)
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
 
-  const walletsByOwner = useWalletStore((s) => s.walletsByOwner)
+  const walletsByOwner = useWalletStore((s) => s.dataByOwner)
   const walletUpdating = useWalletStore((s) => s.isUpdating)
   const updateError = useWalletStore((s) => s.updateError)
   const init = useWalletStore((s) => s.init)

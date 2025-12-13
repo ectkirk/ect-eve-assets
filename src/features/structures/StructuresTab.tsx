@@ -146,7 +146,7 @@ export function StructuresTab() {
   const ownersRecord = useAuthStore((s) => s.owners)
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
 
-  const structuresByOwner = useStructuresStore((s) => s.structuresByOwner)
+  const structuresByOwner = useStructuresStore((s) => s.dataByOwner)
   const isUpdating = useStructuresStore((s) => s.isUpdating)
   const updateError = useStructuresStore((s) => s.updateError)
   const init = useStructuresStore((s) => s.init)
