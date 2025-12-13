@@ -12,6 +12,43 @@ import type { ESIRequestOptions } from './services/esi/types.js'
 // User data storage path
 const userDataPath = app.getPath('userData')
 const storageFile = path.join(userDataPath, 'auth-storage.json')
+const windowStateFile = path.join(userDataPath, 'window-state.json')
+
+interface WindowState {
+  x?: number
+  y?: number
+  width: number
+  height: number
+  isMaximized?: boolean
+}
+
+const DEFAULT_WINDOW_STATE: WindowState = {
+  width: 1800,
+  height: 900,
+}
+
+function loadWindowState(): WindowState {
+  try {
+    if (fs.existsSync(windowStateFile)) {
+      const data = JSON.parse(fs.readFileSync(windowStateFile, 'utf-8'))
+      if (data.width && data.height) {
+        return data
+      }
+    }
+  } catch (err) {
+    console.error('[WindowState] Failed to load:', err)
+  }
+  return DEFAULT_WINDOW_STATE
+}
+
+function saveWindowState(state: WindowState): void {
+  try {
+    fs.mkdirSync(userDataPath, { recursive: true })
+    fs.writeFileSync(windowStateFile, JSON.stringify(state, null, 2), 'utf-8')
+  } catch (err) {
+    console.error('[WindowState] Failed to save:', err)
+  }
+}
 
 function canEncrypt(): boolean {
   return safeStorage.isEncryptionAvailable()
@@ -80,9 +117,13 @@ let restoreBounds: Electron.Rectangle | null = null
 const characterTokens = new Map<number, string>()
 
 function createWindow() {
+  const savedState = loadWindowState()
+
   mainWindow = new BrowserWindow({
-    width: 1400,
-    height: 900,
+    x: savedState.x,
+    y: savedState.y,
+    width: savedState.width,
+    height: savedState.height,
     minWidth: 1024,
     minHeight: 768,
     frame: false,
@@ -96,6 +137,26 @@ function createWindow() {
     title: 'ECT EVE Assets',
     backgroundColor: '#0f172a',
   })
+
+  if (savedState.isMaximized) {
+    mainWindow.maximize()
+  }
+
+  const saveCurrentState = () => {
+    if (!mainWindow) return
+    const bounds = mainWindow.getBounds()
+    saveWindowState({
+      x: bounds.x,
+      y: bounds.y,
+      width: bounds.width,
+      height: bounds.height,
+      isMaximized: mainWindow.isMaximized(),
+    })
+  }
+
+  mainWindow.on('close', saveCurrentState)
+  mainWindow.on('resized', saveCurrentState)
+  mainWindow.on('moved', saveCurrentState)
 
   // Open external links in default browser (validate protocol)
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
