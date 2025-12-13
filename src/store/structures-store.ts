@@ -211,7 +211,7 @@ export const useStructuresStore = create<StructuresStore>((set, get) => ({
           await saveOwnerToDB(ownerKey, owner, structures)
           existingStructures.set(ownerKey, { owner, structures })
 
-          useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag)
+          useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag, structures.length === 0)
         } catch (err) {
           logger.error('Failed to fetch structures', err instanceof Error ? err : undefined, {
             module: 'StructuresStore',
@@ -255,7 +255,7 @@ export const useStructuresStore = create<StructuresStore>((set, get) => ({
       const { data: structures, expiresAt, etag } = await fetchOwnerStructuresWithMeta(owner)
 
       await saveOwnerToDB(ownerKey, owner, structures)
-      useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag)
+      useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag, structures.length === 0)
 
       const updated = state.structuresByOwner.filter(
         (os) => `${os.owner.type}-${os.owner.id}` !== ownerKey

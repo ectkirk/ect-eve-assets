@@ -226,7 +226,7 @@ export const useIndustryJobsStore = create<IndustryJobsStore>((set, get) => ({
           await saveOwnerToDB(ownerKey, owner, jobs)
           existingJobs.set(ownerKey, { owner, jobs })
 
-          useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag)
+          useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag, jobs.length === 0)
         } catch (err) {
           logger.error('Failed to fetch industry jobs', err instanceof Error ? err : undefined, {
             module: 'IndustryJobsStore',
@@ -290,7 +290,7 @@ export const useIndustryJobsStore = create<IndustryJobsStore>((set, get) => ({
       const { data: jobs, expiresAt, etag } = await fetchOwnerJobsWithMeta(owner)
 
       await saveOwnerToDB(ownerKey, owner, jobs)
-      useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag)
+      useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag, jobs.length === 0)
 
       const productTypeIds = new Set<number>()
       for (const job of jobs) {

@@ -232,7 +232,7 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
           await saveOwnerToDB(ownerKey, owner, orders)
           existingOrders.set(ownerKey, { owner, orders })
 
-          useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag)
+          useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag, orders.length === 0)
         } catch (err) {
           logger.error('Failed to fetch market orders', err instanceof Error ? err : undefined, {
             module: 'MarketOrdersStore',
@@ -274,7 +274,7 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
       const { data: orders, expiresAt, etag } = await fetchOwnerOrdersWithMeta(owner)
 
       await saveOwnerToDB(ownerKey, owner, orders)
-      useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag)
+      useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag, orders.length === 0)
 
       const updated = state.ordersByOwner.filter(
         (oo) => `${oo.owner.type}-${oo.owner.id}` !== ownerKey

@@ -6,6 +6,7 @@ const DB_NAME = 'ecteveassets-expiry'
 const DB_VERSION = 1
 const STORE_EXPIRY = 'expiry'
 const POLL_INTERVAL_MS = 60_000
+const EMPTY_RESULT_CACHE_MS = 60 * 60 * 1000
 
 export interface EndpointExpiry {
   expiresAt: number
@@ -31,7 +32,7 @@ interface ExpiryCacheState {
 
 interface ExpiryCacheActions {
   init: () => Promise<void>
-  setExpiry: (ownerKey: string, endpoint: string, expiresAt: number, etag?: string | null) => void
+  setExpiry: (ownerKey: string, endpoint: string, expiresAt: number, etag?: string | null, isEmpty?: boolean) => void
   getExpiry: (ownerKey: string, endpoint: string) => EndpointExpiry | undefined
   isExpired: (ownerKey: string, endpoint: string) => boolean
   registerRefreshCallback: (endpointPattern: string, callback: RefreshCallback) => () => void
@@ -294,11 +295,23 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
     }
   },
 
-  setExpiry: (ownerKey, endpoint, expiresAt, etag) => {
+  setExpiry: (ownerKey, endpoint, expiresAt, etag, isEmpty) => {
     const key = makeKey(ownerKey, endpoint)
-    const MIN_EXPIRY_MS = 15 * 60 * 1000
-    const minExpiry = Date.now() + MIN_EXPIRY_MS
-    const effectiveExpiry = Math.max(expiresAt, minExpiry)
+    const now = Date.now()
+    const cacheTime = expiresAt - now
+
+    let effectiveExpiry = expiresAt
+    if (isEmpty && cacheTime < EMPTY_RESULT_CACHE_MS) {
+      effectiveExpiry = now + EMPTY_RESULT_CACHE_MS
+      logger.debug('Extended cache for empty result', {
+        module: 'ExpiryCacheStore',
+        ownerKey,
+        endpoint,
+        originalCacheMinutes: Math.round(cacheTime / 60000),
+        extendedCacheMinutes: 60,
+      })
+    }
+
     const expiry: EndpointExpiry = { expiresAt: effectiveExpiry, etag: etag ?? null }
 
     set((state) => {

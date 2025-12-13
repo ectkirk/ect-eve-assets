@@ -315,7 +315,7 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
           await saveOwnerToDB(currentOwnerKey, owner, contractsWithItems)
           existingContracts.set(currentOwnerKey, { owner, contracts: contractsWithItems })
 
-          useExpiryCacheStore.getState().setExpiry(currentOwnerKey, endpoint, expiresAt, etag)
+          useExpiryCacheStore.getState().setExpiry(currentOwnerKey, endpoint, expiresAt, etag, contracts.length === 0)
 
           logger.debug('Contract items', {
             module: 'ContractsStore',
@@ -421,7 +421,7 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
       }))
 
       await saveOwnerToDB(currentOwnerKey, owner, contractsWithItems)
-      useExpiryCacheStore.getState().setExpiry(currentOwnerKey, endpoint, expiresAt, etag)
+      useExpiryCacheStore.getState().setExpiry(currentOwnerKey, endpoint, expiresAt, etag, contracts.length === 0)
 
       const updated = state.contractsByOwner.filter(
         (oc) => `${oc.owner.type}-${oc.owner.id}` !== currentOwnerKey
