@@ -33,8 +33,8 @@ function ModuleList({ title, modules }: { title: string; modules: { type_id: num
 
   return (
     <div>
-      <h4 className="text-sm font-medium text-slate-300 mb-1">{title}</h4>
-      <ul className="text-sm text-slate-400 space-y-0.5">
+      <h4 className="text-sm font-medium text-content mb-1">{title}</h4>
+      <ul className="text-sm text-content-secondary space-y-0.5">
         {filtered.map((m, i) => (
           <li key={i}>
             {m.quantity > 1 ? `${m.quantity}x ` : ''}{m.type_name}
@@ -193,7 +193,7 @@ export function FittingDialog({ open, onOpenChange, shipNode }: FittingDialogPro
           </div>
           <button
             onClick={copyFitting}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded border border-slate-600 hover:bg-slate-800 transition-colors mr-6"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded border border-border hover:bg-surface-secondary transition-colors mr-6"
           >
             {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
             {copied ? 'Copied!' : 'Copy Fitting'}
@@ -203,7 +203,7 @@ export function FittingDialog({ open, onOpenChange, shipNode }: FittingDialogPro
         <div className="flex flex-col items-center">
           {loading ? (
             <div className="flex items-center justify-center" style={{ width: 398, height: 398 }}>
-              <span className="text-slate-400">Loading...</span>
+              <span className="text-content-secondary">Loading...</span>
             </div>
           ) : (
             <FittingWheel

@@ -156,23 +156,23 @@ export function WalletTab() {
     }
 
     return (
-      <div key={key} className="border-b border-slate-700/50 last:border-b-0">
+      <div key={key} className="border-b border-border/50 last:border-b-0">
         <button
           onClick={() => isCorp && toggle(key)}
           className={cn(
             'w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm',
-            isCorp ? 'hover:bg-slate-800/50 cursor-pointer' : 'cursor-default'
+            isCorp ? 'hover:bg-surface-secondary/50 cursor-pointer' : 'cursor-default'
           )}
         >
           <div className="w-4 flex justify-center">
             {isCorp ? (
               expanded ? (
-                <ChevronDown className="h-4 w-4 text-slate-400" />
+                <ChevronDown className="h-4 w-4 text-content-secondary" />
               ) : (
-                <ChevronRight className="h-4 w-4 text-slate-400" />
+                <ChevronRight className="h-4 w-4 text-content-secondary" />
               )
             ) : (
-              <Wallet className="h-4 w-4 text-slate-500" />
+              <Wallet className="h-4 w-4 text-content-muted" />
             )}
           </div>
           <OwnerIcon
@@ -180,7 +180,7 @@ export function WalletTab() {
             ownerType={wallet.owner.type}
             size="md"
           />
-          <span className="flex-1 text-slate-200">{wallet.owner.name}</span>
+          <span className="flex-1 text-content">{wallet.owner.name}</span>
           <span
             className={cn(
               'tabular-nums',
@@ -205,8 +205,8 @@ export function WalletTab() {
                     key={div.division}
                     className="flex items-center gap-3 py-1.5 pl-12 pr-4 text-sm"
                   >
-                    <Building2 className="h-3.5 w-3.5 text-slate-500" />
-                    <span className="text-slate-400 flex-1">
+                    <Building2 className="h-3.5 w-3.5 text-content-muted" />
+                    <span className="text-content-secondary flex-1">
                       {displayName}
                     </span>
                     <span
@@ -229,9 +229,9 @@ export function WalletTab() {
   return (
     <div className="h-full overflow-auto">
       {characterWallets.length > 0 && (
-        <div className="rounded-lg border border-slate-700 bg-slate-800/30">
-          <div className="px-4 py-2 border-b border-slate-700 bg-slate-800/50">
-            <span className="text-xs font-medium uppercase tracking-wider text-slate-400">
+        <div className="rounded-lg border border-border bg-surface-secondary/30">
+          <div className="px-4 py-2 border-b border-border bg-surface-secondary/50">
+            <span className="text-xs font-medium uppercase tracking-wider text-content-secondary">
               Characters
             </span>
           </div>
@@ -244,9 +244,9 @@ export function WalletTab() {
       )}
 
       {corporationWallets.length > 0 && (
-        <div className="rounded-lg border border-slate-700 bg-slate-800/30">
-          <div className="px-4 py-2 border-b border-slate-700 bg-slate-800/50">
-            <span className="text-xs font-medium uppercase tracking-wider text-slate-400">
+        <div className="rounded-lg border border-border bg-surface-secondary/30">
+          <div className="px-4 py-2 border-b border-border bg-surface-secondary/50">
+            <span className="text-xs font-medium uppercase tracking-wider text-content-secondary">
               Corporations
             </span>
           </div>
