@@ -17,7 +17,7 @@ import { WalletTab } from '@/features/wallet'
 import { ManufacturingTab } from '@/features/manufacturing'
 import { BlueprintResearchTab, CopyingTab } from '@/features/research'
 import { CalculatorTab } from '@/features/calculator'
-import { BuybackTab, BUYBACK_TABS, type BuybackTabType } from '@/features/buyback'
+import { BuybackTab, BUYBACK_TABS, getConfigByTabName, type BuybackTabType } from '@/features/buyback'
 import { Loader2, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp, Search, X, AlertTriangle, Minus, Square, Copy, Settings } from 'lucide-react'
 import { useSettingsStore } from '@/store/settings-store'
 import eveSsoLoginWhite from '/eve-sso-login-white.png'
@@ -599,65 +599,79 @@ function MainLayoutInner() {
         </div>
         <div className="flex-1" />
         <div className="flex items-center gap-4" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
-          {mode === 'assets' && <HeaderControls />}
+          <HeaderControls />
           <WindowControls />
         </div>
       </header>
 
-      {/* Tab Navigation - hidden for buyback mode (has its own internal tabs) */}
-      {mode !== 'buyback' && (
-        <nav className="flex items-center border-b border-slate-700 bg-slate-800 px-2">
-          <div className="flex gap-1">
-            {mode === 'assets' ? (
-              ASSET_TABS.map((tab) => (
+      {/* Tab Navigation */}
+      <nav className="flex items-center border-b border-slate-700 bg-slate-800 px-2">
+        <div className="flex gap-1">
+          {mode === 'assets' ? (
+            ASSET_TABS.map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveAssetTab(tab)}
+                className={`px-3 py-2 text-sm transition-colors ${
+                  activeAssetTab === tab
+                    ? 'border-b-2 border-blue-500 text-blue-500'
+                    : 'text-slate-400 hover:text-slate-50'
+                }`}
+              >
+                {tab}
+              </button>
+            ))
+          ) : mode === 'tools' ? (
+            TOOL_TABS.map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveToolTab(tab)}
+                className={`px-3 py-2 text-sm transition-colors ${
+                  activeToolTab === tab
+                    ? 'border-b-2 border-blue-500 text-blue-500'
+                    : 'text-slate-400 hover:text-slate-50'
+                }`}
+              >
+                {tab}
+              </button>
+            ))
+          ) : (
+            BUYBACK_TABS.map((tab) => {
+              const config = getConfigByTabName(tab)
+              return (
                 <button
                   key={tab}
-                  onClick={() => setActiveAssetTab(tab)}
-                  className={`px-3 py-2 text-sm transition-colors ${
-                    activeAssetTab === tab
+                  onClick={() => setActiveBuybackTab(tab)}
+                  className={`flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
+                    activeBuybackTab === tab
                       ? 'border-b-2 border-blue-500 text-blue-500'
                       : 'text-slate-400 hover:text-slate-50'
                   }`}
                 >
+                  {config && <span className={`h-2 w-2 rounded-full ${config.color}`} />}
                   {tab}
                 </button>
-              ))
-            ) : (
-              TOOL_TABS.map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveToolTab(tab)}
-                  className={`px-3 py-2 text-sm transition-colors ${
-                    activeToolTab === tab
-                      ? 'border-b-2 border-blue-500 text-blue-500'
-                      : 'text-slate-400 hover:text-slate-50'
-                  }`}
-                >
-                  {tab}
-                </button>
-              ))
-            )}
-          </div>
-          <div className="flex-1" />
-          <OwnerButton />
-        </nav>
-      )}
+              )
+            })
+          )}
+        </div>
+        <div className="flex-1" />
+        <OwnerButton />
+      </nav>
 
       {/* Search Bar - only for assets mode */}
       {mode === 'assets' && <SearchBar />}
 
       {/* Content Area */}
-      {mode === 'buyback' ? (
-        <BuybackTab activeTab={activeBuybackTab} onTabChange={setActiveBuybackTab} />
-      ) : (
-        <main className="flex-1 overflow-auto p-4">
-          {mode === 'assets' ? (
-            <AssetTabContent tab={activeAssetTab} />
-          ) : (
-            <ToolTabContent tab={activeToolTab} />
-          )}
-        </main>
-      )}
+      <main className="flex-1 overflow-auto p-4">
+        {mode === 'assets' ? (
+          <AssetTabContent tab={activeAssetTab} />
+        ) : mode === 'tools' ? (
+          <ToolTabContent tab={activeToolTab} />
+        ) : (
+          <BuybackTab activeTab={activeBuybackTab} />
+        )}
+      </main>
     </div>
   )
 }

@@ -1,2 +1,2 @@
 export { BuybackTab } from './BuybackTab'
-export { BUYBACK_TABS, type BuybackTabType } from './config'
+export { BUYBACK_TABS, getConfigByTabName, type BuybackTabType } from './config'
