@@ -39,8 +39,9 @@ npm run build
 ## EVE SSO
 
 1. Register at https://developers.eveonline.com/
-2. Callback: `http://localhost/callback`
-3. Required scopes:
+2. Callback: `http://localhost:52742/callback`
+3. Copy `.env.example` to `.env` and add your client ID
+4. Required scopes:
    - `publicData`
    - `esi-assets.read_assets.v1`
    - `esi-characters.read_blueprints.v1`
@@ -59,7 +60,6 @@ npm run build
      - `esi-industry.read_corporation_jobs.v1`
      - `esi-markets.read_corporation_orders.v1`
      - `esi-wallet.read_corporation_wallets.v1`
-4. Set `EVE_CLIENT_ID` environment variable
 
 ## License
 

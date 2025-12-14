@@ -7,9 +7,9 @@ Thank you for your interest in contributing!
 1. Clone the repository
 2. Install dependencies: `npm install`
 3. Register an EVE SSO application at https://developers.eveonline.com/
-   - Callback URL: `http://localhost/callback`
+   - Callback URL: `http://localhost:52742/callback`
    - See README.md for required scopes
-4. Set environment variable: `export EVE_CLIENT_ID="your-client-id"`
+4. Copy `.env.example` to `.env` and add your client ID
 5. Start development: `npm run dev`
 
 ## Before Submitting

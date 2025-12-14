@@ -36,7 +36,7 @@ const EVE_SSO = {
   revokeUrl: 'https://login.eveonline.com/v2/oauth/revoke',
   jwksUrl: 'https://login.eveonline.com/oauth/jwks',
   issuer: 'https://login.eveonline.com',
-  clientId: 'ff72276da5e947b3a64763038d22ef53',
+  clientId: process.env.EVE_CLIENT_ID || '',
 }
 
 const CALLBACK_PORT = 52742
@@ -371,6 +371,11 @@ export function cancelAuth(): void {
 
 export async function startAuth(includeCorporationScopes = false): Promise<AuthResult> {
   logger.info('Starting EVE SSO authentication', { module: 'Auth', includeCorporationScopes })
+
+  if (!EVE_SSO.clientId) {
+    logger.error('EVE_CLIENT_ID environment variable is not set', undefined, { module: 'Auth' })
+    return { success: false, error: 'EVE_CLIENT_ID environment variable is not set' }
+  }
 
   if (pendingAuth) {
     cancelAuth()
