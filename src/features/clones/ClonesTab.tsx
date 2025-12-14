@@ -129,10 +129,10 @@ function CharacterClonesSection({
   onToggle: () => void
 }) {
   return (
-    <div className="border-b border-slate-700 last:border-b-0">
+    <div className="border-b border-slate-700/50 last:border-b-0">
       <button
         onClick={onToggle}
-        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-800/50 text-left"
+        className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-800/50 text-left text-sm"
       >
         {isExpanded ? (
           <ChevronDown className="h-4 w-4 text-slate-400" />
@@ -380,7 +380,7 @@ export function ClonesTab() {
   if (loadingState) return loadingState
 
   return (
-    <div className="h-full rounded-lg border border-slate-700 overflow-auto">
+    <div className="h-full rounded-lg border border-slate-700 bg-slate-800/30 overflow-auto">
       {characterClones.length === 0 ? (
         <div className="flex items-center justify-center h-full">
           <p className="text-slate-400">No clone data available.</p>
