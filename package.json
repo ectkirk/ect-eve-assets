@@ -35,6 +35,7 @@
     "productName": "ECT EVE Assets",
     "copyright": "Copyright © 2025 EC Trade (edencom.net)",
     "directories": {
+      "buildResources": "resources",
       "output": "release"
     },
     "files": [
