@@ -94,15 +94,31 @@ export function Calculator({ result }: CalculatorProps) {
       </div>
 
       {result.unmatchedItems.length > 0 && (
-        <div className="rounded-lg border border-yellow-600/50 bg-yellow-900/20 p-4">
-          <h3 className="mb-2 font-medium text-yellow-400">
+        <div className="rounded-lg border border-red-600/50 bg-red-900/20 p-4">
+          <h3 className="mb-2 font-medium text-red-400">
             Unmatched Items ({result.unmatchedItems.length})
           </h3>
           <p className="mb-2 text-sm text-slate-400">
             These items could not be found in the database:
           </p>
-          <ul className="list-inside list-disc text-sm text-yellow-300">
+          <ul className="list-inside list-disc text-sm text-red-300">
             {result.unmatchedItems.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {result.lowVolumeItems?.length > 0 && (
+        <div className="rounded-lg border border-amber-600/50 bg-amber-900/20 p-4">
+          <h3 className="mb-2 font-medium text-amber-400">
+            Low Volume Items ({result.lowVolumeItems.length})
+          </h3>
+          <p className="mb-2 text-sm text-slate-400">
+            These items have market orders but unreliable price history:
+          </p>
+          <ul className="list-inside list-disc text-sm text-amber-300">
+            {result.lowVolumeItems.map((item) => (
               <li key={item}>{item}</li>
             ))}
           </ul>

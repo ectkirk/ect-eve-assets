@@ -277,6 +277,7 @@ declare global {
       assetSafetyFee: number
     }
     unmatchedItems: string[]
+    lowVolumeItems: string[]
     buybackValues: {
       highSec: number
       lowSec: number
