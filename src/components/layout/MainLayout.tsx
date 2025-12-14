@@ -16,6 +16,8 @@ import { ContractsTab } from '@/features/contracts'
 import { WalletTab } from '@/features/wallet'
 import { ManufacturingTab } from '@/features/manufacturing'
 import { ResearchTab } from '@/features/research'
+import { CalculatorTab } from '@/features/calculator'
+import { BuybackTab, BUYBACK_TABS, type BuybackTabType } from '@/features/buyback'
 import { Loader2, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp, Search, X, User, AlertTriangle, Minus, Square, Copy, Settings } from 'lucide-react'
 import { useSettingsStore } from '@/store/settings-store'
 import eveSsoLoginWhite from '/eve-sso-login-white.png'
@@ -27,7 +29,7 @@ import { useTotalAssets } from '@/hooks'
 import { formatNumber } from '@/lib/utils'
 import { TabControlsProvider, useTabControls } from '@/context'
 
-type AppMode = 'assets' | 'tools'
+type AppMode = 'assets' | 'tools' | 'buyback'
 
 const ASSET_TABS = [
   'Assets',
@@ -47,6 +49,7 @@ const ASSET_TABS = [
 const TOOL_TABS = [
   'Manufacturing',
   'Research',
+  'Calculator',
 ] as const
 
 type AssetTab = (typeof ASSET_TABS)[number]
@@ -87,6 +90,8 @@ function ToolTabContent({ tab }: { tab: ToolTab }) {
       return <ManufacturingTab />
     case 'Research':
       return <ResearchTab />
+    case 'Calculator':
+      return <CalculatorTab />
   }
 }
 
@@ -114,8 +119,12 @@ function ModeSwitcher({ mode, onModeChange }: { mode: AppMode; onModeChange: (mo
         Tools
       </button>
       <button
-        onClick={() => window.open('https://edencom.net/buyback', '_blank')}
-        className="rounded px-3 py-1 text-sm font-medium transition-colors text-slate-400 hover:text-slate-200"
+        onClick={() => onModeChange('buyback')}
+        className={`rounded px-3 py-1 text-sm font-medium transition-colors ${
+          mode === 'buyback'
+            ? 'bg-slate-600 text-white'
+            : 'text-slate-400 hover:text-slate-200'
+        }`}
       >
         Buyback
       </button>
@@ -553,6 +562,7 @@ function MainLayoutInner() {
   const [mode, setMode] = useState<AppMode>('assets')
   const [activeAssetTab, setActiveAssetTab] = useState<AssetTab>('Assets')
   const [activeToolTab, setActiveToolTab] = useState<ToolTab>('Manufacturing')
+  const [activeBuybackTab, setActiveBuybackTab] = useState<BuybackTabType>(BUYBACK_TABS[1])
 
   return (
     <div className="flex h-full flex-col">
@@ -586,58 +596,64 @@ function MainLayoutInner() {
         </div>
       </header>
 
-      {/* Tab Navigation */}
-      <nav className="flex items-center justify-between border-b border-slate-700 bg-slate-800 px-2">
-        <div className="flex gap-1">
-          {mode === 'assets' ? (
-            ASSET_TABS.map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveAssetTab(tab)}
-                className={`px-3 py-2 text-sm transition-colors ${
-                  activeAssetTab === tab
-                    ? 'border-b-2 border-blue-500 text-blue-500'
-                    : 'text-slate-400 hover:text-slate-50'
-                }`}
-              >
-                {tab}
-              </button>
-            ))
-          ) : (
-            TOOL_TABS.map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveToolTab(tab)}
-                className={`px-3 py-2 text-sm transition-colors ${
-                  activeToolTab === tab
-                    ? 'border-b-2 border-blue-500 text-blue-500'
-                    : 'text-slate-400 hover:text-slate-50'
-                }`}
-              >
-                {tab}
-              </button>
-            ))
-          )}
-        </div>
-        {mode === 'assets' && (
-          <div className="flex items-center gap-2 py-1">
-            <ExpandCollapseButton />
-            <ColumnsDropdown />
+      {/* Tab Navigation - hidden for buyback mode (has its own internal tabs) */}
+      {mode !== 'buyback' && (
+        <nav className="flex items-center justify-between border-b border-slate-700 bg-slate-800 px-2">
+          <div className="flex gap-1">
+            {mode === 'assets' ? (
+              ASSET_TABS.map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveAssetTab(tab)}
+                  className={`px-3 py-2 text-sm transition-colors ${
+                    activeAssetTab === tab
+                      ? 'border-b-2 border-blue-500 text-blue-500'
+                      : 'text-slate-400 hover:text-slate-50'
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))
+            ) : (
+              TOOL_TABS.map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveToolTab(tab)}
+                  className={`px-3 py-2 text-sm transition-colors ${
+                    activeToolTab === tab
+                      ? 'border-b-2 border-blue-500 text-blue-500'
+                      : 'text-slate-400 hover:text-slate-50'
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))
+            )}
           </div>
-        )}
-      </nav>
+          {mode === 'assets' && (
+            <div className="flex items-center gap-2 py-1">
+              <ExpandCollapseButton />
+              <ColumnsDropdown />
+            </div>
+          )}
+        </nav>
+      )}
 
       {/* Search Bar - only for assets mode */}
       {mode === 'assets' && <SearchBar />}
 
       {/* Content Area */}
-      <main className="flex-1 overflow-auto p-4">
-        {mode === 'assets' ? (
-          <AssetTabContent tab={activeAssetTab} />
-        ) : (
-          <ToolTabContent tab={activeToolTab} />
-        )}
-      </main>
+      {mode === 'buyback' ? (
+        <BuybackTab activeTab={activeBuybackTab} onTabChange={setActiveBuybackTab} />
+      ) : (
+        <main className="flex-1 overflow-auto p-4">
+          {mode === 'assets' ? (
+            <AssetTabContent tab={activeAssetTab} />
+          ) : (
+            <ToolTabContent tab={activeToolTab} />
+          )}
+        </main>
+      )}
     </div>
   )
 }

@@ -194,6 +194,95 @@ export interface SystemListItem {
 
 export type SystemsResult = SystemListItem[] | { error: string }
 
+export interface BuybackConfig {
+  buyRate: number
+  iskPerM3: number
+  acceptCapitals: boolean
+  assetSafetyRate?: number
+}
+
+export interface BuybackItem {
+  itemName: string
+  quantity: number
+  typeId: number | null
+  totalVolume: number
+  jitaBuyPrice: number
+  jitaSellPrice: number
+  buybackValue: number
+  matched: boolean
+  profitable: boolean
+  isCapital: boolean
+  assetSafetyCost?: number
+}
+
+export interface BuybackTotals {
+  itemCount: number
+  matchedCount: number
+  profitableCount: number
+  totalVolume: number
+  jitaBuyTotal: number
+  jitaSellTotal: number
+  capitalValue: number
+  assetSafetyCost: number
+  buybackValue: number
+}
+
+export interface BuybackResult {
+  items: BuybackItem[]
+  totals: BuybackTotals
+  unmatchedItems: string[]
+  lowVolumeItems: string[]
+  excludedItems: string[]
+  unprofitableItems: string[]
+  excludedCrystals: string[]
+  excludedRigs: string[]
+  excludedCapitals: string[]
+  blueprintCopies: string[]
+  unpricedCapitals: string[]
+  error?: string
+}
+
+export interface BuybackCalculatorItem {
+  itemName: string
+  quantity: number
+  typeId: number
+  volume: number
+  totalVolume: number
+  groupId: number
+  groupName: string
+  jitaBuyPrice: number
+  jitaSellPrice: number
+  totalJitaBuy: number
+  totalJitaSell: number
+  averagePrice: number | null
+  priceStatus: 'normal' | 'no_average' | 'no_price'
+  capitalBuyPricing?: { period: string; saleCount: number }
+  capitalSellPricing?: { period: string; saleCount: number }
+}
+
+export interface BuybackCalculatorResult {
+  items: BuybackCalculatorItem[]
+  totals: {
+    totalJitaBuy: number
+    totalJitaSell: number
+    totalVolume: number
+    itemCount: number
+    assetSafetyFee: number
+  }
+  unmatchedItems: string[]
+  buybackValues: {
+    highSec: number
+    lowSec: number
+    nullSec: number
+    assetSafety: number
+  }
+  capitalPricing?: {
+    standard: { totalValue: number; count: number; period: string; saleCount: number }
+    extended: { totalValue: number; count: number; period: string; saleCount: number }
+  }
+  error?: string
+}
+
 export interface ESIRequestOptions {
   method?: 'GET' | 'POST'
   body?: string
@@ -241,6 +330,8 @@ export interface ElectronAPI {
   refBlueprintResearch: (params: BlueprintResearchParams) => Promise<BlueprintResearchResult>
   refBlueprints: () => Promise<BlueprintsResult>
   refSystems: () => Promise<SystemsResult>
+  refBuybackCalculate: (text: string, config: BuybackConfig) => Promise<BuybackResult>
+  refBuybackCalculator: (text: string) => Promise<BuybackCalculatorResult>
   mutamarketModule: (itemId: number) => Promise<MutamarketResult>
   onUpdateAvailable: (callback: (version: string) => void) => () => void
   onUpdateDownloadProgress: (callback: (percent: number) => void) => () => void
@@ -296,6 +387,9 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.invoke('ref:blueprintResearch', params),
   refBlueprints: () => ipcRenderer.invoke('ref:blueprints'),
   refSystems: () => ipcRenderer.invoke('ref:systems'),
+  refBuybackCalculate: (text: string, config: BuybackConfig) =>
+    ipcRenderer.invoke('ref:buybackCalculate', text, config),
+  refBuybackCalculator: (text: string) => ipcRenderer.invoke('ref:buybackCalculator', text),
   mutamarketModule: (itemId: number) => ipcRenderer.invoke('mutamarket:module', itemId),
   onUpdateAvailable: (callback: (version: string) => void) => {
     const handler = (_event: unknown, version: string) => callback(version)

@@ -563,6 +563,63 @@ ipcMain.handle('ref:systems', async () => {
   }
 })
 
+ipcMain.handle(
+  'ref:buybackCalculate',
+  async (
+    _event,
+    text: unknown,
+    config: unknown
+  ): Promise<object | { error: string }> => {
+    if (typeof text !== 'string' || !text.trim()) {
+      return { error: 'Text is required' }
+    }
+    if (typeof config !== 'object' || config === null) {
+      return { error: 'Config is required' }
+    }
+
+    try {
+      const response = await fetch(`${REF_API_BASE}/buyback/calculate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, config }),
+      })
+      if (!response.ok) {
+        const errorText = await response.text()
+        return { error: `HTTP ${response.status}: ${errorText}` }
+      }
+      return await response.json()
+    } catch (err) {
+      logger.error('ref:buybackCalculate fetch failed', err, { module: 'Main' })
+      return { error: String(err) }
+    }
+  }
+)
+
+ipcMain.handle(
+  'ref:buybackCalculator',
+  async (_event, text: unknown): Promise<object | { error: string }> => {
+    if (typeof text !== 'string' || !text.trim()) {
+      return { error: 'Text is required' }
+    }
+
+    try {
+      const response = await fetch(`${REF_API_BASE}/buyback/calculator`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      })
+      if (!response.ok) {
+        const errorText = await response.text()
+        return { error: `HTTP ${response.status}: ${errorText}` }
+      }
+      return await response.json()
+    } catch (err) {
+      logger.error('ref:buybackCalculator fetch failed', err, { module: 'Main' })
+      return { error: String(err) }
+    }
+  }
+)
+
 const MUTAMARKET_API_BASE = 'https://mutamarket.com/api'
 const MUTAMARKET_TIMEOUT_MS = 5000
 
