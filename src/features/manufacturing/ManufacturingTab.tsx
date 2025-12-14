@@ -26,12 +26,15 @@ const SECURITY_STATUS = [
 
 function formatDuration(isoStr: string | undefined): string {
   if (!isoStr) return '-'
-  const match = isoStr.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/)
+  // Handle P{days}DT{hours}H{minutes}M{seconds}S format
+  const match = isoStr.match(/^P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/)
   if (!match) return isoStr
-  const hours = parseInt(match[1] || '0', 10)
-  const minutes = parseInt(match[2] || '0', 10)
-  const seconds = parseInt(match[3] || '0', 10)
+  const days = parseInt(match[1] || '0', 10)
+  const hours = parseInt(match[2] || '0', 10)
+  const minutes = parseInt(match[3] || '0', 10)
+  const seconds = parseInt(match[4] || '0', 10)
   const parts: string[] = []
+  if (days > 0) parts.push(`${days}d`)
   if (hours > 0) parts.push(`${hours}h`)
   if (minutes > 0) parts.push(`${minutes}m`)
   if (seconds > 0 || parts.length === 0) parts.push(`${seconds}s`)
