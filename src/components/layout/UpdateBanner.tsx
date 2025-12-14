@@ -22,7 +22,7 @@ export function UpdateBanner() {
   }
 
   return (
-    <div className="flex items-center justify-between bg-accent px-4 py-2 text-sm text-white">
+    <div className="flex items-center justify-between bg-accent px-4 py-2 text-sm text-accent-foreground">
       <div className="flex items-center gap-2">
         <Download className="h-4 w-4" />
         <span>Version {updateReady} is ready to install</span>
@@ -30,7 +30,7 @@ export function UpdateBanner() {
       <div className="flex items-center gap-2">
         <button
           onClick={handleInstall}
-          className="rounded bg-white px-3 py-1 text-sm font-medium text-accent hover:opacity-90"
+          className="rounded bg-surface-inverse px-3 py-1 text-sm font-medium text-surface-inverse-foreground hover:opacity-90"
         >
           Restart Now
         </button>

@@ -258,7 +258,7 @@ export function BlueprintResearchTab() {
           <button
             onClick={handleCalculate}
             disabled={loading || !blueprint || !system}
-            className="w-full flex items-center justify-center gap-2 rounded bg-blue-600 px-4 py-2 text-sm font-medium hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full flex items-center justify-center gap-2 rounded bg-action px-4 py-2 text-sm font-medium hover:bg-action-hover disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" />

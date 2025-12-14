@@ -90,7 +90,7 @@ export function ToastContainer() {
       >
         <Bell className="h-5 w-5 text-content-secondary" />
         {unseenCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-xs font-medium text-white">
+          <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-xs font-medium text-accent-foreground">
             {unseenCount > 99 ? '99+' : unseenCount}
           </span>
         )}

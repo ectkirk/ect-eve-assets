@@ -59,11 +59,11 @@ export function BuybackTab({ activeTab }: BuybackTabProps) {
   return (
     <div className="mx-auto max-w-5xl">
       <div className="mb-6">
-        <h1 className="mb-2 flex items-center gap-3 text-2xl font-bold text-white">
+        <h1 className="mb-2 flex items-center gap-3 text-2xl font-bold text-content">
           EC Trade Buyback
           {config && (
             <span
-              className={`rounded px-2 py-0.5 text-xs font-semibold text-white ${config.color}`}
+              className={`rounded px-2 py-0.5 text-xs font-semibold ${config.colorForeground} ${config.color}`}
             >
               {config.name}
             </span>

@@ -59,12 +59,12 @@ export function Calculator({ result }: CalculatorProps) {
   return (
     <div className="space-y-6">
       <div className="rounded-lg border border-border bg-surface-secondary/50 p-6">
-        <h2 className="mb-4 text-lg font-semibold text-white">Overview</h2>
+        <h2 className="mb-4 text-lg font-semibold text-content">Overview</h2>
 
         <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <div className="rounded-lg bg-surface-tertiary/50 p-4">
             <div className="text-xs text-content-secondary">Total m³</div>
-            <div className="text-lg font-semibold text-white">
+            <div className="text-lg font-semibold text-content">
               {formatVolume(result.totals.totalVolume)}
             </div>
           </div>
@@ -88,7 +88,7 @@ export function Calculator({ result }: CalculatorProps) {
           </div>
           <div className="rounded-lg bg-surface-tertiary/50 p-4">
             <div className="text-xs text-content-secondary">Items</div>
-            <div className="text-lg font-semibold text-white">{result.totals.itemCount}</div>
+            <div className="text-lg font-semibold text-content">{result.totals.itemCount}</div>
           </div>
         </div>
       </div>
@@ -127,14 +127,14 @@ export function Calculator({ result }: CalculatorProps) {
 
       <div className="rounded-lg border border-border bg-surface-secondary/50 p-6">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-white">Items ({result.items.length})</h2>
+          <h2 className="text-lg font-semibold text-content">Items ({result.items.length})</h2>
           <div className="flex items-center gap-4 text-xs">
             <div className="flex items-center gap-1.5">
-              <span className="h-3 w-3 rounded bg-amber-700/50"></span>
+              <span className="h-3 w-3 rounded bg-row-warning"></span>
               <span className="text-content-secondary">Low sales volume</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="h-3 w-3 rounded bg-red-900/50"></span>
+              <span className="h-3 w-3 rounded bg-row-danger"></span>
               <span className="text-content-secondary">No market data</span>
             </div>
           </div>
@@ -203,9 +203,9 @@ export function Calculator({ result }: CalculatorProps) {
 function ItemRow({ item }: { item: BuybackCalculatorItem }) {
   const rowClass =
     item.priceStatus === 'no_price'
-      ? 'bg-red-900/20'
+      ? 'bg-row-danger'
       : item.priceStatus === 'no_average'
-        ? 'bg-amber-700/20'
+        ? 'bg-row-warning'
         : ''
 
   return (
@@ -230,7 +230,7 @@ function ItemRow({ item }: { item: BuybackCalculatorItem }) {
                 {item.itemName}
               </a>
               {item.capitalSellPricing && (
-                <span className="rounded bg-violet-900/50 px-1.5 py-0.5 text-xs text-violet-300">
+                <span className="rounded bg-status-time/20 px-1.5 py-0.5 text-xs text-status-time">
                   {item.capitalSellPricing.period} · {item.capitalSellPricing.saleCount} sales
                 </span>
               )}

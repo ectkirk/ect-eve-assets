@@ -212,7 +212,7 @@ export function ManufacturingTab() {
           <button
             onClick={handleCalculate}
             disabled={loading || !product || !system}
-            className="w-full flex items-center justify-center gap-2 rounded bg-blue-600 px-4 py-2 text-sm font-medium hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full flex items-center justify-center gap-2 rounded bg-action px-4 py-2 text-sm font-medium hover:bg-action-hover disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -278,7 +278,7 @@ export function ManufacturingTab() {
                   <Clock className="h-4 w-4" />
                   <span className="text-sm">Time</span>
                 </div>
-                <div className="text-xl font-bold text-purple-400">
+                <div className="text-xl font-bold text-status-time">
                   {formatDuration(result.time)}
                 </div>
                 <div className="text-xs text-content-muted mt-1">

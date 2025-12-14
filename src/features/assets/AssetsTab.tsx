@@ -729,8 +729,8 @@ export function AssetsTab() {
                         className={cn(
                           'py-2 text-sm border-b border-border/50 group-hover:bg-surface-tertiary/50 flex items-center',
                           cell.column.id === 'ownerName' ? 'px-2' : 'px-4',
-                          isContract && 'bg-yellow-500/10',
-                          isMarketOrder && 'bg-blue-500/10'
+                          isContract && 'bg-row-contract',
+                          isMarketOrder && 'bg-row-order'
                         )}
                       >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}

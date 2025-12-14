@@ -8,7 +8,7 @@ function FAQItem({ question, children }: { question: string; children: React.Rea
     <div className="border-b border-border last:border-b-0">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex w-full items-center justify-between py-4 text-left text-content hover:text-white"
+        className="flex w-full items-center justify-between py-4 text-left text-content hover:text-accent"
       >
         <span className="font-medium">{question}</span>
         <svg
@@ -30,7 +30,7 @@ export function BuybackFAQ() {
 
   return (
     <div className="rounded-lg border border-border bg-surface-secondary/50 p-6">
-      <h2 className="mb-4 text-xl font-semibold text-white">Frequently Asked Questions</h2>
+      <h2 className="mb-4 text-xl font-semibold text-content">Frequently Asked Questions</h2>
       <div className="divide-y divide-border">
         <FAQItem question="How is your buyback calculated?">
           <p className="mb-2">

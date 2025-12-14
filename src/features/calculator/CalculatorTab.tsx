@@ -34,7 +34,7 @@ export function CalculatorTab() {
   return (
     <div className="mx-auto max-w-5xl">
       <div className="mb-6">
-        <h1 className="mb-2 text-2xl font-bold text-white">Price Calculator</h1>
+        <h1 className="mb-2 text-2xl font-bold text-content">Price Calculator</h1>
         <p className="text-content-secondary">
           Look up Jita buy and sell prices for any EVE items.
         </p>

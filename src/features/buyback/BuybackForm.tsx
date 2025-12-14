@@ -52,7 +52,7 @@ export function BuybackForm({
           className={`w-full rounded-lg border px-4 py-3 font-mono text-sm transition-colors focus:outline-none ${
             hasQuote
               ? 'cursor-not-allowed border-border bg-surface text-content-muted'
-              : 'border-border bg-surface-secondary text-content placeholder-content-muted focus:border-accent focus:ring-2 focus:ring-blue-500/20'
+              : 'border-border bg-surface-secondary text-content placeholder-content-muted focus:border-accent focus:ring-2 focus:ring-action/20'
           }`}
           disabled={isLoading || hasQuote}
         />
@@ -66,7 +66,7 @@ export function BuybackForm({
           <button
             type="button"
             onClick={handleReset}
-            className="rounded-lg bg-blue-600 px-6 py-2.5 font-medium text-white transition-colors hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 focus:outline-none"
+            className="rounded-lg bg-action px-6 py-2.5 font-medium text-action-foreground transition-colors hover:bg-action-hover focus:ring-2 focus:ring-action focus:ring-offset-2 focus:ring-offset-surface focus:outline-none"
           >
             {resetLabel}
           </button>
@@ -75,7 +75,7 @@ export function BuybackForm({
             <button
               type="submit"
               disabled={!text.trim() || isLoading}
-              className="rounded-lg bg-blue-600 px-6 py-2.5 font-medium text-white transition-colors hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-lg bg-action px-6 py-2.5 font-medium text-action-foreground transition-colors hover:bg-action-hover focus:ring-2 focus:ring-action focus:ring-offset-2 focus:ring-offset-surface focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isLoading ? (
                 <span className="flex items-center gap-2">
@@ -106,7 +106,7 @@ export function BuybackForm({
                 type="button"
                 onClick={handleClear}
                 disabled={isLoading}
-                className="rounded-lg border border-border px-4 py-2.5 font-medium text-content-secondary transition-colors hover:bg-surface-secondary focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-slate-900 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg border border-border px-4 py-2.5 font-medium text-content-secondary transition-colors hover:bg-surface-secondary focus:ring-2 focus:ring-border focus:ring-offset-2 focus:ring-offset-surface focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Clear
               </button>

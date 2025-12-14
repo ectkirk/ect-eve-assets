@@ -4,6 +4,7 @@ export interface SecurityConfig {
   buyRate: number
   iskPerM3: number
   color: string
+  colorForeground: string
   textColor: string
   borderColor: string
   bgColor: string
@@ -18,6 +19,7 @@ export const SECURITY_CONFIGS: Record<string, SecurityConfig> = {
     buyRate: 0.9,
     iskPerM3: 200,
     color: 'bg-semantic-success',
+    colorForeground: 'text-semantic-success-foreground',
     textColor: 'text-status-positive',
     borderColor: 'border-semantic-success/30',
     bgColor: 'bg-semantic-success/20',
@@ -29,6 +31,7 @@ export const SECURITY_CONFIGS: Record<string, SecurityConfig> = {
     buyRate: 0.85,
     iskPerM3: 400,
     color: 'bg-semantic-warning',
+    colorForeground: 'text-semantic-warning-foreground',
     textColor: 'text-status-highlight',
     borderColor: 'border-semantic-warning/30',
     bgColor: 'bg-semantic-warning/20',
@@ -40,6 +43,7 @@ export const SECURITY_CONFIGS: Record<string, SecurityConfig> = {
     buyRate: 0.8,
     iskPerM3: 600,
     color: 'bg-semantic-danger',
+    colorForeground: 'text-semantic-danger-foreground',
     textColor: 'text-status-negative',
     borderColor: 'border-semantic-danger/30',
     bgColor: 'bg-semantic-danger/20',
@@ -50,10 +54,11 @@ export const SECURITY_CONFIGS: Record<string, SecurityConfig> = {
     key: 'assetsafety',
     buyRate: 0.8,
     iskPerM3: 600,
-    color: 'bg-semantic-warning',
-    textColor: 'text-status-warning',
-    borderColor: 'border-semantic-warning/30',
-    bgColor: 'bg-semantic-warning/20',
+    color: 'bg-semantic-asset-safety',
+    colorForeground: 'text-semantic-asset-safety-foreground',
+    textColor: 'text-status-time',
+    borderColor: 'border-semantic-asset-safety/30',
+    bgColor: 'bg-semantic-asset-safety/20',
     acceptCapitals: true,
     assetSafetyRate: 0.15,
   },

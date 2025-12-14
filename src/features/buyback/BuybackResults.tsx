@@ -102,12 +102,12 @@ export function BuybackResults({ result, config }: BuybackResultsProps) {
           <div className="rounded-lg border border-semantic-success/20 bg-surface-secondary/50 p-4">
             <div className="text-sm text-content-secondary">
               <p>
-                Send an <span className="font-semibold text-white">Item Exchange</span> contract to
+                Send an <span className="font-semibold text-content">Item Exchange</span> contract to
                 corporation <CopyButton text="ECTrade" label="corp" /> for{' '}
                 <CopyButton text={formatISKFull(totals.buybackValue)} label="value" />
               </p>
               <p className="mt-1 text-content-secondary">
-                Set the reason to: <span className="font-semibold text-white">{config.name}</span>
+                Set the reason to: <span className="font-semibold text-content">{config.name}</span>
               </p>
             </div>
           </div>
@@ -136,7 +136,7 @@ export function BuybackResults({ result, config }: BuybackResultsProps) {
           </button>
 
           {showExcluded && (
-            <div className="space-y-4 border-t border-yellow-500/30 p-4">
+            <div className="space-y-4 border-t border-semantic-warning/30 p-4">
               <div className="text-sm text-content-secondary">
                 The following items have not been included in the shown appraisal and can be safely
                 removed from your buyback contract.
@@ -229,28 +229,28 @@ export function BuybackResults({ result, config }: BuybackResultsProps) {
       )}
 
       <div className="rounded-lg border border-border bg-surface-secondary/50 p-6">
-        <h2 className="mb-4 text-lg font-semibold text-white">Accepted Items Summary</h2>
+        <h2 className="mb-4 text-lg font-semibold text-content">Accepted Items Summary</h2>
         <div className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
           <div>
             <div className="text-content-secondary">Items</div>
-            <div className="font-medium text-white">{totals.profitableCount} accepted</div>
+            <div className="font-medium text-content">{totals.profitableCount} accepted</div>
           </div>
           <div>
             <div className="text-content-secondary">Total Volume</div>
-            <div className="font-medium text-white">{formatVolume(totals.totalVolume)}</div>
+            <div className="font-medium text-content">{formatVolume(totals.totalVolume)}</div>
           </div>
           <div>
             <div className="text-content-secondary">Jita Buy</div>
-            <div className="font-medium text-white">{formatISKFull(totals.jitaBuyTotal)}</div>
+            <div className="font-medium text-content">{formatISKFull(totals.jitaBuyTotal)}</div>
           </div>
           <div>
             <div className="text-content-secondary">Jita Sell</div>
-            <div className="font-medium text-white">{formatISKFull(totals.jitaSellTotal)}</div>
+            <div className="font-medium text-content">{formatISKFull(totals.jitaSellTotal)}</div>
           </div>
           {totals.capitalValue > 0 && (
             <div>
               <div className="text-content-secondary">Capital Value</div>
-              <div className="font-medium text-white">{formatISKFull(totals.capitalValue)}</div>
+              <div className="font-medium text-content">{formatISKFull(totals.capitalValue)}</div>
             </div>
           )}
           {totals.assetSafetyCost > 0 && (
@@ -319,39 +319,39 @@ function ExcludedSection({
   footer: string
 }) {
   const colorClasses = {
-    orange: 'border-orange-500/30 bg-orange-500/10 text-orange-400',
-    red: 'border-red-500/30 bg-red-500/10 text-red-400',
-    pink: 'border-pink-500/30 bg-pink-500/10 text-pink-400',
-    purple: 'border-purple-500/30 bg-purple-500/10 text-purple-400',
-    gray: 'border-slate-500/30 bg-slate-500/10 text-content-secondary',
-    blue: 'border-blue-500/30 bg-blue-500/10 text-blue-400',
-    cyan: 'border-cyan-500/30 bg-cyan-500/10 text-cyan-400',
-    indigo: 'border-indigo-500/30 bg-indigo-500/10 text-indigo-400',
-    amber: 'border-amber-500/30 bg-amber-500/10 text-amber-400',
+    orange: 'border-category-orange/30 bg-category-orange/10 text-category-orange',
+    red: 'border-category-red/30 bg-category-red/10 text-category-red',
+    pink: 'border-category-pink/30 bg-category-pink/10 text-category-pink',
+    purple: 'border-category-purple/30 bg-category-purple/10 text-category-purple',
+    gray: 'border-border bg-surface-tertiary/50 text-content-secondary',
+    blue: 'border-category-blue/30 bg-category-blue/10 text-category-blue',
+    cyan: 'border-category-cyan/30 bg-category-cyan/10 text-category-cyan',
+    indigo: 'border-category-indigo/30 bg-category-indigo/10 text-category-indigo',
+    amber: 'border-category-amber/30 bg-category-amber/10 text-category-amber',
   }
 
   const textClasses = {
-    orange: 'text-orange-300/80',
-    red: 'text-red-300/80',
-    pink: 'text-pink-300/80',
-    purple: 'text-purple-300/80',
+    orange: 'text-category-orange/80',
+    red: 'text-category-red/80',
+    pink: 'text-category-pink/80',
+    purple: 'text-category-purple/80',
     gray: 'text-content-secondary/80',
-    blue: 'text-blue-300/80',
-    cyan: 'text-cyan-300/80',
-    indigo: 'text-indigo-300/80',
-    amber: 'text-amber-300/80',
+    blue: 'text-category-blue/80',
+    cyan: 'text-category-cyan/80',
+    indigo: 'text-category-indigo/80',
+    amber: 'text-category-amber/80',
   }
 
   const footerClasses = {
-    orange: 'text-orange-300/60',
-    red: 'text-red-300/60',
-    pink: 'text-pink-300/60',
-    purple: 'text-purple-300/60',
+    orange: 'text-category-orange/60',
+    red: 'text-category-red/60',
+    pink: 'text-category-pink/60',
+    purple: 'text-category-purple/60',
     gray: 'text-content-secondary/60',
-    blue: 'text-blue-300/60',
-    cyan: 'text-cyan-300/60',
-    indigo: 'text-indigo-300/60',
-    amber: 'text-amber-300/60',
+    blue: 'text-category-blue/60',
+    cyan: 'text-category-cyan/60',
+    indigo: 'text-category-indigo/60',
+    amber: 'text-category-amber/60',
   }
 
   return (
