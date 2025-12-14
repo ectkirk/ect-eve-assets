@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react'
 import { formatNumber } from '@/lib/utils'
-import { SECURITY_CONFIGS } from './config'
 
 type SortField = 'itemName' | 'quantity' | 'totalVolume' | 'groupName' | 'totalJitaBuy' | 'totalJitaSell'
 type SortDirection = 'asc' | 'desc'
@@ -91,33 +90,6 @@ export function Calculator({ result }: CalculatorProps) {
             <div className="text-xs text-slate-400">Items</div>
             <div className="text-lg font-semibold text-white">{result.totals.itemCount}</div>
           </div>
-        </div>
-
-        <h3 className="mb-3 text-sm font-medium text-slate-300">Buyback Values</h3>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          {Object.entries(SECURITY_CONFIGS).map(([key, cfg]) => {
-            const value = result.buybackValues[key as keyof typeof result.buybackValues] ?? 0
-            const volumePenalty = result.totals.totalVolume * cfg.iskPerM3
-            return (
-              <div
-                key={key}
-                className={`rounded-lg border ${cfg.borderColor} ${cfg.bgColor} p-4`}
-              >
-                <div className={`text-xs ${cfg.textColor}`}>
-                  {cfg.name} ({Math.round(cfg.buyRate * 100)}%)
-                </div>
-                <div className={`text-lg font-semibold ${cfg.textColor}`}>
-                  {formatNumber(value)}
-                </div>
-                <div className="text-xs text-slate-500">
-                  m³: -{formatNumber(volumePenalty)}
-                  {key === 'assetsafety' && result.totals.assetSafetyFee > 0 && (
-                    <> · Fee: -{formatNumber(result.totals.assetSafetyFee)}</>
-                  )}
-                </div>
-              </div>
-            )
-          })}
         </div>
       </div>
 
