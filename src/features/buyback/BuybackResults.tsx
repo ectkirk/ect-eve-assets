@@ -272,7 +272,7 @@ export function BuybackResults({ result, config }: BuybackResultsProps) {
                   <th className="px-4 py-3 text-right font-medium text-content-secondary">Qty</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-700/50">
+              <tbody className="divide-y divide-border/50">
                 {displayItems.map((item, index) => (
                   <tr key={`${item.itemName}-${index}`} className="text-content">
                     <td className="px-4 py-2.5">
