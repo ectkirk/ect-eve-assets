@@ -47,7 +47,7 @@ export function TypeIcon({
   const url = getTypeIconUrl(typeId, { categoryId, isBlueprintCopy })
 
   if (!url) {
-    return <div className={cn(sizeClass, 'rounded bg-slate-700 flex-shrink-0', className)} />
+    return <div className={cn(sizeClass, 'rounded bg-surface-tertiary flex-shrink-0', className)} />
   }
 
   return (

@@ -5,10 +5,10 @@ function FAQItem({ question, children }: { question: string; children: React.Rea
   const [isOpen, setIsOpen] = useState(false)
 
   return (
-    <div className="border-b border-slate-700 last:border-b-0">
+    <div className="border-b border-border last:border-b-0">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex w-full items-center justify-between py-4 text-left text-slate-200 hover:text-white"
+        className="flex w-full items-center justify-between py-4 text-left text-content hover:text-white"
       >
         <span className="font-medium">{question}</span>
         <svg
@@ -20,7 +20,7 @@ function FAQItem({ question, children }: { question: string; children: React.Rea
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
-      {isOpen && <div className="pb-4 text-slate-400">{children}</div>}
+      {isOpen && <div className="pb-4 text-content-secondary">{children}</div>}
     </div>
   )
 }
@@ -35,11 +35,11 @@ export function BuybackFAQ() {
 
   const configs = Object.values(SECURITY_CONFIGS).map((config) => ({
     ...config,
-    textColor: bgToText[config.color] || 'text-slate-400',
+    textColor: bgToText[config.color] || 'text-content-secondary',
   }))
 
   return (
-    <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-6">
+    <div className="rounded-lg border border-border bg-surface-secondary/50 p-6">
       <h2 className="mb-4 text-xl font-semibold text-white">Frequently Asked Questions</h2>
       <div className="divide-y divide-slate-700">
         <FAQItem question="How is your buyback calculated?">
@@ -73,7 +73,7 @@ export function BuybackFAQ() {
             <li>Blueprint copies</li>
             <li>Crystal ammunition</li>
           </ul>
-          <p className="mt-3 text-slate-300">
+          <p className="mt-3 text-content-secondary">
             Any excluded items will be listed in a dropdown below your quote. Please remove these
             items from your contract before submitting.
           </p>
@@ -175,7 +175,7 @@ export function BuybackFAQ() {
           </p>
         </FAQItem>
       </div>
-      <p className="mt-4 text-sm text-slate-500">
+      <p className="mt-4 text-sm text-content-muted">
         Note: Please check that you are only including items in the contract that were in the
         appraisal. We are not responsible for tracking down items you feel you have sent by mistake.
       </p>

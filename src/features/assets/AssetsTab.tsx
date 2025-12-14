@@ -114,7 +114,7 @@ const columns: ColumnDef<AssetRow>[] = [
     size: 450,
     header: ({ column }) => (
       <button
-        className="flex items-center gap-1 hover:text-slate-50"
+        className="flex items-center gap-1 hover:text-content"
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
       >
         Name
@@ -148,7 +148,7 @@ const columns: ColumnDef<AssetRow>[] = [
     size: 140,
     header: ({ column }) => (
       <button
-        className="flex items-center gap-1 hover:text-slate-50 ml-auto"
+        className="flex items-center gap-1 hover:text-content ml-auto"
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
       >
         Quantity
@@ -166,7 +166,7 @@ const columns: ColumnDef<AssetRow>[] = [
     size: 130,
     header: ({ column }) => (
       <button
-        className="flex items-center gap-1 hover:text-slate-50 ml-auto"
+        className="flex items-center gap-1 hover:text-content ml-auto"
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
       >
         Price
@@ -187,7 +187,7 @@ const columns: ColumnDef<AssetRow>[] = [
     size: 130,
     header: ({ column }) => (
       <button
-        className="flex items-center gap-1 hover:text-slate-50 ml-auto"
+        className="flex items-center gap-1 hover:text-content ml-auto"
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
       >
         Value
@@ -208,7 +208,7 @@ const columns: ColumnDef<AssetRow>[] = [
     size: 130,
     header: ({ column }) => (
       <button
-        className="flex items-center gap-1 hover:text-slate-50 ml-auto"
+        className="flex items-center gap-1 hover:text-content ml-auto"
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
       >
         Volume
@@ -216,7 +216,7 @@ const columns: ColumnDef<AssetRow>[] = [
       </button>
     ),
     cell: ({ row }) => (
-      <span className="tabular-nums text-right w-full text-slate-400">
+      <span className="tabular-nums text-right w-full text-content-secondary">
         {formatVolume(row.getValue('totalVolume') as number)}
       </span>
     ),
@@ -226,7 +226,7 @@ const columns: ColumnDef<AssetRow>[] = [
     size: 450,
     header: ({ column }) => (
       <button
-        className="flex items-center gap-1 hover:text-slate-50 ml-auto"
+        className="flex items-center gap-1 hover:text-content ml-auto"
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
       >
         Location
@@ -243,7 +243,7 @@ const columns: ColumnDef<AssetRow>[] = [
     meta: { noFlex: true },
     header: ({ column }) => (
       <button
-        className="flex items-center gap-1 hover:text-slate-50 ml-auto"
+        className="flex items-center gap-1 hover:text-content ml-auto"
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
       >
         Flag
@@ -252,7 +252,7 @@ const columns: ColumnDef<AssetRow>[] = [
     ),
     cell: ({ row }) => (
       <div className="w-full text-right">
-        <span className="text-slate-400 text-xs">{row.getValue('locationFlag') as string}</span>
+        <span className="text-content-secondary text-xs">{row.getValue('locationFlag') as string}</span>
       </div>
     ),
   },
@@ -639,7 +639,7 @@ export function AssetsTab() {
   if (owners.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-slate-400">No characters logged in. Add a character to view assets.</p>
+        <p className="text-content-secondary">No characters logged in. Add a character to view assets.</p>
       </div>
     )
   }
@@ -649,7 +649,7 @@ export function AssetsTab() {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-blue-500 mx-auto" />
-          <p className="mt-2 text-slate-400">
+          <p className="mt-2 text-content-secondary">
             {updateProgress
               ? `Fetching assets (${updateProgress.current + 1}/${updateProgress.total})...`
               : 'Loading assets...'}
@@ -666,11 +666,11 @@ export function AssetsTab() {
           {hasError && (
             <>
               <p className="text-red-500">Failed to load assets</p>
-              <p className="text-sm text-slate-400">{errorMessage}</p>
+              <p className="text-sm text-content-secondary">{errorMessage}</p>
             </>
           )}
           {!hasError && (
-            <p className="text-slate-400">No asset data loaded. Click Update in the header to fetch from ESI.</p>
+            <p className="text-content-secondary">No asset data loaded. Click Update in the header to fetch from ESI.</p>
           )}
         </div>
       </div>
@@ -688,7 +688,7 @@ export function AssetsTab() {
 
       <div
         ref={tableContainerRef}
-        className="flex-1 min-h-0 rounded-lg border border-slate-700 bg-slate-800/30 overflow-auto"
+        className="flex-1 min-h-0 rounded-lg border border-border bg-surface-secondary/30 overflow-auto"
       >
         <div className="grid" style={{ gridTemplateColumns: table.getVisibleLeafColumns().map(col => {
           const noFlex = (col.columnDef.meta as { noFlex?: boolean } | undefined)?.noFlex
@@ -699,7 +699,7 @@ export function AssetsTab() {
               headerGroup.headers.filter(h => h.column.getIsVisible()).map((header) => (
                 <div
                   key={header.id}
-                  className={`sticky top-0 z-10 bg-slate-800 py-3 text-left text-sm font-medium text-slate-300 border-b border-slate-700 ${header.column.id === 'ownerName' ? 'px-2' : 'px-4'}`}
+                  className={`sticky top-0 z-10 bg-surface-secondary py-3 text-left text-sm font-medium text-content-secondary border-b border-border ${header.column.id === 'ownerName' ? 'px-2' : 'px-4'}`}
                 >
                   {header.isPlaceholder
                     ? null
@@ -727,7 +727,7 @@ export function AssetsTab() {
                       <div
                         key={cell.id}
                         className={cn(
-                          'py-2 text-sm border-b border-slate-700/50 group-hover:bg-slate-700/50 flex items-center',
+                          'py-2 text-sm border-b border-border/50 group-hover:bg-surface-tertiary/50 flex items-center',
                           cell.column.id === 'ownerName' ? 'px-2' : 'px-4',
                           isContract && 'bg-yellow-500/10',
                           isMarketOrder && 'bg-blue-500/10'
@@ -749,7 +749,7 @@ export function AssetsTab() {
               )}
             </>
           ) : (
-            <div className="h-24 flex items-center justify-center text-slate-400" style={{ gridColumn: `1 / -1` }}>
+            <div className="h-24 flex items-center justify-center text-content-secondary" style={{ gridColumn: `1 / -1` }}>
               No assets found.
             </div>
           )}

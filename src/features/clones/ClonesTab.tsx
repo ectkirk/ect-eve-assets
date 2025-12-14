@@ -57,7 +57,7 @@ function getImplantSlot(typeId: number): number {
 
 function ImplantList({ implants }: { implants: ImplantInfo[] }) {
   if (implants.length === 0) {
-    return <span className="text-slate-500 text-sm italic">No implants</span>
+    return <span className="text-content-muted text-sm italic">No implants</span>
   }
 
   const sorted = [...implants].sort((a, b) => a.slot - b.slot)
@@ -83,19 +83,19 @@ function CloneCard({ clone, isActive }: { clone: CloneInfo; isActive?: boolean }
     <div
       className={cn(
         'border rounded-lg',
-        isActive ? 'border-blue-500 bg-blue-950/20' : 'border-slate-700 bg-slate-800/30'
+        isActive ? 'border-blue-500 bg-blue-950/20' : 'border-border bg-surface-secondary/30'
       )}
     >
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-slate-800/50"
+        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-secondary/50"
       >
         {expanded ? (
-          <ChevronDown className="h-4 w-4 text-slate-400" />
+          <ChevronDown className="h-4 w-4 text-content-secondary" />
         ) : (
-          <ChevronRight className="h-4 w-4 text-slate-400" />
+          <ChevronRight className="h-4 w-4 text-content-secondary" />
         )}
-        <MapPin className={cn('h-4 w-4', isActive ? 'text-blue-400' : 'text-slate-400')} />
+        <MapPin className={cn('h-4 w-4', isActive ? 'text-blue-400' : 'text-content-secondary')} />
         <span className={cn('flex-1', isActive && 'text-blue-300')}>
           {clone.name || clone.locationName}
         </span>
@@ -107,11 +107,11 @@ function CloneCard({ clone, isActive }: { clone: CloneInfo; isActive?: boolean }
             <Home className="h-4 w-4 text-green-400" />
           </span>
         )}
-        <span className="text-xs text-slate-500">{clone.implants.length} implants</span>
+        <span className="text-xs text-content-muted">{clone.implants.length} implants</span>
       </button>
       {expanded && (
-        <div className="px-4 pb-3 pt-1 border-t border-slate-700/50">
-          <div className="text-xs text-slate-500 mb-2">{clone.locationName}</div>
+        <div className="px-4 pb-3 pt-1 border-t border-border/50">
+          <div className="text-xs text-content-muted mb-2">{clone.locationName}</div>
           <ImplantList implants={clone.implants} />
         </div>
       )}
@@ -129,19 +129,19 @@ function CharacterClonesSection({
   onToggle: () => void
 }) {
   return (
-    <div className="border-b border-slate-700/50 last:border-b-0">
+    <div className="border-b border-border/50 last:border-b-0">
       <button
         onClick={onToggle}
-        className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-800/50 text-left text-sm"
+        className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-surface-secondary/50 text-left text-sm"
       >
         {isExpanded ? (
-          <ChevronDown className="h-4 w-4 text-slate-400" />
+          <ChevronDown className="h-4 w-4 text-content-secondary" />
         ) : (
-          <ChevronRight className="h-4 w-4 text-slate-400" />
+          <ChevronRight className="h-4 w-4 text-content-secondary" />
         )}
         <CharacterPortrait characterId={data.ownerId} size="lg" />
         <span className="font-medium flex-1">{data.ownerName}</span>
-        <span className="text-sm text-slate-400">
+        <span className="text-sm text-content-secondary">
           {data.jumpClones.length} jump clone{data.jumpClones.length !== 1 ? 's' : ''}
         </span>
       </button>
@@ -149,7 +149,7 @@ function CharacterClonesSection({
       {isExpanded && (
         <div className="px-4 pb-4 space-y-3">
           <div>
-            <h4 className="text-xs uppercase text-slate-500 mb-2 flex items-center gap-1">
+            <h4 className="text-xs uppercase text-content-muted mb-2 flex items-center gap-1">
               <User className="h-3 w-3" />
               Active Clone
             </h4>
@@ -158,7 +158,7 @@ function CharacterClonesSection({
 
           {data.jumpClones.length > 0 && (
             <div>
-              <h4 className="text-xs uppercase text-slate-500 mb-2">Jump Clones</h4>
+              <h4 className="text-xs uppercase text-content-muted mb-2">Jump Clones</h4>
               <div className="space-y-2">
                 {data.jumpClones.map((clone) => (
                   <CloneCard key={clone.id} clone={clone} />
@@ -380,10 +380,10 @@ export function ClonesTab() {
   if (loadingState) return loadingState
 
   return (
-    <div className="h-full rounded-lg border border-slate-700 bg-slate-800/30 overflow-auto">
+    <div className="h-full rounded-lg border border-border bg-surface-secondary/30 overflow-auto">
       {characterClones.length === 0 ? (
         <div className="flex items-center justify-center h-full">
-          <p className="text-slate-400">No clone data available.</p>
+          <p className="text-content-secondary">No clone data available.</p>
         </div>
       ) : (
         characterClones.map((data) => (

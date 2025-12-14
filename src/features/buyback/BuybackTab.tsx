@@ -69,7 +69,7 @@ export function BuybackTab({ activeTab }: BuybackTabProps) {
             </span>
           )}
         </h1>
-        <p className="text-slate-400">
+        <p className="text-content-secondary">
           {config?.key === 'assetsafety'
             ? 'For null sec users selling items from player-owned structures that require asset safety retrieval.'
             : `${config?.name} buyback. General buyback for items${config?.acceptCapitals ? ' and capitals' : ''}.`}
@@ -77,7 +77,7 @@ export function BuybackTab({ activeTab }: BuybackTabProps) {
       </div>
 
       <div className="space-y-6">
-        <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-6">
+        <div className="rounded-lg border border-border bg-surface-secondary/50 p-6">
           <BuybackForm
             onSubmit={handleSubmit}
             isLoading={isLoading}

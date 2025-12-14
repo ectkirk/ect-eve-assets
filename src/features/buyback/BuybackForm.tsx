@@ -40,7 +40,7 @@ export function BuybackForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label htmlFor="items-input" className="mb-2 block text-sm font-medium text-slate-300">
+        <label htmlFor="items-input" className="mb-2 block text-sm font-medium text-content-secondary">
           Item list
         </label>
         <textarea
@@ -51,12 +51,12 @@ export function BuybackForm({
           rows={12}
           className={`w-full rounded-lg border px-4 py-3 font-mono text-sm transition-colors focus:outline-none ${
             hasQuote
-              ? 'cursor-not-allowed border-slate-700 bg-slate-900 text-slate-500'
-              : 'border-slate-600 bg-slate-800 text-slate-100 placeholder-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
+              ? 'cursor-not-allowed border-border bg-surface text-content-muted'
+              : 'border-border bg-surface-secondary text-content placeholder-content-muted focus:border-accent focus:ring-2 focus:ring-blue-500/20'
           }`}
           disabled={isLoading || hasQuote}
         />
-        <div className="mt-2 text-sm text-slate-400">
+        <div className="mt-2 text-sm text-content-secondary">
           {lineCount > 0 ? `${lineCount} line${lineCount !== 1 ? 's' : ''}` : 'No items'}
         </div>
       </div>
@@ -106,7 +106,7 @@ export function BuybackForm({
                 type="button"
                 onClick={handleClear}
                 disabled={isLoading}
-                className="rounded-lg border border-slate-600 px-4 py-2.5 font-medium text-slate-300 transition-colors hover:bg-slate-800 focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-slate-900 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg border border-border px-4 py-2.5 font-medium text-content-secondary transition-colors hover:bg-surface-secondary focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-slate-900 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Clear
               </button>

@@ -89,11 +89,11 @@ export function ManufacturingTab() {
   return (
     <div className="flex gap-6 h-full">
       <div className="w-80 shrink-0 space-y-4">
-        <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4 space-y-4">
-          <h3 className="font-medium text-slate-200">Manufacturing Calculator</h3>
+        <div className="rounded-lg border border-border bg-surface-secondary/50 p-4 space-y-4">
+          <h3 className="font-medium text-content">Manufacturing Calculator</h3>
 
           <div>
-            <label className="block text-sm text-slate-400 mb-1">Product</label>
+            <label className="block text-sm text-content-secondary mb-1">Product</label>
             <BlueprintSearch
               mode="product"
               value={product}
@@ -103,7 +103,7 @@ export function ManufacturingTab() {
           </div>
 
           <div>
-            <label className="block text-sm text-slate-400 mb-1">System</label>
+            <label className="block text-sm text-content-secondary mb-1">System</label>
             <SystemSearch
               value={system}
               onChange={setSystem}
@@ -112,7 +112,7 @@ export function ManufacturingTab() {
           </div>
 
           <div>
-            <label className="block text-sm text-slate-400 mb-1">ME Level</label>
+            <label className="block text-sm text-content-secondary mb-1">ME Level</label>
             <div className="flex items-center gap-2">
               <input
                 type="range"
@@ -127,7 +127,7 @@ export function ManufacturingTab() {
           </div>
 
           <div>
-            <label className="block text-sm text-slate-400 mb-1">TE Level</label>
+            <label className="block text-sm text-content-secondary mb-1">TE Level</label>
             <div className="flex items-center gap-2">
               <input
                 type="range"
@@ -143,22 +143,22 @@ export function ManufacturingTab() {
           </div>
 
           <div>
-            <label className="block text-sm text-slate-400 mb-1">Runs</label>
+            <label className="block text-sm text-content-secondary mb-1">Runs</label>
             <input
               type="number"
               min="1"
               value={runs}
               onChange={(e) => setRuns(Math.max(1, parseInt(e.target.value, 10) || 1))}
-              className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+              className="w-full rounded border border-border bg-surface-tertiary px-3 py-2 text-sm focus:border-accent focus:outline-none"
             />
           </div>
 
           <div>
-            <label className="block text-sm text-slate-400 mb-1">Facility</label>
+            <label className="block text-sm text-content-secondary mb-1">Facility</label>
             <select
               value={facility}
               onChange={(e) => setFacility(parseInt(e.target.value, 10))}
-              className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+              className="w-full rounded border border-border bg-surface-tertiary px-3 py-2 text-sm focus:border-accent focus:outline-none"
             >
               {FACILITIES.map((f) => (
                 <option key={f.id} value={f.id}>{f.name}</option>
@@ -169,11 +169,11 @@ export function ManufacturingTab() {
           {facility > 0 && (
             <>
               <div>
-                <label className="block text-sm text-slate-400 mb-1">ME Rig</label>
+                <label className="block text-sm text-content-secondary mb-1">ME Rig</label>
                 <select
                   value={meRig}
                   onChange={(e) => setMeRig(parseInt(e.target.value, 10))}
-                  className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                  className="w-full rounded border border-border bg-surface-tertiary px-3 py-2 text-sm focus:border-accent focus:outline-none"
                 >
                   {ME_RIGS.map((r) => (
                     <option key={r.id} value={r.id}>{r.name}</option>
@@ -182,11 +182,11 @@ export function ManufacturingTab() {
               </div>
 
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Security Status</label>
+                <label className="block text-sm text-content-secondary mb-1">Security Status</label>
                 <select
                   value={securityStatus}
                   onChange={(e) => setSecurityStatus(e.target.value as 'h' | 'l' | 'n')}
-                  className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                  className="w-full rounded border border-border bg-surface-tertiary px-3 py-2 text-sm focus:border-accent focus:outline-none"
                 >
                   {SECURITY_STATUS.map((s) => (
                     <option key={s.id} value={s.id}>{s.name}</option>
@@ -195,7 +195,7 @@ export function ManufacturingTab() {
               </div>
 
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Facility Tax (%)</label>
+                <label className="block text-sm text-content-secondary mb-1">Facility Tax (%)</label>
                 <input
                   type="number"
                   min="0"
@@ -203,7 +203,7 @@ export function ManufacturingTab() {
                   step="0.1"
                   value={facilityTax}
                   onChange={(e) => setFacilityTax(parseFloat(e.target.value) || 0)}
-                  className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                  className="w-full rounded border border-border bg-surface-tertiary px-3 py-2 text-sm focus:border-accent focus:outline-none"
                 />
               </div>
             </>
@@ -234,113 +234,113 @@ export function ManufacturingTab() {
         {result && !error && (
           <div className="space-y-4">
             <div className="grid grid-cols-4 gap-4">
-              <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4">
-                <div className="flex items-center gap-2 text-slate-400 mb-1">
+              <div className="rounded-lg border border-border bg-surface-secondary/50 p-4">
+                <div className="flex items-center gap-2 text-content-secondary mb-1">
                   <Coins className="h-4 w-4" />
                   <span className="text-sm">Total Cost</span>
                 </div>
                 <div className="text-xl font-bold text-green-400">
                   {formatNumber(result.totalCost ?? 0)} ISK
                 </div>
-                <div className="text-xs text-slate-500 mt-1">
+                <div className="text-xs text-content-muted mt-1">
                   {formatNumber(result.totalCostPerUnit ?? 0)} ISK/unit
                 </div>
               </div>
 
-              <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4">
-                <div className="flex items-center gap-2 text-slate-400 mb-1">
+              <div className="rounded-lg border border-border bg-surface-secondary/50 p-4">
+                <div className="flex items-center gap-2 text-content-secondary mb-1">
                   <Package className="h-4 w-4" />
                   <span className="text-sm">Materials</span>
                 </div>
                 <div className="text-xl font-bold text-amber-400">
                   {formatNumber(result.totalMaterialCost ?? 0)} ISK
                 </div>
-                <div className="text-xs text-slate-500 mt-1">
+                <div className="text-xs text-content-muted mt-1">
                   {formatNumber(result.materialsVolume ?? 0)} m³
                 </div>
               </div>
 
-              <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4">
-                <div className="flex items-center gap-2 text-slate-400 mb-1">
+              <div className="rounded-lg border border-border bg-surface-secondary/50 p-4">
+                <div className="flex items-center gap-2 text-content-secondary mb-1">
                   <Coins className="h-4 w-4" />
                   <span className="text-sm">Job Cost</span>
                 </div>
                 <div className="text-xl font-bold text-blue-400">
                   {formatNumber(result.totalJobCost ?? 0)} ISK
                 </div>
-                <div className="text-xs text-slate-500 mt-1">
+                <div className="text-xs text-content-muted mt-1">
                   SCC: {formatNumber(result.sccSurcharge ?? 0)} ISK
                 </div>
               </div>
 
-              <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4">
-                <div className="flex items-center gap-2 text-slate-400 mb-1">
+              <div className="rounded-lg border border-border bg-surface-secondary/50 p-4">
+                <div className="flex items-center gap-2 text-content-secondary mb-1">
                   <Clock className="h-4 w-4" />
                   <span className="text-sm">Time</span>
                 </div>
                 <div className="text-xl font-bold text-purple-400">
                   {formatDuration(result.time)}
                 </div>
-                <div className="text-xs text-slate-500 mt-1">
+                <div className="text-xs text-content-muted mt-1">
                   {formatDuration(result.timePerUnit)}/unit
                 </div>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4">
-                <h4 className="text-sm font-medium text-slate-300 mb-3">Job Details</h4>
+              <div className="rounded-lg border border-border bg-surface-secondary/50 p-4">
+                <h4 className="text-sm font-medium text-content-secondary mb-3">Job Details</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Runs</span>
+                    <span className="text-content-secondary">Runs</span>
                     <span>{result.runs}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Units</span>
+                    <span className="text-content-secondary">Units</span>
                     <span>{result.units} ({result.unitsPerRun}/run)</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-400">ME/TE</span>
+                    <span className="text-content-secondary">ME/TE</span>
                     <span>{result.me}/{result.te}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Est. Item Value</span>
+                    <span className="text-content-secondary">Est. Item Value</span>
                     <span>{formatNumber(result.estimatedItemValue ?? 0)} ISK</span>
                   </div>
                 </div>
               </div>
 
-              <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4">
-                <h4 className="text-sm font-medium text-slate-300 mb-3">Cost Breakdown</h4>
+              <div className="rounded-lg border border-border bg-surface-secondary/50 p-4">
+                <h4 className="text-sm font-medium text-content-secondary mb-3">Cost Breakdown</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-slate-400">System Cost Index</span>
+                    <span className="text-content-secondary">System Cost Index</span>
                     <span>{formatNumber(result.systemCostIndex ?? 0)} ISK</span>
                   </div>
                   {(result.systemCostBonuses ?? 0) !== 0 && (
                     <div className="flex justify-between">
-                      <span className="text-slate-400">System Bonuses</span>
+                      <span className="text-content-secondary">System Bonuses</span>
                       <span className="text-green-400">{formatNumber(result.systemCostBonuses ?? 0)} ISK</span>
                     </div>
                   )}
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Facility Tax</span>
+                    <span className="text-content-secondary">Facility Tax</span>
                     <span>{formatNumber(result.facilityTax ?? 0)} ISK</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-400">SCC Surcharge</span>
+                    <span className="text-content-secondary">SCC Surcharge</span>
                     <span>{formatNumber(result.sccSurcharge ?? 0)} ISK</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4">
-              <h4 className="text-sm font-medium text-slate-300 mb-3">Materials ({materials.length})</h4>
+            <div className="rounded-lg border border-border bg-surface-secondary/50 p-4">
+              <h4 className="text-sm font-medium text-content-secondary mb-3">Materials ({materials.length})</h4>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-left text-slate-400 border-b border-slate-700">
+                    <tr className="text-left text-content-secondary border-b border-border">
                       <th className="pb-2 pr-4">Material</th>
                       <th className="pb-2 pr-4 text-right">Quantity</th>
                       <th className="pb-2 pr-4 text-right">Unit Price</th>
@@ -350,7 +350,7 @@ export function ManufacturingTab() {
                   </thead>
                   <tbody>
                     {materials.map((mat) => (
-                      <tr key={mat.type_id} className="border-b border-slate-700/50">
+                      <tr key={mat.type_id} className="border-b border-border/50">
                         <td className="py-2 pr-4">
                           <div className="flex items-center gap-2">
                             <TypeIcon typeId={mat.type_id} size="sm" />
@@ -360,10 +360,10 @@ export function ManufacturingTab() {
                         <td className="py-2 pr-4 text-right tabular-nums">
                           {mat.quantity.toLocaleString()}
                         </td>
-                        <td className="py-2 pr-4 text-right tabular-nums text-slate-400">
+                        <td className="py-2 pr-4 text-right tabular-nums text-content-secondary">
                           {formatNumber(mat.cost_per_unit)} ISK
                         </td>
-                        <td className="py-2 pr-4 text-right tabular-nums text-slate-400">
+                        <td className="py-2 pr-4 text-right tabular-nums text-content-secondary">
                           {formatNumber(mat.volume)} m³
                         </td>
                         <td className="py-2 text-right tabular-nums text-amber-400">
@@ -392,7 +392,7 @@ export function ManufacturingTab() {
         )}
 
         {!result && !error && (
-          <div className="flex items-center justify-center h-64 text-slate-400">
+          <div className="flex items-center justify-center h-64 text-content-secondary">
             Enter a Product Type ID and click Calculate to see manufacturing costs
           </div>
         )}

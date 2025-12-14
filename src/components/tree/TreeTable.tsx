@@ -77,11 +77,11 @@ const NODE_TYPE_COLORS: Record<TreeNodeType, string> = {
   system: 'text-yellow-400',
   station: 'text-blue-400',
   office: 'text-amber-400',
-  division: 'text-slate-400',
+  division: 'text-content-secondary',
   container: 'text-orange-400',
   ship: 'text-cyan-400',
-  item: 'text-slate-400',
-  stack: 'text-slate-400',
+  item: 'text-content-secondary',
+  stack: 'text-content-secondary',
 }
 
 const DIVISION_COLORS = [
@@ -156,12 +156,12 @@ function TreeRowContent({ node, isExpanded, onToggle, visibleColumns }: {
                       e.stopPropagation()
                       onToggle()
                     }}
-                    className="p-0.5 hover:bg-slate-700 rounded"
+                    className="p-0.5 hover:bg-surface-tertiary rounded"
                   >
                     {isExpanded ? (
-                      <ChevronDown className="h-4 w-4 text-slate-400" />
+                      <ChevronDown className="h-4 w-4 text-content-secondary" />
                     ) : (
-                      <ChevronRight className="h-4 w-4 text-slate-400" />
+                      <ChevronRight className="h-4 w-4 text-content-secondary" />
                     )}
                   </button>
                 ) : (
@@ -189,7 +189,7 @@ function TreeRowContent({ node, isExpanded, onToggle, visibleColumns }: {
                   {isOfficeNode ? (
                     <>
                       <span className="text-amber-300">{node.name}</span>
-                      <span className="text-slate-500 italic ml-1">Office</span>
+                      <span className="text-content-muted italic ml-1">Office</span>
                     </>
                   ) : node.name}
                 </span>
@@ -213,7 +213,7 @@ function TreeRowContent({ node, isExpanded, onToggle, visibleColumns }: {
         }
         if (colId === 'volume') {
           return (
-            <TableCell key={colId} className="py-1.5 text-right tabular-nums text-slate-400 w-32">
+            <TableCell key={colId} className="py-1.5 text-right tabular-nums text-content-secondary w-32">
               {node.nodeType !== 'region' && node.nodeType !== 'system' && node.totalVolume > 0
                 ? formatVolume(node.totalVolume)
                 : '-'}
@@ -341,7 +341,7 @@ export function TreeTable({
   if (nodes.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-slate-400">No items to display.</p>
+        <p className="text-content-secondary">No items to display.</p>
       </div>
     )
   }
@@ -349,11 +349,11 @@ export function TreeTable({
   return (
     <div
       ref={tableContainerRef}
-      className="h-full rounded-lg border border-slate-700 bg-slate-800/30 overflow-auto"
+      className="h-full rounded-lg border border-border bg-surface-secondary/30 overflow-auto"
     >
         <Table style={{ tableLayout: 'fixed', width: '100%' }}>
-          <TableHeader className="sticky top-0 z-10 bg-slate-800">
-            <TableRow className="bg-slate-800 hover:bg-slate-800">
+          <TableHeader className="sticky top-0 z-10 bg-surface-secondary">
+            <TableRow className="bg-surface-secondary hover:bg-surface-secondary">
               {visibleColumns.map((colId) => {
                 const col = TREE_COLUMNS.find(c => c.id === colId)
                 if (!col) return null
@@ -398,8 +398,8 @@ export function TreeTable({
                       key={node.id}
                       data-index={virtualRow.index}
                       className={cn(
-                        node.nodeType === 'region' && 'bg-slate-800/30',
-                        node.nodeType === 'system' && 'bg-slate-800/20'
+                        node.nodeType === 'region' && 'bg-surface-secondary/30',
+                        node.nodeType === 'system' && 'bg-surface-secondary/20'
                       )}
                       onClick={() => {
                         if (node.children.length > 0) {

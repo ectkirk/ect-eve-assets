@@ -112,7 +112,7 @@ function StatusIcon({ status }: { status: ESIContract['status'] }) {
     case 'reversed':
       return <AlertCircle className="h-4 w-4 text-orange-400" />
     default:
-      return <HelpCircle className="h-4 w-4 text-slate-400" />
+      return <HelpCircle className="h-4 w-4 text-content-secondary" />
   }
 }
 
@@ -132,15 +132,15 @@ function ContractItemRow({
   const typeName = type?.name ?? `Unknown Type ${item.type_id}`
 
   return (
-    <TableRow className="bg-slate-800/30">
+    <TableRow className="bg-surface-secondary/30">
       <TableCell className="py-1 w-8" />
       <TableCell className="py-1" />
       <TableCell className="py-1 pl-8">
         <div className="flex items-center gap-2">
           <ItemTypeIcon typeId={item.type_id} categoryId={type?.categoryId} />
-          <span className="text-slate-300">{typeName}</span>
+          <span className="text-content-secondary">{typeName}</span>
           {item.quantity > 1 && (
-            <span className="text-slate-500">x{item.quantity.toLocaleString()}</span>
+            <span className="text-content-muted">x{item.quantity.toLocaleString()}</span>
           )}
         </div>
       </TableCell>
@@ -229,7 +229,7 @@ function ContractsTable({
                 </TableCell>
                 <TableCell className="py-1.5">
                   <div className="flex items-center gap-2">
-                    <TypeIcon className="h-4 w-4 text-slate-400" />
+                    <TypeIcon className="h-4 w-4 text-content-secondary" />
                     <span>{CONTRACT_TYPE_NAMES[contract.type]}</span>
                   </div>
                 </TableCell>
@@ -242,9 +242,9 @@ function ContractsTable({
                           className="flex items-center gap-1 hover:text-blue-400"
                         >
                           {isExpanded ? (
-                            <ChevronDown className="h-4 w-4 text-slate-400" />
+                            <ChevronDown className="h-4 w-4 text-content-secondary" />
                           ) : (
-                            <ChevronRight className="h-4 w-4 text-slate-400" />
+                            <ChevronRight className="h-4 w-4 text-content-secondary" />
                           )}
                           <span>{itemSummary}</span>
                         </button>
@@ -264,15 +264,15 @@ function ContractsTable({
                     </div>
                   </TableCell>
                 )}
-                <TableCell className="py-1.5 text-slate-400">
+                <TableCell className="py-1.5 text-content-secondary">
                   <span className="truncate" title={row.locationName}>
                     {row.locationName}
                   </span>
                   {contract.type === 'courier' && row.endLocationName && (
-                    <span className="text-slate-500"> → {row.endLocationName}</span>
+                    <span className="text-content-muted"> → {row.endLocationName}</span>
                   )}
                 </TableCell>
-                <TableCell className="py-1.5 text-slate-400">{row.assigneeName}</TableCell>
+                <TableCell className="py-1.5 text-content-secondary">{row.assigneeName}</TableCell>
                 <TableCell className="py-1.5 text-right tabular-nums text-amber-400">
                   {value > 0 ? formatNumber(value) : '-'}
                 </TableCell>
@@ -283,7 +283,7 @@ function ContractsTable({
                 )}
                 {showCourierColumns && (() => {
                   let daysDisplay = '-'
-                  let daysColor = 'text-slate-400'
+                  let daysColor = 'text-content-secondary'
 
                   if (contract.status === 'outstanding') {
                     const expiryTime = new Date(contract.date_expired).getTime()
@@ -294,7 +294,7 @@ function ContractsTable({
                       daysColor = 'text-red-400'
                     } else {
                       daysDisplay = `${daysLeft}d`
-                      daysColor = daysLeft <= 1 ? 'text-red-400' : daysLeft <= 3 ? 'text-yellow-400' : 'text-slate-400'
+                      daysColor = daysLeft <= 1 ? 'text-red-400' : daysLeft <= 3 ? 'text-yellow-400' : 'text-content-secondary'
                     }
                   } else if (contract.status === 'in_progress' && contract.date_accepted && contract.days_to_complete) {
                     const acceptedDate = new Date(contract.date_accepted).getTime()
@@ -302,12 +302,12 @@ function ContractsTable({
                     const remaining = deadline - Date.now()
                     const daysLeft = Math.ceil(remaining / (24 * 60 * 60 * 1000))
                     daysDisplay = daysLeft > 0 ? `${daysLeft}d` : 'Overdue'
-                    daysColor = daysLeft <= 1 ? 'text-red-400' : daysLeft <= 3 ? 'text-yellow-400' : 'text-slate-400'
+                    daysColor = daysLeft <= 1 ? 'text-red-400' : daysLeft <= 3 ? 'text-yellow-400' : 'text-content-secondary'
                   }
 
                   return (
                     <>
-                      <TableCell className="py-1.5 text-right tabular-nums text-slate-400">
+                      <TableCell className="py-1.5 text-right tabular-nums text-content-secondary">
                         {contract.volume ? `${contract.volume.toLocaleString()} m³` : '-'}
                       </TableCell>
                       <TableCell className="py-1.5 text-right tabular-nums text-amber-400">
@@ -320,14 +320,14 @@ function ContractsTable({
                   )
                 })()}
                 {showCompletedDate ? (
-                  <TableCell className="py-1.5 text-right tabular-nums text-slate-400">
+                  <TableCell className="py-1.5 text-right tabular-nums text-content-secondary">
                     {row.dateCompleted ? new Date(row.dateCompleted).toLocaleDateString() : '-'}
                   </TableCell>
                 ) : !showCourierColumns ? (
                   <TableCell
                     className={cn(
                       'py-1.5 text-right tabular-nums',
-                      expiry.isExpired ? 'text-red-400' : 'text-slate-400'
+                      expiry.isExpired ? 'text-red-400' : 'text-content-secondary'
                     )}
                   >
                     {expiry.text}
@@ -339,13 +339,13 @@ function ContractsTable({
                   {(row.status === 'finished' || row.status === 'finished_issuer' || row.status === 'finished_contractor') && (
                     <span className="text-green-400">Finished</span>
                   )}
-                  {row.status === 'cancelled' && <span className="text-slate-400">Cancelled</span>}
+                  {row.status === 'cancelled' && <span className="text-content-secondary">Cancelled</span>}
                   {row.status === 'rejected' && <span className="text-red-400">Rejected</span>}
                   {row.status === 'failed' && <span className="text-red-400">Failed</span>}
-                  {row.status === 'deleted' && <span className="text-slate-500">Deleted</span>}
+                  {row.status === 'deleted' && <span className="text-content-muted">Deleted</span>}
                   {row.status === 'reversed' && <span className="text-orange-400">Reversed</span>}
                 </TableCell>
-                <TableCell className="py-1.5 text-right text-slate-400">{row.ownerName}</TableCell>
+                <TableCell className="py-1.5 text-right text-content-secondary">{row.ownerName}</TableCell>
               </TableRow>
               {hasMultipleItems &&
                 isExpanded &&
@@ -374,18 +374,18 @@ function DirectionGroupRow({
   const colorClass = group.direction === 'in' ? 'text-green-400' : 'text-orange-400'
 
   return (
-    <div className="border-b border-slate-700/50 last:border-b-0">
+    <div className="border-b border-border/50 last:border-b-0">
       <button
         onClick={onToggle}
-        className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-800/50 text-left text-sm"
+        className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-surface-secondary/50 text-left text-sm"
       >
         {isExpanded ? (
-          <ChevronDown className="h-4 w-4 text-slate-400" />
+          <ChevronDown className="h-4 w-4 text-content-secondary" />
         ) : (
-          <ChevronRight className="h-4 w-4 text-slate-400" />
+          <ChevronRight className="h-4 w-4 text-content-secondary" />
         )}
         <span className={cn('flex-1', colorClass)}>{group.displayName}</span>
-        <span className="text-xs text-slate-400">
+        <span className="text-xs text-content-secondary">
           {group.contracts.length} contract{group.contracts.length !== 1 ? 's' : ''}
         </span>
         <span className="text-sm text-amber-400 tabular-nums">
@@ -393,7 +393,7 @@ function DirectionGroupRow({
         </span>
       </button>
       {isExpanded && (
-        <div className="border-t border-slate-700/50 bg-slate-900/30 px-4 pb-2">
+        <div className="border-t border-border/50 bg-surface/30 px-4 pb-2">
           <ContractsTable contracts={group.contracts} cacheVersion={cacheVersion} />
         </div>
       )}
@@ -793,12 +793,12 @@ export function ContractsTab() {
     <div className="h-full overflow-auto">
       {directionGroups.length === 0 && !courierGroup && completedContracts.length === 0 ? (
         <div className="flex items-center justify-center h-full">
-          <p className="text-slate-400">No contracts.</p>
+          <p className="text-content-secondary">No contracts.</p>
         </div>
       ) : (
         <>
           {directionGroups.length > 0 && (
-            <div className="rounded-lg border border-slate-700 bg-slate-800/30">
+            <div className="rounded-lg border border-border bg-surface-secondary/30">
               {directionGroups.map((group) => (
                 <DirectionGroupRow
                   key={group.direction}
@@ -813,19 +813,19 @@ export function ContractsTab() {
           {courierGroup && (
             <>
               {directionGroups.length > 0 && <div className="h-4" />}
-              <div className="rounded-lg border border-slate-700 bg-slate-800/30">
+              <div className="rounded-lg border border-border bg-surface-secondary/30">
                 <button
                   onClick={() => setShowCourier(!showCourier)}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-800/50 text-left text-sm"
+                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-surface-secondary/50 text-left text-sm"
                 >
                   {showCourier ? (
-                    <ChevronDown className="h-4 w-4 text-slate-400" />
+                    <ChevronDown className="h-4 w-4 text-content-secondary" />
                   ) : (
-                    <ChevronRight className="h-4 w-4 text-slate-400" />
+                    <ChevronRight className="h-4 w-4 text-content-secondary" />
                   )}
                   <Truck className="h-4 w-4 text-blue-400" />
                   <span className="text-blue-300 flex-1">{courierGroup.displayName}</span>
-                  <span className="text-xs text-slate-400">
+                  <span className="text-xs text-content-secondary">
                     {courierGroup.contracts.length} contract
                     {courierGroup.contracts.length !== 1 ? 's' : ''}
                   </span>
@@ -834,7 +834,7 @@ export function ContractsTab() {
                   </span>
                 </button>
                 {showCourier && (
-                  <div className="border-t border-slate-700/50 bg-slate-900/30 px-4 pb-2">
+                  <div className="border-t border-border/50 bg-surface/30 px-4 pb-2">
                     <ContractsTable contracts={courierGroup.contracts} cacheVersion={cacheVersion} showCourierColumns />
                   </div>
                 )}
@@ -844,25 +844,25 @@ export function ContractsTab() {
           {completedContracts.length > 0 && (
             <>
               {(directionGroups.length > 0 || courierGroup) && <div className="h-4" />}
-              <div className="rounded-lg border border-slate-700 bg-slate-800/30">
+              <div className="rounded-lg border border-border bg-surface-secondary/30">
                 <button
                   onClick={() => setShowCompleted(!showCompleted)}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-800/50 text-left text-sm"
+                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-surface-secondary/50 text-left text-sm"
                 >
                   {showCompleted ? (
-                    <ChevronDown className="h-4 w-4 text-slate-400" />
+                    <ChevronDown className="h-4 w-4 text-content-secondary" />
                   ) : (
-                    <ChevronRight className="h-4 w-4 text-slate-400" />
+                    <ChevronRight className="h-4 w-4 text-content-secondary" />
                   )}
-                  <History className="h-4 w-4 text-slate-400" />
-                  <span className="text-slate-300 flex-1">Completed Contracts</span>
-                  <span className="text-xs text-slate-400">
+                  <History className="h-4 w-4 text-content-secondary" />
+                  <span className="text-content-secondary flex-1">Completed Contracts</span>
+                  <span className="text-xs text-content-secondary">
                     {completedContracts.length} contract
                     {completedContracts.length !== 1 ? 's' : ''}
                   </span>
                 </button>
                 {showCompleted && (
-                  <div className="border-t border-slate-700/50 bg-slate-900/30 px-4 pb-2">
+                  <div className="border-t border-border/50 bg-surface/30 px-4 pb-2">
                     <ContractsTable contracts={completedContracts} cacheVersion={cacheVersion} showCompletedDate />
                   </div>
                 )}

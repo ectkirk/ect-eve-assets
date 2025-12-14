@@ -118,19 +118,19 @@ export function BlueprintSearch({ mode, value, onChange, placeholder, className 
   return (
     <div ref={containerRef} className={`relative ${className}`}>
       {value ? (
-        <div className="flex items-center gap-2 rounded border border-slate-600 bg-slate-700 px-3 py-2">
+        <div className="flex items-center gap-2 rounded border border-border bg-surface-tertiary px-3 py-2">
           <TypeIcon typeId={value.id} categoryId={iconCategoryId} size="sm" />
           <span className="flex-1 text-sm truncate">{value.name}</span>
           <button
             onClick={handleClear}
-            className="text-slate-400 hover:text-slate-200"
+            className="text-content-secondary hover:text-content"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
       ) : (
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-content-secondary" />
           <input
             ref={inputRef}
             type="text"
@@ -139,27 +139,27 @@ export function BlueprintSearch({ mode, value, onChange, placeholder, className 
             onFocus={() => setIsOpen(true)}
             onKeyDown={handleKeyDown}
             placeholder={displayPlaceholder}
-            className="w-full rounded border border-slate-600 bg-slate-700 pl-9 pr-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            className="w-full rounded border border-border bg-surface-tertiary pl-9 pr-3 py-2 text-sm focus:border-accent focus:outline-none"
           />
           {isLoading && (
-            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-slate-400" />
+            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-content-secondary" />
           )}
         </div>
       )}
 
       {isOpen && !value && (
-        <div className="absolute z-50 mt-1 w-full rounded border border-slate-600 bg-slate-800 shadow-lg max-h-64 overflow-y-auto">
+        <div className="absolute z-50 mt-1 w-full rounded border border-border bg-surface-secondary shadow-lg max-h-64 overflow-y-auto">
           {errorMsg && (
-            <div className="px-3 py-2 text-sm text-red-400">{errorMsg}</div>
+            <div className="px-3 py-2 text-sm text-semantic-negative">{errorMsg}</div>
           )}
           {isLoading && !errorMsg && (
-            <div className="px-3 py-2 text-sm text-slate-400">Loading...</div>
+            <div className="px-3 py-2 text-sm text-content-secondary">Loading...</div>
           )}
           {!isLoading && !errorMsg && query.trim() && filtered.length === 0 && (
-            <div className="px-3 py-2 text-sm text-slate-400">No matches found</div>
+            <div className="px-3 py-2 text-sm text-content-secondary">No matches found</div>
           )}
           {!isLoading && !errorMsg && !query.trim() && (
-            <div className="px-3 py-2 text-sm text-slate-400">Type to search...</div>
+            <div className="px-3 py-2 text-sm text-content-secondary">Type to search...</div>
           )}
           {filtered.map((bp, i) => {
             const id = mode === 'product' ? bp.productId : bp.id
@@ -168,8 +168,8 @@ export function BlueprintSearch({ mode, value, onChange, placeholder, className 
               <button
                 key={bp.id}
                 onClick={() => handleSelect(bp)}
-                className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-700 ${
-                  i === highlightIndex ? 'bg-slate-700' : ''
+                className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-surface-tertiary ${
+                  i === highlightIndex ? 'bg-surface-tertiary' : ''
                 }`}
               >
                 <TypeIcon typeId={id} categoryId={iconCategoryId} size="sm" />

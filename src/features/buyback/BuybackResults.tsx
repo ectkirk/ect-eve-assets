@@ -99,14 +99,14 @@ export function BuybackResults({ result, config }: BuybackResultsProps) {
             </div>
             <div className="text-sm text-green-300/80">Total Buyback Value</div>
           </div>
-          <div className="rounded-lg border border-green-500/20 bg-slate-800/50 p-4">
-            <div className="text-sm text-slate-300">
+          <div className="rounded-lg border border-green-500/20 bg-surface-secondary/50 p-4">
+            <div className="text-sm text-content-secondary">
               <p>
                 Send an <span className="font-semibold text-white">Item Exchange</span> contract to
                 corporation <CopyButton text="ECTrade" label="corp" /> for{' '}
                 <CopyButton text={formatISKFull(totals.buybackValue)} label="value" />
               </p>
-              <p className="mt-1 text-slate-400">
+              <p className="mt-1 text-content-secondary">
                 Set the reason to: <span className="font-semibold text-white">{config.name}</span>
               </p>
             </div>
@@ -137,7 +137,7 @@ export function BuybackResults({ result, config }: BuybackResultsProps) {
 
           {showExcluded && (
             <div className="space-y-4 border-t border-yellow-500/30 p-4">
-              <div className="text-sm text-slate-300">
+              <div className="text-sm text-content-secondary">
                 The following items have not been included in the shown appraisal and can be safely
                 removed from your buyback contract.
               </div>
@@ -228,34 +228,34 @@ export function BuybackResults({ result, config }: BuybackResultsProps) {
         </div>
       )}
 
-      <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-6">
+      <div className="rounded-lg border border-border bg-surface-secondary/50 p-6">
         <h2 className="mb-4 text-lg font-semibold text-white">Accepted Items Summary</h2>
         <div className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
           <div>
-            <div className="text-slate-400">Items</div>
+            <div className="text-content-secondary">Items</div>
             <div className="font-medium text-white">{totals.profitableCount} accepted</div>
           </div>
           <div>
-            <div className="text-slate-400">Total Volume</div>
+            <div className="text-content-secondary">Total Volume</div>
             <div className="font-medium text-white">{formatVolume(totals.totalVolume)}</div>
           </div>
           <div>
-            <div className="text-slate-400">Jita Buy</div>
+            <div className="text-content-secondary">Jita Buy</div>
             <div className="font-medium text-white">{formatISKFull(totals.jitaBuyTotal)}</div>
           </div>
           <div>
-            <div className="text-slate-400">Jita Sell</div>
+            <div className="text-content-secondary">Jita Sell</div>
             <div className="font-medium text-white">{formatISKFull(totals.jitaSellTotal)}</div>
           </div>
           {totals.capitalValue > 0 && (
             <div>
-              <div className="text-slate-400">Capital Value</div>
+              <div className="text-content-secondary">Capital Value</div>
               <div className="font-medium text-white">{formatISKFull(totals.capitalValue)}</div>
             </div>
           )}
           {totals.assetSafetyCost > 0 && (
             <div>
-              <div className="text-slate-400">Asset Safety Fee</div>
+              <div className="text-content-secondary">Asset Safety Fee</div>
               <div className="font-medium text-orange-400">-{formatISKFull(totals.assetSafetyCost)}</div>
             </div>
           )}
@@ -263,18 +263,18 @@ export function BuybackResults({ result, config }: BuybackResultsProps) {
       </div>
 
       {displayItems.length > 0 && (
-        <div className="overflow-hidden rounded-lg border border-slate-700">
+        <div className="overflow-hidden rounded-lg border border-border">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="border-b border-slate-700 bg-slate-800">
+              <thead className="border-b border-border bg-surface-secondary">
                 <tr>
-                  <th className="px-4 py-3 text-left font-medium text-slate-300">Item</th>
-                  <th className="px-4 py-3 text-right font-medium text-slate-300">Qty</th>
+                  <th className="px-4 py-3 text-left font-medium text-content-secondary">Item</th>
+                  <th className="px-4 py-3 text-right font-medium text-content-secondary">Qty</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-700/50">
                 {displayItems.map((item, index) => (
-                  <tr key={`${item.itemName}-${index}`} className="text-slate-100">
+                  <tr key={`${item.itemName}-${index}`} className="text-content">
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-2">
                         {item.typeId ? (
@@ -286,7 +286,7 @@ export function BuybackResults({ result, config }: BuybackResultsProps) {
                             className="shrink-0"
                           />
                         ) : (
-                          <div className="h-8 w-8 shrink-0 rounded bg-slate-700" />
+                          <div className="h-8 w-8 shrink-0 rounded bg-surface-tertiary" />
                         )}
                         <span className="truncate">{item.itemName}</span>
                       </div>
@@ -323,7 +323,7 @@ function ExcludedSection({
     red: 'border-red-500/30 bg-red-500/10 text-red-400',
     pink: 'border-pink-500/30 bg-pink-500/10 text-pink-400',
     purple: 'border-purple-500/30 bg-purple-500/10 text-purple-400',
-    gray: 'border-slate-500/30 bg-slate-500/10 text-slate-400',
+    gray: 'border-slate-500/30 bg-slate-500/10 text-content-secondary',
     blue: 'border-blue-500/30 bg-blue-500/10 text-blue-400',
     cyan: 'border-cyan-500/30 bg-cyan-500/10 text-cyan-400',
     indigo: 'border-indigo-500/30 bg-indigo-500/10 text-indigo-400',
@@ -335,7 +335,7 @@ function ExcludedSection({
     red: 'text-red-300/80',
     pink: 'text-pink-300/80',
     purple: 'text-purple-300/80',
-    gray: 'text-slate-300/80',
+    gray: 'text-content-secondary/80',
     blue: 'text-blue-300/80',
     cyan: 'text-cyan-300/80',
     indigo: 'text-indigo-300/80',
@@ -347,7 +347,7 @@ function ExcludedSection({
     red: 'text-red-300/60',
     pink: 'text-pink-300/60',
     purple: 'text-purple-300/60',
-    gray: 'text-slate-300/60',
+    gray: 'text-content-secondary/60',
     blue: 'text-blue-300/60',
     cyan: 'text-cyan-300/60',
     indigo: 'text-indigo-300/60',

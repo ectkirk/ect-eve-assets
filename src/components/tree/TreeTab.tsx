@@ -93,7 +93,7 @@ export function TreeTab({ mode }: TreeTabProps) {
   if (owners.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-slate-400">No characters logged in. Add a character to view assets.</p>
+        <p className="text-content-secondary">No characters logged in. Add a character to view assets.</p>
       </div>
     )
   }
@@ -102,8 +102,8 @@ export function TreeTab({ mode }: TreeTabProps) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-500 mx-auto" />
-          <p className="mt-2 text-slate-400">
+          <Loader2 className="h-8 w-8 animate-spin text-accent mx-auto" />
+          <p className="mt-2 text-content-secondary">
             {updateProgress
               ? `Fetching assets (${updateProgress.current + 1}/${updateProgress.total})...`
               : 'Loading assets...'}
@@ -119,12 +119,12 @@ export function TreeTab({ mode }: TreeTabProps) {
         <div className="text-center">
           {hasError && (
             <>
-              <p className="text-red-500">Failed to load assets</p>
-              <p className="text-sm text-slate-400 mb-4">{errorMessage}</p>
+              <p className="text-semantic-negative">Failed to load assets</p>
+              <p className="text-sm text-content-secondary mb-4">{errorMessage}</p>
             </>
           )}
           {!hasError && (
-            <p className="text-slate-400">No asset data loaded yet.</p>
+            <p className="text-content-secondary">No asset data loaded yet.</p>
           )}
         </div>
       </div>
@@ -134,8 +134,8 @@ export function TreeTab({ mode }: TreeTabProps) {
   if (prices.size === 0) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-        <span className="ml-2 text-slate-400">Loading prices...</span>
+        <Loader2 className="h-8 w-8 animate-spin text-accent" />
+        <span className="ml-2 text-content-secondary">Loading prices...</span>
       </div>
     )
   }
