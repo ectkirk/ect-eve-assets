@@ -84,13 +84,18 @@ export function WalletTab() {
 
   const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
 
-  const sortedWallets = useMemo(() => {
+  const { characterWallets, corporationWallets } = useMemo(() => {
     let filtered = walletsByOwner
     if (activeOwnerId !== null) {
       filtered = walletsByOwner.filter((w) => ownerKey(w.owner.type, w.owner.id) === activeOwnerId)
     }
 
-    const sorted = [...filtered].sort((a, b) => {
+    if (search) {
+      const searchLower = search.toLowerCase()
+      filtered = filtered.filter((wallet) => wallet.owner.name.toLowerCase().includes(searchLower))
+    }
+
+    const sortByBalance = (a: typeof filtered[0], b: typeof filtered[0]) => {
       const aBalance = 'divisions' in a
         ? a.divisions.reduce((sum, d) => sum + d.balance, 0)
         : a.balance
@@ -98,13 +103,18 @@ export function WalletTab() {
         ? b.divisions.reduce((sum, d) => sum + d.balance, 0)
         : b.balance
       return bBalance - aBalance
-    })
+    }
 
-    if (!search) return sorted
+    const characters = filtered.filter((w) => w.owner.type === 'character').sort(sortByBalance)
+    const corporations = filtered.filter((w) => w.owner.type === 'corporation').sort(sortByBalance)
 
-    const searchLower = search.toLowerCase()
-    return sorted.filter((wallet) => wallet.owner.name.toLowerCase().includes(searchLower))
+    return { characterWallets: characters, corporationWallets: corporations }
   }, [walletsByOwner, search, activeOwnerId])
+
+  const sortedWallets = useMemo(
+    () => [...characterWallets, ...corporationWallets],
+    [characterWallets, corporationWallets]
+  )
 
   useEffect(() => {
     setResultCount({ showing: sortedWallets.length, total: walletsByOwner.length })
@@ -131,90 +141,118 @@ export function WalletTab() {
   })
   if (loadingState) return loadingState
 
-  return (
-    <div className="h-full rounded-lg border border-slate-700 overflow-auto">
-      {sortedWallets.map((wallet) => {
-        const key = `${wallet.owner.type}-${wallet.owner.id}`
-        const isCorp = isCorporationWallet(wallet)
-        const expanded = isExpanded(key)
+  const renderWalletRow = (wallet: typeof sortedWallets[0]) => {
+    const key = `${wallet.owner.type}-${wallet.owner.id}`
+    const isCorp = isCorporationWallet(wallet)
+    const expanded = isExpanded(key)
 
-        let ownerTotal = 0
-        if (isCorp) {
-          for (const div of wallet.divisions) {
-            ownerTotal += div.balance
-          }
-        } else {
-          ownerTotal = wallet.balance
-        }
+    let ownerTotal = 0
+    if (isCorp) {
+      for (const div of wallet.divisions) {
+        ownerTotal += div.balance
+      }
+    } else {
+      ownerTotal = wallet.balance
+    }
 
-        return (
-          <div key={key} className="border-b border-slate-700 last:border-b-0">
-            <button
-              onClick={() => isCorp && toggle(key)}
-              className={cn(
-                'w-full flex items-center gap-3 px-4 py-3 text-left',
-                isCorp && 'hover:bg-slate-800/50'
-              )}
-            >
-              {isCorp ? (
-                expanded ? (
-                  <ChevronDown className="h-4 w-4 text-slate-400" />
-                ) : (
-                  <ChevronRight className="h-4 w-4 text-slate-400" />
-                )
+    return (
+      <div key={key} className="border-b border-slate-700/50 last:border-b-0">
+        <button
+          onClick={() => isCorp && toggle(key)}
+          className={cn(
+            'w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm',
+            isCorp ? 'hover:bg-slate-800/50 cursor-pointer' : 'cursor-default'
+          )}
+        >
+          <div className="w-4 flex justify-center">
+            {isCorp ? (
+              expanded ? (
+                <ChevronDown className="h-4 w-4 text-slate-400" />
               ) : (
-                <Wallet className="h-4 w-4 text-slate-400" />
-              )}
-              <OwnerIcon
-                ownerId={wallet.owner.id}
-                ownerType={wallet.owner.type}
-                size="lg"
-              />
-              <span className="font-medium flex-1">{wallet.owner.name}</span>
-              <span
-                className={cn(
-                  'font-medium tabular-nums',
-                  ownerTotal >= 0 ? 'text-green-400' : 'text-red-400'
-                )}
-              >
-                {formatISK(ownerTotal)}
-              </span>
-            </button>
-
-            {isCorp && expanded && (
-              <div className="px-4 pb-3">
-                {wallet.divisions
-                  .sort((a, b) => a.division - b.division)
-                  .map((div) => {
-                    const customName = getWalletName(wallet.owner.id, div.division)
-                    const defaultName = DEFAULT_WALLET_NAMES[div.division - 1] ?? `Division ${div.division}`
-                    const displayName = customName || defaultName
-
-                    return (
-                      <div
-                        key={div.division}
-                        className="flex items-center gap-3 py-2 pl-8 border-t border-slate-700/50 first:border-t-0"
-                      >
-                        <Building2 className="h-4 w-4 text-slate-500" />
-                        <span className="text-slate-300 flex-1">
-                          {displayName}
-                        </span>
-                        <span
-                          className={cn(
-                            'font-medium tabular-nums text-sm',
-                            div.balance >= 0 ? 'text-green-400' : 'text-red-400'
-                          )}
-                        >
-                          {formatISK(div.balance)}
-                        </span>
-                      </div>
-                    )
-                  })}
-              </div>
+                <ChevronRight className="h-4 w-4 text-slate-400" />
+              )
+            ) : (
+              <Wallet className="h-4 w-4 text-slate-500" />
             )}
           </div>
-        )
-      })}
+          <OwnerIcon
+            ownerId={wallet.owner.id}
+            ownerType={wallet.owner.type}
+            size="md"
+          />
+          <span className="flex-1 text-slate-200">{wallet.owner.name}</span>
+          <span
+            className={cn(
+              'tabular-nums',
+              ownerTotal >= 0 ? 'text-green-400' : 'text-red-400'
+            )}
+          >
+            {formatISK(ownerTotal)}
+          </span>
+        </button>
+
+        {isCorp && expanded && (
+          <div className="pb-2">
+            {wallet.divisions
+              .sort((a, b) => a.division - b.division)
+              .map((div) => {
+                const customName = getWalletName(wallet.owner.id, div.division)
+                const defaultName = DEFAULT_WALLET_NAMES[div.division - 1] ?? `Division ${div.division}`
+                const displayName = customName || defaultName
+
+                return (
+                  <div
+                    key={div.division}
+                    className="flex items-center gap-3 py-1.5 pl-12 pr-4 text-sm"
+                  >
+                    <Building2 className="h-3.5 w-3.5 text-slate-500" />
+                    <span className="text-slate-400 flex-1">
+                      {displayName}
+                    </span>
+                    <span
+                      className={cn(
+                        'tabular-nums',
+                        div.balance >= 0 ? 'text-green-400/80' : 'text-red-400/80'
+                      )}
+                    >
+                      {formatISK(div.balance)}
+                    </span>
+                  </div>
+                )
+              })}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="h-full overflow-auto">
+      {characterWallets.length > 0 && (
+        <div className="rounded-lg border border-slate-700 bg-slate-800/30">
+          <div className="px-4 py-2 border-b border-slate-700 bg-slate-800/50">
+            <span className="text-xs font-medium uppercase tracking-wider text-slate-400">
+              Characters
+            </span>
+          </div>
+          {characterWallets.map(renderWalletRow)}
+        </div>
+      )}
+
+      {characterWallets.length > 0 && corporationWallets.length > 0 && (
+        <div className="h-4" />
+      )}
+
+      {corporationWallets.length > 0 && (
+        <div className="rounded-lg border border-slate-700 bg-slate-800/30">
+          <div className="px-4 py-2 border-b border-slate-700 bg-slate-800/50">
+            <span className="text-xs font-medium uppercase tracking-wider text-slate-400">
+              Corporations
+            </span>
+          </div>
+          {corporationWallets.map(renderWalletRow)}
+        </div>
+      )}
     </div>
   )
 }
