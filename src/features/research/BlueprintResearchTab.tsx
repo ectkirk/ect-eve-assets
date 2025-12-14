@@ -3,33 +3,12 @@ import { Loader2, Calculator, Clock, BookOpen } from 'lucide-react'
 import { BlueprintSearch } from '@/components/ui/BlueprintSearch'
 import { SystemSearch } from '@/components/ui/SystemSearch'
 import { formatNumber } from '@/lib/utils'
-
-const FACILITIES = [
-  { id: 0, name: 'NPC Station' },
-  { id: 1, name: 'Raitaru' },
-  { id: 2, name: 'Azbel' },
-  { id: 3, name: 'Sotiyo' },
-  { id: 4, name: 'Other Structures' },
-] as const
-
-const RIGS = [
-  { id: 0, name: 'None' },
-  { id: 1, name: 'T1 Rig' },
-  { id: 2, name: 'T2 Rig' },
-] as const
-
-const SECURITY_STATUS = [
-  { id: 'h', name: 'Highsec' },
-  { id: 'l', name: 'Lowsec' },
-  { id: 'n', name: 'Nullsec/WH' },
-] as const
-
-const IMPLANTS = [
-  { id: 1.0, name: 'None' },
-  { id: 0.99, name: '1% (BX-801)' },
-  { id: 0.97, name: '3% (BX-802)' },
-  { id: 0.95, name: '5% (BX-804)' },
-] as const
+import {
+  RESEARCH_FACILITIES as FACILITIES,
+  RIGS,
+  SECURITY_STATUS,
+  IMPLANTS,
+} from '@/features/industry/constants'
 
 export function BlueprintResearchTab() {
   const [blueprint, setBlueprint] = useState<{ id: number; name: string } | null>(null)

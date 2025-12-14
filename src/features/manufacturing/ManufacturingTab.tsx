@@ -4,25 +4,11 @@ import { TypeIcon } from '@/components/ui/type-icon'
 import { BlueprintSearch } from '@/components/ui/BlueprintSearch'
 import { SystemSearch } from '@/components/ui/SystemSearch'
 import { formatNumber } from '@/lib/utils'
-
-const FACILITIES = [
-  { id: 0, name: 'NPC Station' },
-  { id: 1, name: 'Raitaru' },
-  { id: 2, name: 'Azbel' },
-  { id: 3, name: 'Sotiyo' },
-] as const
-
-const ME_RIGS = [
-  { id: 0, name: 'None' },
-  { id: 1, name: 'T1 Material Rig' },
-  { id: 2, name: 'T2 Material Rig' },
-] as const
-
-const SECURITY_STATUS = [
-  { id: 'h', name: 'Highsec' },
-  { id: 'l', name: 'Lowsec' },
-  { id: 'n', name: 'Nullsec/WH' },
-] as const
+import {
+  MANUFACTURING_FACILITIES as FACILITIES,
+  ME_RIGS,
+  SECURITY_STATUS,
+} from '@/features/industry/constants'
 
 function formatDuration(isoStr: string | undefined): string {
   if (!isoStr) return '-'
