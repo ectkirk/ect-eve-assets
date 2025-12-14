@@ -603,7 +603,7 @@ ipcMain.handle(
     }
 
     try {
-      const response = await fetch(`${REF_API_BASE}/buyback/calculator`, {
+      const response = await fetch('https://edencom.net/api/buyback/calculator', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text }),
