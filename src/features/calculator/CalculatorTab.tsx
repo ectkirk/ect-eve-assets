@@ -53,7 +53,7 @@ export function CalculatorTab() {
         </div>
 
         {error && (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-400">
+          <div className="rounded-lg border border-semantic-danger/30 bg-semantic-danger/10 p-4 text-status-negative">
             {error}
           </div>
         )}

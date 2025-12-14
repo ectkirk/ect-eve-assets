@@ -22,7 +22,7 @@ export function UpdateBanner() {
   }
 
   return (
-    <div className="flex items-center justify-between bg-blue-600 px-4 py-2 text-sm text-white">
+    <div className="flex items-center justify-between bg-accent px-4 py-2 text-sm text-white">
       <div className="flex items-center gap-2">
         <Download className="h-4 w-4" />
         <span>Version {updateReady} is ready to install</span>
@@ -30,13 +30,13 @@ export function UpdateBanner() {
       <div className="flex items-center gap-2">
         <button
           onClick={handleInstall}
-          className="rounded bg-white px-3 py-1 text-sm font-medium text-blue-600 hover:bg-blue-50"
+          className="rounded bg-white px-3 py-1 text-sm font-medium text-accent hover:opacity-90"
         >
           Restart Now
         </button>
         <button
           onClick={() => setDismissed(true)}
-          className="rounded p-1 hover:bg-blue-500"
+          className="rounded p-1 hover:bg-accent-hover"
           title="Install later (on next restart)"
         >
           <X className="h-4 w-4" />

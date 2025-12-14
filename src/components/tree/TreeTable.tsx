@@ -73,25 +73,25 @@ const NODE_TYPE_ICONS: Record<TreeNodeType, React.ElementType> = {
 }
 
 const NODE_TYPE_COLORS: Record<TreeNodeType, string> = {
-  region: 'text-purple-400',
-  system: 'text-yellow-400',
-  station: 'text-blue-400',
-  office: 'text-amber-400',
+  region: 'text-accent',
+  system: 'text-status-highlight',
+  station: 'text-status-info',
+  office: 'text-status-highlight',
   division: 'text-content-secondary',
-  container: 'text-orange-400',
-  ship: 'text-cyan-400',
+  container: 'text-status-warning',
+  ship: 'text-status-special',
   item: 'text-content-secondary',
   stack: 'text-content-secondary',
 }
 
 const DIVISION_COLORS = [
-  'text-rose-400',
-  'text-orange-400',
-  'text-yellow-400',
-  'text-lime-400',
-  'text-emerald-400',
-  'text-cyan-400',
-  'text-violet-400',
+  'text-status-negative',
+  'text-status-warning',
+  'text-status-highlight',
+  'text-status-positive',
+  'text-status-positive',
+  'text-status-special',
+  'text-accent',
 ]
 
 function TreeNodeIcon({ nodeType, divisionNumber }: { nodeType: TreeNodeType; divisionNumber?: number }) {
@@ -177,18 +177,18 @@ function TreeRowContent({ node, isExpanded, onToggle, visibleColumns }: {
                 <span
                   className={cn(
                     'truncate',
-                    isLocationNode && node.nodeType === 'region' && 'font-semibold text-purple-300',
-                    isLocationNode && node.nodeType === 'system' && 'font-medium text-yellow-300',
-                    isLocationNode && node.nodeType === 'station' && 'text-blue-300',
+                    isLocationNode && node.nodeType === 'region' && 'font-semibold text-accent',
+                    isLocationNode && node.nodeType === 'system' && 'font-medium text-status-highlight',
+                    isLocationNode && node.nodeType === 'station' && 'text-status-info',
                     isOfficeNode && 'font-medium',
                     isDivisionNode && node.divisionNumber && DIVISION_COLORS[node.divisionNumber - 1],
-                    node.isBlueprintCopy && 'text-cyan-400'
+                    node.isBlueprintCopy && 'text-status-special'
                   )}
                   title={node.name}
                 >
                   {isOfficeNode ? (
                     <>
-                      <span className="text-amber-300">{node.name}</span>
+                      <span className="text-status-highlight">{node.name}</span>
                       <span className="text-content-muted italic ml-1">Office</span>
                     </>
                   ) : node.name}
@@ -206,7 +206,7 @@ function TreeRowContent({ node, isExpanded, onToggle, visibleColumns }: {
         }
         if (colId === 'value') {
           return (
-            <TableCell key={colId} className="py-1.5 text-right tabular-nums text-green-400 w-32">
+            <TableCell key={colId} className="py-1.5 text-right tabular-nums text-status-positive w-32">
               {node.totalValue > 0 ? formatNumber(node.totalValue) + ' ISK' : '-'}
             </TableCell>
           )

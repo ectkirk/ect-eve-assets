@@ -386,7 +386,7 @@ export function OwnerManagementModal({
 
             {/* Corporations Section */}
             <div>
-              <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-yellow-400/70">
+              <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-status-corp/70">
                 <Building2 className="h-3 w-3" />
                 Corporations ({filteredCorps.length})
               </div>
@@ -446,7 +446,7 @@ export function OwnerManagementModal({
               </button>
               <button
                 onClick={handleAddCorporation}
-                className="flex flex-1 items-center justify-center gap-2 rounded-md bg-yellow-600 px-4 py-2 text-sm font-medium hover:bg-yellow-500"
+                className="flex flex-1 items-center justify-center gap-2 rounded-md bg-semantic-warning px-4 py-2 text-sm font-medium text-content hover:opacity-90"
               >
                 <Building2 className="h-4 w-4" />
                 Add Corporation
@@ -489,7 +489,7 @@ function OwnerRow({ owner, isActive, disabled, onSelect, onRemove, onReauth }: O
     >
       <div className="flex items-center gap-2">
         <OwnerIcon ownerId={owner.id} ownerType={owner.type} size="lg" />
-        <span className={`text-sm ${isCorp ? 'text-yellow-400' : ''}`}>
+        <span className={`text-sm ${isCorp ? 'text-status-corp' : ''}`}>
           {owner.name}
         </span>
         {owner.authFailed && (

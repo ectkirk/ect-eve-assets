@@ -184,7 +184,7 @@ export function WalletTab() {
           <span
             className={cn(
               'tabular-nums',
-              ownerTotal >= 0 ? 'text-green-400' : 'text-red-400'
+              ownerTotal >= 0 ? 'text-status-positive' : 'text-status-negative'
             )}
           >
             {formatISK(ownerTotal)}
@@ -212,7 +212,7 @@ export function WalletTab() {
                     <span
                       className={cn(
                         'tabular-nums',
-                        div.balance >= 0 ? 'text-green-400/80' : 'text-red-400/80'
+                        div.balance >= 0 ? 'text-status-positive/80' : 'text-status-negative/80'
                       )}
                     >
                       {formatISK(div.balance)}

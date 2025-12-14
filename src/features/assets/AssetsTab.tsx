@@ -132,12 +132,12 @@ const columns: ColumnDef<AssetRow>[] = [
       return (
         <div className="flex items-center gap-2">
           <TypeIcon typeId={typeId} categoryId={categoryId} isBlueprintCopy={isBpc} size="lg" />
-          <span className={isBpc ? 'text-cyan-400' : ''}>{typeName}</span>
+          <span className={isBpc ? 'text-status-special' : ''}>{typeName}</span>
           {isContract && (
-            <span className="text-xs text-yellow-400 bg-yellow-500/20 px-1.5 py-0.5 rounded">In Contract</span>
+            <span className="text-xs text-status-corp bg-semantic-warning/20 px-1.5 py-0.5 rounded">In Contract</span>
           )}
           {isMarketOrder && (
-            <span className="text-xs text-blue-400 bg-blue-500/20 px-1.5 py-0.5 rounded">Sell Order</span>
+            <span className="text-xs text-status-info bg-accent/20 px-1.5 py-0.5 rounded">Sell Order</span>
           )}
         </div>
       )
@@ -197,7 +197,7 @@ const columns: ColumnDef<AssetRow>[] = [
     cell: ({ row }) => {
       const value = row.getValue('totalValue') as number
       return (
-        <span className="tabular-nums text-right w-full text-green-400">
+        <span className="tabular-nums text-right w-full text-status-positive">
           {value > 0 ? formatNumber(value) + ' ISK' : '-'}
         </span>
       )
@@ -648,7 +648,7 @@ export function AssetsTab() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-500 mx-auto" />
+          <Loader2 className="h-8 w-8 animate-spin text-accent mx-auto" />
           <p className="mt-2 text-content-secondary">
             {updateProgress
               ? `Fetching assets (${updateProgress.current + 1}/${updateProgress.total})...`
@@ -665,7 +665,7 @@ export function AssetsTab() {
         <div className="text-center">
           {hasError && (
             <>
-              <p className="text-red-500">Failed to load assets</p>
+              <p className="text-semantic-danger">Failed to load assets</p>
               <p className="text-sm text-content-secondary">{errorMessage}</p>
             </>
           )}
@@ -680,7 +680,7 @@ export function AssetsTab() {
   return (
     <div className="flex flex-col h-full">
       {isRefreshingAbyssals && (
-        <div className="flex items-center gap-1 text-sm text-blue-400 mb-2">
+        <div className="flex items-center gap-1 text-sm text-status-info mb-2">
           <Loader2 className="h-3 w-3 animate-spin" />
           <span>Fetching abyssal prices...</span>
         </div>

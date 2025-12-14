@@ -272,7 +272,7 @@ export function BlueprintResearchTab() {
 
       <div className="flex-1 overflow-auto">
         {error && (
-          <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-4 text-red-400">
+          <div className="rounded-lg border border-semantic-danger/50 bg-semantic-danger/10 p-4 text-status-negative">
             {error}
           </div>
         )}
@@ -292,7 +292,7 @@ export function BlueprintResearchTab() {
               {result.meResearch && result.meResearch.length > 0 && (
                 <div className="rounded-lg border border-border bg-surface-secondary/50 p-4">
                   <div className="flex items-center gap-2 mb-3">
-                    <BookOpen className="h-4 w-4 text-blue-400" />
+                    <BookOpen className="h-4 w-4 text-status-info" />
                     <h4 className="text-sm font-medium text-content-secondary">ME Research</h4>
                   </div>
                   <div className="overflow-x-auto">
@@ -309,11 +309,11 @@ export function BlueprintResearchTab() {
                       <tbody>
                         {result.meResearch.map((row) => (
                           <tr key={row.level} className="border-b border-border/50">
-                            <td className="py-1.5 pr-2 text-blue-400">{row.level}</td>
+                            <td className="py-1.5 pr-2 text-status-info">{row.level}</td>
                             <td className="py-1.5 pr-2 text-content-secondary">{row.durationFormatted}</td>
                             <td className="py-1.5 pr-2 tabular-nums">{formatNumber(row.cost)} ISK</td>
                             <td className="py-1.5 pr-2 text-content-secondary">{row.cumulativeDurationFormatted}</td>
-                            <td className="py-1.5 tabular-nums text-amber-400">{formatNumber(row.cumulativeCost)} ISK</td>
+                            <td className="py-1.5 tabular-nums text-status-highlight">{formatNumber(row.cumulativeCost)} ISK</td>
                           </tr>
                         ))}
                       </tbody>
@@ -325,7 +325,7 @@ export function BlueprintResearchTab() {
               {result.teResearch && result.teResearch.length > 0 && (
                 <div className="rounded-lg border border-border bg-surface-secondary/50 p-4">
                   <div className="flex items-center gap-2 mb-3">
-                    <Clock className="h-4 w-4 text-green-400" />
+                    <Clock className="h-4 w-4 text-status-positive" />
                     <h4 className="text-sm font-medium text-content-secondary">TE Research</h4>
                   </div>
                   <div className="overflow-x-auto">
@@ -342,11 +342,11 @@ export function BlueprintResearchTab() {
                       <tbody>
                         {result.teResearch.map((row) => (
                           <tr key={row.level} className="border-b border-border/50">
-                            <td className="py-1.5 pr-2 text-green-400">{row.level}</td>
+                            <td className="py-1.5 pr-2 text-status-positive">{row.level}</td>
                             <td className="py-1.5 pr-2 text-content-secondary">{row.durationFormatted}</td>
                             <td className="py-1.5 pr-2 tabular-nums">{formatNumber(row.cost)} ISK</td>
                             <td className="py-1.5 pr-2 text-content-secondary">{row.cumulativeDurationFormatted}</td>
-                            <td className="py-1.5 tabular-nums text-amber-400">{formatNumber(row.cumulativeCost)} ISK</td>
+                            <td className="py-1.5 tabular-nums text-status-highlight">{formatNumber(row.cumulativeCost)} ISK</td>
                           </tr>
                         ))}
                       </tbody>

@@ -233,7 +233,7 @@ export function CopyingTab() {
 
       <div className="flex-1 overflow-auto">
         {error && (
-          <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-4 text-red-400">
+          <div className="rounded-lg border border-semantic-danger/50 bg-semantic-danger/10 p-4 text-status-negative">
             {error}
           </div>
         )}
@@ -256,7 +256,7 @@ export function CopyingTab() {
               </div>
 
               {result.copying.exceeds30DayLimit && (
-                <div className="flex items-center gap-2 mb-4 p-2 rounded bg-amber-500/10 border border-amber-500/30 text-amber-400 text-sm">
+                <div className="flex items-center gap-2 mb-4 p-2 rounded bg-semantic-warning/10 border border-semantic-warning/30 text-status-highlight text-sm">
                   <AlertTriangle className="h-4 w-4 shrink-0" />
                   <span>Copy duration exceeds 30 days - only one copy can be queued at a time</span>
                 </div>
@@ -265,7 +265,7 @@ export function CopyingTab() {
               <div className="grid grid-cols-4 gap-4 mb-4">
                 <div>
                   <div className="text-xs text-content-secondary mb-1">Duration</div>
-                  <div className="text-lg font-medium text-purple-400">{result.copying.durationFormatted}</div>
+                  <div className="text-lg font-medium text-accent">{result.copying.durationFormatted}</div>
                 </div>
                 <div>
                   <div className="text-xs text-content-secondary mb-1">Runs per Copy</div>
@@ -277,7 +277,7 @@ export function CopyingTab() {
                 </div>
                 <div>
                   <div className="text-xs text-content-secondary mb-1">Copies in 30 days</div>
-                  <div className={`text-lg font-medium ${result.copying.exceeds30DayLimit ? 'text-amber-400' : 'text-cyan-400'}`}>
+                  <div className={`text-lg font-medium ${result.copying.exceeds30DayLimit ? 'text-status-highlight' : 'text-status-special'}`}>
                     {result.copying.copiesIn30Days}
                   </div>
                 </div>
@@ -289,7 +289,7 @@ export function CopyingTab() {
                     <Coins className="h-3.5 w-3.5" />
                     <span className="text-xs">Installation Cost</span>
                   </div>
-                  <div className="text-sm font-medium text-amber-400">
+                  <div className="text-sm font-medium text-status-highlight">
                     {formatNumber(result.copying.installationCost)} ISK
                   </div>
                 </div>
@@ -298,7 +298,7 @@ export function CopyingTab() {
                     <Coins className="h-3.5 w-3.5" />
                     <span className="text-xs">Materials Cost</span>
                   </div>
-                  <div className="text-sm font-medium text-amber-400">
+                  <div className="text-sm font-medium text-status-highlight">
                     {formatNumber(result.copying.materialsCost)} ISK
                   </div>
                 </div>
@@ -307,7 +307,7 @@ export function CopyingTab() {
                     <Coins className="h-3.5 w-3.5" />
                     <span className="text-xs">Total Cost</span>
                   </div>
-                  <div className="text-sm font-medium text-green-400">
+                  <div className="text-sm font-medium text-status-positive">
                     {formatNumber(result.copying.totalCost)} ISK
                   </div>
                 </div>
@@ -359,7 +359,7 @@ export function CopyingTab() {
                             <td className="py-1.5 pr-2 text-content-secondary">{mat.name}</td>
                             <td className="py-1.5 pr-2 text-right tabular-nums">{mat.quantity.toLocaleString()}</td>
                             <td className="py-1.5 pr-2 text-right tabular-nums text-content-secondary">{formatNumber(mat.price)} ISK</td>
-                            <td className="py-1.5 text-right tabular-nums text-amber-400">{formatNumber(mat.total)} ISK</td>
+                            <td className="py-1.5 text-right tabular-nums text-status-highlight">{formatNumber(mat.total)} ISK</td>
                           </tr>
                         ))}
                       </tbody>

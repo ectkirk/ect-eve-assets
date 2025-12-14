@@ -26,17 +26,7 @@ function FAQItem({ question, children }: { question: string; children: React.Rea
 }
 
 export function BuybackFAQ() {
-  const bgToText: Record<string, string> = {
-    'bg-green-600': 'text-green-400',
-    'bg-yellow-600': 'text-yellow-400',
-    'bg-red-600': 'text-red-400',
-    'bg-orange-600': 'text-orange-400',
-  }
-
-  const configs = Object.values(SECURITY_CONFIGS).map((config) => ({
-    ...config,
-    textColor: bgToText[config.color] || 'text-content-secondary',
-  }))
+  const configs = Object.values(SECURITY_CONFIGS)
 
   return (
     <div className="rounded-lg border border-border bg-surface-secondary/50 p-6">
@@ -105,7 +95,7 @@ export function BuybackFAQ() {
 
         <FAQItem question="Do you accept items in player-owned stations?">
           <p>
-            Yes! Use our <span className="text-orange-400">Asset Safety</span> tab which
+            Yes! Use our <span className="text-status-warning">Asset Safety</span> tab which
             automatically calculates the 15% asset safety retrieval cost based on EVE ESI market
             prices. The fee will be deducted from your quote automatically, so you can contract for
             the exact amount shown.
@@ -129,7 +119,7 @@ export function BuybackFAQ() {
               href="https://discord.gg/dexSsJYYbv"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-400 hover:underline"
+              className="text-link hover:underline"
             >
               discord.gg/dexSsJYYbv
             </a>
@@ -159,7 +149,7 @@ export function BuybackFAQ() {
               href="https://discord.gg/dexSsJYYbv"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-400 hover:underline"
+              className="text-link hover:underline"
             >
               Discord
             </a>

@@ -97,20 +97,20 @@ function formatExpiry(dateExpired: string): { text: string; isExpired: boolean }
 function StatusIcon({ status }: { status: ESIContract['status'] }) {
   switch (status) {
     case 'outstanding':
-      return <Clock className="h-4 w-4 text-blue-400" />
+      return <Clock className="h-4 w-4 text-status-info" />
     case 'in_progress':
-      return <Clock className="h-4 w-4 text-yellow-400" />
+      return <Clock className="h-4 w-4 text-status-highlight" />
     case 'finished':
     case 'finished_issuer':
     case 'finished_contractor':
-      return <CheckCircle2 className="h-4 w-4 text-green-400" />
+      return <CheckCircle2 className="h-4 w-4 text-status-positive" />
     case 'cancelled':
     case 'rejected':
     case 'failed':
     case 'deleted':
-      return <XCircle className="h-4 w-4 text-red-400" />
+      return <XCircle className="h-4 w-4 text-status-negative" />
     case 'reversed':
-      return <AlertCircle className="h-4 w-4 text-orange-400" />
+      return <AlertCircle className="h-4 w-4 text-status-warning" />
     default:
       return <HelpCircle className="h-4 w-4 text-content-secondary" />
   }
@@ -239,7 +239,7 @@ function ContractsTable({
                       {hasMultipleItems ? (
                         <button
                           onClick={() => toggleContract(contract.contract_id)}
-                          className="flex items-center gap-1 hover:text-blue-400"
+                          className="flex items-center gap-1 hover:text-link"
                         >
                           {isExpanded ? (
                             <ChevronDown className="h-4 w-4 text-content-secondary" />
@@ -273,11 +273,11 @@ function ContractsTable({
                   )}
                 </TableCell>
                 <TableCell className="py-1.5 text-content-secondary">{row.assigneeName}</TableCell>
-                <TableCell className="py-1.5 text-right tabular-nums text-amber-400">
+                <TableCell className="py-1.5 text-right tabular-nums text-status-highlight">
                   {value > 0 ? formatNumber(value) : '-'}
                 </TableCell>
                 {!showCourierColumns && !showCompletedDate && (
-                  <TableCell className="py-1.5 text-right tabular-nums text-green-400">
+                  <TableCell className="py-1.5 text-right tabular-nums text-status-positive">
                     {row.itemValue > 0 ? formatNumber(row.itemValue) : '-'}
                   </TableCell>
                 )}
@@ -291,10 +291,10 @@ function ContractsTable({
                     const daysLeft = Math.ceil(remaining / (24 * 60 * 60 * 1000))
                     if (daysLeft <= 0) {
                       daysDisplay = 'Expired'
-                      daysColor = 'text-red-400'
+                      daysColor = 'text-status-negative'
                     } else {
                       daysDisplay = `${daysLeft}d`
-                      daysColor = daysLeft <= 1 ? 'text-red-400' : daysLeft <= 3 ? 'text-yellow-400' : 'text-content-secondary'
+                      daysColor = daysLeft <= 1 ? 'text-status-negative' : daysLeft <= 3 ? 'text-status-highlight' : 'text-content-secondary'
                     }
                   } else if (contract.status === 'in_progress' && contract.date_accepted && contract.days_to_complete) {
                     const acceptedDate = new Date(contract.date_accepted).getTime()
@@ -302,7 +302,7 @@ function ContractsTable({
                     const remaining = deadline - Date.now()
                     const daysLeft = Math.ceil(remaining / (24 * 60 * 60 * 1000))
                     daysDisplay = daysLeft > 0 ? `${daysLeft}d` : 'Overdue'
-                    daysColor = daysLeft <= 1 ? 'text-red-400' : daysLeft <= 3 ? 'text-yellow-400' : 'text-content-secondary'
+                    daysColor = daysLeft <= 1 ? 'text-status-negative' : daysLeft <= 3 ? 'text-status-highlight' : 'text-content-secondary'
                   }
 
                   return (
@@ -310,7 +310,7 @@ function ContractsTable({
                       <TableCell className="py-1.5 text-right tabular-nums text-content-secondary">
                         {contract.volume ? `${contract.volume.toLocaleString()} m³` : '-'}
                       </TableCell>
-                      <TableCell className="py-1.5 text-right tabular-nums text-amber-400">
+                      <TableCell className="py-1.5 text-right tabular-nums text-status-highlight">
                         {contract.collateral ? formatNumber(contract.collateral) : '-'}
                       </TableCell>
                       <TableCell className={cn('py-1.5 text-right tabular-nums', daysColor)}>
@@ -327,23 +327,23 @@ function ContractsTable({
                   <TableCell
                     className={cn(
                       'py-1.5 text-right tabular-nums',
-                      expiry.isExpired ? 'text-red-400' : 'text-content-secondary'
+                      expiry.isExpired ? 'text-status-negative' : 'text-content-secondary'
                     )}
                   >
                     {expiry.text}
                   </TableCell>
                 ) : null}
                 <TableCell className="py-1.5 text-right">
-                  {row.status === 'outstanding' && <span className="text-yellow-400">Outstanding</span>}
-                  {row.status === 'in_progress' && <span className="text-blue-400">In Progress</span>}
+                  {row.status === 'outstanding' && <span className="text-status-highlight">Outstanding</span>}
+                  {row.status === 'in_progress' && <span className="text-status-info">In Progress</span>}
                   {(row.status === 'finished' || row.status === 'finished_issuer' || row.status === 'finished_contractor') && (
-                    <span className="text-green-400">Finished</span>
+                    <span className="text-status-positive">Finished</span>
                   )}
                   {row.status === 'cancelled' && <span className="text-content-secondary">Cancelled</span>}
-                  {row.status === 'rejected' && <span className="text-red-400">Rejected</span>}
-                  {row.status === 'failed' && <span className="text-red-400">Failed</span>}
+                  {row.status === 'rejected' && <span className="text-status-negative">Rejected</span>}
+                  {row.status === 'failed' && <span className="text-status-negative">Failed</span>}
                   {row.status === 'deleted' && <span className="text-content-muted">Deleted</span>}
-                  {row.status === 'reversed' && <span className="text-orange-400">Reversed</span>}
+                  {row.status === 'reversed' && <span className="text-status-warning">Reversed</span>}
                 </TableCell>
                 <TableCell className="py-1.5 text-right text-content-secondary">{row.ownerName}</TableCell>
               </TableRow>
@@ -371,7 +371,7 @@ function DirectionGroupRow({
   onToggle: () => void
   cacheVersion: number
 }) {
-  const colorClass = group.direction === 'in' ? 'text-green-400' : 'text-orange-400'
+  const colorClass = group.direction === 'in' ? 'text-status-positive' : 'text-status-warning'
 
   return (
     <div className="border-b border-border/50 last:border-b-0">
@@ -388,7 +388,7 @@ function DirectionGroupRow({
         <span className="text-xs text-content-secondary">
           {group.contracts.length} contract{group.contracts.length !== 1 ? 's' : ''}
         </span>
-        <span className="text-sm text-amber-400 tabular-nums">
+        <span className="text-sm text-status-highlight tabular-nums">
           {group.totalValue > 0 && formatNumber(group.totalValue)}
         </span>
       </button>
@@ -823,13 +823,13 @@ export function ContractsTab() {
                   ) : (
                     <ChevronRight className="h-4 w-4 text-content-secondary" />
                   )}
-                  <Truck className="h-4 w-4 text-blue-400" />
-                  <span className="text-blue-300 flex-1">{courierGroup.displayName}</span>
+                  <Truck className="h-4 w-4 text-status-info" />
+                  <span className="text-status-info flex-1">{courierGroup.displayName}</span>
                   <span className="text-xs text-content-secondary">
                     {courierGroup.contracts.length} contract
                     {courierGroup.contracts.length !== 1 ? 's' : ''}
                   </span>
-                  <span className="text-sm text-amber-400 tabular-nums">
+                  <span className="text-sm text-status-highlight tabular-nums">
                     {courierGroup.totalValue > 0 && formatNumber(courierGroup.totalValue)}
                   </span>
                 </button>

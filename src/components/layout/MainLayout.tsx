@@ -279,7 +279,7 @@ function OwnerButton() {
           <>
             <OwnerIcon ownerId={activeOwner.id} ownerType={activeOwner.type} size="lg" />
             <span
-              className={`text-sm ${activeOwner.type === 'corporation' ? 'text-yellow-400' : ''}`}
+              className={`text-sm ${activeOwner.type === 'corporation' ? 'text-status-corp' : ''}`}
             >
               {activeOwner.name}
             </span>
@@ -455,11 +455,11 @@ function HeaderControls() {
           </div>
           <div>
             <span className="text-content-secondary">Assets: </span>
-            <span className="font-medium text-purple-400">{formatNumber(totals.assetsTotal)}</span>
+            <span className="font-medium text-accent">{formatNumber(totals.assetsTotal)}</span>
           </div>
           <div>
             <span className="text-content-secondary">Market: </span>
-            <span className="font-medium text-accent">{formatNumber(totals.marketTotal)}</span>
+            <span className="font-medium text-status-info">{formatNumber(totals.marketTotal)}</span>
           </div>
           <div>
             <span className="text-content-secondary">Industry: </span>
@@ -467,7 +467,7 @@ function HeaderControls() {
           </div>
           <div>
             <span className="text-content-secondary">Contracts: </span>
-            <span className="font-medium text-yellow-400">{formatNumber(totals.contractsTotal)}</span>
+            <span className="font-medium text-status-corp">{formatNumber(totals.contractsTotal)}</span>
           </div>
           <div>
             <span className="text-content-secondary">Wallet: </span>
@@ -475,7 +475,7 @@ function HeaderControls() {
           </div>
           <div>
             <span className="text-content-secondary">Structures: </span>
-            <span className="font-medium text-cyan-400">{formatNumber(totals.structuresTotal)}</span>
+            <span className="font-medium text-status-special">{formatNumber(totals.structuresTotal)}</span>
           </div>
         </div>
       )}

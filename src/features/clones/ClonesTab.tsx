@@ -83,7 +83,7 @@ function CloneCard({ clone, isActive }: { clone: CloneInfo; isActive?: boolean }
     <div
       className={cn(
         'border rounded-lg',
-        isActive ? 'border-blue-500 bg-blue-950/20' : 'border-border bg-surface-secondary/30'
+        isActive ? 'border-accent bg-accent/10' : 'border-border bg-surface-secondary/30'
       )}
     >
       <button
@@ -95,16 +95,16 @@ function CloneCard({ clone, isActive }: { clone: CloneInfo; isActive?: boolean }
         ) : (
           <ChevronRight className="h-4 w-4 text-content-secondary" />
         )}
-        <MapPin className={cn('h-4 w-4', isActive ? 'text-blue-400' : 'text-content-secondary')} />
-        <span className={cn('flex-1', isActive && 'text-blue-300')}>
+        <MapPin className={cn('h-4 w-4', isActive ? 'text-status-info' : 'text-content-secondary')} />
+        <span className={cn('flex-1', isActive && 'text-status-info')}>
           {clone.name || clone.locationName}
         </span>
         {isActive && (
-          <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded">Active</span>
+          <span className="text-xs bg-accent/20 text-status-info px-2 py-0.5 rounded">Active</span>
         )}
         {clone.isHome && (
           <span title="Home Station">
-            <Home className="h-4 w-4 text-green-400" />
+            <Home className="h-4 w-4 text-status-positive" />
           </span>
         )}
         <span className="text-xs text-content-muted">{clone.implants.length} implants</span>

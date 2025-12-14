@@ -79,9 +79,9 @@ function OrdersTable({ orders }: { orders: OrderRow[] }) {
             <TableRow key={row.order.order_id}>
               <TableCell className="py-1.5 w-8">
                 {row.order.is_buy_order ? (
-                  <TrendingDown className="h-4 w-4 text-green-400" />
+                  <TrendingDown className="h-4 w-4 text-status-positive" />
                 ) : (
-                  <TrendingUp className="h-4 w-4 text-red-400" />
+                  <TrendingUp className="h-4 w-4 text-status-negative" />
                 )}
               </TableCell>
               <TableCell className="py-1.5">
@@ -103,7 +103,7 @@ function OrdersTable({ orders }: { orders: OrderRow[] }) {
                   </span>
                 )}
               </TableCell>
-              <TableCell className="py-1.5 text-right tabular-nums text-amber-400">
+              <TableCell className="py-1.5 text-right tabular-nums text-status-highlight">
                 {formatNumber(total)}
               </TableCell>
               <TableCell className="py-1.5 text-right tabular-nums text-content-secondary">
@@ -141,17 +141,17 @@ function LocationGroupRow({
         ) : (
           <ChevronRight className="h-4 w-4 text-content-secondary" />
         )}
-        <span className="text-blue-300 flex-1">{group.locationName}</span>
+        <span className="text-status-info flex-1">{group.locationName}</span>
         <span className="text-xs text-content-muted">
           {group.systemName} / {group.regionName}
         </span>
-        <span className="text-xs text-green-400">
+        <span className="text-xs text-status-positive">
           {buyOrders.length > 0 && `${buyOrders.length} buy`}
         </span>
-        <span className="text-xs text-red-400">
+        <span className="text-xs text-status-negative">
           {sellOrders.length > 0 && `${sellOrders.length} sell`}
         </span>
-        <span className="text-sm text-amber-400 tabular-nums">
+        <span className="text-sm text-status-highlight tabular-nums">
           {formatNumber(group.totalBuyValue + group.totalSellValue)}
         </span>
       </button>

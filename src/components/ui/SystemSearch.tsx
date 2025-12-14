@@ -28,9 +28,9 @@ async function loadSystems(): Promise<SystemListItem[]> {
 }
 
 function getSecurityClass(security: number): string {
-  if (security >= 0.5) return 'text-green-400'
-  if (security > 0) return 'text-yellow-400'
-  return 'text-red-400'
+  if (security >= 0.5) return 'text-status-positive'
+  if (security > 0) return 'text-status-highlight'
+  return 'text-status-negative'
 }
 
 export function SystemSearch({ value, onChange, placeholder, className = '' }: SystemSearchProps) {

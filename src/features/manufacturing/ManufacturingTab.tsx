@@ -226,7 +226,7 @@ export function ManufacturingTab() {
 
       <div className="flex-1 overflow-auto">
         {error && (
-          <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-4 text-red-400">
+          <div className="rounded-lg border border-semantic-danger/50 bg-semantic-danger/10 p-4 text-status-negative">
             {error}
           </div>
         )}
@@ -239,7 +239,7 @@ export function ManufacturingTab() {
                   <Coins className="h-4 w-4" />
                   <span className="text-sm">Total Cost</span>
                 </div>
-                <div className="text-xl font-bold text-green-400">
+                <div className="text-xl font-bold text-status-positive">
                   {formatNumber(result.totalCost ?? 0)} ISK
                 </div>
                 <div className="text-xs text-content-muted mt-1">
@@ -252,7 +252,7 @@ export function ManufacturingTab() {
                   <Package className="h-4 w-4" />
                   <span className="text-sm">Materials</span>
                 </div>
-                <div className="text-xl font-bold text-amber-400">
+                <div className="text-xl font-bold text-status-highlight">
                   {formatNumber(result.totalMaterialCost ?? 0)} ISK
                 </div>
                 <div className="text-xs text-content-muted mt-1">
@@ -265,7 +265,7 @@ export function ManufacturingTab() {
                   <Coins className="h-4 w-4" />
                   <span className="text-sm">Job Cost</span>
                 </div>
-                <div className="text-xl font-bold text-blue-400">
+                <div className="text-xl font-bold text-status-info">
                   {formatNumber(result.totalJobCost ?? 0)} ISK
                 </div>
                 <div className="text-xs text-content-muted mt-1">
@@ -320,7 +320,7 @@ export function ManufacturingTab() {
                   {(result.systemCostBonuses ?? 0) !== 0 && (
                     <div className="flex justify-between">
                       <span className="text-content-secondary">System Bonuses</span>
-                      <span className="text-green-400">{formatNumber(result.systemCostBonuses ?? 0)} ISK</span>
+                      <span className="text-status-positive">{formatNumber(result.systemCostBonuses ?? 0)} ISK</span>
                     </div>
                   )}
                   <div className="flex justify-between">
@@ -366,7 +366,7 @@ export function ManufacturingTab() {
                         <td className="py-2 pr-4 text-right tabular-nums text-content-secondary">
                           {formatNumber(mat.volume)} m³
                         </td>
-                        <td className="py-2 text-right tabular-nums text-amber-400">
+                        <td className="py-2 text-right tabular-nums text-status-highlight">
                           {formatNumber(mat.cost)} ISK
                         </td>
                       </tr>
@@ -380,7 +380,7 @@ export function ManufacturingTab() {
                       <td className="pt-2 text-right tabular-nums">
                         {formatNumber(result.materialsVolume ?? 0)} m³
                       </td>
-                      <td className="pt-2 text-right tabular-nums text-amber-400">
+                      <td className="pt-2 text-right tabular-nums text-status-highlight">
                         {formatNumber(result.totalMaterialCost ?? 0)} ISK
                       </td>
                     </tr>

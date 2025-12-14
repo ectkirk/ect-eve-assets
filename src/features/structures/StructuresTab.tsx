@@ -29,18 +29,18 @@ import type { TreeNode } from '@/lib/tree-types'
 import type { ESIAsset } from '@/api/endpoints/assets'
 
 const STATE_DISPLAY: Record<string, { label: string; color: string }> = {
-  shield_vulnerable: { label: 'Online', color: 'text-green-400' },
-  armor_vulnerable: { label: 'Armor', color: 'text-yellow-400' },
-  hull_vulnerable: { label: 'Hull', color: 'text-red-400' },
-  armor_reinforce: { label: 'Armor Reinforce', color: 'text-yellow-400' },
-  hull_reinforce: { label: 'Hull Reinforce', color: 'text-red-400' },
-  anchoring: { label: 'Anchoring', color: 'text-blue-400' },
+  shield_vulnerable: { label: 'Online', color: 'text-status-positive' },
+  armor_vulnerable: { label: 'Armor', color: 'text-status-highlight' },
+  hull_vulnerable: { label: 'Hull', color: 'text-status-negative' },
+  armor_reinforce: { label: 'Armor Reinforce', color: 'text-status-highlight' },
+  hull_reinforce: { label: 'Hull Reinforce', color: 'text-status-negative' },
+  anchoring: { label: 'Anchoring', color: 'text-status-info' },
   unanchored: { label: 'Unanchored', color: 'text-content-secondary' },
-  onlining_vulnerable: { label: 'Onlining', color: 'text-blue-400' },
-  online_deprecated: { label: 'Online', color: 'text-green-400' },
-  anchor_vulnerable: { label: 'Anchor Vulnerable', color: 'text-yellow-400' },
-  deploy_vulnerable: { label: 'Deploy Vulnerable', color: 'text-yellow-400' },
-  fitting_invulnerable: { label: 'Fitting', color: 'text-blue-400' },
+  onlining_vulnerable: { label: 'Onlining', color: 'text-status-info' },
+  online_deprecated: { label: 'Online', color: 'text-status-positive' },
+  anchor_vulnerable: { label: 'Anchor Vulnerable', color: 'text-status-highlight' },
+  deploy_vulnerable: { label: 'Deploy Vulnerable', color: 'text-status-highlight' },
+  fitting_invulnerable: { label: 'Fitting', color: 'text-status-info' },
   unknown: { label: 'Unknown', color: 'text-content-muted' },
 }
 
@@ -77,7 +77,7 @@ function ServiceBadge({ name, state }: { name: string; state: 'online' | 'offlin
     <span
       className={cn(
         'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs',
-        isOnline ? 'bg-green-900/50 text-green-400' : 'bg-surface-secondary text-content-muted'
+        isOnline ? 'bg-semantic-success/20 text-status-positive' : 'bg-surface-secondary text-content-muted'
       )}
     >
       {isOnline ? <Zap className="h-3 w-3" /> : <ZapOff className="h-3 w-3" />}
@@ -325,12 +325,12 @@ export function StructuresTab() {
                         <span className="truncate" title={row.structure.name}>
                           {row.structure.name || `Structure ${row.structure.structure_id}`}
                         </span>
-                        {isReinforced && <AlertTriangle className="h-4 w-4 text-red-400" />}
+                        {isReinforced && <AlertTriangle className="h-4 w-4 text-status-negative" />}
                       </div>
                     </TableCell>
                     <TableCell className="py-1.5 text-content-secondary">{row.typeName}</TableCell>
                     <TableCell className="py-1.5">
-                      <span className="text-blue-300">{row.systemName}</span>
+                      <span className="text-status-info">{row.systemName}</span>
                       <span className="text-content-muted text-xs ml-1">({row.regionName})</span>
                     </TableCell>
                     <TableCell className="py-1.5">
@@ -345,8 +345,8 @@ export function StructuresTab() {
                     </TableCell>
                     <TableCell className="py-1.5 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        {fuelInfo.isLow && <Fuel className="h-4 w-4 text-red-400" />}
-                        <span className={cn('tabular-nums', fuelInfo.isLow ? 'text-red-400' : 'text-content-secondary')}>
+                        {fuelInfo.isLow && <Fuel className="h-4 w-4 text-status-negative" />}
+                        <span className={cn('tabular-nums', fuelInfo.isLow ? 'text-status-negative' : 'text-content-secondary')}>
                           {fuelInfo.text}
                         </span>
                       </div>

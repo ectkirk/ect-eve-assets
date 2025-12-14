@@ -27,7 +27,7 @@ function SortIcon({ field, sortField, sortDirection }: { field: SortField; sortF
   if (sortField !== field) {
     return <span className="ml-1 text-content-muted">↕</span>
   }
-  return <span className="ml-1 text-blue-400">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+  return <span className="ml-1 text-status-info">{sortDirection === 'asc' ? '↑' : '↓'}</span>
 }
 
 export function Calculator({ result }: CalculatorProps) {
@@ -70,7 +70,7 @@ export function Calculator({ result }: CalculatorProps) {
           </div>
           <div className="rounded-lg bg-surface-tertiary/50 p-4">
             <div className="text-xs text-content-secondary">Jita Buy</div>
-            <div className="text-lg font-semibold text-blue-400">
+            <div className="text-lg font-semibold text-status-info">
               {formatNumber(result.totals.totalJitaBuy)}
             </div>
             <div className="text-xs text-content-muted">
@@ -79,7 +79,7 @@ export function Calculator({ result }: CalculatorProps) {
           </div>
           <div className="rounded-lg bg-surface-tertiary/50 p-4">
             <div className="text-xs text-content-secondary">Jita Sell</div>
-            <div className="text-lg font-semibold text-green-400">
+            <div className="text-lg font-semibold text-status-positive">
               {formatNumber(result.totals.totalJitaSell)}
             </div>
             <div className="text-xs text-content-muted">
@@ -94,14 +94,14 @@ export function Calculator({ result }: CalculatorProps) {
       </div>
 
       {result.unmatchedItems.length > 0 && (
-        <div className="rounded-lg border border-red-600/50 bg-red-900/20 p-4">
-          <h3 className="mb-2 font-medium text-red-400">
+        <div className="rounded-lg border border-semantic-danger/50 bg-semantic-danger/20 p-4">
+          <h3 className="mb-2 font-medium text-status-negative">
             Unmatched Items ({result.unmatchedItems.length})
           </h3>
           <p className="mb-2 text-sm text-content-secondary">
             These items could not be found in the database:
           </p>
-          <ul className="list-inside list-disc text-sm text-red-300">
+          <ul className="list-inside list-disc text-sm text-status-negative/80">
             {result.unmatchedItems.map((item) => (
               <li key={item}>{item}</li>
             ))}
@@ -110,14 +110,14 @@ export function Calculator({ result }: CalculatorProps) {
       )}
 
       {result.lowVolumeItems?.length > 0 && (
-        <div className="rounded-lg border border-amber-600/50 bg-amber-900/20 p-4">
-          <h3 className="mb-2 font-medium text-amber-400">
+        <div className="rounded-lg border border-semantic-warning/50 bg-semantic-warning/20 p-4">
+          <h3 className="mb-2 font-medium text-status-highlight">
             Low Volume Items ({result.lowVolumeItems.length})
           </h3>
           <p className="mb-2 text-sm text-content-secondary">
             These items have market orders but unreliable price history:
           </p>
-          <ul className="list-inside list-disc text-sm text-amber-300">
+          <ul className="list-inside list-disc text-sm text-status-highlight/80">
             {result.lowVolumeItems.map((item) => (
               <li key={item}>{item}</li>
             ))}
@@ -225,7 +225,7 @@ function ItemRow({ item }: { item: BuybackCalculatorItem }) {
                 href={`https://ref.edencom.net/items/${item.typeId}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-400 hover:underline"
+                className="text-link hover:underline"
               >
                 {item.itemName}
               </a>
@@ -246,11 +246,11 @@ function ItemRow({ item }: { item: BuybackCalculatorItem }) {
       </td>
       <td className="py-3 pr-4 text-content-secondary">{item.groupName}</td>
       <td className="py-3 pr-4 text-right">
-        <div className="font-mono text-blue-400">{formatISKFull(item.totalJitaBuy)}</div>
+        <div className="font-mono text-status-info">{formatISKFull(item.totalJitaBuy)}</div>
         <div className="text-xs text-content-muted">@{formatISKFull(item.jitaBuyPrice)}/u</div>
       </td>
       <td className="py-3 text-right">
-        <div className="font-mono text-green-400">{formatISKFull(item.totalJitaSell)}</div>
+        <div className="font-mono text-status-positive">{formatISKFull(item.totalJitaSell)}</div>
         <div className="text-xs text-content-muted">@{formatISKFull(item.jitaSellPrice)}/u</div>
       </td>
     </tr>

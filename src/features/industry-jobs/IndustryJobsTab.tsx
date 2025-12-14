@@ -102,16 +102,16 @@ function formatDuration(endDate: string): { text: string; isComplete: boolean; i
 function StatusIcon({ status }: { status: ESIIndustryJob['status'] }) {
   switch (status) {
     case 'active':
-      return <Clock className="h-4 w-4 text-blue-400" />
+      return <Clock className="h-4 w-4 text-status-info" />
     case 'ready':
-      return <CheckCircle2 className="h-4 w-4 text-green-400" />
+      return <CheckCircle2 className="h-4 w-4 text-status-positive" />
     case 'delivered':
       return <CheckCircle2 className="h-4 w-4 text-content-muted" />
     case 'cancelled':
     case 'reverted':
-      return <XCircle className="h-4 w-4 text-red-400" />
+      return <XCircle className="h-4 w-4 text-status-negative" />
     case 'paused':
-      return <PauseCircle className="h-4 w-4 text-yellow-400" />
+      return <PauseCircle className="h-4 w-4 text-status-highlight" />
     default:
       return <Clock className="h-4 w-4 text-content-secondary" />
   }
@@ -178,16 +178,16 @@ function JobsTable({ jobs }: { jobs: JobRow[] }) {
               <TableCell className="py-1.5 text-right tabular-nums">
                 {row.job.runs.toLocaleString()}
               </TableCell>
-              <TableCell className="py-1.5 text-right tabular-nums text-green-400">
+              <TableCell className="py-1.5 text-right tabular-nums text-status-positive">
                 {row.productValue > 0 ? formatNumber(row.productValue) : '-'}
               </TableCell>
-              <TableCell className="py-1.5 text-right tabular-nums text-amber-400">
+              <TableCell className="py-1.5 text-right tabular-nums text-status-highlight">
                 {row.job.cost ? formatNumber(row.job.cost) : '-'}
               </TableCell>
               <TableCell
                 className={cn(
                   'py-1.5 text-right tabular-nums',
-                  duration.isComplete && 'text-green-400',
+                  duration.isComplete && 'text-status-positive',
                   !duration.isComplete && 'text-content-secondary'
                 )}
               >
@@ -222,8 +222,8 @@ function LocationGroupRow({
         ) : (
           <ChevronRight className="h-4 w-4 text-content-secondary" />
         )}
-        <span className="text-blue-300 flex-1">{group.locationName}</span>
-        <span className="text-xs text-blue-400">
+        <span className="text-status-info flex-1">{group.locationName}</span>
+        <span className="text-xs text-status-info">
           {group.activeCount > 0 && `${group.activeCount} active`}
         </span>
         <span className="text-xs text-content-muted">

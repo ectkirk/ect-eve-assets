@@ -19,12 +19,12 @@ function CopyButton({ text, label }: { text: string; label: string }) {
     <button
       type="button"
       onClick={handleCopy}
-      className={`inline-flex items-center gap-1 font-semibold ${label === 'corp' ? 'text-blue-400 hover:text-blue-300' : 'text-green-400 hover:text-green-300'}`}
+      className={`inline-flex items-center gap-1 font-semibold ${label === 'corp' ? 'text-status-info hover:opacity-80' : 'text-status-positive hover:opacity-80'}`}
       title="Click to copy"
     >
       {text}
       {copied ? (
-        <svg className="h-3.5 w-3.5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="h-3.5 w-3.5 text-status-positive" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
         </svg>
       ) : (
@@ -83,23 +83,23 @@ export function BuybackResults({ result, config }: BuybackResultsProps) {
   return (
     <div className="space-y-6">
       {totals.buybackValue === 0 && (
-        <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-6 text-center">
-          <div className="text-lg font-medium text-red-400">No valid items for buyback</div>
-          <div className="mt-1 text-sm text-red-300/80">
+        <div className="rounded-lg border border-semantic-danger/30 bg-semantic-danger/10 p-6 text-center">
+          <div className="text-lg font-medium text-status-negative">No valid items for buyback</div>
+          <div className="mt-1 text-sm text-status-negative/80">
             There are no valid items to offer a buyback value.
           </div>
         </div>
       )}
 
       {totals.buybackValue > 0 && (
-        <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-6">
+        <div className="rounded-lg border border-semantic-success/30 bg-semantic-success/10 p-6">
           <div className="mb-4 text-center">
-            <div className="text-3xl font-bold text-green-400">
+            <div className="text-3xl font-bold text-status-positive">
               {formatISKFull(totals.buybackValue)}
             </div>
-            <div className="text-sm text-green-300/80">Total Buyback Value</div>
+            <div className="text-sm text-status-positive/80">Total Buyback Value</div>
           </div>
-          <div className="rounded-lg border border-green-500/20 bg-surface-secondary/50 p-4">
+          <div className="rounded-lg border border-semantic-success/20 bg-surface-secondary/50 p-4">
             <div className="text-sm text-content-secondary">
               <p>
                 Send an <span className="font-semibold text-white">Item Exchange</span> contract to
@@ -115,22 +115,22 @@ export function BuybackResults({ result, config }: BuybackResultsProps) {
       )}
 
       {hasExcludedItems && (
-        <div className="rounded-lg border-2 border-yellow-500/50 bg-yellow-500/5">
+        <div className="rounded-lg border-2 border-semantic-warning/50 bg-semantic-warning/5">
           <button
             type="button"
             onClick={() => setShowExcluded(!showExcluded)}
-            className="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-yellow-500/10"
+            className="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-semantic-warning/10"
           >
             <span className="flex items-center gap-2 text-sm">
-              <svg className="h-5 w-5 shrink-0 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="h-5 w-5 shrink-0 text-semantic-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
-              <span className="text-yellow-200">
+              <span className="text-status-highlight/80">
                 We have excluded some items from your offer.{' '}
-                <span className="text-yellow-400 underline">Click here for more information</span>
+                <span className="text-status-highlight underline">Click here for more information</span>
               </span>
             </span>
-            <svg className={`h-5 w-5 shrink-0 text-yellow-500 transition-transform ${showExcluded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className={`h-5 w-5 shrink-0 text-semantic-warning transition-transform ${showExcluded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </button>
@@ -256,7 +256,7 @@ export function BuybackResults({ result, config }: BuybackResultsProps) {
           {totals.assetSafetyCost > 0 && (
             <div>
               <div className="text-content-secondary">Asset Safety Fee</div>
-              <div className="font-medium text-orange-400">-{formatISKFull(totals.assetSafetyCost)}</div>
+              <div className="font-medium text-status-warning">-{formatISKFull(totals.assetSafetyCost)}</div>
             </div>
           )}
         </div>
