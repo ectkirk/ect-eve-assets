@@ -18,7 +18,7 @@ import { ManufacturingTab } from '@/features/manufacturing'
 import { BlueprintResearchTab, CopyingTab } from '@/features/research'
 import { CalculatorTab } from '@/features/calculator'
 import { BuybackTab, BUYBACK_TABS, type BuybackTabType } from '@/features/buyback'
-import { Loader2, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp, Search, X, User, AlertTriangle, Minus, Square, Copy, Settings } from 'lucide-react'
+import { Loader2, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp, Search, X, AlertTriangle, Minus, Square, Copy, Settings } from 'lucide-react'
 import { useSettingsStore } from '@/store/settings-store'
 import eveSsoLoginWhite from '/eve-sso-login-white.png'
 import { OwnerIcon } from '@/components/ui/type-icon'
@@ -260,8 +260,16 @@ function OwnerButton() {
         )}
         {activeOwnerId === null ? (
           <>
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-600">
-              <User className="h-4 w-4 text-slate-300" />
+            <div className="flex items-center">
+              {owners.slice(0, 3).map((owner, i) => (
+                <div
+                  key={ownerKey(owner.type, owner.id)}
+                  className="relative rounded-full ring-2 ring-slate-800"
+                  style={{ marginLeft: i === 0 ? 0 : -8, zIndex: 3 - i }}
+                >
+                  <OwnerIcon ownerId={owner.id} ownerType={owner.type} size="lg" />
+                </div>
+              ))}
             </div>
             <span className="text-sm">All Characters</span>
             <span className="text-xs text-slate-400">({owners.length})</span>
@@ -592,7 +600,6 @@ function MainLayoutInner() {
         <div className="flex-1" />
         <div className="flex items-center gap-4" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
           {mode === 'assets' && <HeaderControls />}
-          <OwnerButton />
           <WindowControls />
         </div>
       </header>
@@ -631,6 +638,8 @@ function MainLayoutInner() {
               ))
             )}
           </div>
+          <div className="flex-1" />
+          <OwnerButton />
         </nav>
       )}
 
