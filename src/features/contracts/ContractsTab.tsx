@@ -183,7 +183,7 @@ function ContractsTable({
         <TableRow className="hover:bg-transparent">
           <TableHead className="w-8"></TableHead>
           <TableHead>Type</TableHead>
-          {!showCompletedDate && !showCourierColumns && <TableHead>Title / Items</TableHead>}
+          {!showCourierColumns && <TableHead>Title / Items</TableHead>}
           <TableHead>Location</TableHead>
           <TableHead>Assignee</TableHead>
           <TableHead className="text-right">Price</TableHead>
@@ -233,7 +233,7 @@ function ContractsTable({
                     <span>{CONTRACT_TYPE_NAMES[contract.type]}</span>
                   </div>
                 </TableCell>
-                {!showCompletedDate && !showCourierColumns && (
+                {!showCourierColumns && (
                   <TableCell className="py-1.5">
                     <div className="flex items-center gap-2">
                       {hasMultipleItems ? (

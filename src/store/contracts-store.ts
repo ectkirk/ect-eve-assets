@@ -162,16 +162,22 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
               continue
             }
 
-            const isActive = contract.status === 'outstanding' || contract.status === 'in_progress'
-            if (!isActive) {
-              skipped++
-              continue
-            }
-
             const cached = globalItemsCache.get(contract.contract_id)
             const isPublic = contract.availability === 'public'
             const hasItemIds = cached?.some((i: ESIContractItem) => i.item_id)
             const cacheValid = cached && cached.length > 0 && (!isPublic || hasItemIds)
+
+            const isActive = contract.status === 'outstanding' || contract.status === 'in_progress'
+            if (!isActive) {
+              if (cacheValid) {
+                contractItemsMap.set(contract.contract_id, cached)
+                cachedCount++
+              } else {
+                skipped++
+              }
+              continue
+            }
+
             if (cacheValid) {
               contractItemsMap.set(contract.contract_id, cached)
               cachedCount++
@@ -301,13 +307,19 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
       for (const contract of contracts) {
         if (contract.type !== 'item_exchange' && contract.type !== 'auction') continue
 
-        const isActive = contract.status === 'outstanding' || contract.status === 'in_progress'
-        if (!isActive) continue
-
         const cached = globalItemsCache.get(contract.contract_id)
         const isPublic = contract.availability === 'public'
         const hasItemIds = cached?.some((i: ESIContractItem) => i.item_id)
         const cacheValid = cached && cached.length > 0 && (!isPublic || hasItemIds)
+
+        const isActive = contract.status === 'outstanding' || contract.status === 'in_progress'
+        if (!isActive) {
+          if (cacheValid) {
+            contractItemsMap.set(contract.contract_id, cached)
+          }
+          continue
+        }
+
         if (cacheValid) {
           contractItemsMap.set(contract.contract_id, cached)
           continue
