@@ -212,26 +212,26 @@ function LocationGroupRow({
   onToggle: () => void
 }) {
   return (
-    <div className="border-b border-slate-700 last:border-b-0">
+    <div className="border-b border-slate-700/50 last:border-b-0">
       <button
         onClick={onToggle}
-        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-800/50 text-left"
+        className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-800/50 text-left text-sm"
       >
         {isExpanded ? (
           <ChevronDown className="h-4 w-4 text-slate-400" />
         ) : (
           <ChevronRight className="h-4 w-4 text-slate-400" />
         )}
-        <span className="font-medium text-blue-300 flex-1">{group.locationName}</span>
-        <span className="text-xs text-blue-400 w-20 text-right">
+        <span className="text-blue-300 flex-1">{group.locationName}</span>
+        <span className="text-xs text-blue-400">
           {group.activeCount > 0 && `${group.activeCount} active`}
         </span>
-        <span className="text-xs text-slate-500 w-24 text-right">
+        <span className="text-xs text-slate-500">
           {group.completedCount > 0 && `${group.completedCount} completed`}
         </span>
       </button>
       {isExpanded && (
-        <div className="bg-slate-900/30 px-3 pb-2">
+        <div className="border-t border-slate-700/50 bg-slate-900/30 px-4 pb-2">
           <JobsTable jobs={group.jobs} />
         </div>
       )}
@@ -454,7 +454,7 @@ export function IndustryJobsTab() {
   if (loadingState) return loadingState
 
   return (
-    <div className="h-full rounded-lg border border-slate-700 overflow-auto">
+    <div className="h-full rounded-lg border border-slate-700 bg-slate-800/30 overflow-auto">
       {locationGroups.length === 0 ? (
         <div className="flex items-center justify-center h-full">
           <p className="text-slate-400">No industry jobs.</p>
