@@ -7,6 +7,8 @@ import { createOwnerDB } from '@/lib/owner-indexed-db'
 import { logger } from '@/lib/logger'
 import { z } from 'zod'
 
+export const CORPORATION_WALLET_DIVISIONS = 7
+
 export type ESIWalletJournalEntry = z.infer<typeof ESIWalletJournalEntrySchema>
 
 export interface JournalEntry extends ESIWalletJournalEntry {
@@ -66,7 +68,7 @@ async function fetchJournalForOwner(owner: Owner): Promise<{
     let latestExpiry = 0
     let latestEtag: string | null = null
 
-    for (let division = 1; division <= 7; division++) {
+    for (let division = 1; division <= CORPORATION_WALLET_DIVISIONS; division++) {
       try {
         const result = await esi.fetchPaginatedWithMeta<ESIWalletJournalEntry>(
           `/corporations/${owner.id}/wallets/${division}/journal/`,
@@ -234,7 +236,7 @@ export const useWalletJournalStore = create<JournalStore>((set, get) => ({
     const state = get()
     const key = `${ownerType}-${ownerId}`
     const updated = state.journalByOwner.filter(
-      (j) => ownerKey(j.owner.type, j.owner.id) !== key
+      (j) => `${j.owner.type}-${j.owner.id}` !== key
     )
 
     if (updated.length === state.journalByOwner.length) return
