@@ -23,7 +23,7 @@ export function TabLoadingState({
   if (!hasOwners) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-slate-400">
+        <p className="text-content-secondary">
           No characters logged in. Add a character to view {dataType}.
         </p>
       </div>
@@ -33,7 +33,7 @@ export function TabLoadingState({
   if (customEmptyCheck?.condition) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-slate-400">{customEmptyCheck.message}</p>
+        <p className="text-content-secondary">{customEmptyCheck.message}</p>
       </div>
     )
   }
@@ -42,8 +42,8 @@ export function TabLoadingState({
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-500 mx-auto" />
-          <p className="mt-2 text-slate-400">Loading {dataType}...</p>
+          <Loader2 className="h-8 w-8 animate-spin text-accent mx-auto" />
+          <p className="mt-2 text-content-secondary">Loading {dataType}...</p>
         </div>
       </div>
     )
@@ -55,11 +55,11 @@ export function TabLoadingState({
         <div className="text-center">
           {updateError ? (
             <>
-              <p className="text-red-500">Failed to load {dataType}</p>
-              <p className="text-sm text-slate-400 mb-4">{updateError}</p>
+              <p className="text-semantic-danger">Failed to load {dataType}</p>
+              <p className="text-sm text-content-secondary mb-4">{updateError}</p>
             </>
           ) : (
-            <p className="text-slate-400">
+            <p className="text-content-secondary">
               No {dataType} loaded. Use the Update button in the header to fetch from ESI.
             </p>
           )}

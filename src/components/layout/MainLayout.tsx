@@ -20,6 +20,7 @@ import { CalculatorTab } from '@/features/calculator'
 import { BuybackTab, BUYBACK_TABS, getConfigByTabName, type BuybackTabType } from '@/features/buyback'
 import { Loader2, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp, Search, X, AlertTriangle, Minus, Square, Copy, Settings } from 'lucide-react'
 import { useSettingsStore } from '@/store/settings-store'
+import { useThemeStore, THEME_OPTIONS } from '@/store/theme-store'
 import eveSsoLoginWhite from '/eve-sso-login-white.png'
 import { OwnerIcon } from '@/components/ui/type-icon'
 import { OwnerManagementModal } from './OwnerManagementModal'
@@ -100,13 +101,13 @@ function ToolTabContent({ tab }: { tab: ToolTab }) {
 
 function ModeSwitcher({ mode, onModeChange }: { mode: AppMode; onModeChange: (mode: AppMode) => void }) {
   return (
-    <div className="flex rounded-md bg-slate-700/50 p-0.5">
+    <div className="flex rounded-md bg-surface-tertiary/50 p-0.5">
       <button
         onClick={() => onModeChange('assets')}
         className={`rounded px-3 py-1 text-sm font-medium transition-colors ${
           mode === 'assets'
-            ? 'bg-slate-600 text-white'
-            : 'text-slate-400 hover:text-slate-200'
+            ? 'bg-surface-tertiary text-content'
+            : 'text-content-muted hover:text-content-secondary'
         }`}
       >
         Assets
@@ -115,8 +116,8 @@ function ModeSwitcher({ mode, onModeChange }: { mode: AppMode; onModeChange: (mo
         onClick={() => onModeChange('tools')}
         className={`rounded px-3 py-1 text-sm font-medium transition-colors ${
           mode === 'tools'
-            ? 'bg-slate-600 text-white'
-            : 'text-slate-400 hover:text-slate-200'
+            ? 'bg-surface-tertiary text-content'
+            : 'text-content-muted hover:text-content-secondary'
         }`}
       >
         Tools
@@ -125,8 +126,8 @@ function ModeSwitcher({ mode, onModeChange }: { mode: AppMode; onModeChange: (mo
         onClick={() => onModeChange('buyback')}
         className={`rounded px-3 py-1 text-sm font-medium transition-colors ${
           mode === 'buyback'
-            ? 'bg-slate-600 text-white'
-            : 'text-slate-400 hover:text-slate-200'
+            ? 'bg-surface-tertiary text-content'
+            : 'text-content-muted hover:text-content-secondary'
         }`}
       >
         Buyback
@@ -145,7 +146,7 @@ function RefreshStatus() {
   const ownerName = owner?.name ?? 'Unknown'
 
   return (
-    <div className="flex items-center gap-2 text-sm text-slate-400">
+    <div className="flex items-center gap-2 text-sm text-content-secondary">
       <Loader2 className="h-3.5 w-3.5 animate-spin" />
       <span>Updating {ownerName}</span>
     </div>
@@ -216,7 +217,7 @@ function OwnerButton() {
 
   if (isUpdatingData) {
     return (
-      <div className="flex items-center gap-2 text-sm text-slate-400">
+      <div className="flex items-center gap-2 text-sm text-content-secondary">
         <Loader2 className="h-4 w-4 animate-spin" />
         Updating data...
       </div>
@@ -231,7 +232,7 @@ function OwnerButton() {
         className="transition-opacity hover:opacity-80 disabled:opacity-50"
       >
         {isAddingOwner ? (
-          <div className="flex items-center gap-2 text-sm text-slate-400">
+          <div className="flex items-center gap-2 text-sm text-content-secondary">
             <Loader2 className="h-4 w-4 animate-spin" />
             Logging in...
           </div>
@@ -246,16 +247,16 @@ function OwnerButton() {
     <>
       <button
         onClick={() => setModalOpen(true)}
-        className="flex items-center gap-2 rounded px-2 py-1 hover:bg-slate-700"
+        className="flex items-center gap-2 rounded px-2 py-1 hover:bg-surface-tertiary"
       >
         {hasAuthFailure && (
           <span title="Auth failure - click to re-authenticate">
-            <AlertTriangle className="h-4 w-4 text-red-500" />
+            <AlertTriangle className="h-4 w-4 text-semantic-danger" />
           </span>
         )}
         {hasScopesOutdated && !hasAuthFailure && (
           <span title="Scopes outdated - click to upgrade">
-            <AlertTriangle className="h-4 w-4 text-amber-500" />
+            <AlertTriangle className="h-4 w-4 text-semantic-warning" />
           </span>
         )}
         {activeOwnerId === null ? (
@@ -264,7 +265,7 @@ function OwnerButton() {
               {owners.slice(0, 3).map((owner, i) => (
                 <div
                   key={ownerKey(owner.type, owner.id)}
-                  className="relative rounded-full ring-2 ring-slate-800"
+                  className="relative rounded-full ring-2 ring-surface-secondary"
                   style={{ marginLeft: i === 0 ? 0 : -8, zIndex: 3 - i }}
                 >
                   <OwnerIcon ownerId={owner.id} ownerType={owner.type} size="lg" />
@@ -272,7 +273,7 @@ function OwnerButton() {
               ))}
             </div>
             <span className="text-sm">All Characters</span>
-            <span className="text-xs text-slate-400">({owners.length})</span>
+            <span className="text-xs text-content-secondary">({owners.length})</span>
           </>
         ) : activeOwner ? (
           <>
@@ -283,7 +284,7 @@ function OwnerButton() {
               {activeOwner.name}
             </span>
             {owners.length > 1 && (
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-content-secondary">
                 +{owners.length - 1}
               </span>
             )}
@@ -304,7 +305,7 @@ function ExpandCollapseButton() {
   return (
     <button
       onClick={expandCollapse.toggle}
-      className="flex items-center gap-1 rounded border border-slate-600 bg-slate-700 px-2.5 py-1 text-sm hover:bg-slate-600"
+      className="flex items-center gap-1 rounded border border-border bg-surface-tertiary px-2.5 py-1 text-sm hover:bg-surface-tertiary/70"
       title={expandCollapse.isExpanded ? 'Collapse all' : 'Expand all'}
     >
       {expandCollapse.isExpanded ? (
@@ -344,20 +345,20 @@ function ColumnsDropdown() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1 rounded border border-slate-600 bg-slate-700 px-2.5 py-1 text-sm hover:bg-slate-600"
+        className="flex items-center gap-1 rounded border border-border bg-surface-tertiary px-2.5 py-1 text-sm hover:bg-surface-tertiary/70"
       >
         Columns <ChevronDown className="h-3.5 w-3.5" />
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-1 min-w-[160px] rounded border border-slate-600 bg-slate-800 py-1 shadow-lg">
+        <div className="absolute right-0 top-full z-50 mt-1 min-w-[160px] rounded border border-border bg-surface-secondary py-1 shadow-lg">
           {columns.map((col) => (
             <button
               key={col.id}
               onClick={() => col.toggle()}
-              className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-slate-700"
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-surface-tertiary"
             >
               <span className="flex h-4 w-4 items-center justify-center">
-                {col.visible && <Check className="h-4 w-4 text-blue-400" />}
+                {col.visible && <Check className="h-4 w-4 text-accent" />}
               </span>
               {col.label}
             </button>
@@ -372,20 +373,20 @@ function SearchBar() {
   const { search, setSearch, categoryFilter, resultCount, totalValue } = useTabControls()
 
   return (
-    <div className="flex items-center gap-3 border-b border-slate-700 bg-slate-800/50 px-4 py-2">
+    <div className="flex items-center gap-3 border-b border-border bg-surface-secondary/50 px-4 py-2">
       <div className="relative flex-1 max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-content-muted" />
         <input
           type="text"
           placeholder="Search name, group, location, system, region..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded border border-slate-600 bg-slate-700 pl-9 pr-8 py-1.5 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-hidden"
+          className="w-full rounded border border-border bg-surface-tertiary pl-9 pr-8 py-1.5 text-sm placeholder-content-muted focus:border-accent focus:outline-hidden"
         />
         {search && (
           <button
             onClick={() => setSearch('')}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-content-muted hover:text-content-secondary"
           >
             <X className="h-4 w-4" />
           </button>
@@ -396,7 +397,7 @@ function SearchBar() {
         <select
           value={categoryFilter.value}
           onChange={(e) => categoryFilter.onChange(e.target.value)}
-          className="w-40 rounded border border-slate-600 bg-slate-700 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-hidden"
+          className="w-40 rounded border border-border bg-surface-tertiary px-2 py-1.5 text-sm focus:border-accent focus:outline-hidden"
         >
           <option value="">All Categories</option>
           {categoryFilter.categories.map((cat) => (
@@ -407,27 +408,27 @@ function SearchBar() {
 
       {totalValue !== null && (
         <span className="text-sm">
-          <span className="text-slate-400">{totalValue.label ?? 'Value'}: </span>
-          <span className="text-green-400">{formatNumber(totalValue.value)} ISK</span>
+          <span className="text-content-secondary">{totalValue.label ?? 'Value'}: </span>
+          <span className="text-semantic-positive">{formatNumber(totalValue.value)} ISK</span>
           {totalValue.secondaryValue !== undefined && (
             <>
-              <span className="text-slate-500 mx-2">|</span>
-              <span className="text-slate-400">{totalValue.secondaryLabel ?? 'Secondary'}: </span>
-              <span className="text-amber-400">{formatNumber(totalValue.secondaryValue)} ISK</span>
+              <span className="text-content-muted mx-2">|</span>
+              <span className="text-content-secondary">{totalValue.secondaryLabel ?? 'Secondary'}: </span>
+              <span className="text-semantic-warning">{formatNumber(totalValue.secondaryValue)} ISK</span>
             </>
           )}
           {totalValue.tertiaryValue !== undefined && (
             <>
-              <span className="text-slate-500 mx-2">|</span>
-              <span className="text-slate-400">{totalValue.tertiaryLabel ?? 'Tertiary'}: </span>
-              <span className="text-blue-400">{formatNumber(totalValue.tertiaryValue)} ISK</span>
+              <span className="text-content-muted mx-2">|</span>
+              <span className="text-content-secondary">{totalValue.tertiaryLabel ?? 'Tertiary'}: </span>
+              <span className="text-accent">{formatNumber(totalValue.tertiaryValue)} ISK</span>
             </>
           )}
         </span>
       )}
 
       {resultCount && (
-        <span className="text-sm text-slate-400">
+        <span className="text-sm text-content-secondary">
           Showing {resultCount.showing.toLocaleString()} of {resultCount.total.toLocaleString()}
         </span>
       )}
@@ -449,31 +450,31 @@ function HeaderControls() {
       {hasData && (
         <div className="flex items-center gap-4 text-sm">
           <div>
-            <span className="text-slate-400">Total: </span>
-            <span className="font-medium text-green-400">{formatNumber(totals.total)} ISK</span>
+            <span className="text-content-secondary">Total: </span>
+            <span className="font-medium text-semantic-positive">{formatNumber(totals.total)} ISK</span>
           </div>
           <div>
-            <span className="text-slate-400">Assets: </span>
+            <span className="text-content-secondary">Assets: </span>
             <span className="font-medium text-purple-400">{formatNumber(totals.assetsTotal)}</span>
           </div>
           <div>
-            <span className="text-slate-400">Market: </span>
-            <span className="font-medium text-blue-400">{formatNumber(totals.marketTotal)}</span>
+            <span className="text-content-secondary">Market: </span>
+            <span className="font-medium text-accent">{formatNumber(totals.marketTotal)}</span>
           </div>
           <div>
-            <span className="text-slate-400">Industry: </span>
-            <span className="font-medium text-orange-400">{formatNumber(totals.industryTotal)}</span>
+            <span className="text-content-secondary">Industry: </span>
+            <span className="font-medium text-semantic-warning">{formatNumber(totals.industryTotal)}</span>
           </div>
           <div>
-            <span className="text-slate-400">Contracts: </span>
+            <span className="text-content-secondary">Contracts: </span>
             <span className="font-medium text-yellow-400">{formatNumber(totals.contractsTotal)}</span>
           </div>
           <div>
-            <span className="text-slate-400">Wallet: </span>
-            <span className="font-medium text-emerald-400">{formatNumber(totals.walletTotal)}</span>
+            <span className="text-content-secondary">Wallet: </span>
+            <span className="font-medium text-semantic-success">{formatNumber(totals.walletTotal)}</span>
           </div>
           <div>
-            <span className="text-slate-400">Structures: </span>
+            <span className="text-content-secondary">Structures: </span>
             <span className="font-medium text-cyan-400">{formatNumber(totals.structuresTotal)}</span>
           </div>
         </div>
@@ -490,6 +491,8 @@ function WindowControls() {
   const setShowContractItems = useSettingsStore((s) => s.setShowContractItemsInAssets)
   const showMarketOrders = useSettingsStore((s) => s.showMarketOrdersInAssets)
   const setShowMarketOrders = useSettingsStore((s) => s.setShowMarketOrdersInAssets)
+  const theme = useThemeStore((s) => s.theme)
+  const setTheme = useThemeStore((s) => s.setTheme)
 
   useEffect(() => {
     if (!window.electronAPI) return
@@ -513,32 +516,47 @@ function WindowControls() {
       <div ref={settingsPanelRef} className="relative">
         <button
           onClick={() => setSettingsOpen(!settingsOpen)}
-          className="flex h-10 w-12 items-center justify-center text-slate-400 hover:bg-slate-700 hover:text-white"
+          className="flex h-10 w-12 items-center justify-center text-content-secondary hover:bg-surface-tertiary hover:text-content"
           title="Settings"
         >
           <Settings className="h-4 w-4" />
         </button>
         {settingsOpen && (
-          <div className="absolute right-0 top-full mt-1 w-64 rounded-lg border border-slate-600 bg-slate-800 shadow-lg z-50">
-            <div className="p-3 border-b border-slate-600">
-              <span className="text-sm font-medium text-slate-200">Settings</span>
+          <div className="absolute right-0 top-full mt-1 w-64 rounded-lg border border-border bg-surface-secondary shadow-lg z-50">
+            <div className="p-3 border-b border-border">
+              <span className="text-sm font-medium text-content-secondary">Settings</span>
             </div>
             <div className="p-2">
+              <div className="px-2 py-1.5">
+                <label className="text-xs text-content-muted mb-1 block">Theme</label>
+                <select
+                  value={theme}
+                  onChange={(e) => setTheme(e.target.value as typeof theme)}
+                  className="w-full rounded border border-border bg-surface-tertiary px-2 py-1.5 text-sm text-content-secondary focus:border-accent focus:outline-hidden"
+                >
+                  {THEME_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="my-2 border-t border-border" />
               <button
                 onClick={() => setShowContractItems(!showContractItems)}
-                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-slate-300 hover:bg-slate-700"
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-content-secondary hover:bg-surface-tertiary"
               >
                 <span className="flex h-4 w-4 items-center justify-center">
-                  {showContractItems && <Check className="h-4 w-4 text-blue-400" />}
+                  {showContractItems && <Check className="h-4 w-4 text-accent" />}
                 </span>
                 Show contract items in Assets
               </button>
               <button
                 onClick={() => setShowMarketOrders(!showMarketOrders)}
-                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-slate-300 hover:bg-slate-700"
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-content-secondary hover:bg-surface-tertiary"
               >
                 <span className="flex h-4 w-4 items-center justify-center">
-                  {showMarketOrders && <Check className="h-4 w-4 text-blue-400" />}
+                  {showMarketOrders && <Check className="h-4 w-4 text-accent" />}
                 </span>
                 Show sell orders in Assets
               </button>
@@ -548,19 +566,19 @@ function WindowControls() {
       </div>
       <button
         onClick={() => window.electronAPI?.windowMinimize()}
-        className="flex h-10 w-12 items-center justify-center text-slate-400 hover:bg-slate-700 hover:text-white"
+        className="flex h-10 w-12 items-center justify-center text-content-secondary hover:bg-surface-tertiary hover:text-content"
       >
         <Minus className="h-4 w-4" />
       </button>
       <button
         onClick={() => window.electronAPI?.windowMaximize()}
-        className="flex h-10 w-12 items-center justify-center text-slate-400 hover:bg-slate-700 hover:text-white"
+        className="flex h-10 w-12 items-center justify-center text-content-secondary hover:bg-surface-tertiary hover:text-content"
       >
         {isMaximized ? <Copy className="h-3.5 w-3.5" /> : <Square className="h-3.5 w-3.5" />}
       </button>
       <button
         onClick={() => window.electronAPI?.windowClose()}
-        className="flex h-10 w-12 items-center justify-center text-slate-400 hover:bg-red-600 hover:text-white"
+        className="flex h-10 w-12 items-center justify-center text-content-secondary hover:bg-semantic-danger hover:text-content"
       >
         <X className="h-4 w-4" />
       </button>
@@ -580,14 +598,14 @@ function MainLayoutInner() {
       <UpdateBanner />
       {/* Header */}
       <header
-        className="flex items-center border-b border-slate-700 bg-slate-800 px-4 py-2"
+        className="flex items-center border-b border-border bg-surface-secondary px-4 py-2"
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
       >
         <div className="flex flex-col" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
-          <span className="text-lg font-bold tracking-tight text-white">
-            <span className="text-blue-400">ECT</span> EVE Assets
+          <span className="text-lg font-bold tracking-tight text-content">
+            <span className="text-accent">ECT</span> EVE Assets
           </span>
-          <span className="text-[10px] tracking-[0.2em] text-slate-400">
+          <span className="text-[10px] tracking-[0.2em] text-content-secondary">
             We Like The Data
           </span>
         </div>
@@ -605,7 +623,7 @@ function MainLayoutInner() {
       </header>
 
       {/* Tab Navigation */}
-      <nav className="flex items-center border-b border-slate-700 bg-slate-800 px-2">
+      <nav className="flex items-center border-b border-border bg-surface-secondary px-2">
         <div className="flex gap-1">
           {mode === 'assets' ? (
             ASSET_TABS.map((tab) => (
@@ -614,8 +632,8 @@ function MainLayoutInner() {
                 onClick={() => setActiveAssetTab(tab)}
                 className={`px-3 py-2 text-sm transition-colors ${
                   activeAssetTab === tab
-                    ? 'border-b-2 border-blue-500 text-blue-500'
-                    : 'text-slate-400 hover:text-slate-50'
+                    ? 'border-b-2 border-accent text-accent'
+                    : 'text-content-secondary hover:text-content'
                 }`}
               >
                 {tab}
@@ -628,8 +646,8 @@ function MainLayoutInner() {
                 onClick={() => setActiveToolTab(tab)}
                 className={`px-3 py-2 text-sm transition-colors ${
                   activeToolTab === tab
-                    ? 'border-b-2 border-blue-500 text-blue-500'
-                    : 'text-slate-400 hover:text-slate-50'
+                    ? 'border-b-2 border-accent text-accent'
+                    : 'text-content-secondary hover:text-content'
                 }`}
               >
                 {tab}
@@ -644,8 +662,8 @@ function MainLayoutInner() {
                   onClick={() => setActiveBuybackTab(tab)}
                   className={`flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
                     activeBuybackTab === tab
-                      ? 'border-b-2 border-blue-500 text-blue-500'
-                      : 'text-slate-400 hover:text-slate-50'
+                      ? 'border-b-2 border-accent text-accent'
+                      : 'text-content-secondary hover:text-content'
                   }`}
                 >
                   {config && <span className={`h-2 w-2 rounded-full ${config.color}`} />}

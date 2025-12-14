@@ -13,9 +13,12 @@ import { MainLayout } from './components/layout/MainLayout'
 import { initCache } from './store/reference-cache'
 import { logger } from './lib/logger'
 import { setupESITokenProvider } from './api/esi'
+import { initTheme } from './store/theme-store'
 
 let appInitStarted = false
 let appInitComplete = false
+
+initTheme()
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null; errorInfo: React.ErrorInfo | null }> {
   constructor(props: { children: ReactNode }) {
@@ -38,18 +41,18 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
   render() {
     if (this.state.hasError) {
       return (
-        <div className="flex h-screen items-center justify-center bg-slate-900 text-slate-50">
+        <div className="flex h-screen items-center justify-center bg-surface text-content">
           <div className="text-center max-w-2xl p-4">
-            <p className="text-red-500 text-lg font-bold">Something went wrong</p>
-            <pre className="mt-4 text-left text-xs text-slate-400 bg-slate-800 p-4 rounded overflow-auto max-h-48">
+            <p className="text-semantic-danger text-lg font-bold">Something went wrong</p>
+            <pre className="mt-4 text-left text-xs text-content-secondary bg-surface-secondary p-4 rounded overflow-auto max-h-48">
               {this.state.error?.message}
             </pre>
-            <pre className="mt-2 text-left text-xs text-slate-500 bg-slate-800 p-4 rounded overflow-auto max-h-48">
+            <pre className="mt-2 text-left text-xs text-content-muted bg-surface-secondary p-4 rounded overflow-auto max-h-48">
               {this.state.errorInfo?.componentStack}
             </pre>
             <button
               onClick={() => window.location.reload()}
-              className="mt-4 px-4 py-2 bg-blue-600 rounded hover:bg-blue-500"
+              className="mt-4 px-4 py-2 bg-accent rounded hover:bg-accent-hover"
             >
               Reload App
             </button>
@@ -111,10 +114,10 @@ function App() {
 
   if (cacheError) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-900 text-slate-50">
+      <div className="flex h-screen items-center justify-center bg-surface text-content">
         <div className="text-center">
-          <p className="text-red-500">Failed to initialize cache</p>
-          <p className="text-sm text-slate-400">{cacheError}</p>
+          <p className="text-semantic-danger">Failed to initialize cache</p>
+          <p className="text-sm text-content-secondary">{cacheError}</p>
         </div>
       </div>
     )
@@ -122,15 +125,15 @@ function App() {
 
   if (!cacheReady) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-900 text-slate-50">
-        <p className="text-slate-400">Initializing...</p>
+      <div className="flex h-screen items-center justify-center bg-surface text-content">
+        <p className="text-content-secondary">Initializing...</p>
       </div>
     )
   }
 
   return (
     <ErrorBoundary>
-      <div className="h-screen bg-slate-900 text-slate-50">
+      <div className="h-screen bg-surface text-content">
         <MainLayout />
       </div>
     </ErrorBoundary>

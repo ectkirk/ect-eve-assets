@@ -310,20 +310,20 @@ export function OwnerManagementModal({
         </DialogHeader>
 
         {error && (
-          <div className="rounded-md border border-red-800 bg-red-900/30 px-3 py-2 text-sm text-red-400">
+          <div className="rounded-md border border-semantic-danger/50 bg-semantic-danger/10 px-3 py-2 text-sm text-semantic-danger">
             {error}
           </div>
         )}
 
         {owners.length > 3 && (
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-content-muted" />
             <input
               type="text"
               placeholder="Search accounts..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-md border border-slate-700 bg-slate-800 py-2 pl-10 pr-4 text-sm text-slate-50 placeholder:text-slate-400 focus:border-blue-500 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-md border border-border bg-surface-secondary py-2 pl-10 pr-4 text-sm text-content placeholder:text-content-muted focus:border-accent focus:outline-hidden focus:ring-1 focus:ring-accent"
             />
           </div>
         )}
@@ -334,15 +334,15 @@ export function OwnerManagementModal({
             {owners.length > 1 && (
               <div
                 onClick={() => handleSwitchOwner(null)}
-                className={`flex items-center gap-2 rounded-md px-3 py-2 transition-colors hover:bg-slate-700 ${
-                  activeOwnerId === null ? 'bg-slate-700/50 ring-1 ring-blue-500/50' : ''
+                className={`flex items-center gap-2 rounded-md px-3 py-2 transition-colors hover:bg-surface-tertiary ${
+                  activeOwnerId === null ? 'bg-surface-tertiary/50 ring-1 ring-accent/50' : ''
                 }`}
               >
                 <div className="flex items-center">
                   {owners.slice(0, 3).map((owner, i) => (
                     <div
                       key={ownerKey(owner.type, owner.id)}
-                      className="relative rounded-full ring-2 ring-slate-800"
+                      className="relative rounded-full ring-2 ring-surface-secondary"
                       style={{ marginLeft: i === 0 ? 0 : -8, zIndex: 3 - i }}
                     >
                       <OwnerIcon ownerId={owner.id} ownerType={owner.type} size="lg" />
@@ -350,19 +350,19 @@ export function OwnerManagementModal({
                   ))}
                 </div>
                 <span className="text-sm font-medium">All Characters</span>
-                <span className="text-xs text-slate-400">({owners.length})</span>
-                {activeOwnerId === null && <CheckCircle2 className="ml-auto h-4 w-4 text-blue-400" />}
+                <span className="text-xs text-content-secondary">({owners.length})</span>
+                {activeOwnerId === null && <CheckCircle2 className="ml-auto h-4 w-4 text-accent" />}
               </div>
             )}
 
             {/* Characters Section */}
             <div>
-              <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-slate-400">
+              <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-content-secondary">
                 <User className="h-3 w-3" />
                 Characters ({filteredCharacters.length})
               </div>
               {filteredCharacters.length === 0 ? (
-                <p className="py-4 text-center text-sm text-slate-500">
+                <p className="py-4 text-center text-sm text-content-muted">
                   No characters added yet
                 </p>
               ) : (
@@ -391,7 +391,7 @@ export function OwnerManagementModal({
                 Corporations ({filteredCorps.length})
               </div>
               {filteredCorps.length === 0 ? (
-                <p className="py-4 text-center text-sm text-slate-500">
+                <p className="py-4 text-center text-sm text-content-muted">
                   No corporations added
                 </p>
               ) : (
@@ -416,22 +416,22 @@ export function OwnerManagementModal({
         </ScrollArea>
 
         {/* Actions */}
-        <div className="flex flex-col gap-2 border-t border-slate-700 pt-4">
+        <div className="flex flex-col gap-2 border-t border-border pt-4">
           {isAddingCharacter || isAddingCorporation ? (
             <div className="flex flex-col items-center gap-3 py-2">
-              <div className="flex items-center gap-2 text-slate-400">
+              <div className="flex items-center gap-2 text-content-secondary">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 <span>Waiting for EVE login...</span>
               </div>
               <button
                 onClick={handleCancelAuth}
-                className="text-sm text-slate-500 hover:text-slate-300 transition-colors"
+                className="text-sm text-content-muted hover:text-content-secondary transition-colors"
               >
                 Cancel
               </button>
             </div>
           ) : isUpdatingData ? (
-            <div className="flex items-center justify-center gap-2 py-2 text-slate-400">
+            <div className="flex items-center justify-center gap-2 py-2 text-content-secondary">
               <Loader2 className="h-4 w-4 animate-spin" />
               <span>Updating data...</span>
             </div>
@@ -439,7 +439,7 @@ export function OwnerManagementModal({
             <div className="flex gap-2">
               <button
                 onClick={handleAddCharacter}
-                className="flex flex-1 items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium hover:bg-blue-500"
+                className="flex flex-1 items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium hover:bg-accent-hover"
               >
                 <User className="h-4 w-4" />
                 Add Character
@@ -456,7 +456,7 @@ export function OwnerManagementModal({
           {owners.length > 0 && !isUpdatingData && (
             <button
               onClick={handleLogoutAll}
-              className="w-full rounded-md border border-red-800 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-900/30"
+              className="w-full rounded-md border border-semantic-danger/50 px-4 py-2 text-sm font-medium text-semantic-danger hover:bg-semantic-danger/10"
             >
               Logout All
             </button>
@@ -484,8 +484,8 @@ function OwnerRow({ owner, isActive, disabled, onSelect, onRemove, onReauth }: O
     <div
       onClick={disabled ? undefined : onSelect}
       className={`flex items-center justify-between rounded-md px-3 py-2 transition-colors ${
-        disabled ? 'opacity-50' : 'hover:bg-slate-700'
-      } ${isActive ? 'bg-slate-700/50 ring-1 ring-blue-500/50' : ''} ${owner.authFailed ? 'ring-1 ring-red-500/50' : ''} ${owner.scopesOutdated && !owner.authFailed ? 'ring-1 ring-amber-500/50' : ''}`}
+        disabled ? 'opacity-50' : 'hover:bg-surface-tertiary'
+      } ${isActive ? 'bg-surface-tertiary/50 ring-1 ring-accent/50' : ''} ${owner.authFailed ? 'ring-1 ring-semantic-danger/50' : ''} ${owner.scopesOutdated && !owner.authFailed ? 'ring-1 ring-semantic-warning/50' : ''}`}
     >
       <div className="flex items-center gap-2">
         <OwnerIcon ownerId={owner.id} ownerType={owner.type} size="lg" />
@@ -493,24 +493,24 @@ function OwnerRow({ owner, isActive, disabled, onSelect, onRemove, onReauth }: O
           {owner.name}
         </span>
         {owner.authFailed && (
-          <span className="flex items-center gap-1 text-xs text-red-400">
+          <span className="flex items-center gap-1 text-xs text-semantic-danger">
             <AlertCircle className="h-3 w-3" />
             Re-auth needed
           </span>
         )}
         {owner.scopesOutdated && !owner.authFailed && (
-          <span className="flex items-center gap-1 text-xs text-amber-400">
+          <span className="flex items-center gap-1 text-xs text-semantic-warning">
             <AlertCircle className="h-3 w-3" />
             Upgrade scopes
           </span>
         )}
-        {isActive && !needsAttention && <CheckCircle2 className="h-4 w-4 text-blue-400" />}
+        {isActive && !needsAttention && <CheckCircle2 className="h-4 w-4 text-accent" />}
       </div>
       <div className="flex items-center gap-1">
         {needsAttention && !disabled && (
           <button
             onClick={onReauth}
-            className="rounded p-1 text-amber-400 hover:bg-slate-600 hover:text-amber-300"
+            className="rounded p-1 text-semantic-warning hover:bg-surface-tertiary"
             title={owner.authFailed ? 'Re-authenticate' : 'Upgrade scopes'}
           >
             <RefreshCw className="h-4 w-4" />
@@ -519,7 +519,7 @@ function OwnerRow({ owner, isActive, disabled, onSelect, onRemove, onReauth }: O
         {!disabled && (
           <button
             onClick={onRemove}
-            className="rounded p-1 text-slate-400 hover:bg-slate-600 hover:text-red-400"
+            className="rounded p-1 text-content-secondary hover:bg-surface-tertiary hover:text-semantic-danger"
             title={`Remove ${owner.type}`}
           >
             <X className="h-4 w-4" />
