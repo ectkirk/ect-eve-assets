@@ -338,11 +338,20 @@ export function OwnerManagementModal({
                   activeOwnerId === null ? 'bg-slate-700/50 ring-1 ring-blue-500/50' : ''
                 }`}
               >
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-600">
-                  <User className="h-4 w-4 text-slate-300" />
+                <div className="flex items-center">
+                  {owners.slice(0, 3).map((owner, i) => (
+                    <div
+                      key={ownerKey(owner.type, owner.id)}
+                      className="relative rounded-full ring-2 ring-slate-800"
+                      style={{ marginLeft: i === 0 ? 0 : -8, zIndex: 3 - i }}
+                    >
+                      <OwnerIcon ownerId={owner.id} ownerType={owner.type} size="lg" />
+                    </div>
+                  ))}
                 </div>
                 <span className="text-sm font-medium">All Characters</span>
-                {activeOwnerId === null && <CheckCircle2 className="h-4 w-4 text-blue-400" />}
+                <span className="text-xs text-slate-400">({owners.length})</span>
+                {activeOwnerId === null && <CheckCircle2 className="ml-auto h-4 w-4 text-blue-400" />}
               </div>
             )}
 
