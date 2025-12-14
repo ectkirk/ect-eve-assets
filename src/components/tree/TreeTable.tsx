@@ -349,7 +349,7 @@ export function TreeTable({
   return (
     <div
       ref={tableContainerRef}
-      className="h-full rounded-lg border border-slate-700 overflow-auto"
+      className="h-full rounded-lg border border-slate-700 bg-slate-800/30 overflow-auto"
     >
         <Table style={{ tableLayout: 'fixed', width: '100%' }}>
           <TableHeader className="sticky top-0 z-10 bg-slate-800">
