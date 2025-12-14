@@ -423,6 +423,11 @@ function SearchBar() {
           Showing {resultCount.showing.toLocaleString()} of {resultCount.total.toLocaleString()}
         </span>
       )}
+
+      <div className="flex-1" />
+
+      <ExpandCollapseButton />
+      <ColumnsDropdown />
     </div>
   )
 }
@@ -594,7 +599,7 @@ function MainLayoutInner() {
 
       {/* Tab Navigation - hidden for buyback mode (has its own internal tabs) */}
       {mode !== 'buyback' && (
-        <nav className="flex items-center justify-between border-b border-slate-700 bg-slate-800 px-2">
+        <nav className="flex items-center border-b border-slate-700 bg-slate-800 px-2">
           <div className="flex gap-1">
             {mode === 'assets' ? (
               ASSET_TABS.map((tab) => (
@@ -626,12 +631,6 @@ function MainLayoutInner() {
               ))
             )}
           </div>
-          {mode === 'assets' && (
-            <div className="flex items-center gap-2 py-1">
-              <ExpandCollapseButton />
-              <ColumnsDropdown />
-            </div>
-          )}
         </nav>
       )}
 
