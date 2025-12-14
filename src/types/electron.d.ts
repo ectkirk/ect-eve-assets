@@ -173,6 +173,12 @@ declare global {
       materialsCost: number
       totalCost: number
       maxRuns: number
+      maxCopyDuration: number
+      maxCopyDurationFormatted: string
+      maxCopyInstallationCost: number
+      maxCopyMaterialsCost: number
+      maxCopyTotalCost: number
+      exceeds30DayLimit: boolean
       copiesIn30Days: number
     }
     error?: string

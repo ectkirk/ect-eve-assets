@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Loader2, Calculator, Clock, Coins, BookOpen, Copy } from 'lucide-react'
+import { Loader2, Calculator, Clock, Coins, BookOpen, Copy, AlertTriangle, Package } from 'lucide-react'
 import { BlueprintSearch } from '@/components/ui/BlueprintSearch'
 import { SystemSearch } from '@/components/ui/SystemSearch'
 import { formatNumber } from '@/lib/utils'
@@ -9,6 +9,7 @@ const FACILITIES = [
   { id: 1, name: 'Raitaru' },
   { id: 2, name: 'Azbel' },
   { id: 3, name: 'Sotiyo' },
+  { id: 4, name: 'Other Structures' },
 ] as const
 
 const RIGS = [
@@ -23,6 +24,13 @@ const SECURITY_STATUS = [
   { id: 'n', name: 'Nullsec/WH' },
 ] as const
 
+const IMPLANTS = [
+  { id: 1.0, name: 'None' },
+  { id: 0.99, name: '1% (BX-801)' },
+  { id: 0.97, name: '3% (BX-802)' },
+  { id: 0.95, name: '5% (BX-804)' },
+] as const
+
 export function ResearchTab() {
   const [blueprint, setBlueprint] = useState<{ id: number; name: string } | null>(null)
   const [system, setSystem] = useState<{ id: number; name: string } | null>(null)
@@ -34,6 +42,9 @@ export function ResearchTab() {
   const [meRig, setMeRig] = useState(0)
   const [teRig, setTeRig] = useState(0)
   const [copyRig, setCopyRig] = useState(0)
+  const [meImplant, setMeImplant] = useState(1.0)
+  const [teImplant, setTeImplant] = useState(1.0)
+  const [copyImplant, setCopyImplant] = useState(1.0)
   const [securityStatus, setSecurityStatus] = useState<'h' | 'l' | 'n'>('h')
   const [facilityTax, setFacilityTax] = useState(0)
   const [fwBonus, setFwBonus] = useState(false)
@@ -65,6 +76,9 @@ export function ResearchTab() {
         research_level: researchLevel,
         science_level: scienceLevel,
         advanced_industry_level: advancedIndustryLevel,
+        me_implant: meImplant,
+        te_implant: teImplant,
+        copy_implant: copyImplant,
         me_rig: meRig,
         te_rig: teRig,
         copy_rig: copyRig,
@@ -175,6 +189,48 @@ export function ResearchTab() {
                   className="flex-1"
                 />
                 <span className="w-4 text-sm text-right">{advancedIndustryLevel}</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm text-slate-400 mb-2">Implants</label>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="w-20 text-xs text-slate-400">ME</span>
+                <select
+                  value={meImplant}
+                  onChange={(e) => setMeImplant(parseFloat(e.target.value))}
+                  className="flex-1 rounded border border-slate-600 bg-slate-700 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none"
+                >
+                  {IMPLANTS.map((i) => (
+                    <option key={i.id} value={i.id}>{i.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-20 text-xs text-slate-400">TE</span>
+                <select
+                  value={teImplant}
+                  onChange={(e) => setTeImplant(parseFloat(e.target.value))}
+                  className="flex-1 rounded border border-slate-600 bg-slate-700 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none"
+                >
+                  {IMPLANTS.map((i) => (
+                    <option key={i.id} value={i.id}>{i.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-20 text-xs text-slate-400">Copy</span>
+                <select
+                  value={copyImplant}
+                  onChange={(e) => setCopyImplant(parseFloat(e.target.value))}
+                  className="flex-1 rounded border border-slate-600 bg-slate-700 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none"
+                >
+                  {IMPLANTS.map((i) => (
+                    <option key={i.id} value={i.id}>{i.name}</option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>
@@ -382,6 +438,14 @@ export function ResearchTab() {
                   <Copy className="h-4 w-4 text-purple-400" />
                   <h4 className="text-sm font-medium text-slate-300">Copying</h4>
                 </div>
+
+                {result.copying.exceeds30DayLimit && (
+                  <div className="flex items-center gap-2 mb-4 p-2 rounded bg-amber-500/10 border border-amber-500/30 text-amber-400 text-sm">
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    <span>Copy duration exceeds 30 days - only one copy can be queued at a time</span>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-4 gap-4 mb-4">
                   <div>
                     <div className="text-xs text-slate-400 mb-1">Duration</div>
@@ -397,10 +461,13 @@ export function ResearchTab() {
                   </div>
                   <div>
                     <div className="text-xs text-slate-400 mb-1">Copies in 30 days</div>
-                    <div className="text-lg font-medium text-cyan-400">{result.copying.copiesIn30Days}</div>
+                    <div className={`text-lg font-medium ${result.copying.exceeds30DayLimit ? 'text-amber-400' : 'text-cyan-400'}`}>
+                      {result.copying.copiesIn30Days}
+                    </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-4">
+
+                <div className="grid grid-cols-3 gap-4 mb-4">
                   <div className="rounded border border-slate-700 p-3">
                     <div className="flex items-center gap-2 text-slate-400 mb-1">
                       <Coins className="h-3.5 w-3.5" />
@@ -429,6 +496,61 @@ export function ResearchTab() {
                     </div>
                   </div>
                 </div>
+
+                {result.copying.maxRuns > 1 && result.copying.runsPerCopy < result.copying.maxRuns && (
+                  <div className="mb-4">
+                    <div className="text-xs text-slate-400 mb-2">Max Runs Copy ({result.copying.maxRuns} runs)</div>
+                    <div className="grid grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <div className="text-slate-500">Duration</div>
+                        <div className="text-slate-300">{result.copying.maxCopyDurationFormatted}</div>
+                      </div>
+                      <div>
+                        <div className="text-slate-500">Installation</div>
+                        <div className="text-slate-300">{formatNumber(result.copying.maxCopyInstallationCost)} ISK</div>
+                      </div>
+                      <div>
+                        <div className="text-slate-500">Materials</div>
+                        <div className="text-slate-300">{formatNumber(result.copying.maxCopyMaterialsCost)} ISK</div>
+                      </div>
+                      <div>
+                        <div className="text-slate-500">Total</div>
+                        <div className="text-slate-300">{formatNumber(result.copying.maxCopyTotalCost)} ISK</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {result.copying.materials && result.copying.materials.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 text-slate-400 mb-2">
+                      <Package className="h-3.5 w-3.5" />
+                      <span className="text-xs">Copy Materials</span>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="text-left text-slate-400 border-b border-slate-700">
+                            <th className="pb-2 pr-2">Material</th>
+                            <th className="pb-2 pr-2 text-right">Qty</th>
+                            <th className="pb-2 pr-2 text-right">Price</th>
+                            <th className="pb-2 text-right">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {result.copying.materials.map((mat) => (
+                            <tr key={mat.typeId} className="border-b border-slate-700/50">
+                              <td className="py-1.5 pr-2 text-slate-300">{mat.name}</td>
+                              <td className="py-1.5 pr-2 text-right tabular-nums">{mat.quantity.toLocaleString()}</td>
+                              <td className="py-1.5 pr-2 text-right tabular-nums text-slate-400">{formatNumber(mat.price)} ISK</td>
+                              <td className="py-1.5 text-right tabular-nums text-amber-400">{formatNumber(mat.total)} ISK</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
