@@ -23,7 +23,6 @@ vi.mock('./expiry-cache-store', () => ({
 
 vi.mock('@/api/endpoints/contracts', () => ({
   getContractItems: vi.fn(),
-  getPublicContractItems: vi.fn(),
   getCorporationContractItems: vi.fn(),
 }))
 

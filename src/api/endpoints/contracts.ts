@@ -24,15 +24,6 @@ export async function getContractItems(
   )
 }
 
-export async function getPublicContractItems(
-  contractId: number
-): Promise<ESIContractItem[]> {
-  return esi.fetchPaginated<ESIContractItem>(
-    `/contracts/public/items/${contractId}/`,
-    { requiresAuth: false }
-  )
-}
-
 export async function getCorporationContracts(
   characterId: number,
   corporationId: number

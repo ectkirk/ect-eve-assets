@@ -4,7 +4,6 @@ import { useExpiryCacheStore } from './expiry-cache-store'
 import { useToastStore } from './toast-store'
 import {
   getContractItems,
-  getPublicContractItems,
   getCorporationContractItems,
   type ESIContract,
   type ESIContractItem,
@@ -163,9 +162,7 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
             }
 
             const cached = globalItemsCache.get(contract.contract_id)
-            const isPublic = contract.availability === 'public'
-            const hasItemIds = cached?.some((i: ESIContractItem) => i.item_id)
-            const cacheValid = cached && cached.length > 0 && (!isPublic || hasItemIds)
+            const cacheValid = cached && cached.length > 0
 
             const isActive = contract.status === 'outstanding' || contract.status === 'in_progress'
             if (!isActive) {
@@ -207,9 +204,6 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
             const fetchedItems = await esi.fetchBatch(
               contractsToFetch,
               async (contract) => {
-                if (contract.availability === 'public') {
-                  return getPublicContractItems(contract.contract_id)
-                }
                 if (contract.for_corporation && owner.corporationId) {
                   return getCorporationContractItems(owner.characterId, owner.corporationId, contract.contract_id)
                 }
@@ -308,9 +302,7 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
         if (contract.type !== 'item_exchange' && contract.type !== 'auction') continue
 
         const cached = globalItemsCache.get(contract.contract_id)
-        const isPublic = contract.availability === 'public'
-        const hasItemIds = cached?.some((i: ESIContractItem) => i.item_id)
-        const cacheValid = cached && cached.length > 0 && (!isPublic || hasItemIds)
+        const cacheValid = cached && cached.length > 0
 
         const isActive = contract.status === 'outstanding' || contract.status === 'in_progress'
         if (!isActive) {
@@ -333,14 +325,9 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
 
       for (const contract of contractsToFetch) {
         try {
-          let items: ESIContractItem[]
-          if (contract.availability === 'public') {
-            items = await getPublicContractItems(contract.contract_id)
-          } else if (owner.type === 'corporation') {
-            items = await getCorporationContractItems(owner.characterId, owner.id, contract.contract_id)
-          } else {
-            items = await getContractItems(owner.characterId, contract.contract_id)
-          }
+          const items = owner.type === 'corporation'
+            ? await getCorporationContractItems(owner.characterId, owner.id, contract.contract_id)
+            : await getContractItems(owner.characterId, contract.contract_id)
           contractItemsMap.set(contract.contract_id, items)
         } catch {
           contractItemsMap.set(contract.contract_id, [])

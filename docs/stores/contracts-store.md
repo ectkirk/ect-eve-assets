@@ -20,7 +20,6 @@ Manages contracts (item exchange, auction) with their items. Complex filtering a
 | `/characters/{character_id}/contracts/{contract_id}/items/` | GET | No | Required |
 | `/corporations/{corporation_id}/contracts/` | GET | Yes | Required |
 | `/corporations/{corporation_id}/contracts/{contract_id}/items/` | GET | No | Required |
-| `/contracts/public/items/{contract_id}/` | GET | No | Public |
 
 ## Data Types
 
@@ -64,7 +63,7 @@ interface ESIContractItem {
   is_included: boolean        // true = being sold, false = being requested
   is_singleton?: boolean
   raw_quantity?: number
-  item_id?: number            // Only for public contracts with specific items
+  item_id?: number            // Asset item ID (optional)
   is_blueprint_copy?: boolean
   material_efficiency?: number
   time_efficiency?: number
@@ -110,10 +109,9 @@ Complex flow with multiple filtering and caching stages:
       - Age: issued within last 30 days
    e. Check cache for existing items
    f. Batch fetch items for uncached contracts (20 at a time)
-   g. Choose correct endpoint based on availability:
-      - Public: /contracts/public/items/{id}/
+   g. Choose correct endpoint based on owner type:
       - Corporation: /corporations/{corp}/contracts/{id}/items/
-      - Personal: /characters/{char}/contracts/{id}/items/
+      - Character: /characters/{char}/contracts/{id}/items/
 5. Save to IndexedDB
 ```
 
@@ -140,7 +138,7 @@ for (const { contracts } of state.contractsByOwner) {
 }
 ```
 
-Cache validation for public contracts checks for `item_id` presence (public items include it).
+Cache validation checks for non-empty items array.
 
 ## Storage
 
@@ -155,12 +153,14 @@ Cache validation for public contracts checks for `item_id` presence (public item
 
 ## Character vs Corporation Access
 
-| Contract Availability | Items Endpoint | Auth Character |
-|----------------------|----------------|----------------|
-| `public` | `/contracts/public/items/{id}/` | None required |
-| `personal` | `/characters/{char}/contracts/{id}/items/` | Contract owner |
-| `corporation` | `/corporations/{corp}/contracts/{id}/items/` | Character with roles |
-| `alliance` | Same as corporation | Character with roles |
+Items endpoint selection is based on **owner type**, not contract availability:
+
+| Owner Type | Items Endpoint | Auth Character |
+|------------|----------------|----------------|
+| Character | `/characters/{char}/contracts/{id}/items/` | Contract owner |
+| Corporation | `/corporations/{corp}/contracts/{id}/items/` | Character with roles |
+
+Note: The `availability` field (`public`, `personal`, `corporation`, `alliance`) indicates who can *accept* the contract, not which endpoint to use for fetching items.
 
 ## Deduplication
 
@@ -230,13 +230,11 @@ const fetchedItems = await esiClient.fetchBatch(
 
 | Location | Purpose |
 |----------|---------|
-| `src/store/contracts-store.ts:194-376` | `update()` - main update flow |
-| `src/store/contracts-store.ts:215-222` | Global items cache building |
-| `src/store/contracts-store.ts:269-300` | Contract filtering logic |
-| `src/store/contracts-store.ts:312-324` | Batch fetching with endpoint routing |
+| `src/store/contracts-store.ts` | `update()` - main update flow |
 | `src/api/endpoints/contracts.ts:8-15` | `getCharacterContracts()` (paginated) |
 | `src/api/endpoints/contracts.ts:17-25` | `getContractItems()` |
-| `src/api/endpoints/contracts.ts:27-33` | `getPublicContractItems()` |
+| `src/api/endpoints/contracts.ts:27-35` | `getCorporationContracts()` (paginated) |
+| `src/api/endpoints/contracts.ts:37-45` | `getCorporationContractItems()` |
 
 ## Potential Issues
 
@@ -244,7 +242,6 @@ None identified. The implementation correctly handles:
 - Contract type filtering (only item_exchange/auction)
 - Status filtering (only active contracts)
 - Age filtering (30 days)
-- Public vs private item endpoints
-- Corporation contract access
+- Character vs corporation item endpoints
 - Deduplication
 - Items caching
