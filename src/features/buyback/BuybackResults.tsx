@@ -272,7 +272,7 @@ export function BuybackResults({ result, config }: BuybackResultsProps) {
                   <th className="px-4 py-3 text-right font-medium text-content-secondary">Qty</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border/50">
+              <tbody className="divide-y divide-slate-700/50">
                 {displayItems.map((item, index) => (
                   <tr key={`${item.itemName}-${index}`} className="text-content">
                     <td className="px-4 py-2.5">
@@ -323,7 +323,7 @@ function ExcludedSection({
     red: 'border-red-500/30 bg-red-500/10 text-red-400',
     pink: 'border-pink-500/30 bg-pink-500/10 text-pink-400',
     purple: 'border-purple-500/30 bg-purple-500/10 text-purple-400',
-    gray: 'border-content-muted/30 bg-content-muted/10 text-content-secondary',
+    gray: 'border-slate-500/30 bg-slate-500/10 text-content-secondary',
     blue: 'border-blue-500/30 bg-blue-500/10 text-blue-400',
     cyan: 'border-cyan-500/30 bg-cyan-500/10 text-cyan-400',
     indigo: 'border-indigo-500/30 bg-indigo-500/10 text-indigo-400',

@@ -106,14 +106,14 @@ function StatusIcon({ status }: { status: ESIIndustryJob['status'] }) {
     case 'ready':
       return <CheckCircle2 className="h-4 w-4 text-green-400" />
     case 'delivered':
-      return <CheckCircle2 className="h-4 w-4 text-content-muted" />
+      return <CheckCircle2 className="h-4 w-4 text-slate-500" />
     case 'cancelled':
     case 'reverted':
       return <XCircle className="h-4 w-4 text-red-400" />
     case 'paused':
       return <PauseCircle className="h-4 w-4 text-yellow-400" />
     default:
-      return <Clock className="h-4 w-4 text-content-secondary" />
+      return <Clock className="h-4 w-4 text-slate-400" />
   }
 }
 
@@ -145,7 +145,7 @@ function JobsTable({ jobs }: { jobs: JobRow[] }) {
               </TableCell>
               <TableCell className="py-1.5">
                 <div className="flex items-center gap-2">
-                  <ActivityIcon className="h-4 w-4 text-content-secondary" />
+                  <ActivityIcon className="h-4 w-4 text-slate-400" />
                   <span>{row.activityName}</span>
                 </div>
               </TableCell>
@@ -172,7 +172,7 @@ function JobsTable({ jobs }: { jobs: JobRow[] }) {
                     </span>
                   </div>
                 ) : (
-                  <span className="text-content-muted">-</span>
+                  <span className="text-slate-500">-</span>
                 )}
               </TableCell>
               <TableCell className="py-1.5 text-right tabular-nums">
@@ -188,12 +188,12 @@ function JobsTable({ jobs }: { jobs: JobRow[] }) {
                 className={cn(
                   'py-1.5 text-right tabular-nums',
                   duration.isComplete && 'text-green-400',
-                  !duration.isComplete && 'text-content-secondary'
+                  !duration.isComplete && 'text-slate-400'
                 )}
               >
                 {duration.text}
               </TableCell>
-              <TableCell className="py-1.5 text-right text-content-secondary">{row.ownerName}</TableCell>
+              <TableCell className="py-1.5 text-right text-slate-400">{row.ownerName}</TableCell>
             </TableRow>
           )
         })}
@@ -212,26 +212,26 @@ function LocationGroupRow({
   onToggle: () => void
 }) {
   return (
-    <div className="border-b border-border/50 last:border-b-0">
+    <div className="border-b border-slate-700/50 last:border-b-0">
       <button
         onClick={onToggle}
-        className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-surface-secondary/50 text-left text-sm"
+        className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-800/50 text-left text-sm"
       >
         {isExpanded ? (
-          <ChevronDown className="h-4 w-4 text-content-secondary" />
+          <ChevronDown className="h-4 w-4 text-slate-400" />
         ) : (
-          <ChevronRight className="h-4 w-4 text-content-secondary" />
+          <ChevronRight className="h-4 w-4 text-slate-400" />
         )}
         <span className="text-blue-300 flex-1">{group.locationName}</span>
         <span className="text-xs text-blue-400">
           {group.activeCount > 0 && `${group.activeCount} active`}
         </span>
-        <span className="text-xs text-content-muted">
+        <span className="text-xs text-slate-500">
           {group.completedCount > 0 && `${group.completedCount} completed`}
         </span>
       </button>
       {isExpanded && (
-        <div className="border-t border-border/50 bg-surface/30 px-4 pb-2">
+        <div className="border-t border-slate-700/50 bg-slate-900/30 px-4 pb-2">
           <JobsTable jobs={group.jobs} />
         </div>
       )}
@@ -454,10 +454,10 @@ export function IndustryJobsTab() {
   if (loadingState) return loadingState
 
   return (
-    <div className="h-full rounded-lg border border-border bg-surface-secondary/30 overflow-auto">
+    <div className="h-full rounded-lg border border-slate-700 bg-slate-800/30 overflow-auto">
       {locationGroups.length === 0 ? (
         <div className="flex items-center justify-center h-full">
-          <p className="text-content-secondary">No industry jobs.</p>
+          <p className="text-slate-400">No industry jobs.</p>
         </div>
       ) : (
         locationGroups.map((group) => (

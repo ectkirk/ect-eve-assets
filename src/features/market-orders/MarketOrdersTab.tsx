@@ -98,7 +98,7 @@ function OrdersTable({ orders }: { orders: OrderRow[] }) {
               <TableCell className="py-1.5 text-right tabular-nums">
                 {row.order.volume_remain.toLocaleString()}
                 {row.order.volume_remain !== row.order.volume_total && (
-                  <span className="text-content-muted">
+                  <span className="text-slate-500">
                     /{row.order.volume_total.toLocaleString()}
                   </span>
                 )}
@@ -106,10 +106,10 @@ function OrdersTable({ orders }: { orders: OrderRow[] }) {
               <TableCell className="py-1.5 text-right tabular-nums text-amber-400">
                 {formatNumber(total)}
               </TableCell>
-              <TableCell className="py-1.5 text-right tabular-nums text-content-secondary">
+              <TableCell className="py-1.5 text-right tabular-nums text-slate-400">
                 {formatExpiry(row.order.issued, row.order.duration)}
               </TableCell>
-              <TableCell className="py-1.5 text-right text-content-secondary">{row.ownerName}</TableCell>
+              <TableCell className="py-1.5 text-right text-slate-400">{row.ownerName}</TableCell>
             </TableRow>
           )
         })}
@@ -131,18 +131,18 @@ function LocationGroupRow({
   const sellOrders = group.orders.filter((o) => !o.order.is_buy_order)
 
   return (
-    <div className="border-b border-border/50 last:border-b-0">
+    <div className="border-b border-slate-700/50 last:border-b-0">
       <button
         onClick={onToggle}
-        className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-surface-secondary/50 text-left text-sm"
+        className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-800/50 text-left text-sm"
       >
         {isExpanded ? (
-          <ChevronDown className="h-4 w-4 text-content-secondary" />
+          <ChevronDown className="h-4 w-4 text-slate-400" />
         ) : (
-          <ChevronRight className="h-4 w-4 text-content-secondary" />
+          <ChevronRight className="h-4 w-4 text-slate-400" />
         )}
         <span className="text-blue-300 flex-1">{group.locationName}</span>
-        <span className="text-xs text-content-muted">
+        <span className="text-xs text-slate-500">
           {group.systemName} / {group.regionName}
         </span>
         <span className="text-xs text-green-400">
@@ -156,7 +156,7 @@ function LocationGroupRow({
         </span>
       </button>
       {isExpanded && (
-        <div className="border-t border-border/50 bg-surface/30 px-4 pb-2">
+        <div className="border-t border-slate-700/50 bg-slate-900/30 px-4 pb-2">
           <OrdersTable orders={group.orders} />
         </div>
       )}
@@ -373,10 +373,10 @@ export function MarketOrdersTab() {
   if (loadingState) return loadingState
 
   return (
-    <div className="h-full rounded-lg border border-border bg-surface-secondary/30 overflow-auto">
+    <div className="h-full rounded-lg border border-slate-700 bg-slate-800/30 overflow-auto">
       {locationGroups.length === 0 ? (
         <div className="flex items-center justify-center h-full">
-          <p className="text-content-secondary">No active market orders.</p>
+          <p className="text-slate-400">No active market orders.</p>
         </div>
       ) : (
         locationGroups.map((group) => (

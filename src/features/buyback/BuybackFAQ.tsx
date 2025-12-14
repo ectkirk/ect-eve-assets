@@ -41,7 +41,7 @@ export function BuybackFAQ() {
   return (
     <div className="rounded-lg border border-border bg-surface-secondary/50 p-6">
       <h2 className="mb-4 text-xl font-semibold text-white">Frequently Asked Questions</h2>
-      <div className="divide-y divide-border">
+      <div className="divide-y divide-slate-700">
         <FAQItem question="How is your buyback calculated?">
           <p className="mb-2">
             We calculate our buyback based on security status. We offer the following rates of Jita

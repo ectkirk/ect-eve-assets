@@ -35,13 +35,13 @@ const STATE_DISPLAY: Record<string, { label: string; color: string }> = {
   armor_reinforce: { label: 'Armor Reinforce', color: 'text-yellow-400' },
   hull_reinforce: { label: 'Hull Reinforce', color: 'text-red-400' },
   anchoring: { label: 'Anchoring', color: 'text-blue-400' },
-  unanchored: { label: 'Unanchored', color: 'text-content-secondary' },
+  unanchored: { label: 'Unanchored', color: 'text-slate-400' },
   onlining_vulnerable: { label: 'Onlining', color: 'text-blue-400' },
   online_deprecated: { label: 'Online', color: 'text-green-400' },
   anchor_vulnerable: { label: 'Anchor Vulnerable', color: 'text-yellow-400' },
   deploy_vulnerable: { label: 'Deploy Vulnerable', color: 'text-yellow-400' },
   fitting_invulnerable: { label: 'Fitting', color: 'text-blue-400' },
-  unknown: { label: 'Unknown', color: 'text-content-muted' },
+  unknown: { label: 'Unknown', color: 'text-slate-500' },
 }
 
 interface StructureRow {
@@ -77,7 +77,7 @@ function ServiceBadge({ name, state }: { name: string; state: 'online' | 'offlin
     <span
       className={cn(
         'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs',
-        isOnline ? 'bg-green-900/50 text-green-400' : 'bg-surface-secondary text-content-muted'
+        isOnline ? 'bg-green-900/50 text-green-400' : 'bg-slate-800 text-slate-500'
       )}
     >
       {isOnline ? <Zap className="h-3 w-3" /> : <ZapOff className="h-3 w-3" />}
@@ -292,14 +292,14 @@ export function StructuresTab() {
 
   return (
     <>
-      <div className="h-full rounded-lg border border-border bg-surface-secondary/30 overflow-auto">
+      <div className="h-full rounded-lg border border-slate-700 bg-slate-800/30 overflow-auto">
         {structureRows.length === 0 ? (
           <div className="flex items-center justify-center h-full">
-            <p className="text-content-secondary">No structures.</p>
+            <p className="text-slate-400">No structures.</p>
           </div>
         ) : (
           <Table>
-            <TableHeader className="sticky top-0 z-10 bg-surface-secondary">
+            <TableHeader className="sticky top-0 z-10 bg-slate-800">
               <TableRow className="hover:bg-transparent">
                 <TableHead>Structure</TableHead>
                 <TableHead>Type</TableHead>
@@ -328,10 +328,10 @@ export function StructuresTab() {
                         {isReinforced && <AlertTriangle className="h-4 w-4 text-red-400" />}
                       </div>
                     </TableCell>
-                    <TableCell className="py-1.5 text-content-secondary">{row.typeName}</TableCell>
+                    <TableCell className="py-1.5 text-slate-400">{row.typeName}</TableCell>
                     <TableCell className="py-1.5">
                       <span className="text-blue-300">{row.systemName}</span>
-                      <span className="text-content-muted text-xs ml-1">({row.regionName})</span>
+                      <span className="text-slate-500 text-xs ml-1">({row.regionName})</span>
                     </TableCell>
                     <TableCell className="py-1.5">
                       <span className={stateInfo.color}>{stateInfo.label}</span>
@@ -340,18 +340,18 @@ export function StructuresTab() {
                       <div className="flex flex-wrap gap-1">
                         {row.structure.services?.map((service, idx) => (
                           <ServiceBadge key={idx} name={service.name} state={service.state} />
-                        )) ?? <span className="text-content-muted">-</span>}
+                        )) ?? <span className="text-slate-500">-</span>}
                       </div>
                     </TableCell>
                     <TableCell className="py-1.5 text-right">
                       <div className="flex items-center justify-end gap-1">
                         {fuelInfo.isLow && <Fuel className="h-4 w-4 text-red-400" />}
-                        <span className={cn('tabular-nums', fuelInfo.isLow ? 'text-red-400' : 'text-content-secondary')}>
+                        <span className={cn('tabular-nums', fuelInfo.isLow ? 'text-red-400' : 'text-slate-400')}>
                           {fuelInfo.text}
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell className="py-1.5 text-right text-content-secondary">{row.ownerName}</TableCell>
+                    <TableCell className="py-1.5 text-right text-slate-400">{row.ownerName}</TableCell>
                   </TableRow>
                 )
 
