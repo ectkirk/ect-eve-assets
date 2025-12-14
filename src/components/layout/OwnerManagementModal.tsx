@@ -234,8 +234,9 @@ export function OwnerManagementModal({
     e.stopPropagation()
     if (!window.electronAPI) return
 
-    const isCorp = owner.type === 'corporation'
-    if (isCorp) {
+    const hadCorporationScopes = owner.scopes?.some((s) => s.includes('corporation'))
+    const needsCorporationScopes = owner.type === 'corporation' || hadCorporationScopes
+    if (needsCorporationScopes) {
       setIsAddingCorporation(true)
     } else {
       setIsAddingCharacter(true)
@@ -243,13 +244,19 @@ export function OwnerManagementModal({
     setError(null)
 
     try {
-      const result = await window.electronAPI.startAuth(isCorp)
+      const result = await window.electronAPI.startAuth(needsCorporationScopes)
       if (
         result.success &&
         result.accessToken &&
         result.refreshToken &&
         result.characterId
       ) {
+        if (result.characterId !== owner.characterId) {
+          setError(
+            `Wrong character authenticated. Expected ${owner.name}, got a different character. Please try again.`
+          )
+          return
+        }
         const key = ownerKey(owner.type, owner.id)
         useAuthStore.getState().updateOwnerTokens(key, {
           accessToken: result.accessToken,
