@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { BuybackForm } from './BuybackForm'
 import { BuybackResults } from './BuybackResults'
+import { BuybackFAQ } from './BuybackFAQ'
 import { BUYBACK_TABS, getConfigByTabName, type BuybackTabType } from './config'
 
 interface BuybackTabProps {
@@ -119,6 +120,8 @@ export function BuybackTab({ activeTab, onTabChange }: BuybackTabProps) {
             )}
 
             {!error && result && config && <BuybackResults result={result} config={config} />}
+
+            <BuybackFAQ />
           </div>
         </div>
       </div>
