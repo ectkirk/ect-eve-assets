@@ -688,7 +688,7 @@ export function AssetsTab() {
 
       <div
         ref={tableContainerRef}
-        className="flex-1 min-h-0 rounded-lg border border-slate-700 overflow-auto"
+        className="flex-1 min-h-0 rounded-lg border border-slate-700 bg-slate-800/30 overflow-auto"
       >
         <div className="grid" style={{ gridTemplateColumns: table.getVisibleLeafColumns().map(col => {
           const noFlex = (col.columnDef.meta as { noFlex?: boolean } | undefined)?.noFlex
