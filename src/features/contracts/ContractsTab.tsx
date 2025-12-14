@@ -155,6 +155,8 @@ function ContractItemRow({
   )
 }
 
+const PAGE_SIZE = 50
+
 function ContractsTable({
   contracts,
   cacheVersion,
@@ -167,6 +169,11 @@ function ContractsTable({
   showCompletedDate?: boolean
 }) {
   const [expandedContracts, setExpandedContracts] = useState<Set<number>>(new Set())
+  const [page, setPage] = useState(0)
+
+  const totalPages = Math.max(1, Math.ceil(contracts.length / PAGE_SIZE))
+  const clampedPage = Math.min(page, totalPages - 1)
+  const paginatedContracts = contracts.slice(clampedPage * PAGE_SIZE, (clampedPage + 1) * PAGE_SIZE)
 
   const toggleContract = useCallback((contractId: number) => {
     setExpandedContracts((prev) => {
@@ -178,6 +185,7 @@ function ContractsTable({
   }, [])
 
   return (
+  <>
     <Table>
       <TableHeader>
         <TableRow className="hover:bg-transparent">
@@ -205,7 +213,7 @@ function ContractsTable({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {contracts.map((row) => {
+        {paginatedContracts.map((row) => {
           const contract = row.contractWithItems.contract
           const items = row.contractWithItems.items
           const TypeIcon = CONTRACT_TYPE_ICONS[contract.type]
@@ -357,6 +365,47 @@ function ContractsTable({
         })}
       </TableBody>
     </Table>
+    {totalPages > 1 && (
+      <div className="flex items-center justify-between px-2 py-2 text-sm">
+        <span className="text-content-secondary">
+          {clampedPage * PAGE_SIZE + 1}-{Math.min((clampedPage + 1) * PAGE_SIZE, contracts.length)} of {contracts.length}
+        </span>
+        <div className="flex gap-1">
+          <button
+            onClick={() => setPage(0)}
+            disabled={clampedPage === 0}
+            className="px-2 py-1 rounded hover:bg-surface-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            First
+          </button>
+          <button
+            onClick={() => setPage(clampedPage - 1)}
+            disabled={clampedPage === 0}
+            className="px-2 py-1 rounded hover:bg-surface-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Prev
+          </button>
+          <span className="px-2 py-1 text-content-secondary">
+            {clampedPage + 1} / {totalPages}
+          </span>
+          <button
+            onClick={() => setPage(clampedPage + 1)}
+            disabled={clampedPage >= totalPages - 1}
+            className="px-2 py-1 rounded hover:bg-surface-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Next
+          </button>
+          <button
+            onClick={() => setPage(totalPages - 1)}
+            disabled={clampedPage >= totalPages - 1}
+            className="px-2 py-1 rounded hover:bg-surface-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Last
+          </button>
+        </div>
+      </div>
+    )}
+  </>
   )
 }
 
