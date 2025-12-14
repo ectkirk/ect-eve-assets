@@ -292,7 +292,7 @@ export function StructuresTab() {
 
   return (
     <>
-      <div className="h-full rounded-lg border border-slate-700 overflow-auto">
+      <div className="h-full rounded-lg border border-slate-700 bg-slate-800/30 overflow-auto">
         {structureRows.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <p className="text-slate-400">No structures.</p>
