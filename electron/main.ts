@@ -398,7 +398,21 @@ ipcMain.handle('updater:install', () => {
 })
 
 const REF_API_BASE = 'https://edencom.net/api/v1'
+const REF_API_KEY = process.env['REF_API_KEY'] || ''
 const MAX_REF_IDS = 1000
+
+function getRefHeaders(contentType?: 'json'): Record<string, string> {
+  const headers: Record<string, string> = {
+    'User-Agent': `ECTEVEAssets/${app.getVersion()} (ecteveassets@edencom.net; +https://github.com/ectkirk/ect-eve-assets)`,
+  }
+  if (REF_API_KEY) {
+    headers['X-App-Key'] = REF_API_KEY
+  }
+  if (contentType === 'json') {
+    headers['Content-Type'] = 'application/json'
+  }
+  return headers
+}
 
 ipcMain.handle('ref:types', async (_event, ids: unknown, market: unknown) => {
   if (!Array.isArray(ids) || ids.length === 0 || ids.length > MAX_REF_IDS) {
@@ -414,7 +428,7 @@ ipcMain.handle('ref:types', async (_event, ids: unknown, market: unknown) => {
   try {
     const response = await fetch(`${REF_API_BASE}/types?market=${market}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getRefHeaders('json'),
       body: JSON.stringify({ ids }),
     })
     if (!response.ok) {
@@ -438,7 +452,7 @@ ipcMain.handle('ref:universe', async (_event, ids: unknown) => {
   try {
     const response = await fetch(`${REF_API_BASE}/universe`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getRefHeaders('json'),
       body: JSON.stringify({ ids }),
     })
     if (!response.ok) {
@@ -462,7 +476,7 @@ ipcMain.handle('ref:ships', async (_event, ids: unknown) => {
   try {
     const response = await fetch(`${REF_API_BASE}/ships`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getRefHeaders('json'),
       body: JSON.stringify({ ids }),
     })
     if (!response.ok) {
@@ -494,7 +508,9 @@ ipcMain.handle('ref:manufacturingCost', async (_event, params: unknown) => {
         searchParams.set(key, String(value))
       }
     }
-    const response = await fetch(`${REF_API_BASE}/manufacturing-cost?${searchParams}`)
+    const response = await fetch(`${REF_API_BASE}/manufacturing-cost?${searchParams}`, {
+      headers: getRefHeaders(),
+    })
     if (!response.ok) {
       const text = await response.text()
       return { error: `HTTP ${response.status}: ${text}` }
@@ -525,7 +541,9 @@ ipcMain.handle('ref:blueprintResearch', async (_event, params: unknown) => {
         searchParams.set(key, String(value))
       }
     }
-    const response = await fetch(`${REF_API_BASE}/blueprint-research?${searchParams}`)
+    const response = await fetch(`${REF_API_BASE}/blueprint-research?${searchParams}`, {
+      headers: getRefHeaders(),
+    })
     if (!response.ok) {
       const text = await response.text()
       return { error: `HTTP ${response.status}: ${text}` }
@@ -539,7 +557,9 @@ ipcMain.handle('ref:blueprintResearch', async (_event, params: unknown) => {
 
 ipcMain.handle('ref:blueprints', async () => {
   try {
-    const response = await fetch(`${REF_API_BASE}/blueprints`)
+    const response = await fetch(`${REF_API_BASE}/blueprints`, {
+      headers: getRefHeaders(),
+    })
     if (!response.ok) {
       return { error: `HTTP ${response.status}` }
     }
@@ -552,7 +572,9 @@ ipcMain.handle('ref:blueprints', async () => {
 
 ipcMain.handle('ref:systems', async () => {
   try {
-    const response = await fetch(`${REF_API_BASE}/systems`)
+    const response = await fetch(`${REF_API_BASE}/systems`, {
+      headers: getRefHeaders(),
+    })
     if (!response.ok) {
       return { error: `HTTP ${response.status}` }
     }
@@ -580,7 +602,7 @@ ipcMain.handle(
     try {
       const response = await fetch(`${REF_API_BASE}/buyback/calculate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getRefHeaders('json'),
         body: JSON.stringify({ text, config }),
       })
       if (!response.ok) {
@@ -605,7 +627,7 @@ ipcMain.handle(
     try {
       const response = await fetch('https://edencom.net/api/buyback/calculator', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getRefHeaders('json'),
         body: JSON.stringify({ text }),
       })
       if (!response.ok) {
