@@ -222,7 +222,7 @@ function ItemRow({ item }: { item: BuybackCalculatorItem }) {
           <div>
             <div className="flex items-center gap-2">
               <a
-                href={`https://ref.edencom.net/items/${item.typeId}`}
+                href={`https://edencom.net/ref/items/${item.typeId}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-link hover:underline"
