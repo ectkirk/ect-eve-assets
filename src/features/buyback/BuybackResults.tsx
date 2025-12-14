@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { formatNumber } from '@/lib/utils'
 import type { SecurityConfig } from './config'
 
 interface BuybackResultsProps {
@@ -7,176 +6,360 @@ interface BuybackResultsProps {
   config: SecurityConfig
 }
 
-function ExcludedItemsDropdown({
-  title,
-  items,
-  color = 'yellow',
-}: {
-  title: string
-  items: string[]
-  color?: 'yellow' | 'red' | 'orange'
-}) {
-  const [isOpen, setIsOpen] = useState(false)
+function CopyButton({ text, label }: { text: string; label: string }) {
+  const [copied, setCopied] = useState(false)
 
-  if (items.length === 0) return null
-
-  const colorClasses = {
-    yellow: 'border-yellow-600/30 bg-yellow-900/20 text-yellow-400',
-    red: 'border-red-600/30 bg-red-900/20 text-red-400',
-    orange: 'border-orange-600/30 bg-orange-900/20 text-orange-400',
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
   return (
-    <div className={`rounded-lg border ${colorClasses[color]} p-3`}>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex w-full items-center justify-between text-left"
-      >
-        <span className="font-medium">
-          {title} ({items.length})
-        </span>
-        <svg
-          className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+    <button
+      type="button"
+      onClick={handleCopy}
+      className={`inline-flex items-center gap-1 font-semibold ${label === 'corp' ? 'text-blue-400 hover:text-blue-300' : 'text-green-400 hover:text-green-300'}`}
+      title="Click to copy"
+    >
+      {text}
+      {copied ? (
+        <svg className="h-3.5 w-3.5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
         </svg>
-      </button>
-      {isOpen && (
-        <ul className="mt-2 max-h-40 overflow-y-auto text-sm opacity-80">
-          {items.map((item, idx) => (
-            <li key={idx} className="py-0.5">
-              {item}
-            </li>
-          ))}
-        </ul>
+      ) : (
+        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        </svg>
+      )}
+    </button>
+  )
+}
+
+function getItemImageUrl(typeId: number | null, itemName: string): string | null {
+  if (!typeId) return null
+  const isBPC = itemName.includes('(Copy)')
+  const isBP = itemName.toLowerCase().includes('blueprint') && !isBPC
+  const variation = isBPC ? 'bpc' : isBP ? 'bp' : 'icon'
+  return `https://images.evetech.net/types/${typeId}/${variation}?size=32`
+}
+
+export function BuybackResults({ result, config }: BuybackResultsProps) {
+  const { items, totals } = result
+  const [showExcluded, setShowExcluded] = useState(totals.buybackValue === 0)
+
+  const formatVolume = (value: number) =>
+    value.toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' m³'
+
+  const formatISK = (value: number) =>
+    value.toLocaleString('en-US', { maximumFractionDigits: 0 })
+
+  const formatISKFull = (value: number) => formatISK(value) + ' ISK'
+
+  const excludedFromList = new Set([
+    ...result.unmatchedItems,
+    ...result.lowVolumeItems,
+    ...result.unprofitableItems,
+    ...result.excludedItems,
+    ...result.excludedCrystals,
+    ...result.excludedRigs,
+    ...result.excludedCapitals,
+    ...result.blueprintCopies,
+    ...(result.unpricedCapitals || []),
+  ])
+  const displayItems = items.filter((item) => !excludedFromList.has(item.itemName))
+
+  const hasExcludedItems =
+    result.excludedItems.length > 0 ||
+    result.unmatchedItems.length > 0 ||
+    result.lowVolumeItems.length > 0 ||
+    result.unprofitableItems.length > 0 ||
+    result.excludedCrystals.length > 0 ||
+    result.excludedRigs.length > 0 ||
+    result.excludedCapitals.length > 0 ||
+    result.blueprintCopies.length > 0 ||
+    (result.unpricedCapitals?.length || 0) > 0
+
+  return (
+    <div className="space-y-6">
+      {totals.buybackValue === 0 && (
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-6 text-center">
+          <div className="text-lg font-medium text-red-400">No valid items for buyback</div>
+          <div className="mt-1 text-sm text-red-300/80">
+            There are no valid items to offer a buyback value.
+          </div>
+        </div>
+      )}
+
+      {totals.buybackValue > 0 && (
+        <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-6">
+          <div className="mb-4 text-center">
+            <div className="text-3xl font-bold text-green-400">
+              {formatISKFull(totals.buybackValue)}
+            </div>
+            <div className="text-sm text-green-300/80">Total Buyback Value</div>
+          </div>
+          <div className="rounded-lg border border-green-500/20 bg-slate-800/50 p-4">
+            <div className="text-sm text-slate-300">
+              <p>
+                Send an <span className="font-semibold text-white">Item Exchange</span> contract to
+                corporation <CopyButton text="ECTrade" label="corp" /> for{' '}
+                <CopyButton text={formatISKFull(totals.buybackValue)} label="value" />
+              </p>
+              <p className="mt-1 text-slate-400">
+                Set the reason to: <span className="font-semibold text-white">{config.name}</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {hasExcludedItems && (
+        <div className="rounded-lg border-2 border-yellow-500/50 bg-yellow-500/5">
+          <button
+            type="button"
+            onClick={() => setShowExcluded(!showExcluded)}
+            className="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-yellow-500/10"
+          >
+            <span className="flex items-center gap-2 text-sm">
+              <svg className="h-5 w-5 shrink-0 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <span className="text-yellow-200">
+                We have excluded some items from your offer.{' '}
+                <span className="text-yellow-400 underline">Click here for more information</span>
+              </span>
+            </span>
+            <svg className={`h-5 w-5 shrink-0 text-yellow-500 transition-transform ${showExcluded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {showExcluded && (
+            <div className="space-y-4 border-t border-yellow-500/30 p-4">
+              <div className="text-sm text-slate-300">
+                The following items have not been included in the shown appraisal and can be safely
+                removed from your buyback contract.
+              </div>
+
+              {result.excludedItems.length > 0 && (
+                <ExcludedSection
+                  title="We are not accepting Apparel or SKINs"
+                  items={result.excludedItems}
+                  color="orange"
+                  description="Please exclude these items from your contract"
+                  footer="If you believe this is an error, please contact us."
+                />
+              )}
+
+              {result.unmatchedItems.length > 0 && (
+                <ExcludedSection
+                  title="We're unable to recognize some of your items"
+                  items={result.unmatchedItems}
+                  color="red"
+                  footer="If you believe this is an error, please let us know."
+                />
+              )}
+
+              {result.lowVolumeItems.length > 0 && (
+                <ExcludedSection
+                  title="Some items have low volume or unreliable price history"
+                  items={result.lowVolumeItems}
+                  color="pink"
+                  footer="We're unable to offer an appropriate quote for these items due to insufficient market data."
+                />
+              )}
+
+              {result.unprofitableItems.length > 0 && (
+                <ExcludedSection
+                  title="m³/Value Exclusions"
+                  items={result.unprofitableItems}
+                  color="purple"
+                  footer="Due to the high m³/low value, these items are not profitable to transport."
+                />
+              )}
+
+              {result.excludedCrystals.length > 0 && (
+                <ExcludedSection
+                  title="Crystal Ammunition Not Accepted"
+                  items={result.excludedCrystals}
+                  color="gray"
+                  footer="We cannot determine from all paste formats whether crystals are tradeable, so we do not buy crystal ammunition."
+                />
+              )}
+
+              {result.excludedRigs.length > 0 && (
+                <ExcludedSection
+                  title="Rigs have been excluded"
+                  items={result.excludedRigs}
+                  color="blue"
+                  footer="Rigs are generally destroyed on repackage. If you believe this is a mistake (rigs not applied to hull/T3C), please contact us."
+                />
+              )}
+
+              {result.excludedCapitals.length > 0 && (
+                <ExcludedSection
+                  title="Capital ships are not accepted"
+                  items={result.excludedCapitals}
+                  color="cyan"
+                  footer={config.name.toLowerCase().includes('high') ? 'We do not purchase capitals in high security space.' : 'We are not accepting capitals at this time.'}
+                />
+              )}
+
+              {result.blueprintCopies.length > 0 && (
+                <ExcludedSection
+                  title="Blueprint copies cannot be valued"
+                  items={result.blueprintCopies}
+                  color="indigo"
+                  footer="We are unable to determine the value of blueprint copies. Please do not include them in your contract."
+                />
+              )}
+
+              {(result.unpricedCapitals?.length || 0) > 0 && (
+                <ExcludedSection
+                  title="Unable to price some capital ships"
+                  items={result.unpricedCapitals || []}
+                  color="amber"
+                  footer="These capitals do not have at least 5 completed sales in the last 60 days. We are unable to offer a price without sufficient market data."
+                />
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-6">
+        <h2 className="mb-4 text-lg font-semibold text-white">Accepted Items Summary</h2>
+        <div className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
+          <div>
+            <div className="text-slate-400">Items</div>
+            <div className="font-medium text-white">{totals.profitableCount} accepted</div>
+          </div>
+          <div>
+            <div className="text-slate-400">Total Volume</div>
+            <div className="font-medium text-white">{formatVolume(totals.totalVolume)}</div>
+          </div>
+          <div>
+            <div className="text-slate-400">Jita Buy</div>
+            <div className="font-medium text-white">{formatISKFull(totals.jitaBuyTotal)}</div>
+          </div>
+          <div>
+            <div className="text-slate-400">Jita Sell</div>
+            <div className="font-medium text-white">{formatISKFull(totals.jitaSellTotal)}</div>
+          </div>
+          {totals.capitalValue > 0 && (
+            <div>
+              <div className="text-slate-400">Capital Value</div>
+              <div className="font-medium text-white">{formatISKFull(totals.capitalValue)}</div>
+            </div>
+          )}
+          {totals.assetSafetyCost > 0 && (
+            <div>
+              <div className="text-slate-400">Asset Safety Fee</div>
+              <div className="font-medium text-orange-400">-{formatISKFull(totals.assetSafetyCost)}</div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {displayItems.length > 0 && (
+        <div className="overflow-hidden rounded-lg border border-slate-700">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b border-slate-700 bg-slate-800">
+                <tr>
+                  <th className="px-4 py-3 text-left font-medium text-slate-300">Item</th>
+                  <th className="px-4 py-3 text-right font-medium text-slate-300">Qty</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-700/50">
+                {displayItems.map((item, index) => (
+                  <tr key={`${item.itemName}-${index}`} className="text-slate-100">
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center gap-2">
+                        {item.typeId ? (
+                          <img
+                            src={getItemImageUrl(item.typeId, item.itemName) || ''}
+                            alt=""
+                            width={32}
+                            height={32}
+                            className="shrink-0"
+                          />
+                        ) : (
+                          <div className="h-8 w-8 shrink-0 rounded bg-slate-700" />
+                        )}
+                        <span className="truncate">{item.itemName}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-2.5 text-right tabular-nums">
+                      {item.quantity.toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
     </div>
   )
 }
 
-export function BuybackResults({ result, config }: BuybackResultsProps) {
-  const { totals } = result
+function ExcludedSection({
+  title,
+  items,
+  color,
+  description,
+  footer,
+}: {
+  title: string
+  items: string[]
+  color: 'orange' | 'red' | 'pink' | 'purple' | 'gray' | 'blue' | 'cyan' | 'indigo' | 'amber'
+  description?: string
+  footer: string
+}) {
+  const colorClasses = {
+    orange: 'border-orange-500/30 bg-orange-500/10 text-orange-400',
+    red: 'border-red-500/30 bg-red-500/10 text-red-400',
+    pink: 'border-pink-500/30 bg-pink-500/10 text-pink-400',
+    purple: 'border-purple-500/30 bg-purple-500/10 text-purple-400',
+    gray: 'border-slate-500/30 bg-slate-500/10 text-slate-400',
+    blue: 'border-blue-500/30 bg-blue-500/10 text-blue-400',
+    cyan: 'border-cyan-500/30 bg-cyan-500/10 text-cyan-400',
+    indigo: 'border-indigo-500/30 bg-indigo-500/10 text-indigo-400',
+    amber: 'border-amber-500/30 bg-amber-500/10 text-amber-400',
+  }
 
-  const formatVolume = (value: number) =>
-    value.toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' m³'
+  const textClasses = {
+    orange: 'text-orange-300/80',
+    red: 'text-red-300/80',
+    pink: 'text-pink-300/80',
+    purple: 'text-purple-300/80',
+    gray: 'text-slate-300/80',
+    blue: 'text-blue-300/80',
+    cyan: 'text-cyan-300/80',
+    indigo: 'text-indigo-300/80',
+    amber: 'text-amber-300/80',
+  }
 
-  const formatISKFull = (value: number) =>
-    value.toLocaleString('en-US', { maximumFractionDigits: 0 }) + ' ISK'
-
-  const volumePenalty = totals.totalVolume * config.iskPerM3
+  const footerClasses = {
+    orange: 'text-orange-300/60',
+    red: 'text-red-300/60',
+    pink: 'text-pink-300/60',
+    purple: 'text-purple-300/60',
+    gray: 'text-slate-300/60',
+    blue: 'text-blue-300/60',
+    cyan: 'text-cyan-300/60',
+    indigo: 'text-indigo-300/60',
+    amber: 'text-amber-300/60',
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-6">
-        <h2 className="mb-4 text-lg font-semibold text-white">Quote Summary</h2>
-
-        <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <div className="rounded-lg bg-slate-700/50 p-4">
-            <div className="text-xs text-slate-400">Total Volume</div>
-            <div className="text-lg font-semibold text-white">
-              {formatVolume(totals.totalVolume)}
-            </div>
-          </div>
-
-          <div className="rounded-lg bg-slate-700/50 p-4">
-            <div className="text-xs text-slate-400">Jita Buy</div>
-            <div className="text-lg font-semibold text-blue-400">
-              {formatNumber(totals.jitaBuyTotal)}
-            </div>
-            <div className="text-xs text-slate-500">{formatISKFull(totals.jitaBuyTotal)}</div>
-          </div>
-
-          <div className="rounded-lg bg-slate-700/50 p-4">
-            <div className="text-xs text-slate-400">Jita Sell</div>
-            <div className="text-lg font-semibold text-green-400">
-              {formatNumber(totals.jitaSellTotal)}
-            </div>
-            <div className="text-xs text-slate-500">{formatISKFull(totals.jitaSellTotal)}</div>
-          </div>
-
-          <div className="rounded-lg bg-slate-700/50 p-4">
-            <div className="text-xs text-slate-400">Items</div>
-            <div className="text-lg font-semibold text-white">
-              {totals.matchedCount} / {totals.itemCount}
-            </div>
-            <div className="text-xs text-slate-500">matched</div>
-          </div>
-        </div>
-
-        <div
-          className={`rounded-lg border p-6 ${config.borderColor} ${config.bgColor}`}
-        >
-          <div className={`text-sm ${config.textColor}`}>
-            {config.name} Buyback Value ({Math.round(config.buyRate * 100)}%)
-          </div>
-          <div className={`text-3xl font-bold ${config.textColor}`}>
-            {formatNumber(totals.buybackValue)} ISK
-          </div>
-          <div className="mt-2 text-sm text-slate-400">
-            <span>{formatISKFull(totals.buybackValue)}</span>
-          </div>
-          <div className="mt-3 space-y-1 text-xs text-slate-500">
-            <div>Volume penalty: -{formatNumber(volumePenalty)} ISK ({config.iskPerM3} ISK/m³)</div>
-            {config.assetSafetyRate && totals.assetSafetyCost > 0 && (
-              <div>
-                Asset safety fee: -{formatNumber(totals.assetSafetyCost)} ISK (
-                {Math.round(config.assetSafetyRate * 100)}%)
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="mt-6 rounded-lg border border-slate-600 bg-slate-800 p-4">
-          <h3 className="mb-2 text-sm font-medium text-slate-300">Contract Instructions</h3>
-          <p className="text-sm text-slate-400">
-            Create an <span className="text-white">Item Exchange</span> contract to{' '}
-            <span className="text-blue-400">ECTrade</span> for exactly{' '}
-            <span className="font-mono text-white">
-              {formatISKFull(Math.floor(totals.buybackValue))}
-            </span>
-          </p>
-        </div>
-      </div>
-
-      {(result.unmatchedItems.length > 0 ||
-        result.excludedItems.length > 0 ||
-        result.lowVolumeItems.length > 0 ||
-        result.unprofitableItems.length > 0 ||
-        result.excludedCrystals.length > 0 ||
-        result.excludedRigs.length > 0 ||
-        result.excludedCapitals.length > 0 ||
-        result.blueprintCopies.length > 0) && (
-        <div className="space-y-3">
-          <h3 className="text-sm font-medium text-slate-300">Excluded Items</h3>
-          <p className="text-xs text-slate-500">
-            These items are not included in your buyback value. Remove them from your contract.
-          </p>
-
-          <ExcludedItemsDropdown
-            title="Unmatched (not found)"
-            items={result.unmatchedItems}
-            color="red"
-          />
-          <ExcludedItemsDropdown title="Excluded categories" items={result.excludedItems} />
-          <ExcludedItemsDropdown title="Low volume items" items={result.lowVolumeItems} />
-          <ExcludedItemsDropdown title="Unprofitable items" items={result.unprofitableItems} />
-          <ExcludedItemsDropdown title="Crystal ammunition" items={result.excludedCrystals} />
-          <ExcludedItemsDropdown title="Rigs" items={result.excludedRigs} />
-          <ExcludedItemsDropdown
-            title="Capitals not accepted"
-            items={result.excludedCapitals}
-            color="orange"
-          />
-          <ExcludedItemsDropdown
-            title="Blueprint copies"
-            items={result.blueprintCopies}
-            color="orange"
-          />
-        </div>
-      )}
+    <div className={`rounded-lg border p-4 ${colorClasses[color]}`}>
+      <div className="mb-1 font-medium">{title}</div>
+      {description && <div className={`mb-2 text-sm ${textClasses[color]}`}>{description}</div>}
+      <div className={`mb-2 text-sm ${textClasses[color]}`}>{items.join(', ')}</div>
+      <div className={`text-xs ${footerClasses[color]}`}>{footer}</div>
     </div>
   )
 }
