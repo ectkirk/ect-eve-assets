@@ -374,26 +374,26 @@ function DirectionGroupRow({
   const colorClass = group.direction === 'in' ? 'text-green-400' : 'text-orange-400'
 
   return (
-    <div className="border-b border-slate-700 last:border-b-0">
+    <div className="border-b border-slate-700/50 last:border-b-0">
       <button
         onClick={onToggle}
-        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-800/50 text-left"
+        className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-800/50 text-left text-sm"
       >
         {isExpanded ? (
           <ChevronDown className="h-4 w-4 text-slate-400" />
         ) : (
           <ChevronRight className="h-4 w-4 text-slate-400" />
         )}
-        <span className={cn('font-medium flex-1', colorClass)}>{group.displayName}</span>
-        <span className="text-xs text-slate-400 w-20 text-right">
+        <span className={cn('flex-1', colorClass)}>{group.displayName}</span>
+        <span className="text-xs text-slate-400">
           {group.contracts.length} contract{group.contracts.length !== 1 ? 's' : ''}
         </span>
-        <span className="text-xs text-amber-400 w-28 text-right tabular-nums">
+        <span className="text-sm text-amber-400 tabular-nums">
           {group.totalValue > 0 && formatNumber(group.totalValue)}
         </span>
       </button>
       {isExpanded && (
-        <div className="bg-slate-900/30 px-3 pb-2">
+        <div className="border-t border-slate-700/50 bg-slate-900/30 px-4 pb-2">
           <ContractsTable contracts={group.contracts} cacheVersion={cacheVersion} />
         </div>
       )}
@@ -790,74 +790,84 @@ export function ContractsTab() {
   if (loadingState) return loadingState
 
   return (
-    <div className="h-full rounded-lg border border-slate-700 overflow-auto">
+    <div className="h-full overflow-auto">
       {directionGroups.length === 0 && !courierGroup && completedContracts.length === 0 ? (
         <div className="flex items-center justify-center h-full">
           <p className="text-slate-400">No contracts.</p>
         </div>
       ) : (
         <>
-          {directionGroups.map((group) => (
-            <DirectionGroupRow
-              key={group.direction}
-              group={group}
-              isExpanded={expandedDirections.has(group.direction)}
-              onToggle={() => toggleDirection(group.direction)}
-              cacheVersion={cacheVersion}
-            />
-          ))}
-          {courierGroup && (
-            <div className="border-t border-slate-600">
-              <button
-                onClick={() => setShowCourier(!showCourier)}
-                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-800/50 text-left"
-              >
-                {showCourier ? (
-                  <ChevronDown className="h-4 w-4 text-slate-400" />
-                ) : (
-                  <ChevronRight className="h-4 w-4 text-slate-400" />
-                )}
-                <Truck className="h-4 w-4 text-blue-400" />
-                <span className="text-blue-300 flex-1">{courierGroup.displayName}</span>
-                <span className="text-xs text-slate-400 w-20 text-right">
-                  {courierGroup.contracts.length} contract
-                  {courierGroup.contracts.length !== 1 ? 's' : ''}
-                </span>
-                <span className="text-xs text-amber-400 w-28 text-right tabular-nums">
-                  {courierGroup.totalValue > 0 && formatNumber(courierGroup.totalValue)}
-                </span>
-              </button>
-              {showCourier && (
-                <div className="bg-slate-900/30 px-3 pb-2">
-                  <ContractsTable contracts={courierGroup.contracts} cacheVersion={cacheVersion} showCourierColumns />
-                </div>
-              )}
+          {directionGroups.length > 0 && (
+            <div className="rounded-lg border border-slate-700 bg-slate-800/30">
+              {directionGroups.map((group) => (
+                <DirectionGroupRow
+                  key={group.direction}
+                  group={group}
+                  isExpanded={expandedDirections.has(group.direction)}
+                  onToggle={() => toggleDirection(group.direction)}
+                  cacheVersion={cacheVersion}
+                />
+              ))}
             </div>
           )}
-          {completedContracts.length > 0 && (
-            <div className="border-t border-slate-600">
-              <button
-                onClick={() => setShowCompleted(!showCompleted)}
-                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-800/50 text-left"
-              >
-                {showCompleted ? (
-                  <ChevronDown className="h-4 w-4 text-slate-400" />
-                ) : (
-                  <ChevronRight className="h-4 w-4 text-slate-400" />
+          {courierGroup && (
+            <>
+              {directionGroups.length > 0 && <div className="h-4" />}
+              <div className="rounded-lg border border-slate-700 bg-slate-800/30">
+                <button
+                  onClick={() => setShowCourier(!showCourier)}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-800/50 text-left text-sm"
+                >
+                  {showCourier ? (
+                    <ChevronDown className="h-4 w-4 text-slate-400" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 text-slate-400" />
+                  )}
+                  <Truck className="h-4 w-4 text-blue-400" />
+                  <span className="text-blue-300 flex-1">{courierGroup.displayName}</span>
+                  <span className="text-xs text-slate-400">
+                    {courierGroup.contracts.length} contract
+                    {courierGroup.contracts.length !== 1 ? 's' : ''}
+                  </span>
+                  <span className="text-sm text-amber-400 tabular-nums">
+                    {courierGroup.totalValue > 0 && formatNumber(courierGroup.totalValue)}
+                  </span>
+                </button>
+                {showCourier && (
+                  <div className="border-t border-slate-700/50 bg-slate-900/30 px-4 pb-2">
+                    <ContractsTable contracts={courierGroup.contracts} cacheVersion={cacheVersion} showCourierColumns />
+                  </div>
                 )}
-                <History className="h-4 w-4 text-slate-400" />
-                <span className="text-slate-300 flex-1">Completed Contracts</span>
-                <span className="text-xs text-slate-400 w-20 text-right">
-                  {completedContracts.length} contract
-                  {completedContracts.length !== 1 ? 's' : ''}
-                </span>
-              </button>
-              {showCompleted && (
-                <div className="bg-slate-900/30 px-3 pb-2">
-                  <ContractsTable contracts={completedContracts} cacheVersion={cacheVersion} showCompletedDate />
-                </div>
-              )}
-            </div>
+              </div>
+            </>
+          )}
+          {completedContracts.length > 0 && (
+            <>
+              {(directionGroups.length > 0 || courierGroup) && <div className="h-4" />}
+              <div className="rounded-lg border border-slate-700 bg-slate-800/30">
+                <button
+                  onClick={() => setShowCompleted(!showCompleted)}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-800/50 text-left text-sm"
+                >
+                  {showCompleted ? (
+                    <ChevronDown className="h-4 w-4 text-slate-400" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 text-slate-400" />
+                  )}
+                  <History className="h-4 w-4 text-slate-400" />
+                  <span className="text-slate-300 flex-1">Completed Contracts</span>
+                  <span className="text-xs text-slate-400">
+                    {completedContracts.length} contract
+                    {completedContracts.length !== 1 ? 's' : ''}
+                  </span>
+                </button>
+                {showCompleted && (
+                  <div className="border-t border-slate-700/50 bg-slate-900/30 px-4 pb-2">
+                    <ContractsTable contracts={completedContracts} cacheVersion={cacheVersion} showCompletedDate />
+                  </div>
+                )}
+              </div>
+            </>
           )}
         </>
       )}
