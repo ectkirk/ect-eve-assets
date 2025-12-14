@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Loader2, Calculator, Clock, Coins, BookOpen, Copy, AlertTriangle, Package } from 'lucide-react'
+import { Loader2, Calculator, Clock, BookOpen } from 'lucide-react'
 import { BlueprintSearch } from '@/components/ui/BlueprintSearch'
 import { SystemSearch } from '@/components/ui/SystemSearch'
 import { formatNumber } from '@/lib/utils'
@@ -31,24 +31,20 @@ const IMPLANTS = [
   { id: 0.95, name: '5% (BX-804)' },
 ] as const
 
-export function ResearchTab() {
+export function BlueprintResearchTab() {
   const [blueprint, setBlueprint] = useState<{ id: number; name: string } | null>(null)
   const [system, setSystem] = useState<{ id: number; name: string } | null>(null)
   const [facility, setFacility] = useState(0)
   const [metallurgyLevel, setMetallurgyLevel] = useState(5)
   const [researchLevel, setResearchLevel] = useState(5)
-  const [scienceLevel, setScienceLevel] = useState(5)
   const [advancedIndustryLevel, setAdvancedIndustryLevel] = useState(5)
   const [meRig, setMeRig] = useState(0)
   const [teRig, setTeRig] = useState(0)
-  const [copyRig, setCopyRig] = useState(0)
   const [meImplant, setMeImplant] = useState(1.0)
   const [teImplant, setTeImplant] = useState(1.0)
-  const [copyImplant, setCopyImplant] = useState(1.0)
   const [securityStatus, setSecurityStatus] = useState<'h' | 'l' | 'n'>('h')
   const [facilityTax, setFacilityTax] = useState(0)
   const [fwBonus, setFwBonus] = useState(false)
-  const [runsPerCopy, setRunsPerCopy] = useState(1)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<BlueprintResearchResult | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -74,18 +70,14 @@ export function ResearchTab() {
         facility,
         metallurgy_level: metallurgyLevel,
         research_level: researchLevel,
-        science_level: scienceLevel,
         advanced_industry_level: advancedIndustryLevel,
         me_implant: meImplant,
         te_implant: teImplant,
-        copy_implant: copyImplant,
         me_rig: meRig,
         te_rig: teRig,
-        copy_rig: copyRig,
         security_status: securityStatus,
         facility_tax: facilityTax / 100,
         faction_warfare_bonus: fwBonus,
-        runs_per_copy: runsPerCopy,
       }
 
       const res = await window.electronAPI!.refBlueprintResearch(params)
@@ -105,7 +97,7 @@ export function ResearchTab() {
     <div className="flex gap-6 h-full">
       <div className="w-80 shrink-0 space-y-4 overflow-y-auto">
         <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4 space-y-4">
-          <h3 className="font-medium text-slate-200">Blueprint Research Calculator</h3>
+          <h3 className="font-medium text-slate-200">Blueprint Research</h3>
 
           <div>
             <label className="block text-sm text-slate-400 mb-1">Blueprint</label>
@@ -167,18 +159,6 @@ export function ResearchTab() {
                 <span className="w-4 text-sm text-right">{researchLevel}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="w-28 text-xs text-slate-400">Science</span>
-                <input
-                  type="range"
-                  min="0"
-                  max="5"
-                  value={scienceLevel}
-                  onChange={(e) => setScienceLevel(parseInt(e.target.value, 10))}
-                  className="flex-1"
-                />
-                <span className="w-4 text-sm text-right">{scienceLevel}</span>
-              </div>
-              <div className="flex items-center gap-2">
                 <span className="w-28 text-xs text-slate-400">Adv. Industry</span>
                 <input
                   type="range"
@@ -220,18 +200,6 @@ export function ResearchTab() {
                   ))}
                 </select>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="w-20 text-xs text-slate-400">Copy</span>
-                <select
-                  value={copyImplant}
-                  onChange={(e) => setCopyImplant(parseFloat(e.target.value))}
-                  className="flex-1 rounded border border-slate-600 bg-slate-700 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none"
-                >
-                  {IMPLANTS.map((i) => (
-                    <option key={i.id} value={i.id}>{i.name}</option>
-                  ))}
-                </select>
-              </div>
             </div>
           </div>
 
@@ -257,18 +225,6 @@ export function ResearchTab() {
                     <select
                       value={teRig}
                       onChange={(e) => setTeRig(parseInt(e.target.value, 10))}
-                      className="flex-1 rounded border border-slate-600 bg-slate-700 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none"
-                    >
-                      {RIGS.map((r) => (
-                        <option key={r.id} value={r.id}>{r.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-20 text-xs text-slate-400">Copy Rig</span>
-                    <select
-                      value={copyRig}
-                      onChange={(e) => setCopyRig(parseInt(e.target.value, 10))}
                       className="flex-1 rounded border border-slate-600 bg-slate-700 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none"
                     >
                       {RIGS.map((r) => (
@@ -318,17 +274,6 @@ export function ResearchTab() {
             <label htmlFor="fwBonus" className="text-sm text-slate-400">
               Faction Warfare Bonus (-50% system cost)
             </label>
-          </div>
-
-          <div>
-            <label className="block text-sm text-slate-400 mb-1">Runs per Copy</label>
-            <input
-              type="number"
-              min="1"
-              value={runsPerCopy}
-              onChange={(e) => setRunsPerCopy(Math.max(1, parseInt(e.target.value, 10) || 1))}
-              className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-            />
           </div>
 
           <button
@@ -432,132 +377,10 @@ export function ResearchTab() {
               )}
             </div>
 
-            {result.copying && (
-              <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <Copy className="h-4 w-4 text-purple-400" />
-                  <h4 className="text-sm font-medium text-slate-300">Copying</h4>
-                </div>
-
-                {result.copying.exceeds30DayLimit && (
-                  <div className="flex items-center gap-2 mb-4 p-2 rounded bg-amber-500/10 border border-amber-500/30 text-amber-400 text-sm">
-                    <AlertTriangle className="h-4 w-4 shrink-0" />
-                    <span>Copy duration exceeds 30 days - only one copy can be queued at a time</span>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-4 gap-4 mb-4">
-                  <div>
-                    <div className="text-xs text-slate-400 mb-1">Duration</div>
-                    <div className="text-lg font-medium text-purple-400">{result.copying.durationFormatted}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-slate-400 mb-1">Runs per Copy</div>
-                    <div className="text-lg font-medium">{result.copying.runsPerCopy}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-slate-400 mb-1">Max Runs</div>
-                    <div className="text-lg font-medium">{result.copying.maxRuns}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-slate-400 mb-1">Copies in 30 days</div>
-                    <div className={`text-lg font-medium ${result.copying.exceeds30DayLimit ? 'text-amber-400' : 'text-cyan-400'}`}>
-                      {result.copying.copiesIn30Days}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-4 mb-4">
-                  <div className="rounded border border-slate-700 p-3">
-                    <div className="flex items-center gap-2 text-slate-400 mb-1">
-                      <Coins className="h-3.5 w-3.5" />
-                      <span className="text-xs">Installation Cost</span>
-                    </div>
-                    <div className="text-sm font-medium text-amber-400">
-                      {formatNumber(result.copying.installationCost)} ISK
-                    </div>
-                  </div>
-                  <div className="rounded border border-slate-700 p-3">
-                    <div className="flex items-center gap-2 text-slate-400 mb-1">
-                      <Coins className="h-3.5 w-3.5" />
-                      <span className="text-xs">Materials Cost</span>
-                    </div>
-                    <div className="text-sm font-medium text-amber-400">
-                      {formatNumber(result.copying.materialsCost)} ISK
-                    </div>
-                  </div>
-                  <div className="rounded border border-slate-700 p-3">
-                    <div className="flex items-center gap-2 text-slate-400 mb-1">
-                      <Coins className="h-3.5 w-3.5" />
-                      <span className="text-xs">Total Cost</span>
-                    </div>
-                    <div className="text-sm font-medium text-green-400">
-                      {formatNumber(result.copying.totalCost)} ISK
-                    </div>
-                  </div>
-                </div>
-
-                {result.copying.maxRuns > 1 && result.copying.runsPerCopy < result.copying.maxRuns && (
-                  <div className="mb-4">
-                    <div className="text-xs text-slate-400 mb-2">Max Runs Copy ({result.copying.maxRuns} runs)</div>
-                    <div className="grid grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <div className="text-slate-500">Duration</div>
-                        <div className="text-slate-300">{result.copying.maxCopyDurationFormatted}</div>
-                      </div>
-                      <div>
-                        <div className="text-slate-500">Installation</div>
-                        <div className="text-slate-300">{formatNumber(result.copying.maxCopyInstallationCost)} ISK</div>
-                      </div>
-                      <div>
-                        <div className="text-slate-500">Materials</div>
-                        <div className="text-slate-300">{formatNumber(result.copying.maxCopyMaterialsCost)} ISK</div>
-                      </div>
-                      <div>
-                        <div className="text-slate-500">Total</div>
-                        <div className="text-slate-300">{formatNumber(result.copying.maxCopyTotalCost)} ISK</div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {result.copying.materials && result.copying.materials.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-2 text-slate-400 mb-2">
-                      <Package className="h-3.5 w-3.5" />
-                      <span className="text-xs">Copy Materials</span>
-                    </div>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="text-left text-slate-400 border-b border-slate-700">
-                            <th className="pb-2 pr-2">Material</th>
-                            <th className="pb-2 pr-2 text-right">Qty</th>
-                            <th className="pb-2 pr-2 text-right">Price</th>
-                            <th className="pb-2 text-right">Total</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {result.copying.materials.map((mat) => (
-                            <tr key={mat.typeId} className="border-b border-slate-700/50">
-                              <td className="py-1.5 pr-2 text-slate-300">{mat.name}</td>
-                              <td className="py-1.5 pr-2 text-right tabular-nums">{mat.quantity.toLocaleString()}</td>
-                              <td className="py-1.5 pr-2 text-right tabular-nums text-slate-400">{formatNumber(mat.price)} ISK</td>
-                              <td className="py-1.5 text-right tabular-nums text-amber-400">{formatNumber(mat.total)} ISK</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
             {result.costIndices && (
               <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4">
                 <h4 className="text-sm font-medium text-slate-300 mb-3">System Cost Indices</h4>
-                <div className="grid grid-cols-3 gap-4 text-sm">
+                <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <div className="text-slate-400">ME Research</div>
                     <div className="font-medium">{(result.costIndices.researching_material_efficiency * 100).toFixed(4)}%</div>
@@ -565,10 +388,6 @@ export function ResearchTab() {
                   <div>
                     <div className="text-slate-400">TE Research</div>
                     <div className="font-medium">{(result.costIndices.researching_time_efficiency * 100).toFixed(4)}%</div>
-                  </div>
-                  <div>
-                    <div className="text-slate-400">Copying</div>
-                    <div className="font-medium">{(result.costIndices.copying * 100).toFixed(4)}%</div>
                   </div>
                 </div>
               </div>
@@ -578,7 +397,7 @@ export function ResearchTab() {
 
         {!result && !error && (
           <div className="flex items-center justify-center h-64 text-slate-400">
-            Enter a Blueprint Type ID and click Calculate to see research times and costs
+            Select a blueprint and system, then click Calculate to see ME/TE research times and costs
           </div>
         )}
       </div>

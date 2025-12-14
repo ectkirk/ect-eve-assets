@@ -1,1 +1,2 @@
-export { ResearchTab } from './ResearchTab'
+export { BlueprintResearchTab } from './BlueprintResearchTab'
+export { CopyingTab } from './CopyingTab'

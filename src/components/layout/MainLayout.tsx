@@ -15,7 +15,7 @@ import { ClonesTab } from '@/features/clones'
 import { ContractsTab } from '@/features/contracts'
 import { WalletTab } from '@/features/wallet'
 import { ManufacturingTab } from '@/features/manufacturing'
-import { ResearchTab } from '@/features/research'
+import { BlueprintResearchTab, CopyingTab } from '@/features/research'
 import { CalculatorTab } from '@/features/calculator'
 import { BuybackTab, BUYBACK_TABS, type BuybackTabType } from '@/features/buyback'
 import { Loader2, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp, Search, X, User, AlertTriangle, Minus, Square, Copy, Settings } from 'lucide-react'
@@ -49,6 +49,7 @@ const ASSET_TABS = [
 const TOOL_TABS = [
   'Manufacturing',
   'Research',
+  'Copying',
   'Calculator',
 ] as const
 
@@ -89,7 +90,9 @@ function ToolTabContent({ tab }: { tab: ToolTab }) {
     case 'Manufacturing':
       return <ManufacturingTab />
     case 'Research':
-      return <ResearchTab />
+      return <BlueprintResearchTab />
+    case 'Copying':
+      return <CopyingTab />
     case 'Calculator':
       return <CalculatorTab />
   }
