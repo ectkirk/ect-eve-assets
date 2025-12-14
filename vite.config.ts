@@ -1,9 +1,12 @@
 import { defineConfig } from 'vite'
+import { config } from 'dotenv'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import electron from 'vite-plugin-electron'
 import electronRenderer from 'vite-plugin-electron-renderer'
 import path from 'node:path'
+
+config()
 
 export default defineConfig({
   base: './',
@@ -14,6 +17,9 @@ export default defineConfig({
       {
         entry: 'electron/main.ts',
         vite: {
+          define: {
+            'process.env.EVE_CLIENT_ID': JSON.stringify(process.env.EVE_CLIENT_ID || ''),
+          },
           build: {
             outDir: 'dist-electron',
             rollupOptions: {

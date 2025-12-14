@@ -26,6 +26,8 @@ jobs:
 
       - name: Build Electron app
         run: npm run dist:win -- --publish never
+        env:
+          EVE_CLIENT_ID: ${{ secrets.EVE_CLIENT_ID }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v5

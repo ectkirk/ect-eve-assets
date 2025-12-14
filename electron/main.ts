@@ -1,14 +1,8 @@
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import { app, BrowserWindow, ipcMain, shell, safeStorage, screen } from 'electron'
-import { config } from 'dotenv'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-
-const envPath = app.isPackaged
-  ? path.join(app.getPath('userData'), '.env')
-  : path.join(__dirname, '..', '.env')
-config({ path: envPath })
 import fs from 'node:fs'
 import { startAuth, refreshAccessToken, revokeToken, cancelAuth } from './services/auth.js'
 import { logger, initLogger, type LogLevel, type LogContext } from './services/logger.js'
