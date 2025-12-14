@@ -1,8 +1,13 @@
-import { app, BrowserWindow, ipcMain, shell, safeStorage, screen } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
-import fs from 'node:fs'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
 import { config } from 'dotenv'
+config({ path: path.join(__dirname, '..', '.env') })
+
+import { app, BrowserWindow, ipcMain, shell, safeStorage, screen } from 'electron'
+import fs from 'node:fs'
 import { startAuth, refreshAccessToken, revokeToken, cancelAuth } from './services/auth.js'
 import { logger, initLogger, type LogLevel, type LogContext } from './services/logger.js'
 import { initUpdater, installUpdate } from './services/updater.js'
@@ -97,11 +102,6 @@ function writeStorage(data: Record<string, unknown>): void {
     console.error('[Storage] Failed to write:', err)
   }
 }
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-
-// Load .env file from project root
-config({ path: path.join(__dirname, '..', '.env') })
 
 const APP_ROOT = path.join(__dirname, '..')
 export const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']

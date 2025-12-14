@@ -36,7 +36,9 @@ const EVE_SSO = {
   revokeUrl: 'https://login.eveonline.com/v2/oauth/revoke',
   jwksUrl: 'https://login.eveonline.com/oauth/jwks',
   issuer: 'https://login.eveonline.com',
-  clientId: process.env.EVE_CLIENT_ID || '',
+  get clientId() {
+    return process.env.EVE_CLIENT_ID || ''
+  },
 }
 
 const CALLBACK_PORT = 52742
