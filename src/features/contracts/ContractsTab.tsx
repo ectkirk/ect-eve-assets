@@ -191,7 +191,7 @@ function ContractsTable({
         <TableRow className="hover:bg-transparent">
           <TableHead className="w-8"></TableHead>
           <TableHead>Type</TableHead>
-          {!showCourierColumns && <TableHead>Title / Items</TableHead>}
+          {!showCourierColumns && <TableHead>Items</TableHead>}
           <TableHead>Location</TableHead>
           <TableHead>Assignee</TableHead>
           <TableHead className="text-right">Price</TableHead>
@@ -223,11 +223,11 @@ function ContractsTable({
           const isExpanded = expandedContracts.has(contract.contract_id)
 
           const itemSummary =
-            items.length > 0
-              ? items.length === 1
+            items.length === 0
+              ? ''
+              : items.length === 1
                 ? row.typeName
                 : `${items.length} items`
-              : contract.title || CONTRACT_TYPE_NAMES[contract.type]
 
           return (
             <React.Fragment key={contract.contract_id}>
@@ -579,7 +579,7 @@ export function ContractsTab() {
   const CONTRACT_COLUMNS: ColumnConfig[] = useMemo(() => [
     { id: 'status', label: 'Status' },
     { id: 'type', label: 'Type' },
-    { id: 'title', label: 'Title/Items' },
+    { id: 'items', label: 'Items' },
     { id: 'location', label: 'Location' },
     { id: 'assignee', label: 'Assignee' },
     { id: 'price', label: 'Price' },
