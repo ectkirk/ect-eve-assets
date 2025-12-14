@@ -5,6 +5,8 @@ interface BuybackFormProps {
   isLoading?: boolean
   hasQuote?: boolean
   onReset?: () => void
+  submitLabel?: string
+  resetLabel?: string
 }
 
 export function BuybackForm({
@@ -12,6 +14,8 @@ export function BuybackForm({
   isLoading = false,
   hasQuote = false,
   onReset,
+  submitLabel = 'Get Quote',
+  resetLabel = 'Create a new quote',
 }: BuybackFormProps) {
   const [text, setText] = useState('')
 
@@ -64,7 +68,7 @@ export function BuybackForm({
             onClick={handleReset}
             className="rounded-lg bg-blue-600 px-6 py-2.5 font-medium text-white transition-colors hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 focus:outline-none"
           >
-            Create a new quote
+            {resetLabel}
           </button>
         ) : (
           <>
@@ -94,7 +98,7 @@ export function BuybackForm({
                   Calculating...
                 </span>
               ) : (
-                'Get Quote'
+                submitLabel
               )}
             </button>
             {text.trim() && (

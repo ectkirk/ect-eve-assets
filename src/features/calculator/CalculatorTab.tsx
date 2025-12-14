@@ -47,6 +47,8 @@ export function CalculatorTab() {
             isLoading={isLoading}
             hasQuote={!!result}
             onReset={handleReset}
+            submitLabel="Calculate"
+            resetLabel="New calculation"
           />
         </div>
 
