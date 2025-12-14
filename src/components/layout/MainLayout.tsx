@@ -469,67 +469,14 @@ function HeaderControls() {
   )
 }
 
-function SettingsButton() {
-  const [isOpen, setIsOpen] = useState(false)
-  const panelRef = useRef<HTMLDivElement>(null)
+function WindowControls() {
+  const [isMaximized, setIsMaximized] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const settingsPanelRef = useRef<HTMLDivElement>(null)
   const showContractItems = useSettingsStore((s) => s.showContractItemsInAssets)
   const setShowContractItems = useSettingsStore((s) => s.setShowContractItemsInAssets)
   const showMarketOrders = useSettingsStore((s) => s.showMarketOrdersInAssets)
   const setShowMarketOrders = useSettingsStore((s) => s.setShowMarketOrdersInAssets)
-
-  useEffect(() => {
-    if (!isOpen) return
-    function handleClickOutside(e: MouseEvent) {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
-        setIsOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [isOpen])
-
-  return (
-    <div ref={panelRef} className="relative">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex h-8 w-8 items-center justify-center rounded text-slate-400 hover:bg-slate-700 hover:text-white"
-        title="Settings"
-      >
-        <Settings className="h-4 w-4" />
-      </button>
-      {isOpen && (
-        <div className="absolute right-0 top-full mt-1 w-64 rounded-lg border border-slate-600 bg-slate-800 shadow-lg z-50">
-          <div className="p-3 border-b border-slate-600">
-            <span className="text-sm font-medium text-slate-200">Settings</span>
-          </div>
-          <div className="p-2">
-            <button
-              onClick={() => setShowContractItems(!showContractItems)}
-              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-slate-300 hover:bg-slate-700"
-            >
-              <span className="flex h-4 w-4 items-center justify-center">
-                {showContractItems && <Check className="h-4 w-4 text-blue-400" />}
-              </span>
-              Show contract items in Assets
-            </button>
-            <button
-              onClick={() => setShowMarketOrders(!showMarketOrders)}
-              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-slate-300 hover:bg-slate-700"
-            >
-              <span className="flex h-4 w-4 items-center justify-center">
-                {showMarketOrders && <Check className="h-4 w-4 text-blue-400" />}
-              </span>
-              Show sell orders in Assets
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function WindowControls() {
-  const [isMaximized, setIsMaximized] = useState(false)
 
   useEffect(() => {
     if (!window.electronAPI) return
@@ -537,8 +484,55 @@ function WindowControls() {
     return window.electronAPI.onWindowMaximizeChange(setIsMaximized)
   }, [])
 
+  useEffect(() => {
+    if (!settingsOpen) return
+    function handleClickOutside(e: MouseEvent) {
+      if (settingsPanelRef.current && !settingsPanelRef.current.contains(e.target as Node)) {
+        setSettingsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [settingsOpen])
+
   return (
     <div className="flex items-center -mr-4" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+      <div ref={settingsPanelRef} className="relative">
+        <button
+          onClick={() => setSettingsOpen(!settingsOpen)}
+          className="flex h-10 w-12 items-center justify-center text-slate-400 hover:bg-slate-700 hover:text-white"
+          title="Settings"
+        >
+          <Settings className="h-4 w-4" />
+        </button>
+        {settingsOpen && (
+          <div className="absolute right-0 top-full mt-1 w-64 rounded-lg border border-slate-600 bg-slate-800 shadow-lg z-50">
+            <div className="p-3 border-b border-slate-600">
+              <span className="text-sm font-medium text-slate-200">Settings</span>
+            </div>
+            <div className="p-2">
+              <button
+                onClick={() => setShowContractItems(!showContractItems)}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-slate-300 hover:bg-slate-700"
+              >
+                <span className="flex h-4 w-4 items-center justify-center">
+                  {showContractItems && <Check className="h-4 w-4 text-blue-400" />}
+                </span>
+                Show contract items in Assets
+              </button>
+              <button
+                onClick={() => setShowMarketOrders(!showMarketOrders)}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-slate-300 hover:bg-slate-700"
+              >
+                <span className="flex h-4 w-4 items-center justify-center">
+                  {showMarketOrders && <Check className="h-4 w-4 text-blue-400" />}
+                </span>
+                Show sell orders in Assets
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
       <button
         onClick={() => window.electronAPI?.windowMinimize()}
         className="flex h-10 w-12 items-center justify-center text-slate-400 hover:bg-slate-700 hover:text-white"
@@ -594,7 +588,6 @@ function MainLayoutInner() {
         <div className="flex items-center gap-4" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
           {mode === 'assets' && <HeaderControls />}
           <OwnerButton />
-          <SettingsButton />
           <WindowControls />
         </div>
       </header>
