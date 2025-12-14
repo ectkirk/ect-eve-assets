@@ -268,6 +268,35 @@ export const ESICorporationWalletDivisionSchema = z.object({
   division: z.number(),
 })
 
+export const ESIWalletJournalEntrySchema = z.object({
+  id: z.number(),
+  date: z.string(),
+  ref_type: z.string(),
+  description: z.string(),
+  amount: z.number().optional(),
+  balance: z.number().optional(),
+  first_party_id: z.number().optional(),
+  second_party_id: z.number().optional(),
+  context_id: z.number().optional(),
+  context_id_type: z.enum([
+    'structure_id',
+    'station_id',
+    'market_transaction_id',
+    'character_id',
+    'corporation_id',
+    'alliance_id',
+    'eve_system',
+    'industry_job_id',
+    'contract_id',
+    'planet_id',
+    'system_id',
+    'type_id',
+  ]).optional(),
+  reason: z.string().optional(),
+  tax: z.number().optional(),
+  tax_receiver_id: z.number().optional(),
+})
+
 // ESI Corporation Divisions
 export const ESIDivisionSchema = z.object({
   division: z.number(),

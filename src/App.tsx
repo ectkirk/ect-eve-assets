@@ -6,6 +6,7 @@ import { useIndustryJobsStore } from './store/industry-jobs-store'
 import { useContractsStore } from './store/contracts-store'
 import { useClonesStore } from './store/clones-store'
 import { useWalletStore } from './store/wallet-store'
+import { useWalletJournalStore } from './store/wallet-journal-store'
 import { useBlueprintsStore } from './store/blueprints-store'
 import { useStructuresStore } from './store/structures-store'
 import { useExpiryCacheStore } from './store/expiry-cache-store'
@@ -95,6 +96,7 @@ function App() {
           useContractsStore.getState().init(),
           useClonesStore.getState().init(),
           useWalletStore.getState().init(),
+          useWalletJournalStore.getState().init(),
           useBlueprintsStore.getState().init(),
           useStructuresStore.getState().init(),
         ])

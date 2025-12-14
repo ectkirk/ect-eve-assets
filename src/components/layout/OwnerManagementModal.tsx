@@ -7,6 +7,7 @@ import { useContractsStore } from '@/store/contracts-store'
 import { useIndustryJobsStore } from '@/store/industry-jobs-store'
 import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { useWalletStore } from '@/store/wallet-store'
+import { useWalletJournalStore } from '@/store/wallet-journal-store'
 import { useStructuresStore } from '@/store/structures-store'
 import { useExpiryCacheStore } from '@/store/expiry-cache-store'
 import { esi } from '@/api/esi'
@@ -215,6 +216,7 @@ export function OwnerManagementModal({
         useIndustryJobsStore.getState().removeForOwner(owner.type, owner.id),
         useMarketOrdersStore.getState().removeForOwner(owner.type, owner.id),
         useWalletStore.getState().removeForOwner(owner.type, owner.id),
+        useWalletJournalStore.getState().removeForOwner(owner.type, owner.id),
         useStructuresStore.getState().removeForOwner(owner.type, owner.id),
       ])
     } finally {
@@ -290,6 +292,7 @@ export function OwnerManagementModal({
         useIndustryJobsStore.getState().clear(),
         useMarketOrdersStore.getState().clear(),
         useWalletStore.getState().clear(),
+        useWalletJournalStore.getState().clear(),
         useStructuresStore.getState().clear(),
         useExpiryCacheStore.getState().clear(),
       ])
