@@ -7,7 +7,6 @@ import { useToolsStore } from '@/store/tools-store'
 import {
   RESEARCH_FACILITIES as FACILITIES,
   RIGS,
-  SECURITY_STATUS,
   IMPLANTS,
 } from '@/features/industry/constants'
 
@@ -89,7 +88,11 @@ export function BlueprintResearchTab() {
             <label className="block text-sm text-content-secondary mb-1">System</label>
             <SystemSearch
               value={system}
-              onChange={(v) => setInputs({ system: v })}
+              onChange={(v) => {
+                const sec = v?.security
+                const secStatus = sec === undefined ? 'h' : sec >= 0.5 ? 'h' : sec > 0 ? 'l' : 'n'
+                setInputs({ system: v, securityStatus: secStatus })
+              }}
               placeholder="Search systems..."
             />
           </div>
@@ -209,19 +212,6 @@ export function BlueprintResearchTab() {
                     </select>
                   </div>
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-sm text-content-secondary mb-1">Security Status</label>
-                <select
-                  value={securityStatus}
-                  onChange={(e) => setInputs({ securityStatus: e.target.value as 'h' | 'l' | 'n' })}
-                  className="w-full rounded border border-border bg-surface-tertiary px-3 py-2 text-sm focus:border-accent focus:outline-none"
-                >
-                  {SECURITY_STATUS.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
               </div>
 
               <div>

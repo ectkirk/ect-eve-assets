@@ -8,7 +8,6 @@ import { useToolsStore } from '@/store/tools-store'
 import {
   MANUFACTURING_FACILITIES as FACILITIES,
   ME_RIGS,
-  SECURITY_STATUS,
 } from '@/features/industry/constants'
 
 function formatDuration(isoStr: string | undefined): string {
@@ -103,7 +102,11 @@ export function ManufacturingTab() {
             <label className="block text-sm text-content-secondary mb-1">System</label>
             <SystemSearch
               value={system}
-              onChange={(v) => setInputs({ system: v })}
+              onChange={(v) => {
+                const sec = v?.security
+                const secStatus = sec === undefined ? 'h' : sec >= 0.5 ? 'h' : sec > 0 ? 'l' : 'n'
+                setInputs({ system: v, securityStatus: secStatus })
+              }}
               placeholder="Search systems..."
             />
           </div>
@@ -174,19 +177,6 @@ export function ManufacturingTab() {
                 >
                   {ME_RIGS.map((r) => (
                     <option key={r.id} value={r.id}>{r.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm text-content-secondary mb-1">Security Status</label>
-                <select
-                  value={securityStatus}
-                  onChange={(e) => setInputs({ securityStatus: e.target.value as 'h' | 'l' | 'n' })}
-                  className="w-full rounded border border-border bg-surface-tertiary px-3 py-2 text-sm focus:border-accent focus:outline-none"
-                >
-                  {SECURITY_STATUS.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
                   ))}
                 </select>
               </div>

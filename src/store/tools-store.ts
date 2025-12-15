@@ -3,6 +3,7 @@ import { create } from 'zustand'
 interface SelectedItem {
   id: number
   name: string
+  security?: number
 }
 
 interface ManufacturingInputs {
