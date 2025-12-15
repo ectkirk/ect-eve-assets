@@ -246,7 +246,8 @@ export function ClonesTab() {
   }, [clonesByOwner])
 
   const { setExpandCollapse, search, setResultCount, setColumns } = useTabControls()
-  const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
+  const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
+  const selectedSet = useMemo(() => new Set(selectedOwnerIds), [selectedOwnerIds])
 
   const CLONE_COLUMNS: ColumnConfig[] = useMemo(() => [
     { id: 'character', label: 'Character' },
@@ -273,9 +274,9 @@ export function ClonesTab() {
 
     const result: CharacterClones[] = []
 
-    const filteredClonesByOwner = activeOwnerId === null
-      ? clonesByOwner
-      : clonesByOwner.filter(({ owner }) => ownerKey(owner.type, owner.characterId) === activeOwnerId)
+    const filteredClonesByOwner = clonesByOwner.filter(({ owner }) =>
+      selectedSet.has(ownerKey(owner.type, owner.characterId))
+    )
 
     for (const { owner, clones, activeImplants } of filteredClonesByOwner) {
       const homeLocationId = clones.home_location?.location_id
@@ -354,7 +355,7 @@ export function ClonesTab() {
     }
 
     return sorted
-  }, [clonesByOwner, cacheVersion, search, activeOwnerId])
+  }, [clonesByOwner, cacheVersion, search, selectedSet])
 
   const expandableIds = useMemo(() => characterClones.map((c) => c.ownerId), [characterClones])
   const { isExpanded, toggle } = useExpandCollapse(expandableIds, setExpandCollapse)

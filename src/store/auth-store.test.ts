@@ -15,7 +15,7 @@ describe('useAuthStore', () => {
   beforeEach(() => {
     useAuthStore.setState({
       owners: {},
-      activeOwnerId: null,
+      selectedOwnerIds: [],
       isAuthenticated: false,
     })
   })
@@ -24,7 +24,7 @@ describe('useAuthStore', () => {
     it('starts with no owners', () => {
       const state = useAuthStore.getState()
       expect(state.owners).toEqual({})
-      expect(state.activeOwnerId).toBeNull()
+      expect(state.selectedOwnerIds).toEqual([])
       expect(state.isAuthenticated).toBe(false)
     })
   })
@@ -48,7 +48,7 @@ describe('useAuthStore', () => {
 
       const state = useAuthStore.getState()
       expect(state.isAuthenticated).toBe(true)
-      expect(state.activeOwnerId).toBe('character-12345')
+      expect(state.selectedOwnerIds).toContain('character-12345')
       expect(state.owners['character-12345']).toBeDefined()
       expect(state.owners['character-12345']!.name).toBe('Test Character')
     })
@@ -71,11 +71,11 @@ describe('useAuthStore', () => {
 
       const state = useAuthStore.getState()
       expect(state.isAuthenticated).toBe(true)
-      expect(state.activeOwnerId).toBe('corporation-98000001')
+      expect(state.selectedOwnerIds).toContain('corporation-98000001')
       expect(state.owners['corporation-98000001']).toBeDefined()
     })
 
-    it('sets first owner as active, then defaults to All Characters on second add', () => {
+    it('auto-selects each new owner', () => {
       const { addOwner } = useAuthStore.getState()
 
       addOwner({
@@ -91,7 +91,7 @@ describe('useAuthStore', () => {
         },
       })
 
-      expect(useAuthStore.getState().activeOwnerId).toBe('character-11111')
+      expect(useAuthStore.getState().selectedOwnerIds).toEqual(['character-11111'])
 
       addOwner({
         accessToken: 'token2',
@@ -107,7 +107,9 @@ describe('useAuthStore', () => {
       })
 
       const state = useAuthStore.getState()
-      expect(state.activeOwnerId).toBeNull()
+      expect(state.selectedOwnerIds).toContain('character-11111')
+      expect(state.selectedOwnerIds).toContain('character-22222')
+      expect(state.selectedOwnerIds).toHaveLength(2)
     })
   })
 
@@ -149,13 +151,13 @@ describe('useAuthStore', () => {
       expect(state.owners['character-11111']).toBeDefined()
     })
 
-    it('switches active if removed owner was active', () => {
-      useAuthStore.setState({ activeOwnerId: 'character-22222' })
+    it('removes owner from selectedOwnerIds', () => {
       const { removeOwner } = useAuthStore.getState()
       removeOwner('character-22222')
 
       const state = useAuthStore.getState()
-      expect(state.activeOwnerId).toBe('character-11111')
+      expect(state.selectedOwnerIds).not.toContain('character-22222')
+      expect(state.selectedOwnerIds).toContain('character-11111')
     })
 
     it('sets isAuthenticated false when last owner removed', () => {
@@ -165,11 +167,11 @@ describe('useAuthStore', () => {
 
       const state = useAuthStore.getState()
       expect(state.isAuthenticated).toBe(false)
-      expect(state.activeOwnerId).toBeNull()
+      expect(state.selectedOwnerIds).toEqual([])
     })
   })
 
-  describe('switchOwner', () => {
+  describe('toggleOwnerSelection', () => {
     beforeEach(() => {
       const { addOwner } = useAuthStore.getState()
       addOwner({
@@ -198,19 +200,105 @@ describe('useAuthStore', () => {
       })
     })
 
-    it('switches to existing owner', () => {
-      const { switchOwner } = useAuthStore.getState()
-      switchOwner('character-22222')
+    it('deselects a selected owner', () => {
+      const { toggleOwnerSelection } = useAuthStore.getState()
+      toggleOwnerSelection('character-22222')
 
-      expect(useAuthStore.getState().activeOwnerId).toBe('character-22222')
+      const state = useAuthStore.getState()
+      expect(state.selectedOwnerIds).not.toContain('character-22222')
+      expect(state.selectedOwnerIds).toContain('character-11111')
+    })
+
+    it('selects a deselected owner', () => {
+      useAuthStore.setState({ selectedOwnerIds: ['character-11111'] })
+      const { toggleOwnerSelection } = useAuthStore.getState()
+      toggleOwnerSelection('character-22222')
+
+      const state = useAuthStore.getState()
+      expect(state.selectedOwnerIds).toContain('character-22222')
+      expect(state.selectedOwnerIds).toContain('character-11111')
     })
 
     it('does nothing for non-existent owner', () => {
-      useAuthStore.setState({ activeOwnerId: 'character-11111' })
-      const { switchOwner } = useAuthStore.getState()
-      switchOwner('character-99999')
+      const stateBefore = useAuthStore.getState().selectedOwnerIds
+      const { toggleOwnerSelection } = useAuthStore.getState()
+      toggleOwnerSelection('character-99999')
 
-      expect(useAuthStore.getState().activeOwnerId).toBe('character-11111')
+      expect(useAuthStore.getState().selectedOwnerIds).toEqual(stateBefore)
+    })
+  })
+
+  describe('selectAllOwners / deselectAllOwners', () => {
+    beforeEach(() => {
+      const { addOwner } = useAuthStore.getState()
+      addOwner({
+        accessToken: 'token1',
+        refreshToken: 'refresh1',
+        expiresAt: Date.now() + 3600000,
+        owner: {
+          id: 11111,
+          type: 'character',
+          name: 'First',
+          characterId: 11111,
+          corporationId: 98000001,
+        },
+      })
+      addOwner({
+        accessToken: 'token2',
+        refreshToken: 'refresh2',
+        expiresAt: Date.now() + 3600000,
+        owner: {
+          id: 22222,
+          type: 'character',
+          name: 'Second',
+          characterId: 22222,
+          corporationId: 98000001,
+        },
+      })
+    })
+
+    it('selectAllOwners selects all', () => {
+      useAuthStore.setState({ selectedOwnerIds: [] })
+      const { selectAllOwners } = useAuthStore.getState()
+      selectAllOwners()
+
+      const state = useAuthStore.getState()
+      expect(state.selectedOwnerIds).toContain('character-11111')
+      expect(state.selectedOwnerIds).toContain('character-22222')
+    })
+
+    it('deselectAllOwners clears selection', () => {
+      const { deselectAllOwners } = useAuthStore.getState()
+      deselectAllOwners()
+
+      expect(useAuthStore.getState().selectedOwnerIds).toEqual([])
+    })
+  })
+
+  describe('isOwnerSelected', () => {
+    beforeEach(() => {
+      const { addOwner } = useAuthStore.getState()
+      addOwner({
+        accessToken: 'token1',
+        refreshToken: 'refresh1',
+        expiresAt: Date.now() + 3600000,
+        owner: {
+          id: 11111,
+          type: 'character',
+          name: 'First',
+          characterId: 11111,
+          corporationId: 98000001,
+        },
+      })
+    })
+
+    it('returns true for selected owner', () => {
+      expect(useAuthStore.getState().isOwnerSelected('character-11111')).toBe(true)
+    })
+
+    it('returns false for non-selected owner', () => {
+      useAuthStore.setState({ selectedOwnerIds: [] })
+      expect(useAuthStore.getState().isOwnerSelected('character-11111')).toBe(false)
     })
   })
 
@@ -278,17 +366,17 @@ describe('useAuthStore', () => {
 
       const state = useAuthStore.getState()
       expect(state.owners).toEqual({})
-      expect(state.activeOwnerId).toBeNull()
+      expect(state.selectedOwnerIds).toEqual([])
       expect(state.isAuthenticated).toBe(false)
     })
   })
 
   describe('getActiveOwner', () => {
-    it('returns null when no active owner', () => {
+    it('returns null when no selected owners', () => {
       expect(useAuthStore.getState().getActiveOwner()).toBeNull()
     })
 
-    it('returns active owner', () => {
+    it('returns first selected owner', () => {
       const { addOwner } = useAuthStore.getState()
       addOwner({
         accessToken: 'token',
@@ -456,7 +544,7 @@ describe('useAuthStore', () => {
             expiresAt: null,
           },
         },
-        activeOwnerId: 'character-12345',
+        selectedOwnerIds: ['character-12345'],
         isAuthenticated: true,
       })
 
@@ -477,7 +565,7 @@ describe('useAuthStore', () => {
             expiresAt: Date.now() - 1000,
           },
         },
-        activeOwnerId: 'character-12345',
+        selectedOwnerIds: ['character-12345'],
         isAuthenticated: true,
       })
 
@@ -498,7 +586,7 @@ describe('useAuthStore', () => {
             expiresAt: Date.now() + 300000,
           },
         },
-        activeOwnerId: 'character-12345',
+        selectedOwnerIds: ['character-12345'],
         isAuthenticated: true,
       })
 
@@ -608,7 +696,7 @@ describe('findOwnerByKey', () => {
   beforeEach(() => {
     useAuthStore.setState({
       owners: {},
-      activeOwnerId: null,
+      selectedOwnerIds: [],
       isAuthenticated: false,
     })
   })

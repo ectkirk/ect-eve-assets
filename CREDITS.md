@@ -2,39 +2,36 @@
 
 ## Author
 
-**Kirk / EC Trade** - [edencom.net](https://edencom.net)
+**Kirk** - [EC Trade](https://edencom.net) - [Discord](https://discord.gg/dexSsJYYbv)
 
-## Third-Party Services
+## Contributors
 
-### edencom.net
-Type data and market prices API provided by EC Trade.
+**Ahbazon Prime** - Infrastructure & Emotional Support - [Website](https://ahbazon.com/) - [Discord](https://discord.gg/q8Q6dN9MDF)
 
-### Mutamarket
-Abyssal module pricing provided by [Mutamarket](https://mutamarket.com), created by **Nicolas Kion**.
+**Nicolas Kion** - Abyssal Module Pricing - [Mutamarket](https://mutamarket.com) - [Discord](https://discord.gg/FuwdBZ5cXq)
 
-- Discord: [Abyssal Trading Discord](https://discord.gg/FuwdBZ5cXq)
-- Email: nicolaskion07@gmail.com
-- In-game: Nicolas Kion
+**EVE Online** - Game & ESI API - [Website](https://www.eveonline.com/) - [Discord](https://discord.com/invite/eveonline)
 
-## EVE Online
+## Special Mentions
 
-EVE Online and the EVE logo are registered trademarks of [CCP hf](https://www.ccpgames.com/). All rights reserved worldwide.
+Community contributors that made this project possible:
 
-This application uses the [EVE Swagger Interface (ESI)](https://esi.evetech.net/) under CCP's third-party developer license. CCP has granted permission to use EVE Online and all associated logos and designs for promotional and information purposes but does not endorse, and is not in any way affiliated with, this project.
+**Squizz** - [zKillboard](https://github.com/zKillboard/zKillboard) - [Discord](https://discord.gg/sV2kkwg8UD)
 
-## Open Source Libraries
+**Kenn** - [EVE Ref](https://everef.net/) - [Discord](https://discord.com/invite/fZYPAxFyXG)
 
-This project is built with these open source projects:
+**Golden Gnu** - [jEveAssets](https://eve.nikr.net/jeveasset) - [Discord](https://discord.gg/8kYZvbM)
 
-- [Electron](https://www.electronjs.org/) - Desktop application framework
-- [React](https://react.dev/) - UI library
-- [TypeScript](https://www.typescriptlang.org/) - Type-safe JavaScript
-- [Vite](https://vitejs.dev/) - Build tool
-- [Tailwind CSS](https://tailwindcss.com/) - Utility-first CSS
-- [shadcn/ui](https://ui.shadcn.com/) - Component library
-- [Radix UI](https://www.radix-ui.com/) - Accessible primitives
-- [Zustand](https://zustand-demo.pmnd.rs/) - State management
-- [TanStack Table](https://tanstack.com/table) - Table components
-- [TanStack Query](https://tanstack.com/query) - Data fetching
+## Data Sources
 
-See [package.json](./package.json) for the complete dependency list.
+Character and asset data from [ESI](https://developers.eveonline.com/api-explorer). Market prices and reference data from [edencom.net](https://edencom.net) (ESI + [SDE](https://developers.eveonline.com/static-data)). Abyssal module data from [mutamarket.com](https://mutamarket.com) (ESI). No other external sources.
+
+## Open Source
+
+This project is open source on [GitHub](https://github.com/ectkirk/ect-eve-assets).
+
+Built with: [Electron](https://www.electronjs.org/), [React](https://react.dev/), [TypeScript](https://www.typescriptlang.org/), [Vite](https://vitejs.dev/), [Tailwind CSS](https://tailwindcss.com/), [shadcn/ui](https://ui.shadcn.com/), [Radix UI](https://www.radix-ui.com/), [Zustand](https://zustand-demo.pmnd.rs/), [TanStack Table](https://tanstack.com/table), [TanStack Query](https://tanstack.com/query)
+
+---
+
+EVE Online and the EVE logo are trademarks of [CCP hf](https://www.ccpgames.com/). CCP does not endorse this project.

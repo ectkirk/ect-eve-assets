@@ -20,7 +20,6 @@ import { useAssetData } from '@/hooks/useAssetData'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useContractsStore } from '@/store/contracts-store'
 import { useMarketOrdersStore } from '@/store/market-orders-store'
-import { useSettingsStore } from '@/store/settings-store'
 import { TypeIcon, OwnerIcon } from '@/components/ui/type-icon'
 import { formatNumber, cn } from '@/lib/utils'
 import { useTabControls } from '@/context'
@@ -275,8 +274,6 @@ export function AssetsTab() {
 
   const contractsByOwner = useContractsStore((s) => s.contractsByOwner)
   const ordersByOwner = useMarketOrdersStore((s) => s.dataByOwner)
-  const showContractItems = useSettingsStore((s) => s.showContractItemsInAssets)
-  const showMarketOrders = useSettingsStore((s) => s.showMarketOrdersInAssets)
 
   const [sorting, setSorting] = useState<SortingState>([{ id: 'totalValue', desc: true }])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
@@ -393,133 +390,129 @@ export function AssetsTab() {
       }
     }
 
-    if (showContractItems) {
-      const ownerIds = new Set(owners.map((o) => o.characterId))
-      const ownerCorpIds = new Set(owners.filter((o) => o.corporationId).map((o) => o.corporationId))
+    const ownerIds = new Set(owners.map((o) => o.characterId))
+    const ownerCorpIds = new Set(owners.filter((o) => o.corporationId).map((o) => o.corporationId))
 
-      for (const { owner, contracts } of contractsByOwner) {
-        for (const { contract, items } of contracts) {
-          if (contract.status !== 'outstanding') continue
-          const isIssuer = ownerIds.has(contract.issuer_id) || ownerCorpIds.has(contract.issuer_corporation_id)
-          if (!isIssuer) continue
+    for (const { owner, contracts } of contractsByOwner) {
+      for (const { contract, items } of contracts) {
+        if (contract.status !== 'outstanding') continue
+        const isIssuer = ownerIds.has(contract.issuer_id) || ownerCorpIds.has(contract.issuer_corporation_id)
+        if (!isIssuer) continue
 
-          const locationId = contract.start_location_id ?? 0
-          let locationName = ''
-          let systemName = ''
-          let regionName = ''
+        const locationId = contract.start_location_id ?? 0
+        let locationName = ''
+        let systemName = ''
+        let regionName = ''
 
-          if (locationId > 1_000_000_000_000) {
-            const structure = getStructure(locationId)
-            locationName = structure?.name ?? `Structure ${locationId}`
-            if (structure?.solarSystemId) {
-              const system = getLocation(structure.solarSystemId)
-              systemName = system?.name ?? ''
-              regionName = system?.regionName ?? ''
-            }
-          } else if (locationId >= 60_000_000) {
-            const location = getLocation(locationId)
-            locationName = location?.name ?? `Location ${locationId}`
-            systemName = location?.solarSystemName ?? ''
-            regionName = location?.regionName ?? ''
+        if (locationId > 1_000_000_000_000) {
+          const structure = getStructure(locationId)
+          locationName = structure?.name ?? `Structure ${locationId}`
+          if (structure?.solarSystemId) {
+            const system = getLocation(structure.solarSystemId)
+            systemName = system?.name ?? ''
+            regionName = system?.regionName ?? ''
           }
-
-          for (const item of items) {
-            if (!item.is_included) continue
-            const sdeType = getType(item.type_id)
-            const rawTypeName = getTypeName(item.type_id)
-            const isBlueprint = sdeType?.categoryId === CategoryIds.BLUEPRINT
-            const isBpc = item.is_blueprint_copy ?? false
-            const typeName = isBlueprint ? formatBlueprintName(rawTypeName, item.record_id) : rawTypeName
-            const volume = sdeType?.packagedVolume ?? sdeType?.volume ?? 0
-            const price = isBpc ? 0 : (prices.get(item.type_id) ?? 0)
-            const isAbyssal = isAbyssalTypeId(item.type_id)
-
-            rows.push({
-              itemId: item.record_id,
-              typeId: item.type_id,
-              typeName,
-              quantity: item.quantity,
-              locationId,
-              locationName,
-              systemName,
-              regionName,
-              locationFlag: 'In Contract',
-              isSingleton: item.is_singleton ?? false,
-              isBlueprintCopy: isBpc,
-              price,
-              totalValue: price * item.quantity,
-              volume,
-              totalVolume: volume * item.quantity,
-              categoryId: sdeType?.categoryId ?? 0,
-              categoryName: isAbyssal ? 'Abyssals' : (sdeType?.categoryName ?? ''),
-              groupName: sdeType?.groupName ?? '',
-              ownerId: owner.id,
-              ownerName: owner.name,
-              ownerType: owner.type,
-              isInContract: true,
-            })
-          }
+        } else if (locationId >= 60_000_000) {
+          const location = getLocation(locationId)
+          locationName = location?.name ?? `Location ${locationId}`
+          systemName = location?.solarSystemName ?? ''
+          regionName = location?.regionName ?? ''
         }
-      }
-    }
 
-    if (showMarketOrders) {
-      for (const { owner, orders } of ordersByOwner) {
-        for (const order of orders) {
-          if (order.is_buy_order) continue
-          if (order.volume_remain <= 0) continue
-
-          const locationId = order.location_id
-          let locationName = ''
-          let systemName = ''
-          let regionName = ''
-
-          if (locationId > 1_000_000_000_000) {
-            const structure = getStructure(locationId)
-            locationName = structure?.name ?? `Structure ${locationId}`
-            if (structure?.solarSystemId) {
-              const system = getLocation(structure.solarSystemId)
-              systemName = system?.name ?? ''
-              regionName = system?.regionName ?? ''
-            }
-          } else if (locationId >= 60_000_000) {
-            const location = getLocation(locationId)
-            locationName = location?.name ?? `Location ${locationId}`
-            systemName = location?.solarSystemName ?? ''
-            regionName = location?.regionName ?? ''
-          }
-
-          const sdeType = getType(order.type_id)
-          const typeName = getTypeName(order.type_id)
+        for (const item of items) {
+          if (!item.is_included) continue
+          const sdeType = getType(item.type_id)
+          const rawTypeName = getTypeName(item.type_id)
+          const isBlueprint = sdeType?.categoryId === CategoryIds.BLUEPRINT
+          const isBpc = item.is_blueprint_copy ?? false
+          const typeName = isBlueprint ? formatBlueprintName(rawTypeName, item.record_id) : rawTypeName
           const volume = sdeType?.packagedVolume ?? sdeType?.volume ?? 0
-          const price = prices.get(order.type_id) ?? 0
-          const isAbyssal = isAbyssalTypeId(order.type_id)
+          const price = isBpc ? 0 : (prices.get(item.type_id) ?? 0)
+          const isAbyssal = isAbyssalTypeId(item.type_id)
 
           rows.push({
-            itemId: order.order_id,
-            typeId: order.type_id,
+            itemId: item.record_id,
+            typeId: item.type_id,
             typeName,
-            quantity: order.volume_remain,
+            quantity: item.quantity,
             locationId,
             locationName,
             systemName,
             regionName,
-            locationFlag: 'Sell Order',
-            isSingleton: false,
-            isBlueprintCopy: false,
+            locationFlag: 'In Contract',
+            isSingleton: item.is_singleton ?? false,
+            isBlueprintCopy: isBpc,
             price,
-            totalValue: price * order.volume_remain,
+            totalValue: price * item.quantity,
             volume,
-            totalVolume: volume * order.volume_remain,
+            totalVolume: volume * item.quantity,
             categoryId: sdeType?.categoryId ?? 0,
             categoryName: isAbyssal ? 'Abyssals' : (sdeType?.categoryName ?? ''),
             groupName: sdeType?.groupName ?? '',
             ownerId: owner.id,
             ownerName: owner.name,
             ownerType: owner.type,
-            isInMarketOrder: true,
+            isInContract: true,
           })
         }
+      }
+    }
+
+    for (const { owner, orders } of ordersByOwner) {
+      for (const order of orders) {
+        if (order.is_buy_order) continue
+        if (order.volume_remain <= 0) continue
+
+        const locationId = order.location_id
+        let locationName = ''
+        let systemName = ''
+        let regionName = ''
+
+        if (locationId > 1_000_000_000_000) {
+          const structure = getStructure(locationId)
+          locationName = structure?.name ?? `Structure ${locationId}`
+          if (structure?.solarSystemId) {
+            const system = getLocation(structure.solarSystemId)
+            systemName = system?.name ?? ''
+            regionName = system?.regionName ?? ''
+          }
+        } else if (locationId >= 60_000_000) {
+          const location = getLocation(locationId)
+          locationName = location?.name ?? `Location ${locationId}`
+          systemName = location?.solarSystemName ?? ''
+          regionName = location?.regionName ?? ''
+        }
+
+        const sdeType = getType(order.type_id)
+        const typeName = getTypeName(order.type_id)
+        const volume = sdeType?.packagedVolume ?? sdeType?.volume ?? 0
+        const price = prices.get(order.type_id) ?? 0
+        const isAbyssal = isAbyssalTypeId(order.type_id)
+
+        rows.push({
+          itemId: order.order_id,
+          typeId: order.type_id,
+          typeName,
+          quantity: order.volume_remain,
+          locationId,
+          locationName,
+          systemName,
+          regionName,
+          locationFlag: 'Sell Order',
+          isSingleton: false,
+          isBlueprintCopy: false,
+          price,
+          totalValue: price * order.volume_remain,
+          volume,
+          totalVolume: volume * order.volume_remain,
+          categoryId: sdeType?.categoryId ?? 0,
+          categoryName: isAbyssal ? 'Abyssals' : (sdeType?.categoryName ?? ''),
+          groupName: sdeType?.groupName ?? '',
+          ownerId: owner.id,
+          ownerName: owner.name,
+          ownerType: owner.type,
+          isInMarketOrder: true,
+        })
       }
     }
 
@@ -542,7 +535,7 @@ export function AssetsTab() {
     }
 
     return Array.from(aggregated.values())
-  }, [assetsByOwner, prices, assetNames, cacheVersion, showContractItems, contractsByOwner, owners, showMarketOrders, ordersByOwner])
+  }, [assetsByOwner, prices, assetNames, cacheVersion, contractsByOwner, owners, ordersByOwner])
 
   const categories = useMemo(() => {
     const cats = new Set<string>()
@@ -552,15 +545,14 @@ export function AssetsTab() {
     return Array.from(cats).sort()
   }, [data])
 
-  const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
+  const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
+  const selectedSet = useMemo(() => new Set(selectedOwnerIds), [selectedOwnerIds])
 
   const filteredData = useMemo(() => {
     const searchLower = search.toLowerCase()
     return data.filter((row) => {
-      if (activeOwnerId !== null) {
-        const rowOwnerKey = ownerKey(row.ownerType, row.ownerId)
-        if (rowOwnerKey !== activeOwnerId) return false
-      }
+      const rowOwnerKey = ownerKey(row.ownerType, row.ownerId)
+      if (!selectedSet.has(rowOwnerKey)) return false
       if (categoryFilterValue && row.categoryName !== categoryFilterValue) return false
       if (search) {
         const matchesType = row.typeName.toLowerCase().includes(searchLower)
@@ -572,7 +564,7 @@ export function AssetsTab() {
       }
       return true
     })
-  }, [data, categoryFilterValue, search, activeOwnerId])
+  }, [data, categoryFilterValue, search, selectedSet])
 
   const table = useReactTable({
     data: filteredData,

@@ -27,11 +27,12 @@ export function useTotalAssets(): AssetTotals {
   const contractsUpdateCounter = useContractsStore((s) => s.updateCounter)
   const walletsByOwner = useWalletStore((s) => s.dataByOwner)
   const structuresByOwner = useStructuresStore((s) => s.dataByOwner)
-  const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
+  const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
+  const selectedSet = useMemo(() => new Set(selectedOwnerIds), [selectedOwnerIds])
 
   return useMemo(() => {
     const matchesOwner = (type: 'character' | 'corporation', id: number) =>
-      activeOwnerId === null || ownerKey(type, id) === activeOwnerId
+      selectedSet.has(ownerKey(type, id))
 
     let assetsTotal = 0
     for (const { owner, assets } of assetsByOwner) {
@@ -130,5 +131,5 @@ export function useTotalAssets(): AssetTotals {
       walletTotal,
       structuresTotal,
     }
-  }, [assetsByOwner, prices, ordersByOwner, jobsByOwner, contractsByOwner, contractsUpdateCounter, walletsByOwner, structuresByOwner, activeOwnerId])
+  }, [assetsByOwner, prices, ordersByOwner, jobsByOwner, contractsByOwner, contractsUpdateCounter, walletsByOwner, structuresByOwner, selectedSet])
 }

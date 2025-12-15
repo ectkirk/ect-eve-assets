@@ -27,7 +27,8 @@ export function TreeTab({ mode }: TreeTabProps) {
   } = useAssetData()
 
   const { search, setResultCount } = useTabControls()
-  const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
+  const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
+  const selectedSet = useMemo(() => new Set(selectedOwnerIds), [selectedOwnerIds])
 
   const divisionsInit = useDivisionsStore((s) => s.init)
   const divisionsInitialized = useDivisionsStore((s) => s.initialized)
@@ -66,16 +67,16 @@ export function TreeTab({ mode }: TreeTabProps) {
     const allAssets: AssetWithOwner[] = []
     const filteredAssets: AssetWithOwner[] = []
     for (const { owner, assets } of assetsByOwner) {
-      const isActiveOwner = activeOwnerId === null || ownerKey(owner.type, owner.id) === activeOwnerId
+      const isSelected = selectedSet.has(ownerKey(owner.type, owner.id))
       for (const asset of assets) {
         const aw = { asset, owner }
         allAssets.push(aw)
-        if (isActiveOwner) filteredAssets.push(aw)
+        if (isSelected) filteredAssets.push(aw)
       }
     }
 
     return buildTree(filteredAssets, { mode, prices, assetNames, hangarDivisionNames, allAssets })
-  }, [assetsByOwner, prices, assetNames, cacheVersion, mode, activeOwnerId, hangarDivisionNames])
+  }, [assetsByOwner, prices, assetNames, cacheVersion, mode, selectedSet, hangarDivisionNames])
 
   const treeNodes = useMemo(() => {
     return filterTree(unfilteredNodes, search)

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronRight, ChevronDown, Wallet, Building2, ScrollText } from 'lucide-react'
+import { ChevronRight, ChevronDown, Wallet, Building2, ScrollText, ArrowUpRight, ArrowDownLeft } from 'lucide-react'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useWalletStore, isCorporationWallet } from '@/store/wallet-store'
 import { useWalletJournalStore } from '@/store/wallet-journal-store'
@@ -95,13 +95,11 @@ export function WalletTab() {
     return total
   }, [walletsByOwner])
 
-  const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
+  const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
+  const selectedSet = useMemo(() => new Set(selectedOwnerIds), [selectedOwnerIds])
 
   const { characterWallets, corporationWallets } = useMemo(() => {
-    let filtered = walletsByOwner
-    if (activeOwnerId !== null) {
-      filtered = walletsByOwner.filter((w) => ownerKey(w.owner.type, w.owner.id) === activeOwnerId)
-    }
+    let filtered = walletsByOwner.filter((w) => selectedSet.has(ownerKey(w.owner.type, w.owner.id)))
 
     if (search) {
       const searchLower = search.toLowerCase()
@@ -122,18 +120,15 @@ export function WalletTab() {
     const corporations = filtered.filter((w) => w.owner.type === 'corporation').sort(sortByBalance)
 
     return { characterWallets: characters, corporationWallets: corporations }
-  }, [walletsByOwner, search, activeOwnerId])
+  }, [walletsByOwner, search, selectedSet])
 
   const sortedWallets = useMemo(
     () => [...characterWallets, ...corporationWallets],
     [characterWallets, corporationWallets]
   )
 
-  const { filteredJournalEntries, availableRefTypes, selectedOwnerJournal, hasCorporationEntries } = useMemo(() => {
-    let journals = journalByOwner
-    if (activeOwnerId !== null) {
-      journals = journalByOwner.filter((j) => ownerKey(j.owner.type, j.owner.id) === activeOwnerId)
-    }
+  const { filteredJournalEntries, availableRefTypes, selectedOwnerJournal, hasCorporationEntries, journalTotals } = useMemo(() => {
+    const journals = journalByOwner.filter((j) => selectedSet.has(ownerKey(j.owner.type, j.owner.id)))
 
     const allEntries: JournalEntryWithOwner[] = journals
       .flatMap((j) => j.entries.map((e) => ({ ...e, owner: j.owner })))
@@ -158,6 +153,17 @@ export function WalletTab() {
       filtered = filtered.filter((e) => e.division === divisionFilter)
     }
 
+    let income = 0
+    let expenses = 0
+    for (const entry of filtered) {
+      const amount = entry.amount ?? 0
+      if (amount >= 0) {
+        income += amount
+      } else {
+        expenses += amount
+      }
+    }
+
     const selectedOwner = journals.length === 1 ? journals[0] : null
 
     return {
@@ -165,8 +171,9 @@ export function WalletTab() {
       availableRefTypes: refTypes,
       selectedOwnerJournal: selectedOwner,
       hasCorporationEntries: hasCorpEntries,
+      journalTotals: { income, expenses, net: income + expenses },
     }
-  }, [journalByOwner, activeOwnerId, search, refTypeFilter, divisionFilter])
+  }, [journalByOwner, selectedSet, search, refTypeFilter, divisionFilter])
 
   const showDivisionColumn = hasCorporationEntries
   const showDivisionFilter = hasCorporationEntries
@@ -342,38 +349,52 @@ export function WalletTab() {
 
         {showJournal && (
           <div>
-            {(availableRefTypes.length > 0 || showDivisionFilter) && (
-              <div className="flex items-center gap-2 px-4 py-2 border-b border-border/50">
-                {availableRefTypes.length > 0 && (
-                  <select
-                    value={refTypeFilter}
-                    onChange={(e) => setRefTypeFilter(e.target.value)}
-                    className="text-xs bg-surface-secondary border border-border rounded px-2 py-1"
-                  >
-                    <option value="">All Types</option>
-                    {availableRefTypes.map((type) => (
-                      <option key={type} value={type}>
-                        {type.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                {showDivisionFilter && (
-                  <select
-                    value={divisionFilter ?? ''}
-                    onChange={(e) => setDivisionFilter(e.target.value ? Number(e.target.value) : null)}
-                    className="text-xs bg-surface-secondary border border-border rounded px-2 py-1"
-                  >
-                    <option value="">All Divisions</option>
-                    {Array.from({ length: CORPORATION_WALLET_DIVISIONS }, (_, i) => i + 1).map((div) => (
-                      <option key={div} value={div}>
-                        {getDivisionFilterName(div)}
-                      </option>
-                    ))}
-                  </select>
-                )}
+            <div className="flex items-center gap-2 px-4 py-2 border-b border-border/50">
+              {availableRefTypes.length > 0 && (
+                <select
+                  value={refTypeFilter}
+                  onChange={(e) => setRefTypeFilter(e.target.value)}
+                  className="text-xs bg-surface-secondary border border-border rounded px-2 py-1"
+                >
+                  <option value="">All Types</option>
+                  {availableRefTypes.map((type) => (
+                    <option key={type} value={type}>
+                      {type.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {showDivisionFilter && (
+                <select
+                  value={divisionFilter ?? ''}
+                  onChange={(e) => setDivisionFilter(e.target.value ? Number(e.target.value) : null)}
+                  className="text-xs bg-surface-secondary border border-border rounded px-2 py-1"
+                >
+                  <option value="">All Divisions</option>
+                  {Array.from({ length: CORPORATION_WALLET_DIVISIONS }, (_, i) => i + 1).map((div) => (
+                    <option key={div} value={div}>
+                      {getDivisionFilterName(div)}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <div className="flex items-center gap-3 ml-auto text-xs">
+                <div className="flex items-center gap-1">
+                  <ArrowUpRight className="h-3 w-3 text-status-positive" />
+                  <span className="tabular-nums text-status-positive">{formatISK(journalTotals.income)}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <ArrowDownLeft className="h-3 w-3 text-status-negative" />
+                  <span className="tabular-nums text-status-negative">{formatISK(journalTotals.expenses)}</span>
+                </div>
+                <div className="flex items-center gap-1 pl-2 border-l border-border">
+                  <span className="text-content-secondary">Net:</span>
+                  <span className={cn('tabular-nums font-medium', journalTotals.net >= 0 ? 'text-status-positive' : 'text-status-negative')}>
+                    {formatISK(journalTotals.net)}
+                  </span>
+                </div>
               </div>
-            )}
+            </div>
             <JournalTable
               entries={filteredJournalEntries}
               showOwner={!selectedOwnerJournal}

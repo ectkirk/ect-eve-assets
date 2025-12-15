@@ -18,12 +18,13 @@ import { ManufacturingTab } from '@/features/manufacturing'
 import { BlueprintResearchTab, CopyingTab } from '@/features/research'
 import { CalculatorTab } from '@/features/calculator'
 import { BuybackTab, BUYBACK_TABS, getConfigByTabName, type BuybackTabType } from '@/features/buyback'
-import { Loader2, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp, Search, X, AlertTriangle, Minus, Square, Copy, Settings } from 'lucide-react'
-import { useSettingsStore } from '@/store/settings-store'
+import { Loader2, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp, Search, X, AlertTriangle, Minus, Square, Copy, Settings, Info, Heart, Shield, FileText } from 'lucide-react'
 import { useThemeStore, THEME_OPTIONS } from '@/store/theme-store'
 import eveSsoLoginWhite from '/eve-sso-login-white.png'
 import { OwnerIcon } from '@/components/ui/type-icon'
 import { OwnerManagementModal } from './OwnerManagementModal'
+import { CreditsModal } from './CreditsModal'
+import { SupportModal } from './SupportModal'
 import { UpdateBanner } from './UpdateBanner'
 import { ToastContainer } from './ToastContainer'
 import { useTotalAssets } from '@/hooks'
@@ -160,11 +161,11 @@ function OwnerButton() {
 
   const ownersRecord = useAuthStore((state) => state.owners)
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
-  const activeOwnerId = useAuthStore((state) => state.activeOwnerId)
+  const selectedOwnerIds = useAuthStore((state) => state.selectedOwnerIds)
 
-  const activeOwner = useMemo(
-    () => owners.find((o) => ownerKey(o.type, o.id) === activeOwnerId),
-    [owners, activeOwnerId]
+  const selectedOwners = useMemo(
+    () => owners.filter((o) => selectedOwnerIds.includes(ownerKey(o.type, o.id))),
+    [owners, selectedOwnerIds]
   )
 
   const hasAuthFailure = useMemo(
@@ -259,37 +260,26 @@ function OwnerButton() {
             <AlertTriangle className="h-4 w-4 text-semantic-warning" />
           </span>
         )}
-        {activeOwnerId === null ? (
+        {selectedOwners.length === 0 ? (
+          <span className="text-sm text-content-muted">No Selection</span>
+        ) : (
           <>
             <div className="flex items-center">
-              {owners.slice(0, 3).map((owner, i) => (
+              {selectedOwners.slice(0, 5).map((owner, i) => (
                 <div
                   key={ownerKey(owner.type, owner.id)}
                   className="relative rounded-full ring-2 ring-surface-secondary"
-                  style={{ marginLeft: i === 0 ? 0 : -8, zIndex: 3 - i }}
+                  style={{ marginLeft: i === 0 ? 0 : -8, zIndex: 5 - i }}
                 >
                   <OwnerIcon ownerId={owner.id} ownerType={owner.type} size="lg" />
                 </div>
               ))}
             </div>
-            <span className="text-sm">All Characters</span>
-            <span className="text-xs text-content-secondary">({owners.length})</span>
-          </>
-        ) : activeOwner ? (
-          <>
-            <OwnerIcon ownerId={activeOwner.id} ownerType={activeOwner.type} size="lg" />
-            <span
-              className={`text-sm ${activeOwner.type === 'corporation' ? 'text-status-corp' : ''}`}
-            >
-              {activeOwner.name}
+            <span className="text-xs text-content-secondary">
+              ({selectedOwners.length}/{owners.length})
             </span>
-            {owners.length > 1 && (
-              <span className="text-xs text-content-secondary">
-                +{owners.length - 1}
-              </span>
-            )}
           </>
-        ) : null}
+        )}
       </button>
       <OwnerManagementModal open={modalOpen} onOpenChange={setModalOpen} />
     </>
@@ -486,11 +476,9 @@ function HeaderControls() {
 function WindowControls() {
   const [isMaximized, setIsMaximized] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [creditsOpen, setCreditsOpen] = useState(false)
+  const [supportOpen, setSupportOpen] = useState(false)
   const settingsPanelRef = useRef<HTMLDivElement>(null)
-  const showContractItems = useSettingsStore((s) => s.showContractItemsInAssets)
-  const setShowContractItems = useSettingsStore((s) => s.setShowContractItemsInAssets)
-  const showMarketOrders = useSettingsStore((s) => s.showMarketOrdersInAssets)
-  const setShowMarketOrders = useSettingsStore((s) => s.setShowMarketOrdersInAssets)
   const theme = useThemeStore((s) => s.theme)
   const setTheme = useThemeStore((s) => s.setTheme)
 
@@ -543,27 +531,49 @@ function WindowControls() {
               </div>
               <div className="my-2 border-t border-border" />
               <button
-                onClick={() => setShowContractItems(!showContractItems)}
+                onClick={() => {
+                  setCreditsOpen(true)
+                  setSettingsOpen(false)
+                }}
                 className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-content-secondary hover:bg-surface-tertiary"
               >
-                <span className="flex h-4 w-4 items-center justify-center">
-                  {showContractItems && <Check className="h-4 w-4 text-accent" />}
-                </span>
-                Show contract items in Assets
+                <Info className="h-4 w-4" />
+                Credits
               </button>
               <button
-                onClick={() => setShowMarketOrders(!showMarketOrders)}
+                onClick={() => {
+                  setSupportOpen(true)
+                  setSettingsOpen(false)
+                }}
                 className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-content-secondary hover:bg-surface-tertiary"
               >
-                <span className="flex h-4 w-4 items-center justify-center">
-                  {showMarketOrders && <Check className="h-4 w-4 text-accent" />}
-                </span>
-                Show sell orders in Assets
+                <Heart className="h-4 w-4" />
+                Support Us
               </button>
+              <a
+                href="https://edencom.net/privacy-policy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-content-secondary hover:bg-surface-tertiary"
+              >
+                <Shield className="h-4 w-4" />
+                Privacy Policy
+              </a>
+              <a
+                href="https://edencom.net/terms-of-service"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-content-secondary hover:bg-surface-tertiary"
+              >
+                <FileText className="h-4 w-4" />
+                Terms of Service
+              </a>
             </div>
           </div>
         )}
       </div>
+      <CreditsModal open={creditsOpen} onOpenChange={setCreditsOpen} />
+      <SupportModal open={supportOpen} onOpenChange={setSupportOpen} />
       <button
         onClick={() => window.electronAPI?.windowMinimize()}
         className="flex h-10 w-12 items-center justify-center text-content-secondary hover:bg-surface-tertiary hover:text-content"

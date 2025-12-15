@@ -3,27 +3,24 @@ import { Loader2, Calculator, Copy, AlertTriangle, Coins, Package } from 'lucide
 import { BlueprintSearch } from '@/components/ui/BlueprintSearch'
 import { SystemSearch } from '@/components/ui/SystemSearch'
 import { formatNumber } from '@/lib/utils'
+import { useToolsStore } from '@/store/tools-store'
 import {
   RESEARCH_FACILITIES as FACILITIES,
   RIGS,
-  SECURITY_STATUS,
   IMPLANTS,
 } from '@/features/industry/constants'
 
 export function CopyingTab() {
-  const [blueprint, setBlueprint] = useState<{ id: number; name: string } | null>(null)
-  const [system, setSystem] = useState<{ id: number; name: string } | null>(null)
-  const [facility, setFacility] = useState(0)
-  const [scienceLevel, setScienceLevel] = useState(5)
-  const [advancedIndustryLevel, setAdvancedIndustryLevel] = useState(5)
-  const [copyRig, setCopyRig] = useState(0)
-  const [copyImplant, setCopyImplant] = useState(1.0)
-  const [securityStatus, setSecurityStatus] = useState<'h' | 'l' | 'n'>('h')
-  const [facilityTax, setFacilityTax] = useState(0)
-  const [fwBonus, setFwBonus] = useState(false)
-  const [runsPerCopy, setRunsPerCopy] = useState(1)
+  const inputs = useToolsStore((s) => s.copying)
+  const setInputs = useToolsStore((s) => s.setCopying)
+  const result = useToolsStore((s) => s.copyingResult)
+  const setResult = useToolsStore((s) => s.setCopyingResult)
+  const {
+    blueprint, system, facility, scienceLevel, advancedIndustryLevel,
+    copyRig, copyImplant, securityStatus, facilityTax, fwBonus, runsPerCopy,
+  } = inputs
+
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<BlueprintResearchResult | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const handleCalculate = async () => {
@@ -50,7 +47,7 @@ export function CopyingTab() {
         copy_implant: copyImplant,
         copy_rig: copyRig,
         security_status: securityStatus,
-        facility_tax: facilityTax / 100,
+        facility_tax: facility === 0 ? 0.0025 : facilityTax / 100,
         faction_warfare_bonus: fwBonus,
         runs_per_copy: runsPerCopy,
       }
@@ -79,7 +76,7 @@ export function CopyingTab() {
             <BlueprintSearch
               mode="blueprint"
               value={blueprint}
-              onChange={setBlueprint}
+              onChange={(v) => setInputs({ blueprint: v })}
               placeholder="Search blueprints..."
             />
           </div>
@@ -88,7 +85,11 @@ export function CopyingTab() {
             <label className="block text-sm text-content-secondary mb-1">System</label>
             <SystemSearch
               value={system}
-              onChange={setSystem}
+              onChange={(v) => {
+                const sec = v?.security
+                const secStatus = sec === undefined ? 'h' : sec >= 0.5 ? 'h' : sec > 0 ? 'l' : 'n'
+                setInputs({ system: v, securityStatus: secStatus })
+              }}
               placeholder="Search systems..."
             />
           </div>
@@ -97,7 +98,7 @@ export function CopyingTab() {
             <label className="block text-sm text-content-secondary mb-1">Facility</label>
             <select
               value={facility}
-              onChange={(e) => setFacility(parseInt(e.target.value, 10))}
+              onChange={(e) => setInputs({ facility: parseInt(e.target.value, 10) })}
               className="w-full rounded border border-border bg-surface-tertiary px-3 py-2 text-sm focus:border-accent focus:outline-none"
             >
               {FACILITIES.map((f) => (
@@ -116,7 +117,7 @@ export function CopyingTab() {
                   min="0"
                   max="5"
                   value={scienceLevel}
-                  onChange={(e) => setScienceLevel(parseInt(e.target.value, 10))}
+                  onChange={(e) => setInputs({ scienceLevel: parseInt(e.target.value, 10) })}
                   className="flex-1"
                 />
                 <span className="w-4 text-sm text-right">{scienceLevel}</span>
@@ -128,7 +129,7 @@ export function CopyingTab() {
                   min="0"
                   max="5"
                   value={advancedIndustryLevel}
-                  onChange={(e) => setAdvancedIndustryLevel(parseInt(e.target.value, 10))}
+                  onChange={(e) => setInputs({ advancedIndustryLevel: parseInt(e.target.value, 10) })}
                   className="flex-1"
                 />
                 <span className="w-4 text-sm text-right">{advancedIndustryLevel}</span>
@@ -140,7 +141,7 @@ export function CopyingTab() {
             <label className="block text-sm text-content-secondary mb-2">Implant</label>
             <select
               value={copyImplant}
-              onChange={(e) => setCopyImplant(parseFloat(e.target.value))}
+              onChange={(e) => setInputs({ copyImplant: parseFloat(e.target.value) })}
               className="w-full rounded border border-border bg-surface-tertiary px-3 py-2 text-sm focus:border-accent focus:outline-none"
             >
               {IMPLANTS.map((i) => (
@@ -155,24 +156,11 @@ export function CopyingTab() {
                 <label className="block text-sm text-content-secondary mb-2">Rig</label>
                 <select
                   value={copyRig}
-                  onChange={(e) => setCopyRig(parseInt(e.target.value, 10))}
+                  onChange={(e) => setInputs({ copyRig: parseInt(e.target.value, 10) })}
                   className="w-full rounded border border-border bg-surface-tertiary px-3 py-2 text-sm focus:border-accent focus:outline-none"
                 >
                   {RIGS.map((r) => (
                     <option key={r.id} value={r.id}>{r.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm text-content-secondary mb-1">Security Status</label>
-                <select
-                  value={securityStatus}
-                  onChange={(e) => setSecurityStatus(e.target.value as 'h' | 'l' | 'n')}
-                  className="w-full rounded border border-border bg-surface-tertiary px-3 py-2 text-sm focus:border-accent focus:outline-none"
-                >
-                  {SECURITY_STATUS.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
                   ))}
                 </select>
               </div>
@@ -185,7 +173,7 @@ export function CopyingTab() {
                   max="100"
                   step="0.1"
                   value={facilityTax}
-                  onChange={(e) => setFacilityTax(parseFloat(e.target.value) || 0)}
+                  onChange={(e) => setInputs({ facilityTax: parseFloat(e.target.value) || 0 })}
                   className="w-full rounded border border-border bg-surface-tertiary px-3 py-2 text-sm focus:border-accent focus:outline-none"
                 />
               </div>
@@ -197,7 +185,7 @@ export function CopyingTab() {
               type="checkbox"
               id="fwBonusCopy"
               checked={fwBonus}
-              onChange={(e) => setFwBonus(e.target.checked)}
+              onChange={(e) => setInputs({ fwBonus: e.target.checked })}
               className="rounded border-border bg-surface-tertiary"
             />
             <label htmlFor="fwBonusCopy" className="text-sm text-content-secondary">
@@ -211,7 +199,7 @@ export function CopyingTab() {
               type="number"
               min="1"
               value={runsPerCopy}
-              onChange={(e) => setRunsPerCopy(Math.max(1, parseInt(e.target.value, 10) || 1))}
+              onChange={(e) => setInputs({ runsPerCopy: Math.max(1, parseInt(e.target.value, 10) || 1) })}
               className="w-full rounded border border-border bg-surface-tertiary px-3 py-2 text-sm focus:border-accent focus:outline-none"
             />
           </div>

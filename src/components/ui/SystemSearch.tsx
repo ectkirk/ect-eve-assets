@@ -2,8 +2,8 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { Search, Loader2, X } from 'lucide-react'
 
 interface SystemSearchProps {
-  value: { id: number; name: string } | null
-  onChange: (item: { id: number; name: string } | null) => void
+  value: { id: number; name: string; security?: number } | null
+  onChange: (item: { id: number; name: string; security: number } | null) => void
   placeholder?: string
   className?: string
 }
@@ -84,7 +84,7 @@ export function SystemSearch({ value, onChange, placeholder, className = '' }: S
   }
 
   function handleSelect(sys: SystemListItem) {
-    onChange({ id: sys.id, name: sys.name })
+    onChange({ id: sys.id, name: sys.name, security: sys.security })
     setQuery('')
     setIsOpen(false)
   }

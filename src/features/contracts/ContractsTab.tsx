@@ -574,7 +574,8 @@ export function ContractsTab() {
   const [showCompleted, setShowCompleted] = useState(false)
 
   const { setExpandCollapse, search, setResultCount, setTotalValue, setColumns } = useTabControls()
-  const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
+  const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
+  const selectedSet = useMemo(() => new Set(selectedOwnerIds), [selectedOwnerIds])
 
   const CONTRACT_COLUMNS: ColumnConfig[] = useMemo(() => [
     { id: 'status', label: 'Status' },
@@ -593,9 +594,9 @@ export function ContractsTab() {
   const { directionGroups, courierGroup, completedContracts } = useMemo(() => {
     void (cacheVersion + forceRender)
 
-    const filteredContractsByOwner = activeOwnerId === null
-      ? contractsByOwner
-      : contractsByOwner.filter(({ owner }) => ownerKey(owner.type, owner.id) === activeOwnerId)
+    const filteredContractsByOwner = contractsByOwner.filter(({ owner }) =>
+      selectedSet.has(ownerKey(owner.type, owner.id))
+    )
 
     const ownerIds = new Set<number>()
     const ownerCorpIds = new Set<number>()
@@ -724,7 +725,7 @@ export function ContractsTab() {
         : null,
       completedContracts: filteredCompleted,
     }
-  }, [contractsByOwner, cacheVersion, forceRender, owners, prices, search, activeOwnerId])
+  }, [contractsByOwner, cacheVersion, forceRender, owners, prices, search, selectedSet])
 
   const toggleDirection = useCallback((direction: string) => {
     setExpandedDirections((prev) => {

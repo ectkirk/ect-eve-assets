@@ -3,29 +3,25 @@ import { Loader2, Calculator, Clock, BookOpen } from 'lucide-react'
 import { BlueprintSearch } from '@/components/ui/BlueprintSearch'
 import { SystemSearch } from '@/components/ui/SystemSearch'
 import { formatNumber } from '@/lib/utils'
+import { useToolsStore } from '@/store/tools-store'
 import {
   RESEARCH_FACILITIES as FACILITIES,
   RIGS,
-  SECURITY_STATUS,
   IMPLANTS,
 } from '@/features/industry/constants'
 
 export function BlueprintResearchTab() {
-  const [blueprint, setBlueprint] = useState<{ id: number; name: string } | null>(null)
-  const [system, setSystem] = useState<{ id: number; name: string } | null>(null)
-  const [facility, setFacility] = useState(0)
-  const [metallurgyLevel, setMetallurgyLevel] = useState(5)
-  const [researchLevel, setResearchLevel] = useState(5)
-  const [advancedIndustryLevel, setAdvancedIndustryLevel] = useState(5)
-  const [meRig, setMeRig] = useState(0)
-  const [teRig, setTeRig] = useState(0)
-  const [meImplant, setMeImplant] = useState(1.0)
-  const [teImplant, setTeImplant] = useState(1.0)
-  const [securityStatus, setSecurityStatus] = useState<'h' | 'l' | 'n'>('h')
-  const [facilityTax, setFacilityTax] = useState(0)
-  const [fwBonus, setFwBonus] = useState(false)
+  const inputs = useToolsStore((s) => s.research)
+  const setInputs = useToolsStore((s) => s.setResearch)
+  const result = useToolsStore((s) => s.researchResult)
+  const setResult = useToolsStore((s) => s.setResearchResult)
+  const {
+    blueprint, system, facility, metallurgyLevel, researchLevel,
+    advancedIndustryLevel, meRig, teRig, meImplant, teImplant,
+    securityStatus, facilityTax, fwBonus,
+  } = inputs
+
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<BlueprintResearchResult | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const handleCalculate = async () => {
@@ -55,7 +51,7 @@ export function BlueprintResearchTab() {
         me_rig: meRig,
         te_rig: teRig,
         security_status: securityStatus,
-        facility_tax: facilityTax / 100,
+        facility_tax: facility === 0 ? 0.0025 : facilityTax / 100,
         faction_warfare_bonus: fwBonus,
       }
 
@@ -83,7 +79,7 @@ export function BlueprintResearchTab() {
             <BlueprintSearch
               mode="blueprint"
               value={blueprint}
-              onChange={setBlueprint}
+              onChange={(v) => setInputs({ blueprint: v })}
               placeholder="Search blueprints..."
             />
           </div>
@@ -92,7 +88,11 @@ export function BlueprintResearchTab() {
             <label className="block text-sm text-content-secondary mb-1">System</label>
             <SystemSearch
               value={system}
-              onChange={setSystem}
+              onChange={(v) => {
+                const sec = v?.security
+                const secStatus = sec === undefined ? 'h' : sec >= 0.5 ? 'h' : sec > 0 ? 'l' : 'n'
+                setInputs({ system: v, securityStatus: secStatus })
+              }}
               placeholder="Search systems..."
             />
           </div>
@@ -101,7 +101,7 @@ export function BlueprintResearchTab() {
             <label className="block text-sm text-content-secondary mb-1">Facility</label>
             <select
               value={facility}
-              onChange={(e) => setFacility(parseInt(e.target.value, 10))}
+              onChange={(e) => setInputs({ facility: parseInt(e.target.value, 10) })}
               className="w-full rounded border border-border bg-surface-tertiary px-3 py-2 text-sm focus:border-accent focus:outline-none"
             >
               {FACILITIES.map((f) => (
@@ -120,7 +120,7 @@ export function BlueprintResearchTab() {
                   min="0"
                   max="5"
                   value={metallurgyLevel}
-                  onChange={(e) => setMetallurgyLevel(parseInt(e.target.value, 10))}
+                  onChange={(e) => setInputs({ metallurgyLevel: parseInt(e.target.value, 10) })}
                   className="flex-1"
                 />
                 <span className="w-4 text-sm text-right">{metallurgyLevel}</span>
@@ -132,7 +132,7 @@ export function BlueprintResearchTab() {
                   min="0"
                   max="5"
                   value={researchLevel}
-                  onChange={(e) => setResearchLevel(parseInt(e.target.value, 10))}
+                  onChange={(e) => setInputs({ researchLevel: parseInt(e.target.value, 10) })}
                   className="flex-1"
                 />
                 <span className="w-4 text-sm text-right">{researchLevel}</span>
@@ -144,7 +144,7 @@ export function BlueprintResearchTab() {
                   min="0"
                   max="5"
                   value={advancedIndustryLevel}
-                  onChange={(e) => setAdvancedIndustryLevel(parseInt(e.target.value, 10))}
+                  onChange={(e) => setInputs({ advancedIndustryLevel: parseInt(e.target.value, 10) })}
                   className="flex-1"
                 />
                 <span className="w-4 text-sm text-right">{advancedIndustryLevel}</span>
@@ -159,7 +159,7 @@ export function BlueprintResearchTab() {
                 <span className="w-20 text-xs text-content-secondary">ME</span>
                 <select
                   value={meImplant}
-                  onChange={(e) => setMeImplant(parseFloat(e.target.value))}
+                  onChange={(e) => setInputs({ meImplant: parseFloat(e.target.value) })}
                   className="flex-1 rounded border border-border bg-surface-tertiary px-2 py-1 text-sm focus:border-accent focus:outline-none"
                 >
                   {IMPLANTS.map((i) => (
@@ -171,7 +171,7 @@ export function BlueprintResearchTab() {
                 <span className="w-20 text-xs text-content-secondary">TE</span>
                 <select
                   value={teImplant}
-                  onChange={(e) => setTeImplant(parseFloat(e.target.value))}
+                  onChange={(e) => setInputs({ teImplant: parseFloat(e.target.value) })}
                   className="flex-1 rounded border border-border bg-surface-tertiary px-2 py-1 text-sm focus:border-accent focus:outline-none"
                 >
                   {IMPLANTS.map((i) => (
@@ -191,7 +191,7 @@ export function BlueprintResearchTab() {
                     <span className="w-20 text-xs text-content-secondary">ME Rig</span>
                     <select
                       value={meRig}
-                      onChange={(e) => setMeRig(parseInt(e.target.value, 10))}
+                      onChange={(e) => setInputs({ meRig: parseInt(e.target.value, 10) })}
                       className="flex-1 rounded border border-border bg-surface-tertiary px-2 py-1 text-sm focus:border-accent focus:outline-none"
                     >
                       {RIGS.map((r) => (
@@ -203,7 +203,7 @@ export function BlueprintResearchTab() {
                     <span className="w-20 text-xs text-content-secondary">TE Rig</span>
                     <select
                       value={teRig}
-                      onChange={(e) => setTeRig(parseInt(e.target.value, 10))}
+                      onChange={(e) => setInputs({ teRig: parseInt(e.target.value, 10) })}
                       className="flex-1 rounded border border-border bg-surface-tertiary px-2 py-1 text-sm focus:border-accent focus:outline-none"
                     >
                       {RIGS.map((r) => (
@@ -215,19 +215,6 @@ export function BlueprintResearchTab() {
               </div>
 
               <div>
-                <label className="block text-sm text-content-secondary mb-1">Security Status</label>
-                <select
-                  value={securityStatus}
-                  onChange={(e) => setSecurityStatus(e.target.value as 'h' | 'l' | 'n')}
-                  className="w-full rounded border border-border bg-surface-tertiary px-3 py-2 text-sm focus:border-accent focus:outline-none"
-                >
-                  {SECURITY_STATUS.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
                 <label className="block text-sm text-content-secondary mb-1">Facility Tax (%)</label>
                 <input
                   type="number"
@@ -235,7 +222,7 @@ export function BlueprintResearchTab() {
                   max="100"
                   step="0.1"
                   value={facilityTax}
-                  onChange={(e) => setFacilityTax(parseFloat(e.target.value) || 0)}
+                  onChange={(e) => setInputs({ facilityTax: parseFloat(e.target.value) || 0 })}
                   className="w-full rounded border border-border bg-surface-tertiary px-3 py-2 text-sm focus:border-accent focus:outline-none"
                 />
               </div>
@@ -247,7 +234,7 @@ export function BlueprintResearchTab() {
               type="checkbox"
               id="fwBonus"
               checked={fwBonus}
-              onChange={(e) => setFwBonus(e.target.checked)}
+              onChange={(e) => setInputs({ fwBonus: e.target.checked })}
               className="rounded border-border bg-surface-tertiary"
             />
             <label htmlFor="fwBonus" className="text-sm text-content-secondary">

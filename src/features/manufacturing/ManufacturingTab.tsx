@@ -4,10 +4,10 @@ import { TypeIcon } from '@/components/ui/type-icon'
 import { BlueprintSearch } from '@/components/ui/BlueprintSearch'
 import { SystemSearch } from '@/components/ui/SystemSearch'
 import { formatNumber } from '@/lib/utils'
+import { useToolsStore } from '@/store/tools-store'
 import {
   MANUFACTURING_FACILITIES as FACILITIES,
   ME_RIGS,
-  SECURITY_STATUS,
 } from '@/features/industry/constants'
 
 function formatDuration(isoStr: string | undefined): string {
@@ -28,17 +28,13 @@ function formatDuration(isoStr: string | undefined): string {
 }
 
 export function ManufacturingTab() {
-  const [product, setProduct] = useState<{ id: number; name: string } | null>(null)
-  const [system, setSystem] = useState<{ id: number; name: string } | null>(null)
-  const [me, setMe] = useState(10)
-  const [te, setTe] = useState(20)
-  const [runs, setRuns] = useState(1)
-  const [facility, setFacility] = useState(0)
-  const [meRig, setMeRig] = useState(0)
-  const [securityStatus, setSecurityStatus] = useState<'h' | 'l' | 'n'>('h')
-  const [facilityTax, setFacilityTax] = useState(0)
+  const inputs = useToolsStore((s) => s.manufacturing)
+  const setInputs = useToolsStore((s) => s.setManufacturing)
+  const result = useToolsStore((s) => s.manufacturingResult)
+  const setResult = useToolsStore((s) => s.setManufacturingResult)
+  const { product, system, me, te, runs, facility, meRig, securityStatus, facilityTax } = inputs
+
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<ManufacturingCostResult | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const handleCalculate = async () => {
@@ -65,7 +61,7 @@ export function ManufacturingTab() {
         facility,
         me_rig: meRig,
         security_status: securityStatus,
-        facility_tax: facilityTax / 100,
+        facility_tax: facility === 0 ? 0.0025 : facilityTax / 100,
       }
 
       const res = await window.electronAPI!.refManufacturingCost(params)
@@ -97,7 +93,7 @@ export function ManufacturingTab() {
             <BlueprintSearch
               mode="product"
               value={product}
-              onChange={setProduct}
+              onChange={(v) => setInputs({ product: v })}
               placeholder="Search products..."
             />
           </div>
@@ -106,7 +102,11 @@ export function ManufacturingTab() {
             <label className="block text-sm text-content-secondary mb-1">System</label>
             <SystemSearch
               value={system}
-              onChange={setSystem}
+              onChange={(v) => {
+                const sec = v?.security
+                const secStatus = sec === undefined ? 'h' : sec >= 0.5 ? 'h' : sec > 0 ? 'l' : 'n'
+                setInputs({ system: v, securityStatus: secStatus })
+              }}
               placeholder="Search systems..."
             />
           </div>
@@ -119,7 +119,7 @@ export function ManufacturingTab() {
                 min="0"
                 max="10"
                 value={me}
-                onChange={(e) => setMe(parseInt(e.target.value, 10))}
+                onChange={(e) => setInputs({ me: parseInt(e.target.value, 10) })}
                 className="flex-1"
               />
               <span className="w-6 text-sm text-right">{me}</span>
@@ -135,7 +135,7 @@ export function ManufacturingTab() {
                 max="20"
                 step="2"
                 value={te}
-                onChange={(e) => setTe(parseInt(e.target.value, 10))}
+                onChange={(e) => setInputs({ te: parseInt(e.target.value, 10) })}
                 className="flex-1"
               />
               <span className="w-6 text-sm text-right">{te}</span>
@@ -148,7 +148,7 @@ export function ManufacturingTab() {
               type="number"
               min="1"
               value={runs}
-              onChange={(e) => setRuns(Math.max(1, parseInt(e.target.value, 10) || 1))}
+              onChange={(e) => setInputs({ runs: Math.max(1, parseInt(e.target.value, 10) || 1) })}
               className="w-full rounded border border-border bg-surface-tertiary px-3 py-2 text-sm focus:border-accent focus:outline-none"
             />
           </div>
@@ -157,7 +157,7 @@ export function ManufacturingTab() {
             <label className="block text-sm text-content-secondary mb-1">Facility</label>
             <select
               value={facility}
-              onChange={(e) => setFacility(parseInt(e.target.value, 10))}
+              onChange={(e) => setInputs({ facility: parseInt(e.target.value, 10) })}
               className="w-full rounded border border-border bg-surface-tertiary px-3 py-2 text-sm focus:border-accent focus:outline-none"
             >
               {FACILITIES.map((f) => (
@@ -172,24 +172,11 @@ export function ManufacturingTab() {
                 <label className="block text-sm text-content-secondary mb-1">ME Rig</label>
                 <select
                   value={meRig}
-                  onChange={(e) => setMeRig(parseInt(e.target.value, 10))}
+                  onChange={(e) => setInputs({ meRig: parseInt(e.target.value, 10) })}
                   className="w-full rounded border border-border bg-surface-tertiary px-3 py-2 text-sm focus:border-accent focus:outline-none"
                 >
                   {ME_RIGS.map((r) => (
                     <option key={r.id} value={r.id}>{r.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm text-content-secondary mb-1">Security Status</label>
-                <select
-                  value={securityStatus}
-                  onChange={(e) => setSecurityStatus(e.target.value as 'h' | 'l' | 'n')}
-                  className="w-full rounded border border-border bg-surface-tertiary px-3 py-2 text-sm focus:border-accent focus:outline-none"
-                >
-                  {SECURITY_STATUS.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
                   ))}
                 </select>
               </div>
@@ -202,7 +189,7 @@ export function ManufacturingTab() {
                   max="100"
                   step="0.1"
                   value={facilityTax}
-                  onChange={(e) => setFacilityTax(parseFloat(e.target.value) || 0)}
+                  onChange={(e) => setInputs({ facilityTax: parseFloat(e.target.value) || 0 })}
                   className="w-full rounded border border-border bg-surface-tertiary px-3 py-2 text-sm focus:border-accent focus:outline-none"
                 />
               </div>

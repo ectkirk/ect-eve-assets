@@ -208,14 +208,15 @@ export function StructuresTab() {
   }, [])
 
   const { search, setResultCount } = useTabControls()
-  const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
+  const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
+  const selectedSet = useMemo(() => new Set(selectedOwnerIds), [selectedOwnerIds])
 
   const structureRows = useMemo(() => {
     void cacheVersion
 
-    const filteredByOwner = activeOwnerId === null
-      ? structuresByOwner
-      : structuresByOwner.filter(({ owner }) => ownerKey(owner.type, owner.id) === activeOwnerId)
+    const filteredByOwner = structuresByOwner.filter(({ owner }) =>
+      selectedSet.has(ownerKey(owner.type, owner.id))
+    )
 
     const rows: StructureRow[] = []
 
@@ -259,7 +260,7 @@ export function StructuresTab() {
       if (systemCmp !== 0) return systemCmp
       return (a.structure.name ?? '').localeCompare(b.structure.name ?? '')
     })
-  }, [structuresByOwner, cacheVersion, search, activeOwnerId, structureAssetMap, assetNames])
+  }, [structuresByOwner, cacheVersion, search, selectedSet, structureAssetMap, assetNames])
 
   const totalStructureCount = useMemo(() => {
     let count = 0

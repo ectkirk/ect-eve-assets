@@ -218,7 +218,8 @@ export function MarketOrdersTab() {
   }, [ordersByOwner])
 
   const { setExpandCollapse, search, setResultCount, setTotalValue, setColumns } = useTabControls()
-  const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
+  const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
+  const selectedSet = useMemo(() => new Set(selectedOwnerIds), [selectedOwnerIds])
 
   const ORDER_COLUMNS: ColumnConfig[] = useMemo(() => [
     { id: 'type', label: 'Buy/Sell' },
@@ -235,9 +236,9 @@ export function MarketOrdersTab() {
   const locationGroups = useMemo(() => {
     void cacheVersion
 
-    const filteredOrdersByOwner = activeOwnerId === null
-      ? ordersByOwner
-      : ordersByOwner.filter(({ owner }) => ownerKey(owner.type, owner.id) === activeOwnerId)
+    const filteredOrdersByOwner = ordersByOwner.filter(({ owner }) =>
+      selectedSet.has(ownerKey(owner.type, owner.id))
+    )
 
     const groups = new Map<number, LocationGroup>()
 
@@ -316,7 +317,7 @@ export function MarketOrdersTab() {
     }
 
     return sorted
-  }, [ordersByOwner, cacheVersion, search, activeOwnerId])
+  }, [ordersByOwner, cacheVersion, search, selectedSet])
 
   const expandableIds = useMemo(() => locationGroups.map((g) => g.locationId), [locationGroups])
   const { isExpanded, toggle } = useExpandCollapse(expandableIds, setExpandCollapse)
