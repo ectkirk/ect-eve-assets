@@ -64,6 +64,28 @@ export function OwnerManagementModal({
   const selectedOwnerIds = useAuthStore((state) => state.selectedOwnerIds)
   const selectedSet = useMemo(() => new Set(selectedOwnerIds), [selectedOwnerIds])
 
+  const assetsUpdating = useAssetStore((s) => s.isUpdating)
+  const blueprintsUpdating = useBlueprintsStore((s) => s.isUpdating)
+  const clonesUpdating = useClonesStore((s) => s.isUpdating)
+  const contractsUpdating = useContractsStore((s) => s.isUpdating)
+  const industryUpdating = useIndustryJobsStore((s) => s.isUpdating)
+  const ordersUpdating = useMarketOrdersStore((s) => s.isUpdating)
+  const walletUpdating = useWalletStore((s) => s.isUpdating)
+  const journalUpdating = useWalletJournalStore((s) => s.isUpdating)
+  const structuresUpdating = useStructuresStore((s) => s.isUpdating)
+
+  const isBusy =
+    isUpdatingData ||
+    assetsUpdating ||
+    blueprintsUpdating ||
+    clonesUpdating ||
+    contractsUpdating ||
+    industryUpdating ||
+    ordersUpdating ||
+    walletUpdating ||
+    journalUpdating ||
+    structuresUpdating
+
   const characterOwners = useMemo(
     () => owners.filter((o) => o.type === 'character'),
     [owners]
@@ -115,15 +137,12 @@ export function OwnerManagementModal({
           owner: newOwner,
         })
         setIsAddingCharacter(false)
-        setIsUpdatingData(true)
         useExpiryCacheStore.getState().queueAllEndpointsForOwner(ownerKey(newOwner.type, newOwner.id))
-        setIsUpdatingData(false)
       } else if (result.error && result.error !== 'Authentication cancelled') {
         setError(result.error)
       }
     } finally {
       setIsAddingCharacter(false)
-      setIsUpdatingData(false)
     }
   }
 
@@ -184,15 +203,12 @@ export function OwnerManagementModal({
           owner: newCorpOwner,
         })
         setIsAddingCorporation(false)
-        setIsUpdatingData(true)
         useExpiryCacheStore.getState().queueAllEndpointsForOwner(ownerKey(newCorpOwner.type, newCorpOwner.id))
-        setIsUpdatingData(false)
       } else if (result.error && result.error !== 'Authentication cancelled') {
         setError(result.error)
       }
     } finally {
       setIsAddingCorporation(false)
-      setIsUpdatingData(false)
     }
   }
 
@@ -343,14 +359,14 @@ export function OwnerManagementModal({
               <div className="flex gap-2">
                 <button
                   onClick={handleSelectAll}
-                  disabled={isUpdatingData}
+                  disabled={isBusy}
                   className="flex-1 rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface-tertiary disabled:opacity-50"
                 >
                   Select All
                 </button>
                 <button
                   onClick={handleDeselectAll}
-                  disabled={isUpdatingData}
+                  disabled={isBusy}
                   className="flex-1 rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface-tertiary disabled:opacity-50"
                 >
                   Deselect All
@@ -375,7 +391,7 @@ export function OwnerManagementModal({
                       key={ownerKey(owner.type, owner.id)}
                       owner={owner}
                       isSelected={selectedSet.has(ownerKey(owner.type, owner.id))}
-                      disabled={isUpdatingData}
+                      disabled={isBusy}
                       onToggle={() => handleToggleOwner(owner)}
                       onRemove={(e) => handleRemoveOwner(owner, e)}
                       onReauth={(e) => handleReauth(owner, e)}
@@ -402,7 +418,7 @@ export function OwnerManagementModal({
                       key={ownerKey(owner.type, owner.id)}
                       owner={owner}
                       isSelected={selectedSet.has(ownerKey(owner.type, owner.id))}
-                      disabled={isUpdatingData}
+                      disabled={isBusy}
                       onToggle={() => handleToggleOwner(owner)}
                       onRemove={(e) => handleRemoveOwner(owner, e)}
                       onReauth={(e) => handleReauth(owner, e)}
@@ -429,7 +445,7 @@ export function OwnerManagementModal({
                 Cancel
               </button>
             </div>
-          ) : isUpdatingData ? (
+          ) : isBusy ? (
             <div className="flex items-center justify-center gap-2 py-2 text-content-secondary">
               <Loader2 className="h-4 w-4 animate-spin" />
               <span>Updating data...</span>
@@ -452,7 +468,7 @@ export function OwnerManagementModal({
               </button>
             </div>
           )}
-          {owners.length > 0 && !isUpdatingData && (
+          {owners.length > 0 && !isBusy && (
             <button
               onClick={handleLogoutAll}
               className="w-full rounded-md border border-semantic-danger/50 px-4 py-2 text-sm font-medium text-semantic-danger hover:bg-semantic-danger/10"
