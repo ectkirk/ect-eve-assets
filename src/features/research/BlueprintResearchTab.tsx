@@ -51,7 +51,7 @@ export function BlueprintResearchTab() {
         me_rig: meRig,
         te_rig: teRig,
         security_status: securityStatus,
-        facility_tax: facilityTax / 100,
+        facility_tax: facility === 0 ? 0.0025 : facilityTax / 100,
         faction_warfare_bonus: fwBonus,
       }
 

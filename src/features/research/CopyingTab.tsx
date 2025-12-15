@@ -47,7 +47,7 @@ export function CopyingTab() {
         copy_implant: copyImplant,
         copy_rig: copyRig,
         security_status: securityStatus,
-        facility_tax: facilityTax / 100,
+        facility_tax: facility === 0 ? 0.0025 : facilityTax / 100,
         faction_warfare_bonus: fwBonus,
         runs_per_copy: runsPerCopy,
       }
