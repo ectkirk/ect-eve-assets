@@ -18,12 +18,14 @@ import { ManufacturingTab } from '@/features/manufacturing'
 import { BlueprintResearchTab, CopyingTab } from '@/features/research'
 import { CalculatorTab } from '@/features/calculator'
 import { BuybackTab, BUYBACK_TABS, getConfigByTabName, type BuybackTabType } from '@/features/buyback'
-import { Loader2, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp, Search, X, AlertTriangle, Minus, Square, Copy, Settings } from 'lucide-react'
+import { Loader2, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp, Search, X, AlertTriangle, Minus, Square, Copy, Settings, Info, Heart } from 'lucide-react'
 import { useSettingsStore } from '@/store/settings-store'
 import { useThemeStore, THEME_OPTIONS } from '@/store/theme-store'
 import eveSsoLoginWhite from '/eve-sso-login-white.png'
 import { OwnerIcon } from '@/components/ui/type-icon'
 import { OwnerManagementModal } from './OwnerManagementModal'
+import { CreditsModal } from './CreditsModal'
+import { SupportModal } from './SupportModal'
 import { UpdateBanner } from './UpdateBanner'
 import { ToastContainer } from './ToastContainer'
 import { useTotalAssets } from '@/hooks'
@@ -475,6 +477,8 @@ function HeaderControls() {
 function WindowControls() {
   const [isMaximized, setIsMaximized] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [creditsOpen, setCreditsOpen] = useState(false)
+  const [supportOpen, setSupportOpen] = useState(false)
   const settingsPanelRef = useRef<HTMLDivElement>(null)
   const showContractItems = useSettingsStore((s) => s.showContractItemsInAssets)
   const setShowContractItems = useSettingsStore((s) => s.setShowContractItemsInAssets)
@@ -549,10 +553,33 @@ function WindowControls() {
                 </span>
                 Show sell orders in Assets
               </button>
+              <div className="my-2 border-t border-border" />
+              <button
+                onClick={() => {
+                  setCreditsOpen(true)
+                  setSettingsOpen(false)
+                }}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-content-secondary hover:bg-surface-tertiary"
+              >
+                <Info className="h-4 w-4" />
+                Credits
+              </button>
+              <button
+                onClick={() => {
+                  setSupportOpen(true)
+                  setSettingsOpen(false)
+                }}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-content-secondary hover:bg-surface-tertiary"
+              >
+                <Heart className="h-4 w-4" />
+                Support Us
+              </button>
             </div>
           </div>
         )}
       </div>
+      <CreditsModal open={creditsOpen} onOpenChange={setCreditsOpen} />
+      <SupportModal open={supportOpen} onOpenChange={setSupportOpen} />
       <button
         onClick={() => window.electronAPI?.windowMinimize()}
         className="flex h-10 w-12 items-center justify-center text-content-secondary hover:bg-surface-tertiary hover:text-content"
