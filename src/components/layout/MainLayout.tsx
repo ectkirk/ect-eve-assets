@@ -19,7 +19,6 @@ import { BlueprintResearchTab, CopyingTab } from '@/features/research'
 import { CalculatorTab } from '@/features/calculator'
 import { BuybackTab, BUYBACK_TABS, getConfigByTabName, type BuybackTabType } from '@/features/buyback'
 import { Loader2, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp, Search, X, AlertTriangle, Minus, Square, Copy, Settings, Info, Heart, Shield, FileText } from 'lucide-react'
-import { useSettingsStore } from '@/store/settings-store'
 import { useThemeStore, THEME_OPTIONS } from '@/store/theme-store'
 import eveSsoLoginWhite from '/eve-sso-login-white.png'
 import { OwnerIcon } from '@/components/ui/type-icon'
@@ -480,10 +479,6 @@ function WindowControls() {
   const [creditsOpen, setCreditsOpen] = useState(false)
   const [supportOpen, setSupportOpen] = useState(false)
   const settingsPanelRef = useRef<HTMLDivElement>(null)
-  const showContractItems = useSettingsStore((s) => s.showContractItemsInAssets)
-  const setShowContractItems = useSettingsStore((s) => s.setShowContractItemsInAssets)
-  const showMarketOrders = useSettingsStore((s) => s.showMarketOrdersInAssets)
-  const setShowMarketOrders = useSettingsStore((s) => s.setShowMarketOrdersInAssets)
   const theme = useThemeStore((s) => s.theme)
   const setTheme = useThemeStore((s) => s.setTheme)
 
@@ -534,25 +529,6 @@ function WindowControls() {
                   ))}
                 </select>
               </div>
-              <div className="my-2 border-t border-border" />
-              <button
-                onClick={() => setShowContractItems(!showContractItems)}
-                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-content-secondary hover:bg-surface-tertiary"
-              >
-                <span className="flex h-4 w-4 items-center justify-center">
-                  {showContractItems && <Check className="h-4 w-4 text-accent" />}
-                </span>
-                Show contract items in Assets
-              </button>
-              <button
-                onClick={() => setShowMarketOrders(!showMarketOrders)}
-                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-content-secondary hover:bg-surface-tertiary"
-              >
-                <span className="flex h-4 w-4 items-center justify-center">
-                  {showMarketOrders && <Check className="h-4 w-4 text-accent" />}
-                </span>
-                Show sell orders in Assets
-              </button>
               <div className="my-2 border-t border-border" />
               <button
                 onClick={() => {
