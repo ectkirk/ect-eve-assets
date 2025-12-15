@@ -552,15 +552,14 @@ export function AssetsTab() {
     return Array.from(cats).sort()
   }, [data])
 
-  const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
+  const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
+  const selectedSet = useMemo(() => new Set(selectedOwnerIds), [selectedOwnerIds])
 
   const filteredData = useMemo(() => {
     const searchLower = search.toLowerCase()
     return data.filter((row) => {
-      if (activeOwnerId !== null) {
-        const rowOwnerKey = ownerKey(row.ownerType, row.ownerId)
-        if (rowOwnerKey !== activeOwnerId) return false
-      }
+      const rowOwnerKey = ownerKey(row.ownerType, row.ownerId)
+      if (!selectedSet.has(rowOwnerKey)) return false
       if (categoryFilterValue && row.categoryName !== categoryFilterValue) return false
       if (search) {
         const matchesType = row.typeName.toLowerCase().includes(searchLower)
@@ -572,7 +571,7 @@ export function AssetsTab() {
       }
       return true
     })
-  }, [data, categoryFilterValue, search, activeOwnerId])
+  }, [data, categoryFilterValue, search, selectedSet])
 
   const table = useReactTable({
     data: filteredData,

@@ -301,7 +301,8 @@ export function IndustryJobsTab() {
   }, [jobsByOwner])
 
   const { setExpandCollapse, search, setResultCount, setTotalValue, setColumns } = useTabControls()
-  const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
+  const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
+  const selectedSet = useMemo(() => new Set(selectedOwnerIds), [selectedOwnerIds])
 
   const JOB_COLUMNS: ColumnConfig[] = useMemo(() => [
     { id: 'status', label: 'Status' },
@@ -322,9 +323,9 @@ export function IndustryJobsTab() {
 
     const groups = new Map<number, LocationGroup>()
 
-    const filteredJobsByOwner = activeOwnerId === null
-      ? jobsByOwner
-      : jobsByOwner.filter(({ owner }) => ownerKey(owner.type, owner.characterId) === activeOwnerId)
+    const filteredJobsByOwner = jobsByOwner.filter(({ owner }) =>
+      selectedSet.has(ownerKey(owner.type, owner.characterId))
+    )
 
     for (const { owner, jobs } of filteredJobsByOwner) {
       for (const job of jobs) {
@@ -399,7 +400,7 @@ export function IndustryJobsTab() {
     }
 
     return sorted
-  }, [jobsByOwner, cacheVersion, prices, search, activeOwnerId])
+  }, [jobsByOwner, cacheVersion, prices, search, selectedSet])
 
   const expandableIds = useMemo(() => locationGroups.map((g) => g.locationId), [locationGroups])
   const { isExpanded, toggle } = useExpandCollapse(expandableIds, setExpandCollapse)

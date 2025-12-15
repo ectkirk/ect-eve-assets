@@ -160,11 +160,11 @@ function OwnerButton() {
 
   const ownersRecord = useAuthStore((state) => state.owners)
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
-  const activeOwnerId = useAuthStore((state) => state.activeOwnerId)
+  const selectedOwnerIds = useAuthStore((state) => state.selectedOwnerIds)
 
-  const activeOwner = useMemo(
-    () => owners.find((o) => ownerKey(o.type, o.id) === activeOwnerId),
-    [owners, activeOwnerId]
+  const selectedOwners = useMemo(
+    () => owners.filter((o) => selectedOwnerIds.includes(ownerKey(o.type, o.id))),
+    [owners, selectedOwnerIds]
   )
 
   const hasAuthFailure = useMemo(
@@ -259,37 +259,26 @@ function OwnerButton() {
             <AlertTriangle className="h-4 w-4 text-semantic-warning" />
           </span>
         )}
-        {activeOwnerId === null ? (
+        {selectedOwners.length === 0 ? (
+          <span className="text-sm text-content-muted">No Selection</span>
+        ) : (
           <>
             <div className="flex items-center">
-              {owners.slice(0, 3).map((owner, i) => (
+              {selectedOwners.slice(0, 5).map((owner, i) => (
                 <div
                   key={ownerKey(owner.type, owner.id)}
                   className="relative rounded-full ring-2 ring-surface-secondary"
-                  style={{ marginLeft: i === 0 ? 0 : -8, zIndex: 3 - i }}
+                  style={{ marginLeft: i === 0 ? 0 : -8, zIndex: 5 - i }}
                 >
                   <OwnerIcon ownerId={owner.id} ownerType={owner.type} size="lg" />
                 </div>
               ))}
             </div>
-            <span className="text-sm">All Characters</span>
-            <span className="text-xs text-content-secondary">({owners.length})</span>
-          </>
-        ) : activeOwner ? (
-          <>
-            <OwnerIcon ownerId={activeOwner.id} ownerType={activeOwner.type} size="lg" />
-            <span
-              className={`text-sm ${activeOwner.type === 'corporation' ? 'text-status-corp' : ''}`}
-            >
-              {activeOwner.name}
+            <span className="text-xs text-content-secondary">
+              ({selectedOwners.length}/{owners.length})
             </span>
-            {owners.length > 1 && (
-              <span className="text-xs text-content-secondary">
-                +{owners.length - 1}
-              </span>
-            )}
           </>
-        ) : null}
+        )}
       </button>
       <OwnerManagementModal open={modalOpen} onOpenChange={setModalOpen} />
     </>

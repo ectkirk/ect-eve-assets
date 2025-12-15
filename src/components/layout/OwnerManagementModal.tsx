@@ -25,7 +25,8 @@ import {
   Building2,
   User,
   Search,
-  CheckCircle2,
+  Square,
+  CheckSquare,
   AlertCircle,
   RefreshCw,
 } from 'lucide-react'
@@ -60,7 +61,8 @@ export function OwnerManagementModal({
 
   const ownersRecord = useAuthStore((state) => state.owners)
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
-  const activeOwnerId = useAuthStore((state) => state.activeOwnerId)
+  const selectedOwnerIds = useAuthStore((state) => state.selectedOwnerIds)
+  const selectedSet = useMemo(() => new Set(selectedOwnerIds), [selectedOwnerIds])
 
   const characterOwners = useMemo(
     () => owners.filter((o) => o.type === 'character'),
@@ -224,12 +226,16 @@ export function OwnerManagementModal({
     }
   }
 
-  const handleSwitchOwner = (owner: Owner | null) => {
-    if (owner === null) {
-      useAuthStore.getState().switchOwner(null)
-    } else {
-      useAuthStore.getState().switchOwner(ownerKey(owner.type, owner.id))
-    }
+  const handleToggleOwner = (owner: Owner) => {
+    useAuthStore.getState().toggleOwnerSelection(ownerKey(owner.type, owner.id))
+  }
+
+  const handleSelectAll = () => {
+    useAuthStore.getState().selectAllOwners()
+  }
+
+  const handleDeselectAll = () => {
+    useAuthStore.getState().deselectAllOwners()
   }
 
   const handleReauth = async (owner: Owner, e: React.MouseEvent) => {
@@ -333,28 +339,22 @@ export function OwnerManagementModal({
 
         <ScrollArea className="max-h-[400px]">
           <div className="space-y-4 pr-4">
-            {/* All Characters Option */}
             {owners.length > 1 && (
-              <div
-                onClick={() => handleSwitchOwner(null)}
-                className={`flex items-center gap-2 rounded-md px-3 py-2 transition-colors hover:bg-surface-tertiary ${
-                  activeOwnerId === null ? 'bg-surface-tertiary/50 ring-1 ring-accent/50' : ''
-                }`}
-              >
-                <div className="flex items-center">
-                  {owners.slice(0, 3).map((owner, i) => (
-                    <div
-                      key={ownerKey(owner.type, owner.id)}
-                      className="relative rounded-full ring-2 ring-surface-secondary"
-                      style={{ marginLeft: i === 0 ? 0 : -8, zIndex: 3 - i }}
-                    >
-                      <OwnerIcon ownerId={owner.id} ownerType={owner.type} size="lg" />
-                    </div>
-                  ))}
-                </div>
-                <span className="text-sm font-medium">All Characters</span>
-                <span className="text-xs text-content-secondary">({owners.length})</span>
-                {activeOwnerId === null && <CheckCircle2 className="ml-auto h-4 w-4 text-accent" />}
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSelectAll}
+                  disabled={isUpdatingData}
+                  className="flex-1 rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface-tertiary disabled:opacity-50"
+                >
+                  Select All
+                </button>
+                <button
+                  onClick={handleDeselectAll}
+                  disabled={isUpdatingData}
+                  className="flex-1 rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface-tertiary disabled:opacity-50"
+                >
+                  Deselect All
+                </button>
               </div>
             )}
 
@@ -374,11 +374,9 @@ export function OwnerManagementModal({
                     <OwnerRow
                       key={ownerKey(owner.type, owner.id)}
                       owner={owner}
-                      isActive={
-                        ownerKey(owner.type, owner.id) === activeOwnerId
-                      }
+                      isSelected={selectedSet.has(ownerKey(owner.type, owner.id))}
                       disabled={isUpdatingData}
-                      onSelect={() => handleSwitchOwner(owner)}
+                      onToggle={() => handleToggleOwner(owner)}
                       onRemove={(e) => handleRemoveOwner(owner, e)}
                       onReauth={(e) => handleReauth(owner, e)}
                     />
@@ -403,11 +401,9 @@ export function OwnerManagementModal({
                     <OwnerRow
                       key={ownerKey(owner.type, owner.id)}
                       owner={owner}
-                      isActive={
-                        ownerKey(owner.type, owner.id) === activeOwnerId
-                      }
+                      isSelected={selectedSet.has(ownerKey(owner.type, owner.id))}
                       disabled={isUpdatingData}
-                      onSelect={() => handleSwitchOwner(owner)}
+                      onToggle={() => handleToggleOwner(owner)}
                       onRemove={(e) => handleRemoveOwner(owner, e)}
                       onReauth={(e) => handleReauth(owner, e)}
                     />
@@ -472,25 +468,27 @@ export function OwnerManagementModal({
 
 interface OwnerRowProps {
   owner: Owner
-  isActive: boolean
+  isSelected: boolean
   disabled?: boolean
-  onSelect: () => void
+  onToggle: () => void
   onRemove: (e: React.MouseEvent) => void
   onReauth: (e: React.MouseEvent) => void
 }
 
-function OwnerRow({ owner, isActive, disabled, onSelect, onRemove, onReauth }: OwnerRowProps) {
+function OwnerRow({ owner, isSelected, disabled, onToggle, onRemove, onReauth }: OwnerRowProps) {
   const isCorp = owner.type === 'corporation'
   const needsAttention = owner.authFailed || owner.scopesOutdated
+  const CheckIcon = isSelected ? CheckSquare : Square
 
   return (
     <div
-      onClick={disabled ? undefined : onSelect}
-      className={`flex items-center justify-between rounded-md px-3 py-2 transition-colors ${
-        disabled ? 'opacity-50' : 'hover:bg-surface-tertiary'
-      } ${isActive ? 'bg-surface-tertiary/50 ring-1 ring-accent/50' : ''} ${owner.authFailed ? 'ring-1 ring-semantic-danger/50' : ''} ${owner.scopesOutdated && !owner.authFailed ? 'ring-1 ring-semantic-warning/50' : ''}`}
+      onClick={disabled ? undefined : onToggle}
+      className={`flex cursor-pointer items-center justify-between rounded-md px-3 py-2 transition-colors ${
+        disabled ? 'cursor-not-allowed opacity-50' : 'hover:bg-surface-tertiary'
+      } ${owner.authFailed ? 'ring-1 ring-semantic-danger/50' : ''} ${owner.scopesOutdated && !owner.authFailed ? 'ring-1 ring-semantic-warning/50' : ''}`}
     >
       <div className="flex items-center gap-2">
+        <CheckIcon className={`h-4 w-4 ${isSelected ? 'text-accent' : 'text-content-muted'}`} />
         <OwnerIcon ownerId={owner.id} ownerType={owner.type} size="lg" />
         <span className={`text-sm ${isCorp ? 'text-status-corp' : ''}`}>
           {owner.name}
@@ -507,7 +505,6 @@ function OwnerRow({ owner, isActive, disabled, onSelect, onRemove, onReauth }: O
             Upgrade scopes
           </span>
         )}
-        {isActive && !needsAttention && <CheckCircle2 className="h-4 w-4 text-accent" />}
       </div>
       <div className="flex items-center gap-1">
         {needsAttention && !disabled && (

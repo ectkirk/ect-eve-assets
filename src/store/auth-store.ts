@@ -61,7 +61,7 @@ export type CharacterAuth = Owner
 
 interface AuthState {
   owners: Record<string, Owner>
-  activeOwnerId: string | null
+  selectedOwnerIds: string[]
   isAuthenticated: boolean
 
   // Actions
@@ -79,7 +79,10 @@ interface AuthState {
     }
   }) => void
   removeOwner: (ownerId: string) => void
-  switchOwner: (ownerId: string | null) => void
+  toggleOwnerSelection: (ownerId: string) => void
+  selectAllOwners: () => void
+  deselectAllOwners: () => void
+  isOwnerSelected: (ownerId: string) => boolean
   updateOwnerTokens: (
     ownerId: string,
     tokens: { accessToken: string; refreshToken: string; expiresAt: number; scopes?: string[] }
@@ -122,14 +125,12 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       owners: {},
-      activeOwnerId: null,
+      selectedOwnerIds: [],
       isAuthenticated: false,
 
-      // New Owner-based API
       addOwner: ({ accessToken, refreshToken, expiresAt, scopes, owner }) => {
         const key = ownerKey(owner.type, owner.id)
         set((state) => {
-          const hadOwners = Object.keys(state.owners).length > 0
           const newOwners = {
             ...state.owners,
             [key]: {
@@ -144,9 +145,12 @@ export const useAuthStore = create<AuthState>()(
               scopes,
             },
           }
+          const alreadySelected = state.selectedOwnerIds.includes(key)
           return {
             owners: newOwners,
-            activeOwnerId: hadOwners ? null : key,
+            selectedOwnerIds: alreadySelected
+              ? state.selectedOwnerIds
+              : [...state.selectedOwnerIds, key],
             isAuthenticated: true,
           }
         })
@@ -155,27 +159,36 @@ export const useAuthStore = create<AuthState>()(
       removeOwner: (ownerId) => {
         set((state) => {
           const { [ownerId]: _removed, ...remaining } = state.owners
-          const remainingKeys = Object.keys(remaining)
           return {
             owners: remaining,
-            activeOwnerId:
-              state.activeOwnerId === ownerId
-                ? remainingKeys[0] ?? null
-                : state.activeOwnerId,
-            isAuthenticated: remainingKeys.length > 0,
+            selectedOwnerIds: state.selectedOwnerIds.filter((id) => id !== ownerId),
+            isAuthenticated: Object.keys(remaining).length > 0,
           }
         })
       },
 
-      switchOwner: (ownerId) => {
-        if (ownerId === null) {
-          set({ activeOwnerId: null })
-          return
-        }
+      toggleOwnerSelection: (ownerId) => {
+        const { owners, selectedOwnerIds } = get()
+        if (!owners[ownerId]) return
+        const isSelected = selectedOwnerIds.includes(ownerId)
+        set({
+          selectedOwnerIds: isSelected
+            ? selectedOwnerIds.filter((id) => id !== ownerId)
+            : [...selectedOwnerIds, ownerId],
+        })
+      },
+
+      selectAllOwners: () => {
         const { owners } = get()
-        if (owners[ownerId]) {
-          set({ activeOwnerId: ownerId })
-        }
+        set({ selectedOwnerIds: Object.keys(owners) })
+      },
+
+      deselectAllOwners: () => {
+        set({ selectedOwnerIds: [] })
+      },
+
+      isOwnerSelected: (ownerId) => {
+        return get().selectedOwnerIds.includes(ownerId)
       },
 
       updateOwnerTokens: (ownerId, { accessToken, refreshToken, expiresAt, scopes }) => {
@@ -218,15 +231,16 @@ export const useAuthStore = create<AuthState>()(
       clearAuth: () => {
         set({
           owners: {},
-          activeOwnerId: null,
+          selectedOwnerIds: [],
           isAuthenticated: false,
         })
       },
 
       getActiveOwner: () => {
-        const { owners, activeOwnerId } = get()
-        if (!activeOwnerId) return null
-        return owners[activeOwnerId] ?? null
+        const { owners, selectedOwnerIds } = get()
+        const firstId = selectedOwnerIds[0]
+        if (!firstId) return null
+        return owners[firstId] ?? null
       },
 
       hasOwnerAuthFailed: (ownerId) => {
@@ -285,9 +299,10 @@ export const useAuthStore = create<AuthState>()(
       },
 
       get activeCharacterId() {
-        const { activeOwnerId, owners } = get()
-        if (!activeOwnerId) return null
-        const owner = owners[activeOwnerId]
+        const { selectedOwnerIds, owners } = get()
+        const firstId = selectedOwnerIds[0]
+        if (!firstId) return null
+        const owner = owners[firstId]
         return owner?.type === 'character' ? owner.id : null
       },
 
@@ -343,29 +358,42 @@ export const useAuthStore = create<AuthState>()(
               refreshToken: owner.refreshToken,
               scopes: owner.scopes,
               scopesOutdated: owner.scopesOutdated,
-              // Don't persist tokens - they'll be refreshed
               accessToken: null,
               expiresAt: null,
             },
           ])
         ),
-        activeOwnerId: state.activeOwnerId,
+        selectedOwnerIds: state.selectedOwnerIds,
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {
           state.isAuthenticated = Object.keys(state.owners).length > 0
+          // Migration: handle old activeOwnerId format
+          const rawState = state as AuthState & { activeOwnerId?: string | null }
+          if ('activeOwnerId' in rawState && !state.selectedOwnerIds?.length) {
+            const ownerKeys = Object.keys(state.owners)
+            if (rawState.activeOwnerId === null) {
+              state.selectedOwnerIds = ownerKeys
+            } else if (rawState.activeOwnerId && ownerKeys.includes(rawState.activeOwnerId)) {
+              state.selectedOwnerIds = [rawState.activeOwnerId]
+            } else {
+              state.selectedOwnerIds = ownerKeys
+            }
+            delete rawState.activeOwnerId
+          }
         }
       },
     }
   )
 )
 
-// Hook to get active character (legacy compatibility)
+// Hook to get first selected character (legacy compatibility)
 export function useActiveCharacter() {
   const owners = useAuthStore((state) => state.owners)
-  const activeOwnerId = useAuthStore((state) => state.activeOwnerId)
-  if (!activeOwnerId) return null
-  const owner = owners[activeOwnerId]
+  const selectedOwnerIds = useAuthStore((state) => state.selectedOwnerIds)
+  const firstId = selectedOwnerIds[0]
+  if (!firstId) return null
+  const owner = owners[firstId]
   return owner?.type === 'character' ? owner : null
 }
 

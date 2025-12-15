@@ -95,13 +95,11 @@ export function WalletTab() {
     return total
   }, [walletsByOwner])
 
-  const activeOwnerId = useAuthStore((s) => s.activeOwnerId)
+  const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
+  const selectedSet = useMemo(() => new Set(selectedOwnerIds), [selectedOwnerIds])
 
   const { characterWallets, corporationWallets } = useMemo(() => {
-    let filtered = walletsByOwner
-    if (activeOwnerId !== null) {
-      filtered = walletsByOwner.filter((w) => ownerKey(w.owner.type, w.owner.id) === activeOwnerId)
-    }
+    let filtered = walletsByOwner.filter((w) => selectedSet.has(ownerKey(w.owner.type, w.owner.id)))
 
     if (search) {
       const searchLower = search.toLowerCase()
@@ -122,7 +120,7 @@ export function WalletTab() {
     const corporations = filtered.filter((w) => w.owner.type === 'corporation').sort(sortByBalance)
 
     return { characterWallets: characters, corporationWallets: corporations }
-  }, [walletsByOwner, search, activeOwnerId])
+  }, [walletsByOwner, search, selectedSet])
 
   const sortedWallets = useMemo(
     () => [...characterWallets, ...corporationWallets],
@@ -130,10 +128,7 @@ export function WalletTab() {
   )
 
   const { filteredJournalEntries, availableRefTypes, selectedOwnerJournal, hasCorporationEntries } = useMemo(() => {
-    let journals = journalByOwner
-    if (activeOwnerId !== null) {
-      journals = journalByOwner.filter((j) => ownerKey(j.owner.type, j.owner.id) === activeOwnerId)
-    }
+    const journals = journalByOwner.filter((j) => selectedSet.has(ownerKey(j.owner.type, j.owner.id)))
 
     const allEntries: JournalEntryWithOwner[] = journals
       .flatMap((j) => j.entries.map((e) => ({ ...e, owner: j.owner })))
@@ -166,7 +161,7 @@ export function WalletTab() {
       selectedOwnerJournal: selectedOwner,
       hasCorporationEntries: hasCorpEntries,
     }
-  }, [journalByOwner, activeOwnerId, search, refTypeFilter, divisionFilter])
+  }, [journalByOwner, selectedSet, search, refTypeFilter, divisionFilter])
 
   const showDivisionColumn = hasCorporationEntries
   const showDivisionFilter = hasCorporationEntries
