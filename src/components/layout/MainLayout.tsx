@@ -18,7 +18,7 @@ import { ManufacturingTab } from '@/features/manufacturing'
 import { BlueprintResearchTab, CopyingTab } from '@/features/research'
 import { CalculatorTab } from '@/features/calculator'
 import { BuybackTab, BUYBACK_TABS, getConfigByTabName, type BuybackTabType } from '@/features/buyback'
-import { Loader2, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp, Search, X, AlertTriangle, Minus, Square, Copy, Settings, Info, Heart } from 'lucide-react'
+import { Loader2, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp, Search, X, AlertTriangle, Minus, Square, Copy, Settings, Info, Heart, Shield, FileText } from 'lucide-react'
 import { useSettingsStore } from '@/store/settings-store'
 import { useThemeStore, THEME_OPTIONS } from '@/store/theme-store'
 import eveSsoLoginWhite from '/eve-sso-login-white.png'
@@ -574,6 +574,24 @@ function WindowControls() {
                 <Heart className="h-4 w-4" />
                 Support Us
               </button>
+              <a
+                href="https://edencom.net/privacy-policy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-content-secondary hover:bg-surface-tertiary"
+              >
+                <Shield className="h-4 w-4" />
+                Privacy Policy
+              </a>
+              <a
+                href="https://edencom.net/terms-of-service"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-content-secondary hover:bg-surface-tertiary"
+              >
+                <FileText className="h-4 w-4" />
+                Terms of Service
+              </a>
             </div>
           </div>
         )}
