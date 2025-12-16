@@ -3,11 +3,6 @@ import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useAssetStore } from '@/store/asset-store'
 import { useExpiryCacheStore } from '@/store/expiry-cache-store'
 import { AssetsTab } from '@/features/assets'
-import { ItemHangarTab } from '@/features/item-hangar'
-import { ShipHangarTab } from '@/features/ship-hangar'
-import { DeliveriesTab } from '@/features/deliveries'
-import { AssetSafetyTab } from '@/features/asset-safety'
-import { OfficeTab } from '@/features/office'
 import { StructuresTab } from '@/features/structures'
 import { AssetsTreeTab } from '@/features/assets-tree'
 import { MarketOrdersTab } from '@/features/market-orders'
@@ -38,16 +33,11 @@ type AppMode = 'assets' | 'tools' | 'buyback'
 const ASSET_TABS = [
   'Assets',
   'Assets Tree',
-  'Item Hangar',
-  'Ship Hangar',
-  'Deliveries',
-  'Asset Safety',
-  'Market Orders',
-  'Industry Jobs',
   'Clones',
-  'Office',
-  'Structures',
   'Contracts',
+  'Industry Jobs',
+  'Market Orders',
+  'Structures',
   'Wallet',
 ] as const
 
@@ -67,16 +57,6 @@ function AssetTabContent({ tab }: { tab: AssetTab }) {
       return <AssetsTab />
     case 'Assets Tree':
       return <AssetsTreeTab />
-    case 'Item Hangar':
-      return <ItemHangarTab />
-    case 'Ship Hangar':
-      return <ShipHangarTab />
-    case 'Deliveries':
-      return <DeliveriesTab />
-    case 'Asset Safety':
-      return <AssetSafetyTab />
-    case 'Office':
-      return <OfficeTab />
     case 'Structures':
       return <StructuresTab />
     case 'Market Orders':
