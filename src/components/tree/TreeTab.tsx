@@ -25,7 +25,7 @@ export function TreeTab({ mode }: TreeTabProps) {
 
   const [categoryFilter, setCategoryFilterValue] = useState('')
   const [assetTypeFilter, setAssetTypeFilterValue] = useState('')
-  const { search, setResultCount, setCategoryFilter, setAssetTypeFilter } = useTabControls()
+  const { search, setResultCount, setCategoryFilter, setAssetTypeFilter, setTotalValue } = useTabControls()
 
   const divisionsInit = useDivisionsStore((s) => s.init)
   const divisionsInitialized = useDivisionsStore((s) => s.initialized)
@@ -105,6 +105,15 @@ export function TreeTab({ mode }: TreeTabProps) {
     setResultCount({ showing, total })
     return () => setResultCount(null)
   }, [unfilteredNodes, treeNodes, setResultCount])
+
+  const sourceTotalValue = useMemo(() => {
+    return selectedResolvedAssets.reduce((sum, ra) => sum + ra.totalValue, 0)
+  }, [selectedResolvedAssets])
+
+  useEffect(() => {
+    setTotalValue({ value: sourceTotalValue })
+    return () => setTotalValue(null)
+  }, [sourceTotalValue, setTotalValue])
 
   const { expandedNodes, toggleExpand, expandAll, collapseAll } = useTreeState(treeNodes)
 

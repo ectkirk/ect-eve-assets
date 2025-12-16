@@ -347,20 +347,6 @@ export function TreeTable({
     overscan: 15,
   })
 
-  const totals = useMemo(() => {
-    let totalCount = 0
-    let totalValue = 0
-    let totalVolume = 0
-
-    for (const node of sortedNodes) {
-      totalCount += node.totalCount
-      totalValue += node.totalValue
-      totalVolume += node.totalVolume
-    }
-
-    return { totalCount, totalValue, totalVolume }
-  }, [sortedNodes])
-
   const hasExpandableNodes = useMemo(
     () => getAllNodeIds(sortedNodes).length > 0,
     [sortedNodes]
@@ -369,12 +355,7 @@ export function TreeTable({
   const allNodeIds = useMemo(() => getAllNodeIds(sortedNodes), [sortedNodes])
   const isAllExpanded = allNodeIds.length > 0 && allNodeIds.every((id) => expandedNodes.has(id))
 
-  const { setExpandCollapse, setTotalValue, setColumns } = useTabControls()
-
-  useEffect(() => {
-    setTotalValue({ value: totals.totalValue })
-    return () => setTotalValue(null)
-  }, [totals.totalValue, setTotalValue])
+  const { setExpandCollapse, setColumns } = useTabControls()
 
   useEffect(() => {
     setColumns(getColumnsForDropdown())
