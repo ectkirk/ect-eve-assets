@@ -489,7 +489,7 @@ export function AssetsTab() {
   }, [filteredData.length, selectedData.length, setResultCount])
 
   const filteredTotalValue = useMemo(() => {
-    return filteredData.reduce((sum, row) => (row.isInContract || row.isInMarketOrder) ? sum : sum + row.totalValue, 0)
+    return filteredData.reduce((sum, row) => sum + row.totalValue, 0)
   }, [filteredData])
 
   useEffect(() => {
