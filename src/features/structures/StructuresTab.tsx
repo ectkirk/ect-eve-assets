@@ -4,7 +4,7 @@ import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useStructuresStore, type ESICorporationStructure } from '@/store/structures-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useTabControls } from '@/context'
-import { useCacheVersion } from '@/hooks'
+import { useCacheVersion, useSortable, SortableHeader, sortRows } from '@/hooks'
 import { hasType, getType, hasLocation, getLocation } from '@/store/reference-cache'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import { resolveTypes, resolveLocations } from '@/api/ref-client'
@@ -12,10 +12,11 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+
+type StructureSortColumn = 'name' | 'type' | 'location' | 'state' | 'fuel' | 'owner'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -255,12 +256,31 @@ export function StructuresTab() {
       )
     }
 
-    return filtered.sort((a, b) => {
-      const systemCmp = a.systemName.localeCompare(b.systemName)
-      if (systemCmp !== 0) return systemCmp
-      return (a.structure.name ?? '').localeCompare(b.structure.name ?? '')
-    })
+    return filtered
   }, [structuresByOwner, cacheVersion, search, selectedSet, structureAssetMap, assetNames])
+
+  const { sortColumn, sortDirection, handleSort } = useSortable<StructureSortColumn>('location', 'asc')
+
+  const sortedRows = useMemo(() => {
+    return sortRows(structureRows, sortColumn, sortDirection, (row, column) => {
+      switch (column) {
+        case 'name':
+          return (row.structure.name ?? '').toLowerCase()
+        case 'type':
+          return row.typeName.toLowerCase()
+        case 'location':
+          return `${row.regionName} ${row.systemName}`.toLowerCase()
+        case 'state':
+          return row.structure.state
+        case 'fuel':
+          return row.fuelDays ?? -1
+        case 'owner':
+          return row.ownerName.toLowerCase()
+        default:
+          return 0
+      }
+    })
+  }, [structureRows, sortColumn, sortDirection])
 
   const totalStructureCount = useMemo(() => {
     let count = 0
@@ -302,17 +322,17 @@ export function StructuresTab() {
           <Table>
             <TableHeader className="sticky top-0 z-10 bg-surface-secondary">
               <TableRow className="hover:bg-transparent">
-                <TableHead>Structure</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>State</TableHead>
-                <TableHead>Services</TableHead>
-                <TableHead className="text-right">Fuel</TableHead>
-                <TableHead className="text-right">Owner</TableHead>
+                <SortableHeader column="name" label="Structure" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
+                <SortableHeader column="type" label="Type" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
+                <SortableHeader column="location" label="Location" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
+                <SortableHeader column="state" label="State" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
+                <th>Services</th>
+                <SortableHeader column="fuel" label="Fuel" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
+                <SortableHeader column="owner" label="Owner" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {structureRows.map((row) => {
+              {sortedRows.map((row) => {
                 const stateInfo = STATE_DISPLAY[row.structure.state] ?? STATE_DISPLAY.unknown!
                 const fuelInfo = formatFuelExpiry(row.structure.fuel_expires)
                 const isReinforced = row.structure.state.includes('reinforce')

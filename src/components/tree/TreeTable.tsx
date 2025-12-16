@@ -16,10 +16,10 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { useSortable, SortableHeader, type SortDirection } from '@/hooks'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -33,6 +33,49 @@ import { TypeIcon } from '@/components/ui/type-icon'
 import { useTabControls } from '@/context'
 import { useColumnSettings, type ColumnConfig } from '@/hooks'
 import { FittingDialog } from '@/components/dialogs/FittingDialog'
+
+type TreeSortColumn = 'name' | 'quantity' | 'value' | 'volume'
+
+function sortTreeNodes(
+  nodes: TreeNode[],
+  sortColumn: TreeSortColumn,
+  sortDirection: SortDirection
+): TreeNode[] {
+  const sorted = [...nodes].sort((a, b) => {
+    let aVal: number | string
+    let bVal: number | string
+
+    switch (sortColumn) {
+      case 'name':
+        aVal = a.name.toLowerCase()
+        bVal = b.name.toLowerCase()
+        break
+      case 'quantity':
+        aVal = a.totalCount
+        bVal = b.totalCount
+        break
+      case 'value':
+        aVal = a.totalValue
+        bVal = b.totalValue
+        break
+      case 'volume':
+        aVal = a.totalVolume
+        bVal = b.totalVolume
+        break
+      default:
+        return 0
+    }
+
+    if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1
+    if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1
+    return 0
+  })
+
+  return sorted.map((node) => ({
+    ...node,
+    children: sortTreeNodes(node.children, sortColumn, sortDirection),
+  }))
+}
 
 interface TreeTableProps {
   nodes: TreeNode[]
@@ -253,15 +296,20 @@ export function TreeTable({
   const {
     getVisibleColumns,
     getColumnsForDropdown,
-    handleDragStart,
-    handleDrop,
   } = useColumnSettings(storageKey, TREE_COLUMNS)
 
   const visibleColumns = getVisibleColumns()
 
+  const { sortColumn, sortDirection, handleSort } = useSortable<TreeSortColumn>('value', 'desc')
+
+  const sortedNodes = useMemo(
+    () => sortTreeNodes(nodes, sortColumn, sortDirection),
+    [nodes, sortColumn, sortDirection]
+  )
+
   const flatRows = useMemo(
-    () => flattenTree(nodes, expandedNodes),
-    [nodes, expandedNodes]
+    () => flattenTree(sortedNodes, expandedNodes),
+    [sortedNodes, expandedNodes]
   )
 
   const rowVirtualizer = useVirtualizer({
@@ -276,21 +324,21 @@ export function TreeTable({
     let totalValue = 0
     let totalVolume = 0
 
-    for (const node of nodes) {
+    for (const node of sortedNodes) {
       totalCount += node.totalCount
       totalValue += node.totalValue
       totalVolume += node.totalVolume
     }
 
     return { totalCount, totalValue, totalVolume }
-  }, [nodes])
+  }, [sortedNodes])
 
   const hasExpandableNodes = useMemo(
-    () => getAllNodeIds(nodes).length > 0,
-    [nodes]
+    () => getAllNodeIds(sortedNodes).length > 0,
+    [sortedNodes]
   )
 
-  const allNodeIds = useMemo(() => getAllNodeIds(nodes), [nodes])
+  const allNodeIds = useMemo(() => getAllNodeIds(sortedNodes), [sortedNodes])
   const isAllExpanded = allNodeIds.length > 0 && allNodeIds.every((id) => expandedNodes.has(id))
 
   const { setExpandCollapse, setTotalValue, setColumns } = useTabControls()
@@ -325,11 +373,6 @@ export function TreeTable({
     return () => setExpandCollapse(null)
   }, [hasExpandableNodes, isAllExpanded, onExpandAll, onCollapseAll, setExpandCollapse])
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'move'
-  }
-
   const [fittingDialogOpen, setFittingDialogOpen] = useState(false)
   const [selectedShipNode, setSelectedShipNode] = useState<TreeNode | null>(null)
 
@@ -338,7 +381,7 @@ export function TreeTable({
     setFittingDialogOpen(true)
   }, [])
 
-  if (nodes.length === 0) {
+  if (sortedNodes.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
         <p className="text-content-secondary">No items to display.</p>
@@ -358,20 +401,15 @@ export function TreeTable({
                 const col = TREE_COLUMNS.find(c => c.id === colId)
                 if (!col) return null
                 return (
-                  <TableHead
+                  <SortableHeader
                     key={colId}
-                    draggable
-                    onDragStart={() => handleDragStart(colId)}
-                    onDragOver={handleDragOver}
-                    onDrop={() => handleDrop(colId)}
-                    className={cn(
-                      COLUMN_WIDTHS[colId],
-                      COLUMN_ALIGN[colId],
-                      'cursor-grab active:cursor-grabbing'
-                    )}
-                  >
-                    {col.label}
-                  </TableHead>
+                    column={colId as TreeSortColumn}
+                    label={col.label}
+                    sortColumn={sortColumn}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                    className={cn(COLUMN_WIDTHS[colId], COLUMN_ALIGN[colId])}
+                  />
                 )
               })}
             </TableRow>
