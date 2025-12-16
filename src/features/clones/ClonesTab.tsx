@@ -180,14 +180,15 @@ export function ClonesTab() {
   const clonesUpdating = useClonesStore((s) => s.isUpdating)
   const updateError = useClonesStore((s) => s.updateError)
   const init = useClonesStore((s) => s.init)
+  const update = useClonesStore((s) => s.update)
   const initialized = useClonesStore((s) => s.initialized)
 
   const { isLoading: assetsUpdating } = useAssetData()
   const isUpdating = assetsUpdating || clonesUpdating
 
   useEffect(() => {
-    init()
-  }, [init])
+    init().then(() => update())
+  }, [init, update])
 
   const cacheVersion = useCacheVersion()
 
