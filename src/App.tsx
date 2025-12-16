@@ -100,12 +100,6 @@ function App() {
       .then(async () => {
         logger.info('All stores initialized', { module: 'App' })
         setupSyntheticAssetSubscriptions()
-
-        const industryStore = useIndustryJobsStore.getState()
-        if (industryStore.dataByOwner.length === 0 && Object.keys(useAuthStore.getState().owners).length > 0) {
-          await industryStore.update()
-        }
-
         useAssetStore.getState().rebuildSyntheticAssets()
         const ownerKeys = Object.keys(useAuthStore.getState().owners)
         useExpiryCacheStore.getState().queueMissingEndpoints(ownerKeys)
