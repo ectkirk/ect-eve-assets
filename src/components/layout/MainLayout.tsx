@@ -9,6 +9,7 @@ import { DeliveriesTab } from '@/features/deliveries'
 import { AssetSafetyTab } from '@/features/asset-safety'
 import { OfficeTab } from '@/features/office'
 import { StructuresTab } from '@/features/structures'
+import { AssetsTreeTab } from '@/features/assets-tree'
 import { MarketOrdersTab } from '@/features/market-orders'
 import { IndustryJobsTab } from '@/features/industry-jobs'
 import { ClonesTab } from '@/features/clones'
@@ -36,6 +37,7 @@ type AppMode = 'assets' | 'tools' | 'buyback'
 
 const ASSET_TABS = [
   'Assets',
+  'Assets Tree',
   'Item Hangar',
   'Ship Hangar',
   'Deliveries',
@@ -63,6 +65,8 @@ function AssetTabContent({ tab }: { tab: AssetTab }) {
   switch (tab) {
     case 'Assets':
       return <AssetsTab />
+    case 'Assets Tree':
+      return <AssetsTreeTab />
     case 'Item Hangar':
       return <ItemHangarTab />
     case 'Ship Hangar':
