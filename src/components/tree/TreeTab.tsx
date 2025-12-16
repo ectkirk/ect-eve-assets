@@ -83,6 +83,7 @@ export function TreeTab({ mode }: TreeTabProps) {
     const filteredAssets: AssetWithOwner[] = []
     const contractItemIds = new Set<number>()
     const orderItemIds = new Set<number>()
+    const orderPrices = new Map<number, number>()
 
     const includeRegularAssets = effectiveMode !== TreeMode.CONTRACTS && effectiveMode !== TreeMode.MARKET_ORDERS
     const includeContracts = effectiveMode === TreeMode.ALL || effectiveMode === TreeMode.CONTRACTS
@@ -153,6 +154,7 @@ export function TreeTab({ mode }: TreeTabProps) {
               is_singleton: false,
             }
             orderItemIds.add(order.order_id)
+            orderPrices.set(order.order_id, order.price)
             filteredAssets.push({ asset: syntheticAsset, owner })
             allAssets.push({ asset: syntheticAsset, owner })
           }
@@ -163,7 +165,7 @@ export function TreeTab({ mode }: TreeTabProps) {
     const treeMode = effectiveMode === TreeMode.CONTRACTS || effectiveMode === TreeMode.MARKET_ORDERS
       ? TreeMode.ALL
       : effectiveMode
-    const nodes = buildTree(filteredAssets, { mode: treeMode, prices, assetNames, hangarDivisionNames, allAssets })
+    const nodes = buildTree(filteredAssets, { mode: treeMode, prices, assetNames, hangarDivisionNames, allAssets, orderPrices })
 
     if (contractItemIds.size > 0 || orderItemIds.size > 0) {
       markSourceFlags(nodes, contractItemIds, orderItemIds)

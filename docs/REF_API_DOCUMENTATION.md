@@ -41,8 +41,14 @@ Bulk fetch type information including market prices, reprocessing materials, and
       "marketPrice": {
         "adjusted": "403383.05833136983",
         "average": "339354.09",
-        "highestBuy": 314100,
-        "lowestSell": 339300
+        "system": {
+          "highestBuy": 310000,
+          "lowestSell": 335000
+        },
+        "region": {
+          "highestBuy": 314100,
+          "lowestSell": 339300
+        }
       },
       "reprocessingMaterials": [
         {"typeId": 34, "typeName": "Tritanium", "quantity": 13333},
@@ -76,11 +82,14 @@ Bulk fetch type information including market prices, reprocessing materials, and
 | volume | number | Assembled volume (m³) |
 | packagedVolume | number | Packaged volume (m³) |
 | basePrice | number | Base price from SDE |
-| marketPrice | object | Current market prices |
+| marketPrice | object | Current market prices (hierarchical) |
 | marketPrice.adjusted | string | CCP adjusted price |
 | marketPrice.average | string | Average price |
-| marketPrice.highestBuy | number | Highest buy order |
-| marketPrice.lowestSell | number | Lowest sell order |
+| marketPrice.station | object | Station-level prices (when station_id provided) |
+| marketPrice.system | object | System-level prices |
+| marketPrice.region | object | Region-level prices |
+| marketPrice.*.highestBuy | number | Highest buy order at that level |
+| marketPrice.*.lowestSell | number | Lowest sell order at that level |
 | reprocessingMaterials | array | Materials from reprocessing |
 | blueprint | object | Blueprint info if item is manufactured |
 

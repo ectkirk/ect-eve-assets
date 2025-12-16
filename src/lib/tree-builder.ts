@@ -34,6 +34,7 @@ export interface TreeBuilderOptions {
   assetNames?: Map<number, string>
   hangarDivisionNames?: Map<number, string>
   allAssets?: AssetWithOwner[]
+  orderPrices?: Map<number, number>
 }
 
 function isShip(type: CachedType | undefined): boolean {
@@ -162,9 +163,13 @@ function shouldIncludeAsset(
 
 function getAssetPrice(
   asset: ESIAsset,
-  prices: Map<number, number>
+  prices: Map<number, number>,
+  orderPrices?: Map<number, number>
 ): number {
   if (asset.is_blueprint_copy) return 0
+
+  const orderPrice = orderPrices?.get(asset.item_id)
+  if (orderPrice !== undefined) return orderPrice
 
   const abyssalPrice = getAbyssalPrice(asset.item_id)
   if (abyssalPrice !== undefined) return abyssalPrice
@@ -179,9 +184,10 @@ function createItemNode(
   prices: Map<number, number>,
   assetNames?: Map<number, string>,
   depth: number = 0,
-  stationName?: string
+  stationName?: string,
+  orderPrices?: Map<number, number>
 ): TreeNode {
-  const price = getAssetPrice(asset, prices)
+  const price = getAssetPrice(asset, prices, orderPrices)
   const volume = type?.packagedVolume ?? type?.volume ?? 0
   const customName = assetNames?.get(asset.item_id)
   const rawTypeName = type?.name || `Unknown Type ${asset.type_id}`
@@ -365,7 +371,7 @@ export function buildTree(
   assetsWithOwners: AssetWithOwner[],
   options: TreeBuilderOptions
 ): TreeNode[] {
-  const { mode, prices, assetNames, hangarDivisionNames, allAssets } = options
+  const { mode, prices, assetNames, hangarDivisionNames, allAssets, orderPrices } = options
 
   // Build lookup map from all assets (for parent chain resolution)
   const assetById = new Map<number, AssetWithOwner>()
@@ -550,7 +556,8 @@ export function buildTree(
           prices,
           assetNames,
           currentDepth,
-          locationName
+          locationName,
+          orderPrices
         )
         currentParent.children.push(parentNode)
         addedItemIds.add(parentAw.asset.item_id)
@@ -581,7 +588,7 @@ export function buildTree(
     }
 
     // Create and add the item node
-    const itemNode = createItemNode(asset, owner, type, prices, assetNames, currentDepth, locationName)
+    const itemNode = createItemNode(asset, owner, type, prices, assetNames, currentDepth, locationName, orderPrices)
     currentParent.children.push(itemNode)
     addedItemIds.add(asset.item_id)
   }

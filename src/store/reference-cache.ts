@@ -12,6 +12,7 @@ export interface CachedType {
   categoryName: string
   volume: number
   packagedVolume?: number
+  implantSlot?: number
 }
 
 export interface CachedStructure {

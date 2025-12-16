@@ -139,6 +139,7 @@ async function executeTypeBatch(): Promise<Map<number, CachedType>> {
         categoryName: refType.categoryName ?? '',
         volume: refType.volume ?? 0,
         packagedVolume: refType.packagedVolume ?? undefined,
+        implantSlot: refType.implantSlot,
       }
       results.set(id, cached)
       toCache.push(cached)
@@ -279,9 +280,10 @@ export async function fetchPrices(
   const toCache: CachedType[] = []
 
   for (const [typeId, type] of fetched) {
-    const lowestSell = type.marketPrice.lowestSell
+    const contractPrice = type.contractPrice?.price
+    const lowestSell = type.marketPrice.region?.lowestSell
     const average = type.marketPrice.average
-    const price = lowestSell ?? (typeof average === 'string' ? parseFloat(average) : average) ?? 0
+    const price = contractPrice ?? lowestSell ?? (typeof average === 'string' ? parseFloat(average) : average) ?? 0
     if (price > 0) {
       prices.set(typeId, price)
     }
@@ -295,6 +297,7 @@ export async function fetchPrices(
       categoryName: type.categoryName ?? '',
       volume: type.volume ?? 0,
       packagedVolume: type.packagedVolume ?? undefined,
+      implantSlot: type.implantSlot,
     })
   }
 

@@ -322,11 +322,16 @@ const RefPriceLevelSchema = z.object({
   lowestSell: z.number().nullable(),
 })
 
+const RefContractPriceSchema = z.object({
+  price: z.number().nullable(),
+  salesCount: z.number(),
+  timeWindow: z.string().nullable(),
+  hasSufficientData: z.boolean(),
+})
+
 export const RefMarketPriceSchema = z.object({
   adjusted: z.union([z.string(), z.number(), z.null()]).optional(),
   average: z.union([z.string(), z.number(), z.null()]).optional(),
-  highestBuy: z.number().nullable().optional(),
-  lowestSell: z.number().nullable().optional(),
   salesCount: z.number().optional(),
   timeWindow: z.string().nullable().optional(),
   hasSufficientData: z.boolean().optional(),
@@ -346,6 +351,8 @@ export const RefTypeSchema = z.object({
   packagedVolume: z.number().nullable().optional(),
   basePrice: z.number().nullable().optional(),
   marketPrice: RefMarketPriceSchema,
+  contractPrice: RefContractPriceSchema.optional(),
+  implantSlot: z.number().optional(),
 })
 
 export const RefTypeBulkResponseSchema = z.object({
