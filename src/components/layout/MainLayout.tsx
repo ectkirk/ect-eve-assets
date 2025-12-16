@@ -21,7 +21,7 @@ import { ManufacturingTab } from '@/features/manufacturing'
 import { BlueprintResearchTab, CopyingTab } from '@/features/research'
 import { CalculatorTab } from '@/features/calculator'
 import { BuybackTab, BUYBACK_TABS, getConfigByTabName, type BuybackTabType } from '@/features/buyback'
-import { Loader2, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp, Search, X, AlertTriangle, Minus, Square, Copy, Settings, Info, Heart, Shield, FileText, History, RefreshCw, Trash2 } from 'lucide-react'
+import { Loader2, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp, Search, X, AlertTriangle, Minus, Square, Copy, Settings, Info, Heart, Shield, FileText, History, Trash2 } from 'lucide-react'
 import { useThemeStore, THEME_OPTIONS } from '@/store/theme-store'
 import eveSsoLoginWhite from '/eve-sso-login-white.png'
 import { OwnerIcon } from '@/components/ui/type-icon'
@@ -507,50 +507,16 @@ function HeaderControls() {
   )
 }
 
-const PRICE_REFRESH_COOLDOWN_MS = 30 * 60 * 1000
-const PRICE_REFRESH_KEY = 'lastPriceRefresh'
-
 function WindowControls() {
   const [isMaximized, setIsMaximized] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [creditsOpen, setCreditsOpen] = useState(false)
   const [supportOpen, setSupportOpen] = useState(false)
   const [changelogOpen, setChangelogOpen] = useState(false)
-  const [isRefreshingPrices, setIsRefreshingPrices] = useState(false)
   const [isClearingCache, setIsClearingCache] = useState(false)
   const settingsPanelRef = useRef<HTMLDivElement>(null)
   const theme = useThemeStore((s) => s.theme)
   const setTheme = useThemeStore((s) => s.setTheme)
-  const refreshPrices = useAssetStore((s) => s.refreshPrices)
-
-  const getTimeUntilRefresh = () => {
-    const lastRefresh = localStorage.getItem(PRICE_REFRESH_KEY)
-    if (!lastRefresh) return 0
-    const elapsed = Date.now() - parseInt(lastRefresh, 10)
-    return Math.max(0, PRICE_REFRESH_COOLDOWN_MS - elapsed)
-  }
-
-  const [timeUntilRefresh, setTimeUntilRefresh] = useState(getTimeUntilRefresh)
-
-  useEffect(() => {
-    if (timeUntilRefresh <= 0) return
-    const interval = setInterval(() => {
-      setTimeUntilRefresh(getTimeUntilRefresh())
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [timeUntilRefresh])
-
-  const handleRefreshPrices = async () => {
-    if (timeUntilRefresh > 0 || isRefreshingPrices) return
-    setIsRefreshingPrices(true)
-    try {
-      await refreshPrices()
-      localStorage.setItem(PRICE_REFRESH_KEY, Date.now().toString())
-      setTimeUntilRefresh(PRICE_REFRESH_COOLDOWN_MS)
-    } finally {
-      setIsRefreshingPrices(false)
-    }
-  }
 
   const handleClearCache = async () => {
     if (isClearingCache) return
@@ -567,7 +533,6 @@ function WindowControls() {
         useExpiryCacheStore.getState().clear(),
         clearReferenceCache(),
       ])
-      localStorage.removeItem(PRICE_REFRESH_KEY)
       window.location.reload()
     } finally {
       setIsClearingCache(false)
@@ -621,18 +586,6 @@ function WindowControls() {
                   ))}
                 </select>
               </div>
-              <button
-                onClick={handleRefreshPrices}
-                disabled={timeUntilRefresh > 0 || isRefreshingPrices}
-                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-content-secondary hover:bg-surface-tertiary disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <RefreshCw className={`h-4 w-4 ${isRefreshingPrices ? 'animate-spin' : ''}`} />
-                {isRefreshingPrices
-                  ? 'Refreshing...'
-                  : timeUntilRefresh > 0
-                    ? `Refresh Prices (${Math.ceil(timeUntilRefresh / 60000)}m)`
-                    : 'Refresh Prices'}
-              </button>
               <div className="my-2 border-t border-border" />
               <button
                 onClick={() => {
