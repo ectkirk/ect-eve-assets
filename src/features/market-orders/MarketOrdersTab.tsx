@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
-import { ChevronRight, ChevronDown, ArrowUp, ArrowDown, History } from 'lucide-react'
+import { ChevronRight, ChevronDown, History } from 'lucide-react'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { useMarketOrderHistoryStore, type MarketOrderHistory } from '@/store/market-order-history-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useTabControls, type ComparisonLevel } from '@/context'
-import { useColumnSettings, useCacheVersion, useExpandCollapse, type ColumnConfig } from '@/hooks'
+import { useColumnSettings, useCacheVersion, useExpandCollapse, SortableHeader, type ColumnConfig, type SortDirection } from '@/hooks'
 import { type MarketOrder } from '@/store/market-orders-store'
 import { hasType, getType, hasLocation, hasStructure } from '@/store/reference-cache'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
@@ -16,7 +16,6 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
@@ -98,40 +97,6 @@ function DifferenceCell({ orderPrice, comparisonValue, isBuyOrder }: { orderPric
 }
 
 type SortColumn = 'item' | 'price' | 'comparison' | 'difference' | 'qty' | 'total' | 'expires' | 'owner'
-type SortDirection = 'asc' | 'desc'
-
-function SortableHeader({
-  column,
-  label,
-  currentSort,
-  currentDirection,
-  onSort,
-  className = ''
-}: {
-  column: SortColumn
-  label: string
-  currentSort: SortColumn
-  currentDirection: SortDirection
-  onSort: (column: SortColumn) => void
-  className?: string
-}) {
-  const isActive = currentSort === column
-  return (
-    <TableHead
-      className={`cursor-pointer select-none hover:bg-surface-tertiary/50 ${className}`}
-      onClick={() => onSort(column)}
-    >
-      <div className={`flex items-center gap-1 ${className.includes('text-right') ? 'justify-end' : ''}`}>
-        {label}
-        {isActive && (
-          currentDirection === 'asc'
-            ? <ArrowUp className="h-3 w-3" />
-            : <ArrowDown className="h-3 w-3" />
-        )}
-      </div>
-    </TableHead>
-  )
-}
 
 function getExpiryTime(issued: string, duration: number): number {
   return new Date(issued).getTime() + duration * 24 * 60 * 60 * 1000
@@ -240,14 +205,14 @@ function OrdersTable({ orders, comparisonLevel }: { orders: OrderRow[]; comparis
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <SortableHeader column="item" label="Item" currentSort={sellSort} currentDirection={sellDirection} onSort={handleSellSort} />
-                <SortableHeader column="price" label="Price" currentSort={sellSort} currentDirection={sellDirection} onSort={handleSellSort} className="text-right" />
-                <SortableHeader column="comparison" label="Lowest Sell" currentSort={sellSort} currentDirection={sellDirection} onSort={handleSellSort} className="text-right" />
-                <SortableHeader column="difference" label="Difference" currentSort={sellSort} currentDirection={sellDirection} onSort={handleSellSort} className="text-right" />
-                <SortableHeader column="qty" label="Qty" currentSort={sellSort} currentDirection={sellDirection} onSort={handleSellSort} className="text-right" />
-                <SortableHeader column="total" label="Total" currentSort={sellSort} currentDirection={sellDirection} onSort={handleSellSort} className="text-right" />
-                <SortableHeader column="expires" label="Expires" currentSort={sellSort} currentDirection={sellDirection} onSort={handleSellSort} className="text-right" />
-                <SortableHeader column="owner" label="Owner" currentSort={sellSort} currentDirection={sellDirection} onSort={handleSellSort} className="text-right" />
+                <SortableHeader column="item" label="Item" sortColumn={sellSort} sortDirection={sellDirection} onSort={handleSellSort} />
+                <SortableHeader column="price" label="Price" sortColumn={sellSort} sortDirection={sellDirection} onSort={handleSellSort} className="text-right" />
+                <SortableHeader column="comparison" label="Lowest Sell" sortColumn={sellSort} sortDirection={sellDirection} onSort={handleSellSort} className="text-right" />
+                <SortableHeader column="difference" label="Difference" sortColumn={sellSort} sortDirection={sellDirection} onSort={handleSellSort} className="text-right" />
+                <SortableHeader column="qty" label="Qty" sortColumn={sellSort} sortDirection={sellDirection} onSort={handleSellSort} className="text-right" />
+                <SortableHeader column="total" label="Total" sortColumn={sellSort} sortDirection={sellDirection} onSort={handleSellSort} className="text-right" />
+                <SortableHeader column="expires" label="Expires" sortColumn={sellSort} sortDirection={sellDirection} onSort={handleSellSort} className="text-right" />
+                <SortableHeader column="owner" label="Owner" sortColumn={sellSort} sortDirection={sellDirection} onSort={handleSellSort} className="text-right" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -291,14 +256,14 @@ function OrdersTable({ orders, comparisonLevel }: { orders: OrderRow[]; comparis
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <SortableHeader column="item" label="Item" currentSort={buySort} currentDirection={buyDirection} onSort={handleBuySort} />
-                <SortableHeader column="price" label="Price" currentSort={buySort} currentDirection={buyDirection} onSort={handleBuySort} className="text-right" />
-                <SortableHeader column="comparison" label="Highest Buy" currentSort={buySort} currentDirection={buyDirection} onSort={handleBuySort} className="text-right" />
-                <SortableHeader column="difference" label="Difference" currentSort={buySort} currentDirection={buyDirection} onSort={handleBuySort} className="text-right" />
-                <SortableHeader column="qty" label="Qty" currentSort={buySort} currentDirection={buyDirection} onSort={handleBuySort} className="text-right" />
-                <SortableHeader column="total" label="Total" currentSort={buySort} currentDirection={buyDirection} onSort={handleBuySort} className="text-right" />
-                <SortableHeader column="expires" label="Expires" currentSort={buySort} currentDirection={buyDirection} onSort={handleBuySort} className="text-right" />
-                <SortableHeader column="owner" label="Owner" currentSort={buySort} currentDirection={buyDirection} onSort={handleBuySort} className="text-right" />
+                <SortableHeader column="item" label="Item" sortColumn={buySort} sortDirection={buyDirection} onSort={handleBuySort} />
+                <SortableHeader column="price" label="Price" sortColumn={buySort} sortDirection={buyDirection} onSort={handleBuySort} className="text-right" />
+                <SortableHeader column="comparison" label="Highest Buy" sortColumn={buySort} sortDirection={buyDirection} onSort={handleBuySort} className="text-right" />
+                <SortableHeader column="difference" label="Difference" sortColumn={buySort} sortDirection={buyDirection} onSort={handleBuySort} className="text-right" />
+                <SortableHeader column="qty" label="Qty" sortColumn={buySort} sortDirection={buyDirection} onSort={handleBuySort} className="text-right" />
+                <SortableHeader column="total" label="Total" sortColumn={buySort} sortDirection={buyDirection} onSort={handleBuySort} className="text-right" />
+                <SortableHeader column="expires" label="Expires" sortColumn={buySort} sortDirection={buyDirection} onSort={handleBuySort} className="text-right" />
+                <SortableHeader column="owner" label="Owner" sortColumn={buySort} sortDirection={buyDirection} onSort={handleBuySort} className="text-right" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -392,39 +357,6 @@ const PAGE_SIZE = 50
 
 type HistorySortColumn = 'order_id' | 'item' | 'price' | 'qty' | 'total' | 'location' | 'issued' | 'state' | 'owner'
 
-function HistorySortableHeader({
-  column,
-  label,
-  currentSort,
-  currentDirection,
-  onSort,
-  className = ''
-}: {
-  column: HistorySortColumn
-  label: string
-  currentSort: HistorySortColumn
-  currentDirection: SortDirection
-  onSort: (column: HistorySortColumn) => void
-  className?: string
-}) {
-  const isActive = currentSort === column
-  return (
-    <TableHead
-      className={`cursor-pointer select-none hover:bg-surface-tertiary/50 ${className}`}
-      onClick={() => onSort(column)}
-    >
-      <div className={`flex items-center gap-1 ${className.includes('text-right') ? 'justify-end' : ''}`}>
-        {label}
-        {isActive && (
-          currentDirection === 'asc'
-            ? <ArrowUp className="h-3 w-3" />
-            : <ArrowDown className="h-3 w-3" />
-        )}
-      </div>
-    </TableHead>
-  )
-}
-
 function formatIssuedDate(issued: string): string {
   const date = new Date(issued)
   return date.toLocaleDateString()
@@ -503,14 +435,14 @@ function HistoryTable({ orders }: { orders: HistoryOrderRow[] }) {
       <Table>
         <TableHeader>
           <TableRow className="hover:bg-transparent">
-            <HistorySortableHeader column="item" label="Item" currentSort={sortColumn} currentDirection={sortDirection} onSort={handleSort} />
-            <HistorySortableHeader column="price" label="Price" currentSort={sortColumn} currentDirection={sortDirection} onSort={handleSort} className="text-right" />
-            <HistorySortableHeader column="qty" label="Qty" currentSort={sortColumn} currentDirection={sortDirection} onSort={handleSort} className="text-right" />
-            <HistorySortableHeader column="total" label="Total" currentSort={sortColumn} currentDirection={sortDirection} onSort={handleSort} className="text-right" />
-            <HistorySortableHeader column="location" label="Location" currentSort={sortColumn} currentDirection={sortDirection} onSort={handleSort} />
-            <HistorySortableHeader column="issued" label="Issued" currentSort={sortColumn} currentDirection={sortDirection} onSort={handleSort} className="text-right" />
-            <HistorySortableHeader column="state" label="State" currentSort={sortColumn} currentDirection={sortDirection} onSort={handleSort} className="text-right" />
-            <HistorySortableHeader column="owner" label="Owner" currentSort={sortColumn} currentDirection={sortDirection} onSort={handleSort} className="text-right" />
+            <SortableHeader column="item" label="Item" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
+            <SortableHeader column="price" label="Price" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
+            <SortableHeader column="qty" label="Qty" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
+            <SortableHeader column="total" label="Total" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
+            <SortableHeader column="location" label="Location" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
+            <SortableHeader column="issued" label="Issued" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
+            <SortableHeader column="state" label="State" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
+            <SortableHeader column="owner" label="Owner" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
           </TableRow>
         </TableHeader>
         <TableBody>

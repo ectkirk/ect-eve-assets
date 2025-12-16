@@ -13,7 +13,7 @@ import {
   History,
 } from 'lucide-react'
 import { useTabControls } from '@/context'
-import { useColumnSettings, useCacheVersion, type ColumnConfig } from '@/hooks'
+import { useColumnSettings, useCacheVersion, useSortable, SortableHeader, sortRows, type ColumnConfig } from '@/hooks'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useContractsStore, type ContractWithItems } from '@/store/contracts-store'
 import { useAssetData } from '@/hooks/useAssetData'
@@ -28,11 +28,12 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
 import { cn, formatNumber } from '@/lib/utils'
+
+type ContractSortColumn = 'type' | 'items' | 'location' | 'assignee' | 'price' | 'value' | 'expires' | 'completed' | 'volume' | 'collateral' | 'days' | 'owner'
 import { getLocationName } from '@/lib/location-utils'
 import { TypeIcon as ItemTypeIcon } from '@/components/ui/type-icon'
 
@@ -157,6 +158,24 @@ function ContractItemRow({
 
 const PAGE_SIZE = 50
 
+function getDefaultSort(showCourierColumns: boolean, showCompletedDate: boolean): ContractSortColumn {
+  if (showCompletedDate) return 'completed'
+  if (showCourierColumns) return 'price'
+  return 'value'
+}
+
+function getDaysLeft(contract: ESIContract): number {
+  if (contract.status === 'outstanding') {
+    const expiryTime = new Date(contract.date_expired).getTime()
+    return Math.ceil((expiryTime - Date.now()) / (24 * 60 * 60 * 1000))
+  } else if (contract.status === 'in_progress' && contract.date_accepted && contract.days_to_complete) {
+    const acceptedDate = new Date(contract.date_accepted).getTime()
+    const deadline = acceptedDate + contract.days_to_complete * 24 * 60 * 60 * 1000
+    return Math.ceil((deadline - Date.now()) / (24 * 60 * 60 * 1000))
+  }
+  return 0
+}
+
 function ContractsTable({
   contracts,
   cacheVersion,
@@ -170,10 +189,45 @@ function ContractsTable({
 }) {
   const [expandedContracts, setExpandedContracts] = useState<Set<number>>(new Set())
   const [page, setPage] = useState(0)
+  const { sortColumn, sortDirection, handleSort } = useSortable<ContractSortColumn>(getDefaultSort(showCourierColumns, showCompletedDate), 'desc')
 
-  const totalPages = Math.max(1, Math.ceil(contracts.length / PAGE_SIZE))
+  const sortedContracts = useMemo(() => {
+    return sortRows(contracts, sortColumn, sortDirection, (row, column) => {
+      const contract = row.contractWithItems.contract
+      switch (column) {
+        case 'type':
+          return CONTRACT_TYPE_NAMES[contract.type].toLowerCase()
+        case 'items':
+          return row.typeName.toLowerCase()
+        case 'location':
+          return row.locationName.toLowerCase()
+        case 'assignee':
+          return row.assigneeName.toLowerCase()
+        case 'price':
+          return getContractValue(contract)
+        case 'value':
+          return row.itemValue
+        case 'expires':
+          return new Date(contract.date_expired).getTime()
+        case 'completed':
+          return row.dateCompleted ? new Date(row.dateCompleted).getTime() : 0
+        case 'volume':
+          return contract.volume ?? 0
+        case 'collateral':
+          return contract.collateral ?? 0
+        case 'days':
+          return getDaysLeft(contract)
+        case 'owner':
+          return row.ownerName.toLowerCase()
+        default:
+          return 0
+      }
+    })
+  }, [contracts, sortColumn, sortDirection])
+
+  const totalPages = Math.max(1, Math.ceil(sortedContracts.length / PAGE_SIZE))
   const clampedPage = Math.min(page, totalPages - 1)
-  const paginatedContracts = contracts.slice(clampedPage * PAGE_SIZE, (clampedPage + 1) * PAGE_SIZE)
+  const paginatedContracts = sortedContracts.slice(clampedPage * PAGE_SIZE, (clampedPage + 1) * PAGE_SIZE)
 
   const toggleContract = useCallback((contractId: number) => {
     setExpandedContracts((prev) => {
@@ -189,27 +243,27 @@ function ContractsTable({
     <Table>
       <TableHeader>
         <TableRow className="hover:bg-transparent">
-          <TableHead className="w-8"></TableHead>
-          <TableHead>Type</TableHead>
-          {!showCourierColumns && <TableHead>Items</TableHead>}
-          <TableHead>Location</TableHead>
-          <TableHead>Assignee</TableHead>
-          <TableHead className="text-right">Price</TableHead>
-          {!showCourierColumns && !showCompletedDate && <TableHead className="text-right">Value</TableHead>}
+          <th className="w-8"></th>
+          <SortableHeader column="type" label="Type" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
+          {!showCourierColumns && <SortableHeader column="items" label="Items" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />}
+          <SortableHeader column="location" label="Location" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
+          <SortableHeader column="assignee" label="Assignee" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
+          <SortableHeader column="price" label="Price" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
+          {!showCourierColumns && !showCompletedDate && <SortableHeader column="value" label="Value" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />}
           {showCourierColumns && (
             <>
-              <TableHead className="text-right">Volume</TableHead>
-              <TableHead className="text-right">Collateral</TableHead>
-              <TableHead className="text-right">Days Left</TableHead>
+              <SortableHeader column="volume" label="Volume" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
+              <SortableHeader column="collateral" label="Collateral" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
+              <SortableHeader column="days" label="Days Left" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
             </>
           )}
           {showCompletedDate ? (
-            <TableHead className="text-right">Completed</TableHead>
+            <SortableHeader column="completed" label="Completed" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
           ) : !showCourierColumns ? (
-            <TableHead className="text-right">Expires</TableHead>
+            <SortableHeader column="expires" label="Expires" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
           ) : null}
-          <TableHead className="text-right">Status</TableHead>
-          <TableHead className="text-right">Owner</TableHead>
+          <th className="text-right">Status</th>
+          <SortableHeader column="owner" label="Owner" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -368,7 +422,7 @@ function ContractsTable({
     {totalPages > 1 && (
       <div className="flex items-center justify-between px-2 py-2 text-sm">
         <span className="text-content-secondary">
-          {clampedPage * PAGE_SIZE + 1}-{Math.min((clampedPage + 1) * PAGE_SIZE, contracts.length)} of {contracts.length}
+          {clampedPage * PAGE_SIZE + 1}-{Math.min((clampedPage + 1) * PAGE_SIZE, sortedContracts.length)} of {sortedContracts.length}
         </span>
         <div className="flex gap-1">
           <button
