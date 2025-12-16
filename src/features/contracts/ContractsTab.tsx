@@ -11,6 +11,7 @@ import {
   XCircle,
   AlertCircle,
   History,
+  Package,
 } from 'lucide-react'
 import { useTabControls } from '@/context'
 import { useColumnSettings, useCacheVersion, useSortable, SortableHeader, sortRows, type ColumnConfig } from '@/hooks'
@@ -35,6 +36,7 @@ import { cn, formatNumber } from '@/lib/utils'
 type ContractSortColumn = 'type' | 'items' | 'location' | 'assignee' | 'price' | 'value' | 'expires' | 'completed' | 'volume' | 'collateral' | 'days' | 'owner'
 import { getLocationName } from '@/lib/location-utils'
 import { TypeIcon as ItemTypeIcon } from '@/components/ui/type-icon'
+import { ContractItemsDialog } from '@/components/dialogs/ContractItemsDialog'
 
 const CONTRACT_TYPE_NAMES: Record<ESIContract['type'], string> = {
   unknown: 'Unknown',
@@ -120,41 +122,6 @@ function getContractValue(contract: ESIContract): number {
   return (contract.price ?? 0) + (contract.reward ?? 0)
 }
 
-function ContractItemRow({
-  item,
-  cacheVersion,
-}: {
-  item: { type_id: number; quantity: number }
-  cacheVersion: number
-}) {
-  void cacheVersion
-  const type = hasType(item.type_id) ? getType(item.type_id) : undefined
-  const typeName = type?.name ?? `Unknown Type ${item.type_id}`
-
-  return (
-    <TableRow className="bg-surface-secondary/30">
-      <TableCell className="py-1 w-8" />
-      <TableCell className="py-1" />
-      <TableCell className="py-1 pl-8">
-        <div className="flex items-center gap-2">
-          <ItemTypeIcon typeId={item.type_id} categoryId={type?.categoryId} />
-          <span className="text-content-secondary">{typeName}</span>
-          {item.quantity > 1 && (
-            <span className="text-content-muted">x{item.quantity.toLocaleString()}</span>
-          )}
-        </div>
-      </TableCell>
-      <TableCell className="py-1" />
-      <TableCell className="py-1" />
-      <TableCell className="py-1" />
-      <TableCell className="py-1" />
-      <TableCell className="py-1" />
-      <TableCell className="py-1" />
-      <TableCell className="py-1" />
-    </TableRow>
-  )
-}
-
 const PAGE_SIZE = 50
 
 function getDefaultSort(showCourierColumns: boolean, showCompletedDate: boolean): ContractSortColumn {
@@ -177,17 +144,17 @@ function getDaysLeft(contract: ESIContract): number {
 
 function ContractsTable({
   contracts,
-  cacheVersion,
   showCourierColumns = false,
   showCompletedDate = false,
+  prices,
 }: {
   contracts: ContractRow[]
-  cacheVersion: number
   showCourierColumns?: boolean
   showCompletedDate?: boolean
+  prices: Map<number, number>
 }) {
-  const [expandedContracts, setExpandedContracts] = useState<Set<number>>(new Set())
   const [page, setPage] = useState(0)
+  const [selectedContract, setSelectedContract] = useState<ContractRow | null>(null)
   const { sortColumn, sortDirection, handleSort } = useSortable<ContractSortColumn>(getDefaultSort(showCourierColumns, showCompletedDate), 'desc')
 
   const sortedContracts = useMemo(() => {
@@ -228,15 +195,6 @@ function ContractsTable({
   const clampedPage = Math.min(page, totalPages - 1)
   const paginatedContracts = sortedContracts.slice(clampedPage * PAGE_SIZE, (clampedPage + 1) * PAGE_SIZE)
 
-  const toggleContract = useCallback((contractId: number) => {
-    setExpandedContracts((prev) => {
-      const next = new Set(prev)
-      if (next.has(contractId)) next.delete(contractId)
-      else next.add(contractId)
-      return next
-    })
-  }, [])
-
   return (
   <>
     <Table>
@@ -273,14 +231,6 @@ function ContractsTable({
           const expiry = formatExpiry(contract.date_expired)
           const value = getContractValue(contract)
           const hasMultipleItems = items.length > 1
-          const isExpanded = expandedContracts.has(contract.contract_id)
-
-          const itemSummary =
-            items.length === 0
-              ? ''
-              : items.length === 1
-                ? row.typeName
-                : `${items.length} items`
 
           return (
             <React.Fragment key={contract.contract_id}>
@@ -299,15 +249,11 @@ function ContractsTable({
                     <div className="flex items-center gap-2">
                       {hasMultipleItems ? (
                         <button
-                          onClick={() => toggleContract(contract.contract_id)}
-                          className="flex items-center gap-1 hover:text-link"
+                          onClick={() => setSelectedContract(row)}
+                          className="flex items-center gap-1.5 hover:text-link text-accent"
                         >
-                          {isExpanded ? (
-                            <ChevronDown className="h-4 w-4 text-content-secondary" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4 text-content-secondary" />
-                          )}
-                          <span>{itemSummary}</span>
+                          <Package className="h-4 w-4" />
+                          <span>[Multiple Items]</span>
                         </button>
                       ) : (
                         <>
@@ -317,8 +263,8 @@ function ContractsTable({
                               categoryId={row.firstItemCategoryId}
                             />
                           )}
-                          <span className="truncate" title={itemSummary}>
-                            {itemSummary}
+                          <span className="truncate" title={row.typeName}>
+                            {items.length === 0 ? '' : row.typeName}
                           </span>
                         </>
                       )}
@@ -408,11 +354,6 @@ function ContractsTable({
                 </TableCell>
                 <TableCell className="py-1.5 text-right text-content-secondary">{row.ownerName}</TableCell>
               </TableRow>
-              {hasMultipleItems &&
-                isExpanded &&
-                items.map((item, idx) => (
-                  <ContractItemRow key={idx} item={item} cacheVersion={cacheVersion} />
-                ))}
             </React.Fragment>
           )
         })}
@@ -458,6 +399,14 @@ function ContractsTable({
         </div>
       </div>
     )}
+
+    <ContractItemsDialog
+      open={selectedContract !== null}
+      onOpenChange={(open) => !open && setSelectedContract(null)}
+      items={selectedContract?.contractWithItems.items ?? []}
+      contractType={selectedContract ? CONTRACT_TYPE_NAMES[selectedContract.contractWithItems.contract.type] : ''}
+      prices={prices}
+    />
   </>
   )
 }
@@ -466,12 +415,12 @@ function DirectionGroupRow({
   group,
   isExpanded,
   onToggle,
-  cacheVersion,
+  prices,
 }: {
   group: DirectionGroup
   isExpanded: boolean
   onToggle: () => void
-  cacheVersion: number
+  prices: Map<number, number>
 }) {
   const colorClass = group.direction === 'in' ? 'text-status-positive' : 'text-status-warning'
 
@@ -496,7 +445,7 @@ function DirectionGroupRow({
       </button>
       {isExpanded && (
         <div className="border-t border-border/50 bg-surface/30 px-4 pb-2">
-          <ContractsTable contracts={group.contracts} cacheVersion={cacheVersion} />
+          <ContractsTable contracts={group.contracts} prices={prices} />
         </div>
       )}
     </div>
@@ -809,7 +758,7 @@ export function ContractsTab() {
                   group={group}
                   isExpanded={expandedDirections.has(group.direction)}
                   onToggle={() => toggleDirection(group.direction)}
-                  cacheVersion={cacheVersion}
+                  prices={prices}
                 />
               ))}
             </div>
@@ -839,7 +788,7 @@ export function ContractsTab() {
                 </button>
                 {showCourier && (
                   <div className="border-t border-border/50 bg-surface/30 px-4 pb-2">
-                    <ContractsTable contracts={courierGroup.contracts} cacheVersion={cacheVersion} showCourierColumns />
+                    <ContractsTable contracts={courierGroup.contracts} showCourierColumns prices={prices} />
                   </div>
                 )}
               </div>
@@ -867,7 +816,7 @@ export function ContractsTab() {
                 </button>
                 {showCompleted && (
                   <div className="border-t border-border/50 bg-surface/30 px-4 pb-2">
-                    <ContractsTable contracts={completedContracts} cacheVersion={cacheVersion} showCompletedDate />
+                    <ContractsTable contracts={completedContracts} showCompletedDate prices={prices} />
                   </div>
                 )}
               </div>
