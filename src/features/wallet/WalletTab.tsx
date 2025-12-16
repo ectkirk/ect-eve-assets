@@ -2,7 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { ChevronRight, ChevronDown, Wallet, Building2, ScrollText, ArrowUpRight, ArrowDownLeft } from 'lucide-react'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useWalletStore, isCorporationWallet } from '@/store/wallet-store'
-import { useWalletJournalStore } from '@/store/wallet-journal-store'
+import {
+  useWalletJournalStore,
+  CORPORATION_WALLET_DIVISIONS,
+  DEFAULT_WALLET_NAMES,
+} from '@/store/wallet-journal-store'
 import { useDivisionsStore } from '@/store/divisions-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { OwnerIcon } from '@/components/ui/type-icon'
@@ -10,12 +14,7 @@ import { cn, formatISK } from '@/lib/utils'
 import { useTabControls } from '@/context'
 import { useColumnSettings, useExpandCollapse, type ColumnConfig } from '@/hooks'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
-import {
-  JournalTable,
-  DEFAULT_WALLET_NAMES,
-  CORPORATION_WALLET_DIVISIONS,
-  type JournalEntryWithOwner,
-} from './JournalTable'
+import { JournalTable, type JournalEntryWithOwner } from './JournalTable'
 
 export function WalletTab() {
   const ownersRecord = useAuthStore((s) => s.owners)

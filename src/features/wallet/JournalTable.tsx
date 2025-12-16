@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { ArrowUpRight, ArrowDownLeft } from 'lucide-react'
 import { type Owner } from '@/store/auth-store'
-import { type JournalEntry, CORPORATION_WALLET_DIVISIONS } from '@/store/wallet-journal-store'
+import { type JournalEntry, DEFAULT_WALLET_NAMES } from '@/store/wallet-journal-store'
 import { OwnerIcon } from '@/components/ui/type-icon'
 import { cn, formatISK } from '@/lib/utils'
 import { useSortable, SortableHeader, sortRows } from '@/hooks'
@@ -14,18 +14,6 @@ import {
 } from '@/components/ui/table'
 
 type JournalSortColumn = 'date' | 'type' | 'description' | 'division' | 'amount' | 'balance'
-
-export { CORPORATION_WALLET_DIVISIONS }
-
-export const DEFAULT_WALLET_NAMES = [
-  'Master Wallet',
-  '2nd Wallet Division',
-  '3rd Wallet Division',
-  '4th Wallet Division',
-  '5th Wallet Division',
-  '6th Wallet Division',
-  '7th Wallet Division',
-]
 
 const PAGE_SIZE = 50
 

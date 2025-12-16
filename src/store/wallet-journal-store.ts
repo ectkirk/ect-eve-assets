@@ -9,6 +9,16 @@ import { z } from 'zod'
 
 export const CORPORATION_WALLET_DIVISIONS = 7
 
+export const DEFAULT_WALLET_NAMES = [
+  'Master Wallet',
+  '2nd Wallet Division',
+  '3rd Wallet Division',
+  '4th Wallet Division',
+  '5th Wallet Division',
+  '6th Wallet Division',
+  '7th Wallet Division',
+]
+
 export type ESIWalletJournalEntry = z.infer<typeof ESIWalletJournalEntrySchema>
 
 export interface JournalEntry extends ESIWalletJournalEntry {
