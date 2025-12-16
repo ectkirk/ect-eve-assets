@@ -15,6 +15,7 @@ import { ArrowUpDown, Loader2 } from 'lucide-react'
 import { type ESIAsset } from '@/api/endpoints/assets'
 import { isAbyssalTypeId } from '@/api/mutamarket-client'
 import { getAbyssalPrice, getTypeName, getType, getStructure, getLocation, CategoryIds } from '@/store/reference-cache'
+import { HANGAR_FLAGS, DELIVERY_FLAGS, ASSET_SAFETY_FLAGS } from '@/lib/tree-types'
 import { formatBlueprintName } from '@/store/blueprints-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
@@ -33,6 +34,7 @@ interface AssetRow {
   systemName: string
   regionName: string
   locationFlag: string
+  originalFlag: string
   isSingleton: boolean
   isBlueprintCopy: boolean
   price: number
@@ -275,8 +277,9 @@ export function AssetsTab() {
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(loadColumnVisibility)
   const [categoryFilterValue, setCategoryFilterValue] = useState('')
+  const [assetTypeFilterValue, setAssetTypeFilterValue] = useState('')
 
-  const { setColumns, search, setCategoryFilter, setResultCount, setTotalValue } = useTabControls()
+  const { setColumns, search, setCategoryFilter, setAssetTypeFilter, setResultCount, setTotalValue } = useTabControls()
 
   useEffect(() => {
     saveColumnVisibility(columnVisibility)
@@ -379,6 +382,7 @@ export function AssetsTab() {
           systemName,
           regionName,
           locationFlag: displayFlag,
+          originalFlag: asset.location_flag,
           isSingleton: asset.is_singleton,
           isBlueprintCopy: isBpc,
           price,
@@ -439,6 +443,30 @@ export function AssetsTab() {
   const filteredData = useMemo(() => {
     const searchLower = search.toLowerCase()
     return selectedData.filter((row) => {
+      if (assetTypeFilterValue) {
+        const flag = row.originalFlag
+        const isShip = row.categoryId === CategoryIds.SHIP
+        switch (assetTypeFilterValue) {
+          case 'CONTRACTS':
+            if (!row.isInContract) return false
+            break
+          case 'MARKET_ORDERS':
+            if (!row.isInMarketOrder) return false
+            break
+          case 'DELIVERIES':
+            if (!DELIVERY_FLAGS.has(flag)) return false
+            break
+          case 'ASSET_SAFETY':
+            if (!ASSET_SAFETY_FLAGS.has(flag)) return false
+            break
+          case 'ITEM_HANGAR':
+            if (isShip || !HANGAR_FLAGS.has(flag)) return false
+            break
+          case 'SHIP_HANGAR':
+            if (!isShip || !HANGAR_FLAGS.has(flag)) return false
+            break
+        }
+      }
       if (categoryFilterValue && row.categoryName !== categoryFilterValue) return false
       if (search) {
         const matchesType = row.typeName.toLowerCase().includes(searchLower)
@@ -450,7 +478,7 @@ export function AssetsTab() {
       }
       return true
     })
-  }, [selectedData, categoryFilterValue, search])
+  }, [selectedData, assetTypeFilterValue, categoryFilterValue, search])
 
   const table = useReactTable({
     data: filteredData,
@@ -489,6 +517,14 @@ export function AssetsTab() {
     })
     return () => setCategoryFilter(null)
   }, [categories, categoryFilterValue, setCategoryFilter])
+
+  useEffect(() => {
+    setAssetTypeFilter({
+      value: assetTypeFilterValue,
+      onChange: setAssetTypeFilterValue,
+    })
+    return () => setAssetTypeFilter(null)
+  }, [assetTypeFilterValue, setAssetTypeFilter])
 
   useEffect(() => {
     setResultCount({ showing: filteredData.length, total: selectedData.length })
