@@ -299,10 +299,34 @@ export async function resolveAllReferenceData(ids: ResolutionIds): Promise<void>
 }
 
 let resolutionPending = false
+let resolutionQueued = false
 let resolutionTimeout: ReturnType<typeof setTimeout> | null = null
 
+async function runResolution(): Promise<void> {
+  const { useAssetStore } = await import('@/store/asset-store')
+  const { useContractsStore } = await import('@/store/contracts-store')
+  const { useMarketOrdersStore } = await import('@/store/market-orders-store')
+  const { useIndustryJobsStore } = await import('@/store/industry-jobs-store')
+  const { useStructuresStore } = await import('@/store/structures-store')
+  const { useClonesStore } = await import('@/store/clones-store')
+
+  const ids = collectResolutionIds(
+    useAssetStore.getState().assetsByOwner,
+    useContractsStore.getState().contractsByOwner,
+    useMarketOrdersStore.getState().dataByOwner,
+    useIndustryJobsStore.getState().dataByOwner,
+    useStructuresStore.getState().dataByOwner,
+    useClonesStore.getState().dataByOwner
+  )
+
+  await resolveAllReferenceData(ids)
+}
+
 export async function triggerResolution(): Promise<void> {
-  if (resolutionPending) return
+  if (resolutionPending) {
+    resolutionQueued = true
+    return
+  }
 
   if (resolutionTimeout) {
     clearTimeout(resolutionTimeout)
@@ -310,27 +334,15 @@ export async function triggerResolution(): Promise<void> {
 
   resolutionTimeout = setTimeout(async () => {
     resolutionPending = true
+    resolutionTimeout = null
     try {
-      const { useAssetStore } = await import('@/store/asset-store')
-      const { useContractsStore } = await import('@/store/contracts-store')
-      const { useMarketOrdersStore } = await import('@/store/market-orders-store')
-      const { useIndustryJobsStore } = await import('@/store/industry-jobs-store')
-      const { useStructuresStore } = await import('@/store/structures-store')
-      const { useClonesStore } = await import('@/store/clones-store')
-
-      const ids = collectResolutionIds(
-        useAssetStore.getState().assetsByOwner,
-        useContractsStore.getState().contractsByOwner,
-        useMarketOrdersStore.getState().dataByOwner,
-        useIndustryJobsStore.getState().dataByOwner,
-        useStructuresStore.getState().dataByOwner,
-        useClonesStore.getState().dataByOwner
-      )
-
-      await resolveAllReferenceData(ids)
+      await runResolution()
+      while (resolutionQueued) {
+        resolutionQueued = false
+        await runResolution()
+      }
     } finally {
       resolutionPending = false
-      resolutionTimeout = null
     }
   }, 50)
 }
