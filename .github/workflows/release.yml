@@ -28,6 +28,7 @@ jobs:
         run: npm run dist:win -- --publish never
         env:
           EVE_CLIENT_ID: ${{ secrets.EVE_CLIENT_ID }}
+          REF_API_KEY: ${{ secrets.REF_API_KEY }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v5
