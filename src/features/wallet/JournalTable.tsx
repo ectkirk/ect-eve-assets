@@ -1,29 +1,19 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { ArrowUpRight, ArrowDownLeft } from 'lucide-react'
 import { type Owner } from '@/store/auth-store'
-import { type JournalEntry, CORPORATION_WALLET_DIVISIONS } from '@/store/wallet-journal-store'
+import { type JournalEntry, DEFAULT_WALLET_NAMES } from '@/store/wallet-journal-store'
 import { OwnerIcon } from '@/components/ui/type-icon'
 import { cn, formatISK } from '@/lib/utils'
+import { useSortable, SortableHeader, sortRows } from '@/hooks'
 import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
 
-export { CORPORATION_WALLET_DIVISIONS }
-
-export const DEFAULT_WALLET_NAMES = [
-  'Master Wallet',
-  '2nd Wallet Division',
-  '3rd Wallet Division',
-  '4th Wallet Division',
-  '5th Wallet Division',
-  '6th Wallet Division',
-  '7th Wallet Division',
-]
+type JournalSortColumn = 'date' | 'type' | 'description' | 'division' | 'amount' | 'balance'
 
 const PAGE_SIZE = 50
 
@@ -59,9 +49,32 @@ export function JournalTable({
   corporationId,
 }: JournalTableProps) {
   const [page, setPage] = useState(0)
-  const totalPages = Math.max(1, Math.ceil(entries.length / PAGE_SIZE))
+  const { sortColumn, sortDirection, handleSort } = useSortable<JournalSortColumn>('date', 'desc')
+
+  const sortedEntries = useMemo(() => {
+    return sortRows(entries, sortColumn, sortDirection, (entry, column) => {
+      switch (column) {
+        case 'date':
+          return new Date(entry.date).getTime()
+        case 'type':
+          return entry.ref_type.toLowerCase()
+        case 'description':
+          return entry.description.toLowerCase()
+        case 'division':
+          return entry.division ?? 0
+        case 'amount':
+          return entry.amount ?? 0
+        case 'balance':
+          return entry.balance ?? 0
+        default:
+          return 0
+      }
+    })
+  }, [entries, sortColumn, sortDirection])
+
+  const totalPages = Math.max(1, Math.ceil(sortedEntries.length / PAGE_SIZE))
   const clampedPage = Math.min(page, totalPages - 1)
-  const paginatedEntries = entries.slice(clampedPage * PAGE_SIZE, (clampedPage + 1) * PAGE_SIZE)
+  const paginatedEntries = sortedEntries.slice(clampedPage * PAGE_SIZE, (clampedPage + 1) * PAGE_SIZE)
 
   if (entries.length === 0) {
     return <div className="text-center py-8 text-content-secondary">No journal entries</div>
@@ -72,13 +85,13 @@ export function JournalTable({
       <Table>
         <TableHeader>
           <TableRow className="hover:bg-transparent">
-            {showOwner && <TableHead className="w-8"></TableHead>}
-            <TableHead className="w-32">Date</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead className="max-w-md">Description</TableHead>
-            {showDivision && <TableHead className="w-32">Division</TableHead>}
-            <TableHead className="text-right w-36">Amount</TableHead>
-            <TableHead className="text-right w-36">Balance</TableHead>
+            {showOwner && <th className="w-8"></th>}
+            <SortableHeader column="date" label="Date" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="w-32" />
+            <SortableHeader column="type" label="Type" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
+            <SortableHeader column="description" label="Description" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="max-w-md" />
+            {showDivision && <SortableHeader column="division" label="Division" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="w-32" />}
+            <SortableHeader column="amount" label="Amount" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right w-36" />
+            <SortableHeader column="balance" label="Balance" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right w-36" />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -136,7 +149,7 @@ export function JournalTable({
       {totalPages > 1 && (
         <div className="flex items-center justify-between px-2 py-2 text-sm border-t border-border/50">
           <span className="text-content-secondary text-xs">
-            {clampedPage * PAGE_SIZE + 1}-{Math.min((clampedPage + 1) * PAGE_SIZE, entries.length)} of {entries.length}
+            {clampedPage * PAGE_SIZE + 1}-{Math.min((clampedPage + 1) * PAGE_SIZE, sortedEntries.length)} of {sortedEntries.length}
           </span>
           <div className="flex gap-1">
             <button

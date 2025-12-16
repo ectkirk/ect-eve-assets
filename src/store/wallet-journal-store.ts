@@ -9,6 +9,16 @@ import { z } from 'zod'
 
 export const CORPORATION_WALLET_DIVISIONS = 7
 
+export const DEFAULT_WALLET_NAMES = [
+  'Master Wallet',
+  '2nd Wallet Division',
+  '3rd Wallet Division',
+  '4th Wallet Division',
+  '5th Wallet Division',
+  '6th Wallet Division',
+  '7th Wallet Division',
+]
+
 export type ESIWalletJournalEntry = z.infer<typeof ESIWalletJournalEntrySchema>
 
 export interface JournalEntry extends ESIWalletJournalEntry {
@@ -22,6 +32,19 @@ interface JournalData {
 export interface OwnerJournal {
   owner: Owner
   entries: JournalEntry[]
+}
+
+function getExistingData(owner: Owner): { entries: JournalEntry[]; entryIds: Set<number> } {
+  const state = useWalletJournalStore.getState()
+  const key = ownerKey(owner.type, owner.id)
+  const ownerData = state.journalByOwner.find(
+    (j) => ownerKey(j.owner.type, j.owner.id) === key
+  )
+  const entries = ownerData?.entries ?? []
+  return {
+    entries,
+    entryIds: new Set(entries.map((e) => e.id)),
+  }
 }
 
 interface JournalState {
@@ -58,28 +81,87 @@ function getJournalEndpoint(owner: Owner): string {
   return `/characters/${owner.characterId}/wallet/journal/`
 }
 
+async function fetchJournalIncremental(
+  endpoint: string,
+  characterId: number,
+  existingEntryIds: Set<number>,
+  division?: number
+): Promise<{
+  entries: JournalEntry[]
+  expiresAt: number
+  etag: string | null
+  stoppedEarly: boolean
+}> {
+  const newEntries: JournalEntry[] = []
+  let page = 1
+  let totalPages = 1
+  let expiresAt = Date.now() + 3600000
+  let etag: string | null = null
+  let foundExisting = false
+
+  while (page <= totalPages && !foundExisting) {
+    const pagedEndpoint = `${endpoint}?page=${page}`
+
+    try {
+      const result = await esi.fetchWithMeta<ESIWalletJournalEntry[]>(pagedEndpoint, {
+        characterId,
+        schema: ESIWalletJournalEntrySchema.array(),
+      })
+
+      expiresAt = result.expiresAt
+      etag = result.etag
+      if (result.xPages) totalPages = result.xPages
+
+      for (const entry of result.data) {
+        if (existingEntryIds.has(entry.id)) {
+          foundExisting = true
+          break
+        }
+        const journalEntry: JournalEntry = division !== undefined ? { ...entry, division } : entry
+        newEntries.push(journalEntry)
+      }
+
+      page++
+    } catch (err) {
+      logger.error('Failed to fetch journal page', err instanceof Error ? err : undefined, {
+        module: 'WalletJournalStore',
+        endpoint,
+        page,
+      })
+      throw err
+    }
+  }
+
+  return { entries: newEntries, expiresAt, etag, stoppedEarly: foundExisting }
+}
+
 async function fetchJournalForOwner(owner: Owner): Promise<{
   entries: JournalEntry[]
   expiresAt: number
   etag?: string | null
 }> {
+  const { entries: existingEntries, entryIds: existingEntryIds } = getExistingData(owner)
+
   if (owner.type === 'corporation') {
-    const allEntries: JournalEntry[] = []
+    const newEntries: JournalEntry[] = []
     let latestExpiry = 0
     let latestEtag: string | null = null
+    let anyStoppedEarly = false
 
     for (let division = 1; division <= CORPORATION_WALLET_DIVISIONS; division++) {
       try {
-        const result = await esi.fetchPaginatedWithMeta<ESIWalletJournalEntry>(
+        const result = await fetchJournalIncremental(
           `/corporations/${owner.id}/wallets/${division}/journal/`,
-          { characterId: owner.characterId, schema: ESIWalletJournalEntrySchema }
+          owner.characterId,
+          existingEntryIds,
+          division
         )
-        const entriesWithDivision = result.data.map((e) => ({ ...e, division }))
-        allEntries.push(...entriesWithDivision)
+        newEntries.push(...result.entries)
         if (result.expiresAt > latestExpiry) {
           latestExpiry = result.expiresAt
-          latestEtag = result.etag ?? null
+          latestEtag = result.etag
         }
+        if (result.stoppedEarly) anyStoppedEarly = true
       } catch {
         logger.warn(`Failed to fetch journal for division ${division}`, {
           module: 'WalletJournalStore',
@@ -89,16 +171,40 @@ async function fetchJournalForOwner(owner: Owner): Promise<{
       }
     }
 
-    allEntries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    return { entries: allEntries, expiresAt: latestExpiry, etag: latestEtag }
+    const mergedEntries = [...newEntries, ...existingEntries]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+
+    logger.info('Corporation journal fetched', {
+      module: 'WalletJournalStore',
+      owner: owner.name,
+      newEntries: newEntries.length,
+      existing: existingEntries.length,
+      total: mergedEntries.length,
+      stoppedEarly: anyStoppedEarly,
+    })
+
+    return { entries: mergedEntries, expiresAt: latestExpiry, etag: latestEtag }
   }
 
-  const result = await esi.fetchPaginatedWithMeta<ESIWalletJournalEntry>(
+  const result = await fetchJournalIncremental(
     `/characters/${owner.characterId}/wallet/journal/`,
-    { characterId: owner.characterId, schema: ESIWalletJournalEntrySchema }
+    owner.characterId,
+    existingEntryIds
   )
-  const entries = result.data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-  return { entries, expiresAt: result.expiresAt, etag: result.etag }
+
+  const mergedEntries = [...result.entries, ...existingEntries]
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+
+  logger.info('Character journal fetched', {
+    module: 'WalletJournalStore',
+    owner: owner.name,
+    newEntries: result.entries.length,
+    existing: existingEntries.length,
+    total: mergedEntries.length,
+    stoppedEarly: result.stoppedEarly,
+  })
+
+  return { entries: mergedEntries, expiresAt: result.expiresAt, etag: result.etag }
 }
 
 export const useWalletJournalStore = create<JournalStore>((set, get) => ({

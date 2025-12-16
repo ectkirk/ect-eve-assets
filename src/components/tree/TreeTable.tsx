@@ -1,4 +1,4 @@
-import { useMemo, useRef, useCallback, useState, useEffect } from 'react'
+import { useMemo, useRef, useCallback, useState, useEffect, memo } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import {
   ChevronRight,
@@ -16,10 +16,10 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { useSortable, SortableHeader, type SortDirection } from '@/hooks'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -29,10 +29,65 @@ import {
 import type { TreeNode, TreeNodeType } from '@/lib/tree-types'
 import { flattenTree, getAllNodeIds } from '@/lib/tree-builder'
 import { cn } from '@/lib/utils'
-import { TypeIcon } from '@/components/ui/type-icon'
+import { TypeIcon, OwnerIcon } from '@/components/ui/type-icon'
 import { useTabControls } from '@/context'
 import { useColumnSettings, type ColumnConfig } from '@/hooks'
 import { FittingDialog } from '@/components/dialogs/FittingDialog'
+
+type TreeSortColumn = 'name' | 'region' | 'quantity' | 'value' | 'volume'
+
+function sortTreeNodes(
+  nodes: TreeNode[],
+  sortColumn: TreeSortColumn,
+  sortDirection: SortDirection,
+  parentRegionName?: string
+): TreeNode[] {
+  const sorted = [...nodes].sort((a, b) => {
+    let aVal: number | string
+    let bVal: number | string
+
+    const aRegion = a.regionName ?? parentRegionName ?? ''
+    const bRegion = b.regionName ?? parentRegionName ?? ''
+
+    switch (sortColumn) {
+      case 'name':
+        aVal = a.name.toLowerCase()
+        bVal = b.name.toLowerCase()
+        break
+      case 'region':
+        aVal = aRegion.toLowerCase()
+        bVal = bRegion.toLowerCase()
+        break
+      case 'quantity':
+        aVal = a.totalCount
+        bVal = b.totalCount
+        break
+      case 'value':
+        aVal = a.totalValue
+        bVal = b.totalValue
+        break
+      case 'volume':
+        aVal = a.totalVolume
+        bVal = b.totalVolume
+        break
+      default:
+        return 0
+    }
+
+    if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1
+    if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1
+    return 0
+  })
+
+  return sorted.map((node) => {
+    const nodeRegion = node.regionName ?? parentRegionName
+    return {
+      ...node,
+      regionName: nodeRegion,
+      children: sortTreeNodes(node.children, sortColumn, sortDirection, nodeRegion),
+    }
+  })
+}
 
 interface TreeTableProps {
   nodes: TreeNode[]
@@ -94,16 +149,22 @@ const DIVISION_COLORS = [
   'text-accent',
 ]
 
-function TreeNodeIcon({ nodeType, divisionNumber }: { nodeType: TreeNodeType; divisionNumber?: number }) {
+const TreeNodeIcon = memo(function TreeNodeIcon({
+  nodeType,
+  divisionNumber,
+}: {
+  nodeType: TreeNodeType
+  divisionNumber?: number
+}) {
   const Icon = NODE_TYPE_ICONS[nodeType]
   let colorClass = NODE_TYPE_COLORS[nodeType]
   if (nodeType === 'division' && divisionNumber !== undefined && divisionNumber >= 1 && divisionNumber <= 7) {
     colorClass = DIVISION_COLORS[divisionNumber - 1]!
   }
   return <Icon className={cn('h-4 w-4 flex-shrink-0', colorClass)} />
-}
+})
 
-function ItemIcon({ node }: { node: TreeNode }) {
+const ItemIcon = memo(function ItemIcon({ node }: { node: TreeNode }) {
   if (!node.typeId) {
     return <TreeNodeIcon nodeType={node.nodeType} divisionNumber={node.divisionNumber} />
   }
@@ -115,21 +176,29 @@ function ItemIcon({ node }: { node: TreeNode }) {
       isBlueprintCopy={node.isBlueprintCopy}
     />
   )
-}
+})
 
 const TREE_COLUMNS: ColumnConfig[] = [
   { id: 'name', label: 'Name' },
+  { id: 'region', label: 'Region' },
   { id: 'quantity', label: 'Quantity' },
   { id: 'value', label: 'Value' },
   { id: 'volume', label: 'Volume', defaultVisible: false },
 ]
 
-function TreeRowContent({ node, isExpanded, onToggle, visibleColumns }: {
+interface TreeRowContentProps {
   node: TreeNode
   isExpanded: boolean
-  onToggle: () => void
+  onToggleExpand: (nodeId: string) => void
   visibleColumns: string[]
-}) {
+}
+
+const TreeRowContent = memo(function TreeRowContent({
+  node,
+  isExpanded,
+  onToggleExpand,
+  visibleColumns,
+}: TreeRowContentProps) {
   const hasChildren = node.children.length > 0
   const indentPx = node.depth * 20
 
@@ -140,22 +209,24 @@ function TreeRowContent({ node, isExpanded, onToggle, visibleColumns }: {
   const isOfficeNode = node.nodeType === 'office'
   const isDivisionNode = node.nodeType === 'division'
 
+  const handleToggleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+    onToggleExpand(node.id)
+  }, [onToggleExpand, node.id])
+
   return (
     <>
       {visibleColumns.map((colId) => {
         if (colId === 'name') {
           return (
-            <TableCell key={colId} className="py-1.5">
+            <TableCell key={colId} className="py-1.5 overflow-hidden">
               <div
-                className="flex items-center gap-1"
+                className="flex flex-nowrap items-center gap-1 min-w-0"
                 style={{ paddingLeft: `${indentPx}px` }}
               >
                 {hasChildren ? (
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onToggle()
-                    }}
+                    onClick={handleToggleClick}
                     className="p-0.5 hover:bg-surface-tertiary rounded"
                   >
                     {isExpanded ? (
@@ -168,6 +239,10 @@ function TreeRowContent({ node, isExpanded, onToggle, visibleColumns }: {
                   <span className="w-5" />
                 )}
 
+                {isAssetNode && node.ownerId && node.ownerType && (
+                  <OwnerIcon ownerId={node.ownerId} ownerType={node.ownerType} size="sm" />
+                )}
+
                 {isAssetNode ? (
                   <ItemIcon node={node} />
                 ) : (
@@ -176,7 +251,7 @@ function TreeRowContent({ node, isExpanded, onToggle, visibleColumns }: {
 
                 <span
                   className={cn(
-                    'truncate',
+                    'truncate min-w-0',
                     isLocationNode && node.nodeType === 'region' && 'font-semibold text-accent',
                     isLocationNode && node.nodeType === 'system' && 'font-medium text-status-highlight',
                     isLocationNode && node.nodeType === 'station' && 'text-status-info',
@@ -193,7 +268,30 @@ function TreeRowContent({ node, isExpanded, onToggle, visibleColumns }: {
                     </>
                   ) : node.name}
                 </span>
+                {(node.isInContract || node.isInMarketOrder || node.isInIndustryJob || node.isOwnedStructure) && (
+                  <span className="shrink-0 inline-flex items-center gap-1 ml-2 whitespace-nowrap">
+                    {node.isInContract && (
+                      <span className="text-xs text-status-corp bg-semantic-warning/20 px-1.5 py-0.5 rounded whitespace-nowrap">In Contract</span>
+                    )}
+                    {node.isInMarketOrder && (
+                      <span className="text-xs text-status-info bg-accent/20 px-1.5 py-0.5 rounded whitespace-nowrap">Sell Order</span>
+                    )}
+                    {node.isInIndustryJob && (
+                      <span className="text-xs text-status-positive bg-status-positive/20 px-1.5 py-0.5 rounded whitespace-nowrap">In Job</span>
+                    )}
+                    {node.isOwnedStructure && (
+                      <span className="text-xs text-status-special bg-status-special/20 px-1.5 py-0.5 rounded whitespace-nowrap">Structure</span>
+                    )}
+                  </span>
+                )}
               </div>
+            </TableCell>
+          )
+        }
+        if (colId === 'region') {
+          return (
+            <TableCell key={colId} className="py-1.5 text-content-secondary w-40">
+              {node.nodeType !== 'region' && node.regionName ? node.regionName : '-'}
             </TableCell>
           )
         }
@@ -224,10 +322,81 @@ function TreeRowContent({ node, isExpanded, onToggle, visibleColumns }: {
       })}
     </>
   )
+})
+
+interface TreeRowProps {
+  node: TreeNode
+  virtualIndex: number
+  isExpanded: boolean
+  onToggleExpand: (nodeId: string) => void
+  onViewFitting: (node: TreeNode) => void
+  visibleColumns: string[]
 }
+
+const TreeRow = memo(function TreeRow({
+  node,
+  virtualIndex,
+  isExpanded,
+  onToggleExpand,
+  onViewFitting,
+  visibleColumns,
+}: TreeRowProps) {
+  const handleRowClick = useCallback(() => {
+    if (node.children.length > 0) {
+      onToggleExpand(node.id)
+    }
+  }, [node.children.length, node.id, onToggleExpand])
+
+  const handleContextMenuClick = useCallback(() => {
+    onViewFitting(node)
+  }, [node, onViewFitting])
+
+  const isShip = node.nodeType === 'ship'
+
+  const row = (
+    <TableRow
+      key={node.id}
+      data-index={virtualIndex}
+      className={cn(
+        node.nodeType === 'region' && 'bg-surface-secondary/30',
+        node.nodeType === 'system' && 'bg-surface-secondary/20',
+        node.isInContract && 'bg-row-contract',
+        node.isInMarketOrder && 'bg-row-order',
+        node.isInIndustryJob && 'bg-row-industry',
+        node.isOwnedStructure && 'bg-row-structure'
+      )}
+      onClick={handleRowClick}
+    >
+      <TreeRowContent
+        node={node}
+        isExpanded={isExpanded}
+        onToggleExpand={onToggleExpand}
+        visibleColumns={visibleColumns}
+      />
+    </TableRow>
+  )
+
+  if (isShip) {
+    return (
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          {row}
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuItem onClick={handleContextMenuClick}>
+            View Fitting
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
+    )
+  }
+
+  return row
+})
 
 const COLUMN_WIDTHS: Record<string, string> = {
   name: 'w-auto',
+  region: 'w-40',
   quantity: 'w-24',
   value: 'w-32',
   volume: 'w-32',
@@ -235,6 +404,7 @@ const COLUMN_WIDTHS: Record<string, string> = {
 
 const COLUMN_ALIGN: Record<string, string> = {
   name: 'text-left',
+  region: 'text-left',
   quantity: 'text-right',
   value: 'text-right',
   volume: 'text-right',
@@ -253,15 +423,20 @@ export function TreeTable({
   const {
     getVisibleColumns,
     getColumnsForDropdown,
-    handleDragStart,
-    handleDrop,
   } = useColumnSettings(storageKey, TREE_COLUMNS)
 
   const visibleColumns = getVisibleColumns()
 
+  const { sortColumn, sortDirection, handleSort } = useSortable<TreeSortColumn>('value', 'desc')
+
+  const sortedNodes = useMemo(
+    () => sortTreeNodes(nodes, sortColumn, sortDirection),
+    [nodes, sortColumn, sortDirection]
+  )
+
   const flatRows = useMemo(
-    () => flattenTree(nodes, expandedNodes),
-    [nodes, expandedNodes]
+    () => flattenTree(sortedNodes, expandedNodes),
+    [sortedNodes, expandedNodes]
   )
 
   const rowVirtualizer = useVirtualizer({
@@ -271,34 +446,11 @@ export function TreeTable({
     overscan: 15,
   })
 
-  const totals = useMemo(() => {
-    let totalCount = 0
-    let totalValue = 0
-    let totalVolume = 0
+  const allNodeIds = useMemo(() => getAllNodeIds(sortedNodes), [sortedNodes])
+  const hasExpandableNodes = allNodeIds.length > 0
+  const isAllExpanded = hasExpandableNodes && allNodeIds.every((id) => expandedNodes.has(id))
 
-    for (const node of nodes) {
-      totalCount += node.totalCount
-      totalValue += node.totalValue
-      totalVolume += node.totalVolume
-    }
-
-    return { totalCount, totalValue, totalVolume }
-  }, [nodes])
-
-  const hasExpandableNodes = useMemo(
-    () => getAllNodeIds(nodes).length > 0,
-    [nodes]
-  )
-
-  const allNodeIds = useMemo(() => getAllNodeIds(nodes), [nodes])
-  const isAllExpanded = allNodeIds.length > 0 && allNodeIds.every((id) => expandedNodes.has(id))
-
-  const { setExpandCollapse, setTotalValue, setColumns } = useTabControls()
-
-  useEffect(() => {
-    setTotalValue({ value: totals.totalValue })
-    return () => setTotalValue(null)
-  }, [totals.totalValue, setTotalValue])
+  const { setExpandCollapse, setColumns } = useTabControls()
 
   useEffect(() => {
     setColumns(getColumnsForDropdown())
@@ -325,11 +477,6 @@ export function TreeTable({
     return () => setExpandCollapse(null)
   }, [hasExpandableNodes, isAllExpanded, onExpandAll, onCollapseAll, setExpandCollapse])
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'move'
-  }
-
   const [fittingDialogOpen, setFittingDialogOpen] = useState(false)
   const [selectedShipNode, setSelectedShipNode] = useState<TreeNode | null>(null)
 
@@ -338,7 +485,7 @@ export function TreeTable({
     setFittingDialogOpen(true)
   }, [])
 
-  if (nodes.length === 0) {
+  if (sortedNodes.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
         <p className="text-content-secondary">No items to display.</p>
@@ -358,20 +505,15 @@ export function TreeTable({
                 const col = TREE_COLUMNS.find(c => c.id === colId)
                 if (!col) return null
                 return (
-                  <TableHead
+                  <SortableHeader
                     key={colId}
-                    draggable
-                    onDragStart={() => handleDragStart(colId)}
-                    onDragOver={handleDragOver}
-                    onDrop={() => handleDrop(colId)}
-                    className={cn(
-                      COLUMN_WIDTHS[colId],
-                      COLUMN_ALIGN[colId],
-                      'cursor-grab active:cursor-grabbing'
-                    )}
-                  >
-                    {col.label}
-                  </TableHead>
+                    column={colId as TreeSortColumn}
+                    label={col.label}
+                    sortColumn={sortColumn}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                    className={cn(COLUMN_WIDTHS[colId], COLUMN_ALIGN[colId])}
+                  />
                 )
               })}
             </TableRow>
@@ -390,48 +532,17 @@ export function TreeTable({
                 {rowVirtualizer.getVirtualItems().map((virtualRow) => {
                   const node = flatRows[virtualRow.index]
                   if (!node) return null
-                  const isExpanded = expandedNodes.has(node.id)
-                  const isShip = node.nodeType === 'ship'
-
-                  const row = (
-                    <TableRow
+                  return (
+                    <TreeRow
                       key={node.id}
-                      data-index={virtualRow.index}
-                      className={cn(
-                        node.nodeType === 'region' && 'bg-surface-secondary/30',
-                        node.nodeType === 'system' && 'bg-surface-secondary/20'
-                      )}
-                      onClick={() => {
-                        if (node.children.length > 0) {
-                          onToggleExpand(node.id)
-                        }
-                      }}
-                    >
-                      <TreeRowContent
-                        node={node}
-                        isExpanded={isExpanded}
-                        onToggle={() => onToggleExpand(node.id)}
-                        visibleColumns={visibleColumns}
-                      />
-                    </TableRow>
+                      node={node}
+                      virtualIndex={virtualRow.index}
+                      isExpanded={expandedNodes.has(node.id)}
+                      onToggleExpand={onToggleExpand}
+                      onViewFitting={handleViewFitting}
+                      visibleColumns={visibleColumns}
+                    />
                   )
-
-                  if (isShip) {
-                    return (
-                      <ContextMenu key={node.id}>
-                        <ContextMenuTrigger asChild>
-                          {row}
-                        </ContextMenuTrigger>
-                        <ContextMenuContent>
-                          <ContextMenuItem onClick={() => handleViewFitting(node)}>
-                            View Fitting
-                          </ContextMenuItem>
-                        </ContextMenuContent>
-                      </ContextMenu>
-                    )
-                  }
-
-                  return row
                 })}
                 {rowVirtualizer.getVirtualItems().length > 0 && (
                   <tr>
@@ -463,36 +574,4 @@ export function TreeTable({
       />
     </div>
   )
-}
-
-export function useTreeState(nodes: TreeNode[]) {
-  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set())
-
-  const toggleExpand = useCallback((nodeId: string) => {
-    setExpandedNodes((prev) => {
-      const next = new Set(prev)
-      if (next.has(nodeId)) {
-        next.delete(nodeId)
-      } else {
-        next.add(nodeId)
-      }
-      return next
-    })
-  }, [])
-
-  const expandAll = useCallback(() => {
-    const allIds = getAllNodeIds(nodes)
-    setExpandedNodes(new Set(allIds))
-  }, [nodes])
-
-  const collapseAll = useCallback(() => {
-    setExpandedNodes(new Set())
-  }, [])
-
-  return {
-    expandedNodes,
-    toggleExpand,
-    expandAll,
-    collapseAll,
-  }
 }

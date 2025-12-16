@@ -111,11 +111,10 @@ describe('ref-client', () => {
         return undefined
       })
 
-      mockRefTypes.mockResolvedValueOnce({ items: {} })
+      const result = await runWithTimers(resolveTypes([99999]))
 
-      await runWithTimers(resolveTypes([99999]))
-
-      expect(mockRefTypes).toHaveBeenCalled()
+      expect(mockRefTypes).not.toHaveBeenCalled()
+      expect(result.get(99999)?.name).toBe('Unknown Type 99999')
     })
 
     it('handles API errors gracefully and creates placeholder', async () => {
@@ -227,13 +226,13 @@ describe('ref-client', () => {
       expect(result.size).toBe(0)
     })
 
-    it('extracts lowestSell price', async () => {
+    it('extracts lowestSell price from region', async () => {
       mockRefTypes.mockResolvedValueOnce({
         items: {
           '34': {
             id: 34,
             name: 'Tritanium',
-            marketPrice: { lowestSell: 5.5 },
+            marketPrice: { region: { highestBuy: 5.0, lowestSell: 5.5 } },
           },
         },
       })

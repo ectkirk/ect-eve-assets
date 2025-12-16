@@ -1,0 +1,1 @@
+export { AssetsTreeTab } from './AssetsTreeTab'

@@ -2,13 +2,16 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useAssetStore } from '@/store/asset-store'
 import { useExpiryCacheStore } from '@/store/expiry-cache-store'
+import { useMarketOrdersStore } from '@/store/market-orders-store'
+import { useIndustryJobsStore } from '@/store/industry-jobs-store'
+import { useContractsStore } from '@/store/contracts-store'
+import { useClonesStore } from '@/store/clones-store'
+import { useWalletStore } from '@/store/wallet-store'
+import { useStructuresStore } from '@/store/structures-store'
+import { clearReferenceCache } from '@/store/reference-cache'
 import { AssetsTab } from '@/features/assets'
-import { ItemHangarTab } from '@/features/item-hangar'
-import { ShipHangarTab } from '@/features/ship-hangar'
-import { DeliveriesTab } from '@/features/deliveries'
-import { AssetSafetyTab } from '@/features/asset-safety'
-import { OfficeTab } from '@/features/office'
 import { StructuresTab } from '@/features/structures'
+import { AssetsTreeTab } from '@/features/assets-tree'
 import { MarketOrdersTab } from '@/features/market-orders'
 import { IndustryJobsTab } from '@/features/industry-jobs'
 import { ClonesTab } from '@/features/clones'
@@ -18,13 +21,15 @@ import { ManufacturingTab } from '@/features/manufacturing'
 import { BlueprintResearchTab, CopyingTab } from '@/features/research'
 import { CalculatorTab } from '@/features/calculator'
 import { BuybackTab, BUYBACK_TABS, getConfigByTabName, type BuybackTabType } from '@/features/buyback'
-import { Loader2, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp, Search, X, AlertTriangle, Minus, Square, Copy, Settings, Info, Heart, Shield, FileText } from 'lucide-react'
+import { Loader2, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp, Search, X, AlertTriangle, Minus, Square, Copy, Settings, Info, Heart, Shield, FileText, History, Trash2 } from 'lucide-react'
 import { useThemeStore, THEME_OPTIONS } from '@/store/theme-store'
 import eveSsoLoginWhite from '/eve-sso-login-white.png'
 import { OwnerIcon } from '@/components/ui/type-icon'
 import { OwnerManagementModal } from './OwnerManagementModal'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { CreditsModal } from './CreditsModal'
 import { SupportModal } from './SupportModal'
+import { ChangelogModal } from './ChangelogModal'
 import { UpdateBanner } from './UpdateBanner'
 import { ToastContainer } from './ToastContainer'
 import { useTotalAssets } from '@/hooks'
@@ -35,16 +40,12 @@ type AppMode = 'assets' | 'tools' | 'buyback'
 
 const ASSET_TABS = [
   'Assets',
-  'Item Hangar',
-  'Ship Hangar',
-  'Deliveries',
-  'Asset Safety',
-  'Market Orders',
-  'Industry Jobs',
+  'Assets Tree',
   'Clones',
-  'Office',
-  'Structures',
   'Contracts',
+  'Industry Jobs',
+  'Market Orders',
+  'Structures',
   'Wallet',
 ] as const
 
@@ -62,16 +63,8 @@ function AssetTabContent({ tab }: { tab: AssetTab }) {
   switch (tab) {
     case 'Assets':
       return <AssetsTab />
-    case 'Item Hangar':
-      return <ItemHangarTab />
-    case 'Ship Hangar':
-      return <ShipHangarTab />
-    case 'Deliveries':
-      return <DeliveriesTab />
-    case 'Asset Safety':
-      return <AssetSafetyTab />
-    case 'Office':
-      return <OfficeTab />
+    case 'Assets Tree':
+      return <AssetsTreeTab />
     case 'Structures':
       return <StructuresTab />
     case 'Market Orders':
@@ -263,22 +256,54 @@ function OwnerButton() {
         {selectedOwners.length === 0 ? (
           <span className="text-sm text-content-muted">No Selection</span>
         ) : (
-          <>
-            <div className="flex items-center">
-              {selectedOwners.slice(0, 5).map((owner, i) => (
-                <div
-                  key={ownerKey(owner.type, owner.id)}
-                  className="relative rounded-full ring-2 ring-surface-secondary"
-                  style={{ marginLeft: i === 0 ? 0 : -8, zIndex: 5 - i }}
-                >
-                  <OwnerIcon ownerId={owner.id} ownerType={owner.type} size="lg" />
-                </div>
-              ))}
-            </div>
-            <span className="text-xs text-content-secondary">
-              ({selectedOwners.length}/{owners.length})
-            </span>
-          </>
+          <div className="flex items-center gap-3">
+            {(() => {
+              const selectedCharacters = selectedOwners.filter((o) => o.type === 'character').slice(0, 5)
+              const selectedCorps = selectedOwners.filter((o) => o.type === 'corporation').slice(0, 5)
+              const totalCharacters = owners.filter((o) => o.type === 'character').length
+              const totalCorps = owners.filter((o) => o.type === 'corporation').length
+              return (
+                <>
+                  {totalCharacters > 0 && (
+                    <div className="flex items-center gap-1">
+                      <div className="flex items-center">
+                        {selectedCharacters.map((owner, i) => (
+                          <div
+                            key={ownerKey(owner.type, owner.id)}
+                            className="relative rounded-full ring-2 ring-surface-secondary"
+                            style={{ marginLeft: i === 0 ? 0 : -8, zIndex: 5 - i }}
+                          >
+                            <OwnerIcon ownerId={owner.id} ownerType={owner.type} size="lg" />
+                          </div>
+                        ))}
+                      </div>
+                      <span className="text-xs text-content-secondary">
+                        ({selectedOwners.filter((o) => o.type === 'character').length}/{totalCharacters})
+                      </span>
+                    </div>
+                  )}
+                  {totalCorps > 0 && (
+                    <div className="flex items-center gap-1">
+                      <div className="flex items-center">
+                        {selectedCorps.map((owner, i) => (
+                          <div
+                            key={ownerKey(owner.type, owner.id)}
+                            className="relative rounded-full ring-2 ring-surface-secondary"
+                            style={{ marginLeft: i === 0 ? 0 : -8, zIndex: 5 - i }}
+                          >
+                            <OwnerIcon ownerId={owner.id} ownerType={owner.type} size="lg" />
+                          </div>
+                        ))}
+                      </div>
+                      <span className="text-xs text-content-secondary">
+                        ({selectedOwners.filter((o) => o.type === 'corporation').length}/{totalCorps})
+                      </span>
+                    </div>
+                  )}
+                </>
+              )
+            })()}
+          </div>
         )}
       </button>
       <OwnerManagementModal open={modalOpen} onOpenChange={setModalOpen} />
@@ -359,8 +384,39 @@ function ColumnsDropdown() {
   )
 }
 
+function ComparisonLevelDropdown() {
+  const { comparisonLevel } = useTabControls()
+
+  if (!comparisonLevel) return null
+
+  return (
+    <select
+      value={comparisonLevel.value}
+      onChange={(e) => comparisonLevel.onChange(e.target.value as 'station' | 'system' | 'region')}
+      className="rounded border border-border bg-surface-tertiary px-2 py-1.5 text-sm focus:border-accent focus:outline-hidden"
+    >
+      <option value="station">Station</option>
+      <option value="system">System</option>
+      <option value="region">Region</option>
+    </select>
+  )
+}
+
+const ASSET_TYPE_OPTIONS = [
+  { value: '', label: 'All Types' },
+  { value: 'ASSET_SAFETY', label: 'Asset Safety' },
+  { value: 'CONTRACTS', label: 'Contracts' },
+  { value: 'DELIVERIES', label: 'Deliveries' },
+  { value: 'INDUSTRY_JOBS', label: 'Industry' },
+  { value: 'ITEM_HANGAR', label: 'Item Hangar' },
+  { value: 'MARKET_ORDERS', label: 'Market Orders' },
+  { value: 'OFFICE', label: 'Office' },
+  { value: 'SHIP_HANGAR', label: 'Ship Hangar' },
+  { value: 'STRUCTURES', label: 'Structures' },
+]
+
 function SearchBar() {
-  const { search, setSearch, categoryFilter, resultCount, totalValue } = useTabControls()
+  const { search, setSearch, categoryFilter, assetTypeFilter, resultCount, totalValue } = useTabControls()
 
   return (
     <div className="flex items-center gap-3 border-b border-border bg-surface-secondary/50 px-4 py-2">
@@ -382,6 +438,18 @@ function SearchBar() {
           </button>
         )}
       </div>
+
+      {assetTypeFilter && (
+        <select
+          value={assetTypeFilter.value}
+          onChange={(e) => assetTypeFilter.onChange(e.target.value)}
+          className="w-36 rounded border border-border bg-surface-tertiary px-2 py-1.5 text-sm focus:border-accent focus:outline-hidden"
+        >
+          {ASSET_TYPE_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+      )}
 
       {categoryFilter && (
         <select
@@ -425,6 +493,7 @@ function SearchBar() {
 
       <div className="flex-1" />
 
+      <ComparisonLevelDropdown />
       <ExpandCollapseButton />
       <ColumnsDropdown />
     </div>
@@ -478,9 +547,38 @@ function WindowControls() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [creditsOpen, setCreditsOpen] = useState(false)
   const [supportOpen, setSupportOpen] = useState(false)
+  const [changelogOpen, setChangelogOpen] = useState(false)
+  const [isClearingCache, setIsClearingCache] = useState(false)
+  const [showClearCacheConfirm, setShowClearCacheConfirm] = useState(false)
   const settingsPanelRef = useRef<HTMLDivElement>(null)
   const theme = useThemeStore((s) => s.theme)
   const setTheme = useThemeStore((s) => s.setTheme)
+
+  const handleClearCacheClick = () => {
+    setShowClearCacheConfirm(true)
+  }
+
+  const handleClearCacheConfirm = async () => {
+    setShowClearCacheConfirm(false)
+    if (isClearingCache) return
+    setIsClearingCache(true)
+    try {
+      await Promise.all([
+        useAssetStore.getState().clear(),
+        useMarketOrdersStore.getState().clear(),
+        useIndustryJobsStore.getState().clear(),
+        useContractsStore.getState().clear(),
+        useClonesStore.getState().clear(),
+        useWalletStore.getState().clear(),
+        useStructuresStore.getState().clear(),
+        useExpiryCacheStore.getState().clear(),
+        clearReferenceCache(),
+      ])
+      window.location.reload()
+    } finally {
+      setIsClearingCache(false)
+    }
+  }
 
   useEffect(() => {
     if (!window.electronAPI) return
@@ -532,6 +630,16 @@ function WindowControls() {
               <div className="my-2 border-t border-border" />
               <button
                 onClick={() => {
+                  setChangelogOpen(true)
+                  setSettingsOpen(false)
+                }}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-content-secondary hover:bg-surface-tertiary"
+              >
+                <History className="h-4 w-4" />
+                Changelog
+              </button>
+              <button
+                onClick={() => {
                   setCreditsOpen(true)
                   setSettingsOpen(false)
                 }}
@@ -568,12 +676,31 @@ function WindowControls() {
                 <FileText className="h-4 w-4" />
                 Terms of Service
               </a>
+              <div className="my-2 border-t border-semantic-danger/30" />
+              <button
+                onClick={handleClearCacheClick}
+                disabled={isClearingCache}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-semantic-danger hover:bg-semantic-danger/10 disabled:opacity-50"
+              >
+                <Trash2 className="h-4 w-4" />
+                {isClearingCache ? 'Clearing...' : 'Clear All Caches'}
+              </button>
             </div>
           </div>
         )}
       </div>
+      <ChangelogModal open={changelogOpen} onOpenChange={setChangelogOpen} />
       <CreditsModal open={creditsOpen} onOpenChange={setCreditsOpen} />
       <SupportModal open={supportOpen} onOpenChange={setSupportOpen} />
+      <ConfirmDialog
+        open={showClearCacheConfirm}
+        onOpenChange={setShowClearCacheConfirm}
+        title="Clear All Caches?"
+        description="Are you sure you want to clear all cached data? The app will reload and fetch fresh data from EVE servers."
+        confirmLabel="Clear All"
+        variant="danger"
+        onConfirm={handleClearCacheConfirm}
+      />
       <button
         onClick={() => window.electronAPI?.windowMinimize()}
         className="flex h-10 w-12 items-center justify-center text-content-secondary hover:bg-surface-tertiary hover:text-content"

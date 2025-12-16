@@ -410,7 +410,7 @@ function getRefHeaders(contentType?: 'json'): Record<string, string> {
   return headers
 }
 
-ipcMain.handle('ref:types', async (_event, ids: unknown, market: unknown) => {
+ipcMain.handle('ref:types', async (_event, ids: unknown, market: unknown, stationId?: unknown) => {
   if (!Array.isArray(ids) || ids.length === 0 || ids.length > MAX_REF_IDS) {
     return { error: 'Invalid ids array' }
   }
@@ -420,9 +420,16 @@ ipcMain.handle('ref:types', async (_event, ids: unknown, market: unknown) => {
   if (market !== 'jita' && market !== 'the_forge') {
     return { error: 'Invalid market' }
   }
+  if (stationId !== undefined && (typeof stationId !== 'number' || !Number.isInteger(stationId) || stationId <= 0)) {
+    return { error: 'Invalid station_id' }
+  }
 
   try {
-    const response = await fetch(`${REF_API_BASE}/types?market=${market}`, {
+    let url = `${REF_API_BASE}/types?market=${market}`
+    if (stationId) {
+      url += `&station_id=${stationId}`
+    }
+    const response = await fetch(url, {
       method: 'POST',
       headers: getRefHeaders('json'),
       body: JSON.stringify({ ids }),

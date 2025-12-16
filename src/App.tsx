@@ -1,14 +1,12 @@
 import { useEffect, useState, Component, type ReactNode } from 'react'
 import { useAuthStore } from './store/auth-store'
-import { useAssetStore } from './store/asset-store'
+import { useAssetStore, setupSyntheticAssetSubscriptions } from './store/asset-store'
 import { useMarketOrdersStore } from './store/market-orders-store'
-import { useIndustryJobsStore } from './store/industry-jobs-store'
 import { useContractsStore } from './store/contracts-store'
-import { useClonesStore } from './store/clones-store'
 import { useWalletStore } from './store/wallet-store'
-import { useWalletJournalStore } from './store/wallet-journal-store'
 import { useBlueprintsStore } from './store/blueprints-store'
 import { useStructuresStore } from './store/structures-store'
+import { useIndustryJobsStore } from './store/industry-jobs-store'
 import { useExpiryCacheStore } from './store/expiry-cache-store'
 import { MainLayout } from './components/layout/MainLayout'
 import { initCache } from './store/reference-cache'
@@ -92,17 +90,17 @@ function App() {
         logger.info('Asset store initialized', { module: 'App' })
         return Promise.all([
           useMarketOrdersStore.getState().init(),
-          useIndustryJobsStore.getState().init(),
           useContractsStore.getState().init(),
-          useClonesStore.getState().init(),
           useWalletStore.getState().init(),
-          useWalletJournalStore.getState().init(),
           useBlueprintsStore.getState().init(),
           useStructuresStore.getState().init(),
+          useIndustryJobsStore.getState().init(),
         ])
       })
-      .then(() => {
+      .then(async () => {
         logger.info('All stores initialized', { module: 'App' })
+        setupSyntheticAssetSubscriptions()
+        useAssetStore.getState().rebuildSyntheticAssets()
         const ownerKeys = Object.keys(useAuthStore.getState().owners)
         useExpiryCacheStore.getState().queueMissingEndpoints(ownerKeys)
         appInitComplete = true

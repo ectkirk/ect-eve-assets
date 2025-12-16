@@ -14,10 +14,16 @@ import {
   getStructure,
 } from '@/store/reference-cache'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
-import { resolveTypes, resolveLocations } from '@/api/ref-client'
-import { resolveStructures } from '@/api/endpoints/universe'
 import { cn } from '@/lib/utils'
 import { TypeIcon, CharacterPortrait } from '@/components/ui/type-icon'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableHead,
+  TableRow,
+} from '@/components/ui/table'
 
 interface ImplantInfo {
   typeId: number
@@ -48,6 +54,8 @@ function getImplantSlot(typeId: number): number {
   const type = hasType(typeId) ? getType(typeId) : undefined
   if (!type) return 99
 
+  if (type.implantSlot !== undefined) return type.implantSlot
+
   const name = type.name.toLowerCase()
   for (let i = 1; i <= 10; i++) {
     if (name.includes(`slot ${i}`) || name.includes(`- ${i}`)) return i
@@ -63,16 +71,31 @@ function ImplantList({ implants }: { implants: ImplantInfo[] }) {
   const sorted = [...implants].sort((a, b) => a.slot - b.slot)
 
   return (
-    <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-      {sorted.map((implant) => (
-        <div key={implant.typeId} className="flex items-center gap-2">
-          <TypeIcon typeId={implant.typeId} />
-          <span className="text-sm truncate" title={implant.name}>
-            {implant.name}
-          </span>
-        </div>
-      ))}
-    </div>
+    <Table>
+      <TableHeader>
+        <TableRow className="hover:bg-transparent">
+          <TableHead className="w-16">Slot</TableHead>
+          <TableHead>Implant</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {sorted.map((implant) => (
+          <TableRow key={implant.typeId}>
+            <TableCell className="py-1 text-content-secondary tabular-nums">
+              {implant.slot <= 10 ? implant.slot : '-'}
+            </TableCell>
+            <TableCell className="py-1">
+              <div className="flex items-center gap-2">
+                <TypeIcon typeId={implant.typeId} />
+                <span className="truncate" title={implant.name}>
+                  {implant.name}
+                </span>
+              </div>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   )
 }
 
@@ -180,70 +203,17 @@ export function ClonesTab() {
   const clonesUpdating = useClonesStore((s) => s.isUpdating)
   const updateError = useClonesStore((s) => s.updateError)
   const init = useClonesStore((s) => s.init)
+  const update = useClonesStore((s) => s.update)
   const initialized = useClonesStore((s) => s.initialized)
 
   const { isLoading: assetsUpdating } = useAssetData()
   const isUpdating = assetsUpdating || clonesUpdating
 
   useEffect(() => {
-    init()
-  }, [init])
+    init().then(() => update())
+  }, [init, update])
 
   const cacheVersion = useCacheVersion()
-
-  useEffect(() => {
-    if (clonesByOwner.length === 0) return
-
-    const unresolvedTypeIds = new Set<number>()
-    const unknownLocationIds = new Set<number>()
-    const structureToCharacter = new Map<number, number>()
-
-    const needsResolution = (typeId: number) => {
-      const type = getType(typeId)
-      return !type || type.name.startsWith('Unknown Type ')
-    }
-
-    for (const { owner, clones, activeImplants } of clonesByOwner) {
-      for (const implantId of activeImplants) {
-        if (needsResolution(implantId)) unresolvedTypeIds.add(implantId)
-      }
-
-      if (clones.home_location) {
-        const { location_id, location_type } = clones.home_location
-        if (location_type === 'structure') {
-          if (!hasStructure(location_id)) {
-            structureToCharacter.set(location_id, owner.characterId)
-          }
-        } else if (!hasLocation(location_id)) {
-          unknownLocationIds.add(location_id)
-        }
-      }
-
-      for (const jumpClone of clones.jump_clones) {
-        const { location_id, location_type } = jumpClone
-        if (location_type === 'structure') {
-          if (!hasStructure(location_id)) {
-            structureToCharacter.set(location_id, owner.characterId)
-          }
-        } else if (!hasLocation(location_id)) {
-          unknownLocationIds.add(location_id)
-        }
-        for (const implantId of jumpClone.implants) {
-          if (needsResolution(implantId)) unresolvedTypeIds.add(implantId)
-        }
-      }
-    }
-
-    if (unresolvedTypeIds.size > 0) {
-      resolveTypes(Array.from(unresolvedTypeIds)).catch(() => {})
-    }
-    if (unknownLocationIds.size > 0) {
-      resolveLocations(Array.from(unknownLocationIds)).catch(() => {})
-    }
-    if (structureToCharacter.size > 0) {
-      resolveStructures(structureToCharacter).catch(() => {})
-    }
-  }, [clonesByOwner])
 
   const { setExpandCollapse, search, setResultCount, setColumns } = useTabControls()
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)

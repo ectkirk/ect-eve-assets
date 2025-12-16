@@ -1,1 +1,0 @@
-export { DeliveriesTab } from './DeliveriesTab'

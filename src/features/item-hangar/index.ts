@@ -1,1 +1,0 @@
-export { ItemHangarTab } from './ItemHangarTab'

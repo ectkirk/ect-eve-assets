@@ -3,6 +3,7 @@ import { useAuthStore, type Owner, findOwnerByKey } from './auth-store'
 import { useExpiryCacheStore } from './expiry-cache-store'
 import { createOwnerDB, type OwnerDBConfig } from '@/lib/owner-indexed-db'
 import { logger } from '@/lib/logger'
+import { triggerResolution } from '@/lib/data-resolver'
 
 export interface OwnerData<T> {
   owner: Owner
@@ -35,6 +36,7 @@ export interface OwnerStoreConfig<
   endpointPattern: string
   dbConfig: Omit<OwnerDBConfig<TDBData>, 'moduleName'>
   ownerFilter?: 'all' | 'character' | 'corporation'
+  disableAutoRefresh?: boolean
   getEndpoint: (owner: Owner) => string
   fetchData: (owner: Owner) => Promise<{
     data: TDBData
@@ -81,6 +83,7 @@ export function createOwnerStore<
     endpointPattern,
     dbConfig,
     ownerFilter = 'all',
+    disableAutoRefresh = false,
     getEndpoint,
     fetchData,
     toOwnerData,
@@ -136,6 +139,9 @@ export function createOwnerStore<
           set({ dataByOwner, initialized: true, ...extra } as Partial<
             OwnerStore<TOwnerData, TExtraState, TExtraActions>
           >)
+          if (dataByOwner.length > 0) {
+            triggerResolution()
+          }
           logger.info(`${name} store initialized`, {
             module: moduleName,
             owners: dataByOwner.length,
@@ -224,6 +230,8 @@ export function createOwnerStore<
             ...extra,
           } as Partial<OwnerStore<TOwnerData, TExtraState, TExtraActions>>)
 
+          triggerResolution()
+
           logger.info(`${name} updated`, {
             module: moduleName,
             owners: ownersToUpdate.length,
@@ -278,6 +286,8 @@ export function createOwnerStore<
             OwnerStore<TOwnerData, TExtraState, TExtraActions>
           >)
 
+          triggerResolution()
+
           logger.info(`${name} updated for owner`, {
             module: moduleName,
             owner: owner.name,
@@ -324,14 +334,16 @@ export function createOwnerStore<
 
   const store = create<OwnerStore<TOwnerData, TExtraState, TExtraActions>>(storeCreator)
 
-  useExpiryCacheStore.getState().registerRefreshCallback(endpointPattern, async (ownerKeyStr) => {
-    const owner = findOwnerByKey(ownerKeyStr)
-    if (!owner) {
-      logger.warn('Owner not found for refresh', { module: moduleName, ownerKey: ownerKeyStr })
-      return
-    }
-    await store.getState().updateForOwner(owner)
-  })
+  if (!disableAutoRefresh) {
+    useExpiryCacheStore.getState().registerRefreshCallback(endpointPattern, async (ownerKeyStr) => {
+      const owner = findOwnerByKey(ownerKeyStr)
+      if (!owner) {
+        logger.warn('Owner not found for refresh', { module: moduleName, ownerKey: ownerKeyStr })
+        return
+      }
+      await store.getState().updateForOwner(owner)
+    })
+  }
 
   return store
 }

@@ -1,14 +1,18 @@
 import { create } from 'zustand'
-import { useAuthStore, type Owner, findOwnerByKey } from './auth-store'
+import { useAuthStore, type Owner, findOwnerByKey, ownerKey as makeOwnerKey } from './auth-store'
 import { useExpiryCacheStore } from './expiry-cache-store'
 import { getCharacterAssetNames, getCorporationAssetNames, type ESIAsset, type ESIAssetName } from '@/api/endpoints/assets'
 import { esi, type ESIResponseMeta } from '@/api/esi'
 import { ESIAssetSchema } from '@/api/schemas'
 import { fetchPrices, resolveTypes } from '@/api/ref-client'
-import { fetchAbyssalPrices, isAbyssalTypeId, hasCachedAbyssalPrice } from '@/api/mutamarket-client'
 import { getType } from '@/store/reference-cache'
 import { createOwnerDB } from '@/lib/owner-indexed-db'
 import { logger } from '@/lib/logger'
+import { triggerResolution } from '@/lib/data-resolver'
+import { useContractsStore, type OwnerContracts } from './contracts-store'
+import { useMarketOrdersStore, type OwnerOrders } from './market-orders-store'
+import { useIndustryJobsStore, type OwnerJobs } from './industry-jobs-store'
+import { useStructuresStore, type OwnerStructures } from './structures-store'
 
 const NAMEABLE_CATEGORIES = new Set([6, 22, 65])
 const NAMEABLE_GROUPS = new Set([12, 14, 340, 448, 649])
@@ -21,6 +25,7 @@ export interface OwnerAssets {
 
 interface AssetState {
   assetsByOwner: OwnerAssets[]
+  unifiedAssetsByOwner: OwnerAssets[]
   assetNames: Map<number, string>
   prices: Map<number, number>
   isUpdating: boolean
@@ -35,6 +40,8 @@ interface AssetActions {
   updateForOwner: (owner: Owner) => Promise<void>
   removeForOwner: (ownerType: string, ownerId: number) => Promise<void>
   setPrices: (newPrices: Map<number, number>) => Promise<void>
+  refreshPrices: () => Promise<void>
+  rebuildSyntheticAssets: () => void
   clear: () => Promise<void>
 }
 
@@ -96,8 +103,158 @@ async function fetchOwnerAssetNames(owner: Owner, assets: ESIAsset[]): Promise<E
   return getCharacterAssetNames(owner.id, owner.characterId, nameableIds)
 }
 
+function collectAllTypeIds(
+  assetsByOwner: OwnerAssets[],
+  ordersByOwner: OwnerOrders[],
+  contractsByOwner: OwnerContracts[],
+  jobsByOwner: OwnerJobs[],
+  structuresByOwner: OwnerStructures[]
+): Set<number> {
+  const typeIds = new Set<number>()
+
+  for (const { assets } of assetsByOwner) {
+    for (const asset of assets) {
+      typeIds.add(asset.type_id)
+    }
+  }
+
+  for (const { orders } of ordersByOwner) {
+    for (const order of orders) {
+      typeIds.add(order.type_id)
+    }
+  }
+
+  for (const { contracts } of contractsByOwner) {
+    for (const { items } of contracts) {
+      for (const item of items) {
+        typeIds.add(item.type_id)
+      }
+    }
+  }
+
+  for (const { jobs } of jobsByOwner) {
+    for (const job of jobs) {
+      if (job.product_type_id) {
+        typeIds.add(job.product_type_id)
+      }
+    }
+  }
+
+  for (const { structures } of structuresByOwner) {
+    for (const structure of structures) {
+      typeIds.add(structure.type_id)
+    }
+  }
+
+  return typeIds
+}
+
+function buildSyntheticAssets(
+  contractsByOwner: OwnerContracts[],
+  ordersByOwner: OwnerOrders[],
+  jobsByOwner: OwnerJobs[],
+  structuresByOwner: OwnerStructures[]
+): Map<string, ESIAsset[]> {
+  const owners = Object.values(useAuthStore.getState().owners).filter((o): o is Owner => !!o)
+  const ownerCharIds = new Set(owners.map((o) => o.characterId))
+  const ownerCorpIds = new Set(owners.filter((o) => o.corporationId).map((o) => o.corporationId))
+
+  const syntheticByOwner = new Map<string, ESIAsset[]>()
+
+  for (const { owner, contracts } of contractsByOwner) {
+    const key = makeOwnerKey(owner.type, owner.id)
+    const synthetics: ESIAsset[] = syntheticByOwner.get(key) ?? []
+
+    for (const { contract, items } of contracts) {
+      if (contract.status !== 'outstanding') continue
+      const isIssuer = ownerCharIds.has(contract.issuer_id) || ownerCorpIds.has(contract.issuer_corporation_id)
+      if (!isIssuer) continue
+
+      const locationId = contract.start_location_id ?? 0
+
+      for (const item of items) {
+        if (!item.is_included) continue
+        synthetics.push({
+          item_id: item.record_id,
+          type_id: item.type_id,
+          location_id: locationId,
+          location_type: locationId > 1_000_000_000_000 ? 'other' : 'station',
+          location_flag: 'InContract',
+          quantity: item.quantity,
+          is_singleton: item.is_singleton ?? false,
+          is_blueprint_copy: item.is_blueprint_copy,
+        })
+      }
+    }
+    syntheticByOwner.set(key, synthetics)
+  }
+
+  for (const { owner, orders } of ordersByOwner) {
+    const key = makeOwnerKey(owner.type, owner.id)
+    const synthetics: ESIAsset[] = syntheticByOwner.get(key) ?? []
+
+    for (const order of orders) {
+      if (order.is_buy_order) continue
+      if (order.volume_remain <= 0) continue
+
+      synthetics.push({
+        item_id: order.order_id,
+        type_id: order.type_id,
+        location_id: order.location_id,
+        location_type: order.location_id > 1_000_000_000_000 ? 'other' : 'station',
+        location_flag: 'SellOrder',
+        quantity: order.volume_remain,
+        is_singleton: false,
+      })
+    }
+    syntheticByOwner.set(key, synthetics)
+  }
+
+  for (const { owner, jobs } of jobsByOwner) {
+    const key = makeOwnerKey(owner.type, owner.id)
+    const synthetics: ESIAsset[] = syntheticByOwner.get(key) ?? []
+
+    for (const job of jobs) {
+      if (job.status !== 'active' && job.status !== 'ready') continue
+      const productTypeId = job.product_type_id ?? job.blueprint_type_id
+
+      synthetics.push({
+        item_id: job.job_id,
+        type_id: productTypeId,
+        location_id: job.facility_id,
+        location_type: job.facility_id > 1_000_000_000_000 ? 'other' : 'station',
+        location_flag: 'IndustryJob',
+        quantity: job.runs,
+        is_singleton: false,
+      })
+    }
+    syntheticByOwner.set(key, synthetics)
+  }
+
+  for (const { owner, structures } of structuresByOwner) {
+    const key = makeOwnerKey(owner.type, owner.id)
+    const synthetics: ESIAsset[] = syntheticByOwner.get(key) ?? []
+
+    for (const structure of structures) {
+      synthetics.push({
+        item_id: Number(structure.structure_id),
+        type_id: structure.type_id,
+        location_id: structure.structure_id,
+        location_type: 'other',
+        location_flag: 'Structure',
+        quantity: 1,
+        is_singleton: true,
+      })
+    }
+    syntheticByOwner.set(key, synthetics)
+  }
+
+  return syntheticByOwner
+}
+
 export const useAssetStore = create<AssetStore>((set, get) => ({
   assetsByOwner: [],
+  unifiedAssetsByOwner: [],
   assetNames: new Map(),
   prices: new Map(),
   isUpdating: false,
@@ -118,6 +275,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
       const prices = new Map(pricesEntries ?? [])
 
       set({ assetsByOwner, assetNames, prices, initialized: true })
+      get().rebuildSyntheticAssets()
       logger.info('Asset store initialized from DB', {
         module: 'AssetStore',
         owners: assetsByOwner.length,
@@ -197,12 +355,13 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
 
       const results = Array.from(existingAssets.values())
 
-      const typeIds = new Set<number>()
-      for (const { assets } of results) {
-        for (const asset of assets) {
-          typeIds.add(asset.type_id)
-        }
-      }
+      const typeIds = collectAllTypeIds(
+        results,
+        useMarketOrdersStore.getState().dataByOwner,
+        useContractsStore.getState().contractsByOwner,
+        useIndustryJobsStore.getState().dataByOwner,
+        useStructuresStore.getState().dataByOwner
+      )
 
       const prices = new Map(state.prices)
       if (typeIds.size > 0) {
@@ -217,23 +376,9 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         }
       }
 
-      const abyssalItemIds: number[] = []
-      for (const { assets } of results) {
-        for (const asset of assets) {
-          if (isAbyssalTypeId(asset.type_id) && !hasCachedAbyssalPrice(asset.item_id)) {
-            abyssalItemIds.push(asset.item_id)
-          }
-        }
-      }
-      if (abyssalItemIds.length > 0) {
-        try {
-          await fetchAbyssalPrices(abyssalItemIds)
-        } catch (err) {
-          logger.error('Failed to fetch abyssal prices', err instanceof Error ? err : undefined, { module: 'AssetStore' })
-        }
-      }
-
       await saveMetaToDB(allNames, prices)
+
+      triggerResolution()
 
       set({
         assetsByOwner: results,
@@ -243,6 +388,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         updateProgress: null,
         updateError: results.length === 0 ? 'Failed to fetch any assets' : null,
       })
+      get().rebuildSyntheticAssets()
 
       logger.info('Assets updated', {
         module: 'AssetStore',
@@ -281,10 +427,17 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         }
       }
 
-      const typeIds = new Set<number>()
-      for (const asset of assets) {
-        typeIds.add(asset.type_id)
-      }
+      const updatedAssetsList = state.assetsByOwner
+        .filter((oa) => `${oa.owner.type}-${oa.owner.id}` !== ownerKey)
+        .concat([{ owner, assets }])
+
+      const typeIds = collectAllTypeIds(
+        updatedAssetsList,
+        useMarketOrdersStore.getState().dataByOwner,
+        useContractsStore.getState().contractsByOwner,
+        useIndustryJobsStore.getState().dataByOwner,
+        useStructuresStore.getState().dataByOwner
+      )
 
       const newPrices = new Map(state.prices)
       if (typeIds.size > 0) {
@@ -298,21 +451,9 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         }
       }
 
-      const abyssalItemIds: number[] = []
-      for (const asset of assets) {
-        if (isAbyssalTypeId(asset.type_id) && !hasCachedAbyssalPrice(asset.item_id)) {
-          abyssalItemIds.push(asset.item_id)
-        }
-      }
-      if (abyssalItemIds.length > 0) {
-        try {
-          await fetchAbyssalPrices(abyssalItemIds)
-        } catch (err) {
-          logger.error('Failed to fetch abyssal prices', err instanceof Error ? err : undefined, { module: 'AssetStore' })
-        }
-      }
-
       await saveMetaToDB(newNames, newPrices)
+
+      triggerResolution()
 
       const updatedAssets = state.assetsByOwner.filter(
         (oa) => `${oa.owner.type}-${oa.owner.id}` !== ownerKey
@@ -327,6 +468,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         updateProgress: null,
         updateError: null,
       })
+      get().rebuildSyntheticAssets()
 
       logger.info('Assets updated for owner', {
         module: 'AssetStore',
@@ -371,10 +513,55 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
     }
   },
 
+  refreshPrices: async () => {
+    const state = get()
+    const typeIds = collectAllTypeIds(
+      state.assetsByOwner,
+      useMarketOrdersStore.getState().dataByOwner,
+      useContractsStore.getState().contractsByOwner,
+      useIndustryJobsStore.getState().dataByOwner,
+      useStructuresStore.getState().dataByOwner
+    )
+
+    if (typeIds.size === 0) {
+      logger.info('No assets to refresh prices for', { module: 'AssetStore' })
+      return
+    }
+
+    logger.info('Refreshing prices', { module: 'AssetStore', typeCount: typeIds.size })
+    try {
+      const fetchedPrices = await fetchPrices(Array.from(typeIds))
+      await saveMetaToDB(state.assetNames, fetchedPrices)
+      set({ prices: fetchedPrices })
+      logger.info('Prices refreshed', { module: 'AssetStore', count: fetchedPrices.size })
+    } catch (err) {
+      logger.error('Failed to refresh prices', err instanceof Error ? err : undefined, { module: 'AssetStore' })
+    }
+  },
+
+  rebuildSyntheticAssets: () => {
+    const contractsByOwner = useContractsStore.getState().contractsByOwner
+    const ordersByOwner = useMarketOrdersStore.getState().dataByOwner
+    const jobsByOwner = useIndustryJobsStore.getState().dataByOwner
+    const structuresByOwner = useStructuresStore.getState().dataByOwner
+
+    const syntheticByOwner = buildSyntheticAssets(contractsByOwner, ordersByOwner, jobsByOwner, structuresByOwner)
+
+    const state = get()
+    const unifiedAssetsByOwner: OwnerAssets[] = state.assetsByOwner.map(({ owner, assets }) => {
+      const key = makeOwnerKey(owner.type, owner.id)
+      const synthetics = syntheticByOwner.get(key) ?? []
+      return { owner, assets: [...assets, ...synthetics] }
+    })
+
+    set({ unifiedAssetsByOwner })
+  },
+
   clear: async () => {
     await db.clear()
     set({
       assetsByOwner: [],
+      unifiedAssetsByOwner: [],
       assetNames: new Map(),
       prices: new Map(),
       updateError: null,
@@ -392,3 +579,12 @@ useExpiryCacheStore.getState().registerRefreshCallback(ENDPOINT_PATTERN, async (
   }
   await useAssetStore.getState().updateForOwner(owner)
 })
+
+export function setupSyntheticAssetSubscriptions(): void {
+  const rebuild = () => useAssetStore.getState().rebuildSyntheticAssets()
+
+  useContractsStore.subscribe(rebuild)
+  useMarketOrdersStore.subscribe(rebuild)
+  useIndustryJobsStore.subscribe(rebuild)
+  useStructuresStore.subscribe(rebuild)
+}

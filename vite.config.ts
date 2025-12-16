@@ -19,6 +19,7 @@ export default defineConfig({
         vite: {
           define: {
             'process.env.EVE_CLIENT_ID': JSON.stringify(process.env.EVE_CLIENT_ID || ''),
+            'process.env.REF_API_KEY': JSON.stringify(process.env.REF_API_KEY || ''),
           },
           build: {
             outDir: 'dist-electron',

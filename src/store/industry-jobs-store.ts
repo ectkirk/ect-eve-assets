@@ -14,11 +14,14 @@ export interface OwnerJobs {
   jobs: ESIIndustryJob[]
 }
 
+function getEndpoint(owner: Owner): string {
+  return owner.type === 'corporation'
+    ? `/corporations/${owner.id}/industry/jobs/`
+    : `/characters/${owner.characterId}/industry/jobs/`
+}
+
 async function fetchJobsForOwner(owner: Owner) {
-  const endpoint =
-    owner.type === 'corporation'
-      ? `/corporations/${owner.id}/industry/jobs/`
-      : `/characters/${owner.characterId}/industry/jobs/`
+  const endpoint = getEndpoint(owner)
 
   if (owner.type === 'corporation') {
     return esi.fetchPaginatedWithMeta<ESIIndustryJob>(endpoint, {
@@ -65,10 +68,8 @@ export const useIndustryJobsStore = createOwnerStore<ESIIndustryJob[], OwnerJobs
     dataKey: 'jobs',
     metaStoreName: 'meta',
   },
-  getEndpoint: (owner) =>
-    owner.type === 'corporation'
-      ? `/corporations/${owner.id}/industry/jobs/`
-      : `/characters/${owner.characterId}/industry/jobs/`,
+  disableAutoRefresh: true,
+  getEndpoint,
   fetchData: async (owner) => {
     const result = await fetchJobsForOwner(owner)
     await fetchProductPrices(result.data)

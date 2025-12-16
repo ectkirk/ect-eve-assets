@@ -1,6 +1,7 @@
 import type { ESIAsset } from '@/api/endpoints/assets'
 
 export enum TreeMode {
+  ALL = 'ALL',
   ITEM_HANGAR = 'ITEM_HANGAR',
   SHIP_HANGAR = 'SHIP_HANGAR',
   DELIVERIES = 'DELIVERIES',
@@ -68,6 +69,12 @@ export interface TreeNode {
 
   // Price info (for leaf items)
   price?: number
+
+  // Source flags for color coding
+  isInContract?: boolean
+  isInMarketOrder?: boolean
+  isInIndustryJob?: boolean
+  isOwnedStructure?: boolean
 }
 
 export interface TreeState {

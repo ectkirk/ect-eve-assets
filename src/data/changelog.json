@@ -1,0 +1,17 @@
+{
+  "version": "1.5.0",
+  "date": "2025-12-16",
+  "changes": [
+    { "type": "feat", "scope": "ui", "description": "Separate owner counts by character and corporation" },
+    { "type": "feat", "scope": "contracts", "description": "Show multiple items in modal instead of dropdown" },
+    { "type": "feat", "scope": "tree", "description": "Add owner icon to asset items in tree view" },
+    { "type": "feat", "scope": "ui", "description": "Add badges for Industry and Structure items in assets views" },
+    { "type": "feat", "scope": "ui", "description": "Separate character and corporation owner icons" },
+    { "type": "fix", "scope": "industry", "description": "Use facility_id for job location instead of output_location_id" },
+    { "type": "fix", "scope": "api", "description": "Cache unknown types to prevent repeated API calls" },
+    { "type": "fix", "scope": "api", "description": "Queue resolution requests during active resolution" },
+    { "type": "fix", "scope": "api", "description": "Trigger reference resolution from all stores" },
+    { "type": "perf", "scope": "tree", "description": "Memoize row components and reduce iterations" },
+    { "type": "refactor", "scope": "api", "description": "Centralize reference data resolution into single module" }
+  ]
+}

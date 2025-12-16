@@ -18,6 +18,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   X,
@@ -58,6 +59,8 @@ export function OwnerManagementModal({
   const [isUpdatingData, setIsUpdatingData] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [ownerToRemove, setOwnerToRemove] = useState<Owner | null>(null)
+  const [showLogoutAllConfirm, setShowLogoutAllConfirm] = useState(false)
 
   const ownersRecord = useAuthStore((state) => state.owners)
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
@@ -216,8 +219,15 @@ export function OwnerManagementModal({
     window.electronAPI?.cancelAuth()
   }
 
-  const handleRemoveOwner = async (owner: Owner, e: React.MouseEvent) => {
+  const handleRemoveOwnerClick = (owner: Owner, e: React.MouseEvent) => {
     e.stopPropagation()
+    setOwnerToRemove(owner)
+  }
+
+  const handleRemoveOwnerConfirm = async () => {
+    if (!ownerToRemove) return
+    const owner = ownerToRemove
+    setOwnerToRemove(null)
     setIsUpdatingData(true)
     try {
       const key = ownerKey(owner.type, owner.id)
@@ -297,7 +307,12 @@ export function OwnerManagementModal({
     }
   }
 
-  const handleLogoutAll = async () => {
+  const handleLogoutAllClick = () => {
+    setShowLogoutAllConfirm(true)
+  }
+
+  const handleLogoutAllConfirm = async () => {
+    setShowLogoutAllConfirm(false)
     setIsUpdatingData(true)
     try {
       if (window.electronAPI) {
@@ -393,7 +408,7 @@ export function OwnerManagementModal({
                       isSelected={selectedSet.has(ownerKey(owner.type, owner.id))}
                       disabled={isBusy}
                       onToggle={() => handleToggleOwner(owner)}
-                      onRemove={(e) => handleRemoveOwner(owner, e)}
+                      onRemove={(e) => handleRemoveOwnerClick(owner, e)}
                       onReauth={(e) => handleReauth(owner, e)}
                     />
                   ))}
@@ -420,7 +435,7 @@ export function OwnerManagementModal({
                       isSelected={selectedSet.has(ownerKey(owner.type, owner.id))}
                       disabled={isBusy}
                       onToggle={() => handleToggleOwner(owner)}
-                      onRemove={(e) => handleRemoveOwner(owner, e)}
+                      onRemove={(e) => handleRemoveOwnerClick(owner, e)}
                       onReauth={(e) => handleReauth(owner, e)}
                     />
                   ))}
@@ -470,13 +485,33 @@ export function OwnerManagementModal({
           )}
           {owners.length > 0 && !isBusy && (
             <button
-              onClick={handleLogoutAll}
+              onClick={handleLogoutAllClick}
               className="w-full rounded-md border border-semantic-danger/50 px-4 py-2 text-sm font-medium text-semantic-danger hover:bg-semantic-danger/10"
             >
               Logout All
             </button>
           )}
         </div>
+
+        <ConfirmDialog
+          open={ownerToRemove !== null}
+          onOpenChange={(open) => !open && setOwnerToRemove(null)}
+          title={`Remove ${ownerToRemove?.type === 'corporation' ? 'Corporation' : 'Character'}?`}
+          description={`Are you sure you want to remove ${ownerToRemove?.name}? All cached data for this account will be deleted.`}
+          confirmLabel="Remove"
+          variant="danger"
+          onConfirm={handleRemoveOwnerConfirm}
+        />
+
+        <ConfirmDialog
+          open={showLogoutAllConfirm}
+          onOpenChange={setShowLogoutAllConfirm}
+          title="Logout All Accounts?"
+          description="Are you sure you want to logout all accounts? All cached data will be deleted and you will need to re-authenticate each account."
+          confirmLabel="Logout All"
+          variant="danger"
+          onConfirm={handleLogoutAllConfirm}
+        />
       </DialogContent>
     </Dialog>
   )

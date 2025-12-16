@@ -1,1 +1,1 @@
-export { TabControlsProvider, useTabControls } from './tab-controls-context'
+export { TabControlsProvider, useTabControls, type ComparisonLevel } from './tab-controls-context'

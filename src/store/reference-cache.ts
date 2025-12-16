@@ -12,6 +12,7 @@ export interface CachedType {
   categoryName: string
   volume: number
   packagedVolume?: number
+  implantSlot?: number
 }
 
 export interface CachedStructure {
@@ -304,6 +305,34 @@ export async function saveAbyssals(abyssals: CachedAbyssal[]): Promise<void> {
 
     for (const abyssal of abyssals) {
       store.put(abyssal)
+    }
+  })
+}
+
+export async function clearReferenceCache(): Promise<void> {
+  logger.info('Clearing reference cache', { module: 'ReferenceCache' })
+
+  typesCache.clear()
+  structuresCache.clear()
+  locationsCache.clear()
+  abyssalsCache.clear()
+  namesCache.clear()
+  initialized = false
+
+  if (db) {
+    db.close()
+    db = null
+  }
+
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.deleteDatabase(DB_NAME)
+    request.onerror = () => {
+      logger.error('Failed to delete cache DB', request.error, { module: 'ReferenceCache' })
+      reject(request.error)
+    }
+    request.onsuccess = () => {
+      logger.info('Reference cache cleared', { module: 'ReferenceCache' })
+      resolve()
     }
   })
 }

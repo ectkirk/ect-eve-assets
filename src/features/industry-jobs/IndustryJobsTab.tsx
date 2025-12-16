@@ -16,23 +16,22 @@ import { useAssetStore } from '@/store/asset-store'
 import { useIndustryJobsStore } from '@/store/industry-jobs-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useTabControls } from '@/context'
-import { useColumnSettings, useCacheVersion, useExpandCollapse, type ColumnConfig } from '@/hooks'
+import { useColumnSettings, useCacheVersion, useExpandCollapse, useSortable, SortableHeader, sortRows, type ColumnConfig } from '@/hooks'
 import { type ESIIndustryJob } from '@/api/endpoints/industry'
-import { hasType, getType, hasLocation, hasStructure } from '@/store/reference-cache'
+import { hasType, getType } from '@/store/reference-cache'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
-import { resolveTypes, resolveLocations } from '@/api/ref-client'
-import { resolveStructures } from '@/api/endpoints/universe'
 import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
 import { cn, formatNumber } from '@/lib/utils'
 import { getLocationName } from '@/lib/location-utils'
 import { TypeIcon } from '@/components/ui/type-icon'
+
+type JobSortColumn = 'activity' | 'blueprint' | 'product' | 'runs' | 'value' | 'cost' | 'time' | 'owner'
 
 const BLUEPRINT_CATEGORY_ID = 9
 
@@ -117,24 +116,55 @@ function StatusIcon({ status }: { status: ESIIndustryJob['status'] }) {
   }
 }
 
+function getEndTime(endDate: string): number {
+  return new Date(endDate).getTime()
+}
+
 function JobsTable({ jobs }: { jobs: JobRow[] }) {
+  const { sortColumn, sortDirection, handleSort } = useSortable<JobSortColumn>('value', 'desc')
+
+  const sortedJobs = useMemo(() => {
+    return sortRows(jobs, sortColumn, sortDirection, (row, column) => {
+      switch (column) {
+        case 'activity':
+          return row.activityName.toLowerCase()
+        case 'blueprint':
+          return row.blueprintName.toLowerCase()
+        case 'product':
+          return row.productName.toLowerCase()
+        case 'runs':
+          return row.job.runs
+        case 'value':
+          return row.productValue
+        case 'cost':
+          return row.job.cost ?? 0
+        case 'time':
+          return getEndTime(row.job.end_date)
+        case 'owner':
+          return row.ownerName.toLowerCase()
+        default:
+          return 0
+      }
+    })
+  }, [jobs, sortColumn, sortDirection])
+
   return (
     <Table>
       <TableHeader>
         <TableRow className="hover:bg-transparent">
-          <TableHead className="w-8"></TableHead>
-          <TableHead>Activity</TableHead>
-          <TableHead>Blueprint</TableHead>
-          <TableHead>Product</TableHead>
-          <TableHead className="text-right">Runs</TableHead>
-          <TableHead className="text-right">Value</TableHead>
-          <TableHead className="text-right">Cost</TableHead>
-          <TableHead className="text-right">Time</TableHead>
-          <TableHead className="text-right">Owner</TableHead>
+          <th className="w-8"></th>
+          <SortableHeader column="activity" label="Activity" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
+          <SortableHeader column="blueprint" label="Blueprint" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
+          <SortableHeader column="product" label="Product" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
+          <SortableHeader column="runs" label="Runs" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
+          <SortableHeader column="value" label="Value" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
+          <SortableHeader column="cost" label="Cost" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
+          <SortableHeader column="time" label="Time" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
+          <SortableHeader column="owner" label="Owner" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
         </TableRow>
       </TableHeader>
       <TableBody>
-        {jobs.map((row) => {
+        {sortedJobs.map((row) => {
           const ActivityIcon = ACTIVITY_ICONS[row.job.activity_id] ?? Hammer
           const duration = formatDuration(row.job.end_date)
 
@@ -247,58 +277,19 @@ export function IndustryJobsTab() {
   const jobsByOwner = useIndustryJobsStore((s) => s.dataByOwner)
   const jobsUpdating = useIndustryJobsStore((s) => s.isUpdating)
   const updateError = useIndustryJobsStore((s) => s.updateError)
-  const init = useIndustryJobsStore((s) => s.init)
+  const update = useIndustryJobsStore((s) => s.update)
   const initialized = useIndustryJobsStore((s) => s.initialized)
 
   const { isLoading: assetsUpdating } = useAssetData()
   const isUpdating = assetsUpdating || jobsUpdating
 
   useEffect(() => {
-    init()
-  }, [init])
+    if (initialized) {
+      update()
+    }
+  }, [initialized, update])
 
   const cacheVersion = useCacheVersion()
-
-  useEffect(() => {
-    if (jobsByOwner.length === 0) return
-
-    const unresolvedTypeIds = new Set<number>()
-    const unknownLocationIds = new Set<number>()
-    const structureToCharacter = new Map<number, number>()
-
-    for (const { owner, jobs } of jobsByOwner) {
-      for (const job of jobs) {
-        const bpType = getType(job.blueprint_type_id)
-        if (!bpType || bpType.name.startsWith('Unknown Type ')) {
-          unresolvedTypeIds.add(job.blueprint_type_id)
-        }
-        if (job.product_type_id) {
-          const productType = getType(job.product_type_id)
-          if (!productType || productType.name.startsWith('Unknown Type ')) {
-            unresolvedTypeIds.add(job.product_type_id)
-          }
-        }
-        const locationId = job.location_id ?? job.facility_id
-        if (locationId > 1_000_000_000_000) {
-          if (!hasStructure(locationId)) {
-            structureToCharacter.set(locationId, owner.characterId)
-          }
-        } else if (!hasLocation(locationId)) {
-          unknownLocationIds.add(locationId)
-        }
-      }
-    }
-
-    if (unresolvedTypeIds.size > 0) {
-      resolveTypes(Array.from(unresolvedTypeIds)).catch(() => {})
-    }
-    if (unknownLocationIds.size > 0) {
-      resolveLocations(Array.from(unknownLocationIds)).catch(() => {})
-    }
-    if (structureToCharacter.size > 0) {
-      resolveStructures(structureToCharacter).catch(() => {})
-    }
-  }, [jobsByOwner])
 
   const { setExpandCollapse, search, setResultCount, setTotalValue, setColumns } = useTabControls()
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
@@ -324,7 +315,7 @@ export function IndustryJobsTab() {
     const groups = new Map<number, LocationGroup>()
 
     const filteredJobsByOwner = jobsByOwner.filter(({ owner }) =>
-      selectedSet.has(ownerKey(owner.type, owner.characterId))
+      selectedSet.has(ownerKey(owner.type, owner.id))
     )
 
     for (const { owner, jobs } of filteredJobsByOwner) {

@@ -34,7 +34,8 @@ const TYPE_BATCH_DELAY_MS = 50
 
 async function fetchTypesFromAPI(
   ids: number[],
-  market: 'jita' | 'the_forge' = 'jita'
+  market: 'jita' | 'the_forge' = 'jita',
+  stationId?: number
 ): Promise<Map<number, RefType>> {
   if (ids.length === 0) return new Map()
 
@@ -44,7 +45,7 @@ async function fetchTypesFromAPI(
     const chunk = ids.slice(i, i + 1000)
 
     try {
-      const rawData = await window.electronAPI!.refTypes(chunk, market)
+      const rawData = await window.electronAPI!.refTypes(chunk, market, stationId)
       if (rawData && typeof rawData === 'object' && 'error' in rawData) {
         logger.warn('RefAPI /types failed', { module: 'RefAPI', error: rawData.error })
         continue
@@ -116,7 +117,7 @@ async function executeTypeBatch(): Promise<Map<number, CachedType>> {
 
   for (const id of idsToFetch) {
     const cached = getType(id)
-    if (cached && !cached.name.startsWith('Unknown Type ')) {
+    if (cached) {
       results.set(id, cached)
     } else {
       uncachedIds.push(id)
@@ -138,6 +139,7 @@ async function executeTypeBatch(): Promise<Map<number, CachedType>> {
         categoryName: refType.categoryName ?? '',
         volume: refType.volume ?? 0,
         packagedVolume: refType.packagedVolume ?? undefined,
+        implantSlot: refType.implantSlot,
       }
       results.set(id, cached)
       toCache.push(cached)
@@ -278,9 +280,10 @@ export async function fetchPrices(
   const toCache: CachedType[] = []
 
   for (const [typeId, type] of fetched) {
-    const lowestSell = type.marketPrice.lowestSell
+    const contractPrice = type.contractPrice?.price
+    const lowestSell = type.marketPrice.region?.lowestSell
     const average = type.marketPrice.average
-    const price = lowestSell ?? (typeof average === 'string' ? parseFloat(average) : average) ?? 0
+    const price = contractPrice ?? lowestSell ?? (typeof average === 'string' ? parseFloat(average) : average) ?? 0
     if (price > 0) {
       prices.set(typeId, price)
     }
@@ -294,6 +297,7 @@ export async function fetchPrices(
       categoryName: type.categoryName ?? '',
       volume: type.volume ?? 0,
       packagedVolume: type.packagedVolume ?? undefined,
+      implantSlot: type.implantSlot,
     })
   }
 
@@ -302,4 +306,29 @@ export async function fetchPrices(
   }
 
   return prices
+}
+
+export interface MarketComparisonPrices {
+  station: { highestBuy: number | null; lowestSell: number | null } | null
+  system: { highestBuy: number | null; lowestSell: number | null } | null
+  region: { highestBuy: number | null; lowestSell: number | null } | null
+}
+
+export async function fetchMarketComparison(
+  typeIds: number[],
+  stationId: number
+): Promise<Map<number, MarketComparisonPrices>> {
+  const fetched = await fetchTypesFromAPI(typeIds, 'jita', stationId)
+  const results = new Map<number, MarketComparisonPrices>()
+
+  for (const [typeId, type] of fetched) {
+    const mp = type.marketPrice
+    results.set(typeId, {
+      station: mp.station ?? null,
+      system: mp.system ?? null,
+      region: mp.region ?? null,
+    })
+  }
+
+  return results
 }

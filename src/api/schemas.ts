@@ -86,6 +86,10 @@ export const ESIMarketOrderSchema = z.object({
   volume_total: z.number(),
 })
 
+export const ESIMarketOrderHistorySchema = ESIMarketOrderSchema.extend({
+  state: z.enum(['cancelled', 'expired', 'completed']),
+})
+
 export const ESICorporationMarketOrderSchema = z.object({
   duration: z.number(),
   escrow: z.number().optional(),
@@ -102,6 +106,10 @@ export const ESICorporationMarketOrderSchema = z.object({
   volume_remain: z.number(),
   volume_total: z.number(),
   wallet_division: z.number(),
+})
+
+export const ESICorporationMarketOrderHistorySchema = ESICorporationMarketOrderSchema.extend({
+  state: z.enum(['cancelled', 'expired', 'completed']),
 })
 
 export const ESIRegionOrderSchema = z.object({
@@ -309,14 +317,27 @@ export const ESICorporationDivisionsSchema = z.object({
 })
 
 // ref-client schemas
+const RefPriceLevelSchema = z.object({
+  highestBuy: z.number().nullable(),
+  lowestSell: z.number().nullable(),
+})
+
+const RefContractPriceSchema = z.object({
+  price: z.number().nullable(),
+  salesCount: z.number(),
+  timeWindow: z.string().nullable(),
+  hasSufficientData: z.boolean(),
+})
+
 export const RefMarketPriceSchema = z.object({
   adjusted: z.union([z.string(), z.number(), z.null()]).optional(),
   average: z.union([z.string(), z.number(), z.null()]).optional(),
-  highestBuy: z.number().nullable().optional(),
-  lowestSell: z.number().nullable().optional(),
   salesCount: z.number().optional(),
   timeWindow: z.string().nullable().optional(),
   hasSufficientData: z.boolean().optional(),
+  station: RefPriceLevelSchema.optional(),
+  system: RefPriceLevelSchema.optional(),
+  region: RefPriceLevelSchema.optional(),
 })
 
 export const RefTypeSchema = z.object({
@@ -330,6 +351,8 @@ export const RefTypeSchema = z.object({
   packagedVolume: z.number().nullable().optional(),
   basePrice: z.number().nullable().optional(),
   marketPrice: RefMarketPriceSchema,
+  contractPrice: RefContractPriceSchema.optional(),
+  implantSlot: z.number().optional(),
 })
 
 export const RefTypeBulkResponseSchema = z.object({

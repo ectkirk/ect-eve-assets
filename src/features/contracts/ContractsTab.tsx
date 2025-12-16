@@ -11,30 +11,32 @@ import {
   XCircle,
   AlertCircle,
   History,
+  Package,
 } from 'lucide-react'
 import { useTabControls } from '@/context'
-import { useColumnSettings, useCacheVersion, type ColumnConfig } from '@/hooks'
+import { useColumnSettings, useCacheVersion, useSortable, SortableHeader, sortRows, type ColumnConfig } from '@/hooks'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useContractsStore, type ContractWithItems } from '@/store/contracts-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { type ESIContract } from '@/api/endpoints/contracts'
-import { hasType, getType, hasLocation, hasStructure } from '@/store/reference-cache'
+import { hasType, getType } from '@/store/reference-cache'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import { useAssetStore } from '@/store/asset-store'
-import { resolveTypes, resolveLocations, fetchPrices } from '@/api/ref-client'
-import { resolveStructures, resolveNames, hasName, getName } from '@/api/endpoints/universe'
-import { isAbyssalTypeId, fetchAbyssalPrices, hasCachedAbyssalPrice, getCachedAbyssalPrice } from '@/api/mutamarket-client'
+import { getName } from '@/api/endpoints/universe'
+import { isAbyssalTypeId, getCachedAbyssalPrice } from '@/api/mutamarket-client'
 import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
 import { cn, formatNumber } from '@/lib/utils'
+
+type ContractSortColumn = 'type' | 'items' | 'location' | 'assignee' | 'price' | 'value' | 'expires' | 'completed' | 'volume' | 'collateral' | 'days' | 'owner'
 import { getLocationName } from '@/lib/location-utils'
 import { TypeIcon as ItemTypeIcon } from '@/components/ui/type-icon'
+import { ContractItemsDialog } from '@/components/dialogs/ContractItemsDialog'
 
 const CONTRACT_TYPE_NAMES: Record<ESIContract['type'], string> = {
   unknown: 'Unknown',
@@ -120,96 +122,105 @@ function getContractValue(contract: ESIContract): number {
   return (contract.price ?? 0) + (contract.reward ?? 0)
 }
 
-function ContractItemRow({
-  item,
-  cacheVersion,
-}: {
-  item: { type_id: number; quantity: number }
-  cacheVersion: number
-}) {
-  void cacheVersion
-  const type = hasType(item.type_id) ? getType(item.type_id) : undefined
-  const typeName = type?.name ?? `Unknown Type ${item.type_id}`
+const PAGE_SIZE = 50
 
-  return (
-    <TableRow className="bg-surface-secondary/30">
-      <TableCell className="py-1 w-8" />
-      <TableCell className="py-1" />
-      <TableCell className="py-1 pl-8">
-        <div className="flex items-center gap-2">
-          <ItemTypeIcon typeId={item.type_id} categoryId={type?.categoryId} />
-          <span className="text-content-secondary">{typeName}</span>
-          {item.quantity > 1 && (
-            <span className="text-content-muted">x{item.quantity.toLocaleString()}</span>
-          )}
-        </div>
-      </TableCell>
-      <TableCell className="py-1" />
-      <TableCell className="py-1" />
-      <TableCell className="py-1" />
-      <TableCell className="py-1" />
-      <TableCell className="py-1" />
-      <TableCell className="py-1" />
-      <TableCell className="py-1" />
-    </TableRow>
-  )
+function getDefaultSort(showCourierColumns: boolean, showCompletedDate: boolean): ContractSortColumn {
+  if (showCompletedDate) return 'completed'
+  if (showCourierColumns) return 'price'
+  return 'value'
 }
 
-const PAGE_SIZE = 50
+function getDaysLeft(contract: ESIContract): number {
+  if (contract.status === 'outstanding') {
+    const expiryTime = new Date(contract.date_expired).getTime()
+    return Math.ceil((expiryTime - Date.now()) / (24 * 60 * 60 * 1000))
+  } else if (contract.status === 'in_progress' && contract.date_accepted && contract.days_to_complete) {
+    const acceptedDate = new Date(contract.date_accepted).getTime()
+    const deadline = acceptedDate + contract.days_to_complete * 24 * 60 * 60 * 1000
+    return Math.ceil((deadline - Date.now()) / (24 * 60 * 60 * 1000))
+  }
+  return 0
+}
 
 function ContractsTable({
   contracts,
-  cacheVersion,
   showCourierColumns = false,
   showCompletedDate = false,
+  prices,
 }: {
   contracts: ContractRow[]
-  cacheVersion: number
   showCourierColumns?: boolean
   showCompletedDate?: boolean
+  prices: Map<number, number>
 }) {
-  const [expandedContracts, setExpandedContracts] = useState<Set<number>>(new Set())
   const [page, setPage] = useState(0)
+  const [selectedContract, setSelectedContract] = useState<ContractRow | null>(null)
+  const { sortColumn, sortDirection, handleSort } = useSortable<ContractSortColumn>(getDefaultSort(showCourierColumns, showCompletedDate), 'desc')
 
-  const totalPages = Math.max(1, Math.ceil(contracts.length / PAGE_SIZE))
-  const clampedPage = Math.min(page, totalPages - 1)
-  const paginatedContracts = contracts.slice(clampedPage * PAGE_SIZE, (clampedPage + 1) * PAGE_SIZE)
-
-  const toggleContract = useCallback((contractId: number) => {
-    setExpandedContracts((prev) => {
-      const next = new Set(prev)
-      if (next.has(contractId)) next.delete(contractId)
-      else next.add(contractId)
-      return next
+  const sortedContracts = useMemo(() => {
+    return sortRows(contracts, sortColumn, sortDirection, (row, column) => {
+      const contract = row.contractWithItems.contract
+      switch (column) {
+        case 'type':
+          return CONTRACT_TYPE_NAMES[contract.type].toLowerCase()
+        case 'items':
+          return row.typeName.toLowerCase()
+        case 'location':
+          return row.locationName.toLowerCase()
+        case 'assignee':
+          return row.assigneeName.toLowerCase()
+        case 'price':
+          return getContractValue(contract)
+        case 'value':
+          return row.itemValue
+        case 'expires':
+          return new Date(contract.date_expired).getTime()
+        case 'completed':
+          return row.dateCompleted ? new Date(row.dateCompleted).getTime() : 0
+        case 'volume':
+          return contract.volume ?? 0
+        case 'collateral':
+          return contract.collateral ?? 0
+        case 'days':
+          return getDaysLeft(contract)
+        case 'owner':
+          return row.ownerName.toLowerCase()
+        default:
+          return 0
+      }
     })
-  }, [])
+  }, [contracts, sortColumn, sortDirection])
+
+  const totalPages = Math.max(1, Math.ceil(sortedContracts.length / PAGE_SIZE))
+  const clampedPage = Math.min(page, totalPages - 1)
+  const paginatedContracts = sortedContracts.slice(clampedPage * PAGE_SIZE, (clampedPage + 1) * PAGE_SIZE)
 
   return (
   <>
     <Table>
       <TableHeader>
         <TableRow className="hover:bg-transparent">
-          <TableHead className="w-8"></TableHead>
-          <TableHead>Type</TableHead>
-          {!showCourierColumns && <TableHead>Items</TableHead>}
-          <TableHead>Location</TableHead>
-          <TableHead>Assignee</TableHead>
-          <TableHead className="text-right">Price</TableHead>
-          {!showCourierColumns && !showCompletedDate && <TableHead className="text-right">Value</TableHead>}
+          <th className="w-8"></th>
+          <SortableHeader column="type" label="Type" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
+          {!showCourierColumns && <SortableHeader column="items" label="Items" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />}
+          <SortableHeader column="location" label="Location" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
+          <SortableHeader column="assignee" label="Assignee" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
+          <SortableHeader column="price" label="Price" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
+          {!showCourierColumns && !showCompletedDate && <SortableHeader column="value" label="Value" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />}
           {showCourierColumns && (
             <>
-              <TableHead className="text-right">Volume</TableHead>
-              <TableHead className="text-right">Collateral</TableHead>
-              <TableHead className="text-right">Days Left</TableHead>
+              <SortableHeader column="volume" label="Volume" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
+              <SortableHeader column="collateral" label="Collateral" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
+              <SortableHeader column="days" label="Days Left" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
             </>
           )}
           {showCompletedDate ? (
-            <TableHead className="text-right">Completed</TableHead>
+            <SortableHeader column="completed" label="Completed" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
           ) : !showCourierColumns ? (
-            <TableHead className="text-right">Expires</TableHead>
+            <SortableHeader column="expires" label="Expires" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
           ) : null}
-          <TableHead className="text-right">Status</TableHead>
-          <TableHead className="text-right">Owner</TableHead>
+          <th className="text-right">Status</th>
+          <SortableHeader column="owner" label="Owner" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -220,14 +231,6 @@ function ContractsTable({
           const expiry = formatExpiry(contract.date_expired)
           const value = getContractValue(contract)
           const hasMultipleItems = items.length > 1
-          const isExpanded = expandedContracts.has(contract.contract_id)
-
-          const itemSummary =
-            items.length === 0
-              ? ''
-              : items.length === 1
-                ? row.typeName
-                : `${items.length} items`
 
           return (
             <React.Fragment key={contract.contract_id}>
@@ -246,15 +249,11 @@ function ContractsTable({
                     <div className="flex items-center gap-2">
                       {hasMultipleItems ? (
                         <button
-                          onClick={() => toggleContract(contract.contract_id)}
-                          className="flex items-center gap-1 hover:text-link"
+                          onClick={() => setSelectedContract(row)}
+                          className="flex items-center gap-1.5 hover:text-link text-accent"
                         >
-                          {isExpanded ? (
-                            <ChevronDown className="h-4 w-4 text-content-secondary" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4 text-content-secondary" />
-                          )}
-                          <span>{itemSummary}</span>
+                          <Package className="h-4 w-4" />
+                          <span>[Multiple Items]</span>
                         </button>
                       ) : (
                         <>
@@ -264,8 +263,8 @@ function ContractsTable({
                               categoryId={row.firstItemCategoryId}
                             />
                           )}
-                          <span className="truncate" title={itemSummary}>
-                            {itemSummary}
+                          <span className="truncate" title={row.typeName}>
+                            {items.length === 0 ? '' : row.typeName}
                           </span>
                         </>
                       )}
@@ -355,11 +354,6 @@ function ContractsTable({
                 </TableCell>
                 <TableCell className="py-1.5 text-right text-content-secondary">{row.ownerName}</TableCell>
               </TableRow>
-              {hasMultipleItems &&
-                isExpanded &&
-                items.map((item, idx) => (
-                  <ContractItemRow key={idx} item={item} cacheVersion={cacheVersion} />
-                ))}
             </React.Fragment>
           )
         })}
@@ -368,7 +362,7 @@ function ContractsTable({
     {totalPages > 1 && (
       <div className="flex items-center justify-between px-2 py-2 text-sm">
         <span className="text-content-secondary">
-          {clampedPage * PAGE_SIZE + 1}-{Math.min((clampedPage + 1) * PAGE_SIZE, contracts.length)} of {contracts.length}
+          {clampedPage * PAGE_SIZE + 1}-{Math.min((clampedPage + 1) * PAGE_SIZE, sortedContracts.length)} of {sortedContracts.length}
         </span>
         <div className="flex gap-1">
           <button
@@ -405,6 +399,14 @@ function ContractsTable({
         </div>
       </div>
     )}
+
+    <ContractItemsDialog
+      open={selectedContract !== null}
+      onOpenChange={(open) => !open && setSelectedContract(null)}
+      items={selectedContract?.contractWithItems.items ?? []}
+      contractType={selectedContract ? CONTRACT_TYPE_NAMES[selectedContract.contractWithItems.contract.type] : ''}
+      prices={prices}
+    />
   </>
   )
 }
@@ -413,12 +415,12 @@ function DirectionGroupRow({
   group,
   isExpanded,
   onToggle,
-  cacheVersion,
+  prices,
 }: {
   group: DirectionGroup
   isExpanded: boolean
   onToggle: () => void
-  cacheVersion: number
+  prices: Map<number, number>
 }) {
   const colorClass = group.direction === 'in' ? 'text-status-positive' : 'text-status-warning'
 
@@ -443,7 +445,7 @@ function DirectionGroupRow({
       </button>
       {isExpanded && (
         <div className="border-t border-border/50 bg-surface/30 px-4 pb-2">
-          <ContractsTable contracts={group.contracts} cacheVersion={cacheVersion} />
+          <ContractsTable contracts={group.contracts} prices={prices} />
         </div>
       )}
     </div>
@@ -455,7 +457,6 @@ export function ContractsTab() {
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
 
   const prices = useAssetStore((s) => s.prices)
-  const setPrices = useAssetStore((s) => s.setPrices)
   const contractsByOwner = useContractsStore((s) => s.contractsByOwner)
   const contractsUpdating = useContractsStore((s) => s.isUpdating)
   const updateError = useContractsStore((s) => s.updateError)
@@ -470,104 +471,6 @@ export function ContractsTab() {
   }, [init])
 
   const cacheVersion = useCacheVersion()
-  const [forceRender, setForceRender] = useState(0)
-
-  useEffect(() => {
-    if (contractsByOwner.length === 0) return
-
-    const unresolvedTypeIds = new Set<number>()
-    const unknownLocationIds = new Set<number>()
-    const structureToCharacter = new Map<number, number>()
-    const unresolvedEntityIds = new Set<number>()
-
-    const checkLocation = (locationId: number | undefined, characterId: number) => {
-      if (!locationId) return
-      if (locationId > 1_000_000_000_000) {
-        if (!hasStructure(locationId)) {
-          structureToCharacter.set(locationId, characterId)
-        }
-      } else if (!hasLocation(locationId)) {
-        unknownLocationIds.add(locationId)
-      }
-    }
-
-    for (const { owner, contracts } of contractsByOwner) {
-      for (const { contract, items } of contracts) {
-        checkLocation(contract.start_location_id, owner.characterId)
-        checkLocation(contract.end_location_id, owner.characterId)
-        if (contract.assignee_id && !hasName(contract.assignee_id)) {
-          unresolvedEntityIds.add(contract.assignee_id)
-        }
-        for (const item of items) {
-          const type = getType(item.type_id)
-          if (!type || type.name.startsWith('Unknown Type ')) {
-            unresolvedTypeIds.add(item.type_id)
-          }
-        }
-      }
-    }
-
-    if (unresolvedTypeIds.size > 0) {
-      resolveTypes(Array.from(unresolvedTypeIds)).catch(() => {})
-    }
-    if (unknownLocationIds.size > 0) {
-      resolveLocations(Array.from(unknownLocationIds)).catch(() => {})
-    }
-    if (structureToCharacter.size > 0) {
-      resolveStructures(structureToCharacter).catch(() => {})
-    }
-    if (unresolvedEntityIds.size > 0) {
-      resolveNames(Array.from(unresolvedEntityIds))
-        .then(() => setForceRender((v) => v + 1))
-        .catch(() => {})
-    }
-  }, [contractsByOwner])
-
-  useEffect(() => {
-    if (contractsByOwner.length === 0) return
-
-    const abyssalItemIds: number[] = []
-    for (const { contracts } of contractsByOwner) {
-      for (const { items } of contracts) {
-        for (const item of items) {
-          if (item.item_id && isAbyssalTypeId(item.type_id) && !hasCachedAbyssalPrice(item.item_id)) {
-            abyssalItemIds.push(item.item_id)
-          }
-        }
-      }
-    }
-
-    if (abyssalItemIds.length > 0) {
-      fetchAbyssalPrices(abyssalItemIds)
-        .then(() => setForceRender((v) => v + 1))
-        .catch(() => {})
-    }
-  }, [contractsByOwner])
-
-  useEffect(() => {
-    if (contractsByOwner.length === 0) return
-
-    const missingPriceTypeIds = new Set<number>()
-    for (const { contracts } of contractsByOwner) {
-      for (const { items } of contracts) {
-        for (const item of items) {
-          if (!isAbyssalTypeId(item.type_id) && !prices.has(item.type_id)) {
-            missingPriceTypeIds.add(item.type_id)
-          }
-        }
-      }
-    }
-
-    if (missingPriceTypeIds.size > 0) {
-      fetchPrices(Array.from(missingPriceTypeIds))
-        .then((fetched) => {
-          if (fetched.size > 0) {
-            setPrices(fetched)
-          }
-        })
-        .catch(() => {})
-    }
-  }, [contractsByOwner, prices, setPrices])
 
   const [expandedDirections, setExpandedDirections] = useState<Set<string>>(new Set(['in', 'out']))
   const [showCourier, setShowCourier] = useState(true)
@@ -592,7 +495,7 @@ export function ContractsTab() {
   const { getColumnsForDropdown } = useColumnSettings('contracts', CONTRACT_COLUMNS)
 
   const { directionGroups, courierGroup, completedContracts } = useMemo(() => {
-    void (cacheVersion + forceRender)
+    void cacheVersion
 
     const filteredContractsByOwner = contractsByOwner.filter(({ owner }) =>
       selectedSet.has(ownerKey(owner.type, owner.id))
@@ -725,7 +628,7 @@ export function ContractsTab() {
         : null,
       completedContracts: filteredCompleted,
     }
-  }, [contractsByOwner, cacheVersion, forceRender, owners, prices, search, selectedSet])
+  }, [contractsByOwner, cacheVersion, owners, prices, search, selectedSet])
 
   const toggleDirection = useCallback((direction: string) => {
     setExpandedDirections((prev) => {
@@ -855,7 +758,7 @@ export function ContractsTab() {
                   group={group}
                   isExpanded={expandedDirections.has(group.direction)}
                   onToggle={() => toggleDirection(group.direction)}
-                  cacheVersion={cacheVersion}
+                  prices={prices}
                 />
               ))}
             </div>
@@ -885,7 +788,7 @@ export function ContractsTab() {
                 </button>
                 {showCourier && (
                   <div className="border-t border-border/50 bg-surface/30 px-4 pb-2">
-                    <ContractsTable contracts={courierGroup.contracts} cacheVersion={cacheVersion} showCourierColumns />
+                    <ContractsTable contracts={courierGroup.contracts} showCourierColumns prices={prices} />
                   </div>
                 )}
               </div>
@@ -913,7 +816,7 @@ export function ContractsTab() {
                 </button>
                 {showCompleted && (
                   <div className="border-t border-border/50 bg-surface/30 px-4 pb-2">
-                    <ContractsTable contracts={completedContracts} cacheVersion={cacheVersion} showCompletedDate />
+                    <ContractsTable contracts={completedContracts} showCompletedDate prices={prices} />
                   </div>
                 )}
               </div>
