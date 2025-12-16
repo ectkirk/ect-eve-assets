@@ -297,3 +297,40 @@ export async function resolveAllReferenceData(ids: ResolutionIds): Promise<void>
 
   logger.info('Reference data resolution complete', { module: 'DataResolver' })
 }
+
+let resolutionPending = false
+let resolutionTimeout: ReturnType<typeof setTimeout> | null = null
+
+export async function triggerResolution(): Promise<void> {
+  if (resolutionPending) return
+
+  if (resolutionTimeout) {
+    clearTimeout(resolutionTimeout)
+  }
+
+  resolutionTimeout = setTimeout(async () => {
+    resolutionPending = true
+    try {
+      const { useAssetStore } = await import('@/store/asset-store')
+      const { useContractsStore } = await import('@/store/contracts-store')
+      const { useMarketOrdersStore } = await import('@/store/market-orders-store')
+      const { useIndustryJobsStore } = await import('@/store/industry-jobs-store')
+      const { useStructuresStore } = await import('@/store/structures-store')
+      const { useClonesStore } = await import('@/store/clones-store')
+
+      const ids = collectResolutionIds(
+        useAssetStore.getState().assetsByOwner,
+        useContractsStore.getState().contractsByOwner,
+        useMarketOrdersStore.getState().dataByOwner,
+        useIndustryJobsStore.getState().dataByOwner,
+        useStructuresStore.getState().dataByOwner,
+        useClonesStore.getState().dataByOwner
+      )
+
+      await resolveAllReferenceData(ids)
+    } finally {
+      resolutionPending = false
+      resolutionTimeout = null
+    }
+  }, 50)
+}

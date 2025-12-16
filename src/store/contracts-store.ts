@@ -13,6 +13,7 @@ import { ESIContractSchema } from '@/api/schemas'
 import { createOwnerDB } from '@/lib/owner-indexed-db'
 import { logger } from '@/lib/logger'
 import { formatNumber } from '@/lib/utils'
+import { triggerResolution } from '@/lib/data-resolver'
 
 const ENDPOINT_PATTERN = '/contracts/'
 
@@ -85,6 +86,9 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
       const loaded = await db.loadAll()
       const contractsByOwner = loaded.map((d) => ({ owner: d.owner, contracts: d.data }))
       set({ contractsByOwner, initialized: true })
+      if (contractsByOwner.length > 0) {
+        triggerResolution()
+      }
       logger.info('Contracts store initialized', {
         module: 'ContractsStore',
         owners: contractsByOwner.length,
@@ -253,6 +257,8 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
         updateCounter: s.updateCounter + 1,
       }))
 
+      triggerResolution()
+
       logger.info('Contracts updated', {
         module: 'ContractsStore',
         owners: ownersToUpdate.length,
@@ -393,6 +399,8 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
       updated.push({ owner, contracts: contractsWithItems })
 
       set((s) => ({ contractsByOwner: updated, updateCounter: s.updateCounter + 1 }))
+
+      triggerResolution()
 
       logger.info('Contracts updated for owner', {
         module: 'ContractsStore',

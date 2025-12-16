@@ -3,6 +3,7 @@ import { useAuthStore, type Owner, findOwnerByKey } from './auth-store'
 import { useExpiryCacheStore } from './expiry-cache-store'
 import { createOwnerDB, type OwnerDBConfig } from '@/lib/owner-indexed-db'
 import { logger } from '@/lib/logger'
+import { triggerResolution } from '@/lib/data-resolver'
 
 export interface OwnerData<T> {
   owner: Owner
@@ -138,6 +139,9 @@ export function createOwnerStore<
           set({ dataByOwner, initialized: true, ...extra } as Partial<
             OwnerStore<TOwnerData, TExtraState, TExtraActions>
           >)
+          if (dataByOwner.length > 0) {
+            triggerResolution()
+          }
           logger.info(`${name} store initialized`, {
             module: moduleName,
             owners: dataByOwner.length,
@@ -226,6 +230,8 @@ export function createOwnerStore<
             ...extra,
           } as Partial<OwnerStore<TOwnerData, TExtraState, TExtraActions>>)
 
+          triggerResolution()
+
           logger.info(`${name} updated`, {
             module: moduleName,
             owners: ownersToUpdate.length,
@@ -279,6 +285,8 @@ export function createOwnerStore<
           set({ dataByOwner: updated, ...extra } as Partial<
             OwnerStore<TOwnerData, TExtraState, TExtraActions>
           >)
+
+          triggerResolution()
 
           logger.info(`${name} updated for owner`, {
             module: moduleName,
