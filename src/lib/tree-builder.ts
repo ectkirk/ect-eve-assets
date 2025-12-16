@@ -688,28 +688,66 @@ function nodeMatchesCategory(node: TreeNode, category: string): boolean {
   return false
 }
 
-export function filterTree(nodes: TreeNode[], search: string, category?: string): TreeNode[] {
-  if (!search && !category) return nodes
-
-  const searchLower = search.toLowerCase()
+function filterTreeRecursive(nodes: TreeNode[], searchLower: string, category?: string): TreeNode[] {
   const result: TreeNode[] = []
 
   for (const node of nodes) {
-    const filteredChildren = filterTree(node.children, search, category)
-    const selfMatchesSearch = !search || nodeMatchesSearch(node, searchLower)
+    const filteredChildren = filterTreeRecursive(node.children, searchLower, category)
+    const selfMatchesSearch = !searchLower || nodeMatchesSearch(node, searchLower)
     const selfMatchesCategory = !category || nodeMatchesCategory(node, category)
     const selfMatches = selfMatchesSearch && selfMatchesCategory
 
     if (selfMatches || filteredChildren.length > 0) {
       const filteredNode: TreeNode = {
         ...node,
-        children: selfMatches ? filterTree(node.children, search, category) : filteredChildren,
+        children: selfMatches ? filterTreeRecursive(node.children, searchLower, category) : filteredChildren,
       }
       result.push(filteredNode)
     }
   }
 
   return result
+}
+
+function recomputeTotals(node: TreeNode): void {
+  const isItemNode = node.nodeType === 'item' || node.nodeType === 'stack' ||
+    node.nodeType === 'ship' || node.nodeType === 'container'
+
+  let totalCount = isItemNode ? (node.quantity ?? 0) : 0
+  let totalValue = isItemNode ? (node.price ?? 0) * (node.quantity ?? 0) : 0
+  let totalVolume = 0
+
+  if (isItemNode && node.asset) {
+    const type = getType(node.asset.type_id)
+    totalVolume = (type?.packagedVolume ?? type?.volume ?? 0) * (node.quantity ?? 0)
+  }
+
+  for (const child of node.children) {
+    recomputeTotals(child)
+    totalCount += child.totalCount
+    totalValue += child.totalValue
+    totalVolume += child.totalVolume
+  }
+
+  if (node.nodeType === 'station') {
+    totalCount = countItemLines(node)
+  }
+
+  node.totalCount = totalCount
+  node.totalValue = totalValue
+  node.totalVolume = totalVolume
+}
+
+export function filterTree(nodes: TreeNode[], search: string, category?: string): TreeNode[] {
+  if (!search && !category) return nodes
+
+  const filtered = filterTreeRecursive(nodes, search.toLowerCase(), category)
+
+  for (const node of filtered) {
+    recomputeTotals(node)
+  }
+
+  return filtered
 }
 
 export function getTreeCategories(nodes: TreeNode[]): string[] {
