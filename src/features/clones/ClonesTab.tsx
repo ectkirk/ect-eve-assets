@@ -18,6 +18,14 @@ import { resolveTypes, resolveLocations } from '@/api/ref-client'
 import { resolveStructures } from '@/api/endpoints/universe'
 import { cn } from '@/lib/utils'
 import { TypeIcon, CharacterPortrait } from '@/components/ui/type-icon'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableHead,
+  TableRow,
+} from '@/components/ui/table'
 
 interface ImplantInfo {
   typeId: number
@@ -48,6 +56,8 @@ function getImplantSlot(typeId: number): number {
   const type = hasType(typeId) ? getType(typeId) : undefined
   if (!type) return 99
 
+  if (type.implantSlot !== undefined) return type.implantSlot
+
   const name = type.name.toLowerCase()
   for (let i = 1; i <= 10; i++) {
     if (name.includes(`slot ${i}`) || name.includes(`- ${i}`)) return i
@@ -63,16 +73,31 @@ function ImplantList({ implants }: { implants: ImplantInfo[] }) {
   const sorted = [...implants].sort((a, b) => a.slot - b.slot)
 
   return (
-    <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-      {sorted.map((implant) => (
-        <div key={implant.typeId} className="flex items-center gap-2">
-          <TypeIcon typeId={implant.typeId} />
-          <span className="text-sm truncate" title={implant.name}>
-            {implant.name}
-          </span>
-        </div>
-      ))}
-    </div>
+    <Table>
+      <TableHeader>
+        <TableRow className="hover:bg-transparent">
+          <TableHead className="w-16">Slot</TableHead>
+          <TableHead>Implant</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {sorted.map((implant) => (
+          <TableRow key={implant.typeId}>
+            <TableCell className="py-1 text-content-secondary tabular-nums">
+              {implant.slot <= 10 ? implant.slot : '-'}
+            </TableCell>
+            <TableCell className="py-1">
+              <div className="flex items-center gap-2">
+                <TypeIcon typeId={implant.typeId} />
+                <span className="truncate" title={implant.name}>
+                  {implant.name}
+                </span>
+              </div>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   )
 }
 
