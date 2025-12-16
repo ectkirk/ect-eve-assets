@@ -257,16 +257,41 @@ function OwnerButton() {
           <span className="text-sm text-content-muted">No Selection</span>
         ) : (
           <>
-            <div className="flex items-center">
-              {selectedOwners.slice(0, 10).map((owner, i) => (
-                <div
-                  key={ownerKey(owner.type, owner.id)}
-                  className="relative rounded-full ring-2 ring-surface-secondary"
-                  style={{ marginLeft: i === 0 ? 0 : -8, zIndex: 10 - i }}
-                >
-                  <OwnerIcon ownerId={owner.id} ownerType={owner.type} size="lg" />
-                </div>
-              ))}
+            <div className="flex items-center gap-2">
+              {(() => {
+                const characters = selectedOwners.filter((o) => o.type === 'character').slice(0, 5)
+                const corporations = selectedOwners.filter((o) => o.type === 'corporation').slice(0, 5)
+                return (
+                  <>
+                    {characters.length > 0 && (
+                      <div className="flex items-center">
+                        {characters.map((owner, i) => (
+                          <div
+                            key={ownerKey(owner.type, owner.id)}
+                            className="relative rounded-full ring-2 ring-surface-secondary"
+                            style={{ marginLeft: i === 0 ? 0 : -8, zIndex: 5 - i }}
+                          >
+                            <OwnerIcon ownerId={owner.id} ownerType={owner.type} size="lg" />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {corporations.length > 0 && (
+                      <div className="flex items-center">
+                        {corporations.map((owner, i) => (
+                          <div
+                            key={ownerKey(owner.type, owner.id)}
+                            className="relative rounded-full ring-2 ring-surface-secondary"
+                            style={{ marginLeft: i === 0 ? 0 : -8, zIndex: 5 - i }}
+                          >
+                            <OwnerIcon ownerId={owner.id} ownerType={owner.type} size="lg" />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )
+              })()}
             </div>
             <span className="text-xs text-content-secondary">
               ({selectedOwners.length}/{owners.length})
