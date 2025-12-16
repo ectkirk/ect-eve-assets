@@ -341,9 +341,9 @@ function stackIdenticalItems(nodes: TreeNode[]): TreeNode[] {
       continue
     }
 
-    // Create stack key: typeId + isBlueprintCopy + ownerId + locationFlag
+    // Create stack key: typeId + isBlueprintCopy + ownerId + locationFlag + name (includes custom names)
     const locationFlag = node.asset?.location_flag ?? ''
-    const stackKey = `${node.typeId}-${node.isBlueprintCopy ?? false}-${node.ownerId}-${locationFlag}`
+    const stackKey = `${node.typeId}-${node.isBlueprintCopy ?? false}-${node.ownerId}-${locationFlag}-${node.name}`
 
     const existing = stackMap.get(stackKey)
     if (existing) {

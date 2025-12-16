@@ -28,6 +28,7 @@ interface AssetRow {
   typeName: string
   quantity: number
   locationId: number
+  resolvedLocationId: number
   locationName: string
   systemName: string
   regionName: string
@@ -292,7 +293,7 @@ export function AssetsTab() {
       }
     }
 
-    const resolveLocation = (asset: ESIAsset): { locationName: string; systemName: string; regionName: string } => {
+    const resolveLocation = (asset: ESIAsset): { resolvedLocationId: number; locationName: string; systemName: string; regionName: string } => {
       let current = asset
       while (current.location_type === 'item') {
         const parent = itemIdToAsset.get(current.location_id)
@@ -300,11 +301,13 @@ export function AssetsTab() {
         current = parent
       }
 
+      let resolvedLocationId: number
       let locationName: string
       let systemName = ''
       let regionName = ''
 
       if (current.location_id > 1_000_000_000_000) {
+        resolvedLocationId = current.location_id
         const structure = getStructure(current.location_id)
         locationName = structure?.name ?? `Structure ${current.location_id}`
         if (structure?.solarSystemId) {
@@ -315,6 +318,7 @@ export function AssetsTab() {
       } else if (current.location_type === 'solar_system') {
         const type = getType(current.type_id)
         if (type?.categoryId === CategoryIds.STRUCTURE) {
+          resolvedLocationId = current.item_id
           const structure = getStructure(current.item_id)
           locationName = structure?.name ?? `Structure ${current.item_id}`
           if (structure?.solarSystemId) {
@@ -323,19 +327,21 @@ export function AssetsTab() {
             regionName = system?.regionName ?? ''
           }
         } else {
+          resolvedLocationId = current.location_id
           const system = getLocation(current.location_id)
           locationName = system?.name ?? `System ${current.location_id}`
           systemName = system?.name ?? ''
           regionName = system?.regionName ?? ''
         }
       } else {
+        resolvedLocationId = current.location_id
         const location = getLocation(current.location_id)
         locationName = location?.name ?? `Location ${current.location_id}`
         systemName = location?.solarSystemName ?? ''
         regionName = location?.regionName ?? ''
       }
 
-      return { locationName, systemName, regionName }
+      return { resolvedLocationId, locationName, systemName, regionName }
     }
 
     for (const { owner, assets } of unifiedAssetsByOwner) {
@@ -358,7 +364,7 @@ export function AssetsTab() {
         const price = isBpc ? 0 : (abyssalPrice ?? prices.get(asset.type_id) ?? 0)
 
         const isAbyssal = isAbyssalTypeId(asset.type_id)
-        const { locationName, systemName, regionName } = resolveLocation(asset)
+        const { resolvedLocationId, locationName, systemName, regionName } = resolveLocation(asset)
 
         const displayFlag = isInContract ? 'In Contract' : isInMarketOrder ? 'Sell Order' : asset.location_flag
 
@@ -368,6 +374,7 @@ export function AssetsTab() {
           typeName,
           quantity: asset.quantity,
           locationId: asset.location_id,
+          resolvedLocationId,
           locationName,
           systemName,
           regionName,
@@ -397,7 +404,7 @@ export function AssetsTab() {
         aggregated.set(`unique-${row.itemId}`, row)
         continue
       }
-      const key = `${row.ownerId}-${row.typeId}-${row.locationId}-${row.locationFlag}-${row.typeName}`
+      const key = `${row.ownerId}-${row.typeId}-${row.locationId}-${row.locationFlag}-${row.resolvedLocationId}-${row.typeName}`
       const existing = aggregated.get(key)
       if (existing) {
         existing.quantity += row.quantity
