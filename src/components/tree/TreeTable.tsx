@@ -149,16 +149,22 @@ const DIVISION_COLORS = [
   'text-accent',
 ]
 
-function TreeNodeIcon({ nodeType, divisionNumber }: { nodeType: TreeNodeType; divisionNumber?: number }) {
+const TreeNodeIcon = memo(function TreeNodeIcon({
+  nodeType,
+  divisionNumber,
+}: {
+  nodeType: TreeNodeType
+  divisionNumber?: number
+}) {
   const Icon = NODE_TYPE_ICONS[nodeType]
   let colorClass = NODE_TYPE_COLORS[nodeType]
   if (nodeType === 'division' && divisionNumber !== undefined && divisionNumber >= 1 && divisionNumber <= 7) {
     colorClass = DIVISION_COLORS[divisionNumber - 1]!
   }
   return <Icon className={cn('h-4 w-4 flex-shrink-0', colorClass)} />
-}
+})
 
-function ItemIcon({ node }: { node: TreeNode }) {
+const ItemIcon = memo(function ItemIcon({ node }: { node: TreeNode }) {
   if (!node.typeId) {
     return <TreeNodeIcon nodeType={node.nodeType} divisionNumber={node.divisionNumber} />
   }
@@ -170,7 +176,7 @@ function ItemIcon({ node }: { node: TreeNode }) {
       isBlueprintCopy={node.isBlueprintCopy}
     />
   )
-}
+})
 
 const TREE_COLUMNS: ColumnConfig[] = [
   { id: 'name', label: 'Name' },
@@ -302,6 +308,74 @@ const TreeRowContent = memo(function TreeRowContent({
       })}
     </>
   )
+})
+
+interface TreeRowProps {
+  node: TreeNode
+  virtualIndex: number
+  isExpanded: boolean
+  onToggleExpand: (nodeId: string) => void
+  onViewFitting: (node: TreeNode) => void
+  visibleColumns: string[]
+}
+
+const TreeRow = memo(function TreeRow({
+  node,
+  virtualIndex,
+  isExpanded,
+  onToggleExpand,
+  onViewFitting,
+  visibleColumns,
+}: TreeRowProps) {
+  const handleRowClick = useCallback(() => {
+    if (node.children.length > 0) {
+      onToggleExpand(node.id)
+    }
+  }, [node.children.length, node.id, onToggleExpand])
+
+  const handleContextMenuClick = useCallback(() => {
+    onViewFitting(node)
+  }, [node, onViewFitting])
+
+  const isShip = node.nodeType === 'ship'
+
+  const row = (
+    <TableRow
+      key={node.id}
+      data-index={virtualIndex}
+      className={cn(
+        node.nodeType === 'region' && 'bg-surface-secondary/30',
+        node.nodeType === 'system' && 'bg-surface-secondary/20',
+        node.isInContract && 'bg-row-contract',
+        node.isInMarketOrder && 'bg-row-order'
+      )}
+      onClick={handleRowClick}
+    >
+      <TreeRowContent
+        node={node}
+        isExpanded={isExpanded}
+        onToggleExpand={onToggleExpand}
+        visibleColumns={visibleColumns}
+      />
+    </TableRow>
+  )
+
+  if (isShip) {
+    return (
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          {row}
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuItem onClick={handleContextMenuClick}>
+            View Fitting
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
+    )
+  }
+
+  return row
 })
 
 const COLUMN_WIDTHS: Record<string, string> = {
@@ -442,50 +516,17 @@ export function TreeTable({
                 {rowVirtualizer.getVirtualItems().map((virtualRow) => {
                   const node = flatRows[virtualRow.index]
                   if (!node) return null
-                  const isExpanded = expandedNodes.has(node.id)
-                  const isShip = node.nodeType === 'ship'
-
-                  const row = (
-                    <TableRow
+                  return (
+                    <TreeRow
                       key={node.id}
-                      data-index={virtualRow.index}
-                      className={cn(
-                        node.nodeType === 'region' && 'bg-surface-secondary/30',
-                        node.nodeType === 'system' && 'bg-surface-secondary/20',
-                        node.isInContract && 'bg-row-contract',
-                        node.isInMarketOrder && 'bg-row-order'
-                      )}
-                      onClick={() => {
-                        if (node.children.length > 0) {
-                          onToggleExpand(node.id)
-                        }
-                      }}
-                    >
-                      <TreeRowContent
-                        node={node}
-                        isExpanded={isExpanded}
-                        onToggleExpand={onToggleExpand}
-                        visibleColumns={visibleColumns}
-                      />
-                    </TableRow>
+                      node={node}
+                      virtualIndex={virtualRow.index}
+                      isExpanded={expandedNodes.has(node.id)}
+                      onToggleExpand={onToggleExpand}
+                      onViewFitting={handleViewFitting}
+                      visibleColumns={visibleColumns}
+                    />
                   )
-
-                  if (isShip) {
-                    return (
-                      <ContextMenu key={node.id}>
-                        <ContextMenuTrigger asChild>
-                          {row}
-                        </ContextMenuTrigger>
-                        <ContextMenuContent>
-                          <ContextMenuItem onClick={() => handleViewFitting(node)}>
-                            View Fitting
-                          </ContextMenuItem>
-                        </ContextMenuContent>
-                      </ContextMenu>
-                    )
-                  }
-
-                  return row
                 })}
                 {rowVirtualizer.getVirtualItems().length > 0 && (
                   <tr>

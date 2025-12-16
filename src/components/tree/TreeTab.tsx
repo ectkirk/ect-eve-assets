@@ -100,15 +100,20 @@ export function TreeTab({ mode }: TreeTabProps) {
     return () => setAssetTypeFilter(null)
   }, [mode, assetTypeFilter, setAssetTypeFilter])
 
-  const sourceCount = useMemo(() => {
+  const { sourceCount, totalValue } = useMemo(() => {
     let showing = 0
+    let value = 0
     for (const ra of selectedResolvedAssets) {
+      value += ra.totalValue
       if (!shouldIncludeByMode(ra, effectiveMode)) continue
       if (categoryFilter && ra.categoryName !== categoryFilter) continue
       if (!matchesSearch(ra, search)) continue
       showing++
     }
-    return { showing, total: selectedResolvedAssets.length }
+    return {
+      sourceCount: { showing, total: selectedResolvedAssets.length },
+      totalValue: value,
+    }
   }, [selectedResolvedAssets, effectiveMode, categoryFilter, search])
 
   useEffect(() => {
@@ -116,14 +121,10 @@ export function TreeTab({ mode }: TreeTabProps) {
     return () => setResultCount(null)
   }, [sourceCount, setResultCount])
 
-  const sourceTotalValue = useMemo(() => {
-    return selectedResolvedAssets.reduce((sum, ra) => sum + ra.totalValue, 0)
-  }, [selectedResolvedAssets])
-
   useEffect(() => {
-    setTotalValue({ value: sourceTotalValue })
+    setTotalValue({ value: totalValue })
     return () => setTotalValue(null)
-  }, [sourceTotalValue, setTotalValue])
+  }, [totalValue, setTotalValue])
 
   const { expandedNodes, toggleExpand, expandAll, collapseAll } = useTreeState(treeNodes)
 
