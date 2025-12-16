@@ -26,6 +26,7 @@ import { useThemeStore, THEME_OPTIONS } from '@/store/theme-store'
 import eveSsoLoginWhite from '/eve-sso-login-white.png'
 import { OwnerIcon } from '@/components/ui/type-icon'
 import { OwnerManagementModal } from './OwnerManagementModal'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { CreditsModal } from './CreditsModal'
 import { SupportModal } from './SupportModal'
 import { ChangelogModal } from './ChangelogModal'
@@ -514,11 +515,17 @@ function WindowControls() {
   const [supportOpen, setSupportOpen] = useState(false)
   const [changelogOpen, setChangelogOpen] = useState(false)
   const [isClearingCache, setIsClearingCache] = useState(false)
+  const [showClearCacheConfirm, setShowClearCacheConfirm] = useState(false)
   const settingsPanelRef = useRef<HTMLDivElement>(null)
   const theme = useThemeStore((s) => s.theme)
   const setTheme = useThemeStore((s) => s.setTheme)
 
-  const handleClearCache = async () => {
+  const handleClearCacheClick = () => {
+    setShowClearCacheConfirm(true)
+  }
+
+  const handleClearCacheConfirm = async () => {
+    setShowClearCacheConfirm(false)
     if (isClearingCache) return
     setIsClearingCache(true)
     try {
@@ -637,7 +644,7 @@ function WindowControls() {
               </a>
               <div className="my-2 border-t border-semantic-danger/30" />
               <button
-                onClick={handleClearCache}
+                onClick={handleClearCacheClick}
                 disabled={isClearingCache}
                 className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-semantic-danger hover:bg-semantic-danger/10 disabled:opacity-50"
               >
@@ -651,6 +658,15 @@ function WindowControls() {
       <ChangelogModal open={changelogOpen} onOpenChange={setChangelogOpen} />
       <CreditsModal open={creditsOpen} onOpenChange={setCreditsOpen} />
       <SupportModal open={supportOpen} onOpenChange={setSupportOpen} />
+      <ConfirmDialog
+        open={showClearCacheConfirm}
+        onOpenChange={setShowClearCacheConfirm}
+        title="Clear All Caches?"
+        description="Are you sure you want to clear all cached data? The app will reload and fetch fresh data from EVE servers."
+        confirmLabel="Clear All"
+        variant="danger"
+        onConfirm={handleClearCacheConfirm}
+      />
       <button
         onClick={() => window.electronAPI?.windowMinimize()}
         className="flex h-10 w-12 items-center justify-center text-content-secondary hover:bg-surface-tertiary hover:text-content"
