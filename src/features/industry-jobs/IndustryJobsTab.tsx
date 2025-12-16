@@ -280,14 +280,15 @@ export function IndustryJobsTab() {
   const jobsUpdating = useIndustryJobsStore((s) => s.isUpdating)
   const updateError = useIndustryJobsStore((s) => s.updateError)
   const init = useIndustryJobsStore((s) => s.init)
+  const update = useIndustryJobsStore((s) => s.update)
   const initialized = useIndustryJobsStore((s) => s.initialized)
 
   const { isLoading: assetsUpdating } = useAssetData()
   const isUpdating = assetsUpdating || jobsUpdating
 
   useEffect(() => {
-    init()
-  }, [init])
+    init().then(() => update())
+  }, [init, update])
 
   const cacheVersion = useCacheVersion()
 

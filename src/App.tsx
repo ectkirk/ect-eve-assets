@@ -2,7 +2,6 @@ import { useEffect, useState, Component, type ReactNode } from 'react'
 import { useAuthStore } from './store/auth-store'
 import { useAssetStore } from './store/asset-store'
 import { useMarketOrdersStore } from './store/market-orders-store'
-import { useIndustryJobsStore } from './store/industry-jobs-store'
 import { useContractsStore } from './store/contracts-store'
 import { useWalletStore } from './store/wallet-store'
 import { useBlueprintsStore } from './store/blueprints-store'
@@ -90,7 +89,6 @@ function App() {
         logger.info('Asset store initialized', { module: 'App' })
         return Promise.all([
           useMarketOrdersStore.getState().init(),
-          useIndustryJobsStore.getState().init(),
           useContractsStore.getState().init(),
           useWalletStore.getState().init(),
           useBlueprintsStore.getState().init(),

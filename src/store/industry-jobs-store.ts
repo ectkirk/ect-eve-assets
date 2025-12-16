@@ -68,6 +68,7 @@ export const useIndustryJobsStore = createOwnerStore<ESIIndustryJob[], OwnerJobs
     dataKey: 'jobs',
     metaStoreName: 'meta',
   },
+  disableAutoRefresh: true,
   getEndpoint,
   fetchData: async (owner) => {
     const result = await fetchJobsForOwner(owner)
