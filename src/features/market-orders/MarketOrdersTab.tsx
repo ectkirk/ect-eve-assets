@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
-import { ChevronRight, ChevronDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { ChevronRight, ChevronDown, ArrowUp, ArrowDown, History } from 'lucide-react'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useMarketOrdersStore } from '@/store/market-orders-store'
+import { useMarketOrderHistoryStore, type MarketOrderHistory } from '@/store/market-order-history-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useTabControls, type ComparisonLevel } from '@/context'
 import { useColumnSettings, useCacheVersion, useExpandCollapse, type ColumnConfig } from '@/hooks'
@@ -33,6 +34,16 @@ interface OrderRow {
   regionName: string
   systemName: string
   comparison?: MarketComparisonPrices
+}
+
+interface HistoryOrderRow {
+  order: MarketOrderHistory
+  ownerName: string
+  typeId: number
+  typeName: string
+  categoryId?: number
+  locationName: string
+  state: 'cancelled' | 'expired' | 'completed'
 }
 
 interface LocationGroup {
@@ -377,6 +388,212 @@ function LocationGroupRow({
   )
 }
 
+const PAGE_SIZE = 50
+
+type HistorySortColumn = 'item' | 'price' | 'qty' | 'total' | 'location' | 'issued' | 'state' | 'owner'
+
+function HistorySortableHeader({
+  column,
+  label,
+  currentSort,
+  currentDirection,
+  onSort,
+  className = ''
+}: {
+  column: HistorySortColumn
+  label: string
+  currentSort: HistorySortColumn
+  currentDirection: SortDirection
+  onSort: (column: HistorySortColumn) => void
+  className?: string
+}) {
+  const isActive = currentSort === column
+  return (
+    <TableHead
+      className={`cursor-pointer select-none hover:bg-surface-tertiary/50 ${className}`}
+      onClick={() => onSort(column)}
+    >
+      <div className={`flex items-center gap-1 ${className.includes('text-right') ? 'justify-end' : ''}`}>
+        {label}
+        {isActive && (
+          currentDirection === 'asc'
+            ? <ArrowUp className="h-3 w-3" />
+            : <ArrowDown className="h-3 w-3" />
+        )}
+      </div>
+    </TableHead>
+  )
+}
+
+function formatIssuedDate(issued: string): string {
+  const date = new Date(issued)
+  return date.toLocaleDateString()
+}
+
+function HistoryTable({ orders }: { orders: HistoryOrderRow[] }) {
+  const [page, setPage] = useState(0)
+  const [sortColumn, setSortColumn] = useState<HistorySortColumn>('issued')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
+
+  const handleSort = (column: HistorySortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortColumn(column)
+      setSortDirection('desc')
+    }
+  }
+
+  const sortedOrders = useMemo(() => {
+    return [...orders].sort((a, b) => {
+      let aVal: number | string = 0
+      let bVal: number | string = 0
+
+      switch (sortColumn) {
+        case 'item':
+          aVal = a.typeName.toLowerCase()
+          bVal = b.typeName.toLowerCase()
+          break
+        case 'price':
+          aVal = a.order.price
+          bVal = b.order.price
+          break
+        case 'qty':
+          aVal = a.order.volume_remain
+          bVal = b.order.volume_remain
+          break
+        case 'total':
+          aVal = a.order.price * a.order.volume_total
+          bVal = b.order.price * b.order.volume_total
+          break
+        case 'location':
+          aVal = a.locationName.toLowerCase()
+          bVal = b.locationName.toLowerCase()
+          break
+        case 'issued':
+          aVal = new Date(a.order.issued).getTime()
+          bVal = new Date(b.order.issued).getTime()
+          break
+        case 'state':
+          aVal = a.state
+          bVal = b.state
+          break
+        case 'owner':
+          aVal = a.ownerName.toLowerCase()
+          bVal = b.ownerName.toLowerCase()
+          break
+      }
+
+      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1
+      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1
+      return 0
+    })
+  }, [orders, sortColumn, sortDirection])
+
+  const totalPages = Math.max(1, Math.ceil(sortedOrders.length / PAGE_SIZE))
+  const clampedPage = Math.min(page, totalPages - 1)
+  const paginatedOrders = sortedOrders.slice(clampedPage * PAGE_SIZE, (clampedPage + 1) * PAGE_SIZE)
+
+  return (
+    <>
+      <Table>
+        <TableHeader>
+          <TableRow className="hover:bg-transparent">
+            <HistorySortableHeader column="item" label="Item" currentSort={sortColumn} currentDirection={sortDirection} onSort={handleSort} />
+            <HistorySortableHeader column="price" label="Price" currentSort={sortColumn} currentDirection={sortDirection} onSort={handleSort} className="text-right" />
+            <HistorySortableHeader column="qty" label="Qty" currentSort={sortColumn} currentDirection={sortDirection} onSort={handleSort} className="text-right" />
+            <HistorySortableHeader column="total" label="Total" currentSort={sortColumn} currentDirection={sortDirection} onSort={handleSort} className="text-right" />
+            <HistorySortableHeader column="location" label="Location" currentSort={sortColumn} currentDirection={sortDirection} onSort={handleSort} />
+            <HistorySortableHeader column="issued" label="Issued" currentSort={sortColumn} currentDirection={sortDirection} onSort={handleSort} className="text-right" />
+            <HistorySortableHeader column="state" label="State" currentSort={sortColumn} currentDirection={sortDirection} onSort={handleSort} className="text-right" />
+            <HistorySortableHeader column="owner" label="Owner" currentSort={sortColumn} currentDirection={sortDirection} onSort={handleSort} className="text-right" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {paginatedOrders.map((row) => {
+            const total = row.order.price * row.order.volume_total
+            return (
+              <TableRow key={row.order.order_id}>
+                <TableCell className="py-1.5">
+                  <div className="flex items-center gap-2">
+                    <TypeIcon typeId={row.typeId} categoryId={row.categoryId} />
+                    <span className="truncate" title={row.typeName}>{row.typeName}</span>
+                    {row.order.is_buy_order && <span className="text-xs text-status-positive">(Buy)</span>}
+                  </div>
+                </TableCell>
+                <TableCell className="py-1.5 text-right tabular-nums">
+                  {row.order.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </TableCell>
+                <TableCell className="py-1.5 text-right tabular-nums">
+                  {row.order.volume_remain.toLocaleString()}
+                  {row.order.volume_remain !== row.order.volume_total && (
+                    <span className="text-content-muted">/{row.order.volume_total.toLocaleString()}</span>
+                  )}
+                </TableCell>
+                <TableCell className="py-1.5 text-right tabular-nums text-content-secondary">
+                  {formatNumber(total)}
+                </TableCell>
+                <TableCell className="py-1.5 text-content-secondary truncate" title={row.locationName}>
+                  {row.locationName}
+                </TableCell>
+                <TableCell className="py-1.5 text-right tabular-nums text-content-secondary">
+                  {formatIssuedDate(row.order.issued)}
+                </TableCell>
+                <TableCell className="py-1.5 text-right">
+                  {row.state === 'completed' && <span className="text-status-positive">Completed</span>}
+                  {row.state === 'expired' && <span className="text-content-muted">Expired</span>}
+                  {row.state === 'cancelled' && <span className="text-status-negative">Cancelled</span>}
+                </TableCell>
+                <TableCell className="py-1.5 text-right text-content-secondary">{row.ownerName}</TableCell>
+              </TableRow>
+            )
+          })}
+        </TableBody>
+      </Table>
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-2 py-2 text-sm">
+          <span className="text-content-secondary">
+            {clampedPage * PAGE_SIZE + 1}-{Math.min((clampedPage + 1) * PAGE_SIZE, sortedOrders.length)} of {sortedOrders.length}
+          </span>
+          <div className="flex gap-1">
+            <button
+              onClick={() => setPage(0)}
+              disabled={clampedPage === 0}
+              className="px-2 py-1 rounded hover:bg-surface-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              First
+            </button>
+            <button
+              onClick={() => setPage(clampedPage - 1)}
+              disabled={clampedPage === 0}
+              className="px-2 py-1 rounded hover:bg-surface-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Prev
+            </button>
+            <span className="px-2 py-1 text-content-secondary">
+              {clampedPage + 1} / {totalPages}
+            </span>
+            <button
+              onClick={() => setPage(clampedPage + 1)}
+              disabled={clampedPage >= totalPages - 1}
+              className="px-2 py-1 rounded hover:bg-surface-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+            <button
+              onClick={() => setPage(totalPages - 1)}
+              disabled={clampedPage >= totalPages - 1}
+              className="px-2 py-1 rounded hover:bg-surface-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Last
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
 export function MarketOrdersTab() {
   const ownersRecord = useAuthStore((s) => s.owners)
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
@@ -386,6 +603,11 @@ export function MarketOrdersTab() {
   const updateError = useMarketOrdersStore((s) => s.updateError)
   const init = useMarketOrdersStore((s) => s.init)
   const initialized = useMarketOrdersStore((s) => s.initialized)
+
+  const historyByOwner = useMarketOrderHistoryStore((s) => s.dataByOwner)
+  const historyUpdating = useMarketOrderHistoryStore((s) => s.isUpdating)
+  const initHistory = useMarketOrderHistoryStore((s) => s.init)
+  const updateHistory = useMarketOrderHistoryStore((s) => s.update)
 
   const { isLoading: assetsUpdating } = useAssetData()
   const isUpdating = assetsUpdating || ordersUpdating
@@ -437,6 +659,13 @@ export function MarketOrdersTab() {
   const selectedSet = useMemo(() => new Set(selectedOwnerIds), [selectedOwnerIds])
 
   const [comparisonLevelValue, setComparisonLevelValue] = useState<ComparisonLevel>('station')
+  const [showHistory, setShowHistory] = useState(false)
+
+  useEffect(() => {
+    if (showHistory) {
+      initHistory().then(() => updateHistory())
+    }
+  }, [showHistory, initHistory, updateHistory])
 
   const handleComparisonLevelChange = useCallback((value: ComparisonLevel) => {
     setComparisonLevelValue(value)
@@ -547,6 +776,44 @@ export function MarketOrdersTab() {
     return sorted
   }, [ordersByOwner, cacheVersion, search, selectedSet, comparisonData])
 
+  const historyOrders = useMemo(() => {
+    void cacheVersion
+
+    const filteredHistoryByOwner = historyByOwner.filter(({ owner }) =>
+      selectedSet.has(ownerKey(owner.type, owner.id))
+    )
+
+    const rows: HistoryOrderRow[] = []
+
+    for (const { owner, orders } of filteredHistoryByOwner) {
+      for (const order of orders) {
+        const type = hasType(order.type_id) ? getType(order.type_id) : undefined
+        const locationInfo = getLocationInfo(order.location_id)
+
+        rows.push({
+          order,
+          ownerName: owner.name,
+          typeId: order.type_id,
+          typeName: type?.name ?? `Unknown Type ${order.type_id}`,
+          categoryId: type?.categoryId,
+          locationName: locationInfo.name,
+          state: order.state,
+        })
+      }
+    }
+
+    if (search) {
+      const searchLower = search.toLowerCase()
+      return rows.filter((row) =>
+        row.typeName.toLowerCase().includes(searchLower) ||
+        row.ownerName.toLowerCase().includes(searchLower) ||
+        row.locationName.toLowerCase().includes(searchLower)
+      )
+    }
+
+    return rows
+  }, [historyByOwner, cacheVersion, search, selectedSet])
+
   const expandableIds = useMemo(() => locationGroups.map((g) => g.locationId), [locationGroups])
   const { isExpanded, toggle } = useExpandCollapse(expandableIds, setExpandCollapse)
 
@@ -602,22 +869,49 @@ export function MarketOrdersTab() {
   if (loadingState) return loadingState
 
   return (
-    <div className="h-full rounded-lg border border-border bg-surface-secondary/30 overflow-auto">
-      {locationGroups.length === 0 ? (
-        <div className="flex items-center justify-center h-full">
-          <p className="text-content-secondary">No active market orders.</p>
+    <div className="h-full overflow-auto">
+      {locationGroups.length > 0 && (
+        <div className="rounded-lg border border-border bg-surface-secondary/30">
+          {locationGroups.map((group) => (
+            <LocationGroupRow
+              key={group.locationId}
+              group={group}
+              isExpanded={isExpanded(group.locationId)}
+              onToggle={() => toggle(group.locationId)}
+              comparisonLevel={comparisonLevelValue}
+            />
+          ))}
         </div>
-      ) : (
-        locationGroups.map((group) => (
-          <LocationGroupRow
-            key={group.locationId}
-            group={group}
-            isExpanded={isExpanded(group.locationId)}
-            onToggle={() => toggle(group.locationId)}
-            comparisonLevel={comparisonLevelValue}
-          />
-        ))
       )}
+      {locationGroups.length > 0 && <div className="h-4" />}
+          <div className="rounded-lg border border-border bg-surface-secondary/30">
+            <button
+              onClick={() => setShowHistory(!showHistory)}
+              className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-surface-secondary/50 text-left text-sm"
+            >
+              {showHistory ? (
+                <ChevronDown className="h-4 w-4 text-content-secondary" />
+              ) : (
+                <ChevronRight className="h-4 w-4 text-content-secondary" />
+              )}
+              <History className="h-4 w-4 text-content-secondary" />
+              <span className="text-content-secondary flex-1">Order History</span>
+              <span className="text-xs text-content-secondary">
+                {historyUpdating ? 'Loading...' : `${historyOrders.length} order${historyOrders.length !== 1 ? 's' : ''}`}
+              </span>
+            </button>
+            {showHistory && (
+              <div className="border-t border-border/50 bg-surface/30 px-4 pb-2">
+                {historyUpdating ? (
+                  <div className="py-4 text-center text-content-secondary">Loading order history...</div>
+                ) : historyOrders.length === 0 ? (
+                  <div className="py-4 text-center text-content-muted">No order history</div>
+                ) : (
+                  <HistoryTable orders={historyOrders} />
+                )}
+              </div>
+            )}
+          </div>
     </div>
   )
 }
