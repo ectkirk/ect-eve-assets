@@ -221,8 +221,8 @@ function buildSyntheticAssets(
       synthetics.push({
         item_id: job.job_id,
         type_id: productTypeId,
-        location_id: job.output_location_id,
-        location_type: job.output_location_id > 1_000_000_000_000 ? 'other' : 'station',
+        location_id: job.facility_id,
+        location_type: job.facility_id > 1_000_000_000_000 ? 'other' : 'station',
         location_flag: 'IndustryJob',
         quantity: job.runs,
         is_singleton: false,
