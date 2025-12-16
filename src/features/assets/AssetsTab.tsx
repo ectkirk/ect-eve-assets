@@ -12,16 +12,13 @@ import {
 } from '@tanstack/react-table'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { ArrowUpDown, Loader2 } from 'lucide-react'
-import { type ESIAsset } from '@/api/endpoints/assets'
 import { isAbyssalTypeId } from '@/api/mutamarket-client'
-import { getAbyssalPrice, getTypeName, getType, getStructure, getLocation, CategoryIds } from '@/store/reference-cache'
-import { HANGAR_FLAGS, DELIVERY_FLAGS, ASSET_SAFETY_FLAGS } from '@/lib/tree-types'
-import { formatBlueprintName } from '@/store/blueprints-store'
-import { useAssetData } from '@/hooks/useAssetData'
-import { useAuthStore, ownerKey } from '@/store/auth-store'
+import { CategoryIds } from '@/store/reference-cache'
+import { useResolvedAssets } from '@/hooks/useResolvedAssets'
 import { TypeIcon, OwnerIcon } from '@/components/ui/type-icon'
 import { formatNumber, cn } from '@/lib/utils'
 import { useTabControls } from '@/context'
+import type { AssetModeFlags } from '@/lib/resolved-asset'
 
 interface AssetRow {
   itemId: number
@@ -34,7 +31,6 @@ interface AssetRow {
   systemName: string
   regionName: string
   locationFlag: string
-  originalFlag: string
   isSingleton: boolean
   isBlueprintCopy: boolean
   price: number
@@ -47,8 +43,7 @@ interface AssetRow {
   ownerId: number
   ownerName: string
   ownerType: 'character' | 'corporation'
-  isInContract?: boolean
-  isInMarketOrder?: boolean
+  modeFlags: AssetModeFlags
 }
 
 
@@ -126,17 +121,16 @@ const columns: ColumnDef<AssetRow>[] = [
       const typeName = row.getValue('typeName') as string
       const isBpc = row.original.isBlueprintCopy
       const categoryId = row.original.categoryId
-      const isContract = row.original.isInContract
-      const isMarketOrder = row.original.isInMarketOrder
+      const modeFlags = row.original.modeFlags
 
       return (
         <div className="flex items-center gap-2">
           <TypeIcon typeId={typeId} categoryId={categoryId} isBlueprintCopy={isBpc} size="lg" />
           <span className={isBpc ? 'text-status-special' : ''}>{typeName}</span>
-          {isContract && (
+          {modeFlags.isContract && (
             <span className="text-xs text-status-corp bg-semantic-warning/20 px-1.5 py-0.5 rounded">In Contract</span>
           )}
-          {isMarketOrder && (
+          {modeFlags.isMarketOrder && (
             <span className="text-xs text-status-info bg-accent/20 px-1.5 py-0.5 rounded">Sell Order</span>
           )}
         </div>
@@ -260,18 +254,16 @@ const columns: ColumnDef<AssetRow>[] = [
 
 export function AssetsTab() {
   const {
-    unifiedAssetsByOwner,
+    selectedResolvedAssets,
     owners,
     isLoading,
     hasData,
     hasError,
     errorMessage,
-    prices,
-    assetNames,
     cacheVersion,
     isRefreshingAbyssals,
     updateProgress,
-  } = useAssetData()
+  } = useResolvedAssets()
 
   const [sorting, setSorting] = useState<SortingState>([{ id: 'totalValue', desc: true }])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
@@ -287,119 +279,40 @@ export function AssetsTab() {
 
   const data = useMemo<AssetRow[]>(() => {
     void cacheVersion
-    const rows: AssetRow[] = []
 
-    const itemIdToAsset = new Map<number, ESIAsset>()
-    for (const { assets } of unifiedAssetsByOwner) {
-      for (const asset of assets) {
-        itemIdToAsset.set(asset.item_id, asset)
+    const rows: AssetRow[] = selectedResolvedAssets.map((ra) => {
+      const displayFlag = ra.modeFlags.isContract
+        ? 'In Contract'
+        : ra.modeFlags.isMarketOrder
+          ? 'Sell Order'
+          : ra.asset.location_flag
+
+      return {
+        itemId: ra.asset.item_id,
+        typeId: ra.typeId,
+        typeName: ra.typeName,
+        quantity: ra.asset.quantity,
+        locationId: ra.asset.location_id,
+        resolvedLocationId: ra.rootLocationId,
+        locationName: ra.locationName,
+        systemName: ra.systemName,
+        regionName: ra.regionName,
+        locationFlag: displayFlag,
+        isSingleton: ra.asset.is_singleton,
+        isBlueprintCopy: ra.isBlueprintCopy,
+        price: ra.price,
+        totalValue: ra.totalValue,
+        volume: ra.volume,
+        totalVolume: ra.totalVolume,
+        categoryId: ra.categoryId,
+        categoryName: ra.categoryName,
+        groupName: ra.groupName,
+        ownerId: ra.owner.id,
+        ownerName: ra.owner.name,
+        ownerType: ra.owner.type,
+        modeFlags: ra.modeFlags,
       }
-    }
-
-    const resolveLocation = (asset: ESIAsset): { resolvedLocationId: number; locationName: string; systemName: string; regionName: string } => {
-      let current = asset
-      while (current.location_type === 'item') {
-        const parent = itemIdToAsset.get(current.location_id)
-        if (!parent) break
-        current = parent
-      }
-
-      let resolvedLocationId: number
-      let locationName: string
-      let systemName = ''
-      let regionName = ''
-
-      if (current.location_id > 1_000_000_000_000) {
-        resolvedLocationId = current.location_id
-        const structure = getStructure(current.location_id)
-        locationName = structure?.name ?? `Structure ${current.location_id}`
-        if (structure?.solarSystemId) {
-          const system = getLocation(structure.solarSystemId)
-          systemName = system?.name ?? ''
-          regionName = system?.regionName ?? ''
-        }
-      } else if (current.location_type === 'solar_system') {
-        const type = getType(current.type_id)
-        if (type?.categoryId === CategoryIds.STRUCTURE) {
-          resolvedLocationId = current.item_id
-          const structure = getStructure(current.item_id)
-          locationName = structure?.name ?? `Structure ${current.item_id}`
-          if (structure?.solarSystemId) {
-            const system = getLocation(structure.solarSystemId)
-            systemName = system?.name ?? ''
-            regionName = system?.regionName ?? ''
-          }
-        } else {
-          resolvedLocationId = current.location_id
-          const system = getLocation(current.location_id)
-          locationName = system?.name ?? `System ${current.location_id}`
-          systemName = system?.name ?? ''
-          regionName = system?.regionName ?? ''
-        }
-      } else {
-        resolvedLocationId = current.location_id
-        const location = getLocation(current.location_id)
-        locationName = location?.name ?? `Location ${current.location_id}`
-        systemName = location?.solarSystemName ?? ''
-        regionName = location?.regionName ?? ''
-      }
-
-      return { resolvedLocationId, locationName, systemName, regionName }
-    }
-
-    for (const { owner, assets } of unifiedAssetsByOwner) {
-      for (const asset of assets) {
-        if (asset.location_flag === 'AutoFit') continue
-
-        const isInContract = asset.location_flag === 'InContract'
-        const isInMarketOrder = asset.location_flag === 'SellOrder'
-
-        const sdeType = getType(asset.type_id)
-        const customName = assetNames.get(asset.item_id)
-        const rawTypeName = getTypeName(asset.type_id)
-        const baseName = customName ? `${rawTypeName} (${customName})` : rawTypeName
-        const isBlueprint = sdeType?.categoryId === CategoryIds.BLUEPRINT
-        const isBpc = asset.is_blueprint_copy ?? false
-        const typeName = isBlueprint ? formatBlueprintName(baseName, asset.item_id) : baseName
-        const volume = sdeType?.packagedVolume ?? sdeType?.volume ?? 0
-
-        const abyssalPrice = getAbyssalPrice(asset.item_id)
-        const price = isBpc ? 0 : (abyssalPrice ?? prices.get(asset.type_id) ?? 0)
-
-        const isAbyssal = isAbyssalTypeId(asset.type_id)
-        const { resolvedLocationId, locationName, systemName, regionName } = resolveLocation(asset)
-
-        const displayFlag = isInContract ? 'In Contract' : isInMarketOrder ? 'Sell Order' : asset.location_flag
-
-        rows.push({
-          itemId: asset.item_id,
-          typeId: asset.type_id,
-          typeName,
-          quantity: asset.quantity,
-          locationId: asset.location_id,
-          resolvedLocationId,
-          locationName,
-          systemName,
-          regionName,
-          locationFlag: displayFlag,
-          originalFlag: asset.location_flag,
-          isSingleton: asset.is_singleton,
-          isBlueprintCopy: isBpc,
-          price,
-          totalValue: price * asset.quantity,
-          volume,
-          totalVolume: volume * asset.quantity,
-          categoryId: sdeType?.categoryId ?? 0,
-          categoryName: isAbyssal ? 'Abyssals' : (sdeType?.categoryName ?? ''),
-          groupName: sdeType?.groupName ?? '',
-          ownerId: owner.id,
-          ownerName: owner.name,
-          ownerType: owner.type,
-          isInContract,
-          isInMarketOrder,
-        })
-      }
-    }
+    })
 
     const aggregated = new Map<string, AssetRow>()
     for (const row of rows) {
@@ -420,7 +333,7 @@ export function AssetsTab() {
     }
 
     return Array.from(aggregated.values())
-  }, [unifiedAssetsByOwner, prices, assetNames, cacheVersion])
+  }, [selectedResolvedAssets, cacheVersion])
 
   const categories = useMemo(() => {
     const cats = new Set<string>()
@@ -430,40 +343,35 @@ export function AssetsTab() {
     return Array.from(cats).sort()
   }, [data])
 
-  const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
-  const selectedSet = useMemo(() => new Set(selectedOwnerIds), [selectedOwnerIds])
-
-  const selectedData = useMemo(() => {
-    return data.filter((row) => {
-      const rowOwnerKey = ownerKey(row.ownerType, row.ownerId)
-      return selectedSet.has(rowOwnerKey)
-    })
-  }, [data, selectedSet])
-
   const filteredData = useMemo(() => {
     const searchLower = search.toLowerCase()
-    return selectedData.filter((row) => {
+    return data.filter((row) => {
       if (assetTypeFilterValue) {
-        const flag = row.originalFlag
-        const isShip = row.categoryId === CategoryIds.SHIP
+        const mf = row.modeFlags
         switch (assetTypeFilterValue) {
           case 'CONTRACTS':
-            if (!row.isInContract) return false
+            if (!mf.isContract) return false
             break
           case 'MARKET_ORDERS':
-            if (!row.isInMarketOrder) return false
+            if (!mf.isMarketOrder) return false
             break
           case 'DELIVERIES':
-            if (!DELIVERY_FLAGS.has(flag)) return false
+            if (!mf.inDeliveries) return false
             break
           case 'ASSET_SAFETY':
-            if (!ASSET_SAFETY_FLAGS.has(flag)) return false
+            if (!mf.inAssetSafety) return false
             break
           case 'ITEM_HANGAR':
-            if (isShip || !HANGAR_FLAGS.has(flag)) return false
+            if (!mf.inItemHangar) return false
             break
           case 'SHIP_HANGAR':
-            if (!isShip || !HANGAR_FLAGS.has(flag)) return false
+            if (!mf.inShipHangar) return false
+            break
+          case 'OFFICE':
+            if (!mf.inOffice) return false
+            break
+          case 'STRUCTURES':
+            if (!mf.inStructure) return false
             break
         }
       }
@@ -478,7 +386,7 @@ export function AssetsTab() {
       }
       return true
     })
-  }, [selectedData, assetTypeFilterValue, categoryFilterValue, search])
+  }, [data, assetTypeFilterValue, categoryFilterValue, search])
 
   const table = useReactTable({
     data: filteredData,
@@ -527,9 +435,9 @@ export function AssetsTab() {
   }, [assetTypeFilterValue, setAssetTypeFilter])
 
   useEffect(() => {
-    setResultCount({ showing: filteredData.length, total: selectedData.length })
+    setResultCount({ showing: filteredData.length, total: data.length })
     return () => setResultCount(null)
-  }, [filteredData.length, selectedData.length, setResultCount])
+  }, [filteredData.length, data.length, setResultCount])
 
   const filteredTotalValue = useMemo(() => {
     return filteredData.reduce((sum, row) => sum + row.totalValue, 0)
@@ -633,8 +541,7 @@ export function AssetsTab() {
               {rowVirtualizer.getVirtualItems().map((virtualRow) => {
                 const row = rows[virtualRow.index]
                 if (!row) return null
-                const isContract = row.original.isInContract
-                const isMarketOrder = row.original.isInMarketOrder
+                const modeFlags = row.original.modeFlags
                 return (
                   <div key={row.id} data-index={virtualRow.index} className="contents group">
                     {row.getVisibleCells().map((cell) => (
@@ -643,8 +550,8 @@ export function AssetsTab() {
                         className={cn(
                           'py-2 text-sm border-b border-border/50 group-hover:bg-surface-tertiary/50 flex items-center',
                           cell.column.id === 'ownerName' ? 'px-2' : 'px-4',
-                          isContract && 'bg-row-contract',
-                          isMarketOrder && 'bg-row-order'
+                          modeFlags.isContract && 'bg-row-contract',
+                          modeFlags.isMarketOrder && 'bg-row-order'
                         )}
                       >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}

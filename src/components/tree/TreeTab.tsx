@@ -1,10 +1,9 @@
 import { useMemo, useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
-import { useAssetData } from '@/hooks/useAssetData'
-import { useAuthStore, ownerKey } from '@/store/auth-store'
+import { useResolvedAssets } from '@/hooks/useResolvedAssets'
 import { useDivisionsStore } from '@/store/divisions-store'
 import { TreeTable, useTreeState } from '@/components/tree'
-import { buildTree, filterTree, countTreeItems, getTreeCategories, markSourceFlags, type AssetWithOwner } from '@/lib/tree-builder'
+import { buildTree, filterTree, countTreeItems, getTreeCategories } from '@/lib/tree-builder'
 import { TreeMode } from '@/lib/tree-types'
 import { useTabControls } from '@/context'
 
@@ -14,23 +13,19 @@ interface TreeTabProps {
 
 export function TreeTab({ mode }: TreeTabProps) {
   const {
-    unifiedAssetsByOwner,
+    selectedResolvedAssets,
     owners,
     isLoading,
     hasData,
     hasError,
     errorMessage,
-    prices,
-    assetNames,
     cacheVersion,
     updateProgress,
-  } = useAssetData()
+  } = useResolvedAssets()
 
   const [categoryFilter, setCategoryFilterValue] = useState('')
   const [assetTypeFilter, setAssetTypeFilterValue] = useState('')
   const { search, setResultCount, setCategoryFilter, setAssetTypeFilter } = useTabControls()
-  const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
-  const selectedSet = useMemo(() => new Set(selectedOwnerIds), [selectedOwnerIds])
 
   const divisionsInit = useDivisionsStore((s) => s.init)
   const divisionsInitialized = useDivisionsStore((s) => s.initialized)
@@ -71,52 +66,13 @@ export function TreeTab({ mode }: TreeTabProps) {
 
   const unfilteredNodes = useMemo(() => {
     void cacheVersion
-    if (unifiedAssetsByOwner.length === 0 || prices.size === 0) return []
+    if (selectedResolvedAssets.length === 0) return []
 
-    const allAssets: AssetWithOwner[] = []
-    const filteredAssets: AssetWithOwner[] = []
-    const contractItemIds = new Set<number>()
-    const orderItemIds = new Set<number>()
-
-    const includeRegularAssets = effectiveMode !== TreeMode.CONTRACTS && effectiveMode !== TreeMode.MARKET_ORDERS
-    const includeContracts = effectiveMode === TreeMode.ALL || effectiveMode === TreeMode.CONTRACTS
-    const includeOrders = effectiveMode === TreeMode.ALL || effectiveMode === TreeMode.MARKET_ORDERS
-
-    for (const { owner, assets } of unifiedAssetsByOwner) {
-      const isSelected = selectedSet.has(ownerKey(owner.type, owner.id))
-      for (const asset of assets) {
-        const isContract = asset.location_flag === 'InContract'
-        const isOrder = asset.location_flag === 'SellOrder'
-        const isRegular = !isContract && !isOrder
-
-        const aw = { asset, owner }
-        allAssets.push(aw)
-
-        if (!isSelected) continue
-
-        if (isContract) {
-          contractItemIds.add(asset.item_id)
-          if (includeContracts) filteredAssets.push(aw)
-        } else if (isOrder) {
-          orderItemIds.add(asset.item_id)
-          if (includeOrders) filteredAssets.push(aw)
-        } else if (isRegular && includeRegularAssets) {
-          filteredAssets.push(aw)
-        }
-      }
-    }
-
-    const treeMode = effectiveMode === TreeMode.CONTRACTS || effectiveMode === TreeMode.MARKET_ORDERS
-      ? TreeMode.ALL
-      : effectiveMode
-    const nodes = buildTree(filteredAssets, { mode: treeMode, prices, assetNames, hangarDivisionNames, allAssets })
-
-    if (contractItemIds.size > 0 || orderItemIds.size > 0) {
-      markSourceFlags(nodes, contractItemIds, orderItemIds)
-    }
-
-    return nodes
-  }, [unifiedAssetsByOwner, prices, assetNames, cacheVersion, effectiveMode, selectedSet, hangarDivisionNames])
+    return buildTree(selectedResolvedAssets, {
+      mode: effectiveMode,
+      hangarDivisionNames,
+    })
+  }, [selectedResolvedAssets, cacheVersion, effectiveMode, hangarDivisionNames])
 
   const categories = useMemo(() => getTreeCategories(unfilteredNodes), [unfilteredNodes])
 
@@ -189,15 +145,6 @@ export function TreeTab({ mode }: TreeTabProps) {
             <p className="text-content-secondary">No asset data loaded yet.</p>
           )}
         </div>
-      </div>
-    )
-  }
-
-  if (prices.size === 0) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-accent" />
-        <span className="ml-2 text-content-secondary">Loading prices...</span>
       </div>
     )
   }
