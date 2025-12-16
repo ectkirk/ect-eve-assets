@@ -5,14 +5,15 @@ import { getCharacterAssetNames, getCorporationAssetNames, type ESIAsset, type E
 import { esi, type ESIResponseMeta } from '@/api/esi'
 import { ESIAssetSchema } from '@/api/schemas'
 import { fetchPrices, resolveTypes } from '@/api/ref-client'
-import { fetchAbyssalPrices, isAbyssalTypeId, hasCachedAbyssalPrice } from '@/api/mutamarket-client'
 import { getType } from '@/store/reference-cache'
 import { createOwnerDB } from '@/lib/owner-indexed-db'
 import { logger } from '@/lib/logger'
+import { collectResolutionIds, resolveAllReferenceData } from '@/lib/data-resolver'
 import { useContractsStore, type OwnerContracts } from './contracts-store'
 import { useMarketOrdersStore, type OwnerOrders } from './market-orders-store'
 import { useIndustryJobsStore, type OwnerJobs } from './industry-jobs-store'
 import { useStructuresStore, type OwnerStructures } from './structures-store'
+import { useClonesStore } from './clones-store'
 
 const NAMEABLE_CATEGORIES = new Set([6, 22, 65])
 const NAMEABLE_GROUPS = new Set([12, 14, 340, 448, 649])
@@ -376,21 +377,15 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         }
       }
 
-      const abyssalItemIds: number[] = []
-      for (const { assets } of results) {
-        for (const asset of assets) {
-          if (isAbyssalTypeId(asset.type_id) && !hasCachedAbyssalPrice(asset.item_id)) {
-            abyssalItemIds.push(asset.item_id)
-          }
-        }
-      }
-      if (abyssalItemIds.length > 0) {
-        try {
-          await fetchAbyssalPrices(abyssalItemIds)
-        } catch (err) {
-          logger.error('Failed to fetch abyssal prices', err instanceof Error ? err : undefined, { module: 'AssetStore' })
-        }
-      }
+      const resolutionIds = collectResolutionIds(
+        results,
+        useContractsStore.getState().contractsByOwner,
+        useMarketOrdersStore.getState().dataByOwner,
+        useIndustryJobsStore.getState().dataByOwner,
+        useStructuresStore.getState().dataByOwner,
+        useClonesStore.getState().dataByOwner
+      )
+      await resolveAllReferenceData(resolutionIds)
 
       await saveMetaToDB(allNames, prices)
 
@@ -465,19 +460,15 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         }
       }
 
-      const abyssalItemIds: number[] = []
-      for (const asset of assets) {
-        if (isAbyssalTypeId(asset.type_id) && !hasCachedAbyssalPrice(asset.item_id)) {
-          abyssalItemIds.push(asset.item_id)
-        }
-      }
-      if (abyssalItemIds.length > 0) {
-        try {
-          await fetchAbyssalPrices(abyssalItemIds)
-        } catch (err) {
-          logger.error('Failed to fetch abyssal prices', err instanceof Error ? err : undefined, { module: 'AssetStore' })
-        }
-      }
+      const resolutionIds = collectResolutionIds(
+        updatedAssetsList,
+        useContractsStore.getState().contractsByOwner,
+        useMarketOrdersStore.getState().dataByOwner,
+        useIndustryJobsStore.getState().dataByOwner,
+        useStructuresStore.getState().dataByOwner,
+        useClonesStore.getState().dataByOwner
+      )
+      await resolveAllReferenceData(resolutionIds)
 
       await saveMetaToDB(newNames, newPrices)
 

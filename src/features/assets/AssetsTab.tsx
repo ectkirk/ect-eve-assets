@@ -261,7 +261,6 @@ export function AssetsTab() {
     hasError,
     errorMessage,
     cacheVersion,
-    isRefreshingAbyssals,
     updateProgress,
   } = useResolvedAssets()
 
@@ -493,13 +492,6 @@ export function AssetsTab() {
 
   return (
     <div className="flex flex-col h-full">
-      {isRefreshingAbyssals && (
-        <div className="flex items-center gap-1 text-sm text-status-info mb-2">
-          <Loader2 className="h-3 w-3 animate-spin" />
-          <span>Fetching abyssal prices...</span>
-        </div>
-      )}
-
       <div
         ref={tableContainerRef}
         className="flex-1 min-h-0 rounded-lg border border-border bg-surface-secondary/30 overflow-auto"

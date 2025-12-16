@@ -7,7 +7,6 @@ import { useTabControls } from '@/context'
 import { useCacheVersion, useSortable, SortableHeader, sortRows } from '@/hooks'
 import { hasType, getType, hasLocation, getLocation } from '@/store/reference-cache'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
-import { resolveTypes, resolveLocations } from '@/api/ref-client'
 import {
   Table,
   TableBody,
@@ -156,32 +155,6 @@ export function StructuresTab() {
   }, [init])
 
   const cacheVersion = useCacheVersion()
-
-  useEffect(() => {
-    if (structuresByOwner.length === 0) return
-
-    const unresolvedTypeIds = new Set<number>()
-    const unknownLocationIds = new Set<number>()
-
-    for (const { structures } of structuresByOwner) {
-      for (const structure of structures) {
-        const type = getType(structure.type_id)
-        if (!type || type.name.startsWith('Unknown Type ')) {
-          unresolvedTypeIds.add(structure.type_id)
-        }
-        if (!hasLocation(structure.system_id)) {
-          unknownLocationIds.add(structure.system_id)
-        }
-      }
-    }
-
-    if (unresolvedTypeIds.size > 0) {
-      resolveTypes(Array.from(unresolvedTypeIds)).catch(() => {})
-    }
-    if (unknownLocationIds.size > 0) {
-      resolveLocations(Array.from(unknownLocationIds)).catch(() => {})
-    }
-  }, [structuresByOwner])
 
   const structureAssetMap = useMemo(() => {
     void cacheVersion

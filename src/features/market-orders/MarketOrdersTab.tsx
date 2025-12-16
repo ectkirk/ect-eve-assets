@@ -7,11 +7,9 @@ import { useAssetData } from '@/hooks/useAssetData'
 import { useTabControls, type ComparisonLevel } from '@/context'
 import { useColumnSettings, useCacheVersion, useExpandCollapse, SortableHeader, type ColumnConfig, type SortDirection } from '@/hooks'
 import { type MarketOrder } from '@/store/market-orders-store'
-import { hasType, getType, hasLocation, hasStructure } from '@/store/reference-cache'
+import { hasType, getType } from '@/store/reference-cache'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
-import { resolveTypes, resolveLocations } from '@/api/ref-client'
 import { type MarketComparisonPrices } from '@/api/ref-client'
-import { resolveStructures } from '@/api/endpoints/universe'
 import {
   Table,
   TableBody,
@@ -553,40 +551,6 @@ export function MarketOrdersTab() {
   }, [init])
 
   const cacheVersion = useCacheVersion()
-
-  useEffect(() => {
-    if (ordersByOwner.length === 0) return
-
-    const unresolvedTypeIds = new Set<number>()
-    const unknownLocationIds = new Set<number>()
-    const structureToCharacter = new Map<number, number>()
-
-    for (const { owner, orders } of ordersByOwner) {
-      for (const order of orders) {
-        const type = getType(order.type_id)
-        if (!type || type.name.startsWith('Unknown Type ')) {
-          unresolvedTypeIds.add(order.type_id)
-        }
-        if (order.location_id > 1_000_000_000_000) {
-          if (!hasStructure(order.location_id)) {
-            structureToCharacter.set(order.location_id, owner.characterId)
-          }
-        } else if (!hasLocation(order.location_id)) {
-          unknownLocationIds.add(order.location_id)
-        }
-      }
-    }
-
-    if (unresolvedTypeIds.size > 0) {
-      resolveTypes(Array.from(unresolvedTypeIds)).catch(() => {})
-    }
-    if (unknownLocationIds.size > 0) {
-      resolveLocations(Array.from(unknownLocationIds)).catch(() => {})
-    }
-    if (structureToCharacter.size > 0) {
-      resolveStructures(structureToCharacter).catch(() => {})
-    }
-  }, [ordersByOwner])
 
   const comparisonData = useMarketOrdersStore((s) => s.comparisonData)
   const comparisonFetching = useMarketOrdersStore((s) => s.comparisonFetching)

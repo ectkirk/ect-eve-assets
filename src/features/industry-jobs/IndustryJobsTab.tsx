@@ -18,10 +18,8 @@ import { useAssetData } from '@/hooks/useAssetData'
 import { useTabControls } from '@/context'
 import { useColumnSettings, useCacheVersion, useExpandCollapse, useSortable, SortableHeader, sortRows, type ColumnConfig } from '@/hooks'
 import { type ESIIndustryJob } from '@/api/endpoints/industry'
-import { hasType, getType, hasLocation, hasStructure } from '@/store/reference-cache'
+import { hasType, getType } from '@/store/reference-cache'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
-import { resolveTypes, resolveLocations } from '@/api/ref-client'
-import { resolveStructures } from '@/api/endpoints/universe'
 import {
   Table,
   TableBody,
@@ -292,47 +290,6 @@ export function IndustryJobsTab() {
   }, [initialized, update])
 
   const cacheVersion = useCacheVersion()
-
-  useEffect(() => {
-    if (jobsByOwner.length === 0) return
-
-    const unresolvedTypeIds = new Set<number>()
-    const unknownLocationIds = new Set<number>()
-    const structureToCharacter = new Map<number, number>()
-
-    for (const { owner, jobs } of jobsByOwner) {
-      for (const job of jobs) {
-        const bpType = getType(job.blueprint_type_id)
-        if (!bpType || bpType.name.startsWith('Unknown Type ')) {
-          unresolvedTypeIds.add(job.blueprint_type_id)
-        }
-        if (job.product_type_id) {
-          const productType = getType(job.product_type_id)
-          if (!productType || productType.name.startsWith('Unknown Type ')) {
-            unresolvedTypeIds.add(job.product_type_id)
-          }
-        }
-        const locationId = job.location_id ?? job.facility_id
-        if (locationId > 1_000_000_000_000) {
-          if (!hasStructure(locationId)) {
-            structureToCharacter.set(locationId, owner.characterId)
-          }
-        } else if (!hasLocation(locationId)) {
-          unknownLocationIds.add(locationId)
-        }
-      }
-    }
-
-    if (unresolvedTypeIds.size > 0) {
-      resolveTypes(Array.from(unresolvedTypeIds)).catch(() => {})
-    }
-    if (unknownLocationIds.size > 0) {
-      resolveLocations(Array.from(unknownLocationIds)).catch(() => {})
-    }
-    if (structureToCharacter.size > 0) {
-      resolveStructures(structureToCharacter).catch(() => {})
-    }
-  }, [jobsByOwner])
 
   const { setExpandCollapse, search, setResultCount, setTotalValue, setColumns } = useTabControls()
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)

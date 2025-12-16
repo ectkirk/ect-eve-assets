@@ -14,8 +14,6 @@ import {
   getStructure,
 } from '@/store/reference-cache'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
-import { resolveTypes, resolveLocations } from '@/api/ref-client'
-import { resolveStructures } from '@/api/endpoints/universe'
 import { cn } from '@/lib/utils'
 import { TypeIcon, CharacterPortrait } from '@/components/ui/type-icon'
 import {
@@ -216,60 +214,6 @@ export function ClonesTab() {
   }, [init, update])
 
   const cacheVersion = useCacheVersion()
-
-  useEffect(() => {
-    if (clonesByOwner.length === 0) return
-
-    const unresolvedTypeIds = new Set<number>()
-    const unknownLocationIds = new Set<number>()
-    const structureToCharacter = new Map<number, number>()
-
-    const needsResolution = (typeId: number) => {
-      const type = getType(typeId)
-      return !type || type.name.startsWith('Unknown Type ')
-    }
-
-    for (const { owner, clones, activeImplants } of clonesByOwner) {
-      for (const implantId of activeImplants) {
-        if (needsResolution(implantId)) unresolvedTypeIds.add(implantId)
-      }
-
-      if (clones.home_location) {
-        const { location_id, location_type } = clones.home_location
-        if (location_type === 'structure') {
-          if (!hasStructure(location_id)) {
-            structureToCharacter.set(location_id, owner.characterId)
-          }
-        } else if (!hasLocation(location_id)) {
-          unknownLocationIds.add(location_id)
-        }
-      }
-
-      for (const jumpClone of clones.jump_clones) {
-        const { location_id, location_type } = jumpClone
-        if (location_type === 'structure') {
-          if (!hasStructure(location_id)) {
-            structureToCharacter.set(location_id, owner.characterId)
-          }
-        } else if (!hasLocation(location_id)) {
-          unknownLocationIds.add(location_id)
-        }
-        for (const implantId of jumpClone.implants) {
-          if (needsResolution(implantId)) unresolvedTypeIds.add(implantId)
-        }
-      }
-    }
-
-    if (unresolvedTypeIds.size > 0) {
-      resolveTypes(Array.from(unresolvedTypeIds)).catch(() => {})
-    }
-    if (unknownLocationIds.size > 0) {
-      resolveLocations(Array.from(unknownLocationIds)).catch(() => {})
-    }
-    if (structureToCharacter.size > 0) {
-      resolveStructures(structureToCharacter).catch(() => {})
-    }
-  }, [clonesByOwner])
 
   const { setExpandCollapse, search, setResultCount, setColumns } = useTabControls()
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)

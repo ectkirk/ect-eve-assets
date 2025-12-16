@@ -18,12 +18,11 @@ import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useContractsStore, type ContractWithItems } from '@/store/contracts-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { type ESIContract } from '@/api/endpoints/contracts'
-import { hasType, getType, hasLocation, hasStructure } from '@/store/reference-cache'
+import { hasType, getType } from '@/store/reference-cache'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import { useAssetStore } from '@/store/asset-store'
-import { resolveTypes, resolveLocations, fetchPrices } from '@/api/ref-client'
-import { resolveStructures, resolveNames, hasName, getName } from '@/api/endpoints/universe'
-import { isAbyssalTypeId, fetchAbyssalPrices, hasCachedAbyssalPrice, getCachedAbyssalPrice } from '@/api/mutamarket-client'
+import { getName } from '@/api/endpoints/universe'
+import { isAbyssalTypeId, getCachedAbyssalPrice } from '@/api/mutamarket-client'
 import {
   Table,
   TableBody,
@@ -509,7 +508,6 @@ export function ContractsTab() {
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
 
   const prices = useAssetStore((s) => s.prices)
-  const setPrices = useAssetStore((s) => s.setPrices)
   const contractsByOwner = useContractsStore((s) => s.contractsByOwner)
   const contractsUpdating = useContractsStore((s) => s.isUpdating)
   const updateError = useContractsStore((s) => s.updateError)
@@ -524,104 +522,6 @@ export function ContractsTab() {
   }, [init])
 
   const cacheVersion = useCacheVersion()
-  const [forceRender, setForceRender] = useState(0)
-
-  useEffect(() => {
-    if (contractsByOwner.length === 0) return
-
-    const unresolvedTypeIds = new Set<number>()
-    const unknownLocationIds = new Set<number>()
-    const structureToCharacter = new Map<number, number>()
-    const unresolvedEntityIds = new Set<number>()
-
-    const checkLocation = (locationId: number | undefined, characterId: number) => {
-      if (!locationId) return
-      if (locationId > 1_000_000_000_000) {
-        if (!hasStructure(locationId)) {
-          structureToCharacter.set(locationId, characterId)
-        }
-      } else if (!hasLocation(locationId)) {
-        unknownLocationIds.add(locationId)
-      }
-    }
-
-    for (const { owner, contracts } of contractsByOwner) {
-      for (const { contract, items } of contracts) {
-        checkLocation(contract.start_location_id, owner.characterId)
-        checkLocation(contract.end_location_id, owner.characterId)
-        if (contract.assignee_id && !hasName(contract.assignee_id)) {
-          unresolvedEntityIds.add(contract.assignee_id)
-        }
-        for (const item of items) {
-          const type = getType(item.type_id)
-          if (!type || type.name.startsWith('Unknown Type ')) {
-            unresolvedTypeIds.add(item.type_id)
-          }
-        }
-      }
-    }
-
-    if (unresolvedTypeIds.size > 0) {
-      resolveTypes(Array.from(unresolvedTypeIds)).catch(() => {})
-    }
-    if (unknownLocationIds.size > 0) {
-      resolveLocations(Array.from(unknownLocationIds)).catch(() => {})
-    }
-    if (structureToCharacter.size > 0) {
-      resolveStructures(structureToCharacter).catch(() => {})
-    }
-    if (unresolvedEntityIds.size > 0) {
-      resolveNames(Array.from(unresolvedEntityIds))
-        .then(() => setForceRender((v) => v + 1))
-        .catch(() => {})
-    }
-  }, [contractsByOwner])
-
-  useEffect(() => {
-    if (contractsByOwner.length === 0) return
-
-    const abyssalItemIds: number[] = []
-    for (const { contracts } of contractsByOwner) {
-      for (const { items } of contracts) {
-        for (const item of items) {
-          if (item.item_id && isAbyssalTypeId(item.type_id) && !hasCachedAbyssalPrice(item.item_id)) {
-            abyssalItemIds.push(item.item_id)
-          }
-        }
-      }
-    }
-
-    if (abyssalItemIds.length > 0) {
-      fetchAbyssalPrices(abyssalItemIds)
-        .then(() => setForceRender((v) => v + 1))
-        .catch(() => {})
-    }
-  }, [contractsByOwner])
-
-  useEffect(() => {
-    if (contractsByOwner.length === 0) return
-
-    const missingPriceTypeIds = new Set<number>()
-    for (const { contracts } of contractsByOwner) {
-      for (const { items } of contracts) {
-        for (const item of items) {
-          if (!isAbyssalTypeId(item.type_id) && !prices.has(item.type_id)) {
-            missingPriceTypeIds.add(item.type_id)
-          }
-        }
-      }
-    }
-
-    if (missingPriceTypeIds.size > 0) {
-      fetchPrices(Array.from(missingPriceTypeIds))
-        .then((fetched) => {
-          if (fetched.size > 0) {
-            setPrices(fetched)
-          }
-        })
-        .catch(() => {})
-    }
-  }, [contractsByOwner, prices, setPrices])
 
   const [expandedDirections, setExpandedDirections] = useState<Set<string>>(new Set(['in', 'out']))
   const [showCourier, setShowCourier] = useState(true)
@@ -646,7 +546,7 @@ export function ContractsTab() {
   const { getColumnsForDropdown } = useColumnSettings('contracts', CONTRACT_COLUMNS)
 
   const { directionGroups, courierGroup, completedContracts } = useMemo(() => {
-    void (cacheVersion + forceRender)
+    void cacheVersion
 
     const filteredContractsByOwner = contractsByOwner.filter(({ owner }) =>
       selectedSet.has(ownerKey(owner.type, owner.id))
@@ -779,7 +679,7 @@ export function ContractsTab() {
         : null,
       completedContracts: filteredCompleted,
     }
-  }, [contractsByOwner, cacheVersion, forceRender, owners, prices, search, selectedSet])
+  }, [contractsByOwner, cacheVersion, owners, prices, search, selectedSet])
 
   const toggleDirection = useCallback((direction: string) => {
     setExpandedDirections((prev) => {

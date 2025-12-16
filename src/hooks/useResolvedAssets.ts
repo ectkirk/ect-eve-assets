@@ -14,8 +14,6 @@ export interface ResolvedAssetsResult {
   hasError: boolean
   errorMessage: string | null
   cacheVersion: number
-  isRefreshingAbyssals: boolean
-  refreshAbyssalPrices: () => Promise<void>
   updateProgress: { current: number; total: number } | null
 }
 
@@ -81,8 +79,6 @@ export function useResolvedAssets(): ResolvedAssetsResult {
     hasError: assetData.hasError,
     errorMessage: assetData.errorMessage,
     cacheVersion: assetData.cacheVersion,
-    isRefreshingAbyssals: assetData.isRefreshingAbyssals,
-    refreshAbyssalPrices: assetData.refreshAbyssalPrices,
     updateProgress: assetData.updateProgress,
   }
 }
