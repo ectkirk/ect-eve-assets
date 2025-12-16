@@ -257,11 +257,11 @@ function OwnerButton() {
         ) : (
           <>
             <div className="flex items-center">
-              {selectedOwners.slice(0, 5).map((owner, i) => (
+              {selectedOwners.slice(0, 10).map((owner, i) => (
                 <div
                   key={ownerKey(owner.type, owner.id)}
                   className="relative rounded-full ring-2 ring-surface-secondary"
-                  style={{ marginLeft: i === 0 ? 0 : -8, zIndex: 5 - i }}
+                  style={{ marginLeft: i === 0 ? 0 : -8, zIndex: 10 - i }}
                 >
                   <OwnerIcon ownerId={owner.id} ownerType={owner.type} size="lg" />
                 </div>
