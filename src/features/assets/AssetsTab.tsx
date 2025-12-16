@@ -548,11 +548,16 @@ export function AssetsTab() {
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
   const selectedSet = useMemo(() => new Set(selectedOwnerIds), [selectedOwnerIds])
 
-  const filteredData = useMemo(() => {
-    const searchLower = search.toLowerCase()
+  const selectedData = useMemo(() => {
     return data.filter((row) => {
       const rowOwnerKey = ownerKey(row.ownerType, row.ownerId)
-      if (!selectedSet.has(rowOwnerKey)) return false
+      return selectedSet.has(rowOwnerKey)
+    })
+  }, [data, selectedSet])
+
+  const filteredData = useMemo(() => {
+    const searchLower = search.toLowerCase()
+    return selectedData.filter((row) => {
       if (categoryFilterValue && row.categoryName !== categoryFilterValue) return false
       if (search) {
         const matchesType = row.typeName.toLowerCase().includes(searchLower)
@@ -564,7 +569,7 @@ export function AssetsTab() {
       }
       return true
     })
-  }, [data, categoryFilterValue, search, selectedSet])
+  }, [selectedData, categoryFilterValue, search])
 
   const table = useReactTable({
     data: filteredData,
@@ -605,9 +610,9 @@ export function AssetsTab() {
   }, [categories, categoryFilterValue, setCategoryFilter])
 
   useEffect(() => {
-    setResultCount({ showing: filteredData.length, total: data.length })
+    setResultCount({ showing: filteredData.length, total: selectedData.length })
     return () => setResultCount(null)
-  }, [filteredData.length, data.length, setResultCount])
+  }, [filteredData.length, selectedData.length, setResultCount])
 
   const filteredTotalValue = useMemo(() => {
     return filteredData.reduce((sum, row) => (row.isInContract || row.isInMarketOrder) ? sum : sum + row.totalValue, 0)

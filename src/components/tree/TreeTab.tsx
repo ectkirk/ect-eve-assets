@@ -122,7 +122,7 @@ export function TreeTab({ mode }: TreeTabProps) {
                 type_id: item.type_id,
                 location_id: locationId,
                 location_type: locationId > 1_000_000_000_000 ? 'other' : 'station',
-                location_flag: 'Hangar',
+                location_flag: 'InContract',
                 quantity: item.quantity,
                 is_singleton: item.is_singleton ?? false,
                 is_blueprint_copy: item.is_blueprint_copy,
@@ -149,7 +149,7 @@ export function TreeTab({ mode }: TreeTabProps) {
               type_id: order.type_id,
               location_id: order.location_id,
               location_type: order.location_id > 1_000_000_000_000 ? 'other' : 'station',
-              location_flag: 'Hangar',
+              location_flag: 'SellOrder',
               quantity: order.volume_remain,
               is_singleton: false,
             }

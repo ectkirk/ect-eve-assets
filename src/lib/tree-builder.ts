@@ -22,6 +22,7 @@ import {
   type CachedType,
 } from '@/store/reference-cache'
 import { formatBlueprintName } from '@/store/blueprints-store'
+import { isAbyssalTypeId } from '@/api/mutamarket-client'
 
 export interface AssetWithOwner {
   asset: ESIAsset
@@ -207,6 +208,8 @@ function createItemNode(
     nodeType = 'container'
   }
 
+  const isAbyssal = isAbyssalTypeId(asset.type_id)
+
   return {
     id: `asset-${asset.item_id}`,
     nodeType,
@@ -217,7 +220,7 @@ function createItemNode(
     typeId: asset.type_id,
     typeName: displayName,
     categoryId: type?.categoryId,
-    categoryName: type?.categoryName,
+    categoryName: isAbyssal ? 'Abyssals' : type?.categoryName,
     groupName: type?.groupName,
     quantity: asset.quantity,
     totalCount: asset.quantity,
@@ -344,8 +347,9 @@ function stackIdenticalItems(nodes: TreeNode[]): TreeNode[] {
       continue
     }
 
-    // Create stack key: typeId + isBlueprintCopy + ownerId
-    const stackKey = `${node.typeId}-${node.isBlueprintCopy ?? false}-${node.ownerId}`
+    // Create stack key: typeId + isBlueprintCopy + ownerId + locationFlag
+    const locationFlag = node.asset?.location_flag ?? ''
+    const stackKey = `${node.typeId}-${node.isBlueprintCopy ?? false}-${node.ownerId}-${locationFlag}`
 
     const existing = stackMap.get(stackKey)
     if (existing) {
