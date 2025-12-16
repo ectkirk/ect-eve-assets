@@ -69,6 +69,10 @@ export interface TreeNode {
 
   // Price info (for leaf items)
   price?: number
+
+  // Source flags for color coding
+  isInContract?: boolean
+  isInMarketOrder?: boolean
 }
 
 export interface TreeState {

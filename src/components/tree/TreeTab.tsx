@@ -3,10 +3,13 @@ import { Loader2 } from 'lucide-react'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useDivisionsStore } from '@/store/divisions-store'
+import { useContractsStore } from '@/store/contracts-store'
+import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { TreeTable, useTreeState } from '@/components/tree'
-import { buildTree, filterTree, countTreeItems, getTreeCategories, type AssetWithOwner } from '@/lib/tree-builder'
+import { buildTree, filterTree, countTreeItems, getTreeCategories, markSourceFlags, type AssetWithOwner } from '@/lib/tree-builder'
 import { TreeMode } from '@/lib/tree-types'
 import { useTabControls } from '@/context'
+import type { ESIAsset } from '@/api/endpoints/assets'
 
 interface TreeTabProps {
   mode: TreeMode
@@ -25,6 +28,9 @@ export function TreeTab({ mode }: TreeTabProps) {
     cacheVersion,
     updateProgress,
   } = useAssetData()
+
+  const contractsByOwner = useContractsStore((s) => s.contractsByOwner)
+  const ordersByOwner = useMarketOrdersStore((s) => s.dataByOwner)
 
   const [categoryFilter, setCategoryFilterValue] = useState('')
   const [assetTypeFilter, setAssetTypeFilterValue] = useState('')
@@ -75,6 +81,9 @@ export function TreeTab({ mode }: TreeTabProps) {
 
     const allAssets: AssetWithOwner[] = []
     const filteredAssets: AssetWithOwner[] = []
+    const contractItemIds = new Set<number>()
+    const orderItemIds = new Set<number>()
+
     for (const { owner, assets } of assetsByOwner) {
       const isSelected = selectedSet.has(ownerKey(owner.type, owner.id))
       for (const asset of assets) {
@@ -84,8 +93,73 @@ export function TreeTab({ mode }: TreeTabProps) {
       }
     }
 
-    return buildTree(filteredAssets, { mode: effectiveMode, prices, assetNames, hangarDivisionNames, allAssets })
-  }, [assetsByOwner, prices, assetNames, cacheVersion, effectiveMode, selectedSet, hangarDivisionNames])
+    if (effectiveMode === TreeMode.ALL) {
+      const ownerIds = new Set(owners.map((o) => o.characterId))
+      const ownerCorpIds = new Set(owners.filter((o) => o.corporationId).map((o) => o.corporationId))
+
+      for (const { owner, contracts } of contractsByOwner) {
+        const isSelected = selectedSet.has(ownerKey(owner.type, owner.id))
+        if (!isSelected) continue
+
+        for (const { contract, items } of contracts) {
+          if (contract.status !== 'outstanding') continue
+          const isIssuer = ownerIds.has(contract.issuer_id) || ownerCorpIds.has(contract.issuer_corporation_id)
+          if (!isIssuer) continue
+
+          const locationId = contract.start_location_id ?? 0
+
+          for (const item of items) {
+            if (!item.is_included) continue
+
+            const syntheticAsset: ESIAsset = {
+              item_id: item.record_id,
+              type_id: item.type_id,
+              location_id: locationId,
+              location_type: locationId > 1_000_000_000_000 ? 'other' : 'station',
+              location_flag: 'Hangar',
+              quantity: item.quantity,
+              is_singleton: item.is_singleton ?? false,
+              is_blueprint_copy: item.is_blueprint_copy,
+            }
+            contractItemIds.add(item.record_id)
+            filteredAssets.push({ asset: syntheticAsset, owner })
+            allAssets.push({ asset: syntheticAsset, owner })
+          }
+        }
+      }
+
+      for (const { owner, orders } of ordersByOwner) {
+        const isSelected = selectedSet.has(ownerKey(owner.type, owner.id))
+        if (!isSelected) continue
+
+        for (const order of orders) {
+          if (order.is_buy_order) continue
+          if (order.volume_remain <= 0) continue
+
+          const syntheticAsset: ESIAsset = {
+            item_id: order.order_id,
+            type_id: order.type_id,
+            location_id: order.location_id,
+            location_type: order.location_id > 1_000_000_000_000 ? 'other' : 'station',
+            location_flag: 'Hangar',
+            quantity: order.volume_remain,
+            is_singleton: false,
+          }
+          orderItemIds.add(order.order_id)
+          filteredAssets.push({ asset: syntheticAsset, owner })
+          allAssets.push({ asset: syntheticAsset, owner })
+        }
+      }
+    }
+
+    const nodes = buildTree(filteredAssets, { mode: effectiveMode, prices, assetNames, hangarDivisionNames, allAssets })
+
+    if (contractItemIds.size > 0 || orderItemIds.size > 0) {
+      markSourceFlags(nodes, contractItemIds, orderItemIds)
+    }
+
+    return nodes
+  }, [assetsByOwner, prices, assetNames, cacheVersion, effectiveMode, selectedSet, hangarDivisionNames, contractsByOwner, ordersByOwner, owners])
 
   const categories = useMemo(() => getTreeCategories(unfilteredNodes), [unfilteredNodes])
 

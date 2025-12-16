@@ -94,6 +94,9 @@ function shouldIncludeAsset(
   assetById: Map<number, AssetWithOwner>
 ): boolean {
   const flag = asset.location_flag
+
+  if (flag === 'AutoFit') return false
+
   const rootFlag = getRootFlag(asset, assetById)
   const parentChain = getParentChain(asset, assetById)
   const immediateParent = parentChain[0]
@@ -111,9 +114,8 @@ function shouldIncludeAsset(
     }
 
     case TreeMode.SHIP_HANGAR: {
-      const validRoots = new Set([...HANGAR_FLAGS, 'AutoFit'])
-      if (validRoots.has(flag)) return isShip(type)
-      if (SHIP_CONTENT_FLAGS.has(flag) && validRoots.has(rootFlag)) {
+      if (HANGAR_FLAGS.has(flag)) return isShip(type)
+      if (SHIP_CONTENT_FLAGS.has(flag) && HANGAR_FLAGS.has(rootFlag)) {
         return parentChain.some((p) => isShip(getType(p.asset.type_id)))
       }
       return false
@@ -735,4 +737,24 @@ export function countTreeItems(nodes: TreeNode[]): number {
     }
   }
   return count
+}
+
+export function markSourceFlags(
+  nodes: TreeNode[],
+  contractItemIds: Set<number>,
+  orderItemIds: Set<number>
+): void {
+  for (const node of nodes) {
+    if (node.asset) {
+      if (contractItemIds.has(node.asset.item_id)) {
+        node.isInContract = true
+      }
+      if (orderItemIds.has(node.asset.item_id)) {
+        node.isInMarketOrder = true
+      }
+    }
+    if (node.children.length > 0) {
+      markSourceFlags(node.children, contractItemIds, orderItemIds)
+    }
+  }
 }

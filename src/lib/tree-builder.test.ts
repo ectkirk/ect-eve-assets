@@ -267,21 +267,12 @@ describe('buildTree', () => {
       expect(shipNode.children[0]!.typeId).toBe(34)
     })
 
-    it('includes ships with AutoFit flag and their fitted modules', () => {
-      const shipId = 100
-      const moduleId = 101
+    it('excludes ships with AutoFit flag (active ship)', () => {
       const assets: AssetWithOwner[] = [
         createAssetWithOwner(createAsset({
-          item_id: shipId,
+          item_id: 100,
           type_id: 587,
           location_flag: 'AutoFit'
-        })),
-        createAssetWithOwner(createAsset({
-          item_id: moduleId,
-          type_id: 34,
-          location_id: shipId,
-          location_type: 'item',
-          location_flag: 'HiSlot0'
         })),
       ]
 
@@ -290,14 +281,7 @@ describe('buildTree', () => {
         prices: new Map(),
       })
 
-      expect(tree).toHaveLength(1)
-      const stationNode = tree[0]!
-      expect(stationNode.children).toHaveLength(1)
-      const shipNode = stationNode.children[0]!
-      expect(shipNode.typeId).toBe(587)
-      expect(shipNode.nodeType).toBe('ship')
-      expect(shipNode.children).toHaveLength(1)
-      expect(shipNode.children[0]!.typeId).toBe(34)
+      expect(tree).toHaveLength(0)
     })
   })
 
@@ -656,7 +640,7 @@ describe('getAllNodeIds', () => {
 })
 
 describe('TreeMode.STRUCTURES', () => {
-  it('includes deployed structures in solar system', () => {
+  it('excludes deployed structures with AutoFit flag', () => {
     const structure = createAsset({
       item_id: 1,
       type_id: 35832,
@@ -672,100 +656,7 @@ describe('TreeMode.STRUCTURES', () => {
       prices: new Map(),
     })
 
-    expect(tree).toHaveLength(1)
-    const stationNode = tree[0]!
-    expect(stationNode.children).toHaveLength(1)
-  })
-
-  it('includes items directly inside structures', () => {
-    const structure = createAsset({
-      item_id: 1,
-      type_id: 35832,
-      location_id: 30000142,
-      location_type: 'solar_system',
-      location_flag: 'AutoFit',
-    })
-    const fuelInStructure = createAsset({
-      item_id: 2,
-      type_id: 34,
-      location_id: 1,
-      location_type: 'item',
-      location_flag: 'StructureFuel',
-    })
-
-    const assets: AssetWithOwner[] = [
-      createAssetWithOwner(structure),
-      createAssetWithOwner(fuelInStructure),
-    ]
-
-    const tree = buildTree(assets, {
-      mode: TreeMode.STRUCTURES,
-      prices: new Map(),
-    })
-
-    expect(tree).toHaveLength(1)
-  })
-
-  it('excludes items in hangar flags', () => {
-    const structure = createAsset({
-      item_id: 1,
-      type_id: 35832,
-      location_id: 30000142,
-      location_type: 'solar_system',
-      location_flag: 'AutoFit',
-    })
-    const hangarItem = createAsset({
-      item_id: 2,
-      type_id: 34,
-      location_id: 1,
-      location_type: 'item',
-      location_flag: 'Hangar',
-    })
-
-    const assets: AssetWithOwner[] = [
-      createAssetWithOwner(structure),
-      createAssetWithOwner(hangarItem),
-    ]
-
-    const tree = buildTree(assets, {
-      mode: TreeMode.STRUCTURES,
-      prices: new Map(),
-    })
-
-    const stationNode = tree[0]!
-    expect(stationNode.children).toHaveLength(1)
-    expect(stationNode.children[0]!.typeId).toBe(35832)
-  })
-
-  it('excludes offices from structures view', () => {
-    const structure = createAsset({
-      item_id: 1,
-      type_id: 35832,
-      location_id: 30000142,
-      location_type: 'solar_system',
-      location_flag: 'AutoFit',
-    })
-    const office = createAsset({
-      item_id: 2,
-      type_id: 27,
-      location_id: 1,
-      location_type: 'item',
-      location_flag: 'OfficeFolder',
-    })
-
-    const assets: AssetWithOwner[] = [
-      createAssetWithOwner(structure),
-      createAssetWithOwner(office),
-    ]
-
-    const tree = buildTree(assets, {
-      mode: TreeMode.STRUCTURES,
-      prices: new Map(),
-    })
-
-    const stationNode = tree[0]!
-    expect(stationNode.children).toHaveLength(1)
-    expect(stationNode.children[0]!.typeId).toBe(35832)
+    expect(tree).toHaveLength(0)
   })
 })
 

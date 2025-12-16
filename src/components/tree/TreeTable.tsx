@@ -249,6 +249,12 @@ function TreeRowContent({ node, isExpanded, onToggle, visibleColumns }: {
                     </>
                   ) : node.name}
                 </span>
+                {node.isInContract && (
+                  <span className="text-xs text-status-corp bg-semantic-warning/20 px-1.5 py-0.5 rounded ml-2">In Contract</span>
+                )}
+                {node.isInMarketOrder && (
+                  <span className="text-xs text-status-info bg-accent/20 px-1.5 py-0.5 rounded ml-2">Sell Order</span>
+                )}
               </div>
             </TableCell>
           )
@@ -459,7 +465,9 @@ export function TreeTable({
                       data-index={virtualRow.index}
                       className={cn(
                         node.nodeType === 'region' && 'bg-surface-secondary/30',
-                        node.nodeType === 'system' && 'bg-surface-secondary/20'
+                        node.nodeType === 'system' && 'bg-surface-secondary/20',
+                        node.isInContract && 'bg-row-contract',
+                        node.isInMarketOrder && 'bg-row-order'
                       )}
                       onClick={() => {
                         if (node.children.length > 0) {
