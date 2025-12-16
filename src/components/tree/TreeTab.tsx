@@ -3,13 +3,10 @@ import { Loader2 } from 'lucide-react'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useDivisionsStore } from '@/store/divisions-store'
-import { useContractsStore } from '@/store/contracts-store'
-import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { TreeTable, useTreeState } from '@/components/tree'
 import { buildTree, filterTree, countTreeItems, getTreeCategories, markSourceFlags, type AssetWithOwner } from '@/lib/tree-builder'
 import { TreeMode } from '@/lib/tree-types'
 import { useTabControls } from '@/context'
-import type { ESIAsset } from '@/api/endpoints/assets'
 
 interface TreeTabProps {
   mode: TreeMode
@@ -17,7 +14,7 @@ interface TreeTabProps {
 
 export function TreeTab({ mode }: TreeTabProps) {
   const {
-    assetsByOwner,
+    unifiedAssetsByOwner,
     owners,
     isLoading,
     hasData,
@@ -28,9 +25,6 @@ export function TreeTab({ mode }: TreeTabProps) {
     cacheVersion,
     updateProgress,
   } = useAssetData()
-
-  const contractsByOwner = useContractsStore((s) => s.contractsByOwner)
-  const ordersByOwner = useMarketOrdersStore((s) => s.dataByOwner)
 
   const [categoryFilter, setCategoryFilterValue] = useState('')
   const [assetTypeFilter, setAssetTypeFilterValue] = useState('')
@@ -77,87 +71,37 @@ export function TreeTab({ mode }: TreeTabProps) {
 
   const unfilteredNodes = useMemo(() => {
     void cacheVersion
-    if (assetsByOwner.length === 0 || prices.size === 0) return []
+    if (unifiedAssetsByOwner.length === 0 || prices.size === 0) return []
 
     const allAssets: AssetWithOwner[] = []
     const filteredAssets: AssetWithOwner[] = []
     const contractItemIds = new Set<number>()
     const orderItemIds = new Set<number>()
-    const orderPrices = new Map<number, number>()
 
     const includeRegularAssets = effectiveMode !== TreeMode.CONTRACTS && effectiveMode !== TreeMode.MARKET_ORDERS
     const includeContracts = effectiveMode === TreeMode.ALL || effectiveMode === TreeMode.CONTRACTS
     const includeOrders = effectiveMode === TreeMode.ALL || effectiveMode === TreeMode.MARKET_ORDERS
 
-    for (const { owner, assets } of assetsByOwner) {
+    for (const { owner, assets } of unifiedAssetsByOwner) {
       const isSelected = selectedSet.has(ownerKey(owner.type, owner.id))
       for (const asset of assets) {
+        const isContract = asset.location_flag === 'InContract'
+        const isOrder = asset.location_flag === 'SellOrder'
+        const isRegular = !isContract && !isOrder
+
         const aw = { asset, owner }
         allAssets.push(aw)
-        if (isSelected && includeRegularAssets) filteredAssets.push(aw)
-      }
-    }
 
-    if (includeContracts || includeOrders) {
-      const ownerIds = new Set(owners.map((o) => o.characterId))
-      const ownerCorpIds = new Set(owners.filter((o) => o.corporationId).map((o) => o.corporationId))
+        if (!isSelected) continue
 
-      if (includeContracts) {
-        for (const { owner, contracts } of contractsByOwner) {
-          const isSelected = selectedSet.has(ownerKey(owner.type, owner.id))
-          if (!isSelected) continue
-
-          for (const { contract, items } of contracts) {
-            if (contract.status !== 'outstanding') continue
-            const isIssuer = ownerIds.has(contract.issuer_id) || ownerCorpIds.has(contract.issuer_corporation_id)
-            if (!isIssuer) continue
-
-            const locationId = contract.start_location_id ?? 0
-
-            for (const item of items) {
-              if (!item.is_included) continue
-
-              const syntheticAsset: ESIAsset = {
-                item_id: item.record_id,
-                type_id: item.type_id,
-                location_id: locationId,
-                location_type: locationId > 1_000_000_000_000 ? 'other' : 'station',
-                location_flag: 'InContract',
-                quantity: item.quantity,
-                is_singleton: item.is_singleton ?? false,
-                is_blueprint_copy: item.is_blueprint_copy,
-              }
-              contractItemIds.add(item.record_id)
-              filteredAssets.push({ asset: syntheticAsset, owner })
-              allAssets.push({ asset: syntheticAsset, owner })
-            }
-          }
-        }
-      }
-
-      if (includeOrders) {
-        for (const { owner, orders } of ordersByOwner) {
-          const isSelected = selectedSet.has(ownerKey(owner.type, owner.id))
-          if (!isSelected) continue
-
-          for (const order of orders) {
-            if (order.is_buy_order) continue
-            if (order.volume_remain <= 0) continue
-
-            const syntheticAsset: ESIAsset = {
-              item_id: order.order_id,
-              type_id: order.type_id,
-              location_id: order.location_id,
-              location_type: order.location_id > 1_000_000_000_000 ? 'other' : 'station',
-              location_flag: 'SellOrder',
-              quantity: order.volume_remain,
-              is_singleton: false,
-            }
-            orderItemIds.add(order.order_id)
-            orderPrices.set(order.order_id, order.price)
-            filteredAssets.push({ asset: syntheticAsset, owner })
-            allAssets.push({ asset: syntheticAsset, owner })
-          }
+        if (isContract) {
+          contractItemIds.add(asset.item_id)
+          if (includeContracts) filteredAssets.push(aw)
+        } else if (isOrder) {
+          orderItemIds.add(asset.item_id)
+          if (includeOrders) filteredAssets.push(aw)
+        } else if (isRegular && includeRegularAssets) {
+          filteredAssets.push(aw)
         }
       }
     }
@@ -165,14 +109,14 @@ export function TreeTab({ mode }: TreeTabProps) {
     const treeMode = effectiveMode === TreeMode.CONTRACTS || effectiveMode === TreeMode.MARKET_ORDERS
       ? TreeMode.ALL
       : effectiveMode
-    const nodes = buildTree(filteredAssets, { mode: treeMode, prices, assetNames, hangarDivisionNames, allAssets, orderPrices })
+    const nodes = buildTree(filteredAssets, { mode: treeMode, prices, assetNames, hangarDivisionNames, allAssets })
 
     if (contractItemIds.size > 0 || orderItemIds.size > 0) {
       markSourceFlags(nodes, contractItemIds, orderItemIds)
     }
 
     return nodes
-  }, [assetsByOwner, prices, assetNames, cacheVersion, effectiveMode, selectedSet, hangarDivisionNames, contractsByOwner, ordersByOwner, owners])
+  }, [unifiedAssetsByOwner, prices, assetNames, cacheVersion, effectiveMode, selectedSet, hangarDivisionNames])
 
   const categories = useMemo(() => getTreeCategories(unfilteredNodes), [unfilteredNodes])
 

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { useAuthStore, type Owner, findOwnerByKey } from './auth-store'
+import { useAuthStore, type Owner, findOwnerByKey, ownerKey as makeOwnerKey } from './auth-store'
 import { useExpiryCacheStore } from './expiry-cache-store'
 import { getCharacterAssetNames, getCorporationAssetNames, type ESIAsset, type ESIAssetName } from '@/api/endpoints/assets'
 import { esi, type ESIResponseMeta } from '@/api/esi'
@@ -9,6 +9,8 @@ import { fetchAbyssalPrices, isAbyssalTypeId, hasCachedAbyssalPrice } from '@/ap
 import { getType } from '@/store/reference-cache'
 import { createOwnerDB } from '@/lib/owner-indexed-db'
 import { logger } from '@/lib/logger'
+import { useContractsStore, type OwnerContracts } from './contracts-store'
+import { useMarketOrdersStore, type OwnerOrders } from './market-orders-store'
 
 const NAMEABLE_CATEGORIES = new Set([6, 22, 65])
 const NAMEABLE_GROUPS = new Set([12, 14, 340, 448, 649])
@@ -21,6 +23,7 @@ export interface OwnerAssets {
 
 interface AssetState {
   assetsByOwner: OwnerAssets[]
+  unifiedAssetsByOwner: OwnerAssets[]
   assetNames: Map<number, string>
   prices: Map<number, number>
   isUpdating: boolean
@@ -36,6 +39,7 @@ interface AssetActions {
   removeForOwner: (ownerType: string, ownerId: number) => Promise<void>
   setPrices: (newPrices: Map<number, number>) => Promise<void>
   refreshPrices: () => Promise<void>
+  rebuildSyntheticAssets: () => void
   clear: () => Promise<void>
 }
 
@@ -97,8 +101,71 @@ async function fetchOwnerAssetNames(owner: Owner, assets: ESIAsset[]): Promise<E
   return getCharacterAssetNames(owner.id, owner.characterId, nameableIds)
 }
 
+function buildSyntheticAssets(
+  contractsByOwner: OwnerContracts[],
+  ordersByOwner: OwnerOrders[]
+): Map<string, ESIAsset[]> {
+  const owners = Object.values(useAuthStore.getState().owners).filter((o): o is Owner => !!o)
+  const ownerCharIds = new Set(owners.map((o) => o.characterId))
+  const ownerCorpIds = new Set(owners.filter((o) => o.corporationId).map((o) => o.corporationId))
+
+  const syntheticByOwner = new Map<string, ESIAsset[]>()
+
+  for (const { owner, contracts } of contractsByOwner) {
+    const key = makeOwnerKey(owner.type, owner.id)
+    const synthetics: ESIAsset[] = syntheticByOwner.get(key) ?? []
+
+    for (const { contract, items } of contracts) {
+      if (contract.status !== 'outstanding') continue
+      const isIssuer = ownerCharIds.has(contract.issuer_id) || ownerCorpIds.has(contract.issuer_corporation_id)
+      if (!isIssuer) continue
+
+      const locationId = contract.start_location_id ?? 0
+
+      for (const item of items) {
+        if (!item.is_included) continue
+        synthetics.push({
+          item_id: item.record_id,
+          type_id: item.type_id,
+          location_id: locationId,
+          location_type: locationId > 1_000_000_000_000 ? 'other' : 'station',
+          location_flag: 'InContract',
+          quantity: item.quantity,
+          is_singleton: item.is_singleton ?? false,
+          is_blueprint_copy: item.is_blueprint_copy,
+        })
+      }
+    }
+    syntheticByOwner.set(key, synthetics)
+  }
+
+  for (const { owner, orders } of ordersByOwner) {
+    const key = makeOwnerKey(owner.type, owner.id)
+    const synthetics: ESIAsset[] = syntheticByOwner.get(key) ?? []
+
+    for (const order of orders) {
+      if (order.is_buy_order) continue
+      if (order.volume_remain <= 0) continue
+
+      synthetics.push({
+        item_id: order.order_id,
+        type_id: order.type_id,
+        location_id: order.location_id,
+        location_type: order.location_id > 1_000_000_000_000 ? 'other' : 'station',
+        location_flag: 'SellOrder',
+        quantity: order.volume_remain,
+        is_singleton: false,
+      })
+    }
+    syntheticByOwner.set(key, synthetics)
+  }
+
+  return syntheticByOwner
+}
+
 export const useAssetStore = create<AssetStore>((set, get) => ({
   assetsByOwner: [],
+  unifiedAssetsByOwner: [],
   assetNames: new Map(),
   prices: new Map(),
   isUpdating: false,
@@ -119,6 +186,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
       const prices = new Map(pricesEntries ?? [])
 
       set({ assetsByOwner, assetNames, prices, initialized: true })
+      get().rebuildSyntheticAssets()
       logger.info('Asset store initialized from DB', {
         module: 'AssetStore',
         owners: assetsByOwner.length,
@@ -244,6 +312,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         updateProgress: null,
         updateError: results.length === 0 ? 'Failed to fetch any assets' : null,
       })
+      get().rebuildSyntheticAssets()
 
       logger.info('Assets updated', {
         module: 'AssetStore',
@@ -328,6 +397,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         updateProgress: null,
         updateError: null,
       })
+      get().rebuildSyntheticAssets()
 
       logger.info('Assets updated for owner', {
         module: 'AssetStore',
@@ -397,10 +467,27 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
     }
   },
 
+  rebuildSyntheticAssets: () => {
+    const contractsByOwner = useContractsStore.getState().contractsByOwner
+    const ordersByOwner = useMarketOrdersStore.getState().dataByOwner
+
+    const syntheticByOwner = buildSyntheticAssets(contractsByOwner, ordersByOwner)
+
+    const state = get()
+    const unifiedAssetsByOwner: OwnerAssets[] = state.assetsByOwner.map(({ owner, assets }) => {
+      const key = makeOwnerKey(owner.type, owner.id)
+      const synthetics = syntheticByOwner.get(key) ?? []
+      return { owner, assets: [...assets, ...synthetics] }
+    })
+
+    set({ unifiedAssetsByOwner })
+  },
+
   clear: async () => {
     await db.clear()
     set({
       assetsByOwner: [],
+      unifiedAssetsByOwner: [],
       assetNames: new Map(),
       prices: new Map(),
       updateError: null,
@@ -418,3 +505,13 @@ useExpiryCacheStore.getState().registerRefreshCallback(ENDPOINT_PATTERN, async (
   }
   await useAssetStore.getState().updateForOwner(owner)
 })
+
+export function setupSyntheticAssetSubscriptions(): void {
+  useContractsStore.subscribe(() => {
+    useAssetStore.getState().rebuildSyntheticAssets()
+  })
+
+  useMarketOrdersStore.subscribe(() => {
+    useAssetStore.getState().rebuildSyntheticAssets()
+  })
+}
