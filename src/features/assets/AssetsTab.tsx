@@ -124,14 +124,24 @@ const columns: ColumnDef<AssetRow>[] = [
       const modeFlags = row.original.modeFlags
 
       return (
-        <div className="flex items-center gap-2">
+        <div className="flex flex-nowrap items-center gap-2 min-w-0">
           <TypeIcon typeId={typeId} categoryId={categoryId} isBlueprintCopy={isBpc} size="lg" />
-          <span className={isBpc ? 'text-status-special' : ''}>{typeName}</span>
-          {modeFlags.isContract && (
-            <span className="text-xs text-status-corp bg-semantic-warning/20 px-1.5 py-0.5 rounded">In Contract</span>
-          )}
-          {modeFlags.isMarketOrder && (
-            <span className="text-xs text-status-info bg-accent/20 px-1.5 py-0.5 rounded">Sell Order</span>
+          <span className={cn('truncate', isBpc && 'text-status-special')}>{typeName}</span>
+          {(modeFlags.isContract || modeFlags.isMarketOrder || modeFlags.isIndustryJob || modeFlags.isOwnedStructure) && (
+            <span className="shrink-0 inline-flex items-center gap-1 whitespace-nowrap">
+              {modeFlags.isContract && (
+                <span className="text-xs text-status-corp bg-semantic-warning/20 px-1.5 py-0.5 rounded whitespace-nowrap">In Contract</span>
+              )}
+              {modeFlags.isMarketOrder && (
+                <span className="text-xs text-status-info bg-accent/20 px-1.5 py-0.5 rounded whitespace-nowrap">Sell Order</span>
+              )}
+              {modeFlags.isIndustryJob && (
+                <span className="text-xs text-status-positive bg-status-positive/20 px-1.5 py-0.5 rounded whitespace-nowrap">In Job</span>
+              )}
+              {modeFlags.isOwnedStructure && (
+                <span className="text-xs text-status-special bg-status-special/20 px-1.5 py-0.5 rounded whitespace-nowrap">Structure</span>
+              )}
+            </span>
           )}
         </div>
       )
@@ -532,7 +542,9 @@ export function AssetsTab() {
                           'py-2 text-sm border-b border-border/50 group-hover:bg-surface-tertiary/50 flex items-center',
                           cell.column.id === 'ownerName' ? 'px-2' : 'px-4',
                           modeFlags.isContract && 'bg-row-contract',
-                          modeFlags.isMarketOrder && 'bg-row-order'
+                          modeFlags.isMarketOrder && 'bg-row-order',
+                          modeFlags.isIndustryJob && 'bg-row-industry',
+                          modeFlags.isOwnedStructure && 'bg-row-structure'
                         )}
                       >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}

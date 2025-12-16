@@ -219,9 +219,9 @@ const TreeRowContent = memo(function TreeRowContent({
       {visibleColumns.map((colId) => {
         if (colId === 'name') {
           return (
-            <TableCell key={colId} className="py-1.5">
+            <TableCell key={colId} className="py-1.5 overflow-hidden">
               <div
-                className="flex items-center gap-1"
+                className="flex flex-nowrap items-center gap-1 min-w-0"
                 style={{ paddingLeft: `${indentPx}px` }}
               >
                 {hasChildren ? (
@@ -247,7 +247,7 @@ const TreeRowContent = memo(function TreeRowContent({
 
                 <span
                   className={cn(
-                    'truncate',
+                    'truncate min-w-0',
                     isLocationNode && node.nodeType === 'region' && 'font-semibold text-accent',
                     isLocationNode && node.nodeType === 'system' && 'font-medium text-status-highlight',
                     isLocationNode && node.nodeType === 'station' && 'text-status-info',
@@ -264,11 +264,21 @@ const TreeRowContent = memo(function TreeRowContent({
                     </>
                   ) : node.name}
                 </span>
-                {node.isInContract && (
-                  <span className="text-xs text-status-corp bg-semantic-warning/20 px-1.5 py-0.5 rounded ml-2">In Contract</span>
-                )}
-                {node.isInMarketOrder && (
-                  <span className="text-xs text-status-info bg-accent/20 px-1.5 py-0.5 rounded ml-2">Sell Order</span>
+                {(node.isInContract || node.isInMarketOrder || node.isInIndustryJob || node.isOwnedStructure) && (
+                  <span className="shrink-0 inline-flex items-center gap-1 ml-2 whitespace-nowrap">
+                    {node.isInContract && (
+                      <span className="text-xs text-status-corp bg-semantic-warning/20 px-1.5 py-0.5 rounded whitespace-nowrap">In Contract</span>
+                    )}
+                    {node.isInMarketOrder && (
+                      <span className="text-xs text-status-info bg-accent/20 px-1.5 py-0.5 rounded whitespace-nowrap">Sell Order</span>
+                    )}
+                    {node.isInIndustryJob && (
+                      <span className="text-xs text-status-positive bg-status-positive/20 px-1.5 py-0.5 rounded whitespace-nowrap">In Job</span>
+                    )}
+                    {node.isOwnedStructure && (
+                      <span className="text-xs text-status-special bg-status-special/20 px-1.5 py-0.5 rounded whitespace-nowrap">Structure</span>
+                    )}
+                  </span>
                 )}
               </div>
             </TableCell>
@@ -347,7 +357,9 @@ const TreeRow = memo(function TreeRow({
         node.nodeType === 'region' && 'bg-surface-secondary/30',
         node.nodeType === 'system' && 'bg-surface-secondary/20',
         node.isInContract && 'bg-row-contract',
-        node.isInMarketOrder && 'bg-row-order'
+        node.isInMarketOrder && 'bg-row-order',
+        node.isInIndustryJob && 'bg-row-industry',
+        node.isOwnedStructure && 'bg-row-structure'
       )}
       onClick={handleRowClick}
     >

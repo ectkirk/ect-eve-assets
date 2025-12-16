@@ -73,6 +73,8 @@ export interface TreeNode {
   // Source flags for color coding
   isInContract?: boolean
   isInMarketOrder?: boolean
+  isInIndustryJob?: boolean
+  isOwnedStructure?: boolean
 }
 
 export interface TreeState {

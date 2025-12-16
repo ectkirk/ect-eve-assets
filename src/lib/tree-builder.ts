@@ -110,6 +110,8 @@ function createItemNode(
     isBlueprintCopy: ra.isBlueprintCopy,
     isInContract: ra.modeFlags.isContract,
     isInMarketOrder: ra.modeFlags.isMarketOrder,
+    isInIndustryJob: ra.modeFlags.isIndustryJob,
+    isOwnedStructure: ra.modeFlags.isOwnedStructure,
   }
 }
 
