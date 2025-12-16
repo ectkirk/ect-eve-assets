@@ -357,7 +357,7 @@ export function IndustryJobsTab() {
     const groups = new Map<number, LocationGroup>()
 
     const filteredJobsByOwner = jobsByOwner.filter(({ owner }) =>
-      selectedSet.has(ownerKey(owner.type, owner.characterId))
+      selectedSet.has(ownerKey(owner.type, owner.id))
     )
 
     for (const { owner, jobs } of filteredJobsByOwner) {
