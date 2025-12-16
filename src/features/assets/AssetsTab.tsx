@@ -371,7 +371,10 @@ export function AssetsTab() {
             if (!mf.inOffice) return false
             break
           case 'STRUCTURES':
-            if (!mf.inStructure) return false
+            if (!mf.isOwnedStructure) return false
+            break
+          case 'INDUSTRY_JOBS':
+            if (!mf.isIndustryJob) return false
             break
         }
       }

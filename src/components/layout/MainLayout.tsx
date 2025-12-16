@@ -375,10 +375,12 @@ const ASSET_TYPE_OPTIONS = [
   { value: 'ASSET_SAFETY', label: 'Asset Safety' },
   { value: 'CONTRACTS', label: 'Contracts' },
   { value: 'DELIVERIES', label: 'Deliveries' },
+  { value: 'INDUSTRY_JOBS', label: 'Industry' },
   { value: 'ITEM_HANGAR', label: 'Item Hangar' },
   { value: 'MARKET_ORDERS', label: 'Market Orders' },
   { value: 'OFFICE', label: 'Office' },
   { value: 'SHIP_HANGAR', label: 'Ship Hangar' },
+  { value: 'STRUCTURES', label: 'Structures' },
 ]
 
 function SearchBar() {

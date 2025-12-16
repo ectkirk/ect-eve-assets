@@ -40,8 +40,12 @@ function isContainer(type: CachedType | undefined): boolean {
 function shouldIncludeByMode(ra: ResolvedAsset, mode: TreeMode): boolean {
   const mf = ra.modeFlags
 
-  if (mf.isContract || mf.isMarketOrder || mf.isIndustryJob || mf.isOwnedStructure) {
+  if (mf.isContract || mf.isMarketOrder || mf.isIndustryJob) {
     return mode === TreeMode.ALL
+  }
+
+  if (mf.isOwnedStructure) {
+    return mode === TreeMode.ALL || mode === TreeMode.STRUCTURES
   }
 
   switch (mode) {
@@ -58,7 +62,7 @@ function shouldIncludeByMode(ra: ResolvedAsset, mode: TreeMode): boolean {
     case TreeMode.OFFICE:
       return mf.inOffice
     case TreeMode.STRUCTURES:
-      return mf.inStructure
+      return mf.isOwnedStructure
     default:
       return true
   }
