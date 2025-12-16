@@ -1,4 +1,4 @@
-import { type Owner } from './auth-store'
+import { type Owner, ownerKey } from './auth-store'
 import { createOwnerStore, type BaseState } from './create-owner-store'
 import { useToastStore } from './toast-store'
 import { esi } from '@/api/esi'
@@ -26,15 +26,18 @@ interface MarketOrdersExtraActions {
   fetchComparisonData: () => Promise<void>
 }
 
+function getEndpoint(owner: Owner): string {
+  return owner.type === 'corporation'
+    ? `/corporations/${owner.id}/orders/`
+    : `/characters/${owner.characterId}/orders/`
+}
+
 async function fetchOrdersForOwner(owner: Owner): Promise<{
   data: MarketOrder[]
   expiresAt: number
   etag: string | null
 }> {
-  const endpoint =
-    owner.type === 'corporation'
-      ? `/corporations/${owner.id}/orders/`
-      : `/characters/${owner.characterId}/orders/`
+  const endpoint = getEndpoint(owner)
 
   if (owner.type === 'corporation') {
     return esi.fetchPaginatedWithMeta<ESICorporationMarketOrder>(endpoint, {
@@ -67,10 +70,7 @@ export const useMarketOrdersStore = createOwnerStore<
     metaStoreName: 'meta',
     version: 2,
   },
-  getEndpoint: (owner) =>
-    owner.type === 'corporation'
-      ? `/corporations/${owner.id}/orders/`
-      : `/characters/${owner.characterId}/orders/`,
+  getEndpoint,
   fetchData: fetchOrdersForOwner,
   toOwnerData: (owner, data) => ({ owner, orders: data }),
   isEmpty: (data) => data.length === 0,
@@ -123,9 +123,9 @@ export const useMarketOrdersStore = createOwnerStore<
     }
   },
   onBeforeOwnerUpdate: (owner, state: BaseState<OwnerOrders>) => {
-    const ownerKey = `${owner.type}-${owner.id}`
+    const key = ownerKey(owner.type, owner.id)
     const previousOrders =
-      state.dataByOwner.find((oo) => `${oo.owner.type}-${oo.owner.id}` === ownerKey)?.orders ?? []
+      state.dataByOwner.find((oo) => ownerKey(oo.owner.type, oo.owner.id) === key)?.orders ?? []
     return { previousData: previousOrders }
   },
   onAfterOwnerUpdate: ({ owner, newData, previousData }) => {
