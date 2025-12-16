@@ -54,3 +54,41 @@ export interface ResolvedAssetsByOwner {
   owner: Owner
   assets: ResolvedAsset[]
 }
+
+export function matchesAssetTypeFilter(modeFlags: AssetModeFlags, filterValue: string): boolean {
+  if (!filterValue) return true
+  switch (filterValue) {
+    case 'CONTRACTS':
+      return modeFlags.isContract
+    case 'MARKET_ORDERS':
+      return modeFlags.isMarketOrder
+    case 'DELIVERIES':
+      return modeFlags.inDeliveries
+    case 'ASSET_SAFETY':
+      return modeFlags.inAssetSafety
+    case 'ITEM_HANGAR':
+      return modeFlags.inItemHangar
+    case 'SHIP_HANGAR':
+      return modeFlags.inShipHangar
+    case 'OFFICE':
+      return modeFlags.inOffice
+    case 'STRUCTURES':
+      return modeFlags.isOwnedStructure
+    case 'INDUSTRY_JOBS':
+      return modeFlags.isIndustryJob
+    default:
+      return true
+  }
+}
+
+export function matchesSearch(ra: ResolvedAsset, search: string): boolean {
+  if (!search) return true
+  const searchLower = search.toLowerCase()
+  return (
+    ra.typeName.toLowerCase().includes(searchLower) ||
+    ra.groupName.toLowerCase().includes(searchLower) ||
+    ra.locationName.toLowerCase().includes(searchLower) ||
+    ra.systemName.toLowerCase().includes(searchLower) ||
+    ra.regionName.toLowerCase().includes(searchLower)
+  )
+}

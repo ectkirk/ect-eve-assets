@@ -18,7 +18,7 @@ import { useResolvedAssets } from '@/hooks/useResolvedAssets'
 import { TypeIcon, OwnerIcon } from '@/components/ui/type-icon'
 import { formatNumber, cn } from '@/lib/utils'
 import { useTabControls } from '@/context'
-import type { AssetModeFlags } from '@/lib/resolved-asset'
+import { matchesAssetTypeFilter, matchesSearch, type AssetModeFlags } from '@/lib/resolved-asset'
 
 interface AssetRow {
   itemId: number
@@ -346,46 +346,16 @@ export function AssetsTab() {
   const filteredData = useMemo(() => {
     const searchLower = search.toLowerCase()
     return data.filter((row) => {
-      if (assetTypeFilterValue) {
-        const mf = row.modeFlags
-        switch (assetTypeFilterValue) {
-          case 'CONTRACTS':
-            if (!mf.isContract) return false
-            break
-          case 'MARKET_ORDERS':
-            if (!mf.isMarketOrder) return false
-            break
-          case 'DELIVERIES':
-            if (!mf.inDeliveries) return false
-            break
-          case 'ASSET_SAFETY':
-            if (!mf.inAssetSafety) return false
-            break
-          case 'ITEM_HANGAR':
-            if (!mf.inItemHangar) return false
-            break
-          case 'SHIP_HANGAR':
-            if (!mf.inShipHangar) return false
-            break
-          case 'OFFICE':
-            if (!mf.inOffice) return false
-            break
-          case 'STRUCTURES':
-            if (!mf.isOwnedStructure) return false
-            break
-          case 'INDUSTRY_JOBS':
-            if (!mf.isIndustryJob) return false
-            break
-        }
-      }
+      if (!matchesAssetTypeFilter(row.modeFlags, assetTypeFilterValue)) return false
       if (categoryFilterValue && row.categoryName !== categoryFilterValue) return false
       if (search) {
-        const matchesType = row.typeName.toLowerCase().includes(searchLower)
-        const matchesGroup = row.groupName.toLowerCase().includes(searchLower)
-        const matchesLocation = row.locationName.toLowerCase().includes(searchLower)
-        const matchesSystem = row.systemName.toLowerCase().includes(searchLower)
-        const matchesRegion = row.regionName.toLowerCase().includes(searchLower)
-        if (!matchesType && !matchesGroup && !matchesLocation && !matchesSystem && !matchesRegion) return false
+        const matches =
+          row.typeName.toLowerCase().includes(searchLower) ||
+          row.groupName.toLowerCase().includes(searchLower) ||
+          row.locationName.toLowerCase().includes(searchLower) ||
+          row.systemName.toLowerCase().includes(searchLower) ||
+          row.regionName.toLowerCase().includes(searchLower)
+        if (!matches) return false
       }
       return true
     })
@@ -437,10 +407,21 @@ export function AssetsTab() {
     return () => setAssetTypeFilter(null)
   }, [assetTypeFilterValue, setAssetTypeFilter])
 
+  const sourceCount = useMemo(() => {
+    let showing = 0
+    for (const ra of selectedResolvedAssets) {
+      if (!matchesAssetTypeFilter(ra.modeFlags, assetTypeFilterValue)) continue
+      if (categoryFilterValue && ra.categoryName !== categoryFilterValue) continue
+      if (!matchesSearch(ra, search)) continue
+      showing++
+    }
+    return { showing, total: selectedResolvedAssets.length }
+  }, [selectedResolvedAssets, assetTypeFilterValue, categoryFilterValue, search])
+
   useEffect(() => {
-    setResultCount({ showing: filteredData.length, total: data.length })
+    setResultCount(sourceCount)
     return () => setResultCount(null)
-  }, [filteredData.length, data.length, setResultCount])
+  }, [sourceCount, setResultCount])
 
   const filteredTotalValue = useMemo(() => {
     return filteredData.reduce((sum, row) => sum + row.totalValue, 0)

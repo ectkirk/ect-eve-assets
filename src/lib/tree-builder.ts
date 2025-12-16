@@ -37,7 +37,7 @@ function isContainer(type: CachedType | undefined): boolean {
   )
 }
 
-function shouldIncludeByMode(ra: ResolvedAsset, mode: TreeMode): boolean {
+export function shouldIncludeByMode(ra: ResolvedAsset, mode: TreeMode): boolean {
   const mf = ra.modeFlags
 
   if (mf.isContract || mf.isMarketOrder || mf.isIndustryJob) {

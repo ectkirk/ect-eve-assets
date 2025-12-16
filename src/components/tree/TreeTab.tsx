@@ -3,9 +3,10 @@ import { Loader2 } from 'lucide-react'
 import { useResolvedAssets } from '@/hooks/useResolvedAssets'
 import { useDivisionsStore } from '@/store/divisions-store'
 import { TreeTable, useTreeState } from '@/components/tree'
-import { buildTree, filterTree, countTreeItems, getTreeCategories } from '@/lib/tree-builder'
+import { buildTree, filterTree, getTreeCategories, shouldIncludeByMode } from '@/lib/tree-builder'
 import { TreeMode } from '@/lib/tree-types'
 import { useTabControls } from '@/context'
+import { matchesSearch } from '@/lib/resolved-asset'
 
 interface TreeTabProps {
   mode: TreeMode
@@ -99,12 +100,21 @@ export function TreeTab({ mode }: TreeTabProps) {
     return () => setAssetTypeFilter(null)
   }, [mode, assetTypeFilter, setAssetTypeFilter])
 
+  const sourceCount = useMemo(() => {
+    let showing = 0
+    for (const ra of selectedResolvedAssets) {
+      if (!shouldIncludeByMode(ra, effectiveMode)) continue
+      if (categoryFilter && ra.categoryName !== categoryFilter) continue
+      if (!matchesSearch(ra, search)) continue
+      showing++
+    }
+    return { showing, total: selectedResolvedAssets.length }
+  }, [selectedResolvedAssets, effectiveMode, categoryFilter, search])
+
   useEffect(() => {
-    const total = countTreeItems(unfilteredNodes)
-    const showing = countTreeItems(treeNodes)
-    setResultCount({ showing, total })
+    setResultCount(sourceCount)
     return () => setResultCount(null)
-  }, [unfilteredNodes, treeNodes, setResultCount])
+  }, [sourceCount, setResultCount])
 
   const sourceTotalValue = useMemo(() => {
     return selectedResolvedAssets.reduce((sum, ra) => sum + ra.totalValue, 0)
