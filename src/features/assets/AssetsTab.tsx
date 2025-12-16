@@ -442,6 +442,14 @@ export function AssetsTab() {
     overscan: 10,
   })
 
+  const gridTemplateColumns = useMemo(() => {
+    void columnVisibility
+    return table.getVisibleLeafColumns().map(col => {
+      const noFlex = (col.columnDef.meta as { noFlex?: boolean } | undefined)?.noFlex
+      return noFlex ? `${col.getSize()}px` : `minmax(${col.getSize()}px, 1fr)`
+    }).join(' ')
+  }, [table, columnVisibility])
+
   if (owners.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -496,10 +504,7 @@ export function AssetsTab() {
         ref={tableContainerRef}
         className="flex-1 min-h-0 rounded-lg border border-border bg-surface-secondary/30 overflow-auto"
       >
-        <div className="grid" style={{ gridTemplateColumns: table.getVisibleLeafColumns().map(col => {
-          const noFlex = (col.columnDef.meta as { noFlex?: boolean } | undefined)?.noFlex
-          return noFlex ? `${col.getSize()}px` : `minmax(${col.getSize()}px, 1fr)`
-        }).join(' ') }}>
+        <div className="grid" style={{ gridTemplateColumns }}>
           <div className="contents">
             {table.getHeaderGroups().map((headerGroup) => (
               headerGroup.headers.filter(h => h.column.getIsVisible()).map((header) => (

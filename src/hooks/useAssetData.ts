@@ -52,10 +52,10 @@ export function useAssetData(): AssetDataResult {
     return subscribeToCache(() => setCacheVersion((v) => v + 1))
   }, [])
 
-  const assetDataKey = assetsByOwner
-    .map((d) => `${d.owner.type}-${d.owner.id}`)
-    .sort()
-    .join(',')
+  const assetDataKey = useMemo(
+    () => assetsByOwner.map((d) => `${d.owner.type}-${d.owner.id}`).sort().join(','),
+    [assetsByOwner]
+  )
 
   const assetsByOwnerRef = useRef(assetsByOwner)
   assetsByOwnerRef.current = assetsByOwner

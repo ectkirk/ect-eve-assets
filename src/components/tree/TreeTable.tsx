@@ -1,4 +1,4 @@
-import { useMemo, useRef, useCallback, useState, useEffect } from 'react'
+import { useMemo, useRef, useCallback, useState, useEffect, memo } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import {
   ChevronRight,
@@ -180,12 +180,19 @@ const TREE_COLUMNS: ColumnConfig[] = [
   { id: 'volume', label: 'Volume', defaultVisible: false },
 ]
 
-function TreeRowContent({ node, isExpanded, onToggle, visibleColumns }: {
+interface TreeRowContentProps {
   node: TreeNode
   isExpanded: boolean
-  onToggle: () => void
+  onToggleExpand: (nodeId: string) => void
   visibleColumns: string[]
-}) {
+}
+
+const TreeRowContent = memo(function TreeRowContent({
+  node,
+  isExpanded,
+  onToggleExpand,
+  visibleColumns,
+}: TreeRowContentProps) {
   const hasChildren = node.children.length > 0
   const indentPx = node.depth * 20
 
@@ -195,6 +202,11 @@ function TreeRowContent({ node, isExpanded, onToggle, visibleColumns }: {
     node.nodeType === 'station'
   const isOfficeNode = node.nodeType === 'office'
   const isDivisionNode = node.nodeType === 'division'
+
+  const handleToggleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+    onToggleExpand(node.id)
+  }, [onToggleExpand, node.id])
 
   return (
     <>
@@ -208,10 +220,7 @@ function TreeRowContent({ node, isExpanded, onToggle, visibleColumns }: {
               >
                 {hasChildren ? (
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onToggle()
-                    }}
+                    onClick={handleToggleClick}
                     className="p-0.5 hover:bg-surface-tertiary rounded"
                   >
                     {isExpanded ? (
@@ -293,7 +302,7 @@ function TreeRowContent({ node, isExpanded, onToggle, visibleColumns }: {
       })}
     </>
   )
-}
+})
 
 const COLUMN_WIDTHS: Record<string, string> = {
   name: 'w-auto',
@@ -347,13 +356,9 @@ export function TreeTable({
     overscan: 15,
   })
 
-  const hasExpandableNodes = useMemo(
-    () => getAllNodeIds(sortedNodes).length > 0,
-    [sortedNodes]
-  )
-
   const allNodeIds = useMemo(() => getAllNodeIds(sortedNodes), [sortedNodes])
-  const isAllExpanded = allNodeIds.length > 0 && allNodeIds.every((id) => expandedNodes.has(id))
+  const hasExpandableNodes = allNodeIds.length > 0
+  const isAllExpanded = hasExpandableNodes && allNodeIds.every((id) => expandedNodes.has(id))
 
   const { setExpandCollapse, setColumns } = useTabControls()
 
@@ -459,7 +464,7 @@ export function TreeTable({
                       <TreeRowContent
                         node={node}
                         isExpanded={isExpanded}
-                        onToggle={() => onToggleExpand(node.id)}
+                        onToggleExpand={onToggleExpand}
                         visibleColumns={visibleColumns}
                       />
                     </TableRow>
