@@ -256,16 +256,18 @@ function OwnerButton() {
         {selectedOwners.length === 0 ? (
           <span className="text-sm text-content-muted">No Selection</span>
         ) : (
-          <>
-            <div className="flex items-center gap-2">
-              {(() => {
-                const characters = selectedOwners.filter((o) => o.type === 'character').slice(0, 5)
-                const corporations = selectedOwners.filter((o) => o.type === 'corporation').slice(0, 5)
-                return (
-                  <>
-                    {characters.length > 0 && (
+          <div className="flex items-center gap-3">
+            {(() => {
+              const selectedCharacters = selectedOwners.filter((o) => o.type === 'character').slice(0, 5)
+              const selectedCorps = selectedOwners.filter((o) => o.type === 'corporation').slice(0, 5)
+              const totalCharacters = owners.filter((o) => o.type === 'character').length
+              const totalCorps = owners.filter((o) => o.type === 'corporation').length
+              return (
+                <>
+                  {totalCharacters > 0 && (
+                    <div className="flex items-center gap-1">
                       <div className="flex items-center">
-                        {characters.map((owner, i) => (
+                        {selectedCharacters.map((owner, i) => (
                           <div
                             key={ownerKey(owner.type, owner.id)}
                             className="relative rounded-full ring-2 ring-surface-secondary"
@@ -275,10 +277,15 @@ function OwnerButton() {
                           </div>
                         ))}
                       </div>
-                    )}
-                    {corporations.length > 0 && (
+                      <span className="text-xs text-content-secondary">
+                        ({selectedOwners.filter((o) => o.type === 'character').length}/{totalCharacters})
+                      </span>
+                    </div>
+                  )}
+                  {totalCorps > 0 && (
+                    <div className="flex items-center gap-1">
                       <div className="flex items-center">
-                        {corporations.map((owner, i) => (
+                        {selectedCorps.map((owner, i) => (
                           <div
                             key={ownerKey(owner.type, owner.id)}
                             className="relative rounded-full ring-2 ring-surface-secondary"
@@ -288,15 +295,15 @@ function OwnerButton() {
                           </div>
                         ))}
                       </div>
-                    )}
-                  </>
-                )
-              })()}
-            </div>
-            <span className="text-xs text-content-secondary">
-              ({selectedOwners.length}/{owners.length})
-            </span>
-          </>
+                      <span className="text-xs text-content-secondary">
+                        ({selectedOwners.filter((o) => o.type === 'corporation').length}/{totalCorps})
+                      </span>
+                    </div>
+                  )}
+                </>
+              )
+            })()}
+          </div>
         )}
       </button>
       <OwnerManagementModal open={modalOpen} onOpenChange={setModalOpen} />
