@@ -34,7 +34,8 @@ const TYPE_BATCH_DELAY_MS = 50
 
 async function fetchTypesFromAPI(
   ids: number[],
-  market: 'jita' | 'the_forge' = 'jita'
+  market: 'jita' | 'the_forge' = 'jita',
+  stationId?: number
 ): Promise<Map<number, RefType>> {
   if (ids.length === 0) return new Map()
 
@@ -44,7 +45,7 @@ async function fetchTypesFromAPI(
     const chunk = ids.slice(i, i + 1000)
 
     try {
-      const rawData = await window.electronAPI!.refTypes(chunk, market)
+      const rawData = await window.electronAPI!.refTypes(chunk, market, stationId)
       if (rawData && typeof rawData === 'object' && 'error' in rawData) {
         logger.warn('RefAPI /types failed', { module: 'RefAPI', error: rawData.error })
         continue
@@ -302,4 +303,29 @@ export async function fetchPrices(
   }
 
   return prices
+}
+
+export interface MarketComparisonPrices {
+  station: { highestBuy: number | null; lowestSell: number | null } | null
+  system: { highestBuy: number | null; lowestSell: number | null } | null
+  region: { highestBuy: number | null; lowestSell: number | null } | null
+}
+
+export async function fetchMarketComparison(
+  typeIds: number[],
+  stationId: number
+): Promise<Map<number, MarketComparisonPrices>> {
+  const fetched = await fetchTypesFromAPI(typeIds, 'jita', stationId)
+  const results = new Map<number, MarketComparisonPrices>()
+
+  for (const [typeId, type] of fetched) {
+    const mp = type.marketPrice
+    results.set(typeId, {
+      station: mp.station ?? null,
+      system: mp.system ?? null,
+      region: mp.region ?? null,
+    })
+  }
+
+  return results
 }

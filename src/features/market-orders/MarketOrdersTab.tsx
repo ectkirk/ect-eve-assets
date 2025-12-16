@@ -1,14 +1,15 @@
-import { useEffect, useMemo } from 'react'
-import { TrendingUp, TrendingDown, ChevronRight, ChevronDown } from 'lucide-react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
+import { ChevronRight, ChevronDown, ArrowUp, ArrowDown } from 'lucide-react'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { useAssetData } from '@/hooks/useAssetData'
-import { useTabControls } from '@/context'
+import { useTabControls, type ComparisonLevel } from '@/context'
 import { useColumnSettings, useCacheVersion, useExpandCollapse, type ColumnConfig } from '@/hooks'
 import { type MarketOrder } from '@/store/market-orders-store'
 import { hasType, getType, hasLocation, hasStructure } from '@/store/reference-cache'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import { resolveTypes, resolveLocations } from '@/api/ref-client'
+import { type MarketComparisonPrices } from '@/api/ref-client'
 import { resolveStructures } from '@/api/endpoints/universe'
 import {
   Table,
@@ -31,6 +32,7 @@ interface OrderRow {
   locationName: string
   regionName: string
   systemName: string
+  comparison?: MarketComparisonPrices
 }
 
 interface LocationGroup {
@@ -58,63 +60,272 @@ function formatExpiry(issued: string, duration: number): string {
   return `${hours}h`
 }
 
-function OrdersTable({ orders }: { orders: OrderRow[] }) {
+function getComparisonValue(
+  comparison: MarketComparisonPrices | undefined,
+  level: ComparisonLevel,
+  isBuyOrder: boolean
+): number | null {
+  if (!comparison) return null
+  let levelData: { highestBuy: number | null; lowestSell: number | null } | null = null
+  if (level === 'station') levelData = comparison.station
+  else if (level === 'system') levelData = comparison.system
+  else if (level === 'region') levelData = comparison.region
+  if (!levelData) return null
+  return isBuyOrder ? levelData.highestBuy : levelData.lowestSell
+}
+
+function DifferenceCell({ orderPrice, comparisonValue, isBuyOrder }: { orderPrice: number; comparisonValue: number | null; isBuyOrder: boolean }) {
+  if (comparisonValue === null) return <span className="text-content-muted">-</span>
+  const diff = orderPrice - comparisonValue
+  const isGood = isBuyOrder ? diff >= 0 : diff <= 0
+  const prefix = diff > 0 ? '+' : ''
   return (
-    <Table>
-      <TableHeader>
-        <TableRow className="hover:bg-transparent">
-          <TableHead className="w-8"></TableHead>
-          <TableHead>Item</TableHead>
-          <TableHead className="text-right">Price</TableHead>
-          <TableHead className="text-right">Quantity</TableHead>
-          <TableHead className="text-right">Total</TableHead>
-          <TableHead className="text-right">Expires</TableHead>
-          <TableHead className="text-right">Owner</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {orders.map((row) => {
-          const total = row.order.price * row.order.volume_remain
-          return (
-            <TableRow key={row.order.order_id}>
-              <TableCell className="py-1.5 w-8">
-                {row.order.is_buy_order ? (
-                  <TrendingDown className="h-4 w-4 text-status-positive" />
-                ) : (
-                  <TrendingUp className="h-4 w-4 text-status-negative" />
-                )}
-              </TableCell>
-              <TableCell className="py-1.5">
-                <div className="flex items-center gap-2">
-                  <TypeIcon typeId={row.typeId} categoryId={row.categoryId} />
-                  <span className="truncate" title={row.typeName}>
-                    {row.typeName}
-                  </span>
-                </div>
-              </TableCell>
-              <TableCell className="py-1.5 text-right tabular-nums">
-                {formatNumber(row.order.price)}
-              </TableCell>
-              <TableCell className="py-1.5 text-right tabular-nums">
-                {row.order.volume_remain.toLocaleString()}
-                {row.order.volume_remain !== row.order.volume_total && (
-                  <span className="text-content-muted">
-                    /{row.order.volume_total.toLocaleString()}
-                  </span>
-                )}
-              </TableCell>
-              <TableCell className="py-1.5 text-right tabular-nums text-status-highlight">
-                {formatNumber(total)}
-              </TableCell>
-              <TableCell className="py-1.5 text-right tabular-nums text-content-secondary">
-                {formatExpiry(row.order.issued, row.order.duration)}
-              </TableCell>
-              <TableCell className="py-1.5 text-right text-content-secondary">{row.ownerName}</TableCell>
-            </TableRow>
-          )
-        })}
-      </TableBody>
-    </Table>
+    <span className={isGood ? 'text-status-positive' : 'text-status-negative'}>
+      {prefix}{diff.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+    </span>
+  )
+}
+
+type SortColumn = 'item' | 'price' | 'comparison' | 'difference' | 'qty' | 'total' | 'expires' | 'owner'
+type SortDirection = 'asc' | 'desc'
+
+function SortableHeader({
+  column,
+  label,
+  currentSort,
+  currentDirection,
+  onSort,
+  className = ''
+}: {
+  column: SortColumn
+  label: string
+  currentSort: SortColumn
+  currentDirection: SortDirection
+  onSort: (column: SortColumn) => void
+  className?: string
+}) {
+  const isActive = currentSort === column
+  return (
+    <TableHead
+      className={`cursor-pointer select-none hover:bg-surface-tertiary/50 ${className}`}
+      onClick={() => onSort(column)}
+    >
+      <div className={`flex items-center gap-1 ${className.includes('text-right') ? 'justify-end' : ''}`}>
+        {label}
+        {isActive && (
+          currentDirection === 'asc'
+            ? <ArrowUp className="h-3 w-3" />
+            : <ArrowDown className="h-3 w-3" />
+        )}
+      </div>
+    </TableHead>
+  )
+}
+
+function getExpiryTime(issued: string, duration: number): number {
+  return new Date(issued).getTime() + duration * 24 * 60 * 60 * 1000
+}
+
+function sortOrders(
+  orders: OrderRow[],
+  sortColumn: SortColumn,
+  sortDirection: SortDirection,
+  comparisonLevel: ComparisonLevel,
+  isBuyOrder: boolean
+): OrderRow[] {
+  return [...orders].sort((a, b) => {
+    let aVal: number | string = 0
+    let bVal: number | string = 0
+
+    switch (sortColumn) {
+      case 'item':
+        aVal = a.typeName.toLowerCase()
+        bVal = b.typeName.toLowerCase()
+        break
+      case 'price':
+        aVal = a.order.price
+        bVal = b.order.price
+        break
+      case 'comparison': {
+        const aComp = getComparisonValue(a.comparison, comparisonLevel, isBuyOrder)
+        const bComp = getComparisonValue(b.comparison, comparisonLevel, isBuyOrder)
+        aVal = aComp ?? (sortDirection === 'asc' ? Infinity : -Infinity)
+        bVal = bComp ?? (sortDirection === 'asc' ? Infinity : -Infinity)
+        break
+      }
+      case 'difference': {
+        const aComp = getComparisonValue(a.comparison, comparisonLevel, isBuyOrder)
+        const bComp = getComparisonValue(b.comparison, comparisonLevel, isBuyOrder)
+        aVal = aComp !== null ? a.order.price - aComp : (sortDirection === 'asc' ? Infinity : -Infinity)
+        bVal = bComp !== null ? b.order.price - bComp : (sortDirection === 'asc' ? Infinity : -Infinity)
+        break
+      }
+      case 'qty':
+        aVal = a.order.volume_remain
+        bVal = b.order.volume_remain
+        break
+      case 'total':
+        aVal = a.order.price * a.order.volume_remain
+        bVal = b.order.price * b.order.volume_remain
+        break
+      case 'expires':
+        aVal = getExpiryTime(a.order.issued, a.order.duration)
+        bVal = getExpiryTime(b.order.issued, b.order.duration)
+        break
+      case 'owner':
+        aVal = a.ownerName.toLowerCase()
+        bVal = b.ownerName.toLowerCase()
+        break
+    }
+
+    if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1
+    if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1
+    return 0
+  })
+}
+
+function OrdersTable({ orders, comparisonLevel }: { orders: OrderRow[]; comparisonLevel: ComparisonLevel }) {
+  const [sellSort, setSellSort] = useState<SortColumn>('total')
+  const [sellDirection, setSellDirection] = useState<SortDirection>('desc')
+  const [buySort, setBuySort] = useState<SortColumn>('total')
+  const [buyDirection, setBuyDirection] = useState<SortDirection>('desc')
+
+  const handleSellSort = (column: SortColumn) => {
+    if (sellSort === column) {
+      setSellDirection(sellDirection === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSellSort(column)
+      setSellDirection('desc')
+    }
+  }
+
+  const handleBuySort = (column: SortColumn) => {
+    if (buySort === column) {
+      setBuyDirection(buyDirection === 'asc' ? 'desc' : 'asc')
+    } else {
+      setBuySort(column)
+      setBuyDirection('desc')
+    }
+  }
+
+  const buyOrders = orders.filter((o) => o.order.is_buy_order)
+  const sellOrders = orders.filter((o) => !o.order.is_buy_order)
+
+  const sortedSellOrders = useMemo(() =>
+    sortOrders(sellOrders, sellSort, sellDirection, comparisonLevel, false),
+    [sellOrders, sellSort, sellDirection, comparisonLevel]
+  )
+
+  const sortedBuyOrders = useMemo(() =>
+    sortOrders(buyOrders, buySort, buyDirection, comparisonLevel, true),
+    [buyOrders, buySort, buyDirection, comparisonLevel]
+  )
+
+  return (
+    <div className="space-y-4">
+      {sellOrders.length > 0 && (
+        <div>
+          <h4 className="text-xs font-medium text-content-muted mb-1 px-1">Sell Orders</h4>
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <SortableHeader column="item" label="Item" currentSort={sellSort} currentDirection={sellDirection} onSort={handleSellSort} />
+                <SortableHeader column="price" label="Price" currentSort={sellSort} currentDirection={sellDirection} onSort={handleSellSort} className="text-right" />
+                <SortableHeader column="comparison" label="Lowest Sell" currentSort={sellSort} currentDirection={sellDirection} onSort={handleSellSort} className="text-right" />
+                <SortableHeader column="difference" label="Difference" currentSort={sellSort} currentDirection={sellDirection} onSort={handleSellSort} className="text-right" />
+                <SortableHeader column="qty" label="Qty" currentSort={sellSort} currentDirection={sellDirection} onSort={handleSellSort} className="text-right" />
+                <SortableHeader column="total" label="Total" currentSort={sellSort} currentDirection={sellDirection} onSort={handleSellSort} className="text-right" />
+                <SortableHeader column="expires" label="Expires" currentSort={sellSort} currentDirection={sellDirection} onSort={handleSellSort} className="text-right" />
+                <SortableHeader column="owner" label="Owner" currentSort={sellSort} currentDirection={sellDirection} onSort={handleSellSort} className="text-right" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sortedSellOrders.map((row) => {
+                const total = row.order.price * row.order.volume_remain
+                const comparisonValue = getComparisonValue(row.comparison, comparisonLevel, false)
+                return (
+                  <TableRow key={row.order.order_id}>
+                    <TableCell className="py-1.5">
+                      <div className="flex items-center gap-2">
+                        <TypeIcon typeId={row.typeId} categoryId={row.categoryId} />
+                        <span className="truncate" title={row.typeName}>{row.typeName}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-1.5 text-right tabular-nums">{row.order.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                    <TableCell className="py-1.5 text-right tabular-nums text-content-secondary">
+                      {comparisonValue !== null ? comparisonValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : <span className="text-content-muted">-</span>}
+                    </TableCell>
+                    <TableCell className="py-1.5 text-right tabular-nums">
+                      <DifferenceCell orderPrice={row.order.price} comparisonValue={comparisonValue} isBuyOrder={false} />
+                    </TableCell>
+                    <TableCell className="py-1.5 text-right tabular-nums">
+                      {row.order.volume_remain.toLocaleString()}
+                      {row.order.volume_remain !== row.order.volume_total && (
+                        <span className="text-content-muted">/{row.order.volume_total.toLocaleString()}</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="py-1.5 text-right tabular-nums text-status-highlight">{formatNumber(total)}</TableCell>
+                    <TableCell className="py-1.5 text-right tabular-nums text-content-secondary">{formatExpiry(row.order.issued, row.order.duration)}</TableCell>
+                    <TableCell className="py-1.5 text-right text-content-secondary">{row.ownerName}</TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+      {buyOrders.length > 0 && (
+        <div>
+          <h4 className="text-xs font-medium text-content-muted mb-1 px-1">Buy Orders</h4>
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <SortableHeader column="item" label="Item" currentSort={buySort} currentDirection={buyDirection} onSort={handleBuySort} />
+                <SortableHeader column="price" label="Price" currentSort={buySort} currentDirection={buyDirection} onSort={handleBuySort} className="text-right" />
+                <SortableHeader column="comparison" label="Highest Buy" currentSort={buySort} currentDirection={buyDirection} onSort={handleBuySort} className="text-right" />
+                <SortableHeader column="difference" label="Difference" currentSort={buySort} currentDirection={buyDirection} onSort={handleBuySort} className="text-right" />
+                <SortableHeader column="qty" label="Qty" currentSort={buySort} currentDirection={buyDirection} onSort={handleBuySort} className="text-right" />
+                <SortableHeader column="total" label="Total" currentSort={buySort} currentDirection={buyDirection} onSort={handleBuySort} className="text-right" />
+                <SortableHeader column="expires" label="Expires" currentSort={buySort} currentDirection={buyDirection} onSort={handleBuySort} className="text-right" />
+                <SortableHeader column="owner" label="Owner" currentSort={buySort} currentDirection={buyDirection} onSort={handleBuySort} className="text-right" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sortedBuyOrders.map((row) => {
+                const total = row.order.price * row.order.volume_remain
+                const comparisonValue = getComparisonValue(row.comparison, comparisonLevel, true)
+                return (
+                  <TableRow key={row.order.order_id}>
+                    <TableCell className="py-1.5">
+                      <div className="flex items-center gap-2">
+                        <TypeIcon typeId={row.typeId} categoryId={row.categoryId} />
+                        <span className="truncate" title={row.typeName}>{row.typeName}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-1.5 text-right tabular-nums">{row.order.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                    <TableCell className="py-1.5 text-right tabular-nums text-content-secondary">
+                      {comparisonValue !== null ? comparisonValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : <span className="text-content-muted">-</span>}
+                    </TableCell>
+                    <TableCell className="py-1.5 text-right tabular-nums">
+                      <DifferenceCell orderPrice={row.order.price} comparisonValue={comparisonValue} isBuyOrder={true} />
+                    </TableCell>
+                    <TableCell className="py-1.5 text-right tabular-nums">
+                      {row.order.volume_remain.toLocaleString()}
+                      {row.order.volume_remain !== row.order.volume_total && (
+                        <span className="text-content-muted">/{row.order.volume_total.toLocaleString()}</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="py-1.5 text-right tabular-nums text-status-highlight">{formatNumber(total)}</TableCell>
+                    <TableCell className="py-1.5 text-right tabular-nums text-content-secondary">{formatExpiry(row.order.issued, row.order.duration)}</TableCell>
+                    <TableCell className="py-1.5 text-right text-content-secondary">{row.ownerName}</TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -122,10 +333,12 @@ function LocationGroupRow({
   group,
   isExpanded,
   onToggle,
+  comparisonLevel,
 }: {
   group: LocationGroup
   isExpanded: boolean
   onToggle: () => void
+  comparisonLevel: ComparisonLevel
 }) {
   const buyOrders = group.orders.filter((o) => o.order.is_buy_order)
   const sellOrders = group.orders.filter((o) => !o.order.is_buy_order)
@@ -157,7 +370,7 @@ function LocationGroupRow({
       </button>
       {isExpanded && (
         <div className="border-t border-border/50 bg-surface/30 px-4 pb-2">
-          <OrdersTable orders={group.orders} />
+          <OrdersTable orders={group.orders} comparisonLevel={comparisonLevel} />
         </div>
       )}
     </div>
@@ -217,16 +430,29 @@ export function MarketOrdersTab() {
     }
   }, [ordersByOwner])
 
-  const { setExpandCollapse, search, setResultCount, setTotalValue, setColumns } = useTabControls()
+  const comparisonData = useMarketOrdersStore((s) => s.comparisonData)
+
+  const { setExpandCollapse, search, setResultCount, setTotalValue, setColumns, setComparisonLevel } = useTabControls()
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
   const selectedSet = useMemo(() => new Set(selectedOwnerIds), [selectedOwnerIds])
 
+  const [comparisonLevelValue, setComparisonLevelValue] = useState<ComparisonLevel>('station')
+
+  const handleComparisonLevelChange = useCallback((value: ComparisonLevel) => {
+    setComparisonLevelValue(value)
+  }, [])
+
+  useEffect(() => {
+    setComparisonLevel({ value: comparisonLevelValue, onChange: handleComparisonLevelChange })
+    return () => setComparisonLevel(null)
+  }, [comparisonLevelValue, handleComparisonLevelChange, setComparisonLevel])
+
   const ORDER_COLUMNS: ColumnConfig[] = useMemo(() => [
-    { id: 'type', label: 'Buy/Sell' },
     { id: 'item', label: 'Item' },
     { id: 'price', label: 'Price' },
     { id: 'quantity', label: 'Quantity' },
     { id: 'total', label: 'Total' },
+    { id: 'comparison', label: 'Comparison' },
     { id: 'expires', label: 'Expires' },
     { id: 'owner', label: 'Owner' },
   ], [])
@@ -246,6 +472,7 @@ export function MarketOrdersTab() {
       for (const order of orders) {
         const type = hasType(order.type_id) ? getType(order.type_id) : undefined
         const locationInfo = getLocationInfo(order.location_id)
+        const comparison = comparisonData.get(`${order.location_id}-${order.type_id}`)
 
         const row: OrderRow = {
           order,
@@ -256,6 +483,7 @@ export function MarketOrdersTab() {
           locationName: locationInfo.name,
           regionName: locationInfo.regionName,
           systemName: locationInfo.systemName,
+          comparison,
         }
 
         let group = groups.get(order.location_id)
@@ -317,7 +545,7 @@ export function MarketOrdersTab() {
     }
 
     return sorted
-  }, [ordersByOwner, cacheVersion, search, selectedSet])
+  }, [ordersByOwner, cacheVersion, search, selectedSet, comparisonData])
 
   const expandableIds = useMemo(() => locationGroups.map((g) => g.locationId), [locationGroups])
   const { isExpanded, toggle } = useExpandCollapse(expandableIds, setExpandCollapse)
@@ -386,6 +614,7 @@ export function MarketOrdersTab() {
             group={group}
             isExpanded={isExpanded(group.locationId)}
             onToggle={() => toggle(group.locationId)}
+            comparisonLevel={comparisonLevelValue}
           />
         ))
       )}

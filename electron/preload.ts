@@ -330,7 +330,7 @@ export interface ElectronAPI {
   storageSet: (data: Record<string, unknown>) => Promise<boolean>
   writeLog: (level: LogLevel, message: string, context?: LogContext) => Promise<void>
   getLogDir: () => Promise<string>
-  refTypes: (ids: number[], market: 'jita' | 'the_forge') => Promise<RefApiResult>
+  refTypes: (ids: number[], market: 'jita' | 'the_forge', stationId?: number) => Promise<RefApiResult>
   refUniverse: (ids: number[]) => Promise<RefApiResult>
   refShips: (ids: number[]) => Promise<RefShipsResult>
   refManufacturingCost: (params: ManufacturingCostParams) => Promise<ManufacturingCostResult>
@@ -384,8 +384,8 @@ const electronAPI: ElectronAPI = {
   writeLog: (level: LogLevel, message: string, context?: LogContext) =>
     ipcRenderer.invoke('log:write', level, message, context),
   getLogDir: () => ipcRenderer.invoke('log:getDir'),
-  refTypes: (ids: number[], market: 'jita' | 'the_forge') =>
-    ipcRenderer.invoke('ref:types', ids, market),
+  refTypes: (ids: number[], market: 'jita' | 'the_forge', stationId?: number) =>
+    ipcRenderer.invoke('ref:types', ids, market, stationId),
   refUniverse: (ids: number[]) => ipcRenderer.invoke('ref:universe', ids),
   refShips: (ids: number[]) => ipcRenderer.invoke('ref:ships', ids),
   refManufacturingCost: (params: ManufacturingCostParams) =>

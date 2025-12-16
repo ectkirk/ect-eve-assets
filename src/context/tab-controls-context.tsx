@@ -23,6 +23,13 @@ interface ResultCount {
   total: number
 }
 
+export type ComparisonLevel = 'station' | 'system' | 'region'
+
+interface ComparisonLevelConfig {
+  value: ComparisonLevel
+  onChange: (value: ComparisonLevel) => void
+}
+
 export interface TotalValueConfig {
   value: number
   label?: string
@@ -45,6 +52,8 @@ interface TabControlsContextValue {
   setResultCount: (count: ResultCount | null) => void
   totalValue: TotalValueConfig | null
   setTotalValue: (value: TotalValueConfig | null) => void
+  comparisonLevel: ComparisonLevelConfig | null
+  setComparisonLevel: (config: ComparisonLevelConfig | null) => void
 }
 
 const TabControlsContext = createContext<TabControlsContextValue | null>(null)
@@ -56,6 +65,7 @@ export function TabControlsProvider({ children }: { children: ReactNode }) {
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilterConfig | null>(null)
   const [resultCount, setResultCount] = useState<ResultCount | null>(null)
   const [totalValue, setTotalValue] = useState<TotalValueConfig | null>(null)
+  const [comparisonLevel, setComparisonLevel] = useState<ComparisonLevelConfig | null>(null)
 
   return (
     <TabControlsContext.Provider value={{
@@ -71,6 +81,8 @@ export function TabControlsProvider({ children }: { children: ReactNode }) {
       setResultCount,
       totalValue,
       setTotalValue,
+      comparisonLevel,
+      setComparisonLevel,
     }}>
       {children}
     </TabControlsContext.Provider>

@@ -4,6 +4,7 @@ import { useToastStore } from './toast-store'
 import { esi } from '@/api/esi'
 import { ESIMarketOrderSchema, ESICorporationMarketOrderSchema } from '@/api/schemas'
 import { getTypeName } from '@/store/reference-cache'
+import { fetchMarketComparison, type MarketComparisonPrices } from '@/api/ref-client'
 import { logger } from '@/lib/logger'
 import { z } from 'zod'
 
@@ -14,6 +15,15 @@ export type MarketOrder = ESIMarketOrder | ESICorporationMarketOrder
 export interface OwnerOrders {
   owner: Owner
   orders: MarketOrder[]
+}
+
+interface MarketOrdersExtraState {
+  comparisonData: Map<string, MarketComparisonPrices>
+  comparisonFetching: boolean
+}
+
+interface MarketOrdersExtraActions {
+  fetchComparisonData: () => Promise<void>
 }
 
 async function fetchOrdersForOwner(owner: Owner): Promise<{
@@ -41,7 +51,12 @@ async function fetchOrdersForOwner(owner: Owner): Promise<{
   return result
 }
 
-export const useMarketOrdersStore = createOwnerStore<MarketOrder[], OwnerOrders>({
+export const useMarketOrdersStore = createOwnerStore<
+  MarketOrder[],
+  OwnerOrders,
+  MarketOrdersExtraState,
+  MarketOrdersExtraActions
+>({
   name: 'market orders',
   moduleName: 'MarketOrdersStore',
   endpointPattern: '/orders/',
@@ -59,6 +74,54 @@ export const useMarketOrdersStore = createOwnerStore<MarketOrder[], OwnerOrders>
   fetchData: fetchOrdersForOwner,
   toOwnerData: (owner, data) => ({ owner, orders: data }),
   isEmpty: (data) => data.length === 0,
+  extraState: {
+    comparisonData: new Map(),
+    comparisonFetching: false,
+  },
+  extraActions: (set, get) => ({
+    fetchComparisonData: async () => {
+      const state = get()
+      if (state.comparisonFetching) return
+      if (state.dataByOwner.length === 0) return
+
+      set({ comparisonFetching: true })
+
+      const ordersByLocation = new Map<number, Set<number>>()
+      for (const { orders } of state.dataByOwner) {
+        for (const order of orders) {
+          let typeIds = ordersByLocation.get(order.location_id)
+          if (!typeIds) {
+            typeIds = new Set()
+            ordersByLocation.set(order.location_id, typeIds)
+          }
+          typeIds.add(order.type_id)
+        }
+      }
+
+      const newData = new Map<string, MarketComparisonPrices>()
+      for (const [locationId, typeIds] of ordersByLocation) {
+        try {
+          const result = await fetchMarketComparison(Array.from(typeIds), locationId)
+          for (const [typeId, prices] of result) {
+            newData.set(`${locationId}-${typeId}`, prices)
+          }
+        } catch (err) {
+          logger.warn('Failed to fetch comparison data', {
+            module: 'MarketOrdersStore',
+            locationId,
+            error: err instanceof Error ? err.message : String(err),
+          })
+        }
+      }
+
+      set({ comparisonData: newData, comparisonFetching: false })
+    },
+  }),
+  onAfterBatchUpdate: async (results) => {
+    if (results.length > 0) {
+      await useMarketOrdersStore.getState().fetchComparisonData()
+    }
+  },
   onBeforeOwnerUpdate: (owner, state: BaseState<OwnerOrders>) => {
     const ownerKey = `${owner.type}-${owner.id}`
     const previousOrders =
@@ -88,5 +151,7 @@ export const useMarketOrdersStore = createOwnerStore<MarketOrder[], OwnerOrders>
         count: completedOrders.length,
       })
     }
+
+    useMarketOrdersStore.getState().fetchComparisonData()
   },
 })

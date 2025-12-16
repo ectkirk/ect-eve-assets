@@ -309,6 +309,11 @@ export const ESICorporationDivisionsSchema = z.object({
 })
 
 // ref-client schemas
+const RefPriceLevelSchema = z.object({
+  highestBuy: z.number().nullable(),
+  lowestSell: z.number().nullable(),
+})
+
 export const RefMarketPriceSchema = z.object({
   adjusted: z.union([z.string(), z.number(), z.null()]).optional(),
   average: z.union([z.string(), z.number(), z.null()]).optional(),
@@ -317,6 +322,9 @@ export const RefMarketPriceSchema = z.object({
   salesCount: z.number().optional(),
   timeWindow: z.string().nullable().optional(),
   hasSufficientData: z.boolean().optional(),
+  station: RefPriceLevelSchema.optional(),
+  system: RefPriceLevelSchema.optional(),
+  region: RefPriceLevelSchema.optional(),
 })
 
 export const RefTypeSchema = z.object({
