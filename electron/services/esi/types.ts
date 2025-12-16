@@ -18,6 +18,7 @@ export interface ESIResponseMeta<T> {
   expiresAt: number
   etag: string | null
   notModified: boolean
+  xPages?: number
 }
 
 export interface ESISuccessResponse<T> {

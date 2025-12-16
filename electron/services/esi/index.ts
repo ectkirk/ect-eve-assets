@@ -77,12 +77,17 @@ export class MainESIService {
       throw new Error(error)
     }
 
-    return {
+    const response: ESIResponseMeta<T> = {
       data: result.data as T,
       expiresAt: result.meta.expiresAt,
       etag: result.meta.etag ?? null,
       notModified: result.meta.notModified ?? false,
     }
+
+    const xPages = (result as { xPages?: number }).xPages
+    if (xPages) response.xPages = xPages
+
+    return response
   }
 
   async fetchPaginated<T>(endpoint: string, options: ESIRequestOptions = {}): Promise<T[]> {

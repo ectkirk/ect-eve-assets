@@ -390,7 +390,7 @@ function LocationGroupRow({
 
 const PAGE_SIZE = 50
 
-type HistorySortColumn = 'item' | 'price' | 'qty' | 'total' | 'location' | 'issued' | 'state' | 'owner'
+type HistorySortColumn = 'order_id' | 'item' | 'price' | 'qty' | 'total' | 'location' | 'issued' | 'state' | 'owner'
 
 function HistorySortableHeader({
   column,
@@ -450,6 +450,10 @@ function HistoryTable({ orders }: { orders: HistoryOrderRow[] }) {
       let bVal: number | string = 0
 
       switch (sortColumn) {
+        case 'order_id':
+          aVal = a.order.order_id
+          bVal = b.order.order_id
+          break
         case 'item':
           aVal = a.typeName.toLowerCase()
           bVal = b.typeName.toLowerCase()
