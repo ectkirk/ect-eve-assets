@@ -382,8 +382,17 @@ function ComparisonLevelDropdown() {
   )
 }
 
+const ASSET_TYPE_OPTIONS = [
+  { value: '', label: 'All Types' },
+  { value: 'ITEM_HANGAR', label: 'Item Hangar' },
+  { value: 'SHIP_HANGAR', label: 'Ship Hangar' },
+  { value: 'DELIVERIES', label: 'Deliveries' },
+  { value: 'ASSET_SAFETY', label: 'Asset Safety' },
+  { value: 'OFFICE', label: 'Office' },
+]
+
 function SearchBar() {
-  const { search, setSearch, categoryFilter, resultCount, totalValue } = useTabControls()
+  const { search, setSearch, categoryFilter, assetTypeFilter, resultCount, totalValue } = useTabControls()
 
   return (
     <div className="flex items-center gap-3 border-b border-border bg-surface-secondary/50 px-4 py-2">
@@ -405,6 +414,18 @@ function SearchBar() {
           </button>
         )}
       </div>
+
+      {assetTypeFilter && (
+        <select
+          value={assetTypeFilter.value}
+          onChange={(e) => assetTypeFilter.onChange(e.target.value)}
+          className="w-36 rounded border border-border bg-surface-tertiary px-2 py-1.5 text-sm focus:border-accent focus:outline-hidden"
+        >
+          {ASSET_TYPE_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+      )}
 
       {categoryFilter && (
         <select

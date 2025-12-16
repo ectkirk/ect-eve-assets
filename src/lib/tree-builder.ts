@@ -677,26 +677,51 @@ function nodeMatchesSearch(node: TreeNode, searchLower: string): boolean {
   return false
 }
 
-export function filterTree(nodes: TreeNode[], search: string): TreeNode[] {
-  if (!search) return nodes
+function nodeMatchesCategory(node: TreeNode, category: string): boolean {
+  if (node.categoryName === category) return true
+  return false
+}
+
+export function filterTree(nodes: TreeNode[], search: string, category?: string): TreeNode[] {
+  if (!search && !category) return nodes
 
   const searchLower = search.toLowerCase()
   const result: TreeNode[] = []
 
   for (const node of nodes) {
-    const filteredChildren = filterTree(node.children, search)
-    const selfMatches = nodeMatchesSearch(node, searchLower)
+    const filteredChildren = filterTree(node.children, search, category)
+    const selfMatchesSearch = !search || nodeMatchesSearch(node, searchLower)
+    const selfMatchesCategory = !category || nodeMatchesCategory(node, category)
+    const selfMatches = selfMatchesSearch && selfMatchesCategory
 
     if (selfMatches || filteredChildren.length > 0) {
       const filteredNode: TreeNode = {
         ...node,
-        children: selfMatches ? node.children : filteredChildren,
+        children: selfMatches ? filterTree(node.children, search, category) : filteredChildren,
       }
       result.push(filteredNode)
     }
   }
 
   return result
+}
+
+export function getTreeCategories(nodes: TreeNode[]): string[] {
+  const categories = new Set<string>()
+
+  function collectCategories(nodeList: TreeNode[]) {
+    for (const node of nodeList) {
+      if (node.categoryName) {
+        categories.add(node.categoryName)
+      }
+      if (node.children.length > 0) {
+        collectCategories(node.children)
+      }
+    }
+  }
+
+  collectCategories(nodes)
+  return Array.from(categories).sort()
 }
 
 export function countTreeItems(nodes: TreeNode[]): number {

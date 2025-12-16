@@ -1,11 +1,11 @@
-import { useMemo, useEffect } from 'react'
+import { useMemo, useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useDivisionsStore } from '@/store/divisions-store'
 import { TreeTable, useTreeState } from '@/components/tree'
-import { buildTree, filterTree, countTreeItems, type AssetWithOwner } from '@/lib/tree-builder'
-import { type TreeMode } from '@/lib/tree-types'
+import { buildTree, filterTree, countTreeItems, getTreeCategories, type AssetWithOwner } from '@/lib/tree-builder'
+import { TreeMode } from '@/lib/tree-types'
 import { useTabControls } from '@/context'
 
 interface TreeTabProps {
@@ -26,7 +26,9 @@ export function TreeTab({ mode }: TreeTabProps) {
     updateProgress,
   } = useAssetData()
 
-  const { search, setResultCount } = useTabControls()
+  const [categoryFilter, setCategoryFilterValue] = useState('')
+  const [assetTypeFilter, setAssetTypeFilterValue] = useState('')
+  const { search, setResultCount, setCategoryFilter, setAssetTypeFilter } = useTabControls()
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
   const selectedSet = useMemo(() => new Set(selectedOwnerIds), [selectedOwnerIds])
 
@@ -60,6 +62,13 @@ export function TreeTab({ mode }: TreeTabProps) {
     return map
   }, [divisionsByCorp])
 
+  const effectiveMode = useMemo(() => {
+    if (mode === TreeMode.ALL && assetTypeFilter) {
+      return TreeMode[assetTypeFilter as keyof typeof TreeMode] ?? TreeMode.ALL
+    }
+    return mode
+  }, [mode, assetTypeFilter])
+
   const unfilteredNodes = useMemo(() => {
     void cacheVersion
     if (assetsByOwner.length === 0 || prices.size === 0) return []
@@ -75,12 +84,33 @@ export function TreeTab({ mode }: TreeTabProps) {
       }
     }
 
-    return buildTree(filteredAssets, { mode, prices, assetNames, hangarDivisionNames, allAssets })
-  }, [assetsByOwner, prices, assetNames, cacheVersion, mode, selectedSet, hangarDivisionNames])
+    return buildTree(filteredAssets, { mode: effectiveMode, prices, assetNames, hangarDivisionNames, allAssets })
+  }, [assetsByOwner, prices, assetNames, cacheVersion, effectiveMode, selectedSet, hangarDivisionNames])
+
+  const categories = useMemo(() => getTreeCategories(unfilteredNodes), [unfilteredNodes])
 
   const treeNodes = useMemo(() => {
-    return filterTree(unfilteredNodes, search)
-  }, [unfilteredNodes, search])
+    return filterTree(unfilteredNodes, search, categoryFilter || undefined)
+  }, [unfilteredNodes, search, categoryFilter])
+
+  useEffect(() => {
+    setCategoryFilter({
+      categories,
+      value: categoryFilter,
+      onChange: setCategoryFilterValue,
+    })
+    return () => setCategoryFilter(null)
+  }, [categories, categoryFilter, setCategoryFilter])
+
+  useEffect(() => {
+    if (mode === TreeMode.ALL) {
+      setAssetTypeFilter({
+        value: assetTypeFilter,
+        onChange: setAssetTypeFilterValue,
+      })
+    }
+    return () => setAssetTypeFilter(null)
+  }, [mode, assetTypeFilter, setAssetTypeFilter])
 
   useEffect(() => {
     const total = countTreeItems(unfilteredNodes)
