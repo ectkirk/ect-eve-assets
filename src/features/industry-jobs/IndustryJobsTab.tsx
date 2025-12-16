@@ -279,7 +279,6 @@ export function IndustryJobsTab() {
   const jobsByOwner = useIndustryJobsStore((s) => s.dataByOwner)
   const jobsUpdating = useIndustryJobsStore((s) => s.isUpdating)
   const updateError = useIndustryJobsStore((s) => s.updateError)
-  const init = useIndustryJobsStore((s) => s.init)
   const update = useIndustryJobsStore((s) => s.update)
   const initialized = useIndustryJobsStore((s) => s.initialized)
 
@@ -287,8 +286,10 @@ export function IndustryJobsTab() {
   const isUpdating = assetsUpdating || jobsUpdating
 
   useEffect(() => {
-    init().then(() => update())
-  }, [init, update])
+    if (initialized) {
+      update()
+    }
+  }, [initialized, update])
 
   const cacheVersion = useCacheVersion()
 

@@ -6,6 +6,7 @@ import { useContractsStore } from './store/contracts-store'
 import { useWalletStore } from './store/wallet-store'
 import { useBlueprintsStore } from './store/blueprints-store'
 import { useStructuresStore } from './store/structures-store'
+import { useIndustryJobsStore } from './store/industry-jobs-store'
 import { useExpiryCacheStore } from './store/expiry-cache-store'
 import { MainLayout } from './components/layout/MainLayout'
 import { initCache } from './store/reference-cache'
@@ -93,11 +94,19 @@ function App() {
           useWalletStore.getState().init(),
           useBlueprintsStore.getState().init(),
           useStructuresStore.getState().init(),
+          useIndustryJobsStore.getState().init(),
         ])
       })
-      .then(() => {
+      .then(async () => {
         logger.info('All stores initialized', { module: 'App' })
         setupSyntheticAssetSubscriptions()
+
+        const industryStore = useIndustryJobsStore.getState()
+        if (industryStore.dataByOwner.length === 0 && Object.keys(useAuthStore.getState().owners).length > 0) {
+          await industryStore.update()
+        }
+
+        useAssetStore.getState().rebuildSyntheticAssets()
         const ownerKeys = Object.keys(useAuthStore.getState().owners)
         useExpiryCacheStore.getState().queueMissingEndpoints(ownerKeys)
         appInitComplete = true

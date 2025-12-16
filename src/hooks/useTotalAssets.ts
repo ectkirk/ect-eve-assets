@@ -1,9 +1,8 @@
 import { useMemo } from 'react'
 import { useAssetStore } from '@/store/asset-store'
 import { useMarketOrdersStore } from '@/store/market-orders-store'
-import { useIndustryJobsStore } from '@/store/industry-jobs-store'
+import { useContractsStore } from '@/store/contracts-store'
 import { useWalletStore } from '@/store/wallet-store'
-import { useStructuresStore } from '@/store/structures-store'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { isAbyssalTypeId, getCachedAbyssalPrice } from '@/api/mutamarket-client'
 
@@ -21,9 +20,8 @@ export function useTotalAssets(): AssetTotals {
   const unifiedAssetsByOwner = useAssetStore((s) => s.unifiedAssetsByOwner)
   const prices = useAssetStore((s) => s.prices)
   const ordersByOwner = useMarketOrdersStore((s) => s.dataByOwner)
-  const jobsByOwner = useIndustryJobsStore((s) => s.dataByOwner)
+  const contractsByOwner = useContractsStore((s) => s.contractsByOwner)
   const walletsByOwner = useWalletStore((s) => s.dataByOwner)
-  const structuresByOwner = useStructuresStore((s) => s.dataByOwner)
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
   const selectedSet = useMemo(() => new Set(selectedOwnerIds), [selectedOwnerIds])
 
@@ -34,6 +32,8 @@ export function useTotalAssets(): AssetTotals {
     let assetsTotal = 0
     let contractsTotal = 0
     let sellOrdersTotal = 0
+    let industryTotal = 0
+    let structuresTotal = 0
 
     for (const { owner, assets } of unifiedAssetsByOwner) {
       if (!matchesOwner(owner.type, owner.id)) continue
@@ -47,12 +47,21 @@ export function useTotalAssets(): AssetTotals {
         const price = abyssalPrice ?? prices.get(asset.type_id) ?? 0
         const value = price * asset.quantity
 
-        if (asset.location_flag === 'SellOrder') {
-          sellOrdersTotal += value
-        } else if (asset.location_flag === 'InContract') {
-          contractsTotal += value
-        } else {
-          assetsTotal += value
+        switch (asset.location_flag) {
+          case 'SellOrder':
+            sellOrdersTotal += value
+            break
+          case 'InContract':
+            contractsTotal += value
+            break
+          case 'IndustryJob':
+            industryTotal += value
+            break
+          case 'Structure':
+            structuresTotal += value
+            break
+          default:
+            assetsTotal += value
         }
       }
     }
@@ -67,18 +76,18 @@ export function useTotalAssets(): AssetTotals {
       }
     }
 
-    const marketTotal = sellOrdersTotal + buyEscrowTotal
-
-    let industryTotal = 0
-    for (const { owner, jobs } of jobsByOwner) {
+    let collateralTotal = 0
+    for (const { owner, contracts } of contractsByOwner) {
       if (!matchesOwner(owner.type, owner.id)) continue
-      for (const job of jobs) {
-        if (job.status !== 'active' && job.status !== 'ready') continue
-        const productTypeId = job.product_type_id ?? job.blueprint_type_id
-        const price = prices.get(productTypeId) ?? 0
-        industryTotal += price * job.runs
+      for (const { contract } of contracts) {
+        if (contract.status === 'outstanding' || contract.status === 'in_progress') {
+          collateralTotal += contract.collateral ?? 0
+        }
       }
     }
+
+    const marketTotal = sellOrdersTotal + buyEscrowTotal
+    contractsTotal += collateralTotal
 
     let walletTotal = 0
     for (const wallet of walletsByOwner) {
@@ -89,15 +98,6 @@ export function useTotalAssets(): AssetTotals {
         }
       } else {
         walletTotal += wallet.balance
-      }
-    }
-
-    let structuresTotal = 0
-    for (const { owner, structures } of structuresByOwner) {
-      if (!matchesOwner(owner.type, owner.id)) continue
-      for (const structure of structures) {
-        const price = prices.get(structure.type_id) ?? 0
-        structuresTotal += price
       }
     }
 
@@ -112,5 +112,5 @@ export function useTotalAssets(): AssetTotals {
       walletTotal,
       structuresTotal,
     }
-  }, [unifiedAssetsByOwner, prices, ordersByOwner, jobsByOwner, walletsByOwner, structuresByOwner, selectedSet])
+  }, [unifiedAssetsByOwner, prices, ordersByOwner, contractsByOwner, walletsByOwner, selectedSet])
 }
