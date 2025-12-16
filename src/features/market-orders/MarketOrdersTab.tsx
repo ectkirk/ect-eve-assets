@@ -657,6 +657,14 @@ export function MarketOrdersTab() {
   }, [ordersByOwner])
 
   const comparisonData = useMarketOrdersStore((s) => s.comparisonData)
+  const comparisonFetching = useMarketOrdersStore((s) => s.comparisonFetching)
+  const fetchComparisonData = useMarketOrdersStore((s) => s.fetchComparisonData)
+
+  useEffect(() => {
+    if (initialized && ordersByOwner.length > 0 && comparisonData.size === 0 && !comparisonFetching) {
+      fetchComparisonData()
+    }
+  }, [initialized, ordersByOwner.length, comparisonData.size, comparisonFetching, fetchComparisonData])
 
   const { setExpandCollapse, search, setResultCount, setTotalValue, setColumns, setComparisonLevel } = useTabControls()
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
@@ -683,9 +691,10 @@ export function MarketOrdersTab() {
   const ORDER_COLUMNS: ColumnConfig[] = useMemo(() => [
     { id: 'item', label: 'Item' },
     { id: 'price', label: 'Price' },
+    { id: 'comparison', label: 'Comparison' },
+    { id: 'difference', label: 'Difference' },
     { id: 'quantity', label: 'Quantity' },
     { id: 'total', label: 'Total' },
-    { id: 'comparison', label: 'Comparison' },
     { id: 'expires', label: 'Expires' },
     { id: 'owner', label: 'Owner' },
   ], [])
