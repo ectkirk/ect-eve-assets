@@ -35,6 +35,7 @@ interface AssetActions {
   updateForOwner: (owner: Owner) => Promise<void>
   removeForOwner: (ownerType: string, ownerId: number) => Promise<void>
   setPrices: (newPrices: Map<number, number>) => Promise<void>
+  refreshPrices: () => Promise<void>
   clear: () => Promise<void>
 }
 
@@ -368,6 +369,31 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
       set({ prices: merged })
     } catch (err) {
       logger.error('Failed to persist prices', err instanceof Error ? err : undefined, { module: 'AssetStore' })
+    }
+  },
+
+  refreshPrices: async () => {
+    const state = get()
+    const typeIds = new Set<number>()
+    for (const { assets } of state.assetsByOwner) {
+      for (const asset of assets) {
+        typeIds.add(asset.type_id)
+      }
+    }
+
+    if (typeIds.size === 0) {
+      logger.info('No assets to refresh prices for', { module: 'AssetStore' })
+      return
+    }
+
+    logger.info('Refreshing prices', { module: 'AssetStore', typeCount: typeIds.size })
+    try {
+      const fetchedPrices = await fetchPrices(Array.from(typeIds))
+      await saveMetaToDB(state.assetNames, fetchedPrices)
+      set({ prices: fetchedPrices })
+      logger.info('Prices refreshed', { module: 'AssetStore', count: fetchedPrices.size })
+    } catch (err) {
+      logger.error('Failed to refresh prices', err instanceof Error ? err : undefined, { module: 'AssetStore' })
     }
   },
 
