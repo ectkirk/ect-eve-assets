@@ -29,7 +29,7 @@ import {
 import type { TreeNode, TreeNodeType } from '@/lib/tree-types'
 import { flattenTree, getAllNodeIds } from '@/lib/tree-builder'
 import { cn } from '@/lib/utils'
-import { TypeIcon } from '@/components/ui/type-icon'
+import { TypeIcon, OwnerIcon } from '@/components/ui/type-icon'
 import { useTabControls } from '@/context'
 import { useColumnSettings, type ColumnConfig } from '@/hooks'
 import { FittingDialog } from '@/components/dialogs/FittingDialog'
@@ -237,6 +237,10 @@ const TreeRowContent = memo(function TreeRowContent({
                   </button>
                 ) : (
                   <span className="w-5" />
+                )}
+
+                {isAssetNode && node.ownerId && node.ownerType && (
+                  <OwnerIcon ownerId={node.ownerId} ownerType={node.ownerType} size="sm" />
                 )}
 
                 {isAssetNode ? (
