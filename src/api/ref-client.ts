@@ -117,7 +117,7 @@ async function executeTypeBatch(): Promise<Map<number, CachedType>> {
 
   for (const id of idsToFetch) {
     const cached = getType(id)
-    if (cached && !cached.name.startsWith('Unknown Type ')) {
+    if (cached) {
       results.set(id, cached)
     } else {
       uncachedIds.push(id)
