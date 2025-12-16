@@ -34,21 +34,29 @@ import { useTabControls } from '@/context'
 import { useColumnSettings, type ColumnConfig } from '@/hooks'
 import { FittingDialog } from '@/components/dialogs/FittingDialog'
 
-type TreeSortColumn = 'name' | 'quantity' | 'value' | 'volume'
+type TreeSortColumn = 'name' | 'region' | 'quantity' | 'value' | 'volume'
 
 function sortTreeNodes(
   nodes: TreeNode[],
   sortColumn: TreeSortColumn,
-  sortDirection: SortDirection
+  sortDirection: SortDirection,
+  parentRegionName?: string
 ): TreeNode[] {
   const sorted = [...nodes].sort((a, b) => {
     let aVal: number | string
     let bVal: number | string
 
+    const aRegion = a.regionName ?? parentRegionName ?? ''
+    const bRegion = b.regionName ?? parentRegionName ?? ''
+
     switch (sortColumn) {
       case 'name':
         aVal = a.name.toLowerCase()
         bVal = b.name.toLowerCase()
+        break
+      case 'region':
+        aVal = aRegion.toLowerCase()
+        bVal = bRegion.toLowerCase()
         break
       case 'quantity':
         aVal = a.totalCount
@@ -71,10 +79,14 @@ function sortTreeNodes(
     return 0
   })
 
-  return sorted.map((node) => ({
-    ...node,
-    children: sortTreeNodes(node.children, sortColumn, sortDirection),
-  }))
+  return sorted.map((node) => {
+    const nodeRegion = node.regionName ?? parentRegionName
+    return {
+      ...node,
+      regionName: nodeRegion,
+      children: sortTreeNodes(node.children, sortColumn, sortDirection, nodeRegion),
+    }
+  })
 }
 
 interface TreeTableProps {
@@ -162,6 +174,7 @@ function ItemIcon({ node }: { node: TreeNode }) {
 
 const TREE_COLUMNS: ColumnConfig[] = [
   { id: 'name', label: 'Name' },
+  { id: 'region', label: 'Region' },
   { id: 'quantity', label: 'Quantity' },
   { id: 'value', label: 'Value' },
   { id: 'volume', label: 'Volume', defaultVisible: false },
@@ -240,6 +253,13 @@ function TreeRowContent({ node, isExpanded, onToggle, visibleColumns }: {
             </TableCell>
           )
         }
+        if (colId === 'region') {
+          return (
+            <TableCell key={colId} className="py-1.5 text-content-secondary w-40">
+              {node.nodeType !== 'region' && node.regionName ? node.regionName : '-'}
+            </TableCell>
+          )
+        }
         if (colId === 'quantity') {
           return (
             <TableCell key={colId} className="py-1.5 text-right tabular-nums w-24">
@@ -271,6 +291,7 @@ function TreeRowContent({ node, isExpanded, onToggle, visibleColumns }: {
 
 const COLUMN_WIDTHS: Record<string, string> = {
   name: 'w-auto',
+  region: 'w-40',
   quantity: 'w-24',
   value: 'w-32',
   volume: 'w-32',
@@ -278,6 +299,7 @@ const COLUMN_WIDTHS: Record<string, string> = {
 
 const COLUMN_ALIGN: Record<string, string> = {
   name: 'text-left',
+  region: 'text-left',
   quantity: 'text-right',
   value: 'text-right',
   volume: 'text-right',

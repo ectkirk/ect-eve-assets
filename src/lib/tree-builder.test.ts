@@ -95,7 +95,7 @@ describe('buildTree', () => {
       expect(tree).toHaveLength(1)
       expect(tree[0]!.nodeType).toBe('station')
       expect(tree[0]!.name).toContain('Jita')
-      expect(tree[0]!.name).toContain('The Forge')
+      expect(tree[0]!.regionName).toBe('The Forge')
     })
 
     it('aggregates totals up the tree', () => {
@@ -791,7 +791,7 @@ describe('player structure locations', () => {
     expect(tree).toHaveLength(1)
     const stationNode = tree[0]!
     expect(stationNode.name).toContain('Test Citadel')
-    expect(stationNode.name).toContain('The Forge')
+    expect(stationNode.regionName).toBe('The Forge')
   })
 
   it('falls back to structure ID when not cached', () => {
@@ -931,7 +931,7 @@ describe('unknown location handling', () => {
       prices: new Map(),
     })
 
-    expect(tree[0]!.name).toContain('Unknown Region')
+    expect(tree[0]!.regionName).toBe('Unknown Region')
   })
 
   it('stores region info on station node', async () => {
@@ -1162,7 +1162,7 @@ describe('filterTree', () => {
 
     const filtered = filterTree(tree, 'Forge')
     expect(filtered).toHaveLength(1)
-    expect(filtered[0]!.name).toContain('Forge')
+    expect(filtered[0]!.regionName).toContain('Forge')
   })
 
   it('returns empty when no matches', () => {

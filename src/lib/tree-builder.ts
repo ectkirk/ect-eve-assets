@@ -494,8 +494,7 @@ export function buildTree(
     const stationKey = `station-${stationLocationId}`
     let stationNode = stationNodes.get(stationKey)
     if (!stationNode) {
-      const stationDisplayName = `${locationName} (${regionName})`
-      stationNode = createLocationNode('station', stationKey, stationDisplayName, 0, {
+      stationNode = createLocationNode('station', stationKey, locationName, 0, {
         locationId: stationLocationId,
         regionId,
         regionName,
@@ -626,13 +625,11 @@ export function buildTree(
     for (const stationNode of stationNodes.values()) {
       for (const child of stationNode.children) {
         if (child.nodeType === 'office') {
-          const officeName = `${child.name} (${stationNode.regionName ?? 'Unknown Region'})`
           const adjustDepth = (node: TreeNode, delta: number): void => {
             node.depth += delta
             for (const c of node.children) adjustDepth(c, delta)
           }
           adjustDepth(child, -1)
-          child.name = officeName
           child.regionName = stationNode.regionName
           child.systemName = stationNode.systemName
           child.locationId = stationNode.locationId
