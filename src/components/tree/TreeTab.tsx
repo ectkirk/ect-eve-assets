@@ -84,75 +84,86 @@ export function TreeTab({ mode }: TreeTabProps) {
     const contractItemIds = new Set<number>()
     const orderItemIds = new Set<number>()
 
+    const includeRegularAssets = effectiveMode !== TreeMode.CONTRACTS && effectiveMode !== TreeMode.MARKET_ORDERS
+    const includeContracts = effectiveMode === TreeMode.ALL || effectiveMode === TreeMode.CONTRACTS
+    const includeOrders = effectiveMode === TreeMode.ALL || effectiveMode === TreeMode.MARKET_ORDERS
+
     for (const { owner, assets } of assetsByOwner) {
       const isSelected = selectedSet.has(ownerKey(owner.type, owner.id))
       for (const asset of assets) {
         const aw = { asset, owner }
         allAssets.push(aw)
-        if (isSelected) filteredAssets.push(aw)
+        if (isSelected && includeRegularAssets) filteredAssets.push(aw)
       }
     }
 
-    if (effectiveMode === TreeMode.ALL) {
+    if (includeContracts || includeOrders) {
       const ownerIds = new Set(owners.map((o) => o.characterId))
       const ownerCorpIds = new Set(owners.filter((o) => o.corporationId).map((o) => o.corporationId))
 
-      for (const { owner, contracts } of contractsByOwner) {
-        const isSelected = selectedSet.has(ownerKey(owner.type, owner.id))
-        if (!isSelected) continue
+      if (includeContracts) {
+        for (const { owner, contracts } of contractsByOwner) {
+          const isSelected = selectedSet.has(ownerKey(owner.type, owner.id))
+          if (!isSelected) continue
 
-        for (const { contract, items } of contracts) {
-          if (contract.status !== 'outstanding') continue
-          const isIssuer = ownerIds.has(contract.issuer_id) || ownerCorpIds.has(contract.issuer_corporation_id)
-          if (!isIssuer) continue
+          for (const { contract, items } of contracts) {
+            if (contract.status !== 'outstanding') continue
+            const isIssuer = ownerIds.has(contract.issuer_id) || ownerCorpIds.has(contract.issuer_corporation_id)
+            if (!isIssuer) continue
 
-          const locationId = contract.start_location_id ?? 0
+            const locationId = contract.start_location_id ?? 0
 
-          for (const item of items) {
-            if (!item.is_included) continue
+            for (const item of items) {
+              if (!item.is_included) continue
+
+              const syntheticAsset: ESIAsset = {
+                item_id: item.record_id,
+                type_id: item.type_id,
+                location_id: locationId,
+                location_type: locationId > 1_000_000_000_000 ? 'other' : 'station',
+                location_flag: 'Hangar',
+                quantity: item.quantity,
+                is_singleton: item.is_singleton ?? false,
+                is_blueprint_copy: item.is_blueprint_copy,
+              }
+              contractItemIds.add(item.record_id)
+              filteredAssets.push({ asset: syntheticAsset, owner })
+              allAssets.push({ asset: syntheticAsset, owner })
+            }
+          }
+        }
+      }
+
+      if (includeOrders) {
+        for (const { owner, orders } of ordersByOwner) {
+          const isSelected = selectedSet.has(ownerKey(owner.type, owner.id))
+          if (!isSelected) continue
+
+          for (const order of orders) {
+            if (order.is_buy_order) continue
+            if (order.volume_remain <= 0) continue
 
             const syntheticAsset: ESIAsset = {
-              item_id: item.record_id,
-              type_id: item.type_id,
-              location_id: locationId,
-              location_type: locationId > 1_000_000_000_000 ? 'other' : 'station',
+              item_id: order.order_id,
+              type_id: order.type_id,
+              location_id: order.location_id,
+              location_type: order.location_id > 1_000_000_000_000 ? 'other' : 'station',
               location_flag: 'Hangar',
-              quantity: item.quantity,
-              is_singleton: item.is_singleton ?? false,
-              is_blueprint_copy: item.is_blueprint_copy,
+              quantity: order.volume_remain,
+              is_singleton: false,
             }
-            contractItemIds.add(item.record_id)
+            orderItemIds.add(order.order_id)
             filteredAssets.push({ asset: syntheticAsset, owner })
             allAssets.push({ asset: syntheticAsset, owner })
           }
         }
       }
-
-      for (const { owner, orders } of ordersByOwner) {
-        const isSelected = selectedSet.has(ownerKey(owner.type, owner.id))
-        if (!isSelected) continue
-
-        for (const order of orders) {
-          if (order.is_buy_order) continue
-          if (order.volume_remain <= 0) continue
-
-          const syntheticAsset: ESIAsset = {
-            item_id: order.order_id,
-            type_id: order.type_id,
-            location_id: order.location_id,
-            location_type: order.location_id > 1_000_000_000_000 ? 'other' : 'station',
-            location_flag: 'Hangar',
-            quantity: order.volume_remain,
-            is_singleton: false,
-          }
-          orderItemIds.add(order.order_id)
-          filteredAssets.push({ asset: syntheticAsset, owner })
-          allAssets.push({ asset: syntheticAsset, owner })
-        }
-      }
     }
 
-    const nodes = buildTree(filteredAssets, { mode: effectiveMode, prices, assetNames, hangarDivisionNames, allAssets })
+    const treeMode = effectiveMode === TreeMode.CONTRACTS || effectiveMode === TreeMode.MARKET_ORDERS
+      ? TreeMode.ALL
+      : effectiveMode
+    const nodes = buildTree(filteredAssets, { mode: treeMode, prices, assetNames, hangarDivisionNames, allAssets })
 
     if (contractItemIds.size > 0 || orderItemIds.size > 0) {
       markSourceFlags(nodes, contractItemIds, orderItemIds)

@@ -364,11 +364,13 @@ function ComparisonLevelDropdown() {
 
 const ASSET_TYPE_OPTIONS = [
   { value: '', label: 'All Types' },
-  { value: 'ITEM_HANGAR', label: 'Item Hangar' },
-  { value: 'SHIP_HANGAR', label: 'Ship Hangar' },
-  { value: 'DELIVERIES', label: 'Deliveries' },
   { value: 'ASSET_SAFETY', label: 'Asset Safety' },
+  { value: 'CONTRACTS', label: 'Contracts' },
+  { value: 'DELIVERIES', label: 'Deliveries' },
+  { value: 'ITEM_HANGAR', label: 'Item Hangar' },
+  { value: 'MARKET_ORDERS', label: 'Market Orders' },
   { value: 'OFFICE', label: 'Office' },
+  { value: 'SHIP_HANGAR', label: 'Ship Hangar' },
 ]
 
 function SearchBar() {
