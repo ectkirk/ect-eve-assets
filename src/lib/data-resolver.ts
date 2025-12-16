@@ -27,8 +27,7 @@ export interface ResolutionIds {
 }
 
 function needsTypeResolution(typeId: number): boolean {
-  const type = getType(typeId)
-  return !type || type.name.startsWith('Unknown Type ')
+  return !hasType(typeId)
 }
 
 function collectFromAssets(

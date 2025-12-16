@@ -236,9 +236,23 @@ async function executeLocationBatch(): Promise<Map<number, CachedLocation>> {
       toCache.push(cached)
     }
 
+    if (fetched.size > 0) {
+      for (const id of uncachedIds) {
+        if (!fetched.has(id)) {
+          const placeholder: CachedLocation = {
+            id,
+            name: `Unknown Location ${id}`,
+            type: 'station',
+          }
+          results.set(id, placeholder)
+          toCache.push(placeholder)
+        }
+      }
+    }
+
     if (toCache.length > 0) {
       await saveLocations(toCache)
-      logger.debug(`Cached ${toCache.length} locations`, { module: 'RefAPI' })
+      logger.debug(`Cached ${toCache.length} locations (${fetched.size} resolved, ${toCache.length - fetched.size} unknown)`, { module: 'RefAPI' })
     }
   }
 
