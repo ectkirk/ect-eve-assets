@@ -1,0 +1,16 @@
+{
+  "version": "1.4.0",
+  "date": "2025-12-16",
+  "changes": [
+    { "type": "feat", "scope": "settings", "description": "Add express delivery easter egg to support modal" },
+    { "type": "refactor", "scope": "assets", "description": "Always show contract items and sell orders" },
+    { "type": "feat", "scope": "settings", "description": "Add terms of service link" },
+    { "type": "feat", "scope": "settings", "description": "Add credits and support modals" },
+    { "type": "fix", "scope": "tools", "description": "Use 0.25% facility tax for NPC stations" },
+    { "type": "feat", "scope": "tools", "description": "Auto-infer security status from system selection" },
+    { "type": "feat", "scope": "tools", "description": "Persist inputs and results for session" },
+    { "type": "feat", "scope": "wallet", "description": "Add income/expense/net totals to journal" },
+    { "type": "fix", "scope": "auth", "description": "Track actual store updates for blocking UI" },
+    { "type": "feat", "scope": "auth", "description": "Implement multi-select character filtering" }
+  ]
+}

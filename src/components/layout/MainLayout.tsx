@@ -18,13 +18,14 @@ import { ManufacturingTab } from '@/features/manufacturing'
 import { BlueprintResearchTab, CopyingTab } from '@/features/research'
 import { CalculatorTab } from '@/features/calculator'
 import { BuybackTab, BUYBACK_TABS, getConfigByTabName, type BuybackTabType } from '@/features/buyback'
-import { Loader2, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp, Search, X, AlertTriangle, Minus, Square, Copy, Settings, Info, Heart, Shield, FileText } from 'lucide-react'
+import { Loader2, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp, Search, X, AlertTriangle, Minus, Square, Copy, Settings, Info, Heart, Shield, FileText, History } from 'lucide-react'
 import { useThemeStore, THEME_OPTIONS } from '@/store/theme-store'
 import eveSsoLoginWhite from '/eve-sso-login-white.png'
 import { OwnerIcon } from '@/components/ui/type-icon'
 import { OwnerManagementModal } from './OwnerManagementModal'
 import { CreditsModal } from './CreditsModal'
 import { SupportModal } from './SupportModal'
+import { ChangelogModal } from './ChangelogModal'
 import { UpdateBanner } from './UpdateBanner'
 import { ToastContainer } from './ToastContainer'
 import { useTotalAssets } from '@/hooks'
@@ -478,6 +479,7 @@ function WindowControls() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [creditsOpen, setCreditsOpen] = useState(false)
   const [supportOpen, setSupportOpen] = useState(false)
+  const [changelogOpen, setChangelogOpen] = useState(false)
   const settingsPanelRef = useRef<HTMLDivElement>(null)
   const theme = useThemeStore((s) => s.theme)
   const setTheme = useThemeStore((s) => s.setTheme)
@@ -532,6 +534,16 @@ function WindowControls() {
               <div className="my-2 border-t border-border" />
               <button
                 onClick={() => {
+                  setChangelogOpen(true)
+                  setSettingsOpen(false)
+                }}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-content-secondary hover:bg-surface-tertiary"
+              >
+                <History className="h-4 w-4" />
+                Changelog
+              </button>
+              <button
+                onClick={() => {
                   setCreditsOpen(true)
                   setSettingsOpen(false)
                 }}
@@ -572,6 +584,7 @@ function WindowControls() {
           </div>
         )}
       </div>
+      <ChangelogModal open={changelogOpen} onOpenChange={setChangelogOpen} />
       <CreditsModal open={creditsOpen} onOpenChange={setCreditsOpen} />
       <SupportModal open={supportOpen} onOpenChange={setSupportOpen} />
       <button
