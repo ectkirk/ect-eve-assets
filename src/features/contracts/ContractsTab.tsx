@@ -65,6 +65,7 @@ interface ContractRow {
   endLocationName: string
   firstItemTypeId?: number
   firstItemCategoryId?: number
+  firstItemIsBlueprintCopy?: boolean
   typeName: string
   direction: ContractDirection
   assigneeName: string
@@ -263,9 +264,10 @@ function ContractsTable({
                             <ItemTypeIcon
                               typeId={row.firstItemTypeId}
                               categoryId={row.firstItemCategoryId}
+                              isBlueprintCopy={row.firstItemIsBlueprintCopy}
                             />
                           )}
-                          <span className="truncate" title={row.typeName}>
+                          <span className={cn('truncate', row.firstItemIsBlueprintCopy && 'text-status-special')} title={row.typeName}>
                             {items.length === 0 ? '' : row.typeName}
                           </span>
                         </>
@@ -629,6 +631,7 @@ export function ContractsTab() {
         endLocationName: contract.end_location_id ? getLocationName(contract.end_location_id) : '',
         firstItemTypeId: firstItem?.type_id,
         firstItemCategoryId: firstItemType?.categoryId,
+        firstItemIsBlueprintCopy: firstItem?.is_blueprint_copy,
         typeName: firstItemType?.name ?? (firstItem ? `Unknown Type ${firstItem.type_id}` : ''),
         direction,
         assigneeName,
