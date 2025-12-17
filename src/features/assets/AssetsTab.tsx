@@ -16,6 +16,7 @@ import { isAbyssalTypeId } from '@/api/mutamarket-client'
 import { CategoryIds } from '@/store/reference-cache'
 import { useResolvedAssets } from '@/hooks/useResolvedAssets'
 import { TypeIcon, OwnerIcon } from '@/components/ui/type-icon'
+import { AbyssalPreview } from '@/components/ui/abyssal-preview'
 import { formatNumber, cn } from '@/lib/utils'
 import { useTabControls } from '@/context'
 import { matchesAssetTypeFilter, matchesSearch, type AssetModeFlags } from '@/lib/resolved-asset'
@@ -122,11 +123,13 @@ const columns: ColumnDef<AssetRow>[] = [
       const isBpc = row.original.isBlueprintCopy
       const categoryId = row.original.categoryId
       const modeFlags = row.original.modeFlags
+      const isAbyssal = isAbyssalTypeId(typeId)
+      const nameSpan = <span className={cn('truncate', isBpc && 'text-status-special')}>{typeName}</span>
 
       return (
         <div className="flex flex-nowrap items-center gap-2 min-w-0">
           <TypeIcon typeId={typeId} categoryId={categoryId} isBlueprintCopy={isBpc} size="lg" />
-          <span className={cn('truncate', isBpc && 'text-status-special')}>{typeName}</span>
+          {isAbyssal ? <AbyssalPreview itemId={row.original.itemId}>{nameSpan}</AbyssalPreview> : nameSpan}
           {(modeFlags.isContract || modeFlags.isMarketOrder || modeFlags.isIndustryJob || modeFlags.isOwnedStructure) && (
             <span className="shrink-0 inline-flex items-center gap-1 whitespace-nowrap">
               {modeFlags.isContract && (
