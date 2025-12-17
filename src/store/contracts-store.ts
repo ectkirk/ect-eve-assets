@@ -79,8 +79,9 @@ const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
 
 function canFetchItems(contract: ESIContract): boolean {
   if (contract.type !== 'item_exchange' && contract.type !== 'auction') return false
-  const issuedDate = new Date(contract.date_issued).getTime()
-  return Date.now() - issuedDate < THIRTY_DAYS_MS
+  const referenceDate = contract.date_completed ?? contract.date_expired
+  const refTime = new Date(referenceDate).getTime()
+  return Date.now() - refTime < THIRTY_DAYS_MS
 }
 
 async function fetchItemsForContracts(
