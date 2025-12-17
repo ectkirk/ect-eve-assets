@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { Fuel, Zap, ZapOff, AlertTriangle } from 'lucide-react'
-import { useAuthStore, ownerKey } from '@/store/auth-store'
+import { useAuthStore, ownerKey, type Owner } from '@/store/auth-store'
 import { useStructuresStore, type ESICorporationStructure } from '@/store/structures-store'
 import { useStarbasesStore, type ESIStarbase } from '@/store/starbases-store'
+import { useStarbaseDetailsStore, calculateFuelHours, calculateStrontHours } from '@/store/starbase-details-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useTabControls } from '@/context'
 import { useCacheVersion, useSortable, SortableHeader, sortRows } from '@/hooks'
@@ -66,11 +67,14 @@ interface StructureRow {
 interface StarbaseRow {
   kind: 'pos'
   starbase: ESIStarbase
+  owner: Owner
   ownerName: string
   typeName: string
   systemName: string
   regionName: string
   moonName: string | null
+  towerSize: number | undefined
+  fuelTier: number | undefined
 }
 
 type AnyStructureRow = StructureRow | StarbaseRow
@@ -90,6 +94,18 @@ function formatFuelExpiry(fuelExpires: string | undefined): { text: string; days
   if (days >= 7) return { text: `${days}d`, days, isLow: false }
   if (days >= 1) return { text: `${days}d ${hours % 24}h`, days, isLow: days <= 3 }
   return { text: `${hours}h`, days: 0, isLow: true }
+}
+
+function formatFuelHours(hours: number | null): { text: string; days: number | null; isLow: boolean } {
+  if (hours === null) return { text: '-', days: null, isLow: false }
+  if (hours <= 0) return { text: 'Empty', days: 0, isLow: true }
+
+  const days = Math.floor(hours / 24)
+  const remainingHours = Math.floor(hours % 24)
+
+  if (days >= 7) return { text: `${days}d`, days, isLow: false }
+  if (days >= 1) return { text: `${days}d ${remainingHours}h`, days, isLow: days <= 3 }
+  return { text: `${Math.floor(hours)}h`, days: 0, isLow: true }
 }
 
 function ServiceBadge({ name, state }: { name: string; state: 'online' | 'offline' | 'cleanup' }) {
@@ -175,6 +191,9 @@ export function StructuresTab() {
   const initStarbases = useStarbasesStore((s) => s.init)
   const starbasesInitialized = useStarbasesStore((s) => s.initialized)
 
+  const starbaseDetails = useStarbaseDetailsStore((s) => s.details)
+  const fetchStarbaseDetail = useStarbaseDetailsStore((s) => s.fetchDetail)
+
   const isUpdating = isUpdatingStructures || isUpdatingStarbases
   const updateError = structureError || starbaseError
   const initialized = structuresInitialized && starbasesInitialized
@@ -185,6 +204,23 @@ export function StructuresTab() {
     initStructures()
     initStarbases()
   }, [initStructures, initStarbases])
+
+  useEffect(() => {
+    const validStates = new Set(['online', 'onlining', 'reinforced'])
+    for (const { owner, starbases } of starbasesByOwner) {
+      for (const starbase of starbases) {
+        const state = starbase.state ?? 'unknown'
+        if (validStates.has(state) && !starbaseDetails.has(starbase.starbase_id)) {
+          fetchStarbaseDetail({
+            corporationId: owner.id,
+            starbaseId: starbase.starbase_id,
+            systemId: starbase.system_id,
+            characterId: owner.characterId,
+          })
+        }
+      }
+    }
+  }, [starbasesByOwner, starbaseDetails, fetchStarbaseDetail])
 
   const cacheVersion = useCacheVersion()
 
@@ -262,11 +298,14 @@ export function StructuresTab() {
         rows.push({
           kind: 'pos',
           starbase,
+          owner,
           ownerName: owner.name,
           typeName: type?.name ?? `Unknown Type ${starbase.type_id}`,
           systemName: location?.name ?? `System ${starbase.system_id}`,
           regionName: location?.regionName ?? 'Unknown Region',
           moonName: moon?.name ?? null,
+          towerSize: type?.towerSize,
+          fuelTier: type?.fuelTier,
         })
       }
     }
@@ -309,16 +348,21 @@ export function StructuresTab() {
         case 'state':
           if (row.kind === 'upwell') return row.structure.state
           return row.starbase.state ?? 'unknown'
-        case 'fuel':
+        case 'fuel': {
           if (row.kind === 'upwell') return row.fuelDays ?? -1
-          return -1
+          const detail = starbaseDetails.get(row.starbase.starbase_id)
+          const hours = row.starbase.state === 'reinforced'
+            ? calculateStrontHours(detail, row.towerSize)
+            : calculateFuelHours(detail, row.towerSize, row.fuelTier)
+          return hours !== null ? hours / 24 : -1
+        }
         case 'owner':
           return row.ownerName.toLowerCase()
         default:
           return 0
       }
     })
-  }, [allRows, sortColumn, sortDirection])
+  }, [allRows, sortColumn, sortDirection, starbaseDetails])
 
   const totalCount = useMemo(() => {
     let count = 0
@@ -379,6 +423,12 @@ export function StructuresTab() {
                   const stateInfo = STATE_DISPLAY[state] ?? STATE_DISPLAY.unknown!
                   const isReinforced = state === 'reinforced'
                   const displayName = row.moonName ?? row.typeName
+                  const detail = starbaseDetails.get(row.starbase.starbase_id)
+                  const fuelHours = calculateFuelHours(detail, row.towerSize, row.fuelTier)
+                  const strontHours = calculateStrontHours(detail, row.towerSize)
+                  const fuelInfo = isReinforced
+                    ? formatFuelHours(strontHours)
+                    : formatFuelHours(fuelHours)
 
                   return (
                     <TableRow key={`pos-${row.starbase.starbase_id}`}>
@@ -403,7 +453,12 @@ export function StructuresTab() {
                         <span className="text-content-muted">-</span>
                       </TableCell>
                       <TableCell className="py-1.5 text-right">
-                        <span className="text-content-muted">-</span>
+                        <div className="flex items-center justify-end gap-1">
+                          {fuelInfo.isLow && <Fuel className="h-4 w-4 text-status-negative" />}
+                          <span className={cn('tabular-nums', fuelInfo.isLow ? 'text-status-negative' : 'text-content-secondary')}>
+                            {fuelInfo.text}
+                          </span>
+                        </div>
                       </TableCell>
                       <TableCell className="py-1.5 text-right text-content-secondary">{row.ownerName}</TableCell>
                     </TableRow>

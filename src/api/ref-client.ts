@@ -136,6 +136,7 @@ async function executeTypeBatch(): Promise<Map<number, CachedType>> {
         packagedVolume: refType.packagedVolume ?? undefined,
         implantSlot: refType.implantSlot,
         towerSize: refType.towerSize,
+        fuelTier: refType.fuelTier,
       }
       results.set(id, cached)
       toCache.push(cached)

@@ -14,6 +14,7 @@ export interface CachedType {
   packagedVolume?: number
   implantSlot?: number
   towerSize?: number
+  fuelTier?: number
 }
 
 export interface CachedStructure {

@@ -26,6 +26,7 @@ import { useClonesStore } from '@/store/clones-store'
 import { useBlueprintsStore } from '@/store/blueprints-store'
 import { useStructuresStore } from '@/store/structures-store'
 import { useStarbasesStore } from '@/store/starbases-store'
+import { useStarbaseDetailsStore } from '@/store/starbase-details-store'
 import { useExpiryCacheStore } from '@/store/expiry-cache-store'
 import { useDivisionsStore } from '@/store/divisions-store'
 import { logger } from '@/lib/logger'
@@ -189,7 +190,10 @@ const CACHE_OPTIONS: CacheOption[] = [
     group: 'structures',
     requiresReload: false,
     endpointPattern: '/starbases',
-    clear: () => useStarbasesStore.getState().clear(),
+    clear: async () => {
+      await useStarbasesStore.getState().clear()
+      useStarbaseDetailsStore.getState().clear()
+    },
     refetch: async () => {
       await useStarbasesStore.getState().init()
       await useStarbasesStore.getState().update(true)

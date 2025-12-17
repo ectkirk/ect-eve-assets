@@ -395,6 +395,7 @@ export const RefTypeSchema = z.object({
   contractPrice: RefContractPriceSchema.optional(),
   implantSlot: z.number().optional(),
   towerSize: z.number().optional(),
+  fuelTier: z.number().optional(),
 })
 
 export const RefTypeBulkResponseSchema = z.object({
