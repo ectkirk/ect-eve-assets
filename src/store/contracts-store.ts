@@ -77,8 +77,15 @@ async function fetchOwnerContractsWithMeta(owner: Owner): Promise<ESIResponseMet
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
 
+const FINISHED_STATUSES = new Set(['finished', 'finished_issuer', 'finished_contractor'])
+
+function isFinishedContract(contract: ESIContract): boolean {
+  return FINISHED_STATUSES.has(contract.status)
+}
+
 function canFetchItems(contract: ESIContract): boolean {
   if (contract.type !== 'item_exchange' && contract.type !== 'auction') return false
+  if (!isFinishedContract(contract)) return false
   const referenceDate = contract.date_completed ?? contract.date_expired
   const refTime = new Date(referenceDate).getTime()
   return Date.now() - refTime < THIRTY_DAYS_MS
