@@ -27,6 +27,7 @@ export class MainESIService {
   private tokenProvider: TokenProvider | null = null
   private rateLimitFilePath: string
   private userAgent: string
+  private saveStateTimeout: NodeJS.Timeout | null = null
 
   constructor() {
     const userData = app.getPath('userData')
@@ -177,10 +178,8 @@ export class MainESIService {
         body: options.body,
       })
 
-      if (options.characterId) {
-        this.rateLimiter.updateFromHeaders(options.characterId, response.headers)
-        this.saveState()
-      }
+      this.rateLimiter.updateFromHeaders(options.characterId ?? 0, response.headers)
+      this.scheduleSaveState()
 
       if (response.status === 420 || response.status === 429) {
         const retryAfter = response.headers.get('Retry-After')
@@ -263,10 +262,11 @@ export class MainESIService {
     this.cache.clear()
   }
 
-  getRateLimitInfo(): { globalRetryAfter: number | null; queueLength: number } {
+  getRateLimitInfo(): { globalRetryAfter: number | null; queueLength: number; errorLimitRemain: number } {
     return {
       globalRetryAfter: this.rateLimiter.getGlobalRetryAfter(),
       queueLength: this.queue.length,
+      errorLimitRemain: this.rateLimiter.getErrorLimitRemain(),
     }
   }
 
@@ -281,6 +281,14 @@ export class MainESIService {
       // Ignore load errors
     }
     this.cache.load()
+  }
+
+  private scheduleSaveState(): void {
+    if (this.saveStateTimeout) return
+    this.saveStateTimeout = setTimeout(() => {
+      this.saveStateTimeout = null
+      this.saveState()
+    }, 5000)
   }
 
   private saveState(): void {

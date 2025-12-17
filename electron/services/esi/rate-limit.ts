@@ -1,11 +1,17 @@
 import type { RateLimitGroupState } from './types'
 import { LOW_LIMIT_GROUPS } from './types'
+import { logger } from '../logger.js'
 
 const DEFAULT_WINDOW_MS = 15 * 60 * 1000
+const ERROR_LIMIT_WARN_THRESHOLD = 50
+const ERROR_LIMIT_PAUSE_THRESHOLD = 10
 
 export class RateLimitTracker {
   private groups = new Map<string, RateLimitGroupState>()
   private globalRetryAfter: number | null = null
+  private errorLimitRemain: number = 100
+  private errorLimitReset: number | null = null
+  private lastErrorLimitWarnAt: number = 0
 
   makeKey(characterId: number, group: string): string {
     return `${characterId}:${group}`
@@ -15,6 +21,27 @@ export class RateLimitTracker {
     characterId: number,
     headers: Headers
   ): { group: string; state: RateLimitGroupState } | null {
+    const errorRemain = headers.get('X-ESI-Error-Limit-Remain')
+    const errorReset = headers.get('X-ESI-Error-Limit-Reset')
+
+    if (errorRemain !== null) {
+      const newRemain = parseInt(errorRemain, 10)
+      const crossedThreshold =
+        (this.errorLimitRemain > ERROR_LIMIT_WARN_THRESHOLD && newRemain <= ERROR_LIMIT_WARN_THRESHOLD) ||
+        (this.errorLimitRemain > ERROR_LIMIT_PAUSE_THRESHOLD && newRemain <= ERROR_LIMIT_PAUSE_THRESHOLD)
+      if (crossedThreshold) {
+        logger.warn('ESI error limit low', {
+          module: 'ESI',
+          errorLimitRemain: newRemain,
+          errorLimitReset: errorReset,
+        })
+      }
+      this.errorLimitRemain = newRemain
+    }
+    if (errorReset !== null) {
+      this.errorLimitReset = Date.now() + parseInt(errorReset, 10) * 1000
+    }
+
     const group = headers.get('X-Ratelimit-Group')
     if (!group) return null
 
@@ -61,6 +88,11 @@ export class RateLimitTracker {
       return this.globalRetryAfter - Date.now()
     }
 
+    const errorDelay = this.getErrorLimitDelay()
+    if (errorDelay > 0) {
+      return errorDelay
+    }
+
     const key = this.makeKey(characterId, group)
     const state = this.groups.get(key)
     if (!state) return 100
@@ -89,6 +121,38 @@ export class RateLimitTracker {
       return 100 + Math.random() * 400
     }
     return 100
+  }
+
+  getErrorLimitDelay(): number {
+    if (this.errorLimitReset && Date.now() >= this.errorLimitReset) {
+      this.errorLimitRemain = 100
+      this.errorLimitReset = null
+      return 0
+    }
+
+    if (this.errorLimitRemain <= ERROR_LIMIT_PAUSE_THRESHOLD) {
+      const resetDelay = this.errorLimitReset ? this.errorLimitReset - Date.now() : 60000
+      const now = Date.now()
+      if (now - this.lastErrorLimitWarnAt > 10000) {
+        this.lastErrorLimitWarnAt = now
+        logger.warn('ESI error limit critical, pausing requests', {
+          module: 'ESI',
+          errorLimitRemain: this.errorLimitRemain,
+          pauseMs: resetDelay,
+        })
+      }
+      return Math.max(resetDelay, 1000)
+    }
+
+    if (this.errorLimitRemain <= ERROR_LIMIT_WARN_THRESHOLD) {
+      return 500 + Math.random() * 1000
+    }
+
+    return 0
+  }
+
+  getErrorLimitRemain(): number {
+    return this.errorLimitRemain
   }
 
   setGlobalRetryAfter(retryAfterSec: number): void {
@@ -135,5 +199,8 @@ export class RateLimitTracker {
   clear(): void {
     this.groups.clear()
     this.globalRetryAfter = null
+    this.errorLimitRemain = 100
+    this.errorLimitReset = null
+    this.lastErrorLimitWarnAt = 0
   }
 }
