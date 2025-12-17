@@ -31,7 +31,7 @@ import { flattenTree, getAllNodeIds } from '@/lib/tree-builder'
 import { cn } from '@/lib/utils'
 import { TypeIcon, OwnerIcon } from '@/components/ui/type-icon'
 import { AbyssalPreview } from '@/components/ui/abyssal-preview'
-import { isAbyssalTypeId } from '@/api/mutamarket-client'
+import { isAbyssalTypeId, getMutamarketUrl } from '@/api/mutamarket-client'
 import { useTabControls } from '@/context'
 import { useColumnSettings, type ColumnConfig } from '@/hooks'
 import { FittingDialog } from '@/components/dialogs/FittingDialog'
@@ -357,11 +357,18 @@ const TreeRow = memo(function TreeRow({
     }
   }, [node.children.length, node.id, onToggleExpand])
 
-  const handleContextMenuClick = useCallback(() => {
+  const handleViewFittingClick = useCallback(() => {
     onViewFitting(node)
   }, [node, onViewFitting])
 
+  const handleOpenMutamarket = useCallback(() => {
+    if (node.asset?.item_id && node.typeName) {
+      window.open(getMutamarketUrl(node.typeName, node.asset.item_id), '_blank')
+    }
+  }, [node.asset, node.typeName])
+
   const isShip = node.nodeType === 'ship'
+  const isAbyssal = node.typeId && node.asset?.item_id && isAbyssalTypeId(node.typeId)
 
   const row = (
     <TableRow
@@ -386,16 +393,23 @@ const TreeRow = memo(function TreeRow({
     </TableRow>
   )
 
-  if (isShip) {
+  if (isShip || isAbyssal) {
     return (
       <ContextMenu>
         <ContextMenuTrigger asChild>
           {row}
         </ContextMenuTrigger>
         <ContextMenuContent>
-          <ContextMenuItem onClick={handleContextMenuClick}>
-            View Fitting
-          </ContextMenuItem>
+          {isShip && (
+            <ContextMenuItem onClick={handleViewFittingClick}>
+              View Fitting
+            </ContextMenuItem>
+          )}
+          {isAbyssal && (
+            <ContextMenuItem onClick={handleOpenMutamarket}>
+              Open in Mutamarket
+            </ContextMenuItem>
+          )}
         </ContextMenuContent>
       </ContextMenu>
     )

@@ -26,6 +26,11 @@ export function isAbyssalTypeId(typeId: number): boolean {
   return ABYSSAL_TYPE_IDS.has(typeId)
 }
 
+export function getMutamarketUrl(typeName: string, itemId: number): string {
+  const slug = typeName.toLowerCase().replace(/\s+/g, '-')
+  return `https://mutamarket.com/modules/${slug}-${itemId}`
+}
+
 export function getCachedAbyssalPrice(itemId: number): number | undefined {
   return getAbyssalPrice(itemId)
 }
