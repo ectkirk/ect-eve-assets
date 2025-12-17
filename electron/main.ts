@@ -427,12 +427,33 @@ const refQueues: Record<RefQueueName, RefQueue> = {
   other: { lastRequestTime: 0, queue: [], processing: false },
 }
 
+let refGlobalRetryAfter = 0
+
+function setRefGlobalBackoff(delayMs: number): void {
+  const retryAt = Date.now() + delayMs
+  if (retryAt > refGlobalRetryAfter) {
+    refGlobalRetryAfter = retryAt
+    logger.warn('Ref API global backoff set', { module: 'Main', delayMs, retryAt })
+  }
+}
+
+async function waitForGlobalBackoff(): Promise<void> {
+  const now = Date.now()
+  if (refGlobalRetryAfter > now) {
+    const waitMs = refGlobalRetryAfter - now
+    logger.debug('Waiting for global backoff', { module: 'Main', waitMs })
+    await new Promise((r) => setTimeout(r, waitMs))
+  }
+}
+
 async function processRefQueue(queueName: RefQueueName): Promise<void> {
   const q = refQueues[queueName]
   if (q.processing) return
   q.processing = true
 
   while (q.queue.length > 0) {
+    await waitForGlobalBackoff()
+
     const now = Date.now()
     const timeSinceLastRequest = now - q.lastRequestTime
     if (timeSinceLastRequest < REF_REQUEST_DELAY_MS) {
@@ -462,11 +483,19 @@ async function fetchRefWithRetry(url: string, options: RequestInit): Promise<Res
   for (let attempt = 0; attempt <= REF_MAX_RETRIES; attempt++) {
     try {
       const response = await fetch(url, options)
-      if (response.status === 429 && attempt < REF_MAX_RETRIES) {
-        const delay = REF_RETRY_BASE_DELAY_MS * Math.pow(2, attempt)
-        logger.warn('Ref API rate limited, retrying', { module: 'Main', attempt: attempt + 1, delay })
-        await new Promise((r) => setTimeout(r, delay))
-        continue
+      if (response.status === 429) {
+        const retryAfterHeader = response.headers.get('Retry-After')
+        const retryAfterMs = retryAfterHeader
+          ? parseInt(retryAfterHeader, 10) * 1000
+          : REF_RETRY_BASE_DELAY_MS * Math.pow(2, attempt)
+
+        setRefGlobalBackoff(retryAfterMs)
+
+        if (attempt < REF_MAX_RETRIES) {
+          logger.warn('Ref API rate limited, retrying', { module: 'Main', attempt: attempt + 1, delay: retryAfterMs })
+          await new Promise((r) => setTimeout(r, retryAfterMs))
+          continue
+        }
       }
       return response
     } catch (err) {
