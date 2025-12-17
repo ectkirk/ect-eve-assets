@@ -6,10 +6,6 @@ import {
   Gavel,
   Truck,
   HelpCircle,
-  CheckCircle2,
-  Clock,
-  XCircle,
-  AlertCircle,
   History,
   Package,
   Loader2,
@@ -34,7 +30,7 @@ import {
 } from '@/components/ui/table'
 import { cn, formatNumber } from '@/lib/utils'
 
-type ContractSortColumn = 'type' | 'items' | 'location' | 'assignee' | 'price' | 'value' | 'expires' | 'completed' | 'volume' | 'collateral' | 'days' | 'owner'
+type ContractSortColumn = 'type' | 'items' | 'location' | 'assigner' | 'assignee' | 'price' | 'value' | 'expires' | 'completed' | 'volume' | 'collateral' | 'days'
 import { getLocationName } from '@/lib/location-utils'
 import { TypeIcon as ItemTypeIcon } from '@/components/ui/type-icon'
 import { ContractItemsDialog } from '@/components/dialogs/ContractItemsDialog'
@@ -60,7 +56,7 @@ type ContractDirection = 'out' | 'in'
 interface ContractRow {
   contractWithItems: ContractWithItems
   items: ESIContractItem[]
-  ownerName: string
+  ownerCharacterId: number
   locationName: string
   endLocationName: string
   firstItemTypeId?: number
@@ -68,6 +64,7 @@ interface ContractRow {
   firstItemIsBlueprintCopy?: boolean
   typeName: string
   direction: ContractDirection
+  assignerName: string
   assigneeName: string
   itemValue: number
   status: ESIContract['status']
@@ -97,28 +94,6 @@ function formatExpiry(dateExpired: string): { text: string; isExpired: boolean }
   }
 
   return { text: `${hours}h`, isExpired: false }
-}
-
-function StatusIcon({ status }: { status: ESIContract['status'] }) {
-  switch (status) {
-    case 'outstanding':
-      return <Clock className="h-4 w-4 text-status-info" />
-    case 'in_progress':
-      return <Clock className="h-4 w-4 text-status-highlight" />
-    case 'finished':
-    case 'finished_issuer':
-    case 'finished_contractor':
-      return <CheckCircle2 className="h-4 w-4 text-status-positive" />
-    case 'cancelled':
-    case 'rejected':
-    case 'failed':
-    case 'deleted':
-      return <XCircle className="h-4 w-4 text-status-negative" />
-    case 'reversed':
-      return <AlertCircle className="h-4 w-4 text-status-warning" />
-    default:
-      return <HelpCircle className="h-4 w-4 text-content-secondary" />
-  }
 }
 
 function getContractValue(contract: ESIContract): number {
@@ -170,6 +145,8 @@ function ContractsTable({
           return row.typeName.toLowerCase()
         case 'location':
           return row.locationName.toLowerCase()
+        case 'assigner':
+          return row.assignerName.toLowerCase()
         case 'assignee':
           return row.assigneeName.toLowerCase()
         case 'price':
@@ -186,8 +163,6 @@ function ContractsTable({
           return contract.collateral ?? 0
         case 'days':
           return getDaysLeft(contract)
-        case 'owner':
-          return row.ownerName.toLowerCase()
         default:
           return 0
       }
@@ -207,6 +182,7 @@ function ContractsTable({
           <SortableHeader column="type" label="Type" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
           {!showCourierColumns && <SortableHeader column="items" label="Items" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />}
           <SortableHeader column="location" label="Location" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
+          <SortableHeader column="assigner" label="Assigner" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
           <SortableHeader column="assignee" label="Assignee" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
           <SortableHeader column="price" label="Price" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
           {!showCourierColumns && !showCompletedDate && <SortableHeader column="value" label="Value" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />}
@@ -223,7 +199,6 @@ function ContractsTable({
             <SortableHeader column="expires" label="Expires" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
           ) : null}
           <th className="text-right">Status</th>
-          <SortableHeader column="owner" label="Owner" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -239,7 +214,11 @@ function ContractsTable({
             <React.Fragment key={contract.contract_id}>
               <TableRow>
                 <TableCell className="py-1.5 w-8">
-                  <StatusIcon status={contract.status} />
+                  <img
+                    src={`https://images.evetech.net/characters/${row.ownerCharacterId}/portrait?size=32`}
+                    alt=""
+                    className="w-6 h-6 rounded"
+                  />
                 </TableCell>
                 <TableCell className="py-1.5">
                   <div className="flex items-center gap-2">
@@ -283,6 +262,7 @@ function ContractsTable({
                     <span className="text-content-muted"> → {row.endLocationName}</span>
                   )}
                 </TableCell>
+                <TableCell className="py-1.5 text-content-secondary">{row.assignerName}</TableCell>
                 <TableCell className="py-1.5 text-content-secondary">{row.assigneeName}</TableCell>
                 <TableCell className="py-1.5 text-right tabular-nums text-status-highlight">
                   {value > 0 ? formatNumber(value) : '-'}
@@ -356,7 +336,6 @@ function ContractsTable({
                   {row.status === 'deleted' && <span className="text-content-muted">Deleted</span>}
                   {row.status === 'reversed' && <span className="text-status-warning">Reversed</span>}
                 </TableCell>
-                <TableCell className="py-1.5 text-right text-content-secondary">{row.ownerName}</TableCell>
               </TableRow>
             </React.Fragment>
           )
@@ -591,7 +570,7 @@ export function ContractsTab() {
 
     const buildContractRow = (
       contractWithItems: ContractWithItems,
-      owner: { name: string },
+      ownerCharacterId: number,
       isIssuer: boolean
     ): ContractRow => {
       const contract = contractWithItems.contract
@@ -601,6 +580,8 @@ export function ContractsTab() {
       const firstItem = items[0]
       const firstItemType =
         firstItem && hasType(firstItem.type_id) ? getType(firstItem.type_id) : undefined
+
+      const assignerName = getName(contract.issuer_id)?.name ?? `ID ${contract.issuer_id}`
 
       let assigneeName: string
       if (contract.availability === 'public') {
@@ -626,7 +607,7 @@ export function ContractsTab() {
       return {
         contractWithItems,
         items,
-        ownerName: owner.name,
+        ownerCharacterId,
         locationName: getLocationName(contract.start_location_id),
         endLocationName: contract.end_location_id ? getLocationName(contract.end_location_id) : '',
         firstItemTypeId: firstItem?.type_id,
@@ -634,6 +615,7 @@ export function ContractsTab() {
         firstItemIsBlueprintCopy: firstItem?.is_blueprint_copy,
         typeName: firstItemType?.name ?? (firstItem ? `Unknown Type ${firstItem.type_id}` : ''),
         direction,
+        assignerName,
         assigneeName,
         itemValue,
         status: contract.status,
@@ -653,11 +635,11 @@ export function ContractsTab() {
         const isCourier = contract.type === 'courier'
 
         if (!isActive) {
-          completed.push(buildContractRow(contractWithItems, owner, isIssuer))
+          completed.push(buildContractRow(contractWithItems, owner.characterId, isIssuer))
           continue
         }
 
-        const row = buildContractRow(contractWithItems, owner, isIssuer)
+        const row = buildContractRow(contractWithItems, owner.characterId, isIssuer)
 
         if (isCourier) {
           courier.push(row)
@@ -676,7 +658,7 @@ export function ContractsTab() {
       const searchLower = search.toLowerCase()
       return sortByValue(contracts.filter((row) =>
         row.typeName.toLowerCase().includes(searchLower) ||
-        row.ownerName.toLowerCase().includes(searchLower) ||
+        row.assignerName.toLowerCase().includes(searchLower) ||
         row.locationName.toLowerCase().includes(searchLower) ||
         row.assigneeName.toLowerCase().includes(searchLower)
       ))
