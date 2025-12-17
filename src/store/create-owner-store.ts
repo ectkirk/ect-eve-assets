@@ -1,9 +1,14 @@
 import { create, type StateCreator, type StoreApi, type UseBoundStore } from 'zustand'
-import { useAuthStore, type Owner, findOwnerByKey } from './auth-store'
+import { useAuthStore, type Owner, findOwnerByKey, ownerKey as makeOwnerKey } from './auth-store'
 import { useExpiryCacheStore } from './expiry-cache-store'
 import { createOwnerDB, type OwnerDBConfig } from '@/lib/owner-indexed-db'
 import { logger } from '@/lib/logger'
 import { triggerResolution } from '@/lib/data-resolver'
+
+function isScopeError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false
+  return err.message.includes('not valid for any required scope')
+}
 
 export interface OwnerData<T> {
   owner: Owner
@@ -36,6 +41,7 @@ export interface OwnerStoreConfig<
   endpointPattern: string
   dbConfig: Omit<OwnerDBConfig<TDBData>, 'moduleName'>
   ownerFilter?: 'all' | 'character' | 'corporation'
+  requiredScope?: string
   disableAutoRefresh?: boolean
   getEndpoint: (owner: Owner) => string
   fetchData: (owner: Owner) => Promise<{
@@ -83,6 +89,7 @@ export function createOwnerStore<
     endpointPattern,
     dbConfig,
     ownerFilter = 'all',
+    requiredScope,
     disableAutoRefresh = false,
     getEndpoint,
     fetchData,
@@ -97,6 +104,11 @@ export function createOwnerStore<
   } = config
 
   const db = createOwnerDB<TDBData>({ ...dbConfig, moduleName })
+
+  const ownerHasRequiredScope = (owner: Owner): boolean => {
+    if (!requiredScope) return true
+    return owner.scopes?.includes(requiredScope) ?? false
+  }
 
   const filterOwners = (owners: (Owner | undefined)[]): Owner[] => {
     return owners.filter((o): o is Owner => {
@@ -196,6 +208,14 @@ export function createOwnerStore<
           )
 
           for (const owner of ownersToUpdate) {
+            if (!ownerHasRequiredScope(owner)) {
+              logger.debug(`Skipping ${name} for ${owner.name} - missing required scope`, {
+                module: moduleName,
+                requiredScope,
+              })
+              continue
+            }
+
             const ownerKey = `${owner.type}-${owner.id}`
             const endpoint = getEndpoint(owner)
 
@@ -213,6 +233,13 @@ export function createOwnerStore<
                 module: moduleName,
                 owner: owner.name,
               })
+              if (isScopeError(err)) {
+                const ownerId = makeOwnerKey(owner.type, owner.id)
+                useAuthStore.getState().setOwnerScopesOutdated(ownerId, true)
+                logger.warn(`Owner ${owner.name} needs re-authentication for new scopes`, {
+                  module: moduleName,
+                })
+              }
             }
           }
 
@@ -250,6 +277,13 @@ export function createOwnerStore<
       updateForOwner: async (owner: Owner) => {
         if (ownerFilter === 'character' && owner.type !== 'character') return
         if (ownerFilter === 'corporation' && owner.type !== 'corporation') return
+        if (!ownerHasRequiredScope(owner)) {
+          logger.debug(`Skipping ${name} for ${owner.name} - missing required scope`, {
+            module: moduleName,
+            requiredScope,
+          })
+          return
+        }
 
         const state = get()
         const preHookResult = onBeforeOwnerUpdate
@@ -297,6 +331,13 @@ export function createOwnerStore<
             module: moduleName,
             owner: owner.name,
           })
+          if (isScopeError(err)) {
+            const ownerId = makeOwnerKey(owner.type, owner.id)
+            useAuthStore.getState().setOwnerScopesOutdated(ownerId, true)
+            logger.warn(`Owner ${owner.name} needs re-authentication for new scopes`, {
+              module: moduleName,
+            })
+          }
         }
       },
 

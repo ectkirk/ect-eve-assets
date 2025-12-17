@@ -88,6 +88,7 @@ interface AuthState {
     tokens: { accessToken: string; refreshToken: string; expiresAt: number; scopes?: string[] }
   ) => void
   setOwnerAuthFailed: (ownerId: string, failed: boolean) => void
+  setOwnerScopesOutdated: (ownerId: string, outdated: boolean) => void
   clearAuth: () => void
 
   // Helpers
@@ -222,6 +223,22 @@ export const useAuthStore = create<AuthState>()(
               [ownerId]: {
                 ...owner,
                 authFailed: failed,
+              },
+            },
+          }
+        })
+      },
+
+      setOwnerScopesOutdated: (ownerId, outdated) => {
+        set((state) => {
+          const owner = state.owners[ownerId]
+          if (!owner) return state
+          return {
+            owners: {
+              ...state.owners,
+              [ownerId]: {
+                ...owner,
+                scopesOutdated: outdated,
               },
             },
           }
