@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/table'
 
 type UpwellSortColumn = 'name' | 'type' | 'location' | 'state' | 'fuel' | 'owner'
-type StarbaseSortColumn = 'name' | 'type' | 'location' | 'state' | 'timer' | 'fuel' | 'stront' | 'owner'
+type StarbaseSortColumn = 'name' | 'type' | 'region' | 'state' | 'fuel' | 'stront' | 'details'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -410,7 +410,7 @@ export function StructuresTab() {
   }, [starbasesByOwner, cacheVersion, search, selectedSet])
 
   const upwellSort = useSortable<UpwellSortColumn>('location', 'asc')
-  const starbaseSort = useSortable<StarbaseSortColumn>('location', 'asc')
+  const starbaseSort = useSortable<StarbaseSortColumn>('region', 'asc')
 
   const sortedUpwellRows = useMemo(() => {
     return sortRows(upwellRows, upwellSort.sortColumn, upwellSort.sortDirection, (row, column) => {
@@ -434,38 +434,54 @@ export function StructuresTab() {
   }, [upwellRows, upwellSort.sortColumn, upwellSort.sortDirection])
 
   const sortedStarbaseRows = useMemo(() => {
-    return sortRows(starbaseRows, starbaseSort.sortColumn, starbaseSort.sortDirection, (row, column) => {
+    const getValue = (row: StarbaseRow, column: StarbaseSortColumn): number | string => {
       switch (column) {
         case 'name':
           return (row.moonName ?? `Moon ${row.starbase.moon_id ?? 0}`).toLowerCase()
         case 'type':
           return row.typeName.toLowerCase()
-        case 'location':
-          return `${row.regionName} ${row.systemName}`.toLowerCase()
+        case 'region':
+          return row.regionName.toLowerCase()
         case 'state':
           return row.starbase.state ?? 'unknown'
-        case 'timer': {
+        case 'fuel': {
+          const detail = starbaseDetails.get(row.starbase.starbase_id)
+          const hours = calculateFuelHours(detail, row.towerSize, row.fuelTier)
+          return hours ?? -1
+        }
+        case 'stront': {
+          const detail = starbaseDetails.get(row.starbase.starbase_id)
+          const hours = calculateStrontHours(detail, row.towerSize)
+          return hours ?? -1
+        }
+        case 'details': {
           const timer = getStarbaseTimer(row.starbase)
           if (timer.type === 'reinforced') return timer.timestamp ?? Infinity
           if (timer.type === 'unanchoring') return (timer.timestamp ?? Infinity) + 1e15
           if (timer.type === 'online') return -(timer.timestamp ?? 0)
           return Infinity
         }
-        case 'fuel': {
-          const detail = starbaseDetails.get(row.starbase.starbase_id)
-          const hours = calculateFuelHours(detail, row.towerSize, row.fuelTier)
-          return hours !== null ? hours / 24 : -1
-        }
-        case 'stront': {
-          const detail = starbaseDetails.get(row.starbase.starbase_id)
-          const hours = calculateStrontHours(detail, row.towerSize)
-          return hours !== null ? hours / 24 : -1
-        }
-        case 'owner':
-          return row.ownerName.toLowerCase()
         default:
           return 0
       }
+    }
+
+    const getMoonName = (row: StarbaseRow) =>
+      (row.moonName ?? `Moon ${row.starbase.moon_id ?? 0}`).toLowerCase()
+
+    return [...starbaseRows].sort((a, b) => {
+      const aVal = getValue(a, starbaseSort.sortColumn)
+      const bVal = getValue(b, starbaseSort.sortColumn)
+      const dir = starbaseSort.sortDirection === 'asc' ? 1 : -1
+
+      if (aVal < bVal) return -dir
+      if (aVal > bVal) return dir
+
+      const aMoon = getMoonName(a)
+      const bMoon = getMoonName(b)
+      if (aMoon < bMoon) return -1
+      if (aMoon > bMoon) return 1
+      return 0
     })
   }, [starbaseRows, starbaseSort.sortColumn, starbaseSort.sortDirection, starbaseDetails])
 
@@ -608,12 +624,11 @@ export function StructuresTab() {
                 <TableRow className="hover:bg-transparent">
                   <SortableHeader column="name" label="Moon" sortColumn={starbaseSort.sortColumn} sortDirection={starbaseSort.sortDirection} onSort={starbaseSort.handleSort} />
                   <SortableHeader column="type" label="Type" sortColumn={starbaseSort.sortColumn} sortDirection={starbaseSort.sortDirection} onSort={starbaseSort.handleSort} />
-                  <SortableHeader column="location" label="Location" sortColumn={starbaseSort.sortColumn} sortDirection={starbaseSort.sortDirection} onSort={starbaseSort.handleSort} />
+                  <SortableHeader column="region" label="Region" sortColumn={starbaseSort.sortColumn} sortDirection={starbaseSort.sortDirection} onSort={starbaseSort.handleSort} />
                   <SortableHeader column="state" label="State" sortColumn={starbaseSort.sortColumn} sortDirection={starbaseSort.sortDirection} onSort={starbaseSort.handleSort} />
-                  <SortableHeader column="timer" label="Timer" sortColumn={starbaseSort.sortColumn} sortDirection={starbaseSort.sortDirection} onSort={starbaseSort.handleSort} />
                   <SortableHeader column="fuel" label="Fuel" sortColumn={starbaseSort.sortColumn} sortDirection={starbaseSort.sortDirection} onSort={starbaseSort.handleSort} className="text-right" />
                   <SortableHeader column="stront" label="Stront" sortColumn={starbaseSort.sortColumn} sortDirection={starbaseSort.sortDirection} onSort={starbaseSort.handleSort} className="text-right" />
-                  <SortableHeader column="owner" label="Owner" sortColumn={starbaseSort.sortColumn} sortDirection={starbaseSort.sortDirection} onSort={starbaseSort.handleSort} className="text-right" />
+                  <SortableHeader column="details" label="Details" sortColumn={starbaseSort.sortColumn} sortDirection={starbaseSort.sortDirection} onSort={starbaseSort.handleSort} className="text-right" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -641,27 +656,26 @@ export function StructuresTab() {
                     <TableRow key={`pos-${row.starbase.starbase_id}`}>
                       <TableCell className="py-1.5">
                         <div className="flex items-center gap-2">
+                          <img
+                            src={`https://images.evetech.net/corporations/${row.owner.id}/logo?size=32`}
+                            alt=""
+                            className="w-5 h-5 rounded"
+                          />
                           <span className="truncate" title={moonDisplay}>
                             {moonDisplay}
                           </span>
                           {isReinforced && <AlertTriangle className="h-4 w-4 text-status-negative" />}
                         </div>
                       </TableCell>
-                      <TableCell className="py-1.5 text-content-secondary">{row.typeName}</TableCell>
                       <TableCell className="py-1.5">
-                        <span className="text-status-info">{row.systemName}</span>
-                        <span className="text-content-muted text-xs ml-1">({row.regionName})</span>
+                        <div className="flex items-center gap-2">
+                          <TypeIcon typeId={row.starbase.type_id} />
+                          <span className="text-content-secondary">{row.typeName}</span>
+                        </div>
                       </TableCell>
+                      <TableCell className="py-1.5 text-content-secondary">{row.regionName}</TableCell>
                       <TableCell className="py-1.5">
                         <span className={stateInfo.color}>{stateInfo.label}</span>
-                      </TableCell>
-                      <TableCell className="py-1.5">
-                        <div className="flex items-center gap-1">
-                          {timerInfo.type !== 'none' && <Clock className="h-3.5 w-3.5" />}
-                          <span className={cn('tabular-nums text-sm', timerColorClass)}>
-                            {timerInfo.text}
-                          </span>
-                        </div>
                       </TableCell>
                       <TableCell className="py-1.5 text-right">
                         <div className="flex items-center justify-end gap-1">
@@ -676,7 +690,14 @@ export function StructuresTab() {
                           {strontInfo.text}
                         </span>
                       </TableCell>
-                      <TableCell className="py-1.5 text-right text-content-secondary">{row.ownerName}</TableCell>
+                      <TableCell className="py-1.5 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          {timerInfo.type !== 'none' && <Clock className="h-3.5 w-3.5" />}
+                          <span className={cn('tabular-nums text-sm', timerColorClass)}>
+                            {timerInfo.text}
+                          </span>
+                        </div>
+                      </TableCell>
                     </TableRow>
                   )
 
