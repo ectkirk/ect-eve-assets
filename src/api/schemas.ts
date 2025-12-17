@@ -394,6 +394,7 @@ export const RefTypeSchema = z.object({
   marketPrice: RefMarketPriceSchema,
   contractPrice: RefContractPriceSchema.optional(),
   implantSlot: z.number().optional(),
+  towerSize: z.number().optional(),
 })
 
 export const RefTypeBulkResponseSchema = z.object({

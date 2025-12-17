@@ -13,6 +13,7 @@ export interface CachedType {
   volume: number
   packagedVolume?: number
   implantSlot?: number
+  towerSize?: number
 }
 
 export interface CachedStructure {
