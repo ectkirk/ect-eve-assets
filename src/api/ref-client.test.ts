@@ -15,7 +15,7 @@ const mockRefTypes = vi.fn()
 const mockRefUniverse = vi.fn()
 
 async function runWithTimers<T>(promise: Promise<T>): Promise<T> {
-  await vi.advanceTimersByTimeAsync(100)
+  await vi.advanceTimersByTimeAsync(2100)
   return promise
 }
 

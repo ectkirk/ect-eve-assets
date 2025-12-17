@@ -28,12 +28,10 @@ let pendingLocationIds = new Set<number>()
 let locationBatchPromise: Promise<Map<number, CachedLocation>> | null = null
 
 let pendingTypeIds = new Set<number>()
-let pendingTypeMarket: 'jita' | 'the_forge' = 'jita'
 let typeBatchPromise: Promise<Map<number, CachedType>> | null = null
 
 async function fetchTypesFromAPI(
   ids: number[],
-  market: 'jita' | 'the_forge' = 'jita',
   stationId?: number
 ): Promise<Map<number, RefType>> {
   if (ids.length === 0) return new Map()
@@ -44,7 +42,7 @@ async function fetchTypesFromAPI(
     const chunk = ids.slice(i, i + 1000)
 
     try {
-      const rawData = await window.electronAPI!.refTypes(chunk, market, stationId)
+      const rawData = await window.electronAPI!.refTypes(chunk, stationId)
       if (rawData && typeof rawData === 'object' && 'error' in rawData) {
         logger.warn('RefAPI /types failed', { module: 'RefAPI', error: rawData.error })
         continue
@@ -107,9 +105,7 @@ async function fetchUniverseFromAPI(ids: number[]): Promise<Map<number, RefUnive
 
 async function executeTypeBatch(): Promise<Map<number, CachedType>> {
   const idsToFetch = Array.from(pendingTypeIds)
-  const market = pendingTypeMarket
   pendingTypeIds = new Set()
-  pendingTypeMarket = 'jita'
 
   const results = new Map<number, CachedType>()
   const uncachedIds: number[] = []
@@ -125,7 +121,7 @@ async function executeTypeBatch(): Promise<Map<number, CachedType>> {
 
   if (uncachedIds.length > 0) {
     logger.debug(`Fetching ${uncachedIds.length} types from ref API`, { module: 'RefAPI' })
-    const fetched = await fetchTypesFromAPI(uncachedIds, market)
+    const fetched = await fetchTypesFromAPI(uncachedIds)
     const toCache: CachedType[] = []
 
     for (const [id, refType] of fetched) {
@@ -170,14 +166,10 @@ async function executeTypeBatch(): Promise<Map<number, CachedType>> {
   return results
 }
 
-export async function resolveTypes(
-  typeIds: number[],
-  market: 'jita' | 'the_forge' = 'jita'
-): Promise<Map<number, CachedType>> {
+export async function resolveTypes(typeIds: number[]): Promise<Map<number, CachedType>> {
   for (const id of typeIds) {
     pendingTypeIds.add(id)
   }
-  pendingTypeMarket = market
 
   if (!typeBatchPromise) {
     typeBatchPromise = new Promise((resolve) => {
@@ -284,11 +276,8 @@ export async function resolveLocations(locationIds: number[]): Promise<Map<numbe
   return results
 }
 
-export async function fetchPrices(
-  typeIds: number[],
-  market: 'jita' | 'the_forge' = 'jita'
-): Promise<Map<number, number>> {
-  const fetched = await fetchTypesFromAPI(typeIds, market)
+export async function fetchPrices(typeIds: number[]): Promise<Map<number, number>> {
+  const fetched = await fetchTypesFromAPI(typeIds)
   const prices = new Map<number, number>()
   const toCache: CachedType[] = []
 
@@ -331,7 +320,7 @@ export async function fetchMarketComparison(
   typeIds: number[],
   stationId: number
 ): Promise<Map<number, MarketComparisonPrices>> {
-  const fetched = await fetchTypesFromAPI(typeIds, 'jita', stationId)
+  const fetched = await fetchTypesFromAPI(typeIds, stationId)
   const results = new Map<number, MarketComparisonPrices>()
 
   for (const [typeId, type] of fetched) {

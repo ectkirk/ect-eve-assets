@@ -470,15 +470,12 @@ async function fetchRefWithRetry(url: string, options: RequestInit): Promise<Res
   throw lastError ?? new Error('Ref API request failed after retries')
 }
 
-ipcMain.handle('ref:types', async (_event, ids: unknown, market: unknown, stationId?: unknown) => {
+ipcMain.handle('ref:types', async (_event, ids: unknown, stationId?: unknown) => {
   if (!Array.isArray(ids) || ids.length === 0 || ids.length > MAX_REF_IDS) {
     return { error: 'Invalid ids array' }
   }
   if (!ids.every((id) => typeof id === 'number' && Number.isInteger(id) && id > 0)) {
     return { error: 'Invalid id values' }
-  }
-  if (market !== 'jita' && market !== 'the_forge') {
-    return { error: 'Invalid market' }
   }
   if (stationId !== undefined && (typeof stationId !== 'number' || !Number.isInteger(stationId) || stationId <= 0)) {
     return { error: 'Invalid station_id' }
@@ -486,9 +483,9 @@ ipcMain.handle('ref:types', async (_event, ids: unknown, market: unknown, statio
 
   return queueRefRequest(async () => {
     try {
-      let url = `${REF_API_BASE}/types?market=${market}`
+      let url = `${REF_API_BASE}/types`
       if (stationId) {
-        url += `&station_id=${stationId}`
+        url += `?station_id=${stationId}`
       }
       const response = await fetchRefWithRetry(url, {
         method: 'POST',
