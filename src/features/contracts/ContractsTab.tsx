@@ -12,6 +12,7 @@ import {
   AlertCircle,
   History,
   Package,
+  Loader2,
 } from 'lucide-react'
 import { useTabControls } from '@/context'
 import { useColumnSettings, useCacheVersion, useSortable, SortableHeader, sortRows, type ColumnConfig } from '@/hooks'
@@ -459,6 +460,8 @@ export function ContractsTab() {
   const prices = useAssetStore((s) => s.prices)
   const contractsByOwner = useContractsStore((s) => s.contractsByOwner)
   const contractsUpdating = useContractsStore((s) => s.isUpdating)
+  const isLoadingCompletedItems = useContractsStore((s) => s.isLoadingCompletedItems)
+  const fetchCompletedContractItems = useContractsStore((s) => s.fetchCompletedContractItems)
   const updateError = useContractsStore((s) => s.updateError)
   const init = useContractsStore((s) => s.init)
   const initialized = useContractsStore((s) => s.initialized)
@@ -475,6 +478,12 @@ export function ContractsTab() {
   const [expandedDirections, setExpandedDirections] = useState<Set<string>>(new Set(['in', 'out']))
   const [showCourier, setShowCourier] = useState(true)
   const [showCompleted, setShowCompleted] = useState(false)
+
+  useEffect(() => {
+    if (showCompleted) {
+      fetchCompletedContractItems()
+    }
+  }, [showCompleted, fetchCompletedContractItems])
 
   const { setExpandCollapse, search, setResultCount, setTotalValue, setColumns } = useTabControls()
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
@@ -809,6 +818,9 @@ export function ContractsTab() {
                   )}
                   <History className="h-4 w-4 text-content-secondary" />
                   <span className="text-content-secondary flex-1">Completed Contracts</span>
+                  {isLoadingCompletedItems && (
+                    <Loader2 className="h-4 w-4 text-content-secondary animate-spin" />
+                  )}
                   <span className="text-xs text-content-secondary">
                     {completedContracts.length} contract
                     {completedContracts.length !== 1 ? 's' : ''}
