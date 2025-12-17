@@ -413,34 +413,46 @@ function getRefHeaders(contentType?: 'json'): Record<string, string> {
   return headers
 }
 
-let refLastRequestTime = 0
-const refRequestQueue: Array<() => void> = []
-let refQueueProcessing = false
+interface RefQueue {
+  lastRequestTime: number
+  queue: Array<() => void>
+  processing: boolean
+}
 
-async function processRefQueue(): Promise<void> {
-  if (refQueueProcessing) return
-  refQueueProcessing = true
+type RefQueueName = 'types' | 'universe' | 'other'
 
-  while (refRequestQueue.length > 0) {
+const refQueues: Record<RefQueueName, RefQueue> = {
+  types: { lastRequestTime: 0, queue: [], processing: false },
+  universe: { lastRequestTime: 0, queue: [], processing: false },
+  other: { lastRequestTime: 0, queue: [], processing: false },
+}
+
+async function processRefQueue(queueName: RefQueueName): Promise<void> {
+  const q = refQueues[queueName]
+  if (q.processing) return
+  q.processing = true
+
+  while (q.queue.length > 0) {
     const now = Date.now()
-    const timeSinceLastRequest = now - refLastRequestTime
+    const timeSinceLastRequest = now - q.lastRequestTime
     if (timeSinceLastRequest < REF_REQUEST_DELAY_MS) {
       await new Promise((r) => setTimeout(r, REF_REQUEST_DELAY_MS - timeSinceLastRequest))
     }
-    refLastRequestTime = Date.now()
-    const next = refRequestQueue.shift()
+    q.lastRequestTime = Date.now()
+    const next = q.queue.shift()
     if (next) next()
   }
 
-  refQueueProcessing = false
+  q.processing = false
 }
 
-function queueRefRequest<T>(fn: () => Promise<T>): Promise<T> {
+function queueRefRequest<T>(fn: () => Promise<T>, queueName: RefQueueName = 'other'): Promise<T> {
+  const q = refQueues[queueName]
   return new Promise((resolve, reject) => {
-    refRequestQueue.push(() => {
+    q.queue.push(() => {
       fn().then(resolve).catch(reject)
     })
-    processRefQueue()
+    processRefQueue(queueName)
   })
 }
 
@@ -500,7 +512,7 @@ ipcMain.handle('ref:types', async (_event, ids: unknown, stationId?: unknown) =>
       logger.error('ref:types fetch failed', err, { module: 'Main' })
       return { error: String(err) }
     }
-  })
+  }, 'types')
 })
 
 ipcMain.handle('ref:universe', async (_event, ids: unknown) => {
@@ -526,7 +538,7 @@ ipcMain.handle('ref:universe', async (_event, ids: unknown) => {
       logger.error('ref:universe fetch failed', err, { module: 'Main' })
       return { error: String(err) }
     }
-  })
+  }, 'universe')
 })
 
 ipcMain.handle('ref:ships', async (_event, ids: unknown) => {

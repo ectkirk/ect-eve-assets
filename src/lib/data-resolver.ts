@@ -275,32 +275,42 @@ export async function resolveAllReferenceData(ids: ResolutionIds): Promise<void>
     abyssals: ids.abyssalItemIds.length,
   })
 
-  if (ids.typeIds.size > 0) {
-    await resolveTypes(Array.from(ids.typeIds)).catch(() => {})
-  }
+  // Start independent resolutions in parallel:
+  // - Types: ref API /types queue
+  // - Entities: ESI /universe/names/
+  // - Abyssals: mutamarket (completely independent)
+  const typesPromise = ids.typeIds.size > 0
+    ? resolveTypes(Array.from(ids.typeIds)).catch(() => {})
+    : Promise.resolve()
 
+  const entitiesPromise = ids.entityIds.size > 0
+    ? resolveNames(Array.from(ids.entityIds)).catch(() => {})
+    : Promise.resolve()
+
+  const abyssalsPromise = ids.abyssalItemIds.length > 0
+    ? fetchAbyssalPrices(ids.abyssalItemIds).catch(() => {})
+    : Promise.resolve()
+
+  // Structures resolution (ESI calls + may call ref API /universe for NPC stations)
+  // After structures complete, we need their solarSystemIds for location resolution
   if (ids.structureToCharacter.size > 0) {
     await resolveStructures(ids.structureToCharacter).catch(() => {})
-  }
 
-  for (const [structureId] of ids.structureToCharacter) {
-    const structure = getStructure(structureId)
-    if (structure?.solarSystemId && !hasLocation(structure.solarSystemId)) {
-      ids.locationIds.add(structure.solarSystemId)
+    for (const [structureId] of ids.structureToCharacter) {
+      const structure = getStructure(structureId)
+      if (structure?.solarSystemId && !hasLocation(structure.solarSystemId)) {
+        ids.locationIds.add(structure.solarSystemId)
+      }
     }
   }
 
-  if (ids.locationIds.size > 0) {
-    await resolveLocations(Array.from(ids.locationIds)).catch(() => {})
-  }
+  // Locations: ref API /universe queue (runs parallel with types queue)
+  const locationsPromise = ids.locationIds.size > 0
+    ? resolveLocations(Array.from(ids.locationIds)).catch(() => {})
+    : Promise.resolve()
 
-  if (ids.entityIds.size > 0) {
-    await resolveNames(Array.from(ids.entityIds)).catch(() => {})
-  }
-
-  if (ids.abyssalItemIds.length > 0) {
-    await fetchAbyssalPrices(ids.abyssalItemIds).catch(() => {})
-  }
+  // Wait for all parallel resolutions
+  await Promise.all([typesPromise, entitiesPromise, abyssalsPromise, locationsPromise])
 
   logger.info('Reference data resolution complete', { module: 'DataResolver' })
 }
