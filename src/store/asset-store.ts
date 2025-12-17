@@ -344,7 +344,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
 
           useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag)
 
-          await resolveTypes(Array.from(new Set(assets.map((a) => a.type_id))))
+          resolveTypes(Array.from(new Set(assets.map((a) => a.type_id))))
           const names = await fetchOwnerAssetNames(owner, assets)
           for (const n of names) {
             if (n.name && n.name !== 'None') {
