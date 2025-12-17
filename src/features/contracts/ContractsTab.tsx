@@ -56,7 +56,8 @@ type ContractDirection = 'out' | 'in'
 interface ContractRow {
   contractWithItems: ContractWithItems
   items: ESIContractItem[]
-  ownerCharacterId: number
+  ownerType: 'character' | 'corporation'
+  ownerId: number
   locationName: string
   endLocationName: string
   firstItemTypeId?: number
@@ -215,7 +216,10 @@ function ContractsTable({
               <TableRow>
                 <TableCell className="py-1.5 w-8">
                   <img
-                    src={`https://images.evetech.net/characters/${row.ownerCharacterId}/portrait?size=32`}
+                    src={row.ownerType === 'corporation'
+                      ? `https://images.evetech.net/corporations/${row.ownerId}/logo?size=32`
+                      : `https://images.evetech.net/characters/${row.ownerId}/portrait?size=32`
+                    }
                     alt=""
                     className="w-6 h-6 rounded"
                   />
@@ -570,7 +574,8 @@ export function ContractsTab() {
 
     const buildContractRow = (
       contractWithItems: ContractWithItems,
-      ownerCharacterId: number,
+      ownerType: 'character' | 'corporation',
+      ownerId: number,
       isIssuer: boolean
     ): ContractRow => {
       const contract = contractWithItems.contract
@@ -607,7 +612,8 @@ export function ContractsTab() {
       return {
         contractWithItems,
         items,
-        ownerCharacterId,
+        ownerType,
+        ownerId,
         locationName: getLocationName(contract.start_location_id),
         endLocationName: contract.end_location_id ? getLocationName(contract.end_location_id) : '',
         firstItemTypeId: firstItem?.type_id,
@@ -635,11 +641,11 @@ export function ContractsTab() {
         const isCourier = contract.type === 'courier'
 
         if (!isActive) {
-          completed.push(buildContractRow(contractWithItems, owner.characterId, isIssuer))
+          completed.push(buildContractRow(contractWithItems, owner.type, owner.id, isIssuer))
           continue
         }
 
-        const row = buildContractRow(contractWithItems, owner.characterId, isIssuer)
+        const row = buildContractRow(contractWithItems, owner.type, owner.id, isIssuer)
 
         if (isCourier) {
           courier.push(row)
