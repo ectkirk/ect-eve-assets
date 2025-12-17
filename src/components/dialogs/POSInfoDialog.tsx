@@ -8,6 +8,7 @@ import {
 import type { ESIStarbase } from '@/api/endpoints/starbases'
 import type { ESIStarbaseDetail } from '@/api/endpoints/starbases'
 import { getType, getLocation } from '@/store/reference-cache'
+import { calculateFuelHours, calculateStrontHours } from '@/store/starbase-details-store'
 import { cn } from '@/lib/utils'
 
 interface POSInfoDialogProps {
@@ -25,6 +26,37 @@ const ROLE_LABELS: Record<StarbaseRole, string> = {
   config_starbase_equipment_role: 'Starbase Config Role',
   corporation_member: 'Corp Members',
   starbase_fuel_technician_role: 'Fuel Technician Role',
+}
+
+function formatCountdown(dateStr: string | undefined): string | null {
+  if (!dateStr) return null
+  const target = new Date(dateStr).getTime()
+  const now = Date.now()
+  const remaining = target - now
+  if (remaining <= 0) return 'Expired'
+  const hours = Math.floor(remaining / (60 * 60 * 1000))
+  const days = Math.floor(hours / 24)
+  if (days >= 1) return `${days}d ${hours % 24}h`
+  return `${hours}h`
+}
+
+function formatElapsed(dateStr: string | undefined): string | null {
+  if (!dateStr) return null
+  const since = new Date(dateStr).getTime()
+  const elapsed = Date.now() - since
+  if (elapsed < 0) return null
+  const days = Math.floor(elapsed / (24 * 60 * 60 * 1000))
+  if (days >= 1) return `${days}d`
+  return '<1d'
+}
+
+function formatHoursAsTimer(hours: number | null): string {
+  if (hours === null) return '-'
+  if (hours <= 0) return 'Empty'
+  const days = Math.floor(hours / 24)
+  const remainingHours = Math.floor(hours % 24)
+  if (days >= 1) return `${days}d ${remainingHours}h`
+  return `${Math.floor(hours)}h`
 }
 
 function InfoRow({ label, value, className }: { label: string; value: React.ReactNode; className?: string }) {
@@ -112,16 +144,62 @@ export function POSInfoDialog({ open, onOpenChange, starbase, detail, ownerName 
 
           <Section title="Status">
             <InfoRow label="State" value={stateInfo.label} className={stateInfo.color} />
-            {starbase.onlined_since && (
-              <InfoRow label="Online Since" value={formatDateTime(starbase.onlined_since)} />
-            )}
             {starbase.reinforced_until && (
-              <InfoRow label="Reinforced Until" value={formatDateTime(starbase.reinforced_until)} className="text-status-negative" />
+              <>
+                <InfoRow
+                  label="RF Timer"
+                  value={formatCountdown(starbase.reinforced_until)}
+                  className="text-status-negative font-mono"
+                />
+                <InfoRow label="Reinforced Until" value={formatDateTime(starbase.reinforced_until)} className="text-status-negative" />
+              </>
             )}
             {starbase.unanchor_at && (
-              <InfoRow label="Unanchor At" value={formatDateTime(starbase.unanchor_at)} className="text-status-highlight" />
+              <>
+                <InfoRow
+                  label="Unanchor Timer"
+                  value={formatCountdown(starbase.unanchor_at)}
+                  className="text-status-highlight font-mono"
+                />
+                <InfoRow label="Unanchor At" value={formatDateTime(starbase.unanchor_at)} className="text-status-highlight" />
+              </>
+            )}
+            {starbase.onlined_since && (
+              <>
+                <InfoRow
+                  label="Online Duration"
+                  value={formatElapsed(starbase.onlined_since)}
+                  className="text-status-positive font-mono"
+                />
+                <InfoRow label="Online Since" value={formatDateTime(starbase.onlined_since)} />
+              </>
             )}
           </Section>
+
+          {detail && (
+            <Section title="Fuel Timers">
+              {(() => {
+                const fuelHours = calculateFuelHours(detail, type?.towerSize, type?.fuelTier)
+                const strontHours = calculateStrontHours(detail, type?.towerSize)
+                const fuelIsLow = fuelHours !== null && fuelHours < 72
+                const strontIsLow = strontHours !== null && strontHours < 24
+                return (
+                  <>
+                    <InfoRow
+                      label="Fuel Remaining"
+                      value={formatHoursAsTimer(fuelHours)}
+                      className={cn('font-mono', fuelIsLow ? 'text-status-negative' : undefined)}
+                    />
+                    <InfoRow
+                      label="Stront Remaining"
+                      value={formatHoursAsTimer(strontHours)}
+                      className={cn('font-mono', strontIsLow ? 'text-status-negative' : undefined)}
+                    />
+                  </>
+                )
+              })()}
+            </Section>
+          )}
 
           {detail && (
             <>

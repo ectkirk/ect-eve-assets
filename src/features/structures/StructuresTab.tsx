@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
-import { Fuel, Zap, ZapOff, AlertTriangle, Clock } from 'lucide-react'
+import { Fuel, AlertTriangle, Clock } from 'lucide-react'
 import { useAuthStore, ownerKey, type Owner } from '@/store/auth-store'
 import { useStructuresStore, type ESICorporationStructure } from '@/store/structures-store'
 import { useStarbasesStore, type ESIStarbase } from '@/store/starbases-store'
-import { useStarbaseDetailsStore, calculateFuelHours, calculateStrontHours } from '@/store/starbase-details-store'
+import { useStarbaseDetailsStore, calculateFuelHours } from '@/store/starbase-details-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useTabControls } from '@/context'
 import { useCacheVersion, useSortable, SortableHeader } from '@/hooks'
@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/table'
 
 type UpwellSortColumn = 'name' | 'type' | 'region' | 'state' | 'fuel' | 'details'
-type StarbaseSortColumn = 'name' | 'type' | 'region' | 'state' | 'fuel' | 'stront' | 'details'
+type StarbaseSortColumn = 'name' | 'type' | 'region' | 'state' | 'fuel' | 'details'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -111,7 +111,7 @@ function formatFuelHours(hours: number | null): { text: string; days: number | n
 }
 
 type TimerInfo = {
-  type: 'reinforced' | 'unanchoring' | 'online' | 'none'
+  type: 'reinforced' | 'unanchoring' | 'onlining' | 'none'
   text: string
   timestamp: number | null
   isUrgent: boolean
@@ -142,12 +142,8 @@ function getStarbaseTimer(starbase: ESIStarbase): TimerInfo {
     }
   }
 
-  if (starbase.onlined_since) {
-    const since = new Date(starbase.onlined_since).getTime()
-    const elapsed = now - since
-    const days = Math.floor(elapsed / (24 * 60 * 60 * 1000))
-    const text = days >= 1 ? `${days}d` : '<1d'
-    return { type: 'online', text: `Online: ${text}`, timestamp: since, isUrgent: false }
+  if (starbase.state === 'onlining') {
+    return { type: 'onlining', text: 'Onlining', timestamp: null, isUrgent: false }
   }
 
   return { type: 'none', text: '-', timestamp: null, isUrgent: false }
@@ -214,21 +210,6 @@ function getStructureTimer(structure: ESICorporationStructure): StructureTimerIn
   }
 
   return { type: 'none', text: '-', timestamp: null, isUrgent: false }
-}
-
-function ServiceBadge({ name, state }: { name: string; state: 'online' | 'offline' | 'cleanup' }) {
-  const isOnline = state === 'online'
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs',
-        isOnline ? 'bg-semantic-success/20 text-status-positive' : 'bg-surface-secondary text-content-muted'
-      )}
-    >
-      {isOnline ? <Zap className="h-3 w-3" /> : <ZapOff className="h-3 w-3" />}
-      {name}
-    </span>
-  )
 }
 
 function buildStructureTreeNode(
@@ -541,16 +522,11 @@ export function StructuresTab() {
           const hours = calculateFuelHours(detail, row.towerSize, row.fuelTier)
           return hours ?? -1
         }
-        case 'stront': {
-          const detail = starbaseDetails.get(row.starbase.starbase_id)
-          const hours = calculateStrontHours(detail, row.towerSize)
-          return hours ?? -1
-        }
         case 'details': {
           const timer = getStarbaseTimer(row.starbase)
           if (timer.type === 'reinforced') return timer.timestamp ?? Infinity
           if (timer.type === 'unanchoring') return (timer.timestamp ?? Infinity) + 1e15
-          if (timer.type === 'online') return -(timer.timestamp ?? 0)
+          if (timer.type === 'onlining') return 1e16
           return Infinity
         }
         default:
@@ -629,16 +605,15 @@ export function StructuresTab() {
             <div className="px-3 py-2 border-b border-border bg-surface-secondary/50">
               <h3 className="text-sm font-medium text-content-primary">Upwell Structures ({sortedUpwellRows.length})</h3>
             </div>
-            <Table>
+            <Table className="table-fixed">
               <TableHeader className="bg-surface-secondary">
                 <TableRow className="hover:bg-transparent">
-                  <SortableHeader column="name" label="Structure" sortColumn={upwellSort.sortColumn} sortDirection={upwellSort.sortDirection} onSort={upwellSort.handleSort} />
-                  <SortableHeader column="type" label="Type" sortColumn={upwellSort.sortColumn} sortDirection={upwellSort.sortDirection} onSort={upwellSort.handleSort} />
-                  <SortableHeader column="region" label="Region" sortColumn={upwellSort.sortColumn} sortDirection={upwellSort.sortDirection} onSort={upwellSort.handleSort} />
-                  <SortableHeader column="state" label="State" sortColumn={upwellSort.sortColumn} sortDirection={upwellSort.sortDirection} onSort={upwellSort.handleSort} />
-                  <SortableHeader column="fuel" label="Fuel" sortColumn={upwellSort.sortColumn} sortDirection={upwellSort.sortDirection} onSort={upwellSort.handleSort} className="text-right" />
-                  <th className="h-10 px-4 text-right align-middle text-sm font-normal text-content-secondary">Services</th>
-                  <SortableHeader column="details" label="Details" sortColumn={upwellSort.sortColumn} sortDirection={upwellSort.sortDirection} onSort={upwellSort.handleSort} className="text-right" />
+                  <SortableHeader column="name" label="Structure" sortColumn={upwellSort.sortColumn} sortDirection={upwellSort.sortDirection} onSort={upwellSort.handleSort} className="w-[35%]" />
+                  <SortableHeader column="type" label="Type" sortColumn={upwellSort.sortColumn} sortDirection={upwellSort.sortDirection} onSort={upwellSort.handleSort} className="w-[20%]" />
+                  <SortableHeader column="region" label="Region" sortColumn={upwellSort.sortColumn} sortDirection={upwellSort.sortDirection} onSort={upwellSort.handleSort} className="w-[15%]" />
+                  <SortableHeader column="state" label="State" sortColumn={upwellSort.sortColumn} sortDirection={upwellSort.sortDirection} onSort={upwellSort.handleSort} className="w-[10%]" />
+                  <SortableHeader column="fuel" label="Fuel" sortColumn={upwellSort.sortColumn} sortDirection={upwellSort.sortDirection} onSort={upwellSort.handleSort} className="w-[10%] text-right" />
+                  <SortableHeader column="details" label="Details" sortColumn={upwellSort.sortColumn} sortDirection={upwellSort.sortDirection} onSort={upwellSort.handleSort} className="w-[10%] text-right" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -689,13 +664,6 @@ export function StructuresTab() {
                         </div>
                       </TableCell>
                       <TableCell className="py-1.5 text-right">
-                        <div className="flex flex-wrap gap-1 justify-end">
-                          {row.structure.services?.map((service, idx) => (
-                            <ServiceBadge key={idx} name={service.name} state={service.state} />
-                          )) ?? <span className="text-content-muted">-</span>}
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-1.5 text-right">
                         <div className="flex items-center justify-end gap-1">
                           {timerInfo.type !== 'none' && <Clock className="h-3.5 w-3.5" />}
                           <span className={cn('tabular-nums text-sm', timerColorClass)}>
@@ -732,16 +700,15 @@ export function StructuresTab() {
             <div className="px-3 py-2 border-b border-border bg-surface-secondary/50">
               <h3 className="text-sm font-medium text-content-primary">Starbases ({sortedStarbaseRows.length})</h3>
             </div>
-            <Table>
+            <Table className="table-fixed">
               <TableHeader className="bg-surface-secondary">
                 <TableRow className="hover:bg-transparent">
-                  <SortableHeader column="name" label="Moon" sortColumn={starbaseSort.sortColumn} sortDirection={starbaseSort.sortDirection} onSort={starbaseSort.handleSort} />
-                  <SortableHeader column="type" label="Type" sortColumn={starbaseSort.sortColumn} sortDirection={starbaseSort.sortDirection} onSort={starbaseSort.handleSort} />
-                  <SortableHeader column="region" label="Region" sortColumn={starbaseSort.sortColumn} sortDirection={starbaseSort.sortDirection} onSort={starbaseSort.handleSort} />
-                  <SortableHeader column="state" label="State" sortColumn={starbaseSort.sortColumn} sortDirection={starbaseSort.sortDirection} onSort={starbaseSort.handleSort} />
-                  <SortableHeader column="fuel" label="Fuel" sortColumn={starbaseSort.sortColumn} sortDirection={starbaseSort.sortDirection} onSort={starbaseSort.handleSort} className="text-right" />
-                  <SortableHeader column="stront" label="Stront" sortColumn={starbaseSort.sortColumn} sortDirection={starbaseSort.sortDirection} onSort={starbaseSort.handleSort} className="text-right" />
-                  <SortableHeader column="details" label="Details" sortColumn={starbaseSort.sortColumn} sortDirection={starbaseSort.sortDirection} onSort={starbaseSort.handleSort} className="text-right" />
+                  <SortableHeader column="name" label="Moon" sortColumn={starbaseSort.sortColumn} sortDirection={starbaseSort.sortDirection} onSort={starbaseSort.handleSort} className="w-[35%]" />
+                  <SortableHeader column="type" label="Type" sortColumn={starbaseSort.sortColumn} sortDirection={starbaseSort.sortDirection} onSort={starbaseSort.handleSort} className="w-[20%]" />
+                  <SortableHeader column="region" label="Region" sortColumn={starbaseSort.sortColumn} sortDirection={starbaseSort.sortDirection} onSort={starbaseSort.handleSort} className="w-[15%]" />
+                  <SortableHeader column="state" label="State" sortColumn={starbaseSort.sortColumn} sortDirection={starbaseSort.sortDirection} onSort={starbaseSort.handleSort} className="w-[10%]" />
+                  <SortableHeader column="fuel" label="Fuel" sortColumn={starbaseSort.sortColumn} sortDirection={starbaseSort.sortDirection} onSort={starbaseSort.handleSort} className="w-[10%] text-right" />
+                  <SortableHeader column="details" label="Details" sortColumn={starbaseSort.sortColumn} sortDirection={starbaseSort.sortDirection} onSort={starbaseSort.handleSort} className="w-[10%] text-right" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -751,9 +718,7 @@ export function StructuresTab() {
                   const isReinforced = state === 'reinforced'
                   const detail = starbaseDetails.get(row.starbase.starbase_id)
                   const fuelHours = calculateFuelHours(detail, row.towerSize, row.fuelTier)
-                  const strontHours = calculateStrontHours(detail, row.towerSize)
                   const fuelInfo = formatFuelHours(fuelHours)
-                  const strontInfo = formatFuelHours(strontHours)
                   const timerInfo = getStarbaseTimer(row.starbase)
 
                   const moonDisplay = row.moonName
@@ -761,7 +726,7 @@ export function StructuresTab() {
 
                   const timerColorClass = timerInfo.type === 'reinforced'
                     ? (timerInfo.isUrgent ? 'text-status-negative' : 'text-status-highlight')
-                    : timerInfo.type === 'unanchoring'
+                    : timerInfo.type === 'unanchoring' || timerInfo.type === 'onlining'
                       ? 'text-status-info'
                       : 'text-content-muted'
 
@@ -797,11 +762,6 @@ export function StructuresTab() {
                             {fuelInfo.text}
                           </span>
                         </div>
-                      </TableCell>
-                      <TableCell className="py-1.5 text-right">
-                        <span className="tabular-nums text-content-secondary">
-                          {strontInfo.text}
-                        </span>
                       </TableCell>
                       <TableCell className="py-1.5 text-right">
                         <div className="flex items-center justify-end gap-1">
