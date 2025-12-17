@@ -12,6 +12,8 @@ import {
   hasLocation,
   hasStructure,
   getStructure,
+  hasContractItems,
+  getContractItems,
 } from '@/store/reference-cache'
 import { resolveTypes, resolveLocations } from '@/api/ref-client'
 import { resolveStructures, resolveNames } from '@/api/endpoints/universe'
@@ -84,10 +86,10 @@ function collectFromAssets(
   }
 }
 
-function collectFromContracts(
+async function collectFromContracts(
   contractsByOwner: OwnerContracts[],
   ids: ResolutionIds
-): void {
+): Promise<void> {
   const checkLocation = (locationId: number | undefined, characterId: number) => {
     if (!locationId) return
     if (locationId > 1_000_000_000_000) {
@@ -100,7 +102,7 @@ function collectFromContracts(
   }
 
   for (const { owner, contracts } of contractsByOwner) {
-    for (const { contract, items } of contracts) {
+    for (const { contract } of contracts) {
       checkLocation(contract.start_location_id, owner.characterId)
       checkLocation(contract.end_location_id, owner.characterId)
 
@@ -108,12 +110,17 @@ function collectFromContracts(
         ids.entityIds.add(contract.assignee_id)
       }
 
-      for (const item of items) {
-        if (needsTypeResolution(item.type_id)) {
-          ids.typeIds.add(item.type_id)
-        }
-        if (item.item_id && isAbyssalTypeId(item.type_id) && !hasCachedAbyssalPrice(item.item_id)) {
-          ids.abyssalItemIds.push(item.item_id)
+      if (hasContractItems(contract.contract_id)) {
+        const items = await getContractItems(contract.contract_id)
+        if (items) {
+          for (const item of items) {
+            if (needsTypeResolution(item.type_id)) {
+              ids.typeIds.add(item.type_id)
+            }
+            if (item.item_id && isAbyssalTypeId(item.type_id) && !hasCachedAbyssalPrice(item.item_id)) {
+              ids.abyssalItemIds.push(item.item_id)
+            }
+          }
         }
       }
     }
@@ -222,14 +229,14 @@ function collectFromClones(
   }
 }
 
-export function collectResolutionIds(
+export async function collectResolutionIds(
   assetsByOwner: OwnerAssets[],
   contractsByOwner: OwnerContracts[],
   ordersByOwner: OwnerOrders[],
   jobsByOwner: OwnerJobs[],
   structuresByOwner: OwnerStructures[],
   clonesByOwner: CharacterCloneData[]
-): ResolutionIds {
+): Promise<ResolutionIds> {
   const ids: ResolutionIds = {
     typeIds: new Set(),
     locationIds: new Set(),
@@ -239,7 +246,7 @@ export function collectResolutionIds(
   }
 
   collectFromAssets(assetsByOwner, ids)
-  collectFromContracts(contractsByOwner, ids)
+  await collectFromContracts(contractsByOwner, ids)
   collectFromOrders(ordersByOwner, ids)
   collectFromJobs(jobsByOwner, ids)
   collectFromStructures(structuresByOwner, ids)
@@ -309,7 +316,7 @@ async function runResolution(): Promise<void> {
   const { useStructuresStore } = await import('@/store/structures-store')
   const { useClonesStore } = await import('@/store/clones-store')
 
-  const ids = collectResolutionIds(
+  const ids = await collectResolutionIds(
     useAssetStore.getState().assetsByOwner,
     useContractsStore.getState().contractsByOwner,
     useMarketOrdersStore.getState().dataByOwner,

@@ -1,7 +1,7 @@
 import { logger } from '@/lib/logger'
 
 const DB_NAME = 'ecteveassets-cache'
-const DB_VERSION = 4
+const DB_VERSION = 5
 
 export interface CachedType {
   id: number
@@ -41,6 +41,20 @@ export interface CachedAbyssal {
   fetchedAt: number // timestamp
 }
 
+export interface CachedContractItems {
+  contractId: number
+  items: Array<{
+    record_id: number
+    type_id: number
+    quantity: number
+    is_included: boolean
+    is_singleton: boolean
+    raw_quantity?: number
+    item_id?: number
+    is_blueprint_copy?: boolean
+  }>
+}
+
 export interface CachedName {
   id: number
   name: string
@@ -53,6 +67,8 @@ let structuresCache = new Map<number, CachedStructure>()
 let locationsCache = new Map<number, CachedLocation>()
 let abyssalsCache = new Map<number, CachedAbyssal>()
 const namesCache = new Map<number, CachedName>()
+const contractItemsKnown = new Set<number>()
+const contractItemsCache = new Map<number, CachedContractItems['items']>()
 let initialized = false
 
 const listeners = new Set<() => void>()
@@ -98,8 +114,10 @@ async function openDB(): Promise<IDBDatabase> {
       if (!database.objectStoreNames.contains('abyssals')) {
         database.createObjectStore('abyssals', { keyPath: 'id' })
       }
+      if (!database.objectStoreNames.contains('contractItems')) {
+        database.createObjectStore('contractItems', { keyPath: 'contractId' })
+      }
 
-      // Clear locations cache when upgrading to v4 (added regionName/solarSystemName fields)
       if (oldVersion < 4 && database.objectStoreNames.contains('locations')) {
         const tx = (event.target as IDBOpenDBRequest).transaction!
         tx.objectStore('locations').clear()
@@ -127,6 +145,20 @@ async function loadStore<T>(storeName: string): Promise<Map<number, T>> {
   })
 }
 
+async function loadContractItemKeys(): Promise<Set<number>> {
+  const database = await openDB()
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction('contractItems', 'readonly')
+    const store = tx.objectStore('contractItems')
+    const request = store.getAllKeys()
+
+    request.onerror = () => reject(request.error)
+    request.onsuccess = () => {
+      resolve(new Set(request.result as number[]))
+    }
+  })
+}
+
 export async function initCache(): Promise<void> {
   if (initialized) return
 
@@ -137,6 +169,8 @@ export async function initCache(): Promise<void> {
     structuresCache = await loadStore<CachedStructure>('structures')
     locationsCache = await loadStore<CachedLocation>('locations')
     abyssalsCache = await loadStore<CachedAbyssal>('abyssals')
+    const contractKeys = await loadContractItemKeys()
+    contractKeys.forEach((k) => contractItemsKnown.add(k))
     initialized = true
 
     logger.info('Reference cache initialized', {
@@ -215,6 +249,54 @@ export function saveNames(names: CachedName[]): void {
     namesCache.set(name.id, name)
   }
   notifyListeners()
+}
+
+export function hasContractItems(contractId: number): boolean {
+  return contractItemsKnown.has(contractId)
+}
+
+export function getContractItemsSync(contractId: number): CachedContractItems['items'] | undefined {
+  return contractItemsCache.get(contractId)
+}
+
+export async function getContractItems(contractId: number): Promise<CachedContractItems['items'] | undefined> {
+  if (!contractItemsKnown.has(contractId)) return undefined
+
+  const cached = contractItemsCache.get(contractId)
+  if (cached) return cached
+
+  const database = await openDB()
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction('contractItems', 'readonly')
+    const store = tx.objectStore('contractItems')
+    const request = store.get(contractId)
+
+    request.onerror = () => reject(request.error)
+    request.onsuccess = () => {
+      const result = request.result as CachedContractItems | undefined
+      if (result?.items) {
+        contractItemsCache.set(contractId, result.items)
+      }
+      resolve(result?.items)
+    }
+  })
+}
+
+export async function saveContractItems(contractId: number, items: CachedContractItems['items']): Promise<void> {
+  const database = await openDB()
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction('contractItems', 'readwrite')
+    const store = tx.objectStore('contractItems')
+
+    tx.onerror = () => reject(tx.error)
+    tx.oncomplete = () => {
+      contractItemsKnown.add(contractId)
+      contractItemsCache.set(contractId, items)
+      resolve()
+    }
+
+    store.put({ contractId, items } as CachedContractItems)
+  })
 }
 
 export async function saveTypes(types: CachedType[]): Promise<void> {
@@ -317,6 +399,8 @@ export async function clearReferenceCache(): Promise<void> {
   locationsCache.clear()
   abyssalsCache.clear()
   namesCache.clear()
+  contractItemsKnown.clear()
+  contractItemsCache.clear()
   initialized = false
 
   if (db) {

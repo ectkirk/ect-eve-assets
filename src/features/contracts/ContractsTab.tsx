@@ -19,8 +19,8 @@ import { useColumnSettings, useCacheVersion, useSortable, SortableHeader, sortRo
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useContractsStore, type ContractWithItems } from '@/store/contracts-store'
 import { useAssetData } from '@/hooks/useAssetData'
-import { type ESIContract } from '@/api/endpoints/contracts'
-import { hasType, getType } from '@/store/reference-cache'
+import { type ESIContract, type ESIContractItem } from '@/api/endpoints/contracts'
+import { hasType, getType, hasContractItems, getContractItems, saveContractItems } from '@/store/reference-cache'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import { useAssetStore } from '@/store/asset-store'
 import { getName } from '@/api/endpoints/universe'
@@ -59,6 +59,7 @@ type ContractDirection = 'out' | 'in'
 
 interface ContractRow {
   contractWithItems: ContractWithItems
+  items: ESIContractItem[]
   ownerName: string
   locationName: string
   endLocationName: string
@@ -227,7 +228,7 @@ function ContractsTable({
       <TableBody>
         {paginatedContracts.map((row) => {
           const contract = row.contractWithItems.contract
-          const items = row.contractWithItems.items
+          const items = row.items
           const TypeIcon = CONTRACT_TYPE_ICONS[contract.type]
           const expiry = formatExpiry(contract.date_expired)
           const value = getContractValue(contract)
@@ -404,7 +405,7 @@ function ContractsTable({
     <ContractItemsDialog
       open={selectedContract !== null}
       onOpenChange={(open) => !open && setSelectedContract(null)}
-      items={selectedContract?.contractWithItems.items ?? []}
+      items={selectedContract?.items ?? []}
       contractType={selectedContract ? CONTRACT_TYPE_NAMES[selectedContract.contractWithItems.contract.type] : ''}
       prices={prices}
     />
@@ -460,18 +461,39 @@ export function ContractsTab() {
   const prices = useAssetStore((s) => s.prices)
   const contractsByOwner = useContractsStore((s) => s.contractsByOwner)
   const contractsUpdating = useContractsStore((s) => s.isUpdating)
-  const isLoadingCompletedItems = useContractsStore((s) => s.isLoadingCompletedItems)
-  const fetchCompletedContractItems = useContractsStore((s) => s.fetchCompletedContractItems)
+  const fetchItemsForContract = useContractsStore((s) => s.fetchItemsForContract)
   const updateError = useContractsStore((s) => s.updateError)
   const init = useContractsStore((s) => s.init)
   const initialized = useContractsStore((s) => s.initialized)
+  const updateCounter = useContractsStore((s) => s.updateCounter)
 
   const { isLoading: assetsUpdating } = useAssetData()
   const isUpdating = assetsUpdating || contractsUpdating
 
+  const [loadedItems, setLoadedItems] = useState<Map<number, ESIContractItem[]>>(new Map())
+  const [isLoadingItems, setIsLoadingItems] = useState(false)
+
   useEffect(() => {
     init()
   }, [init])
+
+  useEffect(() => {
+    const loadCachedItems = async () => {
+      const newItems = new Map<number, ESIContractItem[]>()
+      for (const { contracts } of contractsByOwner) {
+        for (const { contract } of contracts) {
+          if (hasContractItems(contract.contract_id)) {
+            const items = await getContractItems(contract.contract_id)
+            if (items) {
+              newItems.set(contract.contract_id, items as ESIContractItem[])
+            }
+          }
+        }
+      }
+      setLoadedItems(newItems)
+    }
+    loadCachedItems()
+  }, [contractsByOwner, updateCounter])
 
   const cacheVersion = useCacheVersion()
 
@@ -480,10 +502,48 @@ export function ContractsTab() {
   const [showCompleted, setShowCompleted] = useState(false)
 
   useEffect(() => {
-    if (showCompleted) {
-      fetchCompletedContractItems()
+    if (!showCompleted) return
+
+    const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
+    const FINISHED_STATUSES = new Set(['finished', 'finished_issuer', 'finished_contractor'])
+
+    const fetchCompletedItems = async () => {
+      const contractsToFetch: number[] = []
+      for (const { contracts } of contractsByOwner) {
+        for (const { contract } of contracts) {
+          if (hasContractItems(contract.contract_id)) continue
+
+          const isActive = contract.status === 'outstanding' || contract.status === 'in_progress'
+          if (isActive) continue
+
+          const isItemContract = contract.type === 'item_exchange' || contract.type === 'auction'
+          const isFinished = FINISHED_STATUSES.has(contract.status)
+          const refTime = new Date(contract.date_completed ?? contract.date_expired).getTime()
+          const isWithin30Days = Date.now() - refTime < THIRTY_DAYS_MS
+
+          if (!isItemContract || !isFinished || !isWithin30Days) {
+            await saveContractItems(contract.contract_id, [])
+            continue
+          }
+
+          contractsToFetch.push(contract.contract_id)
+        }
+      }
+
+      if (contractsToFetch.length === 0) return
+
+      setIsLoadingItems(true)
+      try {
+        for (const contractId of contractsToFetch) {
+          await fetchItemsForContract(contractId)
+        }
+      } finally {
+        setIsLoadingItems(false)
+      }
     }
-  }, [showCompleted, fetchCompletedContractItems])
+
+    fetchCompletedItems()
+  }, [showCompleted, contractsByOwner, fetchItemsForContract])
 
   const { setExpandCollapse, search, setResultCount, setTotalValue, setColumns } = useTabControls()
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
@@ -533,7 +593,7 @@ export function ContractsTab() {
       isIssuer: boolean
     ): ContractRow => {
       const contract = contractWithItems.contract
-      const items = contractWithItems.items
+      const items = loadedItems.get(contract.contract_id) ?? []
       const direction: ContractDirection = isIssuer ? 'out' : 'in'
 
       const firstItem = items[0]
@@ -563,6 +623,7 @@ export function ContractsTab() {
 
       return {
         contractWithItems,
+        items,
         ownerName: owner.name,
         locationName: getLocationName(contract.start_location_id),
         endLocationName: contract.end_location_id ? getLocationName(contract.end_location_id) : '',
@@ -637,7 +698,7 @@ export function ContractsTab() {
         : null,
       completedContracts: filteredCompleted,
     }
-  }, [contractsByOwner, cacheVersion, owners, prices, search, selectedSet])
+  }, [contractsByOwner, cacheVersion, owners, prices, search, selectedSet, loadedItems])
 
   const toggleDirection = useCallback((direction: string) => {
     setExpandedDirections((prev) => {
@@ -818,7 +879,7 @@ export function ContractsTab() {
                   )}
                   <History className="h-4 w-4 text-content-secondary" />
                   <span className="text-content-secondary flex-1">Completed Contracts</span>
-                  {isLoadingCompletedItems && (
+                  {isLoadingItems && (
                     <Loader2 className="h-4 w-4 text-content-secondary animate-spin" />
                   )}
                   <span className="text-xs text-content-secondary">

@@ -5,7 +5,7 @@ import { getCharacterAssetNames, getCorporationAssetNames, type ESIAsset, type E
 import { esi, type ESIResponseMeta } from '@/api/esi'
 import { ESIAssetSchema } from '@/api/schemas'
 import { fetchPrices, resolveTypes } from '@/api/ref-client'
-import { getType } from '@/store/reference-cache'
+import { getType, getContractItemsSync } from '@/store/reference-cache'
 import { createOwnerDB } from '@/lib/owner-indexed-db'
 import { logger } from '@/lib/logger'
 import { triggerResolution } from '@/lib/data-resolver'
@@ -125,9 +125,12 @@ function collectAllTypeIds(
   }
 
   for (const { contracts } of contractsByOwner) {
-    for (const { items } of contracts) {
-      for (const item of items) {
-        typeIds.add(item.type_id)
+    for (const { contract } of contracts) {
+      const items = getContractItemsSync(contract.contract_id)
+      if (items) {
+        for (const item of items) {
+          typeIds.add(item.type_id)
+        }
       }
     }
   }
@@ -165,10 +168,13 @@ function buildSyntheticAssets(
     const key = makeOwnerKey(owner.type, owner.id)
     const synthetics: ESIAsset[] = syntheticByOwner.get(key) ?? []
 
-    for (const { contract, items } of contracts) {
+    for (const { contract } of contracts) {
       if (contract.status !== 'outstanding') continue
       const isIssuer = ownerCharIds.has(contract.issuer_id) || ownerCorpIds.has(contract.issuer_corporation_id)
       if (!isIssuer) continue
+
+      const items = getContractItemsSync(contract.contract_id)
+      if (!items) continue
 
       const locationId = contract.start_location_id ?? 0
 
