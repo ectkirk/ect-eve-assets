@@ -18,7 +18,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
-type UpwellSortColumn = 'name' | 'type' | 'region' | 'state' | 'fuel'
+type UpwellSortColumn = 'name' | 'type' | 'region' | 'state' | 'fuel' | 'details'
 type StarbaseSortColumn = 'name' | 'type' | 'region' | 'state' | 'fuel' | 'stront' | 'details'
 import {
   ContextMenu,
@@ -30,6 +30,7 @@ import { cn } from '@/lib/utils'
 import { TypeIcon } from '@/components/ui/type-icon'
 import { FittingDialog } from '@/components/dialogs/FittingDialog'
 import { POSInfoDialog } from '@/components/dialogs/POSInfoDialog'
+import { StructureInfoDialog } from '@/components/dialogs/StructureInfoDialog'
 import type { TreeNode } from '@/lib/tree-types'
 import type { ESIAsset } from '@/api/endpoints/assets'
 
@@ -147,6 +148,69 @@ function getStarbaseTimer(starbase: ESIStarbase): TimerInfo {
     const days = Math.floor(elapsed / (24 * 60 * 60 * 1000))
     const text = days >= 1 ? `${days}d` : '<1d'
     return { type: 'online', text: `Online: ${text}`, timestamp: since, isUrgent: false }
+  }
+
+  return { type: 'none', text: '-', timestamp: null, isUrgent: false }
+}
+
+type StructureTimerInfo = {
+  type: 'reinforcing' | 'unanchoring' | 'anchoring' | 'vulnerable' | 'none'
+  text: string
+  timestamp: number | null
+  isUrgent: boolean
+}
+
+function getStructureTimer(structure: ESICorporationStructure): StructureTimerInfo {
+  const now = Date.now()
+
+  if (structure.state_timer_end && (
+    structure.state === 'armor_reinforce' ||
+    structure.state === 'hull_reinforce'
+  )) {
+    const until = new Date(structure.state_timer_end).getTime()
+    const remaining = until - now
+    if (remaining > 0) {
+      const hours = Math.floor(remaining / (60 * 60 * 1000))
+      const days = Math.floor(hours / 24)
+      const text = days >= 1 ? `${days}d ${hours % 24}h` : `${hours}h`
+      const label = structure.state === 'armor_reinforce' ? 'Armor' : 'Hull'
+      return { type: 'reinforcing', text: `${label}: ${text}`, timestamp: until, isUrgent: hours < 24 }
+    }
+  }
+
+  if (structure.unanchors_at) {
+    const until = new Date(structure.unanchors_at).getTime()
+    const remaining = until - now
+    if (remaining > 0) {
+      const hours = Math.floor(remaining / (60 * 60 * 1000))
+      const days = Math.floor(hours / 24)
+      const text = days >= 1 ? `${days}d ${hours % 24}h` : `${hours}h`
+      return { type: 'unanchoring', text: `Unanchor: ${text}`, timestamp: until, isUrgent: false }
+    }
+  }
+
+  if (structure.state === 'anchoring' && structure.state_timer_end) {
+    const until = new Date(structure.state_timer_end).getTime()
+    const remaining = until - now
+    if (remaining > 0) {
+      const hours = Math.floor(remaining / (60 * 60 * 1000))
+      const days = Math.floor(hours / 24)
+      const text = days >= 1 ? `${days}d ${hours % 24}h` : `${hours}h`
+      return { type: 'anchoring', text: `Anchor: ${text}`, timestamp: until, isUrgent: false }
+    }
+  }
+
+  if (structure.state_timer_end && (
+    structure.state === 'armor_vulnerable' ||
+    structure.state === 'hull_vulnerable'
+  )) {
+    const until = new Date(structure.state_timer_end).getTime()
+    const remaining = until - now
+    if (remaining > 0) {
+      const hours = Math.floor(remaining / (60 * 60 * 1000))
+      const text = hours >= 1 ? `${hours}h` : '<1h'
+      return { type: 'vulnerable', text: `Vuln: ${text}`, timestamp: until, isUrgent: true }
+    }
   }
 
   return { type: 'none', text: '-', timestamp: null, isUrgent: false }
@@ -307,6 +371,8 @@ export function StructuresTab() {
   const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null)
   const [posInfoDialogOpen, setPosInfoDialogOpen] = useState(false)
   const [selectedStarbase, setSelectedStarbase] = useState<{ starbase: ESIStarbase; ownerName: string } | null>(null)
+  const [structureInfoDialogOpen, setStructureInfoDialogOpen] = useState(false)
+  const [selectedStructure, setSelectedStructure] = useState<{ structure: ESICorporationStructure; ownerName: string } | null>(null)
 
   const handleViewFitting = useCallback((node: TreeNode) => {
     setSelectedNode(node)
@@ -316,6 +382,11 @@ export function StructuresTab() {
   const handleViewPosInfo = useCallback((starbase: ESIStarbase, ownerName: string) => {
     setSelectedStarbase({ starbase, ownerName })
     setPosInfoDialogOpen(true)
+  }, [])
+
+  const handleViewStructureInfo = useCallback((structure: ESICorporationStructure, ownerName: string) => {
+    setSelectedStructure({ structure, ownerName })
+    setStructureInfoDialogOpen(true)
   }, [])
 
   const { search, setResultCount } = useTabControls()
@@ -422,6 +493,14 @@ export function StructuresTab() {
           return row.structure.state
         case 'fuel':
           return row.fuelDays ?? -1
+        case 'details': {
+          const timer = getStructureTimer(row.structure)
+          if (timer.type === 'reinforcing') return timer.timestamp ?? Infinity
+          if (timer.type === 'vulnerable') return (timer.timestamp ?? Infinity) + 1e14
+          if (timer.type === 'unanchoring') return (timer.timestamp ?? Infinity) + 1e15
+          if (timer.type === 'anchoring') return (timer.timestamp ?? Infinity) + 1e16
+          return Infinity
+        }
         default:
           return 0
       }
@@ -559,6 +638,7 @@ export function StructuresTab() {
                   <SortableHeader column="state" label="State" sortColumn={upwellSort.sortColumn} sortDirection={upwellSort.sortDirection} onSort={upwellSort.handleSort} />
                   <SortableHeader column="fuel" label="Fuel" sortColumn={upwellSort.sortColumn} sortDirection={upwellSort.sortDirection} onSort={upwellSort.handleSort} className="text-right" />
                   <th className="h-10 px-4 text-right align-middle text-sm font-normal text-content-secondary">Services</th>
+                  <SortableHeader column="details" label="Details" sortColumn={upwellSort.sortColumn} sortDirection={upwellSort.sortDirection} onSort={upwellSort.handleSort} className="text-right" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -567,6 +647,13 @@ export function StructuresTab() {
                   const fuelInfo = formatFuelExpiry(row.structure.fuel_expires)
                   const isReinforced = row.structure.state.includes('reinforce')
                   const hasFitting = row.treeNode !== null
+                  const timerInfo = getStructureTimer(row.structure)
+
+                  const timerColorClass = timerInfo.type === 'reinforcing' || timerInfo.type === 'vulnerable'
+                    ? (timerInfo.isUrgent ? 'text-status-negative' : 'text-status-highlight')
+                    : timerInfo.type === 'unanchoring' || timerInfo.type === 'anchoring'
+                      ? 'text-status-info'
+                      : 'text-content-muted'
 
                   const tableRow = (
                     <TableRow key={`upwell-${row.structure.structure_id}`}>
@@ -608,23 +695,32 @@ export function StructuresTab() {
                           )) ?? <span className="text-content-muted">-</span>}
                         </div>
                       </TableCell>
+                      <TableCell className="py-1.5 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          {timerInfo.type !== 'none' && <Clock className="h-3.5 w-3.5" />}
+                          <span className={cn('tabular-nums text-sm', timerColorClass)}>
+                            {timerInfo.text}
+                          </span>
+                        </div>
+                      </TableCell>
                     </TableRow>
                   )
 
-                  if (hasFitting) {
-                    return (
-                      <ContextMenu key={`upwell-${row.structure.structure_id}`}>
-                        <ContextMenuTrigger asChild>{tableRow}</ContextMenuTrigger>
-                        <ContextMenuContent>
+                  return (
+                    <ContextMenu key={`upwell-${row.structure.structure_id}`}>
+                      <ContextMenuTrigger asChild>{tableRow}</ContextMenuTrigger>
+                      <ContextMenuContent>
+                        <ContextMenuItem onClick={() => handleViewStructureInfo(row.structure, row.owner.name)}>
+                          Show Structure Info
+                        </ContextMenuItem>
+                        {hasFitting && (
                           <ContextMenuItem onClick={() => handleViewFitting(row.treeNode!)}>
                             View Fitting
                           </ContextMenuItem>
-                        </ContextMenuContent>
-                      </ContextMenu>
-                    )
-                  }
-
-                  return tableRow
+                        )}
+                      </ContextMenuContent>
+                    </ContextMenu>
+                  )
                 })}
               </TableBody>
             </Table>
@@ -745,6 +841,12 @@ export function StructuresTab() {
         starbase={selectedStarbase?.starbase ?? null}
         detail={selectedStarbase ? starbaseDetails.get(selectedStarbase.starbase.starbase_id) : undefined}
         ownerName={selectedStarbase?.ownerName ?? ''}
+      />
+      <StructureInfoDialog
+        open={structureInfoDialogOpen}
+        onOpenChange={setStructureInfoDialogOpen}
+        structure={selectedStructure?.structure ?? null}
+        ownerName={selectedStructure?.ownerName ?? ''}
       />
     </>
   )
