@@ -317,6 +317,7 @@ export interface ESIAPI {
   fetchPaginated: <T>(endpoint: string, options?: ESIRequestOptions) => Promise<T[]>
   fetchPaginatedWithMeta: <T>(endpoint: string, options?: ESIRequestOptions) => Promise<ESIResponseMeta<T[]>>
   clearCache: () => Promise<void>
+  clearCacheByPattern: (pattern: string) => Promise<number>
   getRateLimitInfo: () => Promise<ESIRateLimitInfo>
   provideToken: (characterId: number, token: string | null) => Promise<void>
   onRequestToken: (callback: (characterId: number) => void) => () => void
@@ -363,6 +364,8 @@ const esi: ESIAPI = {
   fetchPaginatedWithMeta: <T>(endpoint: string, options?: ESIRequestOptions) =>
     ipcRenderer.invoke('esi:fetchPaginatedWithMeta', endpoint, options) as Promise<ESIResponseMeta<T[]>>,
   clearCache: () => ipcRenderer.invoke('esi:clearCache'),
+  clearCacheByPattern: (pattern: string) =>
+    ipcRenderer.invoke('esi:clearCacheByPattern', pattern) as Promise<number>,
   getRateLimitInfo: () => ipcRenderer.invoke('esi:getRateLimitInfo'),
   provideToken: (characterId: number, token: string | null) =>
     ipcRenderer.invoke('esi:provideToken', characterId, token),

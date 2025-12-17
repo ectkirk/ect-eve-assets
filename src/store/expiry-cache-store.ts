@@ -41,6 +41,7 @@ interface ExpiryCacheActions {
   queueAllEndpointsForOwner: (ownerKey: string) => void
   queueMissingEndpoints: (ownerKeys: string[]) => void
   clearForOwner: (ownerKey: string) => void
+  clearByEndpoint: (pattern: string) => Promise<void>
   clear: () => Promise<void>
 }
 
@@ -134,6 +135,29 @@ async function deleteByPrefixFromDB(prefix: string): Promise<void> {
       const cursor = request.result
       if (cursor) {
         if ((cursor.key as string).startsWith(prefix)) {
+          cursor.delete()
+        }
+        cursor.continue()
+      }
+    }
+
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
+async function deleteByPatternFromDB(pattern: string): Promise<void> {
+  const database = await openDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction([STORE_EXPIRY], 'readwrite')
+    const store = tx.objectStore(STORE_EXPIRY)
+    const request = store.openCursor()
+
+    request.onsuccess = () => {
+      const cursor = request.result
+      if (cursor) {
+        if ((cursor.key as string).includes(pattern)) {
           cursor.delete()
         }
         cursor.continue()
@@ -431,6 +455,24 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
     })
 
     logger.debug('Cleared expiry for owner', { module: 'ExpiryCacheStore', ownerKey })
+  },
+
+  clearByEndpoint: async (pattern) => {
+    set((state) => {
+      const endpoints = new Map(state.endpoints)
+      const refreshQueue = state.refreshQueue.filter((q) => !q.endpoint.includes(pattern))
+      for (const key of endpoints.keys()) {
+        if (key.includes(pattern)) endpoints.delete(key)
+      }
+      return { endpoints, refreshQueue }
+    })
+
+    try {
+      await deleteByPatternFromDB(pattern)
+      logger.debug('Cleared expiry by endpoint', { module: 'ExpiryCacheStore', pattern })
+    } catch (error) {
+      logger.error('Failed to clear expiry by endpoint', error, { module: 'ExpiryCacheStore', pattern })
+    }
   },
 
   clear: async () => {

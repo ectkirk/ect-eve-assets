@@ -844,6 +844,13 @@ ipcMain.handle('esi:clearCache', () => {
   getESIService().clearCache()
 })
 
+ipcMain.handle('esi:clearCacheByPattern', (_event, pattern: unknown) => {
+  if (typeof pattern !== 'string' || pattern.length === 0 || pattern.length > 100) {
+    return 0
+  }
+  return getESIService().clearCacheByPattern(pattern)
+})
+
 ipcMain.handle('esi:getRateLimitInfo', () => {
   return getESIService().getRateLimitInfo()
 })

@@ -2,13 +2,6 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useAssetStore } from '@/store/asset-store'
 import { useExpiryCacheStore } from '@/store/expiry-cache-store'
-import { useMarketOrdersStore } from '@/store/market-orders-store'
-import { useIndustryJobsStore } from '@/store/industry-jobs-store'
-import { useContractsStore } from '@/store/contracts-store'
-import { useClonesStore } from '@/store/clones-store'
-import { useWalletStore } from '@/store/wallet-store'
-import { useStructuresStore } from '@/store/structures-store'
-import { clearReferenceCache } from '@/store/reference-cache'
 import { AssetsTab } from '@/features/assets'
 import { StructuresTab } from '@/features/structures'
 import { AssetsTreeTab } from '@/features/assets-tree'
@@ -26,12 +19,12 @@ import { useThemeStore, THEME_OPTIONS } from '@/store/theme-store'
 import eveSsoLoginWhite from '/eve-sso-login-white.png'
 import { OwnerIcon } from '@/components/ui/type-icon'
 import { OwnerManagementModal } from './OwnerManagementModal'
-import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { CreditsModal } from './CreditsModal'
 import { SupportModal } from './SupportModal'
 import { ChangelogModal } from './ChangelogModal'
 import { UpdateBanner } from './UpdateBanner'
 import { ToastContainer } from './ToastContainer'
+import { ClearCacheModal } from '@/components/dialogs/ClearCacheModal'
 import { useTotalAssets } from '@/hooks'
 import { formatNumber } from '@/lib/utils'
 import { TabControlsProvider, useTabControls } from '@/context'
@@ -548,37 +541,10 @@ function WindowControls() {
   const [creditsOpen, setCreditsOpen] = useState(false)
   const [supportOpen, setSupportOpen] = useState(false)
   const [changelogOpen, setChangelogOpen] = useState(false)
-  const [isClearingCache, setIsClearingCache] = useState(false)
-  const [showClearCacheConfirm, setShowClearCacheConfirm] = useState(false)
+  const [showClearCacheModal, setShowClearCacheModal] = useState(false)
   const settingsPanelRef = useRef<HTMLDivElement>(null)
   const theme = useThemeStore((s) => s.theme)
   const setTheme = useThemeStore((s) => s.setTheme)
-
-  const handleClearCacheClick = () => {
-    setShowClearCacheConfirm(true)
-  }
-
-  const handleClearCacheConfirm = async () => {
-    setShowClearCacheConfirm(false)
-    if (isClearingCache) return
-    setIsClearingCache(true)
-    try {
-      await Promise.all([
-        useAssetStore.getState().clear(),
-        useMarketOrdersStore.getState().clear(),
-        useIndustryJobsStore.getState().clear(),
-        useContractsStore.getState().clear(),
-        useClonesStore.getState().clear(),
-        useWalletStore.getState().clear(),
-        useStructuresStore.getState().clear(),
-        useExpiryCacheStore.getState().clear(),
-        clearReferenceCache(),
-      ])
-      window.location.reload()
-    } finally {
-      setIsClearingCache(false)
-    }
-  }
 
   useEffect(() => {
     if (!window.electronAPI) return
@@ -678,12 +644,14 @@ function WindowControls() {
               </a>
               <div className="my-2 border-t border-semantic-danger/30" />
               <button
-                onClick={handleClearCacheClick}
-                disabled={isClearingCache}
-                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-semantic-danger hover:bg-semantic-danger/10 disabled:opacity-50"
+                onClick={() => {
+                  setShowClearCacheModal(true)
+                  setSettingsOpen(false)
+                }}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-semantic-danger hover:bg-semantic-danger/10"
               >
                 <Trash2 className="h-4 w-4" />
-                {isClearingCache ? 'Clearing...' : 'Clear All Caches'}
+                Clear Cache...
               </button>
             </div>
           </div>
@@ -692,15 +660,7 @@ function WindowControls() {
       <ChangelogModal open={changelogOpen} onOpenChange={setChangelogOpen} />
       <CreditsModal open={creditsOpen} onOpenChange={setCreditsOpen} />
       <SupportModal open={supportOpen} onOpenChange={setSupportOpen} />
-      <ConfirmDialog
-        open={showClearCacheConfirm}
-        onOpenChange={setShowClearCacheConfirm}
-        title="Clear All Caches?"
-        description="Are you sure you want to clear all cached data? The app will reload and fetch fresh data from EVE servers."
-        confirmLabel="Clear All"
-        variant="danger"
-        onConfirm={handleClearCacheConfirm}
-      />
+      <ClearCacheModal open={showClearCacheModal} onOpenChange={setShowClearCacheModal} />
       <button
         onClick={() => window.electronAPI?.windowMinimize()}
         className="flex h-10 w-12 items-center justify-center text-content-secondary hover:bg-surface-tertiary hover:text-content"

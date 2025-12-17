@@ -97,6 +97,20 @@ export class ESICache {
     this.scheduleSave()
   }
 
+  clearByPattern(pattern: string): number {
+    let count = 0
+    for (const key of this.cache.keys()) {
+      if (key.includes(pattern)) {
+        this.cache.delete(key)
+        count++
+      }
+    }
+    if (count > 0) {
+      this.scheduleSave()
+    }
+    return count
+  }
+
   size(): number {
     return this.cache.size
   }

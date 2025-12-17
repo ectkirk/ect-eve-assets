@@ -262,6 +262,10 @@ export class MainESIService {
     this.cache.clear()
   }
 
+  clearCacheByPattern(pattern: string): number {
+    return this.cache.clearByPattern(pattern)
+  }
+
   getRateLimitInfo(): { globalRetryAfter: number | null; queueLength: number; errorLimitRemain: number } {
     return {
       globalRetryAfter: this.rateLimiter.getGlobalRetryAfter(),

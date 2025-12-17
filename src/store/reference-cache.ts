@@ -421,6 +421,52 @@ export async function clearReferenceCache(): Promise<void> {
   })
 }
 
+async function clearStore(storeName: string): Promise<void> {
+  const database = await openDB()
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction(storeName, 'readwrite')
+    const store = tx.objectStore(storeName)
+    store.clear()
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
+export async function clearTypesCache(): Promise<void> {
+  logger.info('Clearing types cache', { module: 'ReferenceCache' })
+  typesCache.clear()
+  await clearStore('types')
+  notifyListeners()
+}
+
+export async function clearLocationsCache(): Promise<void> {
+  logger.info('Clearing locations cache', { module: 'ReferenceCache' })
+  locationsCache.clear()
+  await clearStore('locations')
+  notifyListeners()
+}
+
+export async function clearStructuresCache(): Promise<void> {
+  logger.info('Clearing structures cache', { module: 'ReferenceCache' })
+  structuresCache.clear()
+  await clearStore('structures')
+  notifyListeners()
+}
+
+export async function clearAbyssalsCache(): Promise<void> {
+  logger.info('Clearing abyssals cache', { module: 'ReferenceCache' })
+  abyssalsCache.clear()
+  await clearStore('abyssals')
+  notifyListeners()
+}
+
+export async function clearContractItemsCache(): Promise<void> {
+  logger.info('Clearing contract items cache', { module: 'ReferenceCache' })
+  contractItemsKnown.clear()
+  contractItemsCache.clear()
+  await clearStore('contractItems')
+}
+
 export const CategoryIds = {
   SHIP: 6,
   MODULE: 7,
