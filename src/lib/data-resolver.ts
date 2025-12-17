@@ -106,6 +106,7 @@ async function collectFromContracts(
       checkLocation(contract.start_location_id, owner.characterId)
       checkLocation(contract.end_location_id, owner.characterId)
 
+      ids.entityIds.add(contract.issuer_id)
       if (contract.assignee_id) {
         ids.entityIds.add(contract.assignee_id)
       }

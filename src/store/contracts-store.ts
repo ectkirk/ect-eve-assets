@@ -107,8 +107,8 @@ async function fetchAndCacheContractItems(
   const fetchedItems = await esi.fetchBatch(
     contracts,
     async (contract) => {
-      if (contract.for_corporation && owner.corporationId) {
-        return getCorporationContractItems(owner.characterId, owner.corporationId, contract.contract_id)
+      if (owner.type === 'corporation') {
+        return getCorporationContractItems(owner.characterId, owner.id, contract.contract_id)
       }
       return fetchContractItemsFromESI(owner.characterId, contract.contract_id)
     },
@@ -407,8 +407,8 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
       logger.debug('Fetching items for contract', { module: 'ContractsStore', contractId })
 
       let items: ESIContractItem[]
-      if (targetContract.for_corporation && targetOwner.corporationId) {
-        items = await getCorporationContractItems(targetOwner.characterId, targetOwner.corporationId, contractId)
+      if (targetOwner.type === 'corporation') {
+        items = await getCorporationContractItems(targetOwner.characterId, targetOwner.id, contractId)
       } else {
         items = await fetchContractItemsFromESI(targetOwner.characterId, contractId)
       }
