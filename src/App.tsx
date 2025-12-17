@@ -8,6 +8,7 @@ import { useBlueprintsStore } from './store/blueprints-store'
 import { useStructuresStore } from './store/structures-store'
 import { useIndustryJobsStore } from './store/industry-jobs-store'
 import { useExpiryCacheStore } from './store/expiry-cache-store'
+import { useNotificationStore } from './store/toast-store'
 import { MainLayout } from './components/layout/MainLayout'
 import { initCache } from './store/reference-cache'
 import { logger } from './lib/logger'
@@ -95,6 +96,7 @@ function App() {
           useBlueprintsStore.getState().init(),
           useStructuresStore.getState().init(),
           useIndustryJobsStore.getState().init(),
+          useNotificationStore.getState().init(),
         ])
       })
       .then(async () => {

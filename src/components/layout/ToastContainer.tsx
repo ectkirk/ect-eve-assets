@@ -1,16 +1,35 @@
-import { useEffect, useRef } from 'react'
-import { useNotificationStore, type Notification } from '@/store/toast-store'
-import { X, TrendingUp, FileCheck, Bell } from 'lucide-react'
+import { useEffect, useRef, type ReactNode } from 'react'
+import { useNotificationStore, type Notification, type NotificationType } from '@/store/toast-store'
+import { X, TrendingUp, FileCheck, Bell, AlertTriangle, Shield, Fuel, Anchor, ZapOff } from 'lucide-react'
 
 function formatTime(timestamp: number): string {
   const date = new Date(timestamp)
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
+function getNotificationIcon(type: NotificationType): ReactNode {
+  switch (type) {
+    case 'order-filled':
+      return <TrendingUp className="h-5 w-5 text-semantic-positive" />
+    case 'contract-accepted':
+      return <FileCheck className="h-5 w-5 text-accent" />
+    case 'structure-reinforced':
+      return <AlertTriangle className="h-5 w-5 text-semantic-danger" />
+    case 'structure-vulnerable':
+      return <Shield className="h-5 w-5 text-semantic-warning" />
+    case 'structure-low-fuel':
+      return <Fuel className="h-5 w-5 text-semantic-danger" />
+    case 'structure-anchoring':
+      return <Anchor className="h-5 w-5 text-accent" />
+    case 'structure-service-offline':
+      return <ZapOff className="h-5 w-5 text-content-muted" />
+    default:
+      return <Bell className="h-5 w-5 text-content-secondary" />
+  }
+}
+
 function NotificationItem({ notification, onDismiss }: { notification: Notification; onDismiss: () => void }) {
-  const icon = notification.type === 'order-filled'
-    ? <TrendingUp className="h-5 w-5 text-semantic-positive" />
-    : <FileCheck className="h-5 w-5 text-accent" />
+  const icon = getNotificationIcon(notification.type)
 
   return (
     <div className="flex items-start gap-3 rounded-lg border border-border bg-surface-tertiary p-3">
