@@ -65,7 +65,7 @@ export class MainESIService {
 
     const result = await this.queue.enqueue(endpoint, {
       ...options,
-      etag: options.etag ?? cached?.etag,
+      etag: options.etag ?? this.cache.getEtag(cacheKey),
     })
 
     if (!result.success) {

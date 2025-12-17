@@ -29,10 +29,27 @@ describe('ESICache', () => {
       expect(cache.get('missing')).toBeUndefined()
     })
 
-    it('returns undefined for expired entries and removes them', () => {
-      cache.set('expired', { data: 'old' }, 'etag', Date.now() - 1000)
+    it('returns undefined for expired entries but preserves them for etag', () => {
+      cache.set('expired', { data: 'old' }, 'etag123', Date.now() - 1000)
       expect(cache.get('expired')).toBeUndefined()
-      expect(cache.size()).toBe(0)
+      expect(cache.getEtag('expired')).toBe('etag123')
+      expect(cache.size()).toBe(1)
+    })
+  })
+
+  describe('getEtag', () => {
+    it('returns etag for valid entry', () => {
+      cache.set('key', { data: 'test' }, 'etag456', Date.now() + 60000)
+      expect(cache.getEtag('key')).toBe('etag456')
+    })
+
+    it('returns etag for expired entry', () => {
+      cache.set('expired', { data: 'old' }, 'stale-etag', Date.now() - 1000)
+      expect(cache.getEtag('expired')).toBe('stale-etag')
+    })
+
+    it('returns undefined for non-existent key', () => {
+      expect(cache.getEtag('missing')).toBeUndefined()
     })
   })
 
@@ -112,7 +129,7 @@ describe('ESICache', () => {
       expect(entry?.etag).toBe('abc')
     })
 
-    it('skips expired entries when loading', async () => {
+    it('loads expired entries to preserve etags for conditional requests', async () => {
       const pastTime = Date.now() - 1000
       const savedData = JSON.stringify({
         version: 1,
@@ -126,7 +143,8 @@ describe('ESICache', () => {
       newCache.setFilePath(testFilePath)
       newCache.load()
 
-      expect(newCache.size()).toBe(0)
+      expect(newCache.get('expired:key')).toBeUndefined()
+      expect(newCache.getEtag('expired:key')).toBe('xyz')
     })
 
     it('does not save if no file path set', async () => {
