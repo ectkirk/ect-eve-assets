@@ -6,7 +6,7 @@ import { useStarbasesStore, type ESIStarbase } from '@/store/starbases-store'
 import { useStarbaseDetailsStore, calculateFuelHours, calculateStrontHours } from '@/store/starbase-details-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useTabControls } from '@/context'
-import { useCacheVersion, useSortable, SortableHeader, sortRows } from '@/hooks'
+import { useCacheVersion, useSortable, SortableHeader } from '@/hooks'
 import { hasType, getType, hasLocation, getLocation } from '@/store/reference-cache'
 import { resolveTypes, resolveLocations } from '@/api/ref-client'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
@@ -18,7 +18,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
-type UpwellSortColumn = 'name' | 'type' | 'location' | 'state' | 'fuel' | 'owner'
+type UpwellSortColumn = 'name' | 'type' | 'region' | 'state' | 'fuel'
 type StarbaseSortColumn = 'name' | 'type' | 'region' | 'state' | 'fuel' | 'stront' | 'details'
 import {
   ContextMenu,
@@ -59,9 +59,8 @@ const STATE_DISPLAY: Record<string, { label: string; color: string }> = {
 interface StructureRow {
   kind: 'upwell'
   structure: ESICorporationStructure
-  ownerName: string
+  owner: Owner
   typeName: string
-  systemName: string
   regionName: string
   fuelDays: number | null
   treeNode: TreeNode | null
@@ -345,9 +344,8 @@ export function StructuresTab() {
         rows.push({
           kind: 'upwell',
           structure,
-          ownerName: owner.name,
+          owner,
           typeName: type?.name ?? `Unknown Type ${structure.type_id}`,
-          systemName: location?.name ?? `System ${structure.system_id}`,
           regionName: location?.regionName ?? 'Unknown Region',
           fuelDays: formatFuelExpiry(structure.fuel_expires).days,
           treeNode,
@@ -361,8 +359,7 @@ export function StructuresTab() {
     return rows.filter((row) =>
       row.structure.name?.toLowerCase().includes(searchLower) ||
       row.typeName.toLowerCase().includes(searchLower) ||
-      row.ownerName.toLowerCase().includes(searchLower) ||
-      row.systemName.toLowerCase().includes(searchLower) ||
+      row.owner.name.toLowerCase().includes(searchLower) ||
       row.regionName.toLowerCase().includes(searchLower)
     )
   }, [structuresByOwner, cacheVersion, search, selectedSet, structureAssetMap, assetNames])
@@ -409,27 +406,43 @@ export function StructuresTab() {
     )
   }, [starbasesByOwner, cacheVersion, search, selectedSet])
 
-  const upwellSort = useSortable<UpwellSortColumn>('location', 'asc')
+  const upwellSort = useSortable<UpwellSortColumn>('region', 'asc')
   const starbaseSort = useSortable<StarbaseSortColumn>('region', 'asc')
 
   const sortedUpwellRows = useMemo(() => {
-    return sortRows(upwellRows, upwellSort.sortColumn, upwellSort.sortDirection, (row, column) => {
+    const getValue = (row: StructureRow, column: UpwellSortColumn): number | string => {
       switch (column) {
         case 'name':
           return (row.structure.name ?? '').toLowerCase()
         case 'type':
           return row.typeName.toLowerCase()
-        case 'location':
-          return `${row.regionName} ${row.systemName}`.toLowerCase()
+        case 'region':
+          return row.regionName.toLowerCase()
         case 'state':
           return row.structure.state
         case 'fuel':
           return row.fuelDays ?? -1
-        case 'owner':
-          return row.ownerName.toLowerCase()
         default:
           return 0
       }
+    }
+
+    const getName = (row: StructureRow) =>
+      (row.structure.name ?? '').toLowerCase()
+
+    return [...upwellRows].sort((a, b) => {
+      const aVal = getValue(a, upwellSort.sortColumn)
+      const bVal = getValue(b, upwellSort.sortColumn)
+      const dir = upwellSort.sortDirection === 'asc' ? 1 : -1
+
+      if (aVal < bVal) return -dir
+      if (aVal > bVal) return dir
+
+      const aName = getName(a)
+      const bName = getName(b)
+      if (aName < bName) return -1
+      if (aName > bName) return 1
+      return 0
     })
   }, [upwellRows, upwellSort.sortColumn, upwellSort.sortDirection])
 
@@ -542,11 +555,10 @@ export function StructuresTab() {
                 <TableRow className="hover:bg-transparent">
                   <SortableHeader column="name" label="Structure" sortColumn={upwellSort.sortColumn} sortDirection={upwellSort.sortDirection} onSort={upwellSort.handleSort} />
                   <SortableHeader column="type" label="Type" sortColumn={upwellSort.sortColumn} sortDirection={upwellSort.sortDirection} onSort={upwellSort.handleSort} />
-                  <SortableHeader column="location" label="Location" sortColumn={upwellSort.sortColumn} sortDirection={upwellSort.sortDirection} onSort={upwellSort.handleSort} />
+                  <SortableHeader column="region" label="Region" sortColumn={upwellSort.sortColumn} sortDirection={upwellSort.sortDirection} onSort={upwellSort.handleSort} />
                   <SortableHeader column="state" label="State" sortColumn={upwellSort.sortColumn} sortDirection={upwellSort.sortDirection} onSort={upwellSort.handleSort} />
-                  <th>Services</th>
                   <SortableHeader column="fuel" label="Fuel" sortColumn={upwellSort.sortColumn} sortDirection={upwellSort.sortDirection} onSort={upwellSort.handleSort} className="text-right" />
-                  <SortableHeader column="owner" label="Owner" sortColumn={upwellSort.sortColumn} sortDirection={upwellSort.sortDirection} onSort={upwellSort.handleSort} className="text-right" />
+                  <th className="h-10 px-4 text-right align-middle text-sm font-normal text-content-secondary">Services</th>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -560,27 +572,26 @@ export function StructuresTab() {
                     <TableRow key={`upwell-${row.structure.structure_id}`}>
                       <TableCell className="py-1.5">
                         <div className="flex items-center gap-2">
-                          <TypeIcon typeId={row.structure.type_id} />
+                          <img
+                            src={`https://images.evetech.net/corporations/${row.owner.id}/logo?size=32`}
+                            alt=""
+                            className="w-5 h-5 rounded"
+                          />
                           <span className="truncate" title={row.structure.name}>
                             {row.structure.name || `Structure ${row.structure.structure_id}`}
                           </span>
                           {isReinforced && <AlertTriangle className="h-4 w-4 text-status-negative" />}
                         </div>
                       </TableCell>
-                      <TableCell className="py-1.5 text-content-secondary">{row.typeName}</TableCell>
                       <TableCell className="py-1.5">
-                        <span className="text-status-info">{row.systemName}</span>
-                        <span className="text-content-muted text-xs ml-1">({row.regionName})</span>
+                        <div className="flex items-center gap-2">
+                          <TypeIcon typeId={row.structure.type_id} />
+                          <span className="text-content-secondary">{row.typeName}</span>
+                        </div>
                       </TableCell>
+                      <TableCell className="py-1.5 text-content-secondary">{row.regionName}</TableCell>
                       <TableCell className="py-1.5">
                         <span className={stateInfo.color}>{stateInfo.label}</span>
-                      </TableCell>
-                      <TableCell className="py-1.5">
-                        <div className="flex flex-wrap gap-1">
-                          {row.structure.services?.map((service, idx) => (
-                            <ServiceBadge key={idx} name={service.name} state={service.state} />
-                          )) ?? <span className="text-content-muted">-</span>}
-                        </div>
                       </TableCell>
                       <TableCell className="py-1.5 text-right">
                         <div className="flex items-center justify-end gap-1">
@@ -590,7 +601,13 @@ export function StructuresTab() {
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell className="py-1.5 text-right text-content-secondary">{row.ownerName}</TableCell>
+                      <TableCell className="py-1.5 text-right">
+                        <div className="flex flex-wrap gap-1 justify-end">
+                          {row.structure.services?.map((service, idx) => (
+                            <ServiceBadge key={idx} name={service.name} state={service.state} />
+                          )) ?? <span className="text-content-muted">-</span>}
+                        </div>
+                      </TableCell>
                     </TableRow>
                   )
 
