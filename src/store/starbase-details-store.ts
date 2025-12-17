@@ -2,6 +2,10 @@ import { create } from 'zustand'
 import { getStarbaseDetail, type ESIStarbaseDetail } from '@/api/endpoints/starbases'
 import { logger } from '@/lib/logger'
 
+const DB_NAME = 'ecteveassets-starbase-details'
+const DB_VERSION = 1
+const STORE_NAME = 'details'
+
 interface StarbaseDetailKey {
   corporationId: number
   starbaseId: number
@@ -9,24 +13,121 @@ interface StarbaseDetailKey {
   characterId: number
 }
 
+interface StoredDetail {
+  starbaseId: number
+  detail: ESIStarbaseDetail
+  fetchedAt: number
+}
+
 interface StarbaseDetailsState {
   details: Map<number, ESIStarbaseDetail>
   loading: Set<number>
   failed: Set<number>
+  initialized: boolean
 }
 
 interface StarbaseDetailsActions {
+  init: () => Promise<void>
   fetchDetail: (key: StarbaseDetailKey) => Promise<ESIStarbaseDetail | null>
   getDetail: (starbaseId: number) => ESIStarbaseDetail | undefined
-  clear: () => void
+  clear: () => Promise<void>
 }
 
 type StarbaseDetailsStore = StarbaseDetailsState & StarbaseDetailsActions
+
+let db: IDBDatabase | null = null
+
+async function openDB(): Promise<IDBDatabase> {
+  if (db) return db
+
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION)
+
+    request.onerror = () => {
+      logger.error('Failed to open starbase details DB', request.error, { module: 'StarbaseDetailsStore' })
+      reject(request.error)
+    }
+
+    request.onsuccess = () => {
+      db = request.result
+      resolve(db)
+    }
+
+    request.onupgradeneeded = (event) => {
+      const database = (event.target as IDBOpenDBRequest).result
+      if (!database.objectStoreNames.contains(STORE_NAME)) {
+        database.createObjectStore(STORE_NAME, { keyPath: 'starbaseId' })
+      }
+    }
+  })
+}
+
+async function loadAllFromDB(): Promise<Map<number, ESIStarbaseDetail>> {
+  const database = await openDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction([STORE_NAME], 'readonly')
+    const store = tx.objectStore(STORE_NAME)
+    const request = store.getAll()
+
+    tx.oncomplete = () => {
+      const details = new Map<number, ESIStarbaseDetail>()
+      for (const stored of request.result as StoredDetail[]) {
+        details.set(stored.starbaseId, stored.detail)
+      }
+      resolve(details)
+    }
+
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
+async function saveToDB(starbaseId: number, detail: ESIStarbaseDetail): Promise<void> {
+  const database = await openDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction([STORE_NAME], 'readwrite')
+    const store = tx.objectStore(STORE_NAME)
+    store.put({ starbaseId, detail, fetchedAt: Date.now() } as StoredDetail)
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
+async function clearDB(): Promise<void> {
+  const database = await openDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction([STORE_NAME], 'readwrite')
+    tx.objectStore(STORE_NAME).clear()
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
 
 export const useStarbaseDetailsStore = create<StarbaseDetailsStore>((set, get) => ({
   details: new Map(),
   loading: new Set(),
   failed: new Set(),
+  initialized: false,
+
+  init: async () => {
+    if (get().initialized) return
+
+    try {
+      const details = await loadAllFromDB()
+      set({ details, initialized: true })
+      logger.info('Starbase details loaded from cache', {
+        module: 'StarbaseDetailsStore',
+        count: details.size,
+      })
+    } catch (err) {
+      logger.error('Failed to load starbase details from cache', err instanceof Error ? err : undefined, {
+        module: 'StarbaseDetailsStore',
+      })
+      set({ initialized: true })
+    }
+  },
 
   fetchDetail: async ({ corporationId, starbaseId, systemId, characterId }) => {
     const state = get()
@@ -45,6 +146,14 @@ export const useStarbaseDetailsStore = create<StarbaseDetailsStore>((set, get) =
         newLoading.delete(starbaseId)
         return { details: newDetails, loading: newLoading }
       })
+
+      saveToDB(starbaseId, detail).catch((err) => {
+        logger.error('Failed to save starbase detail to cache', err instanceof Error ? err : undefined, {
+          module: 'StarbaseDetailsStore',
+          starbaseId,
+        })
+      })
+
       return detail
     } catch (err) {
       logger.error('Failed to fetch starbase detail', err instanceof Error ? err : undefined, {
@@ -64,7 +173,17 @@ export const useStarbaseDetailsStore = create<StarbaseDetailsStore>((set, get) =
 
   getDetail: (starbaseId) => get().details.get(starbaseId),
 
-  clear: () => set({ details: new Map(), loading: new Set(), failed: new Set() }),
+  clear: async () => {
+    set({ details: new Map(), loading: new Set(), failed: new Set() })
+    try {
+      await clearDB()
+      logger.info('Starbase details cache cleared', { module: 'StarbaseDetailsStore' })
+    } catch (err) {
+      logger.error('Failed to clear starbase details cache', err instanceof Error ? err : undefined, {
+        module: 'StarbaseDetailsStore',
+      })
+    }
+  },
 }))
 
 const FUEL_BLOCK_TYPE_IDS = new Set([4051, 4246, 4247, 4312])

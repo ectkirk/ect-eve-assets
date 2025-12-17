@@ -192,7 +192,7 @@ const CACHE_OPTIONS: CacheOption[] = [
     endpointPattern: '/starbases',
     clear: async () => {
       await useStarbasesStore.getState().clear()
-      useStarbaseDetailsStore.getState().clear()
+      await useStarbaseDetailsStore.getState().clear()
     },
     refetch: async () => {
       await useStarbasesStore.getState().init()
