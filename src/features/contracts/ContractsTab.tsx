@@ -221,7 +221,7 @@ function ContractsTable({
                       : `https://images.evetech.net/characters/${row.ownerId}/portrait?size=32`
                     }
                     alt=""
-                    className="w-6 h-6 rounded"
+                    className="size-6 rounded object-cover"
                   />
                 </TableCell>
                 <TableCell className="py-1.5">
