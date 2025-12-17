@@ -302,6 +302,8 @@ export async function fetchPrices(typeIds: number[]): Promise<Map<number, number
       volume: type.volume ?? 0,
       packagedVolume: type.packagedVolume ?? undefined,
       implantSlot: type.implantSlot,
+      towerSize: type.towerSize,
+      fuelTier: type.fuelTier,
     })
   }
 
