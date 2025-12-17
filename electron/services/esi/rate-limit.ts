@@ -1,5 +1,4 @@
 import type { RateLimitGroupState } from './types'
-import { LOW_LIMIT_GROUPS } from './types'
 import { logger } from '../logger.js'
 
 const DEFAULT_WINDOW_MS = 15 * 60 * 1000
@@ -46,6 +45,7 @@ export class RateLimitTracker {
     if (!group) return null
 
     const remaining = headers.get('X-Ratelimit-Remaining')
+    const used = headers.get('X-Ratelimit-Used')
     const limitHeader = headers.get('X-Ratelimit-Limit')
     if (remaining === null) return null
 
@@ -69,6 +69,7 @@ export class RateLimitTracker {
 
     const state: RateLimitGroupState = {
       remaining: parseInt(remaining, 10),
+      used: used !== null ? parseInt(used, 10) : 0,
       limit,
       windowMs,
       lastUpdated: now,
@@ -104,9 +105,6 @@ export class RateLimitTracker {
     }
 
     const pct = state.remaining / state.limit
-    const overrides = LOW_LIMIT_GROUPS[group]
-    const warnAt = overrides?.warnAt ?? 0.2
-    const slowdownAt = overrides?.slowdownAt ?? 0.15
 
     if (state.remaining === 0) {
       return state.windowMs - windowElapsed
@@ -114,10 +112,10 @@ export class RateLimitTracker {
     if (pct < 0.05) {
       return 2000 + Math.random() * 3000
     }
-    if (pct < slowdownAt) {
+    if (pct < 0.15) {
       return 500 + Math.random() * 1500
     }
-    if (pct < warnAt) {
+    if (pct < 0.25) {
       return 100 + Math.random() * 400
     }
     return 100

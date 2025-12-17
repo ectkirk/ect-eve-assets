@@ -38,6 +38,7 @@ export type ESIResponse<T> = ESISuccessResponse<T> | ESIErrorResponse
 
 export interface RateLimitGroupState {
   remaining: number
+  used: number
   limit: number
   windowMs: number
   lastUpdated: number
@@ -59,14 +60,3 @@ export interface PendingRequest {
   rateLimitGroup?: string
 }
 
-export const TOKEN_COSTS: Record<string, number> = {
-  '2XX': 2,
-  '3XX': 1,
-  '4XX': 5,
-  '5XX': 0,
-}
-
-export const LOW_LIMIT_GROUPS: Record<string, { warnAt: number; slowdownAt: number }> = {
-  'char-wallet': { warnAt: 0.3, slowdownAt: 0.2 },
-  'corp-wallet': { warnAt: 0.25, slowdownAt: 0.15 },
-}
