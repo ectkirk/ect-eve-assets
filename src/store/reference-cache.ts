@@ -465,6 +465,7 @@ export async function clearContractItemsCache(): Promise<void> {
   contractItemsKnown.clear()
   contractItemsCache.clear()
   await clearStore('contractItems')
+  notifyListeners()
 }
 
 export const CategoryIds = {

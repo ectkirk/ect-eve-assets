@@ -259,13 +259,15 @@ export function ClearCacheModal({ open, onOpenChange }: ClearCacheModalProps) {
     })
 
     try {
-      for (const option of optionsToClear) {
-        if (option.endpointPattern) {
-          await useExpiryCacheStore.getState().clearByEndpoint(option.endpointPattern)
-          await window.electronAPI?.esi.clearCacheByPattern(option.endpointPattern)
-        }
-        await option.clear()
-      }
+      await Promise.all(
+        optionsToClear.map(async (option) => {
+          if (option.endpointPattern) {
+            await useExpiryCacheStore.getState().clearByEndpoint(option.endpointPattern)
+            await window.electronAPI?.esi.clearCacheByPattern(option.endpointPattern)
+          }
+          await option.clear()
+        })
+      )
 
       const clearsCharacterData = optionsToClear.some((o) => o.group === 'data' || o.group === 'structures')
       if (clearsCharacterData) {
