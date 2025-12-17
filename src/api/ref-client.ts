@@ -21,16 +21,15 @@ export type RefType = z.infer<typeof RefTypeSchema>
 export type RefUniverseItem = z.infer<typeof RefUniverseItemSchema>
 export type UniverseEntityType = RefUniverseItem['type']
 
-// Request coalescing for locations - batches requests within a window
+// Request coalescing - batches requests within a window to match API rate limit (30 req/min)
+const REF_BATCH_DELAY_MS = 2000
+
 let pendingLocationIds = new Set<number>()
 let locationBatchPromise: Promise<Map<number, CachedLocation>> | null = null
-const LOCATION_BATCH_DELAY_MS = 50
 
-// Request coalescing for types - batches requests within a window
 let pendingTypeIds = new Set<number>()
 let pendingTypeMarket: 'jita' | 'the_forge' = 'jita'
 let typeBatchPromise: Promise<Map<number, CachedType>> | null = null
-const TYPE_BATCH_DELAY_MS = 50
 
 async function fetchTypesFromAPI(
   ids: number[],
@@ -186,7 +185,7 @@ export async function resolveTypes(
         const result = await executeTypeBatch()
         typeBatchPromise = null
         resolve(result)
-      }, TYPE_BATCH_DELAY_MS)
+      }, REF_BATCH_DELAY_MS)
     })
   }
 
@@ -270,7 +269,7 @@ export async function resolveLocations(locationIds: number[]): Promise<Map<numbe
         const result = await executeLocationBatch()
         locationBatchPromise = null
         resolve(result)
-      }, LOCATION_BATCH_DELAY_MS)
+      }, REF_BATCH_DELAY_MS)
     })
   }
 
