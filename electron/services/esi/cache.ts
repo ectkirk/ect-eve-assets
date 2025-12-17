@@ -70,6 +70,10 @@ export class ESICache {
     return this.cache.get(key)?.etag
   }
 
+  getStale(key: string): CacheEntry | undefined {
+    return this.cache.get(key)
+  }
+
   set(key: string, data: unknown, etag: string, expires: number): void {
     this.cache.set(key, { data, etag, expires })
     this.scheduleSave()

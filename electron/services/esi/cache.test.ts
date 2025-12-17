@@ -53,6 +53,20 @@ describe('ESICache', () => {
     })
   })
 
+  describe('getStale', () => {
+    it('returns entry even if expired', () => {
+      cache.set('stale', { data: 'old' }, 'stale-etag', Date.now() - 1000)
+      const entry = cache.getStale('stale')
+      expect(entry).toBeDefined()
+      expect(entry?.data).toEqual({ data: 'old' })
+      expect(entry?.etag).toBe('stale-etag')
+    })
+
+    it('returns undefined for non-existent key', () => {
+      expect(cache.getStale('missing')).toBeUndefined()
+    })
+  })
+
   describe('updateExpires', () => {
     it('updates expiry time for existing entry', () => {
       const originalExpires = Date.now() + 1000

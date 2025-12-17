@@ -210,7 +210,7 @@ export class MainESIService {
       const xPages = response.headers.get('X-Pages')
 
       if (response.status === 304) {
-        const cached = this.cache.get(cacheKey)
+        const cached = this.cache.getStale(cacheKey)
         if (cached && expiresAt) {
           this.cache.updateExpires(cacheKey, expiresAt)
           return {
