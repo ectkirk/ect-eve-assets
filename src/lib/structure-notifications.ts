@@ -11,9 +11,17 @@ interface StructureAlert {
   title: string
   message: string
   eventKey: string
+  entityId: number
 }
 
-const notifiedKeys = new Set<string>()
+let notifiedKeys: Set<string> | null = null
+
+function getNotifiedKeys(): Set<string> {
+  if (!notifiedKeys) {
+    notifiedKeys = useNotificationStore.getState().getNotifiedKeys()
+  }
+  return notifiedKeys
+}
 
 const ARMOR_REINFORCED = 'armor_reinforce'
 const HULL_REINFORCED = 'hull_reinforce'
@@ -22,14 +30,32 @@ const REINFORCED_STATES = new Set([ARMOR_REINFORCED, HULL_REINFORCED])
 const ARMOR_VULNERABLE = 'armor_vulnerable'
 const HULL_VULNERABLE = 'hull_vulnerable'
 const VULNERABLE_STATES = new Set([ARMOR_VULNERABLE, HULL_VULNERABLE])
-const THREE_DAYS_MS = 72 * 60 * 60 * 1000
+const LOW_FUEL_THRESHOLD_HOURS = 72
 
-function hasBeenNotified(structureId: number, eventKey: string): boolean {
-  return notifiedKeys.has(`${structureId}:${eventKey}`)
+function createLowFuelAlert(
+  fuelHours: number,
+  name: string,
+  title: string,
+  entityId: number
+): StructureAlert | null {
+  if (fuelHours <= 0 || fuelHours >= LOW_FUEL_THRESHOLD_HOURS) return null
+  const dayBucket = Math.floor(fuelHours / 24)
+  const daysLeft = (fuelHours / 24).toFixed(1)
+  return {
+    type: 'structure-low-fuel',
+    title,
+    message: `${name} has ${daysLeft} days of fuel remaining`,
+    eventKey: `low-fuel:${dayBucket}`,
+    entityId,
+  }
 }
 
-function markNotified(structureId: number, eventKey: string): void {
-  notifiedKeys.add(`${structureId}:${eventKey}`)
+function hasBeenNotified(entityId: number, eventKey: string): boolean {
+  return getNotifiedKeys().has(`${entityId}:${eventKey}`)
+}
+
+function markNotified(entityId: number, eventKey: string): void {
+  getNotifiedKeys().add(`${entityId}:${eventKey}`)
 }
 
 function detectUpwellChanges(
@@ -51,6 +77,7 @@ function detectUpwellChanges(
         title: isArmor ? 'Armor Reinforced' : 'Structure Reinforced',
         message: `${name} entered ${isArmor ? 'armor' : 'hull'} reinforce`,
         eventKey,
+        entityId: structure.structure_id,
       })
     }
 
@@ -67,23 +94,15 @@ function detectUpwellChanges(
         title: isArmor ? 'Armor Vulnerable' : 'Structure Vulnerable',
         message: `${name} is now ${isArmor ? 'armor' : 'hull'} vulnerable`,
         eventKey,
+        entityId: structure.structure_id,
       })
     }
 
     if (structure.fuel_expires) {
       const expiresAt = new Date(structure.fuel_expires).getTime()
-      const remaining = expiresAt - Date.now()
-      if (remaining > 0 && remaining < THREE_DAYS_MS) {
-        const dayBucket = Math.floor(remaining / (24 * 60 * 60 * 1000))
-        const eventKey = `low-fuel:${dayBucket}`
-        const daysLeft = (remaining / (24 * 60 * 60 * 1000)).toFixed(1)
-        alerts.push({
-          type: 'structure-low-fuel',
-          title: 'Low Fuel Warning',
-          message: `${name} has ${daysLeft} days of fuel remaining`,
-          eventKey,
-        })
-      }
+      const remainingHours = (expiresAt - Date.now()) / (60 * 60 * 1000)
+      const fuelAlert = createLowFuelAlert(remainingHours, name, 'Low Fuel Warning', structure.structure_id)
+      if (fuelAlert) alerts.push(fuelAlert)
     }
 
     if (prev && prev.state !== 'anchoring' && structure.state === 'anchoring') {
@@ -93,6 +112,7 @@ function detectUpwellChanges(
         title: 'Structure Anchoring',
         message: `${name} is anchoring`,
         eventKey,
+        entityId: structure.structure_id,
       })
     }
 
@@ -103,6 +123,7 @@ function detectUpwellChanges(
         title: 'Structure Unanchoring',
         message: `${name} is unanchoring`,
         eventKey,
+        entityId: structure.structure_id,
       })
     }
 
@@ -116,6 +137,7 @@ function detectUpwellChanges(
             title: 'Service Offline',
             message: `${service.name} went offline on ${name}`,
             eventKey,
+            entityId: structure.structure_id,
           })
         }
       }
@@ -150,6 +172,7 @@ function detectStarbaseChanges(
         title: 'POS Reinforced',
         message: `${typeName} entered reinforced mode`,
         eventKey,
+        entityId: starbase.starbase_id,
       })
     }
 
@@ -160,6 +183,7 @@ function detectStarbaseChanges(
         title: 'POS Onlining',
         message: `${typeName} is coming online`,
         eventKey,
+        entityId: starbase.starbase_id,
       })
     }
 
@@ -170,6 +194,7 @@ function detectStarbaseChanges(
         title: 'POS Unanchoring',
         message: `${typeName} is unanchoring`,
         eventKey,
+        entityId: starbase.starbase_id,
       })
     }
 
@@ -177,16 +202,9 @@ function detectStarbaseChanges(
     const meta = metadata.get(starbase.starbase_id)
     if (detail && meta) {
       const fuelHours = calculateFuelHours(detail, meta.towerSize, meta.fuelTier)
-      if (fuelHours !== null && fuelHours > 0 && fuelHours < 72) {
-        const dayBucket = Math.floor(fuelHours / 24)
-        const eventKey = `low-fuel:${dayBucket}`
-        const daysLeft = (fuelHours / 24).toFixed(1)
-        alerts.push({
-          type: 'structure-low-fuel',
-          title: 'POS Low Fuel',
-          message: `${typeName} has ${daysLeft} days of fuel remaining`,
-          eventKey,
-        })
+      if (fuelHours !== null) {
+        const fuelAlert = createLowFuelAlert(fuelHours, typeName, 'POS Low Fuel', starbase.starbase_id)
+        if (fuelAlert) alerts.push(fuelAlert)
       }
     }
   }
@@ -204,11 +222,10 @@ export function processUpwellNotifications(
   const store = useNotificationStore.getState()
 
   for (const alert of alerts) {
-    const structureId = current.find((s) => alert.message.includes(s.name ?? ''))?.structure_id
-    if (structureId && hasBeenNotified(structureId, alert.eventKey)) continue
+    if (hasBeenNotified(alert.entityId, alert.eventKey)) continue
 
-    store.addNotification(alert.type, alert.title, alert.message)
-    if (structureId) markNotified(structureId, alert.eventKey)
+    store.addNotification(alert.type, alert.title, alert.message, alert.entityId, alert.eventKey)
+    markNotified(alert.entityId, alert.eventKey)
 
     logger.info('Structure notification sent', {
       module: 'StructureNotifications',
@@ -230,11 +247,10 @@ export function processStarbaseNotifications(
   const store = useNotificationStore.getState()
 
   for (const alert of alerts) {
-    const starbaseId = current.find((s) => alert.message.includes(getTypeName(s.type_id)))?.starbase_id
-    if (starbaseId && hasBeenNotified(starbaseId, alert.eventKey)) continue
+    if (hasBeenNotified(alert.entityId, alert.eventKey)) continue
 
-    store.addNotification(alert.type, alert.title, alert.message)
-    if (starbaseId) markNotified(starbaseId, alert.eventKey)
+    store.addNotification(alert.type, alert.title, alert.message, alert.entityId, alert.eventKey)
+    markNotified(alert.entityId, alert.eventKey)
 
     logger.info('Starbase notification sent', {
       module: 'StructureNotifications',

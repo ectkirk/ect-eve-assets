@@ -16,6 +16,9 @@ export interface Notification {
   title: string
   message: string
   timestamp: number
+  entityId?: number
+  eventKey?: string
+  seen?: boolean
 }
 
 interface NotificationState {
@@ -27,12 +30,19 @@ interface NotificationState {
 
 interface NotificationActions {
   init: () => Promise<void>
-  addNotification: (type: NotificationType, title: string, message: string) => void
+  addNotification: (
+    type: NotificationType,
+    title: string,
+    message: string,
+    entityId?: number,
+    eventKey?: string
+  ) => void
   dismissNotification: (id: string) => void
   clearAll: () => void
   openPanel: () => void
   closePanel: () => void
   togglePanel: () => void
+  getNotifiedKeys: () => Set<string>
 }
 
 type NotificationStore = NotificationState & NotificationActions
@@ -131,10 +141,12 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
 
     try {
       const notifications = await loadAllFromDB()
-      set({ notifications, initialized: true, unseenCount: notifications.length })
+      const unseenCount = notifications.filter((n) => !n.seen).length
+      set({ notifications, initialized: true, unseenCount })
       logger.info('Notifications loaded from cache', {
         module: 'NotificationStore',
         count: notifications.length,
+        unseen: unseenCount,
       })
     } catch (err) {
       logger.error('Failed to load notifications from cache', err instanceof Error ? err : undefined, {
@@ -144,13 +156,15 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
     }
   },
 
-  addNotification: (type, title, message) => {
+  addNotification: (type, title, message, entityId, eventKey) => {
     const notification: Notification = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
       type,
       title,
       message,
       timestamp: Date.now(),
+      entityId,
+      eventKey,
     }
     set((state) => ({
       notifications: [...state.notifications, notification],
@@ -187,7 +201,23 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
   },
 
   openPanel: () => {
-    set({ isPanelOpen: true, unseenCount: 0 })
+    const { notifications } = get()
+    const toUpdate: Notification[] = []
+    const updated = notifications.map((n) => {
+      if (n.seen) return n
+      const marked = { ...n, seen: true }
+      toUpdate.push(marked)
+      return marked
+    })
+    set({ isPanelOpen: true, unseenCount: 0, notifications: updated })
+
+    for (const notification of toUpdate) {
+      saveToDB(notification).catch((err) => {
+        logger.error('Failed to update notification seen state', err instanceof Error ? err : undefined, {
+          module: 'NotificationStore',
+        })
+      })
+    }
   },
 
   closePanel: () => {
@@ -197,10 +227,20 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
   togglePanel: () => {
     const { isPanelOpen } = get()
     if (isPanelOpen) {
-      set({ isPanelOpen: false })
+      get().closePanel()
     } else {
-      set({ isPanelOpen: true, unseenCount: 0 })
+      get().openPanel()
     }
+  },
+
+  getNotifiedKeys: () => {
+    const keys = new Set<string>()
+    for (const notification of get().notifications) {
+      if (notification.entityId !== undefined && notification.eventKey) {
+        keys.add(`${notification.entityId}:${notification.eventKey}`)
+      }
+    }
+    return keys
   },
 }))
 
@@ -211,7 +251,8 @@ export const useToastStore = {
     return {
       ...state,
       toasts: state.notifications,
-      addToast: state.addNotification,
+      addToast: (type: NotificationType, title: string, message: string) =>
+        state.addNotification(type, title, message),
       dismissToast: state.dismissNotification,
     }
   },
