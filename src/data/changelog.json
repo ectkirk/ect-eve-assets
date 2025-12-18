@@ -1,7 +1,11 @@
 {
-  "version": "1.7.0",
+  "version": "1.7.1",
   "date": "2025-12-18",
   "changes": [
-    { "type": "feat", "scope": "loyalty", "description": "Add Loyalty Points tab showing LP per character and corporation" }
+    { "type": "feat", "scope": "assets", "description": "Detect and display active ship with contents when ESI omits it" },
+    { "type": "feat", "scope": "assets", "description": "Improve owned structure detection using starbases/structures data" },
+    { "type": "feat", "scope": "assets", "description": "Display POS tower locations using moon names" },
+    { "type": "fix", "scope": "loyalty", "description": "Show re-authentication message when scope is missing" },
+    { "type": "refactor", "scope": "assets", "description": "Extract active ship detection into helper function" }
   ]
 }
