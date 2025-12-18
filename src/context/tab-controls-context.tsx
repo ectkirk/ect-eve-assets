@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, type ReactNode } from 'react'
+import { createContext, useContext, useState, useMemo, type ReactNode } from 'react'
 
 interface ColumnConfig {
   id: string
@@ -75,25 +75,27 @@ export function TabControlsProvider({ children }: { children: ReactNode }) {
   const [totalValue, setTotalValue] = useState<TotalValueConfig | null>(null)
   const [comparisonLevel, setComparisonLevel] = useState<ComparisonLevelConfig | null>(null)
 
+  const value = useMemo(() => ({
+    columns,
+    setColumns,
+    expandCollapse,
+    setExpandCollapse,
+    search,
+    setSearch,
+    categoryFilter,
+    setCategoryFilter,
+    assetTypeFilter,
+    setAssetTypeFilter,
+    resultCount,
+    setResultCount,
+    totalValue,
+    setTotalValue,
+    comparisonLevel,
+    setComparisonLevel,
+  }), [columns, expandCollapse, search, categoryFilter, assetTypeFilter, resultCount, totalValue, comparisonLevel])
+
   return (
-    <TabControlsContext.Provider value={{
-      columns,
-      setColumns,
-      expandCollapse,
-      setExpandCollapse,
-      search,
-      setSearch,
-      categoryFilter,
-      setCategoryFilter,
-      assetTypeFilter,
-      setAssetTypeFilter,
-      resultCount,
-      setResultCount,
-      totalValue,
-      setTotalValue,
-      comparisonLevel,
-      setComparisonLevel,
-    }}>
+    <TabControlsContext.Provider value={value}>
       {children}
     </TabControlsContext.Provider>
   )

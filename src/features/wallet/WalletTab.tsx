@@ -178,6 +178,18 @@ export function WalletTab() {
   const showDivisionFilter = hasCorporationEntries
 
   useEffect(() => {
+    if (refTypeFilter && !availableRefTypes.includes(refTypeFilter)) {
+      setRefTypeFilter('')
+    }
+  }, [availableRefTypes, refTypeFilter])
+
+  useEffect(() => {
+    if (divisionFilter !== null && !hasCorporationEntries) {
+      setDivisionFilter(null)
+    }
+  }, [divisionFilter, hasCorporationEntries])
+
+  useEffect(() => {
     setResultCount({ showing: sortedWallets.length, total: walletsByOwner.length })
     return () => setResultCount(null)
   }, [sortedWallets.length, walletsByOwner.length, setResultCount])

@@ -410,8 +410,30 @@ const ASSET_TYPE_OPTIONS = [
   { value: 'STRUCTURES', label: 'Structures' },
 ]
 
+const SEARCH_DEBOUNCE_MS = 250
+
 function SearchBar() {
   const { search, setSearch, categoryFilter, assetTypeFilter, resultCount, totalValue } = useTabControls()
+  const [inputValue, setInputValue] = useState(search)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [])
+
+  const handleChange = (value: string) => {
+    setInputValue(value)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => setSearch(value), SEARCH_DEBOUNCE_MS)
+  }
+
+  const handleClear = () => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    setInputValue('')
+    setSearch('')
+  }
 
   return (
     <div className="flex items-center gap-3 border-b border-border bg-surface-secondary/50 px-4 py-2">
@@ -420,13 +442,13 @@ function SearchBar() {
         <input
           type="text"
           placeholder="Search name, group, location, system, region..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          value={inputValue}
+          onChange={(e) => handleChange(e.target.value)}
           className="w-full rounded border border-border bg-surface-tertiary pl-9 pr-8 py-1.5 text-sm placeholder-content-muted focus:border-accent focus:outline-hidden"
         />
-        {search && (
+        {inputValue && (
           <button
-            onClick={() => setSearch('')}
+            onClick={handleClear}
             className="absolute right-2 top-1/2 -translate-y-1/2 text-content-muted hover:text-content-secondary"
           >
             <X className="h-4 w-4" />
