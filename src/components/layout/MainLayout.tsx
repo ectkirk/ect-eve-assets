@@ -416,6 +416,11 @@ function SearchBar() {
   const { search, setSearch, categoryFilter, assetTypeFilter, resultCount, totalValue } = useTabControls()
   const [inputValue, setInputValue] = useState(search)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const setSearchRef = useRef(setSearch)
+
+  useEffect(() => {
+    setSearchRef.current = setSearch
+  }, [setSearch])
 
   useEffect(() => {
     return () => {
@@ -426,13 +431,15 @@ function SearchBar() {
   const handleChange = (value: string) => {
     setInputValue(value)
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => setSearch(value), SEARCH_DEBOUNCE_MS)
+    debounceRef.current = setTimeout(() => {
+      setSearchRef.current(value)
+    }, SEARCH_DEBOUNCE_MS)
   }
 
   const handleClear = () => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     setInputValue('')
-    setSearch('')
+    setSearchRef.current('')
   }
 
   return (
