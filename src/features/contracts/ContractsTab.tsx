@@ -16,7 +16,7 @@ import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useContractsStore, type ContractWithItems } from '@/store/contracts-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { type ESIContract, type ESIContractItem } from '@/api/endpoints/contracts'
-import { hasType, getType, hasContractItems, getContractItems, saveContractItems } from '@/store/reference-cache'
+import { hasType, getType, hasContractItems, getContractItemsBatch, saveContractItems } from '@/store/reference-cache'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import { useAssetStore } from '@/store/asset-store'
 import { getName } from '@/api/endpoints/universe'
@@ -464,18 +464,16 @@ export function ContractsTab() {
 
   useEffect(() => {
     const loadCachedItems = async () => {
-      const newItems = new Map<number, ESIContractItem[]>()
+      const contractIds: number[] = []
       for (const { contracts } of contractsByOwner) {
         for (const { contract } of contracts) {
           if (hasContractItems(contract.contract_id)) {
-            const items = await getContractItems(contract.contract_id)
-            if (items) {
-              newItems.set(contract.contract_id, items as ESIContractItem[])
-            }
+            contractIds.push(contract.contract_id)
           }
         }
       }
-      setLoadedItems(newItems)
+      const batchResult = await getContractItemsBatch(contractIds)
+      setLoadedItems(batchResult as Map<number, ESIContractItem[]>)
     }
     loadCachedItems()
   }, [contractsByOwner, updateCounter])
@@ -491,9 +489,12 @@ export function ContractsTab() {
 
     const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
     const FINISHED_STATUSES = new Set(['finished', 'finished_issuer', 'finished_contractor'])
+    const FETCH_BATCH_SIZE = 10
 
     const fetchCompletedItems = async () => {
       const contractsToFetch: number[] = []
+      const contractsToMarkEmpty: number[] = []
+
       for (const { contracts } of contractsByOwner) {
         for (const { contract } of contracts) {
           if (hasContractItems(contract.contract_id)) continue
@@ -507,20 +508,24 @@ export function ContractsTab() {
           const isWithin30Days = Date.now() - refTime < THIRTY_DAYS_MS
 
           if (!isItemContract || !isFinished || !isWithin30Days) {
-            await saveContractItems(contract.contract_id, [])
-            continue
+            contractsToMarkEmpty.push(contract.contract_id)
+          } else {
+            contractsToFetch.push(contract.contract_id)
           }
-
-          contractsToFetch.push(contract.contract_id)
         }
+      }
+
+      if (contractsToMarkEmpty.length > 0) {
+        await Promise.all(contractsToMarkEmpty.map((id) => saveContractItems(id, [])))
       }
 
       if (contractsToFetch.length === 0) return
 
       setIsLoadingItems(true)
       try {
-        for (const contractId of contractsToFetch) {
-          await fetchItemsForContract(contractId)
+        for (let i = 0; i < contractsToFetch.length; i += FETCH_BATCH_SIZE) {
+          const batch = contractsToFetch.slice(i, i + FETCH_BATCH_SIZE)
+          await Promise.all(batch.map((id) => fetchItemsForContract(id)))
         }
       } finally {
         setIsLoadingItems(false)
