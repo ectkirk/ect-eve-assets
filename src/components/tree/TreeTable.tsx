@@ -279,8 +279,11 @@ const TreeRowContent = memo(function TreeRowContent({
                   }
                   return nameSpan
                 })()}
-                {(node.isInContract || node.isInMarketOrder || node.isInIndustryJob || node.isOwnedStructure) && (
+                {(node.isInContract || node.isInMarketOrder || node.isInIndustryJob || node.isOwnedStructure || node.isActiveShip) && (
                   <span className="shrink-0 inline-flex items-center gap-1 ml-2 whitespace-nowrap">
+                    {node.isActiveShip && (
+                      <span className="text-xs text-status-time bg-status-time/20 px-1.5 py-0.5 rounded whitespace-nowrap">Active Ship</span>
+                    )}
                     {node.isInContract && (
                       <span className="text-xs text-status-corp bg-semantic-warning/20 px-1.5 py-0.5 rounded whitespace-nowrap">In Contract</span>
                     )}
@@ -378,6 +381,7 @@ const TreeRow = memo(function TreeRow({
       className={cn(
         node.nodeType === 'region' && 'bg-surface-secondary/30',
         node.nodeType === 'system' && 'bg-surface-secondary/20',
+        node.isActiveShip && 'bg-row-active-ship',
         node.isInContract && 'bg-row-contract',
         node.isInMarketOrder && 'bg-row-order',
         node.isInIndustryJob && 'bg-row-industry',

@@ -13,6 +13,7 @@ export interface AssetModeFlags {
   isMarketOrder: boolean
   isIndustryJob: boolean
   isOwnedStructure: boolean
+  isActiveShip: boolean
 }
 
 export interface ResolvedAsset {
@@ -58,6 +59,8 @@ export interface ResolvedAssetsByOwner {
 export function matchesAssetTypeFilter(modeFlags: AssetModeFlags, filterValue: string): boolean {
   if (!filterValue) return true
   switch (filterValue) {
+    case 'ACTIVE_SHIP':
+      return modeFlags.isActiveShip
     case 'CONTRACTS':
       return modeFlags.isContract
     case 'MARKET_ORDERS':

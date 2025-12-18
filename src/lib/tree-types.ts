@@ -75,6 +75,7 @@ export interface TreeNode {
   isInMarketOrder?: boolean
   isInIndustryJob?: boolean
   isOwnedStructure?: boolean
+  isActiveShip?: boolean
 }
 
 export interface TreeState {

@@ -136,8 +136,11 @@ const columns: ColumnDef<AssetRow>[] = [
         <div className="flex flex-nowrap items-center gap-2 min-w-0">
           <TypeIcon typeId={typeId} categoryId={categoryId} isBlueprintCopy={isBpc} size="lg" />
           {isAbyssalResolved ? <AbyssalPreview itemId={row.original.itemId}>{nameSpan}</AbyssalPreview> : nameSpan}
-          {(modeFlags.isContract || modeFlags.isMarketOrder || modeFlags.isIndustryJob || modeFlags.isOwnedStructure) && (
+          {(modeFlags.isContract || modeFlags.isMarketOrder || modeFlags.isIndustryJob || modeFlags.isOwnedStructure || modeFlags.isActiveShip) && (
             <span className="shrink-0 inline-flex items-center gap-1 whitespace-nowrap">
+              {modeFlags.isActiveShip && (
+                <span className="text-xs text-status-time bg-status-time/20 px-1.5 py-0.5 rounded whitespace-nowrap">Active Ship</span>
+              )}
               {modeFlags.isContract && (
                 <span className="text-xs text-status-corp bg-semantic-warning/20 px-1.5 py-0.5 rounded whitespace-nowrap">In Contract</span>
               )}
@@ -551,6 +554,7 @@ export function AssetsTab() {
                         className={cn(
                           'py-2 text-sm border-b border-border/50 group-hover:bg-surface-tertiary/50 flex items-center',
                           cell.column.id === 'ownerName' ? 'px-2' : 'px-4',
+                          modeFlags.isActiveShip && 'bg-row-active-ship',
                           modeFlags.isContract && 'bg-row-contract',
                           modeFlags.isMarketOrder && 'bg-row-order',
                           modeFlags.isIndustryJob && 'bg-row-industry',

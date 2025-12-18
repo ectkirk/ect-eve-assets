@@ -176,6 +176,8 @@ export function computeModeFlags(
     inStructure = rootParentType?.categoryId === CategoryIds.STRUCTURE
   }
 
+  const isActiveShip = rootFlag === 'ActiveShip'
+
   return {
     inHangar,
     inShipHangar: isShip && inHangar,
@@ -188,6 +190,7 @@ export function computeModeFlags(
     isMarketOrder: asset.location_flag === 'SellOrder',
     isIndustryJob: asset.location_flag === 'IndustryJob',
     isOwnedStructure: asset.location_flag === 'Structure',
+    isActiveShip,
   }
 }
 

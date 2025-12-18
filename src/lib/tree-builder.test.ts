@@ -86,6 +86,7 @@ function createModeFlags(overrides: Partial<AssetModeFlags> = {}): AssetModeFlag
     isMarketOrder: false,
     isIndustryJob: false,
     isOwnedStructure: false,
+    isActiveShip: false,
     ...overrides,
   }
 }

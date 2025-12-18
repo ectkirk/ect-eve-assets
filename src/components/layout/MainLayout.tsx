@@ -403,6 +403,7 @@ function ComparisonLevelDropdown() {
 
 const ASSET_TYPE_OPTIONS = [
   { value: '', label: 'All Types' },
+  { value: 'ACTIVE_SHIP', label: 'Active Ship' },
   { value: 'ASSET_SAFETY', label: 'Asset Safety' },
   { value: 'CONTRACTS', label: 'Contracts' },
   { value: 'DELIVERIES', label: 'Deliveries' },

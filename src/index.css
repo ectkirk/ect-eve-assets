@@ -42,6 +42,7 @@
   --color-row-danger: var(--theme-row-danger);
   --color-row-industry: var(--theme-row-industry);
   --color-row-structure: var(--theme-row-structure);
+  --color-row-active-ship: var(--theme-row-active-ship);
   --color-category-orange: var(--theme-category-orange);
   --color-category-red: var(--theme-category-red);
   --color-category-pink: var(--theme-category-pink);
@@ -95,6 +96,7 @@
     --theme-row-danger: rgba(185, 28, 28, 0.25);
     --theme-row-industry: rgba(4, 120, 87, 0.15);
     --theme-row-structure: rgba(14, 116, 144, 0.15);
+    --theme-row-active-ship: rgba(124, 58, 237, 0.15);
     --theme-category-orange: #c2410c;
     --theme-category-red: #b91c1c;
     --theme-category-pink: #be185d;
@@ -150,6 +152,7 @@
     --theme-row-danger: rgba(127, 29, 29, 0.2);
     --theme-row-industry: rgba(74, 222, 128, 0.1);
     --theme-row-structure: rgba(34, 211, 238, 0.1);
+    --theme-row-active-ship: rgba(167, 139, 250, 0.1);
     --theme-category-orange: #fb923c;
     --theme-category-red: #f87171;
     --theme-category-pink: #f472b6;
@@ -205,6 +208,7 @@
     --theme-row-danger: rgba(190, 24, 93, 0.25);
     --theme-row-industry: rgba(3, 105, 161, 0.15);
     --theme-row-structure: rgba(14, 116, 144, 0.15);
+    --theme-row-active-ship: rgba(124, 58, 237, 0.15);
     --theme-category-orange: #b45309;
     --theme-category-red: #be185d;
     --theme-category-pink: #9d174d;
@@ -260,6 +264,7 @@
     --theme-row-danger: rgba(244, 114, 182, 0.2);
     --theme-row-industry: rgba(56, 189, 248, 0.1);
     --theme-row-structure: rgba(34, 211, 238, 0.1);
+    --theme-row-active-ship: rgba(167, 139, 250, 0.1);
     --theme-category-orange: #fbbf24;
     --theme-category-red: #f472b6;
     --theme-category-pink: #f472b6;

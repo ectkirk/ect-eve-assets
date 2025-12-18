@@ -112,6 +112,7 @@ function createItemNode(
     isInMarketOrder: ra.modeFlags.isMarketOrder,
     isInIndustryJob: ra.modeFlags.isIndustryJob,
     isOwnedStructure: ra.modeFlags.isOwnedStructure,
+    isActiveShip: ra.modeFlags.isActiveShip,
   }
 }
 

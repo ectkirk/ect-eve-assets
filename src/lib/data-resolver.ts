@@ -69,6 +69,10 @@ function collectFromAssets(
         ids.typeIds.add(asset.type_id)
       }
 
+      if (asset.location_type === 'solar_system' && !hasLocation(asset.location_id)) {
+        ids.locationIds.add(asset.location_id)
+      }
+
       const type = hasType(asset.type_id) ? getType(asset.type_id) : undefined
       if (type?.categoryId === 65 && asset.location_type === 'solar_system' && !hasStructure(asset.item_id)) {
         ids.structureToCharacter.set(asset.item_id, owner.characterId)

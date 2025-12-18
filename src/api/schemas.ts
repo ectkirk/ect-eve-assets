@@ -317,6 +317,19 @@ export const ESILoyaltyPointsSchema = z.object({
   loyalty_points: z.number(),
 })
 
+// ESI Location
+export const ESICharacterLocationSchema = z.object({
+  solar_system_id: z.number(),
+  station_id: z.number().optional(),
+  structure_id: z.number().optional(),
+})
+
+export const ESICharacterShipSchema = z.object({
+  ship_item_id: z.number(),
+  ship_name: z.string(),
+  ship_type_id: z.number(),
+})
+
 // ESI Wallet
 export const ESICorporationWalletDivisionSchema = z.object({
   balance: z.number(),
