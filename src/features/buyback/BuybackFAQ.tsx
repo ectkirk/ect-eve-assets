@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { SECURITY_CONFIGS } from './config'
+import { SECURITY_CONFIGS, ASSET_SAFETY_RATES, formatPercent } from './config'
 
 function FAQItem({ question, children }: { question: string; children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -38,12 +38,19 @@ export function BuybackFAQ() {
             buy price:
           </p>
           <ul className="mb-2 list-inside list-disc space-y-1">
-            {configs.map(({ key, name, buyRate, textColor }) => (
-              <li key={key}>
-                <span className={`font-medium ${textColor}`}>{name}</span>:{' '}
-                {Math.round(buyRate * 100)}%
-              </li>
-            ))}
+            {configs
+              .filter(({ key }) => key !== 'assetsafety')
+              .map(({ key, name, buyRate, textColor }) => (
+                <li key={key}>
+                  <span className={`font-medium ${textColor}`}>{name}</span>:{' '}
+                  {Math.round(buyRate * 100)}%
+                </li>
+              ))}
+            <li>
+              <span className="font-medium text-status-time">Asset Safety</span>:{' '}
+              {formatPercent(ASSET_SAFETY_RATES.nullsec.noNpc)} -{' '}
+              {formatPercent(ASSET_SAFETY_RATES.highsec.npc)} (varies by security and NPC station)
+            </li>
           </ul>
           <p>
             A variable ISK/m³ logistics penalty is then applied to the items based on total volume
@@ -213,15 +220,69 @@ export function BuybackFAQ() {
         <FAQItem question="Do you accept items in player-owned stations?">
           <p className="mb-2">
             Yes! Use our <span className="text-status-warning">Asset Safety</span> tab. Select your
-            security level (low-sec or null-sec rates) and whether there is an NPC station in
-            system.
+            security level and whether there is an NPC station in system.
           </p>
-          <p>
+          <p className="mb-3">Asset safety buyback rates:</p>
+          <div className="mb-3 overflow-hidden rounded-lg border border-border">
+            <table className="w-full text-sm">
+              <thead className="bg-surface-tertiary">
+                <tr>
+                  <th className="px-3 py-2 text-left font-medium text-content-secondary">
+                    Security
+                  </th>
+                  <th className="px-3 py-2 text-right font-medium text-content-secondary">
+                    No NPC Station
+                  </th>
+                  <th className="px-3 py-2 text-right font-medium text-content-secondary">
+                    NPC Station
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                <tr>
+                  <td className="px-3 py-2 font-medium text-status-positive">High-sec</td>
+                  <td className="px-3 py-2 text-right text-content-secondary">
+                    {formatPercent(ASSET_SAFETY_RATES.highsec.noNpc)}
+                  </td>
+                  <td className="px-3 py-2 text-right text-content-secondary">
+                    {formatPercent(ASSET_SAFETY_RATES.highsec.npc)}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="px-3 py-2 font-medium text-status-highlight">Low-sec</td>
+                  <td className="px-3 py-2 text-right text-content-secondary">
+                    {formatPercent(ASSET_SAFETY_RATES.lowsec.noNpc)}
+                  </td>
+                  <td className="px-3 py-2 text-right text-content-secondary">
+                    {formatPercent(ASSET_SAFETY_RATES.lowsec.npc)}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="px-3 py-2 font-medium text-status-negative">Null-sec</td>
+                  <td className="px-3 py-2 text-right text-content-secondary">
+                    {formatPercent(ASSET_SAFETY_RATES.nullsec.noNpc)}
+                  </td>
+                  <td className="px-3 py-2 text-right text-content-secondary">
+                    {formatPercent(ASSET_SAFETY_RATES.nullsec.npc)}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p className="mb-2">
             The asset safety fee depends on NPC station availability:{' '}
-            <span className="font-medium text-status-positive">0.5%</span> if there is an NPC
-            station in system, or <span className="font-medium text-status-warning">15%</span> if
-            not. Fees are calculated based on EVE ESI market prices and deducted from your quote
+            <span className="font-medium text-status-positive">
+              {formatPercent(ASSET_SAFETY_RATES.NPC_STATION_FEE_RATE)}
+            </span>{' '}
+            if there is an NPC station in system, or{' '}
+            <span className="font-medium text-status-warning">
+              {formatPercent(ASSET_SAFETY_RATES.FEE_RATE)}
+            </span>{' '}
+            if not. Fees are calculated based on EVE ESI market prices and deducted from your quote
             automatically.
+          </p>
+          <p className="text-content-muted">
+            Note: Capital ships are not accepted in high-sec asset safety.
           </p>
         </FAQItem>
 

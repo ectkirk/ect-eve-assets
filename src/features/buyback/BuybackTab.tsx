@@ -5,13 +5,20 @@ import { BuybackFAQ } from './BuybackFAQ'
 import {
   getConfigByTabName,
   SECURITY_CONFIGS,
-  ASSET_SAFETY_FEE,
+  ASSET_SAFETY_RATES,
+  formatPercent,
   type BuybackTabType,
   type SecurityConfig,
+  type AssetSafetySecurityLevel,
 } from './config'
 
-type AssetSafetySecurityLevel = 'lowsec' | 'nullsec'
 type NPCStationOption = 'yes' | 'no'
+
+const SECURITY_LABELS: Record<AssetSafetySecurityLevel, string> = {
+  highsec: 'High-sec',
+  lowsec: 'Low-sec',
+  nullsec: 'Null-sec',
+}
 
 interface ToggleGroupProps<T extends string> {
   label: string
@@ -69,11 +76,12 @@ export function BuybackTab({ activeTab }: BuybackTabProps) {
     if (activeTab !== 'Asset Safety') {
       return getConfigByTabName(activeTab)
     }
-    const baseConfig = SECURITY_CONFIGS[assetSafetySecLevel]
     const assetSafetyConfig = SECURITY_CONFIGS.assetsafety
-    if (!baseConfig || !assetSafetyConfig) return null
+    if (!assetSafetyConfig) return null
+    const rates = ASSET_SAFETY_RATES[assetSafetySecLevel]
+    const buyRate = npcStation === 'yes' ? rates.npc : rates.noNpc
     const feeRate =
-      npcStation === 'yes' ? ASSET_SAFETY_FEE.NPC_STATION : ASSET_SAFETY_FEE.NO_NPC_STATION
+      npcStation === 'yes' ? ASSET_SAFETY_RATES.NPC_STATION_FEE_RATE : ASSET_SAFETY_RATES.FEE_RATE
     return {
       name: assetSafetyConfig.name,
       key: assetSafetyConfig.key,
@@ -82,9 +90,9 @@ export function BuybackTab({ activeTab }: BuybackTabProps) {
       textColor: assetSafetyConfig.textColor,
       borderColor: assetSafetyConfig.borderColor,
       bgColor: assetSafetyConfig.bgColor,
-      acceptCapitals: assetSafetyConfig.acceptCapitals,
-      buyRate: baseConfig.buyRate,
-      iskPerM3: baseConfig.iskPerM3,
+      acceptCapitals: assetSafetySecLevel !== 'highsec',
+      buyRate,
+      iskPerM3: rates.iskPerM3,
       assetSafetyRate: feeRate,
     }
   }, [activeTab, assetSafetySecLevel, npcStation])
@@ -157,7 +165,7 @@ export function BuybackTab({ activeTab }: BuybackTabProps) {
         </h1>
         <p className="text-content-secondary">
           {activeTab === 'Asset Safety'
-            ? `${assetSafetySecLevel === 'nullsec' ? 'Null-sec' : 'Low-sec'} rates with ${npcStation === 'yes' ? '0.5%' : '15%'} asset safety fee${npcStation === 'yes' ? ' (NPC station in system)' : ''}.`
+            ? `${SECURITY_LABELS[assetSafetySecLevel]} at ${formatPercent(config?.buyRate ?? 0)} with ${formatPercent(npcStation === 'yes' ? ASSET_SAFETY_RATES.NPC_STATION_FEE_RATE : ASSET_SAFETY_RATES.FEE_RATE)} asset safety fee.`
             : `${config?.name} buyback. General buyback for items${config?.acceptCapitals ? ' and capitals' : ''}.`}
         </p>
       </div>
@@ -170,6 +178,7 @@ export function BuybackTab({ activeTab }: BuybackTabProps) {
               options={[
                 { value: 'nullsec', label: 'Null-sec' },
                 { value: 'lowsec', label: 'Low-sec' },
+                { value: 'highsec', label: 'High-sec' },
               ]}
               value={assetSafetySecLevel}
               onChange={setAssetSafetySecLevel}
