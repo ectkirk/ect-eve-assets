@@ -137,17 +137,40 @@ export function LoyaltyTab() {
     return () => setResultCount(null)
   }, [rows.length, totalRows, setResultCount])
 
+  const charactersNeedingReauth = useMemo(() =>
+    owners.filter((o) => o.type === 'character' && o.scopesOutdated),
+    [owners]
+  )
+
   const loadingState = TabLoadingState({
     dataType: 'loyalty points',
     initialized,
     isUpdating,
-    hasData: loyaltyByOwner.length > 0,
+    hasData: loyaltyByOwner.length > 0 || charactersNeedingReauth.length > 0,
     hasOwners: owners.length > 0,
     updateError,
   })
   if (loadingState) return loadingState
 
   const totalLP = corpTotals.reduce((sum, c) => sum + c.total, 0)
+
+  if (rows.length === 0 && charactersNeedingReauth.length > 0) {
+    return (
+      <div className="h-full rounded-lg border border-border bg-surface-secondary/30 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-content-secondary">
+            {charactersNeedingReauth.length === 1
+              ? `${charactersNeedingReauth[0]?.name} requires`
+              : `${charactersNeedingReauth.length} characters require`}{' '}
+            re-authentication for loyalty points access.
+          </p>
+          <p className="text-content-muted text-sm mt-1">
+            Use the character menu to re-authenticate.
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   if (rows.length === 0) {
     return (
