@@ -4,7 +4,9 @@ import {
   hasStructure,
   getStructure as getCachedStructure,
   saveStructures,
+  saveNames,
   type CachedStructure,
+  type CachedName,
 } from '@/store/reference-cache'
 import { logger } from '@/lib/logger'
 import { ESIStructureSchema, ESINameSchema } from '../schemas'
@@ -159,6 +161,8 @@ export async function resolveNames(ids: number[]): Promise<Map<number, ESIName>>
 
   if (uncached.length === 0) return results
 
+  const toSave: CachedName[] = []
+
   for (let i = 0; i < uncached.length; i += 1000) {
     const chunk = uncached.slice(i, i + 1000)
     try {
@@ -171,10 +175,15 @@ export async function resolveNames(ids: number[]): Promise<Map<number, ESIName>>
       for (const item of names) {
         namesCache.set(item.id, item)
         results.set(item.id, item)
+        toSave.push(item as CachedName)
       }
     } catch {
       logger.warn('Failed to resolve names', { module: 'ESI', count: chunk.length })
     }
+  }
+
+  if (toSave.length > 0) {
+    saveNames(toSave)
   }
 
   return results

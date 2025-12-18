@@ -9,6 +9,7 @@ const CHARACTER_SCOPES = [
   'publicData',
   'esi-assets.read_assets.v1',
   'esi-characters.read_blueprints.v1',
+  'esi-characters.read_loyalty.v1',
   'esi-markets.read_character_orders.v1',
   'esi-industry.read_character_jobs.v1',
   'esi-contracts.read_character_contracts.v1',

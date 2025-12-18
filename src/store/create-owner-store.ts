@@ -213,6 +213,8 @@ export function createOwnerStore<
                 module: moduleName,
                 requiredScope,
               })
+              const ownerId = makeOwnerKey(owner.type, owner.id)
+              useAuthStore.getState().setOwnerScopesOutdated(ownerId, true)
               continue
             }
 
@@ -282,6 +284,8 @@ export function createOwnerStore<
             module: moduleName,
             requiredScope,
           })
+          const ownerId = makeOwnerKey(owner.type, owner.id)
+          useAuthStore.getState().setOwnerScopesOutdated(ownerId, true)
           return
         }
 

@@ -5,6 +5,7 @@ import { type OwnerJobs } from '@/store/industry-jobs-store'
 import { type OwnerStructures } from '@/store/structures-store'
 import { type OwnerStarbases } from '@/store/starbases-store'
 import { type CharacterCloneData } from '@/store/clones-store'
+import { type OwnerLoyalty } from '@/store/loyalty-store'
 import { type ESIAsset } from '@/api/endpoints/assets'
 import { type Owner } from '@/store/auth-store'
 import {
@@ -241,6 +242,17 @@ function collectFromClones(
   }
 }
 
+function collectFromLoyalty(
+  loyaltyByOwner: OwnerLoyalty[],
+  ids: ResolutionIds
+): void {
+  for (const { loyaltyPoints } of loyaltyByOwner) {
+    for (const lp of loyaltyPoints) {
+      ids.entityIds.add(lp.corporation_id)
+    }
+  }
+}
+
 export async function collectResolutionIds(
   assetsByOwner: OwnerAssets[],
   contractsByOwner: OwnerContracts[],
@@ -248,7 +260,8 @@ export async function collectResolutionIds(
   jobsByOwner: OwnerJobs[],
   structuresByOwner: OwnerStructures[],
   starbasesByOwner: OwnerStarbases[],
-  clonesByOwner: CharacterCloneData[]
+  clonesByOwner: CharacterCloneData[],
+  loyaltyByOwner: OwnerLoyalty[]
 ): Promise<ResolutionIds> {
   const ids: ResolutionIds = {
     typeIds: new Set(),
@@ -264,6 +277,7 @@ export async function collectResolutionIds(
   collectFromStructures(structuresByOwner, ids)
   collectFromStarbases(starbasesByOwner, ids)
   collectFromClones(clonesByOwner, ids)
+  collectFromLoyalty(loyaltyByOwner, ids)
 
   return ids
 }
@@ -325,6 +339,7 @@ async function runResolution(): Promise<void> {
   const { useStructuresStore } = await import('@/store/structures-store')
   const { useStarbasesStore } = await import('@/store/starbases-store')
   const { useClonesStore } = await import('@/store/clones-store')
+  const { useLoyaltyStore } = await import('@/store/loyalty-store')
 
   const ids = await collectResolutionIds(
     useAssetStore.getState().assetsByOwner,
@@ -333,7 +348,8 @@ async function runResolution(): Promise<void> {
     useIndustryJobsStore.getState().dataByOwner,
     useStructuresStore.getState().dataByOwner,
     useStarbasesStore.getState().dataByOwner,
-    useClonesStore.getState().dataByOwner
+    useClonesStore.getState().dataByOwner,
+    useLoyaltyStore.getState().dataByOwner
   )
 
   await resolveAllReferenceData(ids)

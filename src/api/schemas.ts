@@ -311,6 +311,12 @@ export const ESICharacterRolesSchema = z.object({
   roles_at_base: z.array(z.string()).optional(),
 })
 
+// ESI Loyalty Points
+export const ESILoyaltyPointsSchema = z.object({
+  corporation_id: z.number(),
+  loyalty_points: z.number(),
+})
+
 // ESI Wallet
 export const ESICorporationWalletDivisionSchema = z.object({
   balance: z.number(),

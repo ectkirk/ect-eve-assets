@@ -1,0 +1,1 @@
+export { LoyaltyTab } from './LoyaltyTab'

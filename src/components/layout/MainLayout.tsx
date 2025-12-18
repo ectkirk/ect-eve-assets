@@ -8,6 +8,7 @@ import { AssetsTreeTab } from '@/features/assets-tree'
 import { MarketOrdersTab } from '@/features/market-orders'
 import { IndustryJobsTab } from '@/features/industry-jobs'
 import { ClonesTab } from '@/features/clones'
+import { LoyaltyTab } from '@/features/loyalty'
 import { ContractsTab } from '@/features/contracts'
 import { WalletTab } from '@/features/wallet'
 import { ManufacturingTab } from '@/features/manufacturing'
@@ -39,6 +40,7 @@ const ASSET_TABS = [
   'Clones',
   'Contracts',
   'Industry Jobs',
+  'Loyalty Points',
   'Market Orders',
   'Structures',
   'Wallet',
@@ -70,6 +72,8 @@ function AssetTabContent({ tab }: { tab: AssetTab }) {
       return <ClonesTab />
     case 'Contracts':
       return <ContractsTab />
+    case 'Loyalty Points':
+      return <LoyaltyTab />
     case 'Wallet':
       return <WalletTab />
   }

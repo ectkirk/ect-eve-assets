@@ -23,6 +23,7 @@ import { useContractsStore } from '@/store/contracts-store'
 import { useWalletStore } from '@/store/wallet-store'
 import { useWalletJournalStore } from '@/store/wallet-journal-store'
 import { useClonesStore } from '@/store/clones-store'
+import { useLoyaltyStore } from '@/store/loyalty-store'
 import { useBlueprintsStore } from '@/store/blueprints-store'
 import { useStructuresStore } from '@/store/structures-store'
 import { useStarbasesStore } from '@/store/starbases-store'
@@ -158,6 +159,18 @@ const CACHE_OPTIONS: CacheOption[] = [
     refetch: async () => {
       await useClonesStore.getState().init()
       await useClonesStore.getState().update(true)
+    },
+  },
+  {
+    id: 'loyalty',
+    label: 'Loyalty Points',
+    group: 'data',
+    requiresReload: false,
+    endpointPattern: '/loyalty/points',
+    clear: () => useLoyaltyStore.getState().clear(),
+    refetch: async () => {
+      await useLoyaltyStore.getState().init()
+      await useLoyaltyStore.getState().update(true)
     },
   },
   {

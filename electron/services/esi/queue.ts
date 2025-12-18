@@ -69,6 +69,7 @@ export class RequestQueue {
     if (endpoint.includes('/characters/') && endpoint.includes('/assets')) return 'char-asset'
     if (endpoint.includes('/corporations/') && endpoint.includes('/assets')) return 'corp-asset'
     if (endpoint.includes('/characters/') && endpoint.includes('/wallet')) return 'char-wallet'
+    if (endpoint.includes('/characters/') && endpoint.includes('/loyalty')) return 'char-wallet'
     if (endpoint.includes('/corporations/') && endpoint.includes('/wallet')) return 'corp-wallet'
     if (endpoint.includes('/characters/') && endpoint.includes('/industry')) return 'char-industry'
     if (endpoint.includes('/corporations/') && endpoint.includes('/industry')) return 'corp-industry'
