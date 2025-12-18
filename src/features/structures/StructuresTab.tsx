@@ -7,7 +7,6 @@ import { useAssetData } from '@/hooks/useAssetData'
 import { useTabControls } from '@/context'
 import { useCacheVersion } from '@/hooks'
 import { hasType, getType, hasLocation, getLocation } from '@/store/reference-cache'
-import { resolveTypes, resolveLocations } from '@/api/ref-client'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import { formatFuelExpiry } from '@/lib/timer-utils'
 import { STRUCTURE_CATEGORY_ID } from '@/lib/structure-constants'
@@ -89,6 +88,7 @@ export function StructuresTab() {
   const starbaseDetails = useStarbaseDetailsStore((s) => s.details)
   const fetchStarbaseDetail = useStarbaseDetailsStore((s) => s.fetchDetail)
   const initStarbaseDetails = useStarbaseDetailsStore((s) => s.init)
+  const removeOrphanDetails = useStarbaseDetailsStore((s) => s.removeOrphans)
 
   const isUpdating = isUpdatingStructures || isUpdatingStarbases
   const updateError = structureError || starbaseError
@@ -107,7 +107,7 @@ export function StructuresTab() {
     for (const { owner, starbases } of starbasesByOwner) {
       for (const starbase of starbases) {
         const state = starbase.state ?? 'unknown'
-        if (validStates.has(state) && !starbaseDetails.has(starbase.starbase_id)) {
+        if (validStates.has(state)) {
           fetchStarbaseDetail({
             corporationId: owner.id,
             starbaseId: starbase.starbase_id,
@@ -117,23 +117,19 @@ export function StructuresTab() {
         }
       }
     }
-  }, [starbasesByOwner, starbaseDetails, fetchStarbaseDetail])
+  }, [starbasesByOwner, fetchStarbaseDetail])
 
   useEffect(() => {
-    const typeIds = new Set<number>()
-    const locationIds = new Set<number>()
-
+    const validIds = new Set<number>()
     for (const { starbases } of starbasesByOwner) {
       for (const starbase of starbases) {
-        typeIds.add(starbase.type_id)
-        locationIds.add(starbase.system_id)
-        if (starbase.moon_id) locationIds.add(starbase.moon_id)
+        validIds.add(starbase.starbase_id)
       }
     }
-
-    if (typeIds.size > 0) resolveTypes(Array.from(typeIds))
-    if (locationIds.size > 0) resolveLocations(Array.from(locationIds))
-  }, [starbasesByOwner])
+    if (validIds.size > 0) {
+      removeOrphanDetails(validIds)
+    }
+  }, [starbasesByOwner, removeOrphanDetails])
 
   const cacheVersion = useCacheVersion()
 

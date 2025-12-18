@@ -3,6 +3,7 @@ import { type OwnerContracts } from '@/store/contracts-store'
 import { type OwnerOrders } from '@/store/market-orders-store'
 import { type OwnerJobs } from '@/store/industry-jobs-store'
 import { type OwnerStructures } from '@/store/structures-store'
+import { type OwnerStarbases } from '@/store/starbases-store'
 import { type CharacterCloneData } from '@/store/clones-store'
 import { type ESIAsset } from '@/api/endpoints/assets'
 import { type Owner } from '@/store/auth-store'
@@ -189,6 +190,25 @@ function collectFromStructures(
   }
 }
 
+function collectFromStarbases(
+  starbasesByOwner: OwnerStarbases[],
+  ids: ResolutionIds
+): void {
+  for (const { starbases } of starbasesByOwner) {
+    for (const starbase of starbases) {
+      if (needsTypeResolution(starbase.type_id)) {
+        ids.typeIds.add(starbase.type_id)
+      }
+      if (!hasLocation(starbase.system_id)) {
+        ids.locationIds.add(starbase.system_id)
+      }
+      if (starbase.moon_id && !hasLocation(starbase.moon_id)) {
+        ids.locationIds.add(starbase.moon_id)
+      }
+    }
+  }
+}
+
 function collectFromClones(
   clonesByOwner: CharacterCloneData[],
   ids: ResolutionIds
@@ -236,6 +256,7 @@ export async function collectResolutionIds(
   ordersByOwner: OwnerOrders[],
   jobsByOwner: OwnerJobs[],
   structuresByOwner: OwnerStructures[],
+  starbasesByOwner: OwnerStarbases[],
   clonesByOwner: CharacterCloneData[]
 ): Promise<ResolutionIds> {
   const ids: ResolutionIds = {
@@ -251,6 +272,7 @@ export async function collectResolutionIds(
   collectFromOrders(ordersByOwner, ids)
   collectFromJobs(jobsByOwner, ids)
   collectFromStructures(structuresByOwner, ids)
+  collectFromStarbases(starbasesByOwner, ids)
   collectFromClones(clonesByOwner, ids)
 
   return ids
@@ -325,6 +347,7 @@ async function runResolution(): Promise<void> {
   const { useMarketOrdersStore } = await import('@/store/market-orders-store')
   const { useIndustryJobsStore } = await import('@/store/industry-jobs-store')
   const { useStructuresStore } = await import('@/store/structures-store')
+  const { useStarbasesStore } = await import('@/store/starbases-store')
   const { useClonesStore } = await import('@/store/clones-store')
 
   const ids = await collectResolutionIds(
@@ -333,6 +356,7 @@ async function runResolution(): Promise<void> {
     useMarketOrdersStore.getState().dataByOwner,
     useIndustryJobsStore.getState().dataByOwner,
     useStructuresStore.getState().dataByOwner,
+    useStarbasesStore.getState().dataByOwner,
     useClonesStore.getState().dataByOwner
   )
 
