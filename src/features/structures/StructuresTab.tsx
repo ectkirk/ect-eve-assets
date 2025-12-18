@@ -1,216 +1,24 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
-import { Fuel, AlertTriangle, Clock } from 'lucide-react'
-import { useAuthStore, ownerKey, type Owner } from '@/store/auth-store'
+import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useStructuresStore, type ESICorporationStructure } from '@/store/structures-store'
 import { useStarbasesStore, type ESIStarbase } from '@/store/starbases-store'
-import { useStarbaseDetailsStore, calculateFuelHours } from '@/store/starbase-details-store'
+import { useStarbaseDetailsStore } from '@/store/starbase-details-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useTabControls } from '@/context'
-import { useCacheVersion, useSortable, SortableHeader } from '@/hooks'
+import { useCacheVersion } from '@/hooks'
 import { hasType, getType, hasLocation, getLocation } from '@/store/reference-cache'
 import { resolveTypes, resolveLocations } from '@/api/ref-client'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-
-type UpwellSortColumn = 'name' | 'type' | 'region' | 'state' | 'fuel' | 'details'
-type StarbaseSortColumn = 'name' | 'type' | 'region' | 'state' | 'fuel' | 'details'
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
-} from '@/components/ui/context-menu'
-import { cn } from '@/lib/utils'
-import { TypeIcon } from '@/components/ui/type-icon'
+import { formatFuelExpiry } from '@/lib/timer-utils'
+import { STRUCTURE_CATEGORY_ID } from '@/lib/structure-constants'
 import { FittingDialog } from '@/components/dialogs/FittingDialog'
 import { POSInfoDialog } from '@/components/dialogs/POSInfoDialog'
 import { StructureInfoDialog } from '@/components/dialogs/StructureInfoDialog'
+import { StarbaseTable } from './StarbaseTable'
+import { UpwellTable } from './UpwellTable'
 import type { TreeNode } from '@/lib/tree-types'
 import type { ESIAsset } from '@/api/endpoints/assets'
-
-const STATE_DISPLAY: Record<string, { label: string; color: string }> = {
-  // Upwell structure states
-  shield_vulnerable: { label: 'Online', color: 'text-status-positive' },
-  armor_vulnerable: { label: 'Armor', color: 'text-status-highlight' },
-  hull_vulnerable: { label: 'Hull', color: 'text-status-negative' },
-  armor_reinforce: { label: 'Armor Reinforce', color: 'text-status-highlight' },
-  hull_reinforce: { label: 'Hull Reinforce', color: 'text-status-negative' },
-  anchoring: { label: 'Anchoring', color: 'text-status-info' },
-  unanchored: { label: 'Unanchored', color: 'text-content-secondary' },
-  onlining_vulnerable: { label: 'Onlining', color: 'text-status-info' },
-  online_deprecated: { label: 'Online', color: 'text-status-positive' },
-  anchor_vulnerable: { label: 'Anchor Vulnerable', color: 'text-status-highlight' },
-  deploy_vulnerable: { label: 'Deploy Vulnerable', color: 'text-status-highlight' },
-  fitting_invulnerable: { label: 'Fitting', color: 'text-status-info' },
-  // POS states
-  offline: { label: 'Offline', color: 'text-content-secondary' },
-  online: { label: 'Online', color: 'text-status-positive' },
-  onlining: { label: 'Onlining', color: 'text-status-info' },
-  reinforced: { label: 'Reinforced', color: 'text-status-negative' },
-  unanchoring: { label: 'Unanchoring', color: 'text-status-highlight' },
-  unknown: { label: 'Unknown', color: 'text-content-muted' },
-}
-
-interface StructureRow {
-  kind: 'upwell'
-  structure: ESICorporationStructure
-  owner: Owner
-  typeName: string
-  regionName: string
-  fuelDays: number | null
-  treeNode: TreeNode | null
-}
-
-interface StarbaseRow {
-  kind: 'pos'
-  starbase: ESIStarbase
-  owner: Owner
-  ownerName: string
-  typeName: string
-  systemName: string
-  regionName: string
-  moonName: string | null
-  towerSize: number | undefined
-  fuelTier: number | undefined
-}
-
-
-function formatFuelExpiry(fuelExpires: string | undefined): { text: string; days: number | null; isLow: boolean } {
-  if (!fuelExpires) return { text: '-', days: null, isLow: false }
-
-  const expiry = new Date(fuelExpires).getTime()
-  const now = Date.now()
-  const remaining = expiry - now
-
-  if (remaining <= 0) return { text: 'Empty', days: 0, isLow: true }
-
-  const hours = Math.floor(remaining / (60 * 60 * 1000))
-  const days = Math.floor(hours / 24)
-
-  if (days >= 7) return { text: `${days}d`, days, isLow: false }
-  if (days >= 1) return { text: `${days}d ${hours % 24}h`, days, isLow: days <= 3 }
-  return { text: `${hours}h`, days: 0, isLow: true }
-}
-
-function formatFuelHours(hours: number | null): { text: string; days: number | null; isLow: boolean } {
-  if (hours === null) return { text: '-', days: null, isLow: false }
-  if (hours <= 0) return { text: 'Empty', days: 0, isLow: true }
-
-  const days = Math.floor(hours / 24)
-  const remainingHours = Math.floor(hours % 24)
-
-  if (days >= 7) return { text: `${days}d`, days, isLow: false }
-  if (days >= 1) return { text: `${days}d ${remainingHours}h`, days, isLow: days <= 3 }
-  return { text: `${Math.floor(hours)}h`, days: 0, isLow: true }
-}
-
-type TimerInfo = {
-  type: 'reinforced' | 'unanchoring' | 'onlining' | 'none'
-  text: string
-  timestamp: number | null
-  isUrgent: boolean
-}
-
-function getStarbaseTimer(starbase: ESIStarbase): TimerInfo {
-  const now = Date.now()
-
-  if (starbase.reinforced_until) {
-    const until = new Date(starbase.reinforced_until).getTime()
-    const remaining = until - now
-    if (remaining > 0) {
-      const hours = Math.floor(remaining / (60 * 60 * 1000))
-      const days = Math.floor(hours / 24)
-      const text = days >= 1 ? `${days}d ${hours % 24}h` : `${hours}h`
-      return { type: 'reinforced', text: `RF: ${text}`, timestamp: until, isUrgent: hours < 24 }
-    }
-  }
-
-  if (starbase.unanchor_at) {
-    const until = new Date(starbase.unanchor_at).getTime()
-    const remaining = until - now
-    if (remaining > 0) {
-      const hours = Math.floor(remaining / (60 * 60 * 1000))
-      const days = Math.floor(hours / 24)
-      const text = days >= 1 ? `${days}d ${hours % 24}h` : `${hours}h`
-      return { type: 'unanchoring', text: `Unanchor: ${text}`, timestamp: until, isUrgent: false }
-    }
-  }
-
-  if (starbase.state === 'onlining') {
-    return { type: 'onlining', text: 'Onlining', timestamp: null, isUrgent: false }
-  }
-
-  return { type: 'none', text: '-', timestamp: null, isUrgent: false }
-}
-
-type StructureTimerInfo = {
-  type: 'reinforcing' | 'unanchoring' | 'anchoring' | 'vulnerable' | 'none'
-  text: string
-  timestamp: number | null
-  isUrgent: boolean
-}
-
-function getStructureTimer(structure: ESICorporationStructure): StructureTimerInfo {
-  const now = Date.now()
-
-  if (structure.state_timer_end && (
-    structure.state === 'armor_reinforce' ||
-    structure.state === 'hull_reinforce'
-  )) {
-    const until = new Date(structure.state_timer_end).getTime()
-    const remaining = until - now
-    if (remaining > 0) {
-      const hours = Math.floor(remaining / (60 * 60 * 1000))
-      const days = Math.floor(hours / 24)
-      const text = days >= 1 ? `${days}d ${hours % 24}h` : `${hours}h`
-      const label = structure.state === 'armor_reinforce' ? 'Armor' : 'Hull'
-      return { type: 'reinforcing', text: `${label}: ${text}`, timestamp: until, isUrgent: hours < 24 }
-    }
-  }
-
-  if (structure.unanchors_at) {
-    const until = new Date(structure.unanchors_at).getTime()
-    const remaining = until - now
-    if (remaining > 0) {
-      const hours = Math.floor(remaining / (60 * 60 * 1000))
-      const days = Math.floor(hours / 24)
-      const text = days >= 1 ? `${days}d ${hours % 24}h` : `${hours}h`
-      return { type: 'unanchoring', text: `Unanchor: ${text}`, timestamp: until, isUrgent: false }
-    }
-  }
-
-  if (structure.state === 'anchoring' && structure.state_timer_end) {
-    const until = new Date(structure.state_timer_end).getTime()
-    const remaining = until - now
-    if (remaining > 0) {
-      const hours = Math.floor(remaining / (60 * 60 * 1000))
-      const days = Math.floor(hours / 24)
-      const text = days >= 1 ? `${days}d ${hours % 24}h` : `${hours}h`
-      return { type: 'anchoring', text: `Anchor: ${text}`, timestamp: until, isUrgent: false }
-    }
-  }
-
-  if (structure.state_timer_end && (
-    structure.state === 'armor_vulnerable' ||
-    structure.state === 'hull_vulnerable'
-  )) {
-    const until = new Date(structure.state_timer_end).getTime()
-    const remaining = until - now
-    if (remaining > 0) {
-      const hours = Math.floor(remaining / (60 * 60 * 1000))
-      const text = hours >= 1 ? `${hours}h` : '<1h'
-      return { type: 'vulnerable', text: `Vuln: ${text}`, timestamp: until, isUrgent: true }
-    }
-  }
-
-  return { type: 'none', text: '-', timestamp: null, isUrgent: false }
-}
+import type { StructureRow, StarbaseRow } from './types'
 
 function buildStructureTreeNode(
   structureAsset: ESIAsset,
@@ -261,8 +69,6 @@ function buildStructureTreeNode(
     totalVolume: 0,
   }
 }
-
-const STRUCTURE_CATEGORY_ID = 65
 
 export function StructuresTab() {
   const ownersRecord = useAuthStore((s) => s.owners)
@@ -458,101 +264,6 @@ export function StructuresTab() {
     )
   }, [starbasesByOwner, cacheVersion, search, selectedSet])
 
-  const upwellSort = useSortable<UpwellSortColumn>('region', 'asc')
-  const starbaseSort = useSortable<StarbaseSortColumn>('region', 'asc')
-
-  const sortedUpwellRows = useMemo(() => {
-    const getValue = (row: StructureRow, column: UpwellSortColumn): number | string => {
-      switch (column) {
-        case 'name':
-          return (row.structure.name ?? '').toLowerCase()
-        case 'type':
-          return row.typeName.toLowerCase()
-        case 'region':
-          return row.regionName.toLowerCase()
-        case 'state':
-          return row.structure.state
-        case 'fuel':
-          return row.fuelDays ?? -1
-        case 'details': {
-          const timer = getStructureTimer(row.structure)
-          if (timer.type === 'reinforcing') return timer.timestamp ?? Infinity
-          if (timer.type === 'vulnerable') return (timer.timestamp ?? Infinity) + 1e14
-          if (timer.type === 'unanchoring') return (timer.timestamp ?? Infinity) + 1e15
-          if (timer.type === 'anchoring') return (timer.timestamp ?? Infinity) + 1e16
-          return Infinity
-        }
-        default:
-          return 0
-      }
-    }
-
-    const getName = (row: StructureRow) =>
-      (row.structure.name ?? '').toLowerCase()
-
-    return [...upwellRows].sort((a, b) => {
-      const aVal = getValue(a, upwellSort.sortColumn)
-      const bVal = getValue(b, upwellSort.sortColumn)
-      const dir = upwellSort.sortDirection === 'asc' ? 1 : -1
-
-      if (aVal < bVal) return -dir
-      if (aVal > bVal) return dir
-
-      const aName = getName(a)
-      const bName = getName(b)
-      if (aName < bName) return -1
-      if (aName > bName) return 1
-      return 0
-    })
-  }, [upwellRows, upwellSort.sortColumn, upwellSort.sortDirection])
-
-  const sortedStarbaseRows = useMemo(() => {
-    const getValue = (row: StarbaseRow, column: StarbaseSortColumn): number | string => {
-      switch (column) {
-        case 'name':
-          return (row.moonName ?? `Moon ${row.starbase.moon_id ?? 0}`).toLowerCase()
-        case 'type':
-          return row.typeName.toLowerCase()
-        case 'region':
-          return row.regionName.toLowerCase()
-        case 'state':
-          return row.starbase.state ?? 'unknown'
-        case 'fuel': {
-          const detail = starbaseDetails.get(row.starbase.starbase_id)
-          const hours = calculateFuelHours(detail, row.towerSize, row.fuelTier)
-          return hours ?? -1
-        }
-        case 'details': {
-          const timer = getStarbaseTimer(row.starbase)
-          if (timer.type === 'reinforced') return timer.timestamp ?? Infinity
-          if (timer.type === 'unanchoring') return (timer.timestamp ?? Infinity) + 1e15
-          if (timer.type === 'onlining') return 1e16
-          return Infinity
-        }
-        default:
-          return 0
-      }
-    }
-
-    const getMoonName = (row: StarbaseRow) =>
-      (row.moonName ?? `Moon ${row.starbase.moon_id ?? 0}`).toLowerCase()
-
-    return [...starbaseRows].sort((a, b) => {
-      const aVal = getValue(a, starbaseSort.sortColumn)
-      const bVal = getValue(b, starbaseSort.sortColumn)
-      const dir = starbaseSort.sortDirection === 'asc' ? 1 : -1
-
-      if (aVal < bVal) return -dir
-      if (aVal > bVal) return dir
-
-      const aMoon = getMoonName(a)
-      const bMoon = getMoonName(b)
-      if (aMoon < bMoon) return -1
-      if (aMoon > bMoon) return 1
-      return 0
-    })
-  }, [starbaseRows, starbaseSort.sortColumn, starbaseSort.sortDirection, starbaseDetails])
-
   const totalCount = useMemo(() => {
     let count = 0
     for (const { structures } of structuresByOwner) {
@@ -587,8 +298,8 @@ export function StructuresTab() {
   })
   if (loadingState) return loadingState
 
-  const hasUpwell = sortedUpwellRows.length > 0
-  const hasStarbases = sortedStarbaseRows.length > 0
+  const hasUpwell = upwellRows.length > 0
+  const hasStarbases = starbaseRows.length > 0
   const hasAny = hasUpwell || hasStarbases
 
   return (
@@ -601,193 +312,19 @@ export function StructuresTab() {
         )}
 
         {hasUpwell && (
-          <div className="rounded-lg border border-border bg-surface-secondary/30 overflow-hidden flex-shrink-0">
-            <div className="px-3 py-2 border-b border-border bg-surface-secondary/50">
-              <h3 className="text-sm font-medium text-content-primary">Upwell Structures ({sortedUpwellRows.length})</h3>
-            </div>
-            <Table className="table-fixed">
-              <TableHeader className="bg-surface-secondary">
-                <TableRow className="hover:bg-transparent">
-                  <SortableHeader column="name" label="Structure" sortColumn={upwellSort.sortColumn} sortDirection={upwellSort.sortDirection} onSort={upwellSort.handleSort} className="w-[35%]" />
-                  <SortableHeader column="type" label="Type" sortColumn={upwellSort.sortColumn} sortDirection={upwellSort.sortDirection} onSort={upwellSort.handleSort} className="w-[20%]" />
-                  <SortableHeader column="region" label="Region" sortColumn={upwellSort.sortColumn} sortDirection={upwellSort.sortDirection} onSort={upwellSort.handleSort} className="w-[15%]" />
-                  <SortableHeader column="state" label="State" sortColumn={upwellSort.sortColumn} sortDirection={upwellSort.sortDirection} onSort={upwellSort.handleSort} className="w-[10%]" />
-                  <SortableHeader column="fuel" label="Fuel" sortColumn={upwellSort.sortColumn} sortDirection={upwellSort.sortDirection} onSort={upwellSort.handleSort} className="w-[10%] text-right" />
-                  <SortableHeader column="details" label="Details" sortColumn={upwellSort.sortColumn} sortDirection={upwellSort.sortDirection} onSort={upwellSort.handleSort} className="w-[10%] text-right" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedUpwellRows.map((row) => {
-                  const stateInfo = STATE_DISPLAY[row.structure.state] ?? STATE_DISPLAY.unknown!
-                  const fuelInfo = formatFuelExpiry(row.structure.fuel_expires)
-                  const isReinforced = row.structure.state.includes('reinforce')
-                  const hasFitting = row.treeNode !== null
-                  const timerInfo = getStructureTimer(row.structure)
-
-                  const timerColorClass = timerInfo.type === 'reinforcing' || timerInfo.type === 'vulnerable'
-                    ? (timerInfo.isUrgent ? 'text-status-negative' : 'text-status-highlight')
-                    : timerInfo.type === 'unanchoring' || timerInfo.type === 'anchoring'
-                      ? 'text-status-info'
-                      : 'text-content-muted'
-
-                  const tableRow = (
-                    <TableRow key={`upwell-${row.structure.structure_id}`}>
-                      <TableCell className="py-1.5">
-                        <div className="flex items-center gap-2">
-                          <img
-                            src={`https://images.evetech.net/corporations/${row.owner.id}/logo?size=32`}
-                            alt=""
-                            className="w-5 h-5 rounded"
-                          />
-                          <span className="truncate" title={row.structure.name}>
-                            {row.structure.name || `Structure ${row.structure.structure_id}`}
-                          </span>
-                          {isReinforced && <AlertTriangle className="h-4 w-4 text-status-negative" />}
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-1.5">
-                        <div className="flex items-center gap-2">
-                          <TypeIcon typeId={row.structure.type_id} />
-                          <span className="text-content-secondary">{row.typeName}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-1.5 text-content-secondary">{row.regionName}</TableCell>
-                      <TableCell className="py-1.5">
-                        <span className={stateInfo.color}>{stateInfo.label}</span>
-                      </TableCell>
-                      <TableCell className="py-1.5 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          {fuelInfo.isLow && <Fuel className="h-4 w-4 text-status-negative" />}
-                          <span className={cn('tabular-nums', fuelInfo.isLow ? 'text-status-negative' : 'text-content-secondary')}>
-                            {fuelInfo.text}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-1.5 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          {timerInfo.type !== 'none' && <Clock className="h-3.5 w-3.5" />}
-                          <span className={cn('tabular-nums text-sm', timerColorClass)}>
-                            {timerInfo.text}
-                          </span>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )
-
-                  return (
-                    <ContextMenu key={`upwell-${row.structure.structure_id}`}>
-                      <ContextMenuTrigger asChild>{tableRow}</ContextMenuTrigger>
-                      <ContextMenuContent>
-                        <ContextMenuItem onClick={() => handleViewStructureInfo(row.structure, row.owner.name)}>
-                          Show Structure Info
-                        </ContextMenuItem>
-                        {hasFitting && (
-                          <ContextMenuItem onClick={() => handleViewFitting(row.treeNode!)}>
-                            View Fitting
-                          </ContextMenuItem>
-                        )}
-                      </ContextMenuContent>
-                    </ContextMenu>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          </div>
+          <UpwellTable
+            rows={upwellRows}
+            onViewStructureInfo={handleViewStructureInfo}
+            onViewFitting={handleViewFitting}
+          />
         )}
 
         {hasStarbases && (
-          <div className="rounded-lg border border-border bg-surface-secondary/30 overflow-hidden flex-shrink-0">
-            <div className="px-3 py-2 border-b border-border bg-surface-secondary/50">
-              <h3 className="text-sm font-medium text-content-primary">Starbases ({sortedStarbaseRows.length})</h3>
-            </div>
-            <Table className="table-fixed">
-              <TableHeader className="bg-surface-secondary">
-                <TableRow className="hover:bg-transparent">
-                  <SortableHeader column="name" label="Moon" sortColumn={starbaseSort.sortColumn} sortDirection={starbaseSort.sortDirection} onSort={starbaseSort.handleSort} className="w-[35%]" />
-                  <SortableHeader column="type" label="Type" sortColumn={starbaseSort.sortColumn} sortDirection={starbaseSort.sortDirection} onSort={starbaseSort.handleSort} className="w-[20%]" />
-                  <SortableHeader column="region" label="Region" sortColumn={starbaseSort.sortColumn} sortDirection={starbaseSort.sortDirection} onSort={starbaseSort.handleSort} className="w-[15%]" />
-                  <SortableHeader column="state" label="State" sortColumn={starbaseSort.sortColumn} sortDirection={starbaseSort.sortDirection} onSort={starbaseSort.handleSort} className="w-[10%]" />
-                  <SortableHeader column="fuel" label="Fuel" sortColumn={starbaseSort.sortColumn} sortDirection={starbaseSort.sortDirection} onSort={starbaseSort.handleSort} className="w-[10%] text-right" />
-                  <SortableHeader column="details" label="Details" sortColumn={starbaseSort.sortColumn} sortDirection={starbaseSort.sortDirection} onSort={starbaseSort.handleSort} className="w-[10%] text-right" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedStarbaseRows.map((row) => {
-                  const state = row.starbase.state ?? 'unknown'
-                  const stateInfo = STATE_DISPLAY[state] ?? STATE_DISPLAY.unknown!
-                  const isReinforced = state === 'reinforced'
-                  const detail = starbaseDetails.get(row.starbase.starbase_id)
-                  const fuelHours = calculateFuelHours(detail, row.towerSize, row.fuelTier)
-                  const fuelInfo = formatFuelHours(fuelHours)
-                  const timerInfo = getStarbaseTimer(row.starbase)
-
-                  const moonDisplay = row.moonName
-                    ?? (row.starbase.moon_id ? `Moon ${row.starbase.moon_id}` : '-')
-
-                  const timerColorClass = timerInfo.type === 'reinforced'
-                    ? (timerInfo.isUrgent ? 'text-status-negative' : 'text-status-highlight')
-                    : timerInfo.type === 'unanchoring' || timerInfo.type === 'onlining'
-                      ? 'text-status-info'
-                      : 'text-content-muted'
-
-                  const tableRow = (
-                    <TableRow key={`pos-${row.starbase.starbase_id}`}>
-                      <TableCell className="py-1.5">
-                        <div className="flex items-center gap-2">
-                          <img
-                            src={`https://images.evetech.net/corporations/${row.owner.id}/logo?size=32`}
-                            alt=""
-                            className="w-5 h-5 rounded"
-                          />
-                          <span className="truncate" title={moonDisplay}>
-                            {moonDisplay}
-                          </span>
-                          {isReinforced && <AlertTriangle className="h-4 w-4 text-status-negative" />}
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-1.5">
-                        <div className="flex items-center gap-2">
-                          <TypeIcon typeId={row.starbase.type_id} />
-                          <span className="text-content-secondary">{row.typeName}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-1.5 text-content-secondary">{row.regionName}</TableCell>
-                      <TableCell className="py-1.5">
-                        <span className={stateInfo.color}>{stateInfo.label}</span>
-                      </TableCell>
-                      <TableCell className="py-1.5 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          {fuelInfo.isLow && <Fuel className="h-4 w-4 text-status-negative" />}
-                          <span className={cn('tabular-nums', fuelInfo.isLow ? 'text-status-negative' : 'text-content-secondary')}>
-                            {fuelInfo.text}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-1.5 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          {timerInfo.type !== 'none' && <Clock className="h-3.5 w-3.5" />}
-                          <span className={cn('tabular-nums text-sm', timerColorClass)}>
-                            {timerInfo.text}
-                          </span>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )
-
-                  return (
-                    <ContextMenu key={`pos-${row.starbase.starbase_id}`}>
-                      <ContextMenuTrigger asChild>{tableRow}</ContextMenuTrigger>
-                      <ContextMenuContent>
-                        <ContextMenuItem onClick={() => handleViewPosInfo(row.starbase, row.ownerName)}>
-                          Show POS Info
-                        </ContextMenuItem>
-                      </ContextMenuContent>
-                    </ContextMenu>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          </div>
+          <StarbaseTable
+            rows={starbaseRows}
+            starbaseDetails={starbaseDetails}
+            onViewPosInfo={handleViewPosInfo}
+          />
         )}
       </div>
       <FittingDialog

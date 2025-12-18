@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { getStarbaseDetail, type ESIStarbaseDetail } from '@/api/endpoints/starbases'
+import { FUEL_BLOCK_TYPE_IDS, STRONTIUM_TYPE_ID } from '@/lib/structure-constants'
 import { logger } from '@/lib/logger'
 
 const DB_NAME = 'ecteveassets-starbase-details'
@@ -185,9 +186,6 @@ export const useStarbaseDetailsStore = create<StarbaseDetailsStore>((set, get) =
     }
   },
 }))
-
-const FUEL_BLOCK_TYPE_IDS = new Set([4051, 4246, 4247, 4312])
-const STRONTIUM_TYPE_ID = 16275
 
 export function calculateFuelHours(
   detail: ESIStarbaseDetail | undefined,

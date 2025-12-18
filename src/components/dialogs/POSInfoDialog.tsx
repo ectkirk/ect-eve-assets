@@ -5,10 +5,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import type { ESIStarbase } from '@/api/endpoints/starbases'
-import type { ESIStarbaseDetail } from '@/api/endpoints/starbases'
+import type { ESIStarbase, ESIStarbaseDetail } from '@/api/endpoints/starbases'
 import { getType, getLocation } from '@/store/reference-cache'
 import { calculateFuelHours, calculateStrontHours } from '@/store/starbase-details-store'
+import { getStateDisplay, LOW_FUEL_THRESHOLD_HOURS } from '@/lib/structure-constants'
+import { formatCountdown, formatElapsed, formatHoursAsTimer } from '@/lib/timer-utils'
 import { cn } from '@/lib/utils'
 
 interface POSInfoDialogProps {
@@ -26,37 +27,6 @@ const ROLE_LABELS: Record<StarbaseRole, string> = {
   config_starbase_equipment_role: 'Starbase Config Role',
   corporation_member: 'Corp Members',
   starbase_fuel_technician_role: 'Fuel Technician Role',
-}
-
-function formatCountdown(dateStr: string | undefined): string | null {
-  if (!dateStr) return null
-  const target = new Date(dateStr).getTime()
-  const now = Date.now()
-  const remaining = target - now
-  if (remaining <= 0) return 'Expired'
-  const hours = Math.floor(remaining / (60 * 60 * 1000))
-  const days = Math.floor(hours / 24)
-  if (days >= 1) return `${days}d ${hours % 24}h`
-  return `${hours}h`
-}
-
-function formatElapsed(dateStr: string | undefined): string | null {
-  if (!dateStr) return null
-  const since = new Date(dateStr).getTime()
-  const elapsed = Date.now() - since
-  if (elapsed < 0) return null
-  const days = Math.floor(elapsed / (24 * 60 * 60 * 1000))
-  if (days >= 1) return `${days}d`
-  return '<1d'
-}
-
-function formatHoursAsTimer(hours: number | null): string {
-  if (hours === null) return '-'
-  if (hours <= 0) return 'Empty'
-  const days = Math.floor(hours / 24)
-  const remainingHours = Math.floor(hours % 24)
-  if (days >= 1) return `${days}d ${remainingHours}h`
-  return `${Math.floor(hours)}h`
 }
 
 function InfoRow({ label, value, className }: { label: string; value: React.ReactNode; className?: string }) {
@@ -102,15 +72,8 @@ export function POSInfoDialog({ open, onOpenChange, starbase, detail, ownerName 
   const regionName = location?.regionName ?? 'Unknown Region'
   const moonName = moon?.name ?? (starbase.moon_id ? `Moon ${starbase.moon_id}` : 'Unanchored')
 
-  const stateDisplay: Record<string, { label: string; color: string }> = {
-    offline: { label: 'Offline', color: 'text-content-secondary' },
-    online: { label: 'Online', color: 'text-status-positive' },
-    onlining: { label: 'Onlining', color: 'text-status-info' },
-    reinforced: { label: 'Reinforced', color: 'text-status-negative' },
-    unanchoring: { label: 'Unanchoring', color: 'text-status-highlight' },
-  }
   const state = starbase.state ?? 'unknown'
-  const stateInfo = stateDisplay[state] ?? { label: 'Unknown', color: 'text-content-muted' }
+  const stateInfo = getStateDisplay(state)
 
   const formatDateTime = (dateStr: string | undefined) => {
     if (!dateStr) return '-'
@@ -181,7 +144,7 @@ export function POSInfoDialog({ open, onOpenChange, starbase, detail, ownerName 
               {(() => {
                 const fuelHours = calculateFuelHours(detail, type?.towerSize, type?.fuelTier)
                 const strontHours = calculateStrontHours(detail, type?.towerSize)
-                const fuelIsLow = fuelHours !== null && fuelHours < 72
+                const fuelIsLow = fuelHours !== null && fuelHours < LOW_FUEL_THRESHOLD_HOURS
                 const strontIsLow = strontHours !== null && strontHours < 24
                 return (
                   <>

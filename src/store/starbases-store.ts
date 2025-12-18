@@ -4,10 +4,10 @@ import { useStarbaseDetailsStore } from './starbase-details-store'
 import { getType } from './reference-cache'
 import { esi } from '@/api/esi'
 import { ESIStarbaseSchema } from '@/api/schemas'
+import { type ESIStarbase } from '@/api/endpoints/starbases'
 import { processStarbaseNotifications } from '@/lib/structure-notifications'
-import { z } from 'zod'
 
-export type ESIStarbase = z.infer<typeof ESIStarbaseSchema>
+export type { ESIStarbase }
 
 export interface OwnerStarbases {
   owner: Owner

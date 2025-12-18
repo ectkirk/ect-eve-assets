@@ -4,6 +4,7 @@ import type { ESIStarbase } from '@/store/starbases-store'
 import type { ESIStarbaseDetail } from '@/api/endpoints/starbases'
 import { getTypeName } from '@/store/reference-cache'
 import { calculateFuelHours } from '@/store/starbase-details-store'
+import { LOW_FUEL_THRESHOLD_HOURS } from '@/lib/structure-constants'
 import { logger } from '@/lib/logger'
 
 interface StructureAlert {
@@ -30,7 +31,6 @@ const REINFORCED_STATES = new Set([ARMOR_REINFORCED, HULL_REINFORCED])
 const ARMOR_VULNERABLE = 'armor_vulnerable'
 const HULL_VULNERABLE = 'hull_vulnerable'
 const VULNERABLE_STATES = new Set([ARMOR_VULNERABLE, HULL_VULNERABLE])
-const LOW_FUEL_THRESHOLD_HOURS = 72
 
 function createLowFuelAlert(
   fuelHours: number,
