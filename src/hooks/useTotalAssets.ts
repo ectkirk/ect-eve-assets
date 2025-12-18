@@ -5,6 +5,8 @@ import { useContractsStore } from '@/store/contracts-store'
 import { useWalletStore } from '@/store/wallet-store'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { isAbyssalTypeId, getCachedAbyssalPrice } from '@/api/mutamarket-client'
+import { getType } from '@/store/reference-cache'
+import { CategoryIds } from '@/lib/tree-types'
 
 export interface AssetTotals {
   total: number
@@ -38,7 +40,8 @@ export function useTotalAssets(): AssetTotals {
     for (const { owner, assets } of unifiedAssetsByOwner) {
       if (!matchesOwner(owner.type, owner.id)) continue
       for (const asset of assets) {
-        if (asset.location_flag === 'AutoFit') continue
+        const type = getType(asset.type_id)
+        if (type?.categoryId === CategoryIds.OWNER || type?.categoryId === CategoryIds.STATION) continue
         if (asset.is_blueprint_copy) continue
 
         const abyssalPrice = isAbyssalTypeId(asset.type_id)

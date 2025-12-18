@@ -141,6 +141,8 @@ export const LocationFlagToNumber: Record<string, number> = {
 }
 
 export const CategoryIds = {
+  OWNER: 1,
+  STATION: 3,
   SHIP: 6,
   MODULE: 7,
   CHARGE: 8,
@@ -148,6 +150,7 @@ export const CategoryIds = {
   SKILL: 16,
   DRONE: 18,
   IMPLANT: 20,
+  STARBASE: 23,
   STRUCTURE: 65,
   STRUCTURE_MODULE: 66,
   SKIN: 91,
@@ -250,6 +253,14 @@ export const STRUCTURE_CONTENT_FLAGS = new Set([
   'StructureServiceSlot5',
   'StructureServiceSlot6',
   'StructureServiceSlot7',
+  'ServiceSlot0',
+  'ServiceSlot1',
+  'ServiceSlot2',
+  'ServiceSlot3',
+  'ServiceSlot4',
+  'ServiceSlot5',
+  'ServiceSlot6',
+  'ServiceSlot7',
   'StructureDeedBay',
   'FighterBay',
   'FighterTube0',
@@ -257,7 +268,13 @@ export const STRUCTURE_CONTENT_FLAGS = new Set([
   'FighterTube2',
   'FighterTube3',
   'FighterTube4',
+  'QuantumCoreRoom',
+  'SecondaryStorage',
 ])
+
+export function isFittedOrContentFlag(flag: string): boolean {
+  return SHIP_CONTENT_FLAGS.has(flag) || STRUCTURE_CONTENT_FLAGS.has(flag)
+}
 
 // Flags that represent deliveries
 export const DELIVERY_FLAGS = new Set(['Deliveries', 'CorpDeliveries'])

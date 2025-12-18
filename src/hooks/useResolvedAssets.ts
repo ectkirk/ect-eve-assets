@@ -3,6 +3,8 @@ import { useAssetData, type OwnerAssets } from './useAssetData'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { resolveAllAssets } from '@/lib/asset-resolver'
 import type { ResolvedAsset, ResolvedAssetsByOwner } from '@/lib/resolved-asset'
+import { useStarbasesStore } from '@/store/starbases-store'
+import { useStructuresStore } from '@/store/structures-store'
 
 export interface ResolvedAssetsResult {
   resolvedAssets: ResolvedAsset[]
@@ -19,6 +21,27 @@ export interface ResolvedAssetsResult {
 
 export function useResolvedAssets(): ResolvedAssetsResult {
   const assetData = useAssetData()
+  const starbasesByOwner = useStarbasesStore((s) => s.dataByOwner)
+  const structuresByOwner = useStructuresStore((s) => s.dataByOwner)
+
+  const { ownedStructureIds, starbaseMoonIds } = useMemo(() => {
+    const ids = new Set<number>()
+    const moonIds = new Map<number, number>()
+    for (const { starbases } of starbasesByOwner) {
+      for (const starbase of starbases) {
+        ids.add(starbase.starbase_id)
+        if (starbase.moon_id) {
+          moonIds.set(starbase.starbase_id, starbase.moon_id)
+        }
+      }
+    }
+    for (const { structures } of structuresByOwner) {
+      for (const structure of structures) {
+        ids.add(structure.structure_id)
+      }
+    }
+    return { ownedStructureIds: ids, starbaseMoonIds: moonIds }
+  }, [starbasesByOwner, structuresByOwner])
 
   const resolvedAssets = useMemo(() => {
     void assetData.cacheVersion
@@ -28,12 +51,16 @@ export function useResolvedAssets(): ResolvedAssetsResult {
     return resolveAllAssets(assetData.unifiedAssetsByOwner, {
       prices: assetData.prices,
       assetNames: assetData.assetNames,
+      ownedStructureIds,
+      starbaseMoonIds,
     })
   }, [
     assetData.unifiedAssetsByOwner,
     assetData.prices,
     assetData.assetNames,
     assetData.cacheVersion,
+    ownedStructureIds,
+    starbaseMoonIds,
   ])
 
   const resolvedByOwner = useMemo(() => {
