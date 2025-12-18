@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { SECURITY_CONFIGS } from './config'
+import { SECURITY_CONFIGS, ASSET_SAFETY_RATES, formatPercent } from './config'
 
 function FAQItem({ question, children }: { question: string; children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -38,17 +38,136 @@ export function BuybackFAQ() {
             buy price:
           </p>
           <ul className="mb-2 list-inside list-disc space-y-1">
-            {configs.map(({ key, name, buyRate, textColor }) => (
-              <li key={key}>
-                <span className={`font-medium ${textColor}`}>{name}</span>:{' '}
-                {Math.round(buyRate * 100)}%
-              </li>
-            ))}
+            {configs
+              .filter(({ key }) => key !== 'assetsafety')
+              .map(({ key, name, buyRate, textColor }) => (
+                <li key={key}>
+                  <span className={`font-medium ${textColor}`}>{name}</span>:{' '}
+                  {Math.round(buyRate * 100)}%
+                </li>
+              ))}
+            <li>
+              <span className="font-medium text-status-time">Asset Safety</span>:{' '}
+              {formatPercent(ASSET_SAFETY_RATES.nullsec.noNpc)} -{' '}
+              {formatPercent(ASSET_SAFETY_RATES.highsec.npc)} (varies by security and NPC station)
+            </li>
           </ul>
           <p>
             A variable ISK/m³ logistics penalty is then applied to the items based on total volume
             and security status.
           </p>
+        </FAQItem>
+
+        <FAQItem question="How to handle highsec islands">
+          <p className="mb-2">
+            Some systems appear as highsec in-game but have no highsec-only route to Jita. These are
+            called "highsec islands". When quoting items from these systems, select{' '}
+            <span className="font-medium text-status-highlight">Low Security</span> as your security
+            status.
+          </p>
+          <p className="mb-2">
+            We must travel through lowsec or nullsec to collect items from these locations, so they
+            cannot receive highsec rates.{' '}
+            <span className="font-medium text-status-negative">
+              Contracts from highsec islands submitted at highsec rates will be rejected.
+            </span>
+          </p>
+          <p className="mb-2">The following 110 systems are highsec islands:</p>
+          <div className="mb-2 max-h-64 overflow-y-auto rounded bg-surface-tertiary p-3 text-sm">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <p className="font-medium text-status-highlight">Aridia</p>
+                <p className="text-content-secondary">
+                  Avada, Bazadod, Chibi, Haimeh, Keba, Mishi, Pahineh, Sazilid, Shenda, Zaveral
+                </p>
+              </div>
+              <div>
+                <p className="font-medium text-status-highlight">Derelik</p>
+                <p className="text-content-secondary">
+                  Chidah, Fera, Jangar, Moh, Serad, Shenela, Sooma, Uhtafal
+                </p>
+              </div>
+              <div>
+                <p className="font-medium text-status-highlight">Devoid</p>
+                <p className="text-content-secondary">
+                  Arveyil, Faktun, Halenan, Mili, Nidebora, Palpis, Uktiad, Ulerah
+                </p>
+              </div>
+              <div>
+                <p className="font-medium text-status-highlight">Domain</p>
+                <p className="text-content-secondary">Clarelam, Erzoh, Hayumtom</p>
+              </div>
+              <div>
+                <p className="font-medium text-status-highlight">Essence</p>
+                <p className="text-content-secondary">
+                  Actee, Allebin, Amane, Clorteler, Droselory, Perckhevin
+                </p>
+              </div>
+              <div>
+                <p className="font-medium text-status-highlight">Everyshore</p>
+                <p className="text-content-secondary">Olide</p>
+              </div>
+              <div>
+                <p className="font-medium text-status-highlight">Heimatar</p>
+                <p className="text-content-secondary">Atgur, Endrulf, Otraren</p>
+              </div>
+              <div>
+                <p className="font-medium text-status-highlight">Kor-Azor</p>
+                <p className="text-content-secondary">Piri</p>
+              </div>
+              <div>
+                <p className="font-medium text-status-highlight">Lonetrek</p>
+                <p className="text-content-secondary">
+                  Aikantoh, Aivoli, Antiainen, Atai, Elanoda, Endatoh, Jotenen, Kiskoken, Liukikka,
+                  Oishami, Ossa, Otalieto, Rauntaka, Semiki, Uesuro
+                </p>
+              </div>
+              <div>
+                <p className="font-medium text-status-highlight">Metropolis</p>
+                <p className="text-content-secondary">Anher, Erindur, Hodrold, Hroduko</p>
+              </div>
+              <div>
+                <p className="font-medium text-status-highlight">Molden Heath</p>
+                <p className="text-content-secondary">
+                  Eldulf, Fegomenko, Horaka, Kattegaud, Orien, Varigne
+                </p>
+              </div>
+              <div>
+                <p className="font-medium text-status-highlight">Placid</p>
+                <p className="text-content-secondary">
+                  Algasienan, Archavoinet, Brellystier, Iffrue, Ivorider, Mollin, Ommaerrer,
+                  Osmallanais, Vilinnon, Vivanier
+                </p>
+              </div>
+              <div>
+                <p className="font-medium text-status-highlight">Sinq Laison</p>
+                <p className="text-content-secondary">Artisine, Bamiette, Odette, Stegette</p>
+              </div>
+              <div>
+                <p className="font-medium text-status-highlight">Solitude</p>
+                <p className="text-content-secondary">
+                  Arasare, Boystin, Eggheron, Gererique, Larryn, Lazer, Lour, Maire, Niballe,
+                  Octanneve, Odinesyn, Oerse, Ondree, Pochelympe, Postouvin, Stoure, Vecodie,
+                  Weraroix, Yvaeroure, Yvelet
+                </p>
+              </div>
+              <div>
+                <p className="font-medium text-status-highlight">The Bleak Lands</p>
+                <p className="text-content-secondary">
+                  Erkinen, Furskeshin, Imata, Komaa, Kurmaru, Myyhera, Netsalakka, Sasiekko,
+                  Satalama
+                </p>
+              </div>
+              <div>
+                <p className="font-medium text-status-highlight">The Citadel</p>
+                <p className="text-content-secondary">Eitu</p>
+              </div>
+              <div>
+                <p className="font-medium text-status-highlight">The Forge</p>
+                <p className="text-content-secondary">Otomainen</p>
+              </div>
+            </div>
+          </div>
         </FAQItem>
 
         <FAQItem question="Are there items that you do not accept?">
@@ -70,10 +189,15 @@ export function BuybackFAQ() {
         </FAQItem>
 
         <FAQItem question="How do you price blueprints?">
+          <p className="mb-2">
+            Blueprints are only valued if the input explicitly contains "BLUEPRINT ORIGINAL". This
+            marker only appears when copying directly from the <strong>Assets window</strong> (list
+            view, not the station container view) or from a <strong>contract</strong>. In all other
+            cases, blueprints are treated as copies and given zero value.
+          </p>
           <p>
-            We do not track the prices of researched blueprints so all blueprint originals are
-            valued at unresearched NPC price. Copies are given zero value so should not be included
-            in buyback contracts.
+            We do not track researched blueprint prices, so originals are valued at unresearched NPC
+            price. Copies should not be included in buyback contracts.
           </p>
         </FAQItem>
 
@@ -94,11 +218,71 @@ export function BuybackFAQ() {
         </FAQItem>
 
         <FAQItem question="Do you accept items in player-owned stations?">
-          <p>
-            Yes! Use our <span className="text-status-warning">Asset Safety</span> tab which
-            automatically calculates the 15% asset safety retrieval cost based on EVE ESI market
-            prices. The fee will be deducted from your quote automatically, so you can contract for
-            the exact amount shown.
+          <p className="mb-2">
+            Yes! Use our <span className="text-status-warning">Asset Safety</span> tab. Select your
+            security level and whether there is an NPC station in system.
+          </p>
+          <p className="mb-3">Asset safety buyback rates:</p>
+          <div className="mb-3 overflow-hidden rounded-lg border border-border">
+            <table className="w-full text-sm">
+              <thead className="bg-surface-tertiary">
+                <tr>
+                  <th className="px-3 py-2 text-left font-medium text-content-secondary">
+                    Security
+                  </th>
+                  <th className="px-3 py-2 text-right font-medium text-content-secondary">
+                    No NPC Station
+                  </th>
+                  <th className="px-3 py-2 text-right font-medium text-content-secondary">
+                    NPC Station
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                <tr>
+                  <td className="px-3 py-2 font-medium text-status-positive">High-sec</td>
+                  <td className="px-3 py-2 text-right text-content-secondary">
+                    {formatPercent(ASSET_SAFETY_RATES.highsec.noNpc)}
+                  </td>
+                  <td className="px-3 py-2 text-right text-content-secondary">
+                    {formatPercent(ASSET_SAFETY_RATES.highsec.npc)}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="px-3 py-2 font-medium text-status-highlight">Low-sec</td>
+                  <td className="px-3 py-2 text-right text-content-secondary">
+                    {formatPercent(ASSET_SAFETY_RATES.lowsec.noNpc)}
+                  </td>
+                  <td className="px-3 py-2 text-right text-content-secondary">
+                    {formatPercent(ASSET_SAFETY_RATES.lowsec.npc)}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="px-3 py-2 font-medium text-status-negative">Null-sec</td>
+                  <td className="px-3 py-2 text-right text-content-secondary">
+                    {formatPercent(ASSET_SAFETY_RATES.nullsec.noNpc)}
+                  </td>
+                  <td className="px-3 py-2 text-right text-content-secondary">
+                    {formatPercent(ASSET_SAFETY_RATES.nullsec.npc)}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p className="mb-2">
+            The asset safety fee depends on NPC station availability:{' '}
+            <span className="font-medium text-status-positive">
+              {formatPercent(ASSET_SAFETY_RATES.NPC_STATION_FEE_RATE)}
+            </span>{' '}
+            if there is an NPC station in system, or{' '}
+            <span className="font-medium text-status-warning">
+              {formatPercent(ASSET_SAFETY_RATES.FEE_RATE)}
+            </span>{' '}
+            if not. Fees are calculated based on EVE ESI market prices and deducted from your quote
+            automatically.
+          </p>
+          <p className="text-content-muted">
+            Note: Capital ships are not accepted in high-sec asset safety.
           </p>
         </FAQItem>
 

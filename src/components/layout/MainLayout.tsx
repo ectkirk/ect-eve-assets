@@ -14,7 +14,7 @@ import { ManufacturingTab } from '@/features/manufacturing'
 import { BlueprintResearchTab, CopyingTab } from '@/features/research'
 import { CalculatorTab } from '@/features/calculator'
 import { BuybackTab, BUYBACK_TABS, getConfigByTabName, type BuybackTabType } from '@/features/buyback'
-import { Loader2, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp, Search, X, AlertTriangle, Minus, Square, Copy, Settings, Info, Heart, Shield, FileText, History, Trash2 } from 'lucide-react'
+import { Loader2, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp, Search, X, AlertTriangle, Minus, Square, Copy, Settings, Info, Heart, Shield, FileText, History, Trash2, Sparkles } from 'lucide-react'
 import { useThemeStore, THEME_OPTIONS } from '@/store/theme-store'
 import eveSsoLoginWhite from '/eve-sso-login-white.png'
 import { OwnerIcon } from '@/components/ui/type-icon'
@@ -25,6 +25,7 @@ import { ChangelogModal } from './ChangelogModal'
 import { UpdateBanner } from './UpdateBanner'
 import { ToastContainer } from './ToastContainer'
 import { ClearCacheModal } from '@/components/dialogs/ClearCacheModal'
+import { AbyssalSyncModal } from '@/components/dialogs/AbyssalSyncModal'
 import { useTotalAssets } from '@/hooks'
 import { formatNumber } from '@/lib/utils'
 import { TabControlsProvider, useTabControls } from '@/context'
@@ -542,6 +543,7 @@ function WindowControls() {
   const [supportOpen, setSupportOpen] = useState(false)
   const [changelogOpen, setChangelogOpen] = useState(false)
   const [showClearCacheModal, setShowClearCacheModal] = useState(false)
+  const [showAbyssalModal, setShowAbyssalModal] = useState(false)
   const settingsPanelRef = useRef<HTMLDivElement>(null)
   const theme = useThemeStore((s) => s.theme)
   const setTheme = useThemeStore((s) => s.setTheme)
@@ -593,6 +595,17 @@ function WindowControls() {
                   ))}
                 </select>
               </div>
+              <div className="my-2 border-t border-border" />
+              <button
+                onClick={() => {
+                  setShowAbyssalModal(true)
+                  setSettingsOpen(false)
+                }}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-content-secondary hover:bg-surface-tertiary"
+              >
+                <Sparkles className="h-4 w-4" />
+                Abyssal Pricing
+              </button>
               <div className="my-2 border-t border-border" />
               <button
                 onClick={() => {
@@ -661,6 +674,7 @@ function WindowControls() {
       <CreditsModal open={creditsOpen} onOpenChange={setCreditsOpen} />
       <SupportModal open={supportOpen} onOpenChange={setSupportOpen} />
       <ClearCacheModal open={showClearCacheModal} onOpenChange={setShowClearCacheModal} />
+      <AbyssalSyncModal open={showAbyssalModal} onOpenChange={setShowAbyssalModal} />
       <button
         onClick={() => window.electronAPI?.windowMinimize()}
         className="flex h-10 w-12 items-center justify-center text-content-secondary hover:bg-surface-tertiary hover:text-content"

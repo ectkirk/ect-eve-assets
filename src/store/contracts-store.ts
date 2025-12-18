@@ -134,17 +134,6 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
 
     try {
       const loaded = await db.loadAll()
-      let migratedItems = 0
-
-      for (const { data } of loaded) {
-        for (const cwi of data) {
-          const oldItems = (cwi as { items?: ESIContractItem[] }).items
-          if (oldItems && oldItems.length > 0 && !hasContractItems(cwi.contract.contract_id)) {
-            await saveContractItems(cwi.contract.contract_id, oldItems as CachedContractItems['items'])
-            migratedItems++
-          }
-        }
-      }
 
       const contractsByOwner = loaded.map((d) => ({
         owner: d.owner,
@@ -159,7 +148,6 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
         module: 'ContractsStore',
         owners: contractsByOwner.length,
         contracts: contractsByOwner.reduce((sum, o) => sum + o.contracts.length, 0),
-        migratedItems,
       })
     } catch (err) {
       logger.error('Failed to load contracts from DB', err instanceof Error ? err : undefined, {

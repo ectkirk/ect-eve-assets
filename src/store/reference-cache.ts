@@ -284,6 +284,43 @@ export async function getContractItems(contractId: number): Promise<CachedContra
   })
 }
 
+export async function getContractItemsBatch(contractIds: number[]): Promise<Map<number, CachedContractItems['items']>> {
+  const result = new Map<number, CachedContractItems['items']>()
+  const toFetch: number[] = []
+
+  for (const id of contractIds) {
+    if (!contractItemsKnown.has(id)) continue
+    const cached = contractItemsCache.get(id)
+    if (cached) {
+      result.set(id, cached)
+    } else {
+      toFetch.push(id)
+    }
+  }
+
+  if (toFetch.length === 0) return result
+
+  const database = await openDB()
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction('contractItems', 'readonly')
+    const store = tx.objectStore('contractItems')
+
+    tx.onerror = () => reject(tx.error)
+    tx.oncomplete = () => resolve(result)
+
+    for (const id of toFetch) {
+      const request = store.get(id)
+      request.onsuccess = () => {
+        const data = request.result as CachedContractItems | undefined
+        if (data?.items) {
+          contractItemsCache.set(id, data.items)
+          result.set(id, data.items)
+        }
+      }
+    }
+  })
+}
+
 export async function saveContractItems(contractId: number, items: CachedContractItems['items']): Promise<void> {
   const database = await openDB()
   return new Promise((resolve, reject) => {
