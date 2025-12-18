@@ -1,10 +1,8 @@
 {
-  "version": "1.6.3",
+  "version": "1.6.4",
   "date": "2025-12-18",
   "changes": [
-    { "type": "feat", "scope": "settings", "description": "Add bug report form with Discord integration" },
-    { "type": "feat", "scope": "settings", "description": "Add open logs folder button for easier troubleshooting" },
-    { "type": "feat", "scope": "market-orders", "description": "Add average price column with trend indicators" },
-    { "type": "feat", "scope": "market-orders", "description": "Add owner portrait to item cell and copy button for names" }
+    { "type": "fix", "scope": "mutamarket", "description": "Create new abyssal modules via POST when not found in database" },
+    { "type": "feat", "scope": "updater", "description": "Check for updates periodically while app is running" }
   ]
 }
