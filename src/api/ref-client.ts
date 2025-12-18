@@ -315,6 +315,7 @@ export async function fetchPrices(typeIds: number[]): Promise<Map<number, number
 }
 
 export interface MarketComparisonPrices {
+  averagePrice: number | null
   station: { highestBuy: number | null; lowestSell: number | null } | null
   system: { highestBuy: number | null; lowestSell: number | null } | null
   region: { highestBuy: number | null; lowestSell: number | null } | null
@@ -329,7 +330,10 @@ export async function fetchMarketComparison(
 
   for (const [typeId, type] of fetched) {
     const mp = type.marketPrice
+    const avgRaw = mp.average
+    const averagePrice = avgRaw !== null && avgRaw !== undefined ? Number(avgRaw) : null
     results.set(typeId, {
+      averagePrice: averagePrice !== null && !isNaN(averagePrice) ? averagePrice : null,
       station: mp.station ?? null,
       system: mp.system ?? null,
       region: mp.region ?? null,

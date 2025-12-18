@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
-import { ChevronRight, ChevronDown, History } from 'lucide-react'
+import { ChevronRight, ChevronDown, History, TrendingUp, TrendingDown, Copy, Check } from 'lucide-react'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { useMarketOrderHistoryStore, type MarketOrderHistory } from '@/store/market-order-history-store'
@@ -23,6 +23,8 @@ import { getLocationInfo } from '@/lib/location-utils'
 
 interface OrderRow {
   order: MarketOrder
+  ownerId: number
+  ownerType: 'character' | 'corporation'
   ownerName: string
   typeId: number
   typeName: string
@@ -94,7 +96,28 @@ function DifferenceCell({ orderPrice, comparisonValue, isBuyOrder }: { orderPric
   )
 }
 
-type SortColumn = 'item' | 'price' | 'comparison' | 'difference' | 'qty' | 'total' | 'expires' | 'owner'
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="shrink-0 p-0.5 rounded hover:bg-surface-secondary/50 text-content-muted hover:text-content-secondary transition-colors"
+      title="Copy name"
+    >
+      {copied ? <Check className="h-3 w-3 text-status-positive" /> : <Copy className="h-3 w-3" />}
+    </button>
+  )
+}
+
+type SortColumn = 'item' | 'price' | 'comparison' | 'difference' | 'average' | 'qty' | 'total' | 'expires'
 
 function getExpiryTime(issued: string, duration: number): number {
   return new Date(issued).getTime() + duration * 24 * 60 * 60 * 1000
@@ -146,9 +169,9 @@ function sortOrders(
         aVal = getExpiryTime(a.order.issued, a.order.duration)
         bVal = getExpiryTime(b.order.issued, b.order.duration)
         break
-      case 'owner':
-        aVal = a.ownerName.toLowerCase()
-        bVal = b.ownerName.toLowerCase()
+      case 'average':
+        aVal = a.comparison?.averagePrice ?? (sortDirection === 'asc' ? Infinity : -Infinity)
+        bVal = b.comparison?.averagePrice ?? (sortDirection === 'asc' ? Infinity : -Infinity)
         break
     }
 
@@ -207,40 +230,66 @@ function OrdersTable({ orders, comparisonLevel }: { orders: OrderRow[]; comparis
                 <SortableHeader column="price" label="Price" sortColumn={sellSort} sortDirection={sellDirection} onSort={handleSellSort} className="text-right" />
                 <SortableHeader column="comparison" label="Lowest Sell" sortColumn={sellSort} sortDirection={sellDirection} onSort={handleSellSort} className="text-right" />
                 <SortableHeader column="difference" label="Difference" sortColumn={sellSort} sortDirection={sellDirection} onSort={handleSellSort} className="text-right" />
+                <SortableHeader column="average" label="Average" sortColumn={sellSort} sortDirection={sellDirection} onSort={handleSellSort} className="text-right" />
                 <SortableHeader column="qty" label="Qty" sortColumn={sellSort} sortDirection={sellDirection} onSort={handleSellSort} className="text-right" />
                 <SortableHeader column="total" label="Total" sortColumn={sellSort} sortDirection={sellDirection} onSort={handleSellSort} className="text-right" />
                 <SortableHeader column="expires" label="Expires" sortColumn={sellSort} sortDirection={sellDirection} onSort={handleSellSort} className="text-right" />
-                <SortableHeader column="owner" label="Owner" sortColumn={sellSort} sortDirection={sellDirection} onSort={handleSellSort} className="text-right" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {sortedSellOrders.map((row) => {
                 const total = row.order.price * row.order.volume_remain
                 const comparisonValue = getComparisonValue(row.comparison, comparisonLevel, false)
+                const averagePrice = row.comparison?.averagePrice ?? null
+                const lowestSell = row.comparison?.region?.lowestSell ?? null
                 return (
                   <TableRow key={row.order.order_id}>
                     <TableCell className="py-1.5">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <img
+                          src={row.ownerType === 'corporation'
+                            ? `https://images.evetech.net/corporations/${row.ownerId}/logo?size=32`
+                            : `https://images.evetech.net/characters/${row.ownerId}/portrait?size=32`
+                          }
+                          alt=""
+                          className="size-6 shrink-0 rounded object-cover"
+                        />
                         <TypeIcon typeId={row.typeId} categoryId={row.categoryId} />
                         <span className="truncate" title={row.typeName}>{row.typeName}</span>
+                        <CopyButton text={row.typeName} />
                       </div>
                     </TableCell>
-                    <TableCell className="py-1.5 text-right tabular-nums">{row.order.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                    <TableCell className="py-1.5 text-right tabular-nums text-content-secondary">
+                    <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">{row.order.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                    <TableCell className="py-1.5 text-right tabular-nums text-content-secondary whitespace-nowrap">
                       {comparisonValue !== null ? comparisonValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : <span className="text-content-muted">-</span>}
                     </TableCell>
-                    <TableCell className="py-1.5 text-right tabular-nums">
+                    <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
                       <DifferenceCell orderPrice={row.order.price} comparisonValue={comparisonValue} isBuyOrder={false} />
                     </TableCell>
-                    <TableCell className="py-1.5 text-right tabular-nums">
+                    <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
+                      {averagePrice !== null ? (
+                        <span className="flex items-center justify-end gap-1">
+                          {averagePrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {lowestSell !== null && (
+                            averagePrice < lowestSell
+                              ? <TrendingUp className="h-3 w-3 text-status-positive" />
+                              : averagePrice > lowestSell
+                                ? <TrendingDown className="h-3 w-3 text-status-negative" />
+                                : null
+                          )}
+                        </span>
+                      ) : (
+                        <span className="text-content-muted">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
                       {row.order.volume_remain.toLocaleString()}
                       {row.order.volume_remain !== row.order.volume_total && (
                         <span className="text-content-muted">/{row.order.volume_total.toLocaleString()}</span>
                       )}
                     </TableCell>
-                    <TableCell className="py-1.5 text-right tabular-nums text-status-highlight">{formatNumber(total)}</TableCell>
-                    <TableCell className="py-1.5 text-right tabular-nums text-content-secondary">{formatExpiry(row.order.issued, row.order.duration)}</TableCell>
-                    <TableCell className="py-1.5 text-right text-content-secondary">{row.ownerName}</TableCell>
+                    <TableCell className="py-1.5 text-right tabular-nums text-status-highlight whitespace-nowrap">{formatNumber(total)}</TableCell>
+                    <TableCell className="py-1.5 text-right tabular-nums text-content-secondary whitespace-nowrap">{formatExpiry(row.order.issued, row.order.duration)}</TableCell>
                   </TableRow>
                 )
               })}
@@ -258,40 +307,66 @@ function OrdersTable({ orders, comparisonLevel }: { orders: OrderRow[]; comparis
                 <SortableHeader column="price" label="Price" sortColumn={buySort} sortDirection={buyDirection} onSort={handleBuySort} className="text-right" />
                 <SortableHeader column="comparison" label="Highest Buy" sortColumn={buySort} sortDirection={buyDirection} onSort={handleBuySort} className="text-right" />
                 <SortableHeader column="difference" label="Difference" sortColumn={buySort} sortDirection={buyDirection} onSort={handleBuySort} className="text-right" />
+                <SortableHeader column="average" label="Average" sortColumn={buySort} sortDirection={buyDirection} onSort={handleBuySort} className="text-right" />
                 <SortableHeader column="qty" label="Qty" sortColumn={buySort} sortDirection={buyDirection} onSort={handleBuySort} className="text-right" />
                 <SortableHeader column="total" label="Total" sortColumn={buySort} sortDirection={buyDirection} onSort={handleBuySort} className="text-right" />
                 <SortableHeader column="expires" label="Expires" sortColumn={buySort} sortDirection={buyDirection} onSort={handleBuySort} className="text-right" />
-                <SortableHeader column="owner" label="Owner" sortColumn={buySort} sortDirection={buyDirection} onSort={handleBuySort} className="text-right" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {sortedBuyOrders.map((row) => {
                 const total = row.order.price * row.order.volume_remain
                 const comparisonValue = getComparisonValue(row.comparison, comparisonLevel, true)
+                const averagePrice = row.comparison?.averagePrice ?? null
+                const lowestSell = row.comparison?.region?.lowestSell ?? null
                 return (
                   <TableRow key={row.order.order_id}>
                     <TableCell className="py-1.5">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <img
+                          src={row.ownerType === 'corporation'
+                            ? `https://images.evetech.net/corporations/${row.ownerId}/logo?size=32`
+                            : `https://images.evetech.net/characters/${row.ownerId}/portrait?size=32`
+                          }
+                          alt=""
+                          className="size-6 shrink-0 rounded object-cover"
+                        />
                         <TypeIcon typeId={row.typeId} categoryId={row.categoryId} />
                         <span className="truncate" title={row.typeName}>{row.typeName}</span>
+                        <CopyButton text={row.typeName} />
                       </div>
                     </TableCell>
-                    <TableCell className="py-1.5 text-right tabular-nums">{row.order.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                    <TableCell className="py-1.5 text-right tabular-nums text-content-secondary">
+                    <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">{row.order.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                    <TableCell className="py-1.5 text-right tabular-nums text-content-secondary whitespace-nowrap">
                       {comparisonValue !== null ? comparisonValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : <span className="text-content-muted">-</span>}
                     </TableCell>
-                    <TableCell className="py-1.5 text-right tabular-nums">
+                    <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
                       <DifferenceCell orderPrice={row.order.price} comparisonValue={comparisonValue} isBuyOrder={true} />
                     </TableCell>
-                    <TableCell className="py-1.5 text-right tabular-nums">
+                    <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
+                      {averagePrice !== null ? (
+                        <span className="flex items-center justify-end gap-1">
+                          {averagePrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {lowestSell !== null && (
+                            averagePrice < lowestSell
+                              ? <TrendingUp className="h-3 w-3 text-status-positive" />
+                              : averagePrice > lowestSell
+                                ? <TrendingDown className="h-3 w-3 text-status-negative" />
+                                : null
+                          )}
+                        </span>
+                      ) : (
+                        <span className="text-content-muted">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
                       {row.order.volume_remain.toLocaleString()}
                       {row.order.volume_remain !== row.order.volume_total && (
                         <span className="text-content-muted">/{row.order.volume_total.toLocaleString()}</span>
                       )}
                     </TableCell>
-                    <TableCell className="py-1.5 text-right tabular-nums text-status-highlight">{formatNumber(total)}</TableCell>
-                    <TableCell className="py-1.5 text-right tabular-nums text-content-secondary">{formatExpiry(row.order.issued, row.order.duration)}</TableCell>
-                    <TableCell className="py-1.5 text-right text-content-secondary">{row.ownerName}</TableCell>
+                    <TableCell className="py-1.5 text-right tabular-nums text-status-highlight whitespace-nowrap">{formatNumber(total)}</TableCell>
+                    <TableCell className="py-1.5 text-right tabular-nums text-content-secondary whitespace-nowrap">{formatExpiry(row.order.issued, row.order.duration)}</TableCell>
                   </TableRow>
                 )
               })}
@@ -589,10 +664,10 @@ export function MarketOrdersTab() {
     { id: 'price', label: 'Price' },
     { id: 'comparison', label: 'Comparison' },
     { id: 'difference', label: 'Difference' },
+    { id: 'average', label: 'Average' },
     { id: 'quantity', label: 'Quantity' },
     { id: 'total', label: 'Total' },
     { id: 'expires', label: 'Expires' },
-    { id: 'owner', label: 'Owner' },
   ], [])
 
   const { getColumnsForDropdown } = useColumnSettings('market-orders', ORDER_COLUMNS)
@@ -614,6 +689,8 @@ export function MarketOrdersTab() {
 
         const row: OrderRow = {
           order,
+          ownerId: owner.id,
+          ownerType: owner.type,
           ownerName: owner.name,
           typeId: order.type_id,
           typeName: type?.name ?? `Unknown Type ${order.type_id}`,
