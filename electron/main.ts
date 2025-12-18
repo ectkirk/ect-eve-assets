@@ -262,6 +262,20 @@ function createWindow() {
     isManuallyMaximized = false
     mainWindow?.webContents.send('window:maximizeChange', false)
   })
+
+  // Pause/resume API operations when window is minimized
+  mainWindow.on('minimize', () => {
+    logger.info('Window minimized, pausing API operations', { module: 'Main' })
+    getESIService().pause()
+    setRefQueuesPaused(true)
+    mainWindow?.webContents.send('window:minimizeChange', true)
+  })
+  mainWindow.on('restore', () => {
+    logger.info('Window restored, resuming API operations', { module: 'Main' })
+    getESIService().resume()
+    setRefQueuesPaused(false)
+    mainWindow?.webContents.send('window:minimizeChange', false)
+  })
 }
 
 // IPC handlers for auth
@@ -464,14 +478,27 @@ interface RefQueue {
   lastRequestTime: number
   queue: Array<() => void>
   processing: boolean
+  paused: boolean
 }
 
 type RefQueueName = 'types' | 'universe' | 'other'
 
 const refQueues: Record<RefQueueName, RefQueue> = {
-  types: { lastRequestTime: 0, queue: [], processing: false },
-  universe: { lastRequestTime: 0, queue: [], processing: false },
-  other: { lastRequestTime: 0, queue: [], processing: false },
+  types: { lastRequestTime: 0, queue: [], processing: false, paused: false },
+  universe: { lastRequestTime: 0, queue: [], processing: false, paused: false },
+  other: { lastRequestTime: 0, queue: [], processing: false, paused: false },
+}
+
+function setRefQueuesPaused(paused: boolean): void {
+  for (const queueName of Object.keys(refQueues) as RefQueueName[]) {
+    refQueues[queueName].paused = paused
+  }
+  logger.debug(`Ref queues ${paused ? 'paused' : 'resumed'}`, { module: 'Main' })
+  if (!paused) {
+    for (const queueName of Object.keys(refQueues) as RefQueueName[]) {
+      processRefQueue(queueName)
+    }
+  }
 }
 
 let refGlobalRetryAfter = 0
@@ -495,10 +522,15 @@ async function waitForGlobalBackoff(): Promise<void> {
 
 async function processRefQueue(queueName: RefQueueName): Promise<void> {
   const q = refQueues[queueName]
-  if (q.processing) return
+  if (q.processing || q.paused) return
   q.processing = true
 
   while (q.queue.length > 0) {
+    if (q.paused) {
+      q.processing = false
+      return
+    }
+
     await waitForGlobalBackoff()
 
     const now = Date.now()

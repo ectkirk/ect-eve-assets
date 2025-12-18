@@ -353,6 +353,7 @@ declare global {
     windowClose: () => Promise<void>
     windowIsMaximized: () => Promise<boolean>
     onWindowMaximizeChange: (callback: (isMaximized: boolean) => void) => () => void
+    onWindowMinimizeChange: (callback: (isMinimized: boolean) => void) => () => void
     esi: ESIAPI
   }
 

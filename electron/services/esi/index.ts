@@ -274,6 +274,16 @@ export class MainESIService {
     }
   }
 
+  pause(): void {
+    this.queue.pause()
+    logger.debug('ESI queue paused', { module: 'ESI' })
+  }
+
+  resume(): void {
+    this.queue.resume()
+    logger.debug('ESI queue resumed', { module: 'ESI' })
+  }
+
   private loadState(): void {
     try {
       if (fs.existsSync(this.rateLimitFilePath)) {

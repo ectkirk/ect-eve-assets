@@ -12,6 +12,7 @@ interface QueuedRequest {
 export class RequestQueue {
   private queue: QueuedRequest[] = []
   private processing = false
+  private paused = false
   private rateLimiter: RateLimitTracker
   private executeRequest: (endpoint: string, options: ESIRequestOptions) => Promise<ESIResponse<unknown>>
 
@@ -32,10 +33,15 @@ export class RequestQueue {
   }
 
   private async process(): Promise<void> {
-    if (this.processing) return
+    if (this.processing || this.paused) return
     this.processing = true
 
     while (this.queue.length > 0) {
+      if (this.paused) {
+        this.processing = false
+        return
+      }
+
       const globalDelay = this.rateLimiter.getGlobalRetryAfter()
       if (globalDelay) {
         await this.delay(globalDelay)
@@ -103,5 +109,18 @@ export class RequestQueue {
       request.reject(new Error('Queue cleared'))
     }
     this.queue = []
+  }
+
+  pause(): void {
+    this.paused = true
+  }
+
+  resume(): void {
+    this.paused = false
+    this.process()
+  }
+
+  get isPaused(): boolean {
+    return this.paused
   }
 }

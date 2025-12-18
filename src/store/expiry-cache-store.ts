@@ -29,6 +29,7 @@ interface ExpiryCacheState {
   isProcessingQueue: boolean
   pollingGeneration: number
   currentlyRefreshing: { ownerKey: string; endpoint: string } | null
+  isPaused: boolean
 }
 
 interface ExpiryCacheActions {
@@ -43,6 +44,8 @@ interface ExpiryCacheActions {
   clearForOwner: (ownerKey: string) => void
   clearByEndpoint: (pattern: string) => Promise<void>
   clear: () => Promise<void>
+  pause: () => void
+  resume: () => void
 }
 
 type ExpiryCacheStore = ExpiryCacheState & ExpiryCacheActions
@@ -195,6 +198,11 @@ function schedulePoll(generation: number) {
     const state = useExpiryCacheStore.getState()
     if (generation !== state.pollingGeneration) return
 
+    if (state.isPaused) {
+      schedulePoll(generation)
+      return
+    }
+
     const now = Date.now()
     const toQueue: Array<{ ownerKey: string; endpoint: string }> = []
 
@@ -224,14 +232,20 @@ function schedulePoll(generation: number) {
 
 function processQueue() {
   const state = useExpiryCacheStore.getState()
-  if (state.isProcessingQueue || state.refreshQueue.length === 0) return
+  if (state.isProcessingQueue || state.refreshQueue.length === 0 || state.isPaused) return
 
   useExpiryCacheStore.setState({ isProcessingQueue: true })
 
   const skippedOwners = new Set<string>()
 
   const processNext = async () => {
-    const { refreshQueue, callbacks } = useExpiryCacheStore.getState()
+    const currentState = useExpiryCacheStore.getState()
+    if (currentState.isPaused) {
+      useExpiryCacheStore.setState({ isProcessingQueue: false, currentlyRefreshing: null })
+      return
+    }
+
+    const { refreshQueue, callbacks } = currentState
     if (refreshQueue.length === 0) {
       useExpiryCacheStore.setState({ isProcessingQueue: false, currentlyRefreshing: null })
       return
@@ -286,6 +300,7 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
   isProcessingQueue: false,
   pollingGeneration: 0,
   currentlyRefreshing: null,
+  isPaused: false,
 
   init: async () => {
     const currentGen = get().pollingGeneration
@@ -488,5 +503,16 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
     } catch (error) {
       logger.error('Failed to clear expiry cache', error, { module: 'ExpiryCacheStore' })
     }
+  },
+
+  pause: () => {
+    set({ isPaused: true })
+    logger.debug('Expiry cache polling paused', { module: 'ExpiryCacheStore' })
+  },
+
+  resume: () => {
+    set({ isPaused: false })
+    logger.debug('Expiry cache polling resumed', { module: 'ExpiryCacheStore' })
+    processQueue()
   },
 }))

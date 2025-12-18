@@ -74,6 +74,17 @@ function App() {
   }, [])
 
   useEffect(() => {
+    const unsubscribe = window.electronAPI?.onWindowMinimizeChange?.((isMinimized) => {
+      if (isMinimized) {
+        useExpiryCacheStore.getState().pause()
+      } else {
+        useExpiryCacheStore.getState().resume()
+      }
+    })
+    return () => unsubscribe?.()
+  }, [])
+
+  useEffect(() => {
     if (appInitStarted) return
     appInitStarted = true
 

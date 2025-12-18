@@ -353,6 +353,7 @@ export interface ElectronAPI {
   windowClose: () => Promise<void>
   windowIsMaximized: () => Promise<boolean>
   onWindowMaximizeChange: (callback: (isMaximized: boolean) => void) => () => void
+  onWindowMinimizeChange: (callback: (isMinimized: boolean) => void) => () => void
   esi: ESIAPI
 }
 
@@ -431,6 +432,11 @@ const electronAPI: ElectronAPI = {
     const handler = (_event: unknown, isMaximized: boolean) => callback(isMaximized)
     ipcRenderer.on('window:maximizeChange', handler)
     return () => ipcRenderer.removeListener('window:maximizeChange', handler)
+  },
+  onWindowMinimizeChange: (callback: (isMinimized: boolean) => void) => {
+    const handler = (_event: unknown, isMinimized: boolean) => callback(isMinimized)
+    ipcRenderer.on('window:minimizeChange', handler)
+    return () => ipcRenderer.removeListener('window:minimizeChange', handler)
   },
   esi,
 }
