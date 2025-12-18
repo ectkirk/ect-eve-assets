@@ -69,7 +69,7 @@ function collectFromAssets(
         ids.typeIds.add(asset.type_id)
       }
 
-      if (asset.location_type === 'solar_system' && !hasLocation(asset.location_id)) {
+      if (asset.location_type !== 'item' && asset.location_id <= 1_000_000_000_000 && !hasLocation(asset.location_id)) {
         ids.locationIds.add(asset.location_id)
       }
 
