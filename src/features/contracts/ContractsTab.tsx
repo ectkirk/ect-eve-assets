@@ -6,20 +6,17 @@ import {
   Gavel,
   Truck,
   HelpCircle,
-  CheckCircle2,
-  Clock,
-  XCircle,
-  AlertCircle,
   History,
   Package,
+  Loader2,
 } from 'lucide-react'
 import { useTabControls } from '@/context'
 import { useColumnSettings, useCacheVersion, useSortable, SortableHeader, sortRows, type ColumnConfig } from '@/hooks'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useContractsStore, type ContractWithItems } from '@/store/contracts-store'
 import { useAssetData } from '@/hooks/useAssetData'
-import { type ESIContract } from '@/api/endpoints/contracts'
-import { hasType, getType } from '@/store/reference-cache'
+import { type ESIContract, type ESIContractItem } from '@/api/endpoints/contracts'
+import { hasType, getType, hasContractItems, getContractItems, saveContractItems } from '@/store/reference-cache'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import { useAssetStore } from '@/store/asset-store'
 import { getName } from '@/api/endpoints/universe'
@@ -33,7 +30,7 @@ import {
 } from '@/components/ui/table'
 import { cn, formatNumber } from '@/lib/utils'
 
-type ContractSortColumn = 'type' | 'items' | 'location' | 'assignee' | 'price' | 'value' | 'expires' | 'completed' | 'volume' | 'collateral' | 'days' | 'owner'
+type ContractSortColumn = 'type' | 'items' | 'location' | 'assigner' | 'assignee' | 'price' | 'value' | 'expires' | 'completed' | 'volume' | 'collateral' | 'days'
 import { getLocationName } from '@/lib/location-utils'
 import { TypeIcon as ItemTypeIcon } from '@/components/ui/type-icon'
 import { ContractItemsDialog } from '@/components/dialogs/ContractItemsDialog'
@@ -58,13 +55,17 @@ type ContractDirection = 'out' | 'in'
 
 interface ContractRow {
   contractWithItems: ContractWithItems
-  ownerName: string
+  items: ESIContractItem[]
+  ownerType: 'character' | 'corporation'
+  ownerId: number
   locationName: string
   endLocationName: string
   firstItemTypeId?: number
   firstItemCategoryId?: number
+  firstItemIsBlueprintCopy?: boolean
   typeName: string
   direction: ContractDirection
+  assignerName: string
   assigneeName: string
   itemValue: number
   status: ESIContract['status']
@@ -94,28 +95,6 @@ function formatExpiry(dateExpired: string): { text: string; isExpired: boolean }
   }
 
   return { text: `${hours}h`, isExpired: false }
-}
-
-function StatusIcon({ status }: { status: ESIContract['status'] }) {
-  switch (status) {
-    case 'outstanding':
-      return <Clock className="h-4 w-4 text-status-info" />
-    case 'in_progress':
-      return <Clock className="h-4 w-4 text-status-highlight" />
-    case 'finished':
-    case 'finished_issuer':
-    case 'finished_contractor':
-      return <CheckCircle2 className="h-4 w-4 text-status-positive" />
-    case 'cancelled':
-    case 'rejected':
-    case 'failed':
-    case 'deleted':
-      return <XCircle className="h-4 w-4 text-status-negative" />
-    case 'reversed':
-      return <AlertCircle className="h-4 w-4 text-status-warning" />
-    default:
-      return <HelpCircle className="h-4 w-4 text-content-secondary" />
-  }
 }
 
 function getContractValue(contract: ESIContract): number {
@@ -167,6 +146,8 @@ function ContractsTable({
           return row.typeName.toLowerCase()
         case 'location':
           return row.locationName.toLowerCase()
+        case 'assigner':
+          return row.assignerName.toLowerCase()
         case 'assignee':
           return row.assigneeName.toLowerCase()
         case 'price':
@@ -183,8 +164,6 @@ function ContractsTable({
           return contract.collateral ?? 0
         case 'days':
           return getDaysLeft(contract)
-        case 'owner':
-          return row.ownerName.toLowerCase()
         default:
           return 0
       }
@@ -204,6 +183,7 @@ function ContractsTable({
           <SortableHeader column="type" label="Type" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
           {!showCourierColumns && <SortableHeader column="items" label="Items" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />}
           <SortableHeader column="location" label="Location" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
+          <SortableHeader column="assigner" label="Assigner" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
           <SortableHeader column="assignee" label="Assignee" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
           <SortableHeader column="price" label="Price" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
           {!showCourierColumns && !showCompletedDate && <SortableHeader column="value" label="Value" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />}
@@ -220,13 +200,12 @@ function ContractsTable({
             <SortableHeader column="expires" label="Expires" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
           ) : null}
           <th className="text-right">Status</th>
-          <SortableHeader column="owner" label="Owner" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
         </TableRow>
       </TableHeader>
       <TableBody>
         {paginatedContracts.map((row) => {
           const contract = row.contractWithItems.contract
-          const items = row.contractWithItems.items
+          const items = row.items
           const TypeIcon = CONTRACT_TYPE_ICONS[contract.type]
           const expiry = formatExpiry(contract.date_expired)
           const value = getContractValue(contract)
@@ -236,7 +215,14 @@ function ContractsTable({
             <React.Fragment key={contract.contract_id}>
               <TableRow>
                 <TableCell className="py-1.5 w-8">
-                  <StatusIcon status={contract.status} />
+                  <img
+                    src={row.ownerType === 'corporation'
+                      ? `https://images.evetech.net/corporations/${row.ownerId}/logo?size=32`
+                      : `https://images.evetech.net/characters/${row.ownerId}/portrait?size=32`
+                    }
+                    alt=""
+                    className="size-6 rounded object-cover"
+                  />
                 </TableCell>
                 <TableCell className="py-1.5">
                   <div className="flex items-center gap-2">
@@ -261,9 +247,10 @@ function ContractsTable({
                             <ItemTypeIcon
                               typeId={row.firstItemTypeId}
                               categoryId={row.firstItemCategoryId}
+                              isBlueprintCopy={row.firstItemIsBlueprintCopy}
                             />
                           )}
-                          <span className="truncate" title={row.typeName}>
+                          <span className={cn('truncate', row.firstItemIsBlueprintCopy && 'text-status-special')} title={row.typeName}>
                             {items.length === 0 ? '' : row.typeName}
                           </span>
                         </>
@@ -279,6 +266,7 @@ function ContractsTable({
                     <span className="text-content-muted"> → {row.endLocationName}</span>
                   )}
                 </TableCell>
+                <TableCell className="py-1.5 text-content-secondary">{row.assignerName}</TableCell>
                 <TableCell className="py-1.5 text-content-secondary">{row.assigneeName}</TableCell>
                 <TableCell className="py-1.5 text-right tabular-nums text-status-highlight">
                   {value > 0 ? formatNumber(value) : '-'}
@@ -352,7 +340,6 @@ function ContractsTable({
                   {row.status === 'deleted' && <span className="text-content-muted">Deleted</span>}
                   {row.status === 'reversed' && <span className="text-status-warning">Reversed</span>}
                 </TableCell>
-                <TableCell className="py-1.5 text-right text-content-secondary">{row.ownerName}</TableCell>
               </TableRow>
             </React.Fragment>
           )
@@ -403,7 +390,7 @@ function ContractsTable({
     <ContractItemsDialog
       open={selectedContract !== null}
       onOpenChange={(open) => !open && setSelectedContract(null)}
-      items={selectedContract?.contractWithItems.items ?? []}
+      items={selectedContract?.items ?? []}
       contractType={selectedContract ? CONTRACT_TYPE_NAMES[selectedContract.contractWithItems.contract.type] : ''}
       prices={prices}
     />
@@ -459,22 +446,89 @@ export function ContractsTab() {
   const prices = useAssetStore((s) => s.prices)
   const contractsByOwner = useContractsStore((s) => s.contractsByOwner)
   const contractsUpdating = useContractsStore((s) => s.isUpdating)
+  const fetchItemsForContract = useContractsStore((s) => s.fetchItemsForContract)
   const updateError = useContractsStore((s) => s.updateError)
   const init = useContractsStore((s) => s.init)
   const initialized = useContractsStore((s) => s.initialized)
+  const updateCounter = useContractsStore((s) => s.updateCounter)
 
   const { isLoading: assetsUpdating } = useAssetData()
   const isUpdating = assetsUpdating || contractsUpdating
 
+  const [loadedItems, setLoadedItems] = useState<Map<number, ESIContractItem[]>>(new Map())
+  const [isLoadingItems, setIsLoadingItems] = useState(false)
+
   useEffect(() => {
     init()
   }, [init])
+
+  useEffect(() => {
+    const loadCachedItems = async () => {
+      const newItems = new Map<number, ESIContractItem[]>()
+      for (const { contracts } of contractsByOwner) {
+        for (const { contract } of contracts) {
+          if (hasContractItems(contract.contract_id)) {
+            const items = await getContractItems(contract.contract_id)
+            if (items) {
+              newItems.set(contract.contract_id, items as ESIContractItem[])
+            }
+          }
+        }
+      }
+      setLoadedItems(newItems)
+    }
+    loadCachedItems()
+  }, [contractsByOwner, updateCounter])
 
   const cacheVersion = useCacheVersion()
 
   const [expandedDirections, setExpandedDirections] = useState<Set<string>>(new Set(['in', 'out']))
   const [showCourier, setShowCourier] = useState(true)
   const [showCompleted, setShowCompleted] = useState(false)
+
+  useEffect(() => {
+    if (!showCompleted) return
+
+    const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
+    const FINISHED_STATUSES = new Set(['finished', 'finished_issuer', 'finished_contractor'])
+
+    const fetchCompletedItems = async () => {
+      const contractsToFetch: number[] = []
+      for (const { contracts } of contractsByOwner) {
+        for (const { contract } of contracts) {
+          if (hasContractItems(contract.contract_id)) continue
+
+          const isActive = contract.status === 'outstanding' || contract.status === 'in_progress'
+          if (isActive) continue
+
+          const isItemContract = contract.type === 'item_exchange' || contract.type === 'auction'
+          const isFinished = FINISHED_STATUSES.has(contract.status)
+          const refTime = new Date(contract.date_completed ?? contract.date_expired).getTime()
+          const isWithin30Days = Date.now() - refTime < THIRTY_DAYS_MS
+
+          if (!isItemContract || !isFinished || !isWithin30Days) {
+            await saveContractItems(contract.contract_id, [])
+            continue
+          }
+
+          contractsToFetch.push(contract.contract_id)
+        }
+      }
+
+      if (contractsToFetch.length === 0) return
+
+      setIsLoadingItems(true)
+      try {
+        for (const contractId of contractsToFetch) {
+          await fetchItemsForContract(contractId)
+        }
+      } finally {
+        setIsLoadingItems(false)
+      }
+    }
+
+    fetchCompletedItems()
+  }, [showCompleted, contractsByOwner, fetchItemsForContract])
 
   const { setExpandCollapse, search, setResultCount, setTotalValue, setColumns } = useTabControls()
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
@@ -520,16 +574,19 @@ export function ContractsTab() {
 
     const buildContractRow = (
       contractWithItems: ContractWithItems,
-      owner: { name: string },
+      ownerType: 'character' | 'corporation',
+      ownerId: number,
       isIssuer: boolean
     ): ContractRow => {
       const contract = contractWithItems.contract
-      const items = contractWithItems.items
+      const items = loadedItems.get(contract.contract_id) ?? []
       const direction: ContractDirection = isIssuer ? 'out' : 'in'
 
       const firstItem = items[0]
       const firstItemType =
         firstItem && hasType(firstItem.type_id) ? getType(firstItem.type_id) : undefined
+
+      const assignerName = getName(contract.issuer_id)?.name ?? `ID ${contract.issuer_id}`
 
       let assigneeName: string
       if (contract.availability === 'public') {
@@ -554,13 +611,17 @@ export function ContractsTab() {
 
       return {
         contractWithItems,
-        ownerName: owner.name,
+        items,
+        ownerType,
+        ownerId,
         locationName: getLocationName(contract.start_location_id),
         endLocationName: contract.end_location_id ? getLocationName(contract.end_location_id) : '',
         firstItemTypeId: firstItem?.type_id,
         firstItemCategoryId: firstItemType?.categoryId,
+        firstItemIsBlueprintCopy: firstItem?.is_blueprint_copy,
         typeName: firstItemType?.name ?? (firstItem ? `Unknown Type ${firstItem.type_id}` : ''),
         direction,
+        assignerName,
         assigneeName,
         itemValue,
         status: contract.status,
@@ -580,11 +641,11 @@ export function ContractsTab() {
         const isCourier = contract.type === 'courier'
 
         if (!isActive) {
-          completed.push(buildContractRow(contractWithItems, owner, isIssuer))
+          completed.push(buildContractRow(contractWithItems, owner.type, owner.id, isIssuer))
           continue
         }
 
-        const row = buildContractRow(contractWithItems, owner, isIssuer)
+        const row = buildContractRow(contractWithItems, owner.type, owner.id, isIssuer)
 
         if (isCourier) {
           courier.push(row)
@@ -603,7 +664,7 @@ export function ContractsTab() {
       const searchLower = search.toLowerCase()
       return sortByValue(contracts.filter((row) =>
         row.typeName.toLowerCase().includes(searchLower) ||
-        row.ownerName.toLowerCase().includes(searchLower) ||
+        row.assignerName.toLowerCase().includes(searchLower) ||
         row.locationName.toLowerCase().includes(searchLower) ||
         row.assigneeName.toLowerCase().includes(searchLower)
       ))
@@ -628,7 +689,7 @@ export function ContractsTab() {
         : null,
       completedContracts: filteredCompleted,
     }
-  }, [contractsByOwner, cacheVersion, owners, prices, search, selectedSet])
+  }, [contractsByOwner, cacheVersion, owners, prices, search, selectedSet, loadedItems])
 
   const toggleDirection = useCallback((direction: string) => {
     setExpandedDirections((prev) => {
@@ -809,6 +870,9 @@ export function ContractsTab() {
                   )}
                   <History className="h-4 w-4 text-content-secondary" />
                   <span className="text-content-secondary flex-1">Completed Contracts</span>
+                  {isLoadingItems && (
+                    <Loader2 className="h-4 w-4 text-content-secondary animate-spin" />
+                  )}
                   <span className="text-xs text-content-secondary">
                     {completedContracts.length} contract
                     {completedContracts.length !== 1 ? 's' : ''}

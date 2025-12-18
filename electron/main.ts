@@ -396,6 +396,9 @@ ipcMain.handle('updater:install', () => {
 const REF_API_BASE = 'https://edencom.net/api/v1'
 const REF_API_KEY = process.env['REF_API_KEY'] || ''
 const MAX_REF_IDS = 1000
+const REF_REQUEST_DELAY_MS = 2000
+const REF_MAX_RETRIES = 3
+const REF_RETRY_BASE_DELAY_MS = 2000
 
 function getRefHeaders(contentType?: 'json'): Record<string, string> {
   const headers: Record<string, string> = {
@@ -410,38 +413,135 @@ function getRefHeaders(contentType?: 'json'): Record<string, string> {
   return headers
 }
 
-ipcMain.handle('ref:types', async (_event, ids: unknown, market: unknown, stationId?: unknown) => {
+interface RefQueue {
+  lastRequestTime: number
+  queue: Array<() => void>
+  processing: boolean
+}
+
+type RefQueueName = 'types' | 'universe' | 'other'
+
+const refQueues: Record<RefQueueName, RefQueue> = {
+  types: { lastRequestTime: 0, queue: [], processing: false },
+  universe: { lastRequestTime: 0, queue: [], processing: false },
+  other: { lastRequestTime: 0, queue: [], processing: false },
+}
+
+let refGlobalRetryAfter = 0
+
+function setRefGlobalBackoff(delayMs: number): void {
+  const retryAt = Date.now() + delayMs
+  if (retryAt > refGlobalRetryAfter) {
+    refGlobalRetryAfter = retryAt
+    logger.warn('Ref API global backoff set', { module: 'Main', delayMs, retryAt })
+  }
+}
+
+async function waitForGlobalBackoff(): Promise<void> {
+  const now = Date.now()
+  if (refGlobalRetryAfter > now) {
+    const waitMs = refGlobalRetryAfter - now
+    logger.debug('Waiting for global backoff', { module: 'Main', waitMs })
+    await new Promise((r) => setTimeout(r, waitMs))
+  }
+}
+
+async function processRefQueue(queueName: RefQueueName): Promise<void> {
+  const q = refQueues[queueName]
+  if (q.processing) return
+  q.processing = true
+
+  while (q.queue.length > 0) {
+    await waitForGlobalBackoff()
+
+    const now = Date.now()
+    const timeSinceLastRequest = now - q.lastRequestTime
+    if (timeSinceLastRequest < REF_REQUEST_DELAY_MS) {
+      await new Promise((r) => setTimeout(r, REF_REQUEST_DELAY_MS - timeSinceLastRequest))
+    }
+    q.lastRequestTime = Date.now()
+    const next = q.queue.shift()
+    if (next) next()
+  }
+
+  q.processing = false
+}
+
+function queueRefRequest<T>(fn: () => Promise<T>, queueName: RefQueueName = 'other'): Promise<T> {
+  const q = refQueues[queueName]
+  return new Promise((resolve, reject) => {
+    q.queue.push(() => {
+      fn().then(resolve).catch(reject)
+    })
+    processRefQueue(queueName)
+  })
+}
+
+async function fetchRefWithRetry(url: string, options: RequestInit): Promise<Response> {
+  let lastError: Error | null = null
+
+  for (let attempt = 0; attempt <= REF_MAX_RETRIES; attempt++) {
+    try {
+      const response = await fetch(url, options)
+      if (response.status === 429) {
+        const retryAfterHeader = response.headers.get('Retry-After')
+        const retryAfterMs = retryAfterHeader
+          ? parseInt(retryAfterHeader, 10) * 1000
+          : REF_RETRY_BASE_DELAY_MS * Math.pow(2, attempt)
+
+        setRefGlobalBackoff(retryAfterMs)
+
+        if (attempt < REF_MAX_RETRIES) {
+          logger.warn('Ref API rate limited, retrying', { module: 'Main', attempt: attempt + 1, delay: retryAfterMs })
+          await new Promise((r) => setTimeout(r, retryAfterMs))
+          continue
+        }
+      }
+      return response
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err))
+      if (attempt < REF_MAX_RETRIES) {
+        const delay = REF_RETRY_BASE_DELAY_MS * Math.pow(2, attempt)
+        logger.warn('Ref API request failed, retrying', { module: 'Main', attempt: attempt + 1, delay })
+        await new Promise((r) => setTimeout(r, delay))
+      }
+    }
+  }
+
+  throw lastError ?? new Error('Ref API request failed after retries')
+}
+
+ipcMain.handle('ref:types', async (_event, ids: unknown, stationId?: unknown) => {
   if (!Array.isArray(ids) || ids.length === 0 || ids.length > MAX_REF_IDS) {
     return { error: 'Invalid ids array' }
   }
   if (!ids.every((id) => typeof id === 'number' && Number.isInteger(id) && id > 0)) {
     return { error: 'Invalid id values' }
   }
-  if (market !== 'jita' && market !== 'the_forge') {
-    return { error: 'Invalid market' }
-  }
   if (stationId !== undefined && (typeof stationId !== 'number' || !Number.isInteger(stationId) || stationId <= 0)) {
     return { error: 'Invalid station_id' }
   }
 
-  try {
-    let url = `${REF_API_BASE}/types?market=${market}`
-    if (stationId) {
-      url += `&station_id=${stationId}`
+  return queueRefRequest(async () => {
+    try {
+      let url = `${REF_API_BASE}/types`
+      if (stationId) {
+        url += `?station_id=${stationId}`
+      }
+      const response = await fetchRefWithRetry(url, {
+        method: 'POST',
+        headers: getRefHeaders('json'),
+        body: JSON.stringify({ ids }),
+      })
+      if (!response.ok) {
+        return { error: `HTTP ${response.status}` }
+      }
+      return await response.json()
+    } catch (err) {
+      logger.error('ref:types fetch failed', err, { module: 'Main' })
+      return { error: String(err) }
     }
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: getRefHeaders('json'),
-      body: JSON.stringify({ ids }),
-    })
-    if (!response.ok) {
-      return { error: `HTTP ${response.status}` }
-    }
-    return await response.json()
-  } catch (err) {
-    logger.error('ref:types fetch failed', err, { module: 'Main' })
-    return { error: String(err) }
-  }
+  }, 'types')
 })
 
 ipcMain.handle('ref:universe', async (_event, ids: unknown) => {
@@ -452,20 +552,22 @@ ipcMain.handle('ref:universe', async (_event, ids: unknown) => {
     return { error: 'Invalid id values' }
   }
 
-  try {
-    const response = await fetch(`${REF_API_BASE}/universe`, {
-      method: 'POST',
-      headers: getRefHeaders('json'),
-      body: JSON.stringify({ ids }),
-    })
-    if (!response.ok) {
-      return { error: `HTTP ${response.status}` }
+  return queueRefRequest(async () => {
+    try {
+      const response = await fetchRefWithRetry(`${REF_API_BASE}/universe`, {
+        method: 'POST',
+        headers: getRefHeaders('json'),
+        body: JSON.stringify({ ids }),
+      })
+      if (!response.ok) {
+        return { error: `HTTP ${response.status}` }
+      }
+      return await response.json()
+    } catch (err) {
+      logger.error('ref:universe fetch failed', err, { module: 'Main' })
+      return { error: String(err) }
     }
-    return await response.json()
-  } catch (err) {
-    logger.error('ref:universe fetch failed', err, { module: 'Main' })
-    return { error: String(err) }
-  }
+  }, 'universe')
 })
 
 ipcMain.handle('ref:ships', async (_event, ids: unknown) => {
@@ -476,20 +578,22 @@ ipcMain.handle('ref:ships', async (_event, ids: unknown) => {
     return { error: 'Invalid id values' }
   }
 
-  try {
-    const response = await fetch(`${REF_API_BASE}/ships`, {
-      method: 'POST',
-      headers: getRefHeaders('json'),
-      body: JSON.stringify({ ids }),
-    })
-    if (!response.ok) {
-      return { error: `HTTP ${response.status}` }
+  return queueRefRequest(async () => {
+    try {
+      const response = await fetchRefWithRetry(`${REF_API_BASE}/ships`, {
+        method: 'POST',
+        headers: getRefHeaders('json'),
+        body: JSON.stringify({ ids }),
+      })
+      if (!response.ok) {
+        return { error: `HTTP ${response.status}` }
+      }
+      return await response.json()
+    } catch (err) {
+      logger.error('ref:ships fetch failed', err, { module: 'Main' })
+      return { error: String(err) }
     }
-    return await response.json()
-  } catch (err) {
-    logger.error('ref:ships fetch failed', err, { module: 'Main' })
-    return { error: String(err) }
-  }
+  })
 })
 
 ipcMain.handle('ref:manufacturingCost', async (_event, params: unknown) => {
@@ -504,25 +608,27 @@ ipcMain.handle('ref:manufacturingCost', async (_event, params: unknown) => {
     return { error: 'product_id or blueprint_id is required' }
   }
 
-  try {
-    const searchParams = new URLSearchParams()
-    for (const [key, value] of Object.entries(p)) {
-      if (value !== undefined && value !== null) {
-        searchParams.set(key, String(value))
+  return queueRefRequest(async () => {
+    try {
+      const searchParams = new URLSearchParams()
+      for (const [key, value] of Object.entries(p)) {
+        if (value !== undefined && value !== null) {
+          searchParams.set(key, String(value))
+        }
       }
+      const response = await fetchRefWithRetry(`${REF_API_BASE}/manufacturing-cost?${searchParams}`, {
+        headers: getRefHeaders(),
+      })
+      if (!response.ok) {
+        const text = await response.text()
+        return { error: `HTTP ${response.status}: ${text}` }
+      }
+      return await response.json()
+    } catch (err) {
+      logger.error('ref:manufacturingCost fetch failed', err, { module: 'Main' })
+      return { error: String(err) }
     }
-    const response = await fetch(`${REF_API_BASE}/manufacturing-cost?${searchParams}`, {
-      headers: getRefHeaders(),
-    })
-    if (!response.ok) {
-      const text = await response.text()
-      return { error: `HTTP ${response.status}: ${text}` }
-    }
-    return await response.json()
-  } catch (err) {
-    logger.error('ref:manufacturingCost fetch failed', err, { module: 'Main' })
-    return { error: String(err) }
-  }
+  })
 })
 
 ipcMain.handle('ref:blueprintResearch', async (_event, params: unknown) => {
@@ -537,55 +643,61 @@ ipcMain.handle('ref:blueprintResearch', async (_event, params: unknown) => {
     return { error: 'system_id is required' }
   }
 
-  try {
-    const searchParams = new URLSearchParams()
-    for (const [key, value] of Object.entries(p)) {
-      if (value !== undefined && value !== null) {
-        searchParams.set(key, String(value))
+  return queueRefRequest(async () => {
+    try {
+      const searchParams = new URLSearchParams()
+      for (const [key, value] of Object.entries(p)) {
+        if (value !== undefined && value !== null) {
+          searchParams.set(key, String(value))
+        }
       }
+      const response = await fetchRefWithRetry(`${REF_API_BASE}/blueprint-research?${searchParams}`, {
+        headers: getRefHeaders(),
+      })
+      if (!response.ok) {
+        const text = await response.text()
+        return { error: `HTTP ${response.status}: ${text}` }
+      }
+      return await response.json()
+    } catch (err) {
+      logger.error('ref:blueprintResearch fetch failed', err, { module: 'Main' })
+      return { error: String(err) }
     }
-    const response = await fetch(`${REF_API_BASE}/blueprint-research?${searchParams}`, {
-      headers: getRefHeaders(),
-    })
-    if (!response.ok) {
-      const text = await response.text()
-      return { error: `HTTP ${response.status}: ${text}` }
-    }
-    return await response.json()
-  } catch (err) {
-    logger.error('ref:blueprintResearch fetch failed', err, { module: 'Main' })
-    return { error: String(err) }
-  }
+  })
 })
 
 ipcMain.handle('ref:blueprints', async () => {
-  try {
-    const response = await fetch(`${REF_API_BASE}/blueprints`, {
-      headers: getRefHeaders(),
-    })
-    if (!response.ok) {
-      return { error: `HTTP ${response.status}` }
+  return queueRefRequest(async () => {
+    try {
+      const response = await fetchRefWithRetry(`${REF_API_BASE}/blueprints`, {
+        headers: getRefHeaders(),
+      })
+      if (!response.ok) {
+        return { error: `HTTP ${response.status}` }
+      }
+      return await response.json()
+    } catch (err) {
+      logger.error('ref:blueprints fetch failed', err, { module: 'Main' })
+      return { error: String(err) }
     }
-    return await response.json()
-  } catch (err) {
-    logger.error('ref:blueprints fetch failed', err, { module: 'Main' })
-    return { error: String(err) }
-  }
+  })
 })
 
 ipcMain.handle('ref:systems', async () => {
-  try {
-    const response = await fetch(`${REF_API_BASE}/systems`, {
-      headers: getRefHeaders(),
-    })
-    if (!response.ok) {
-      return { error: `HTTP ${response.status}` }
+  return queueRefRequest(async () => {
+    try {
+      const response = await fetchRefWithRetry(`${REF_API_BASE}/systems`, {
+        headers: getRefHeaders(),
+      })
+      if (!response.ok) {
+        return { error: `HTTP ${response.status}` }
+      }
+      return await response.json()
+    } catch (err) {
+      logger.error('ref:systems fetch failed', err, { module: 'Main' })
+      return { error: String(err) }
     }
-    return await response.json()
-  } catch (err) {
-    logger.error('ref:systems fetch failed', err, { module: 'Main' })
-    return { error: String(err) }
-  }
+  })
 })
 
 ipcMain.handle(
@@ -602,21 +714,23 @@ ipcMain.handle(
       return { error: 'Config is required' }
     }
 
-    try {
-      const response = await fetch(`${REF_API_BASE}/buyback/calculate`, {
-        method: 'POST',
-        headers: getRefHeaders('json'),
-        body: JSON.stringify({ text, config }),
-      })
-      if (!response.ok) {
-        const errorText = await response.text()
-        return { error: `HTTP ${response.status}: ${errorText}` }
+    return queueRefRequest(async () => {
+      try {
+        const response = await fetchRefWithRetry(`${REF_API_BASE}/buyback/calculate`, {
+          method: 'POST',
+          headers: getRefHeaders('json'),
+          body: JSON.stringify({ text, config }),
+        })
+        if (!response.ok) {
+          const errorText = await response.text()
+          return { error: `HTTP ${response.status}: ${errorText}` }
+        }
+        return await response.json()
+      } catch (err) {
+        logger.error('ref:buybackCalculate fetch failed', err, { module: 'Main' })
+        return { error: String(err) }
       }
-      return await response.json()
-    } catch (err) {
-      logger.error('ref:buybackCalculate fetch failed', err, { module: 'Main' })
-      return { error: String(err) }
-    }
+    })
   }
 )
 
@@ -627,21 +741,23 @@ ipcMain.handle(
       return { error: 'Text is required' }
     }
 
-    try {
-      const response = await fetch('https://edencom.net/api/buyback/calculator', {
-        method: 'POST',
-        headers: getRefHeaders('json'),
-        body: JSON.stringify({ text }),
-      })
-      if (!response.ok) {
-        const errorText = await response.text()
-        return { error: `HTTP ${response.status}: ${errorText}` }
+    return queueRefRequest(async () => {
+      try {
+        const response = await fetchRefWithRetry('https://edencom.net/api/buyback/calculator', {
+          method: 'POST',
+          headers: getRefHeaders('json'),
+          body: JSON.stringify({ text }),
+        })
+        if (!response.ok) {
+          const errorText = await response.text()
+          return { error: `HTTP ${response.status}: ${errorText}` }
+        }
+        return await response.json()
+      } catch (err) {
+        logger.error('ref:buybackCalculator fetch failed', err, { module: 'Main' })
+        return { error: String(err) }
       }
-      return await response.json()
-    } catch (err) {
-      logger.error('ref:buybackCalculator fetch failed', err, { module: 'Main' })
-      return { error: String(err) }
-    }
+    })
   }
 )
 
@@ -767,6 +883,13 @@ ipcMain.handle('esi:fetchPaginatedWithMeta', async (_event, endpoint: unknown, o
 
 ipcMain.handle('esi:clearCache', () => {
   getESIService().clearCache()
+})
+
+ipcMain.handle('esi:clearCacheByPattern', (_event, pattern: unknown) => {
+  if (typeof pattern !== 'string' || pattern.length === 0 || pattern.length > 100) {
+    return 0
+  }
+  return getESIService().clearCacheByPattern(pattern)
 })
 
 ipcMain.handle('esi:getRateLimitInfo', () => {

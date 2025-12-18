@@ -78,6 +78,8 @@ export class RequestQueue {
     if (endpoint.includes('/characters/') && endpoint.includes('/implants')) return 'char-detail'
     if (endpoint.includes('/characters/') && endpoint.includes('/blueprints')) return 'char-industry'
     if (endpoint.includes('/corporations/') && endpoint.includes('/blueprints')) return 'corp-industry'
+    if (endpoint.includes('/corporations/') && endpoint.includes('/starbases')) return 'corp-structure'
+    if (endpoint.includes('/corporations/') && endpoint.includes('/structures')) return 'corp-structure'
     if (endpoint.includes('/markets/')) return 'market'
     if (endpoint.includes('/universe/')) return 'universe'
     return 'default'

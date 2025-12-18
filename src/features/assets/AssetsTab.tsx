@@ -12,10 +12,17 @@ import {
 } from '@tanstack/react-table'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { ArrowUpDown, Loader2 } from 'lucide-react'
-import { isAbyssalTypeId } from '@/api/mutamarket-client'
+import { isAbyssalTypeId, getMutamarketUrl } from '@/api/mutamarket-client'
 import { CategoryIds } from '@/store/reference-cache'
 import { useResolvedAssets } from '@/hooks/useResolvedAssets'
 import { TypeIcon, OwnerIcon } from '@/components/ui/type-icon'
+import { AbyssalPreview } from '@/components/ui/abyssal-preview'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu'
 import { formatNumber, cn } from '@/lib/utils'
 import { useTabControls } from '@/context'
 import { matchesAssetTypeFilter, matchesSearch, type AssetModeFlags } from '@/lib/resolved-asset'
@@ -122,11 +129,13 @@ const columns: ColumnDef<AssetRow>[] = [
       const isBpc = row.original.isBlueprintCopy
       const categoryId = row.original.categoryId
       const modeFlags = row.original.modeFlags
+      const isAbyssal = isAbyssalTypeId(typeId)
+      const nameSpan = <span className={cn('truncate', isBpc && 'text-status-special')}>{typeName}</span>
 
       return (
         <div className="flex flex-nowrap items-center gap-2 min-w-0">
           <TypeIcon typeId={typeId} categoryId={categoryId} isBlueprintCopy={isBpc} size="lg" />
-          <span className={cn('truncate', isBpc && 'text-status-special')}>{typeName}</span>
+          {isAbyssal ? <AbyssalPreview itemId={row.original.itemId}>{nameSpan}</AbyssalPreview> : nameSpan}
           {(modeFlags.isContract || modeFlags.isMarketOrder || modeFlags.isIndustryJob || modeFlags.isOwnedStructure) && (
             <span className="shrink-0 inline-flex items-center gap-1 whitespace-nowrap">
               {modeFlags.isContract && (
@@ -533,7 +542,8 @@ export function AssetsTab() {
                 const row = rows[virtualRow.index]
                 if (!row) return null
                 const modeFlags = row.original.modeFlags
-                return (
+                const isAbyssal = isAbyssalTypeId(row.original.typeId)
+                const rowContent = (
                   <div key={row.id} data-index={virtualRow.index} className="contents group">
                     {row.getVisibleCells().map((cell) => (
                       <div
@@ -552,6 +562,21 @@ export function AssetsTab() {
                     ))}
                   </div>
                 )
+                if (isAbyssal) {
+                  return (
+                    <ContextMenu key={row.id}>
+                      <ContextMenuTrigger asChild>{rowContent}</ContextMenuTrigger>
+                      <ContextMenuContent>
+                        <ContextMenuItem
+                          onClick={() => window.open(getMutamarketUrl(row.original.typeName, row.original.itemId), '_blank')}
+                        >
+                          Open in Mutamarket
+                        </ContextMenuItem>
+                      </ContextMenuContent>
+                    </ContextMenu>
+                  )
+                }
+                return rowContent
               })}
               {rowVirtualizer.getVirtualItems().length > 0 && (
                 <div

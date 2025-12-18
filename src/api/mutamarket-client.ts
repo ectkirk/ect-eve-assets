@@ -26,6 +26,11 @@ export function isAbyssalTypeId(typeId: number): boolean {
   return ABYSSAL_TYPE_IDS.has(typeId)
 }
 
+export function getMutamarketUrl(typeName: string, itemId: number): string {
+  const slug = typeName.toLowerCase().replace(/\s+/g, '-')
+  return `https://mutamarket.com/modules/${slug}-${itemId}`
+}
+
 export function getCachedAbyssalPrice(itemId: number): number | undefined {
   return getAbyssalPrice(itemId)
 }
@@ -36,8 +41,47 @@ export function hasCachedAbyssalPrice(itemId: number): boolean {
 
 const MAX_RETRIES = 2
 const RETRY_DELAYS = [500, 1500]
+const REQUEST_DELAY_MS = 100
 
-async function fetchSingleAbyssalPrice(
+interface QueuedRequest {
+  itemId: number
+  resolve: (result: { price: number; persist: boolean } | null) => void
+}
+
+const requestQueue: QueuedRequest[] = []
+let queueProcessing = false
+let lastRequestTime = 0
+
+async function processQueue(): Promise<void> {
+  if (queueProcessing) return
+  queueProcessing = true
+
+  while (requestQueue.length > 0) {
+    const now = Date.now()
+    const timeSinceLastRequest = now - lastRequestTime
+    if (timeSinceLastRequest < REQUEST_DELAY_MS) {
+      await new Promise((r) => setTimeout(r, REQUEST_DELAY_MS - timeSinceLastRequest))
+    }
+    lastRequestTime = Date.now()
+
+    const request = requestQueue.shift()
+    if (request) {
+      const result = await fetchSingleAbyssalPriceInternal(request.itemId)
+      request.resolve(result)
+    }
+  }
+
+  queueProcessing = false
+}
+
+function queueAbyssalRequest(itemId: number): Promise<{ price: number; persist: boolean } | null> {
+  return new Promise((resolve) => {
+    requestQueue.push({ itemId, resolve })
+    processQueue()
+  })
+}
+
+async function fetchSingleAbyssalPriceInternal(
   itemId: number,
   retryCount = 0
 ): Promise<{ price: number; persist: boolean } | null> {
@@ -57,7 +101,7 @@ async function fetchSingleAbyssalPrice(
           delay,
         })
         await new Promise((resolve) => setTimeout(resolve, delay))
-        return fetchSingleAbyssalPrice(itemId, retryCount + 1)
+        return fetchSingleAbyssalPriceInternal(itemId, retryCount + 1)
       }
       logger.warn('Mutamarket API failed', { module: 'Mutamarket', error: rawData.error, itemId })
       return null
@@ -87,7 +131,7 @@ async function fetchSingleAbyssalPrice(
         delay,
       })
       await new Promise((resolve) => setTimeout(resolve, delay))
-      return fetchSingleAbyssalPrice(itemId, retryCount + 1)
+      return fetchSingleAbyssalPriceInternal(itemId, retryCount + 1)
     }
     logger.debug('Mutamarket API error after retries', { module: 'Mutamarket', itemId })
     return null
@@ -122,7 +166,7 @@ export async function fetchAbyssalPrices(
   const toSave: CachedAbyssal[] = []
 
   for (const itemId of uncachedIds) {
-    const result = await fetchSingleAbyssalPrice(itemId)
+    const result = await queueAbyssalRequest(itemId)
     if (result !== null) {
       if (result.price > 0) {
         results.set(itemId, result.price)

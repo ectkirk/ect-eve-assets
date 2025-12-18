@@ -3,6 +3,7 @@ import { type OwnerContracts } from '@/store/contracts-store'
 import { type OwnerOrders } from '@/store/market-orders-store'
 import { type OwnerJobs } from '@/store/industry-jobs-store'
 import { type OwnerStructures } from '@/store/structures-store'
+import { type OwnerStarbases } from '@/store/starbases-store'
 import { type CharacterCloneData } from '@/store/clones-store'
 import { type ESIAsset } from '@/api/endpoints/assets'
 import { type Owner } from '@/store/auth-store'
@@ -12,6 +13,8 @@ import {
   hasLocation,
   hasStructure,
   getStructure,
+  hasContractItems,
+  getContractItems,
 } from '@/store/reference-cache'
 import { resolveTypes, resolveLocations } from '@/api/ref-client'
 import { resolveStructures, resolveNames } from '@/api/endpoints/universe'
@@ -27,8 +30,7 @@ export interface ResolutionIds {
 }
 
 function needsTypeResolution(typeId: number): boolean {
-  const type = getType(typeId)
-  return !type || type.name.startsWith('Unknown Type ')
+  return !hasType(typeId)
 }
 
 function collectFromAssets(
@@ -85,10 +87,10 @@ function collectFromAssets(
   }
 }
 
-function collectFromContracts(
+async function collectFromContracts(
   contractsByOwner: OwnerContracts[],
   ids: ResolutionIds
-): void {
+): Promise<void> {
   const checkLocation = (locationId: number | undefined, characterId: number) => {
     if (!locationId) return
     if (locationId > 1_000_000_000_000) {
@@ -101,20 +103,26 @@ function collectFromContracts(
   }
 
   for (const { owner, contracts } of contractsByOwner) {
-    for (const { contract, items } of contracts) {
+    for (const { contract } of contracts) {
       checkLocation(contract.start_location_id, owner.characterId)
       checkLocation(contract.end_location_id, owner.characterId)
 
+      ids.entityIds.add(contract.issuer_id)
       if (contract.assignee_id) {
         ids.entityIds.add(contract.assignee_id)
       }
 
-      for (const item of items) {
-        if (needsTypeResolution(item.type_id)) {
-          ids.typeIds.add(item.type_id)
-        }
-        if (item.item_id && isAbyssalTypeId(item.type_id) && !hasCachedAbyssalPrice(item.item_id)) {
-          ids.abyssalItemIds.push(item.item_id)
+      if (hasContractItems(contract.contract_id)) {
+        const items = await getContractItems(contract.contract_id)
+        if (items) {
+          for (const item of items) {
+            if (needsTypeResolution(item.type_id)) {
+              ids.typeIds.add(item.type_id)
+            }
+            if (item.item_id && isAbyssalTypeId(item.type_id) && !hasCachedAbyssalPrice(item.item_id)) {
+              ids.abyssalItemIds.push(item.item_id)
+            }
+          }
         }
       }
     }
@@ -182,6 +190,25 @@ function collectFromStructures(
   }
 }
 
+function collectFromStarbases(
+  starbasesByOwner: OwnerStarbases[],
+  ids: ResolutionIds
+): void {
+  for (const { starbases } of starbasesByOwner) {
+    for (const starbase of starbases) {
+      if (needsTypeResolution(starbase.type_id)) {
+        ids.typeIds.add(starbase.type_id)
+      }
+      if (!hasLocation(starbase.system_id)) {
+        ids.locationIds.add(starbase.system_id)
+      }
+      if (starbase.moon_id && !hasLocation(starbase.moon_id)) {
+        ids.locationIds.add(starbase.moon_id)
+      }
+    }
+  }
+}
+
 function collectFromClones(
   clonesByOwner: CharacterCloneData[],
   ids: ResolutionIds
@@ -223,14 +250,15 @@ function collectFromClones(
   }
 }
 
-export function collectResolutionIds(
+export async function collectResolutionIds(
   assetsByOwner: OwnerAssets[],
   contractsByOwner: OwnerContracts[],
   ordersByOwner: OwnerOrders[],
   jobsByOwner: OwnerJobs[],
   structuresByOwner: OwnerStructures[],
+  starbasesByOwner: OwnerStarbases[],
   clonesByOwner: CharacterCloneData[]
-): ResolutionIds {
+): Promise<ResolutionIds> {
   const ids: ResolutionIds = {
     typeIds: new Set(),
     locationIds: new Set(),
@@ -240,10 +268,11 @@ export function collectResolutionIds(
   }
 
   collectFromAssets(assetsByOwner, ids)
-  collectFromContracts(contractsByOwner, ids)
+  await collectFromContracts(contractsByOwner, ids)
   collectFromOrders(ordersByOwner, ids)
   collectFromJobs(jobsByOwner, ids)
   collectFromStructures(structuresByOwner, ids)
+  collectFromStarbases(starbasesByOwner, ids)
   collectFromClones(clonesByOwner, ids)
 
   return ids
@@ -268,32 +297,42 @@ export async function resolveAllReferenceData(ids: ResolutionIds): Promise<void>
     abyssals: ids.abyssalItemIds.length,
   })
 
-  if (ids.typeIds.size > 0) {
-    await resolveTypes(Array.from(ids.typeIds)).catch(() => {})
-  }
+  // Start independent resolutions in parallel:
+  // - Types: ref API /types queue
+  // - Entities: ESI /universe/names/
+  // - Abyssals: mutamarket (completely independent)
+  const typesPromise = ids.typeIds.size > 0
+    ? resolveTypes(Array.from(ids.typeIds)).catch(() => {})
+    : Promise.resolve()
 
+  const entitiesPromise = ids.entityIds.size > 0
+    ? resolveNames(Array.from(ids.entityIds)).catch(() => {})
+    : Promise.resolve()
+
+  const abyssalsPromise = ids.abyssalItemIds.length > 0
+    ? fetchAbyssalPrices(ids.abyssalItemIds).catch(() => {})
+    : Promise.resolve()
+
+  // Structures resolution (ESI calls + may call ref API /universe for NPC stations)
+  // After structures complete, we need their solarSystemIds for location resolution
   if (ids.structureToCharacter.size > 0) {
     await resolveStructures(ids.structureToCharacter).catch(() => {})
-  }
 
-  for (const [structureId] of ids.structureToCharacter) {
-    const structure = getStructure(structureId)
-    if (structure?.solarSystemId && !hasLocation(structure.solarSystemId)) {
-      ids.locationIds.add(structure.solarSystemId)
+    for (const [structureId] of ids.structureToCharacter) {
+      const structure = getStructure(structureId)
+      if (structure?.solarSystemId && !hasLocation(structure.solarSystemId)) {
+        ids.locationIds.add(structure.solarSystemId)
+      }
     }
   }
 
-  if (ids.locationIds.size > 0) {
-    await resolveLocations(Array.from(ids.locationIds)).catch(() => {})
-  }
+  // Locations: ref API /universe queue (runs parallel with types queue)
+  const locationsPromise = ids.locationIds.size > 0
+    ? resolveLocations(Array.from(ids.locationIds)).catch(() => {})
+    : Promise.resolve()
 
-  if (ids.entityIds.size > 0) {
-    await resolveNames(Array.from(ids.entityIds)).catch(() => {})
-  }
-
-  if (ids.abyssalItemIds.length > 0) {
-    await fetchAbyssalPrices(ids.abyssalItemIds).catch(() => {})
-  }
+  // Wait for all parallel resolutions
+  await Promise.all([typesPromise, entitiesPromise, abyssalsPromise, locationsPromise])
 
   logger.info('Reference data resolution complete', { module: 'DataResolver' })
 }
@@ -308,14 +347,16 @@ async function runResolution(): Promise<void> {
   const { useMarketOrdersStore } = await import('@/store/market-orders-store')
   const { useIndustryJobsStore } = await import('@/store/industry-jobs-store')
   const { useStructuresStore } = await import('@/store/structures-store')
+  const { useStarbasesStore } = await import('@/store/starbases-store')
   const { useClonesStore } = await import('@/store/clones-store')
 
-  const ids = collectResolutionIds(
+  const ids = await collectResolutionIds(
     useAssetStore.getState().assetsByOwner,
     useContractsStore.getState().contractsByOwner,
     useMarketOrdersStore.getState().dataByOwner,
     useIndustryJobsStore.getState().dataByOwner,
     useStructuresStore.getState().dataByOwner,
+    useStarbasesStore.getState().dataByOwner,
     useClonesStore.getState().dataByOwner
   )
 

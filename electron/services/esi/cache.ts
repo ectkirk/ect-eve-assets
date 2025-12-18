@@ -22,11 +22,8 @@ export class ESICache {
         const data = fs.readFileSync(this.filePath, 'utf-8')
         const parsed = JSON.parse(data) as SerializedCache
         if (parsed.version === 1) {
-          const now = Date.now()
           for (const { key, entry } of parsed.entries) {
-            if (entry.expires > now) {
-              this.cache.set(key, entry)
-            }
+            this.cache.set(key, entry)
           }
         }
       }
@@ -64,10 +61,17 @@ export class ESICache {
     const entry = this.cache.get(key)
     if (!entry) return undefined
     if (Date.now() >= entry.expires) {
-      this.cache.delete(key)
       return undefined
     }
     return entry
+  }
+
+  getEtag(key: string): string | undefined {
+    return this.cache.get(key)?.etag
+  }
+
+  getStale(key: string): CacheEntry | undefined {
+    return this.cache.get(key)
   }
 
   set(key: string, data: unknown, etag: string, expires: number): void {
@@ -91,6 +95,20 @@ export class ESICache {
   clear(): void {
     this.cache.clear()
     this.scheduleSave()
+  }
+
+  clearByPattern(pattern: string): number {
+    let count = 0
+    for (const key of this.cache.keys()) {
+      if (key.includes(pattern)) {
+        this.cache.delete(key)
+        count++
+      }
+    }
+    if (count > 0) {
+      this.scheduleSave()
+    }
+    return count
   }
 
   size(): number {

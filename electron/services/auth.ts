@@ -23,6 +23,7 @@ const CORPORATION_SCOPES = [
   'esi-assets.read_corporation_assets.v1',
   'esi-corporations.read_blueprints.v1',
   'esi-corporations.read_divisions.v1',
+  'esi-corporations.read_starbases.v1',
   'esi-corporations.read_structures.v1',
   'esi-contracts.read_corporation_contracts.v1',
   'esi-industry.read_corporation_jobs.v1',

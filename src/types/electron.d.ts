@@ -317,6 +317,7 @@ declare global {
     fetchPaginated: <T>(endpoint: string, options?: ESIRequestOptions) => Promise<T[]>
     fetchPaginatedWithMeta: <T>(endpoint: string, options?: ESIRequestOptions) => Promise<ESIResponseMeta<T[]>>
     clearCache: () => Promise<void>
+    clearCacheByPattern: (pattern: string) => Promise<number>
     getRateLimitInfo: () => Promise<ESIRateLimitInfo>
     provideToken: (characterId: number, token: string | null) => Promise<void>
     onRequestToken: (callback: (characterId: number) => void) => () => void
@@ -331,7 +332,7 @@ declare global {
     storageSet: (data: Record<string, unknown>) => Promise<boolean>
     writeLog: (level: LogLevel, message: string, context?: LogContext) => Promise<void>
     getLogDir: () => Promise<string>
-    refTypes: (ids: number[], market: 'jita' | 'the_forge', stationId?: number) => Promise<RefApiResult>
+    refTypes: (ids: number[], stationId?: number) => Promise<RefApiResult>
     refUniverse: (ids: number[]) => Promise<RefApiResult>
     refShips: (ids: number[]) => Promise<RefShipsResult>
     refManufacturingCost: (params: ManufacturingCostParams) => Promise<ManufacturingCostResult>

@@ -125,6 +125,7 @@ describe('RateLimitTracker', () => {
       const oldState = {
         '12345:old-group': {
           remaining: 100,
+          used: 2,
           limit: 200,
           windowMs: 900000,
           lastUpdated: Date.now() - 1000000,

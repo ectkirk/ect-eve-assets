@@ -21,20 +21,17 @@ export type RefType = z.infer<typeof RefTypeSchema>
 export type RefUniverseItem = z.infer<typeof RefUniverseItemSchema>
 export type UniverseEntityType = RefUniverseItem['type']
 
-// Request coalescing for locations - batches requests within a window
+// Request coalescing - batches requests within a window to match API rate limit (30 req/min)
+const REF_BATCH_DELAY_MS = 2000
+
 let pendingLocationIds = new Set<number>()
 let locationBatchPromise: Promise<Map<number, CachedLocation>> | null = null
-const LOCATION_BATCH_DELAY_MS = 50
 
-// Request coalescing for types - batches requests within a window
 let pendingTypeIds = new Set<number>()
-let pendingTypeMarket: 'jita' | 'the_forge' = 'jita'
 let typeBatchPromise: Promise<Map<number, CachedType>> | null = null
-const TYPE_BATCH_DELAY_MS = 50
 
 async function fetchTypesFromAPI(
   ids: number[],
-  market: 'jita' | 'the_forge' = 'jita',
   stationId?: number
 ): Promise<Map<number, RefType>> {
   if (ids.length === 0) return new Map()
@@ -45,7 +42,7 @@ async function fetchTypesFromAPI(
     const chunk = ids.slice(i, i + 1000)
 
     try {
-      const rawData = await window.electronAPI!.refTypes(chunk, market, stationId)
+      const rawData = await window.electronAPI!.refTypes(chunk, stationId)
       if (rawData && typeof rawData === 'object' && 'error' in rawData) {
         logger.warn('RefAPI /types failed', { module: 'RefAPI', error: rawData.error })
         continue
@@ -108,9 +105,7 @@ async function fetchUniverseFromAPI(ids: number[]): Promise<Map<number, RefUnive
 
 async function executeTypeBatch(): Promise<Map<number, CachedType>> {
   const idsToFetch = Array.from(pendingTypeIds)
-  const market = pendingTypeMarket
   pendingTypeIds = new Set()
-  pendingTypeMarket = 'jita'
 
   const results = new Map<number, CachedType>()
   const uncachedIds: number[] = []
@@ -126,7 +121,7 @@ async function executeTypeBatch(): Promise<Map<number, CachedType>> {
 
   if (uncachedIds.length > 0) {
     logger.debug(`Fetching ${uncachedIds.length} types from ref API`, { module: 'RefAPI' })
-    const fetched = await fetchTypesFromAPI(uncachedIds, market)
+    const fetched = await fetchTypesFromAPI(uncachedIds)
     const toCache: CachedType[] = []
 
     for (const [id, refType] of fetched) {
@@ -140,6 +135,8 @@ async function executeTypeBatch(): Promise<Map<number, CachedType>> {
         volume: refType.volume ?? 0,
         packagedVolume: refType.packagedVolume ?? undefined,
         implantSlot: refType.implantSlot,
+        towerSize: refType.towerSize,
+        fuelTier: refType.fuelTier,
       }
       results.set(id, cached)
       toCache.push(cached)
@@ -171,14 +168,10 @@ async function executeTypeBatch(): Promise<Map<number, CachedType>> {
   return results
 }
 
-export async function resolveTypes(
-  typeIds: number[],
-  market: 'jita' | 'the_forge' = 'jita'
-): Promise<Map<number, CachedType>> {
+export async function resolveTypes(typeIds: number[]): Promise<Map<number, CachedType>> {
   for (const id of typeIds) {
     pendingTypeIds.add(id)
   }
-  pendingTypeMarket = market
 
   if (!typeBatchPromise) {
     typeBatchPromise = new Promise((resolve) => {
@@ -186,7 +179,7 @@ export async function resolveTypes(
         const result = await executeTypeBatch()
         typeBatchPromise = null
         resolve(result)
-      }, TYPE_BATCH_DELAY_MS)
+      }, REF_BATCH_DELAY_MS)
     })
   }
 
@@ -236,9 +229,23 @@ async function executeLocationBatch(): Promise<Map<number, CachedLocation>> {
       toCache.push(cached)
     }
 
+    if (fetched.size > 0) {
+      for (const id of uncachedIds) {
+        if (!fetched.has(id)) {
+          const placeholder: CachedLocation = {
+            id,
+            name: `Unknown Location ${id}`,
+            type: 'station',
+          }
+          results.set(id, placeholder)
+          toCache.push(placeholder)
+        }
+      }
+    }
+
     if (toCache.length > 0) {
       await saveLocations(toCache)
-      logger.debug(`Cached ${toCache.length} locations`, { module: 'RefAPI' })
+      logger.debug(`Cached ${toCache.length} locations (${fetched.size} resolved, ${toCache.length - fetched.size} unknown)`, { module: 'RefAPI' })
     }
   }
 
@@ -256,7 +263,7 @@ export async function resolveLocations(locationIds: number[]): Promise<Map<numbe
         const result = await executeLocationBatch()
         locationBatchPromise = null
         resolve(result)
-      }, LOCATION_BATCH_DELAY_MS)
+      }, REF_BATCH_DELAY_MS)
     })
   }
 
@@ -271,11 +278,8 @@ export async function resolveLocations(locationIds: number[]): Promise<Map<numbe
   return results
 }
 
-export async function fetchPrices(
-  typeIds: number[],
-  market: 'jita' | 'the_forge' = 'jita'
-): Promise<Map<number, number>> {
-  const fetched = await fetchTypesFromAPI(typeIds, market)
+export async function fetchPrices(typeIds: number[]): Promise<Map<number, number>> {
+  const fetched = await fetchTypesFromAPI(typeIds)
   const prices = new Map<number, number>()
   const toCache: CachedType[] = []
 
@@ -298,6 +302,8 @@ export async function fetchPrices(
       volume: type.volume ?? 0,
       packagedVolume: type.packagedVolume ?? undefined,
       implantSlot: type.implantSlot,
+      towerSize: type.towerSize,
+      fuelTier: type.fuelTier,
     })
   }
 
@@ -318,7 +324,7 @@ export async function fetchMarketComparison(
   typeIds: number[],
   stationId: number
 ): Promise<Map<number, MarketComparisonPrices>> {
-  const fetched = await fetchTypesFromAPI(typeIds, 'jita', stationId)
+  const fetched = await fetchTypesFromAPI(typeIds, stationId)
   const results = new Map<number, MarketComparisonPrices>()
 
   for (const [typeId, type] of fetched) {

@@ -15,7 +15,7 @@ const mockRefTypes = vi.fn()
 const mockRefUniverse = vi.fn()
 
 async function runWithTimers<T>(promise: Promise<T>): Promise<T> {
-  await vi.advanceTimersByTimeAsync(100)
+  await vi.advanceTimersByTimeAsync(2100)
   return promise
 }
 
@@ -217,6 +217,35 @@ describe('ref-client', () => {
 
       expect(result.size).toBe(0)
       expect(saveLocations).not.toHaveBeenCalled()
+    })
+
+    it('caches placeholder for locations not returned by API', async () => {
+      vi.mocked(hasLocation).mockReturnValue(false)
+
+      mockRefUniverse.mockResolvedValueOnce({
+        items: {
+          '60003760': {
+            type: 'station',
+            name: 'Jita IV - Moon 4 - Caldari Navy Assembly Plant',
+            solarSystemId: 30000142,
+            solarSystemName: 'Jita',
+            regionId: 10000002,
+            regionName: 'The Forge',
+          },
+        },
+      })
+
+      const result = await runWithTimers(resolveLocations([60003760, 99999]))
+
+      expect(result.size).toBe(2)
+      expect(result.get(60003760)?.name).toContain('Jita')
+      expect(result.get(99999)?.name).toBe('Unknown Location 99999')
+      expect(saveLocations).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ id: 60003760 }),
+          expect.objectContaining({ id: 99999, name: 'Unknown Location 99999' }),
+        ])
+      )
     })
   })
 

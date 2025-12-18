@@ -30,6 +30,8 @@ import type { TreeNode, TreeNodeType } from '@/lib/tree-types'
 import { flattenTree, getAllNodeIds } from '@/lib/tree-builder'
 import { cn } from '@/lib/utils'
 import { TypeIcon, OwnerIcon } from '@/components/ui/type-icon'
+import { AbyssalPreview } from '@/components/ui/abyssal-preview'
+import { isAbyssalTypeId, getMutamarketUrl } from '@/api/mutamarket-client'
 import { useTabControls } from '@/context'
 import { useColumnSettings, type ColumnConfig } from '@/hooks'
 import { FittingDialog } from '@/components/dialogs/FittingDialog'
@@ -249,25 +251,33 @@ const TreeRowContent = memo(function TreeRowContent({
                   <TreeNodeIcon nodeType={node.nodeType} divisionNumber={node.divisionNumber} />
                 )}
 
-                <span
-                  className={cn(
-                    'truncate min-w-0',
-                    isLocationNode && node.nodeType === 'region' && 'font-semibold text-accent',
-                    isLocationNode && node.nodeType === 'system' && 'font-medium text-status-highlight',
-                    isLocationNode && node.nodeType === 'station' && 'text-status-info',
-                    isOfficeNode && 'font-medium',
-                    isDivisionNode && node.divisionNumber && DIVISION_COLORS[node.divisionNumber - 1],
-                    node.isBlueprintCopy && 'text-status-special'
-                  )}
-                  title={node.name}
-                >
-                  {isOfficeNode ? (
-                    <>
-                      <span className="text-status-highlight">{node.name}</span>
-                      <span className="text-content-muted italic ml-1">Office</span>
-                    </>
-                  ) : node.name}
-                </span>
+                {(() => {
+                  const nameSpan = (
+                    <span
+                      className={cn(
+                        'truncate min-w-0',
+                        isLocationNode && node.nodeType === 'region' && 'font-semibold text-accent',
+                        isLocationNode && node.nodeType === 'system' && 'font-medium text-status-highlight',
+                        isLocationNode && node.nodeType === 'station' && 'text-status-info',
+                        isOfficeNode && 'font-medium',
+                        isDivisionNode && node.divisionNumber && DIVISION_COLORS[node.divisionNumber - 1],
+                        node.isBlueprintCopy && 'text-status-special'
+                      )}
+                      title={node.name}
+                    >
+                      {isOfficeNode ? (
+                        <>
+                          <span className="text-status-highlight">{node.name}</span>
+                          <span className="text-content-muted italic ml-1">Office</span>
+                        </>
+                      ) : node.name}
+                    </span>
+                  )
+                  if (node.typeId && node.asset?.item_id && isAbyssalTypeId(node.typeId)) {
+                    return <AbyssalPreview itemId={node.asset.item_id}>{nameSpan}</AbyssalPreview>
+                  }
+                  return nameSpan
+                })()}
                 {(node.isInContract || node.isInMarketOrder || node.isInIndustryJob || node.isOwnedStructure) && (
                   <span className="shrink-0 inline-flex items-center gap-1 ml-2 whitespace-nowrap">
                     {node.isInContract && (
@@ -347,11 +357,18 @@ const TreeRow = memo(function TreeRow({
     }
   }, [node.children.length, node.id, onToggleExpand])
 
-  const handleContextMenuClick = useCallback(() => {
+  const handleViewFittingClick = useCallback(() => {
     onViewFitting(node)
   }, [node, onViewFitting])
 
+  const handleOpenMutamarket = useCallback(() => {
+    if (node.asset?.item_id && node.typeName) {
+      window.open(getMutamarketUrl(node.typeName, node.asset.item_id), '_blank')
+    }
+  }, [node.asset, node.typeName])
+
   const isShip = node.nodeType === 'ship'
+  const isAbyssal = node.typeId && node.asset?.item_id && isAbyssalTypeId(node.typeId)
 
   const row = (
     <TableRow
@@ -376,16 +393,23 @@ const TreeRow = memo(function TreeRow({
     </TableRow>
   )
 
-  if (isShip) {
+  if (isShip || isAbyssal) {
     return (
       <ContextMenu>
         <ContextMenuTrigger asChild>
           {row}
         </ContextMenuTrigger>
         <ContextMenuContent>
-          <ContextMenuItem onClick={handleContextMenuClick}>
-            View Fitting
-          </ContextMenuItem>
+          {isShip && (
+            <ContextMenuItem onClick={handleViewFittingClick}>
+              View Fitting
+            </ContextMenuItem>
+          )}
+          {isAbyssal && (
+            <ContextMenuItem onClick={handleOpenMutamarket}>
+              Open in Mutamarket
+            </ContextMenuItem>
+          )}
         </ContextMenuContent>
       </ContextMenu>
     )

@@ -212,6 +212,47 @@ export const ESINameSchema = z.object({
   ]),
 })
 
+// ESI Starbases (POSes)
+const StarbaseRoleSchema = z.enum([
+  'alliance_member',
+  'config_starbase_equipment_role',
+  'corporation_member',
+  'starbase_fuel_technician_role',
+])
+
+export const ESIStarbaseSchema = z.object({
+  moon_id: z.number().optional(),
+  onlined_since: z.string().optional(),
+  reinforced_until: z.string().optional(),
+  starbase_id: z.number(),
+  state: z.enum(['offline', 'online', 'onlining', 'reinforced', 'unanchoring']).optional(),
+  system_id: z.number(),
+  type_id: z.number(),
+  unanchor_at: z.string().optional(),
+})
+
+export const ESIStarbaseFuelSchema = z.object({
+  quantity: z.number(),
+  type_id: z.number(),
+})
+
+export const ESIStarbaseDetailSchema = z.object({
+  allow_alliance_members: z.boolean(),
+  allow_corporation_members: z.boolean(),
+  anchor: StarbaseRoleSchema,
+  attack_if_at_war: z.boolean(),
+  attack_if_other_security_status_dropping: z.boolean(),
+  attack_security_status_threshold: z.number().optional(),
+  attack_standing_threshold: z.number().optional(),
+  fuel_bay_take: StarbaseRoleSchema,
+  fuel_bay_view: StarbaseRoleSchema,
+  fuels: z.array(ESIStarbaseFuelSchema).optional(),
+  offline: StarbaseRoleSchema,
+  online: StarbaseRoleSchema,
+  unanchor: StarbaseRoleSchema,
+  use_alliance_standings: z.boolean(),
+})
+
 // ESI Corporation Structures
 export const ESICorporationStructureServiceSchema = z.object({
   name: z.string(),
@@ -353,6 +394,8 @@ export const RefTypeSchema = z.object({
   marketPrice: RefMarketPriceSchema,
   contractPrice: RefContractPriceSchema.optional(),
   implantSlot: z.number().optional(),
+  towerSize: z.number().optional(),
+  fuelTier: z.number().optional(),
 })
 
 export const RefTypeBulkResponseSchema = z.object({
