@@ -403,7 +403,7 @@ export const RefTypeBulkResponseSchema = z.object({
 })
 
 export const RefUniverseItemSchema = z.object({
-  type: z.enum(['region', 'constellation', 'system', 'station', 'structure']),
+  type: z.enum(['region', 'constellation', 'system', 'station', 'structure', 'celestial']),
   name: z.string(),
   solarSystemId: z.number().optional(),
   solarSystemName: z.string().optional(),
