@@ -343,7 +343,7 @@ export interface ElectronAPI {
   refSystems: () => Promise<SystemsResult>
   refBuybackCalculate: (text: string, config: BuybackConfig) => Promise<BuybackResult>
   refBuybackCalculator: (text: string) => Promise<BuybackCalculatorResult>
-  mutamarketModule: (itemId: number) => Promise<MutamarketResult>
+  mutamarketModule: (itemId: number, typeId?: number) => Promise<MutamarketResult>
   onUpdateAvailable: (callback: (version: string) => void) => () => void
   onUpdateDownloadProgress: (callback: (percent: number) => void) => () => void
   onUpdateDownloaded: (callback: (version: string) => void) => () => void
@@ -405,7 +405,8 @@ const electronAPI: ElectronAPI = {
   refBuybackCalculate: (text: string, config: BuybackConfig) =>
     ipcRenderer.invoke('ref:buybackCalculate', text, config),
   refBuybackCalculator: (text: string) => ipcRenderer.invoke('ref:buybackCalculator', text),
-  mutamarketModule: (itemId: number) => ipcRenderer.invoke('mutamarket:module', itemId),
+  mutamarketModule: (itemId: number, typeId?: number) =>
+    ipcRenderer.invoke('mutamarket:module', itemId, typeId),
   onUpdateAvailable: (callback: (version: string) => void) => {
     const handler = (_event: unknown, version: string) => callback(version)
     ipcRenderer.on('updater:update-available', handler)

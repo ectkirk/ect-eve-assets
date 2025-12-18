@@ -343,7 +343,7 @@ declare global {
     refSystems: () => Promise<SystemsResult>
     refBuybackCalculate: (text: string, config: BuybackConfig) => Promise<BuybackResult>
     refBuybackCalculator: (text: string) => Promise<BuybackCalculatorResult>
-    mutamarketModule: (itemId: number) => Promise<MutamarketResult>
+    mutamarketModule: (itemId: number, typeId?: number) => Promise<MutamarketResult>
     onUpdateAvailable: (callback: (version: string) => void) => () => void
     onUpdateDownloadProgress: (callback: (percent: number) => void) => () => void
     onUpdateDownloaded: (callback: (version: string) => void) => () => void

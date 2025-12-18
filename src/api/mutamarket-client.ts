@@ -43,8 +43,13 @@ const MAX_RETRIES = 2
 const RETRY_DELAYS = [500, 1500]
 const REQUEST_DELAY_MS = 100
 
-interface QueuedRequest {
+export interface AbyssalItem {
   itemId: number
+  typeId: number
+}
+
+interface QueuedRequest {
+  item: AbyssalItem
   resolve: (result: { price: number; persist: boolean } | null) => void
 }
 
@@ -66,7 +71,7 @@ async function processQueue(): Promise<void> {
 
     const request = requestQueue.shift()
     if (request) {
-      const result = await fetchSingleAbyssalPriceInternal(request.itemId)
+      const result = await fetchSingleAbyssalPriceInternal(request.item)
       request.resolve(result)
     }
   }
@@ -74,19 +79,20 @@ async function processQueue(): Promise<void> {
   queueProcessing = false
 }
 
-function queueAbyssalRequest(itemId: number): Promise<{ price: number; persist: boolean } | null> {
+function queueAbyssalRequest(item: AbyssalItem): Promise<{ price: number; persist: boolean } | null> {
   return new Promise((resolve) => {
-    requestQueue.push({ itemId, resolve })
+    requestQueue.push({ item, resolve })
     processQueue()
   })
 }
 
 async function fetchSingleAbyssalPriceInternal(
-  itemId: number,
+  item: AbyssalItem,
   retryCount = 0
 ): Promise<{ price: number; persist: boolean } | null> {
+  const { itemId, typeId } = item
   try {
-    const rawData = await window.electronAPI!.mutamarketModule(itemId)
+    const rawData = await window.electronAPI!.mutamarketModule(itemId, typeId)
 
     if (rawData.error) {
       if (rawData.status === 404) {
@@ -94,14 +100,8 @@ async function fetchSingleAbyssalPriceInternal(
       }
       if (retryCount < MAX_RETRIES) {
         const delay = RETRY_DELAYS[retryCount] ?? 1000
-        logger.debug('Mutamarket request failed, retrying', {
-          module: 'Mutamarket',
-          itemId,
-          retryCount: retryCount + 1,
-          delay,
-        })
         await new Promise((resolve) => setTimeout(resolve, delay))
-        return fetchSingleAbyssalPriceInternal(itemId, retryCount + 1)
+        return fetchSingleAbyssalPriceInternal(item, retryCount + 1)
       }
       logger.warn('Mutamarket API failed', { module: 'Mutamarket', error: rawData.error, itemId })
       return null
@@ -118,20 +118,12 @@ async function fetchSingleAbyssalPriceInternal(
     }
 
     const price = parseResult.data.estimated_value ?? 0
-    logger.debug(`Fetched abyssal price`, { module: 'Mutamarket', itemId, price })
-
     return { price, persist: true }
   } catch {
     if (retryCount < MAX_RETRIES) {
       const delay = RETRY_DELAYS[retryCount] ?? 1000
-      logger.debug('Mutamarket request failed, retrying', {
-        module: 'Mutamarket',
-        itemId,
-        retryCount: retryCount + 1,
-        delay,
-      })
       await new Promise((resolve) => setTimeout(resolve, delay))
-      return fetchSingleAbyssalPriceInternal(itemId, retryCount + 1)
+      return fetchSingleAbyssalPriceInternal(item, retryCount + 1)
     }
     logger.debug('Mutamarket API error after retries', { module: 'Mutamarket', itemId })
     return null
@@ -139,48 +131,48 @@ async function fetchSingleAbyssalPriceInternal(
 }
 
 export async function fetchAbyssalPrices(
-  itemIds: number[],
+  items: AbyssalItem[],
   onProgress?: (fetched: number, total: number) => void
 ): Promise<Map<number, number>> {
   const results = new Map<number, number>()
-  const uncachedIds: number[] = []
+  const uncachedItems: AbyssalItem[] = []
 
-  for (const itemId of itemIds) {
-    if (hasAbyssal(itemId)) {
-      const price = getAbyssalPrice(itemId)
+  for (const item of items) {
+    if (hasAbyssal(item.itemId)) {
+      const price = getAbyssalPrice(item.itemId)
       if (price !== undefined && price > 0) {
-        results.set(itemId, price)
+        results.set(item.itemId, price)
       }
     } else {
-      uncachedIds.push(itemId)
+      uncachedItems.push(item)
     }
   }
 
-  if (uncachedIds.length === 0) {
+  if (uncachedItems.length === 0) {
     return results
   }
 
-  logger.debug(`Fetching ${uncachedIds.length} abyssal prices from Mutamarket`, { module: 'Mutamarket' })
+  logger.debug(`Fetching ${uncachedItems.length} abyssal prices from Mutamarket`, { module: 'Mutamarket' })
 
   let fetched = 0
   const toSave: CachedAbyssal[] = []
 
-  for (const itemId of uncachedIds) {
-    const result = await queueAbyssalRequest(itemId)
+  for (const item of uncachedItems) {
+    const result = await queueAbyssalRequest(item)
     if (result !== null) {
       if (result.price > 0) {
-        results.set(itemId, result.price)
+        results.set(item.itemId, result.price)
       }
       if (result.persist) {
         toSave.push({
-          id: itemId,
+          id: item.itemId,
           price: result.price,
           fetchedAt: Date.now(),
         })
       }
     }
     fetched++
-    onProgress?.(fetched, uncachedIds.length)
+    onProgress?.(fetched, uncachedItems.length)
   }
 
   if (toSave.length > 0) {

@@ -4,6 +4,7 @@ import {
   getCachedAbyssalPrice,
   hasCachedAbyssalPrice,
   fetchAbyssalPrices,
+  type AbyssalItem,
 } from './mutamarket-client'
 
 vi.mock('@/store/reference-cache', () => ({
@@ -22,6 +23,8 @@ vi.mock('@/lib/logger', () => ({
 }))
 
 const mockMutamarketModule = vi.fn()
+
+const item = (itemId: number, typeId = 47408): AbyssalItem => ({ itemId, typeId })
 
 describe('mutamarket-client', () => {
   beforeEach(() => {
@@ -84,7 +87,7 @@ describe('mutamarket-client', () => {
       vi.mocked(hasAbyssal).mockReturnValue(true)
       vi.mocked(getAbyssalPrice).mockReturnValue(1000000)
 
-      const result = await fetchAbyssalPrices([1, 2, 3])
+      const result = await fetchAbyssalPrices([item(1), item(2), item(3)])
 
       expect(mockMutamarketModule).not.toHaveBeenCalled()
       expect(result.size).toBe(3)
@@ -102,9 +105,9 @@ describe('mutamarket-client', () => {
         estimated_value: 2500000,
       })
 
-      const result = await fetchAbyssalPrices([12345])
+      const result = await fetchAbyssalPrices([item(12345)])
 
-      expect(mockMutamarketModule).toHaveBeenCalledWith(12345)
+      expect(mockMutamarketModule).toHaveBeenCalledWith(12345, 47408)
       expect(result.get(12345)).toBe(2500000)
       expect(saveAbyssals).toHaveBeenCalled()
     })
@@ -115,7 +118,7 @@ describe('mutamarket-client', () => {
 
       mockMutamarketModule.mockResolvedValue({ error: 'HTTP 404', status: 404 })
 
-      const result = await fetchAbyssalPrices([99999])
+      const result = await fetchAbyssalPrices([item(99999)])
 
       expect(result.has(99999)).toBe(false)
       expect(saveAbyssals).toHaveBeenCalledWith(
@@ -129,7 +132,7 @@ describe('mutamarket-client', () => {
 
       mockMutamarketModule.mockResolvedValue({ error: 'HTTP 500', status: 500 })
 
-      const result = await fetchAbyssalPrices([12345])
+      const result = await fetchAbyssalPrices([item(12345)])
 
       expect(result.size).toBe(0)
     })
@@ -140,7 +143,7 @@ describe('mutamarket-client', () => {
 
       mockMutamarketModule.mockRejectedValue(new Error('Network error'))
 
-      const result = await fetchAbyssalPrices([12345])
+      const result = await fetchAbyssalPrices([item(12345)])
 
       expect(result.size).toBe(0)
     })
@@ -152,7 +155,7 @@ describe('mutamarket-client', () => {
       mockMutamarketModule.mockResolvedValue({ estimated_value: 1000000 })
 
       const onProgress = vi.fn()
-      await fetchAbyssalPrices([1, 2, 3], onProgress)
+      await fetchAbyssalPrices([item(1), item(2), item(3)], onProgress)
 
       expect(onProgress).toHaveBeenCalled()
     })
@@ -164,7 +167,7 @@ describe('mutamarket-client', () => {
 
       mockMutamarketModule.mockResolvedValue({ estimated_value: 100 })
 
-      const items = Array.from({ length: 3 }, (_, i) => i + 1)
+      const items = Array.from({ length: 3 }, (_, i) => item(i + 1))
       await fetchAbyssalPrices(items)
 
       expect(mockMutamarketModule).toHaveBeenCalledTimes(3)
@@ -175,7 +178,7 @@ describe('mutamarket-client', () => {
       vi.mocked(hasAbyssal).mockReturnValue(true)
       vi.mocked(getAbyssalPrice).mockReturnValue(0)
 
-      const result = await fetchAbyssalPrices([12345])
+      const result = await fetchAbyssalPrices([item(12345)])
 
       expect(result.has(12345)).toBe(false)
     })
@@ -190,7 +193,7 @@ describe('mutamarket-client', () => {
         source_type: { id: 2048, name: 'Damage Control II' },
       })
 
-      const result = await fetchAbyssalPrices([12345])
+      const result = await fetchAbyssalPrices([item(12345)])
 
       expect(result.has(12345)).toBe(false)
       expect(saveAbyssals).toHaveBeenCalledWith(

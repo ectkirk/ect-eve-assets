@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dialog'
 import { useAssetStore } from '@/store/asset-store'
 import { hasAbyssal } from '@/store/reference-cache'
-import { isAbyssalTypeId, fetchAbyssalPrices } from '@/api/mutamarket-client'
+import { isAbyssalTypeId, fetchAbyssalPrices, type AbyssalItem } from '@/api/mutamarket-client'
 import { AlertTriangle, ExternalLink } from 'lucide-react'
 
 interface AbyssalSyncModalProps {
@@ -17,19 +17,19 @@ interface AbyssalSyncModalProps {
   onOpenChange: (open: boolean) => void
 }
 
-function collectUnpricedAbyssalItemIds(): number[] {
+function collectUnpricedAbyssalItems(): AbyssalItem[] {
   const assetsByOwner = useAssetStore.getState().assetsByOwner
-  const unpricedIds: number[] = []
+  const unpricedItems: AbyssalItem[] = []
 
   for (const { assets } of assetsByOwner) {
     for (const asset of assets) {
       if (isAbyssalTypeId(asset.type_id) && !hasAbyssal(asset.item_id)) {
-        unpricedIds.push(asset.item_id)
+        unpricedItems.push({ itemId: asset.item_id, typeId: asset.type_id })
       }
     }
   }
 
-  return unpricedIds
+  return unpricedItems
 }
 
 export function AbyssalSyncModal({ open, onOpenChange }: AbyssalSyncModalProps) {
@@ -39,8 +39,8 @@ export function AbyssalSyncModal({ open, onOpenChange }: AbyssalSyncModalProps) 
   const [syncResult, setSyncResult] = useState<{ success: number; failed: number } | null>(null)
 
   const refreshCount = useCallback(() => {
-    const ids = collectUnpricedAbyssalItemIds()
-    setUnpricedCount(ids.length)
+    const items = collectUnpricedAbyssalItems()
+    setUnpricedCount(items.length)
     setSyncResult(null)
   }, [])
 
@@ -51,20 +51,20 @@ export function AbyssalSyncModal({ open, onOpenChange }: AbyssalSyncModalProps) 
   }, [open, refreshCount])
 
   const handleSync = async () => {
-    const itemIds = collectUnpricedAbyssalItemIds()
-    if (itemIds.length === 0) return
+    const items = collectUnpricedAbyssalItems()
+    if (items.length === 0) return
 
     setIsSyncing(true)
-    setProgress({ fetched: 0, total: itemIds.length })
+    setProgress({ fetched: 0, total: items.length })
     setSyncResult(null)
 
     try {
-      const results = await fetchAbyssalPrices(itemIds, (fetched, total) => {
+      const results = await fetchAbyssalPrices(items, (fetched, total) => {
         setProgress({ fetched, total })
       })
 
       const successCount = results.size
-      const failedCount = itemIds.length - successCount
+      const failedCount = items.length - successCount
 
       setSyncResult({ success: successCount, failed: failedCount })
       refreshCount()
