@@ -6,6 +6,8 @@ autoUpdater.autoDownload = true
 autoUpdater.autoInstallOnAppQuit = true
 autoUpdater.allowPrerelease = true
 
+const CHECK_INTERVAL_MS = 30 * 60 * 1000
+
 export function initUpdater(mainWindow: BrowserWindow): void {
   autoUpdater.on('checking-for-update', () => {
     logger.info('Checking for updates...', { module: 'Updater' })
@@ -40,9 +42,14 @@ export function initUpdater(mainWindow: BrowserWindow): void {
     logger.error('Update error', err, { module: 'Updater' })
   })
 
-  autoUpdater.checkForUpdates().catch((err) => {
-    logger.error('Failed to check for updates', err, { module: 'Updater' })
-  })
+  const checkForUpdates = () => {
+    autoUpdater.checkForUpdates().catch((err) => {
+      logger.error('Failed to check for updates', err, { module: 'Updater' })
+    })
+  }
+
+  checkForUpdates()
+  setInterval(checkForUpdates, CHECK_INTERVAL_MS)
 }
 
 export function installUpdate(): void {
