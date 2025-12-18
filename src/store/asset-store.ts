@@ -18,6 +18,93 @@ import { useStructuresStore, type OwnerStructures } from './structures-store'
 const NAMEABLE_CATEGORIES = new Set([6, 22, 65])
 const NAMEABLE_GROUPS = new Set([12, 14, 340, 448, 649])
 const ENDPOINT_PATTERN = '/assets/'
+const LOCATION_SCOPES = ['esi-location.read_location.v1', 'esi-location.read_ship_type.v1']
+
+interface ActiveShipResult {
+  syntheticShip: ESIAsset | null
+  shipName: string | null
+  shipItemId: number | null
+}
+
+async function detectAndInjectActiveShip(
+  owner: Owner,
+  assets: ESIAsset[],
+  ownerKey: string
+): Promise<ActiveShipResult> {
+  const nullResult: ActiveShipResult = { syntheticShip: null, shipName: null, shipItemId: null }
+
+  if (owner.type !== 'character') return nullResult
+
+  const allItemIds = new Set(assets.map(a => a.item_id))
+  const missingParentIds = new Set<number>()
+  for (const asset of assets) {
+    if (asset.location_type === 'item' && !allItemIds.has(asset.location_id)) {
+      missingParentIds.add(asset.location_id)
+    }
+  }
+
+  if (missingParentIds.size === 0) return nullResult
+
+  const hasLocationScopes = LOCATION_SCOPES.every(scope =>
+    useAuthStore.getState().ownerHasScope(ownerKey, scope)
+  )
+
+  if (!hasLocationScopes) {
+    useAuthStore.getState().setOwnerScopesOutdated(ownerKey, true)
+    logger.info('Missing location scopes for active ship detection', {
+      module: 'AssetStore',
+      owner: owner.name,
+      missingParentCount: missingParentIds.size,
+    })
+    return nullResult
+  }
+
+  try {
+    const [shipInfo, locationInfo] = await Promise.all([
+      getCharacterShip(owner.characterId),
+      getCharacterLocation(owner.characterId),
+    ])
+
+    if (!missingParentIds.has(shipInfo.ship_item_id)) {
+      logger.debug('Active ship not in missing parents', {
+        module: 'AssetStore',
+        owner: owner.name,
+        shipItemId: shipInfo.ship_item_id,
+        missingParentIds: Array.from(missingParentIds),
+      })
+      return nullResult
+    }
+
+    const syntheticShip: ESIAsset = {
+      item_id: shipInfo.ship_item_id,
+      type_id: shipInfo.ship_type_id,
+      location_id: locationInfo.structure_id ?? locationInfo.station_id ?? locationInfo.solar_system_id,
+      location_type: locationInfo.structure_id ? 'other' : locationInfo.station_id ? 'station' : 'solar_system',
+      location_flag: 'ActiveShip',
+      quantity: 1,
+      is_singleton: true,
+    }
+
+    logger.info('Injected active ship as synthetic asset', {
+      module: 'AssetStore',
+      owner: owner.name,
+      shipItemId: shipInfo.ship_item_id,
+      shipTypeId: shipInfo.ship_type_id,
+      shipName: shipInfo.ship_name,
+      locationId: syntheticShip.location_id,
+      locationType: syntheticShip.location_type,
+    })
+
+    return {
+      syntheticShip,
+      shipName: shipInfo.ship_name,
+      shipItemId: shipInfo.ship_item_id,
+    }
+  } catch {
+    logger.warn('Failed to fetch active ship info', { module: 'AssetStore', owner: owner.name })
+    return nullResult
+  }
+}
 
 export interface OwnerAssets {
   owner: Owner
@@ -340,71 +427,11 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
           logger.info('Fetching assets', { module: 'AssetStore', owner: owner.name, type: owner.type })
           const { data: assets, expiresAt, etag } = await fetchOwnerAssetsWithMeta(owner)
 
-          // Detect missing parent assets (items inside ships not in asset list)
-          const allItemIds = new Set(assets.map(a => a.item_id))
-          const missingParentIds = new Set<number>()
-          for (const asset of assets) {
-            if (asset.location_type === 'item' && !allItemIds.has(asset.location_id)) {
-              missingParentIds.add(asset.location_id)
-            }
-          }
-
-          // For characters with missing parents, fetch active ship and create synthetic asset
-          const LOCATION_SCOPES = ['esi-location.read_location.v1', 'esi-location.read_ship_type.v1']
-          const ownerKey2 = `${owner.type}-${owner.id}`
-          const hasLocationScopes = LOCATION_SCOPES.every(scope =>
-            useAuthStore.getState().ownerHasScope(ownerKey2, scope)
-          )
-
-          if (missingParentIds.size > 0 && owner.type === 'character') {
-            if (!hasLocationScopes) {
-              useAuthStore.getState().setOwnerScopesOutdated(ownerKey2, true)
-              logger.info('Missing location scopes for active ship detection', {
-                module: 'AssetStore',
-                owner: owner.name,
-                missingParentCount: missingParentIds.size,
-              })
-            } else {
-              try {
-                const [shipInfo, locationInfo] = await Promise.all([
-                  getCharacterShip(owner.characterId),
-                  getCharacterLocation(owner.characterId),
-                ])
-
-                if (missingParentIds.has(shipInfo.ship_item_id)) {
-                  const syntheticShip: ESIAsset = {
-                    item_id: shipInfo.ship_item_id,
-                    type_id: shipInfo.ship_type_id,
-                    location_id: locationInfo.structure_id ?? locationInfo.station_id ?? locationInfo.solar_system_id,
-                    location_type: locationInfo.structure_id ? 'other' : locationInfo.station_id ? 'station' : 'solar_system',
-                    location_flag: 'ActiveShip',
-                    quantity: 1,
-                    is_singleton: true,
-                  }
-                  assets.push(syntheticShip)
-                  allNames.set(shipInfo.ship_item_id, shipInfo.ship_name)
-                  logger.info('Injected active ship as synthetic asset', {
-                    module: 'AssetStore',
-                    owner: owner.name,
-                    shipItemId: shipInfo.ship_item_id,
-                    shipTypeId: shipInfo.ship_type_id,
-                    shipName: shipInfo.ship_name,
-                    locationId: syntheticShip.location_id,
-                    locationType: syntheticShip.location_type,
-                  })
-                  missingParentIds.delete(shipInfo.ship_item_id)
-                }
-
-                if (missingParentIds.size > 0) {
-                  logger.debug('Remaining missing parent assets', {
-                    module: 'AssetStore',
-                    owner: owner.name,
-                    missingParentIds: Array.from(missingParentIds),
-                  })
-                }
-              } catch {
-                logger.warn('Failed to fetch active ship info', { module: 'AssetStore', owner: owner.name })
-              }
+          const activeShipResult = await detectAndInjectActiveShip(owner, assets, ownerKey)
+          if (activeShipResult.syntheticShip) {
+            assets.push(activeShipResult.syntheticShip)
+            if (activeShipResult.shipItemId && activeShipResult.shipName) {
+              allNames.set(activeShipResult.shipItemId, activeShipResult.shipName)
             }
           }
 
@@ -492,70 +519,11 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
 
       const newNames = new Map(state.assetNames)
 
-      // Detect missing parent assets (items inside ships not in asset list)
-      const allItemIds = new Set(assets.map(a => a.item_id))
-      const missingParentIds = new Set<number>()
-      for (const asset of assets) {
-        if (asset.location_type === 'item' && !allItemIds.has(asset.location_id)) {
-          missingParentIds.add(asset.location_id)
-        }
-      }
-
-      // For characters with missing parents, fetch active ship and create synthetic asset
-      const LOCATION_SCOPES = ['esi-location.read_location.v1', 'esi-location.read_ship_type.v1']
-      const hasLocationScopes = LOCATION_SCOPES.every(scope =>
-        useAuthStore.getState().ownerHasScope(ownerKey, scope)
-      )
-
-      if (missingParentIds.size > 0 && owner.type === 'character') {
-        if (!hasLocationScopes) {
-          useAuthStore.getState().setOwnerScopesOutdated(ownerKey, true)
-          logger.info('Missing location scopes for active ship detection', {
-            module: 'AssetStore',
-            owner: owner.name,
-            missingParentCount: missingParentIds.size,
-          })
-        } else {
-          try {
-            const [shipInfo, locationInfo] = await Promise.all([
-              getCharacterShip(owner.characterId),
-              getCharacterLocation(owner.characterId),
-            ])
-
-            if (missingParentIds.has(shipInfo.ship_item_id)) {
-              const syntheticShip: ESIAsset = {
-                item_id: shipInfo.ship_item_id,
-                type_id: shipInfo.ship_type_id,
-                location_id: locationInfo.structure_id ?? locationInfo.station_id ?? locationInfo.solar_system_id,
-                location_type: locationInfo.structure_id ? 'other' : locationInfo.station_id ? 'station' : 'solar_system',
-                location_flag: 'ActiveShip',
-                quantity: 1,
-                is_singleton: true,
-              }
-              assets.push(syntheticShip)
-              newNames.set(shipInfo.ship_item_id, shipInfo.ship_name)
-              logger.info('Injected active ship as synthetic asset', {
-                module: 'AssetStore',
-                owner: owner.name,
-                shipItemId: shipInfo.ship_item_id,
-                shipTypeId: shipInfo.ship_type_id,
-                shipName: shipInfo.ship_name,
-                locationId: syntheticShip.location_id,
-                locationType: syntheticShip.location_type,
-              })
-              missingParentIds.delete(shipInfo.ship_item_id)
-            }
-
-            if (missingParentIds.size > 0) {
-              logger.debug('Remaining missing parent assets', {
-                module: 'AssetStore',
-                owner: owner.name,
-                missingParentIds: Array.from(missingParentIds),
-              })
-            }
-          } catch {
-            logger.warn('Failed to fetch active ship info', { module: 'AssetStore', owner: owner.name })
-          }
+      const activeShipResult = await detectAndInjectActiveShip(owner, assets, ownerKey)
+      if (activeShipResult.syntheticShip) {
+        assets.push(activeShipResult.syntheticShip)
+        if (activeShipResult.shipItemId && activeShipResult.shipName) {
+          newNames.set(activeShipResult.shipItemId, activeShipResult.shipName)
         }
       }
 
