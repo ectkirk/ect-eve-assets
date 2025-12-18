@@ -18,7 +18,6 @@ import {
 } from '@/store/reference-cache'
 import { resolveTypes, resolveLocations } from '@/api/ref-client'
 import { resolveStructures, resolveNames } from '@/api/endpoints/universe'
-import { isAbyssalTypeId, fetchAbyssalPrices, hasCachedAbyssalPrice } from '@/api/mutamarket-client'
 import { logger } from './logger'
 
 export interface ResolutionIds {
@@ -26,7 +25,6 @@ export interface ResolutionIds {
   locationIds: Set<number>
   structureToCharacter: Map<number, number>
   entityIds: Set<number>
-  abyssalItemIds: number[]
 }
 
 function needsTypeResolution(typeId: number): boolean {
@@ -68,10 +66,6 @@ function collectFromAssets(
     for (const asset of assets) {
       if (needsTypeResolution(asset.type_id)) {
         ids.typeIds.add(asset.type_id)
-      }
-
-      if (isAbyssalTypeId(asset.type_id) && !hasCachedAbyssalPrice(asset.item_id)) {
-        ids.abyssalItemIds.push(asset.item_id)
       }
 
       const type = hasType(asset.type_id) ? getType(asset.type_id) : undefined
@@ -118,9 +112,6 @@ async function collectFromContracts(
           for (const item of items) {
             if (needsTypeResolution(item.type_id)) {
               ids.typeIds.add(item.type_id)
-            }
-            if (item.item_id && isAbyssalTypeId(item.type_id) && !hasCachedAbyssalPrice(item.item_id)) {
-              ids.abyssalItemIds.push(item.item_id)
             }
           }
         }
@@ -264,7 +255,6 @@ export async function collectResolutionIds(
     locationIds: new Set(),
     structureToCharacter: new Map(),
     entityIds: new Set(),
-    abyssalItemIds: [],
   }
 
   collectFromAssets(assetsByOwner, ids)
@@ -283,8 +273,7 @@ export async function resolveAllReferenceData(ids: ResolutionIds): Promise<void>
     ids.typeIds.size > 0 ||
     ids.structureToCharacter.size > 0 ||
     ids.locationIds.size > 0 ||
-    ids.entityIds.size > 0 ||
-    ids.abyssalItemIds.length > 0
+    ids.entityIds.size > 0
 
   if (!hasWork) return
 
@@ -294,13 +283,8 @@ export async function resolveAllReferenceData(ids: ResolutionIds): Promise<void>
     structures: ids.structureToCharacter.size,
     locations: ids.locationIds.size,
     entities: ids.entityIds.size,
-    abyssals: ids.abyssalItemIds.length,
   })
 
-  // Start independent resolutions in parallel:
-  // - Types: ref API /types queue
-  // - Entities: ESI /universe/names/
-  // - Abyssals: mutamarket (completely independent)
   const typesPromise = ids.typeIds.size > 0
     ? resolveTypes(Array.from(ids.typeIds)).catch(() => {})
     : Promise.resolve()
@@ -309,12 +293,6 @@ export async function resolveAllReferenceData(ids: ResolutionIds): Promise<void>
     ? resolveNames(Array.from(ids.entityIds)).catch(() => {})
     : Promise.resolve()
 
-  const abyssalsPromise = ids.abyssalItemIds.length > 0
-    ? fetchAbyssalPrices(ids.abyssalItemIds).catch(() => {})
-    : Promise.resolve()
-
-  // Structures resolution (ESI calls + may call ref API /universe for NPC stations)
-  // After structures complete, we need their solarSystemIds for location resolution
   if (ids.structureToCharacter.size > 0) {
     await resolveStructures(ids.structureToCharacter).catch(() => {})
 
@@ -326,13 +304,11 @@ export async function resolveAllReferenceData(ids: ResolutionIds): Promise<void>
     }
   }
 
-  // Locations: ref API /universe queue (runs parallel with types queue)
   const locationsPromise = ids.locationIds.size > 0
     ? resolveLocations(Array.from(ids.locationIds)).catch(() => {})
     : Promise.resolve()
 
-  // Wait for all parallel resolutions
-  await Promise.all([typesPromise, entitiesPromise, abyssalsPromise, locationsPromise])
+  await Promise.all([typesPromise, entitiesPromise, locationsPromise])
 
   logger.info('Reference data resolution complete', { module: 'DataResolver' })
 }

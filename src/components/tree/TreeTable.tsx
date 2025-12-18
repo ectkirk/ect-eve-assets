@@ -32,6 +32,7 @@ import { cn } from '@/lib/utils'
 import { TypeIcon, OwnerIcon } from '@/components/ui/type-icon'
 import { AbyssalPreview } from '@/components/ui/abyssal-preview'
 import { isAbyssalTypeId, getMutamarketUrl } from '@/api/mutamarket-client'
+import { hasAbyssal } from '@/store/reference-cache'
 import { useTabControls } from '@/context'
 import { useColumnSettings, type ColumnConfig } from '@/hooks'
 import { FittingDialog } from '@/components/dialogs/FittingDialog'
@@ -273,7 +274,7 @@ const TreeRowContent = memo(function TreeRowContent({
                       ) : node.name}
                     </span>
                   )
-                  if (node.typeId && node.asset?.item_id && isAbyssalTypeId(node.typeId)) {
+                  if (node.typeId && node.asset?.item_id && isAbyssalTypeId(node.typeId) && hasAbyssal(node.asset.item_id)) {
                     return <AbyssalPreview itemId={node.asset.item_id}>{nameSpan}</AbyssalPreview>
                   }
                   return nameSpan
@@ -368,7 +369,7 @@ const TreeRow = memo(function TreeRow({
   }, [node.asset, node.typeName])
 
   const isShip = node.nodeType === 'ship'
-  const isAbyssal = node.typeId && node.asset?.item_id && isAbyssalTypeId(node.typeId)
+  const isAbyssalResolved = node.typeId && node.asset?.item_id && isAbyssalTypeId(node.typeId) && hasAbyssal(node.asset.item_id)
 
   const row = (
     <TableRow
@@ -393,7 +394,7 @@ const TreeRow = memo(function TreeRow({
     </TableRow>
   )
 
-  if (isShip || isAbyssal) {
+  if (isShip || isAbyssalResolved) {
     return (
       <ContextMenu>
         <ContextMenuTrigger asChild>
@@ -405,7 +406,7 @@ const TreeRow = memo(function TreeRow({
               View Fitting
             </ContextMenuItem>
           )}
-          {isAbyssal && (
+          {isAbyssalResolved && (
             <ContextMenuItem onClick={handleOpenMutamarket}>
               Open in Mutamarket
             </ContextMenuItem>
