@@ -332,6 +332,8 @@ declare global {
     storageSet: (data: Record<string, unknown>) => Promise<boolean>
     writeLog: (level: LogLevel, message: string, context?: LogContext) => Promise<void>
     getLogDir: () => Promise<string>
+    openLogsFolder: () => Promise<void>
+    submitBugReport: (characterName: string, description: string) => Promise<{ success: boolean; error?: string }>
     refTypes: (ids: number[], stationId?: number) => Promise<RefApiResult>
     refUniverse: (ids: number[]) => Promise<RefApiResult>
     refShips: (ids: number[]) => Promise<RefShipsResult>

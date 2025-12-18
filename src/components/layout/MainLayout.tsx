@@ -14,13 +14,14 @@ import { ManufacturingTab } from '@/features/manufacturing'
 import { BlueprintResearchTab, CopyingTab } from '@/features/research'
 import { CalculatorTab } from '@/features/calculator'
 import { BuybackTab, BUYBACK_TABS, getConfigByTabName, type BuybackTabType } from '@/features/buyback'
-import { Loader2, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp, Search, X, AlertTriangle, Minus, Square, Copy, Settings, Info, Heart, Shield, FileText, History, Trash2, Sparkles } from 'lucide-react'
+import { Loader2, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp, Search, X, AlertTriangle, Minus, Square, Copy, Settings, Info, Heart, Shield, FileText, History, Trash2, Sparkles, Bug, FolderOpen } from 'lucide-react'
 import { useThemeStore, THEME_OPTIONS } from '@/store/theme-store'
 import eveSsoLoginWhite from '/eve-sso-login-white.png'
 import { OwnerIcon } from '@/components/ui/type-icon'
 import { OwnerManagementModal } from './OwnerManagementModal'
 import { CreditsModal } from './CreditsModal'
 import { SupportModal } from './SupportModal'
+import { BugReportModal } from './BugReportModal'
 import { ChangelogModal } from './ChangelogModal'
 import { UpdateBanner } from './UpdateBanner'
 import { ToastContainer } from './ToastContainer'
@@ -544,6 +545,7 @@ function WindowControls() {
   const [changelogOpen, setChangelogOpen] = useState(false)
   const [showClearCacheModal, setShowClearCacheModal] = useState(false)
   const [showAbyssalModal, setShowAbyssalModal] = useState(false)
+  const [showBugReportModal, setShowBugReportModal] = useState(false)
   const settingsPanelRef = useRef<HTMLDivElement>(null)
   const theme = useThemeStore((s) => s.theme)
   const setTheme = useThemeStore((s) => s.setTheme)
@@ -637,6 +639,27 @@ function WindowControls() {
                 <Heart className="h-4 w-4" />
                 Support Us
               </button>
+              <div className="my-2 border-t border-border" />
+              <button
+                onClick={() => {
+                  window.electronAPI?.openLogsFolder()
+                }}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-content-secondary hover:bg-surface-tertiary"
+              >
+                <FolderOpen className="h-4 w-4" />
+                Open Logs Folder
+              </button>
+              <button
+                onClick={() => {
+                  setShowBugReportModal(true)
+                  setSettingsOpen(false)
+                }}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-content-secondary hover:bg-surface-tertiary"
+              >
+                <Bug className="h-4 w-4" />
+                Report A Bug
+              </button>
+              <div className="my-2 border-t border-border" />
               <a
                 href="https://edencom.net/privacy-policy"
                 target="_blank"
@@ -675,6 +698,7 @@ function WindowControls() {
       <SupportModal open={supportOpen} onOpenChange={setSupportOpen} />
       <ClearCacheModal open={showClearCacheModal} onOpenChange={setShowClearCacheModal} />
       <AbyssalSyncModal open={showAbyssalModal} onOpenChange={setShowAbyssalModal} />
+      <BugReportModal open={showBugReportModal} onOpenChange={setShowBugReportModal} />
       <button
         onClick={() => window.electronAPI?.windowMinimize()}
         className="flex h-10 w-12 items-center justify-center text-content-secondary hover:bg-surface-tertiary hover:text-content"

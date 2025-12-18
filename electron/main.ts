@@ -389,6 +389,53 @@ ipcMain.handle('log:getDir', () => {
   return logger.getLogDir()
 })
 
+ipcMain.handle('log:openFolder', () => {
+  const logDir = logger.getLogDir()
+  shell.openPath(logDir)
+})
+
+const BUG_REPORT_WEBHOOK = 'https://discord.com/api/webhooks/1451197565927424001/diQ7bJRG4X526UM3pOmvx2nJ-ZyjzxgvDdXn5lwOgYsMZtnFr_NVqjaiJhRudnTxoGAP'
+
+ipcMain.handle('bug:report', async (_event, characterName: unknown, description: unknown) => {
+  if (typeof description !== 'string' || !description.trim()) {
+    return { success: false, error: 'Description is required' }
+  }
+
+  try {
+    const response = await fetch(BUG_REPORT_WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        embeds: [{
+          title: 'Bug Report',
+          color: 0xED4245,
+          fields: [
+            {
+              name: 'Contact',
+              value: typeof characterName === 'string' && characterName.trim() ? characterName.trim() : 'Not provided',
+              inline: true,
+            },
+            {
+              name: 'Description',
+              value: description.trim().substring(0, 1024),
+            },
+          ],
+          timestamp: new Date().toISOString(),
+        }],
+      }),
+    })
+
+    if (!response.ok) {
+      return { success: false, error: 'Failed to submit report' }
+    }
+
+    return { success: true }
+  } catch (err) {
+    logger.error('Bug report submission failed', err, { module: 'BugReport' })
+    return { success: false, error: 'Failed to submit report' }
+  }
+})
+
 ipcMain.handle('updater:install', () => {
   installUpdate()
 })

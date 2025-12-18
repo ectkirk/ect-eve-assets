@@ -332,6 +332,8 @@ export interface ElectronAPI {
   storageSet: (data: Record<string, unknown>) => Promise<boolean>
   writeLog: (level: LogLevel, message: string, context?: LogContext) => Promise<void>
   getLogDir: () => Promise<string>
+  openLogsFolder: () => Promise<void>
+  submitBugReport: (characterName: string, description: string) => Promise<{ success: boolean; error?: string }>
   refTypes: (ids: number[], stationId?: number) => Promise<RefApiResult>
   refUniverse: (ids: number[]) => Promise<RefApiResult>
   refShips: (ids: number[]) => Promise<RefShipsResult>
@@ -388,6 +390,9 @@ const electronAPI: ElectronAPI = {
   writeLog: (level: LogLevel, message: string, context?: LogContext) =>
     ipcRenderer.invoke('log:write', level, message, context),
   getLogDir: () => ipcRenderer.invoke('log:getDir'),
+  openLogsFolder: () => ipcRenderer.invoke('log:openFolder'),
+  submitBugReport: (characterName: string, description: string) =>
+    ipcRenderer.invoke('bug:report', characterName, description),
   refTypes: (ids: number[], stationId?: number) => ipcRenderer.invoke('ref:types', ids, stationId),
   refUniverse: (ids: number[]) => ipcRenderer.invoke('ref:universe', ids),
   refShips: (ids: number[]) => ipcRenderer.invoke('ref:ships', ids),
