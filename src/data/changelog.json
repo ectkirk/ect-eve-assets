@@ -1,9 +1,7 @@
 {
-  "version": "1.6.5",
+  "version": "1.7.0",
   "date": "2025-12-18",
   "changes": [
-    { "type": "feat", "scope": "wallet", "description": "Add multi-select filter for journal transaction types" },
-    { "type": "fix", "scope": "wallet", "description": "Improve journal filter reactivity and add search debounce" },
-    { "type": "fix", "scope": "search", "description": "Use ref for setSearch to prevent stale closure in debounce" }
+    { "type": "feat", "scope": "loyalty", "description": "Add Loyalty Points tab showing LP per character and corporation" }
   ]
 }
