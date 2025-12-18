@@ -4,7 +4,6 @@ import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useWalletStore, isCorporationWallet } from '@/store/wallet-store'
 import {
   useWalletJournalStore,
-  CORPORATION_WALLET_DIVISIONS,
   DEFAULT_WALLET_NAMES,
 } from '@/store/wallet-journal-store'
 import { useDivisionsStore } from '@/store/divisions-store'
@@ -15,6 +14,7 @@ import { useTabControls } from '@/context'
 import { useColumnSettings, useExpandCollapse, type ColumnConfig } from '@/hooks'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import { JournalTable, type JournalEntryWithOwner } from './JournalTable'
+import { MultiSelectDropdown } from '@/components/ui/multi-select-dropdown'
 
 export function WalletTab() {
   const ownersRecord = useAuthStore((s) => s.owners)
@@ -37,8 +37,7 @@ export function WalletTab() {
   const journalInitialized = useWalletJournalStore((s) => s.initialized)
 
   const [showJournal, setShowJournal] = useState(false)
-  const [refTypeFilter, setRefTypeFilter] = useState<string>('')
-  const [divisionFilter, setDivisionFilter] = useState<number | null>(null)
+  const [refTypeFilters, setRefTypeFilters] = useState<Set<string>>(new Set())
 
   const { isLoading: assetsUpdating } = useAssetData()
   const isUpdating = assetsUpdating || walletUpdating
@@ -145,11 +144,8 @@ export function WalletTab() {
           e.ref_type.toLowerCase().includes(searchLower)
       )
     }
-    if (refTypeFilter) {
-      filtered = filtered.filter((e) => e.ref_type === refTypeFilter)
-    }
-    if (divisionFilter !== null) {
-      filtered = filtered.filter((e) => e.division === divisionFilter)
+    if (refTypeFilters.size > 0) {
+      filtered = filtered.filter((e) => refTypeFilters.has(e.ref_type))
     }
 
     let income = 0
@@ -172,22 +168,18 @@ export function WalletTab() {
       hasCorporationEntries: hasCorpEntries,
       journalTotals: { income, expenses, net: income + expenses },
     }
-  }, [journalByOwner, selectedSet, search, refTypeFilter, divisionFilter])
+  }, [journalByOwner, selectedSet, search, refTypeFilters])
 
   const showDivisionColumn = hasCorporationEntries
-  const showDivisionFilter = hasCorporationEntries
 
   useEffect(() => {
-    if (refTypeFilter && !availableRefTypes.includes(refTypeFilter)) {
-      setRefTypeFilter('')
+    if (refTypeFilters.size > 0) {
+      const validFilters = new Set([...refTypeFilters].filter((f) => availableRefTypes.includes(f)))
+      if (validFilters.size !== refTypeFilters.size) {
+        setRefTypeFilters(validFilters)
+      }
     }
-  }, [availableRefTypes, refTypeFilter])
-
-  useEffect(() => {
-    if (divisionFilter !== null && !hasCorporationEntries) {
-      setDivisionFilter(null)
-    }
-  }, [divisionFilter, hasCorporationEntries])
+  }, [availableRefTypes, refTypeFilters])
 
   useEffect(() => {
     setResultCount({ showing: sortedWallets.length, total: walletsByOwner.length })
@@ -299,14 +291,6 @@ export function WalletTab() {
     )
   }
 
-  const getDivisionFilterName = (div: number): string => {
-    const defaultName = DEFAULT_WALLET_NAMES[div - 1] ?? `Division ${div}`
-    if (selectedOwnerJournal?.owner.type === 'corporation') {
-      return getWalletName(selectedOwnerJournal.owner.id, div) || defaultName
-    }
-    return defaultName
-  }
-
   return (
     <div className="h-full overflow-auto">
       {characterWallets.length > 0 && (
@@ -362,40 +346,23 @@ export function WalletTab() {
           <div>
             <div className="flex items-center gap-2 px-4 py-2 border-b border-border/50">
               {availableRefTypes.length > 0 && (
-                <select
-                  value={refTypeFilter}
-                  onChange={(e) => setRefTypeFilter(e.target.value)}
-                  className="text-xs bg-surface-secondary border border-border rounded px-2 py-1"
-                >
-                  <option value="">All Types</option>
-                  {availableRefTypes.map((type) => (
-                    <option key={type} value={type}>
-                      {type.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
-                    </option>
-                  ))}
-                </select>
-              )}
-              {showDivisionFilter && (
-                <select
-                  value={divisionFilter ?? ''}
-                  onChange={(e) => setDivisionFilter(e.target.value ? Number(e.target.value) : null)}
-                  className="text-xs bg-surface-secondary border border-border rounded px-2 py-1"
-                >
-                  <option value="">All Divisions</option>
-                  {Array.from({ length: CORPORATION_WALLET_DIVISIONS }, (_, i) => i + 1).map((div) => (
-                    <option key={div} value={div}>
-                      {getDivisionFilterName(div)}
-                    </option>
-                  ))}
-                </select>
+                <MultiSelectDropdown
+                  options={availableRefTypes.map((type) => ({
+                    value: type,
+                    label: type.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+                  }))}
+                  selected={refTypeFilters}
+                  onChange={setRefTypeFilters}
+                  placeholder="All Types"
+                />
               )}
               <div className="flex items-center gap-3 ml-auto text-xs">
                 <div className="flex items-center gap-1">
-                  <ArrowUpRight className="h-3 w-3 text-status-positive" />
+                  <ArrowDownLeft className="h-3 w-3 text-status-positive" />
                   <span className="tabular-nums text-status-positive">{formatISK(journalTotals.income)}</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <ArrowDownLeft className="h-3 w-3 text-status-negative" />
+                  <ArrowUpRight className="h-3 w-3 text-status-negative" />
                   <span className="tabular-nums text-status-negative">{formatISK(journalTotals.expenses)}</span>
                 </div>
                 <div className="flex items-center gap-1 pl-2 border-l border-border">

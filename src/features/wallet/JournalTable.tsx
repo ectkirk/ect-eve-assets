@@ -103,7 +103,7 @@ export function JournalTable({
               : undefined
 
             return (
-              <TableRow key={`${entry.owner.type}-${entry.owner.id}-${entry.id}`}>
+              <TableRow key={`${entry.owner.type}-${entry.owner.id}-${entry.division ?? 0}-${entry.id}`}>
                 {showOwner && (
                   <TableCell className="py-1.5 w-8">
                     <OwnerIcon ownerId={entry.owner.id} ownerType={entry.owner.type} size="sm" />
