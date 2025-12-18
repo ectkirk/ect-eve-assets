@@ -10,7 +10,21 @@ Thank you for your interest in contributing!
    - Callback URL: `http://localhost:52742/callback`
    - See README.md for required scopes
 4. Copy `.env.example` to `.env` and add your client ID
-5. Start development: `npm run dev`
+5. Request a Ref API key (see below)
+6. Start development: `npm run dev`
+
+## Ref API (edencom.net)
+
+The app uses the edencom.net Ref API to resolve item types, prices, and location names. This API requires:
+
+- **API Key**: Set `REF_API_KEY` in your `.env` file
+- **User-Agent**: Must identify your application (handled automatically)
+
+**To request an API key**, email key@edencom.net with:
+- Your application name
+- Brief description of your use case
+
+Without a valid API key, item names, prices, and location names will not resolve. API keys are required to prevent abuse of the service.
 
 ## Before Submitting
 
