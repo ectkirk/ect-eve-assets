@@ -1,7 +1,10 @@
 {
-  "version": "1.6.1",
-  "date": "2025-12-17",
+  "version": "1.6.2",
+  "date": "2025-12-18",
   "changes": [
-    { "type": "fix", "scope": "starbases", "description": "Fix moon name resolution in starbase table" }
+    { "type": "feat", "scope": "abyssals", "description": "Make abyssal pricing opt-in with privacy disclosure in Settings" },
+    { "type": "feat", "scope": "buyback", "description": "Add dynamic asset safety rates with highsec support" },
+    { "type": "feat", "scope": "buyback", "description": "Add security level and NPC station toggles for asset safety" },
+    { "type": "perf", "scope": "contracts", "description": "Batch contract items loading and parallel fetching" }
   ]
 }
