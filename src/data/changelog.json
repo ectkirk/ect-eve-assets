@@ -1,26 +1,7 @@
 {
-  "version": "1.6.0",
+  "version": "1.6.1",
   "date": "2025-12-17",
   "changes": [
-    { "type": "feat", "scope": "notifications", "description": "Add structure state change notifications" },
-    { "type": "feat", "scope": "structures", "description": "Add details column and info dialog for upwell structures" },
-    { "type": "feat", "scope": "structures", "description": "Add POS timer column and info dialog" },
-    { "type": "feat", "scope": "structures", "description": "Add POS fuel time calculation and display" },
-    { "type": "feat", "scope": "structures", "description": "Add starbase (POS) support to structures tab" },
-    { "type": "feat", "scope": "cache", "description": "Add selective cache clearing modal" },
-    { "type": "feat", "scope": "esi", "description": "Add error limit tracking per ESI best practices" },
-    { "type": "fix", "scope": "starbases", "description": "Add global resolution and smart detail caching" },
-    { "type": "fix", "scope": "notifications", "description": "Improve reliability and efficiency" },
-    { "type": "fix", "scope": "cache", "description": "Preserve towerSize/fuelTier when fetching prices" },
-    { "type": "fix", "scope": "cache", "description": "Add missing notifyListeners and parallelize clearing" },
-    { "type": "fix", "scope": "ref-api", "description": "Add global backoff on 429 for all queues" },
-    { "type": "fix", "scope": "assets", "description": "Don't block ESI on type resolution" },
-    { "type": "fix", "scope": "esi", "description": "Handle 304 responses when cache entry is expired" },
-    { "type": "fix", "scope": "esi", "description": "Preserve etags for conditional requests after cache expiry" },
-    { "type": "fix", "scope": "contracts", "description": "Use owner type for items endpoint and resolve issuer names" },
-    { "type": "fix", "scope": "contracts", "description": "Show blueprint copies correctly in contract items" },
-    { "type": "perf", "scope": "resolver", "description": "Parallelize reference data resolution" },
-    { "type": "refactor", "scope": "structures", "description": "Extract shared constants, utilities, and table components" },
-    { "type": "refactor", "scope": "esi", "description": "Use dynamic rate limiting from headers only" }
+    { "type": "fix", "scope": "starbases", "description": "Fix moon name resolution in starbase table" }
   ]
 }

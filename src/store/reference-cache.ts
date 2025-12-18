@@ -30,7 +30,7 @@ export interface CachedStructure {
 export interface CachedLocation {
   id: number
   name: string
-  type: 'region' | 'constellation' | 'system' | 'station' | 'structure'
+  type: 'region' | 'constellation' | 'system' | 'station' | 'structure' | 'celestial'
   solarSystemId?: number
   solarSystemName?: string
   regionId?: number
