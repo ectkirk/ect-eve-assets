@@ -12,6 +12,11 @@ export interface SecurityConfig {
   assetSafetyRate?: number
 }
 
+export const ASSET_SAFETY_FEE = {
+  NPC_STATION: 0.005,
+  NO_NPC_STATION: 0.15,
+} as const
+
 export const SECURITY_CONFIGS: Record<string, SecurityConfig> = {
   highsec: {
     name: 'High Sec',
