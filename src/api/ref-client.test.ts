@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { resolveTypes, resolveLocations, fetchPrices, _resetForTests } from './ref-client'
+import { resolveTypes, resolveLocations, fetchPrices, loadReferenceData, _resetForTests } from './ref-client'
 
 vi.mock('@/store/reference-cache', () => ({
   getType: vi.fn(),
@@ -18,7 +18,22 @@ vi.mock('@/store/reference-cache', () => ({
   setTypesEtag: vi.fn(),
 }))
 
-import { getType, saveTypes, hasLocation, getLocation, saveLocations, getGroup, getCategory } from '@/store/reference-cache'
+import {
+  getType,
+  saveTypes,
+  hasLocation,
+  getLocation,
+  saveLocations,
+  getGroup,
+  getCategory,
+  setCategories,
+  setGroups,
+  isReferenceDataLoaded,
+  isAllTypesLoaded,
+  setAllTypesLoaded,
+  getTypesEtag,
+  setTypesEtag,
+} from '@/store/reference-cache'
 
 const mockRefTypes = vi.fn()
 const mockRefTypesPage = vi.fn()
@@ -354,6 +369,177 @@ describe('ref-client', () => {
       expect(result.get(34)).toBe(5.5)
       expect(result.get(35)).toBe(10.0)
       expect(result.has(36)).toBe(false)
+    })
+  })
+
+  describe('loadReferenceData', () => {
+    it('skips loading if reference data and all types already loaded', async () => {
+      vi.mocked(isReferenceDataLoaded).mockReturnValue(true)
+      vi.mocked(isAllTypesLoaded).mockReturnValue(true)
+
+      await loadReferenceData()
+
+      expect(mockRefCategories).not.toHaveBeenCalled()
+      expect(mockRefGroups).not.toHaveBeenCalled()
+      expect(mockRefTypesPage).not.toHaveBeenCalled()
+    })
+
+    it('loads categories and groups when not loaded', async () => {
+      vi.mocked(isReferenceDataLoaded).mockReturnValue(false)
+      vi.mocked(isAllTypesLoaded).mockReturnValue(false)
+
+      await loadReferenceData()
+
+      expect(mockRefCategories).toHaveBeenCalled()
+      expect(mockRefGroups).toHaveBeenCalled()
+      expect(setCategories).toHaveBeenCalledWith([{ id: 4, name: 'Material' }])
+      expect(setGroups).toHaveBeenCalledWith([{ id: 18, name: 'Mineral', categoryId: 4 }])
+    })
+
+    it('loads all types with cursor pagination', async () => {
+      vi.mocked(isReferenceDataLoaded).mockReturnValue(true)
+      vi.mocked(isAllTypesLoaded).mockReturnValue(false)
+
+      mockRefTypesPage
+        .mockResolvedValueOnce({
+          items: { '34': { id: 34, name: 'Tritanium', groupId: 18, volume: 0.01 } },
+          pagination: { total: 2, limit: 1, hasMore: true, nextCursor: 34 },
+          etag: 'etag-1',
+        })
+        .mockResolvedValueOnce({
+          items: { '35': { id: 35, name: 'Pyerite', groupId: 18, volume: 0.01 } },
+          pagination: { total: 2, limit: 1, hasMore: false },
+          etag: 'etag-2',
+        })
+
+      await loadReferenceData()
+
+      expect(mockRefTypesPage).toHaveBeenCalledTimes(2)
+      expect(mockRefTypesPage).toHaveBeenNthCalledWith(1, {})
+      expect(mockRefTypesPage).toHaveBeenNthCalledWith(2, { after: 34 })
+      expect(saveTypes).toHaveBeenCalledTimes(2)
+      expect(setTypesEtag).toHaveBeenCalledWith('etag-2')
+      expect(setAllTypesLoaded).toHaveBeenCalledWith(true)
+    })
+
+    it('validates cache with ETag and skips reload on 304', async () => {
+      vi.mocked(isReferenceDataLoaded).mockReturnValue(false)
+      vi.mocked(isAllTypesLoaded).mockReturnValue(true)
+      vi.mocked(getTypesEtag).mockReturnValue('cached-etag')
+
+      mockRefTypesPage.mockResolvedValueOnce({ notModified: true })
+
+      await loadReferenceData()
+
+      expect(mockRefTypesPage).toHaveBeenCalledWith({ etag: 'cached-etag' })
+      expect(saveTypes).not.toHaveBeenCalled()
+      expect(setAllTypesLoaded).not.toHaveBeenCalled()
+    })
+
+    it('reloads types when ETag validation fails', async () => {
+      vi.mocked(isReferenceDataLoaded).mockReturnValue(false)
+      vi.mocked(isAllTypesLoaded).mockReturnValue(true)
+      vi.mocked(getTypesEtag).mockReturnValue('stale-etag')
+
+      mockRefTypesPage
+        .mockResolvedValueOnce({ error: 'ETag mismatch' })
+        .mockResolvedValueOnce({
+          items: { '34': { id: 34, name: 'Tritanium', groupId: 18, volume: 0.01 } },
+          pagination: { total: 1, limit: 5000, hasMore: false },
+          etag: 'new-etag',
+        })
+
+      await loadReferenceData()
+
+      expect(mockRefTypesPage).toHaveBeenCalledTimes(2)
+      expect(setTypesEtag).toHaveBeenCalledWith('new-etag')
+      expect(setAllTypesLoaded).toHaveBeenCalledWith(true)
+    })
+
+    it('handles categories API error gracefully', async () => {
+      vi.mocked(isReferenceDataLoaded).mockReturnValue(false)
+      vi.mocked(isAllTypesLoaded).mockReturnValue(false)
+
+      mockRefCategories.mockResolvedValueOnce({ error: 'HTTP 500' })
+
+      await loadReferenceData()
+
+      expect(setCategories).not.toHaveBeenCalled()
+      expect(setGroups).not.toHaveBeenCalled()
+      expect(mockRefTypesPage).not.toHaveBeenCalled()
+    })
+
+    it('handles types page API error gracefully', async () => {
+      vi.mocked(isReferenceDataLoaded).mockReturnValue(true)
+      vi.mocked(isAllTypesLoaded).mockReturnValue(false)
+
+      mockRefTypesPage.mockResolvedValueOnce({ error: 'HTTP 500' })
+
+      await loadReferenceData()
+
+      expect(setAllTypesLoaded).not.toHaveBeenCalled()
+    })
+
+    it('deduplicates concurrent calls', async () => {
+      vi.mocked(isReferenceDataLoaded).mockReturnValue(true)
+      vi.mocked(isAllTypesLoaded).mockReturnValue(false)
+
+      const promise1 = loadReferenceData()
+      const promise2 = loadReferenceData()
+
+      await Promise.all([promise1, promise2])
+
+      expect(mockRefTypesPage).toHaveBeenCalledTimes(1)
+    })
+
+    it('enriches types with group and category names', async () => {
+      vi.mocked(isReferenceDataLoaded).mockReturnValue(true)
+      vi.mocked(isAllTypesLoaded).mockReturnValue(false)
+
+      mockRefTypesPage.mockResolvedValueOnce({
+        items: { '34': { id: 34, name: 'Tritanium', groupId: 18, volume: 0.01 } },
+        pagination: { total: 1, limit: 5000, hasMore: false },
+        etag: 'test-etag',
+      })
+
+      await loadReferenceData()
+
+      expect(saveTypes).toHaveBeenCalledWith([
+        expect.objectContaining({
+          id: 34,
+          name: 'Tritanium',
+          groupId: 18,
+          groupName: 'Mineral',
+          categoryId: 4,
+          categoryName: 'Material',
+          volume: 0.01,
+        }),
+      ])
+    })
+
+    it('handles nullable groupId and volume from API', async () => {
+      vi.mocked(isReferenceDataLoaded).mockReturnValue(true)
+      vi.mocked(isAllTypesLoaded).mockReturnValue(false)
+
+      mockRefTypesPage.mockResolvedValueOnce({
+        items: { '99999': { id: 99999, name: 'Unknown Item', groupId: null, volume: null } },
+        pagination: { total: 1, limit: 5000, hasMore: false },
+        etag: 'test-etag',
+      })
+
+      await loadReferenceData()
+
+      expect(saveTypes).toHaveBeenCalledWith([
+        expect.objectContaining({
+          id: 99999,
+          name: 'Unknown Item',
+          groupId: 0,
+          groupName: '',
+          categoryId: 0,
+          categoryName: '',
+          volume: 0,
+        }),
+      ])
     })
   })
 })

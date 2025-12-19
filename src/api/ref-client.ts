@@ -189,25 +189,26 @@ export async function loadReferenceData(onProgress?: ReferenceDataProgress): Pro
 interface RawType {
   id: number
   name: string
-  groupId: number
-  volume: number
-  packagedVolume?: number
+  groupId?: number | null
+  volume?: number | null
+  packagedVolume?: number | null
 }
 
 function enrichType(raw: RawType): CachedType {
-  const group = getGroup(raw.groupId)
+  const groupId = raw.groupId ?? 0
+  const group = getGroup(groupId)
   const category = group ? getCategory(group.categoryId) : undefined
-  const towerInfo = getTowerInfo(raw.groupId, raw.name)
+  const towerInfo = getTowerInfo(groupId, raw.name)
 
   return {
     id: raw.id,
     name: raw.name,
-    groupId: raw.groupId,
+    groupId,
     groupName: group?.name ?? '',
     categoryId: group?.categoryId ?? 0,
     categoryName: category?.name ?? '',
-    volume: raw.volume,
-    packagedVolume: raw.packagedVolume,
+    volume: raw.volume ?? 0,
+    packagedVolume: raw.packagedVolume ?? undefined,
     ...towerInfo,
   }
 }
@@ -447,23 +448,7 @@ export async function resolveTypes(typeIds: number[]): Promise<Map<number, Cache
 
     const refType = fetched.get(id)
     if (refType) {
-      const groupId = refType.groupId ?? 0
-      const group = getGroup(groupId)
-      const categoryId = group?.categoryId ?? 0
-      const category = getCategory(categoryId)
-      const towerInfo = getTowerInfo(groupId, refType.name)
-
-      const cached: CachedType = {
-        id: refType.id,
-        name: refType.name,
-        groupId,
-        groupName: group?.name ?? '',
-        categoryId,
-        categoryName: category?.name ?? '',
-        volume: refType.volume ?? 0,
-        packagedVolume: refType.packagedVolume ?? undefined,
-        ...towerInfo,
-      }
+      const cached = enrichType(refType)
       results.set(id, cached)
       toCache.push(cached)
     } else if (requestedSet.has(id) && fetched.size > 0) {

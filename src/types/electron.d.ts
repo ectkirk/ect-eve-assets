@@ -29,7 +29,7 @@ declare global {
   }
 
   interface RefTypesPageResult {
-    items?: Record<string, { id: number; name: string; groupId: number; volume: number; packagedVolume?: number }>
+    items?: Record<string, { id: number; name: string; groupId?: number | null; volume?: number | null; packagedVolume?: number | null }>
     pagination?: { total: number; limit: number; nextCursor?: number; hasMore: boolean }
     etag?: string | null
     notModified?: boolean
@@ -393,7 +393,7 @@ declare global {
     getLogDir: () => Promise<string>
     openLogsFolder: () => Promise<void>
     submitBugReport: (characterName: string, description: string) => Promise<{ success: boolean; error?: string }>
-    refTypes: (ids: number[], stationId?: number) => Promise<RefApiResult>
+    refTypes: (ids: number[]) => Promise<RefApiResult>
     refTypesPage: (params?: RefTypesPageParams) => Promise<RefTypesPageResult>
     refCategories: () => Promise<RefApiResult>
     refGroups: () => Promise<RefApiResult>
