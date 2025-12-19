@@ -1,18 +1,11 @@
-import {
-  hasLocation,
-  getLocation,
-  hasStructure,
-  getStructure,
-} from '@/store/reference-cache'
+import { getLocation, getStructure } from '@/store/reference-cache'
 
 export function getLocationName(locationId: number | undefined): string {
   if (!locationId) return '-'
   if (locationId > 1_000_000_000_000) {
-    const structure = hasStructure(locationId) ? getStructure(locationId) : undefined
-    return structure?.name ?? `Structure ${locationId}`
+    return getStructure(locationId)?.name ?? `Structure ${locationId}`
   }
-  const location = hasLocation(locationId) ? getLocation(locationId) : undefined
-  return location?.name ?? `Location ${locationId}`
+  return getLocation(locationId)?.name ?? `Location ${locationId}`
 }
 
 export interface LocationInfo {
@@ -23,14 +16,13 @@ export interface LocationInfo {
 
 export function getLocationInfo(locationId: number): LocationInfo {
   if (locationId > 1_000_000_000_000) {
-    const structure = hasStructure(locationId) ? getStructure(locationId) : undefined
     return {
-      name: structure?.name ?? `Structure ${locationId}`,
+      name: getStructure(locationId)?.name ?? `Structure ${locationId}`,
       regionName: '',
       systemName: '',
     }
   }
-  const location = hasLocation(locationId) ? getLocation(locationId) : undefined
+  const location = getLocation(locationId)
   return {
     name: location?.name ?? `Location ${locationId}`,
     regionName: location?.regionName ?? '',

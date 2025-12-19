@@ -2,7 +2,6 @@ import { logger } from '@/lib/logger'
 import {
   getType,
   saveTypes,
-  hasLocation,
   getLocation,
   saveLocations,
   getGroup,
@@ -13,10 +12,6 @@ import {
   setSystems,
   setStations,
   setRefStructures,
-  getRegion,
-  getSystem,
-  getStation,
-  getRefStructure,
   isReferenceDataLoaded,
   isAllTypesLoaded,
   setAllTypesLoaded,
@@ -689,65 +684,6 @@ async function executeLocationsFetch(): Promise<LocationFetchResult> {
   return { requestedIds, results }
 }
 
-function resolveFromPreloadedUniverse(id: number): CachedLocation | undefined {
-  const station = getStation(id)
-  if (station) {
-    const system = getSystem(station.systemId)
-    const region = system ? getRegion(system.regionId) : undefined
-    return {
-      id,
-      name: station.name,
-      type: 'station',
-      solarSystemId: station.systemId,
-      solarSystemName: system?.name,
-      regionId: system?.regionId,
-      regionName: region?.name,
-    }
-  }
-
-  const refStructure = getRefStructure(id)
-  if (refStructure) {
-    const system = refStructure.systemId ? getSystem(refStructure.systemId) : undefined
-    const region = system ? getRegion(system.regionId) : undefined
-    return {
-      id,
-      name: refStructure.name,
-      type: 'structure',
-      solarSystemId: refStructure.systemId ?? undefined,
-      solarSystemName: system?.name,
-      regionId: system?.regionId,
-      regionName: region?.name,
-    }
-  }
-
-  const system = getSystem(id)
-  if (system) {
-    const region = getRegion(system.regionId)
-    return {
-      id,
-      name: system.name,
-      type: 'system',
-      solarSystemId: id,
-      solarSystemName: system.name,
-      regionId: system.regionId,
-      regionName: region?.name,
-    }
-  }
-
-  const region = getRegion(id)
-  if (region) {
-    return {
-      id,
-      name: region.name,
-      type: 'region',
-      regionId: id,
-      regionName: region.name,
-    }
-  }
-
-  return undefined
-}
-
 export async function resolveLocations(locationIds: number[]): Promise<Map<number, CachedLocation>> {
   const results = new Map<number, CachedLocation>()
   const uncachedIds: number[] = []
@@ -755,14 +691,9 @@ export async function resolveLocations(locationIds: number[]): Promise<Map<numbe
   for (const id of locationIds) {
     if (id > 1_000_000_000_000) continue
 
-    if (hasLocation(id)) {
-      results.set(id, getLocation(id)!)
-      continue
-    }
-
-    const preloaded = resolveFromPreloadedUniverse(id)
-    if (preloaded) {
-      results.set(id, preloaded)
+    const cached = getLocation(id)
+    if (cached) {
+      results.set(id, cached)
       continue
     }
 
@@ -788,7 +719,7 @@ export async function resolveLocations(locationIds: number[]): Promise<Map<numbe
     }
 
     const item = fetched.get(id)
-    if (item) {
+    if (item && item.type !== 'constellation') {
       const cached: CachedLocation = {
         id,
         name: item.name,
@@ -804,7 +735,7 @@ export async function resolveLocations(locationIds: number[]): Promise<Map<numbe
       const placeholder: CachedLocation = {
         id,
         name: `Unknown Location ${id}`,
-        type: 'station',
+        type: 'celestial',
       }
       results.set(id, placeholder)
       toCache.push(placeholder)

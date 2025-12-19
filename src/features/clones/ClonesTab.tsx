@@ -8,9 +8,7 @@ import { useColumnSettings, useCacheVersion, useExpandCollapse, type ColumnConfi
 import {
   hasType,
   getType,
-  hasLocation,
   getLocation,
-  hasStructure,
   getStructure,
 } from '@/store/reference-cache'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
@@ -235,11 +233,9 @@ export function ClonesTab() {
       locationType: 'station' | 'structure'
     ): string => {
       if (locationType === 'structure') {
-        const structure = hasStructure(locationId) ? getStructure(locationId) : undefined
-        return structure?.name ?? `Structure ${locationId}`
+        return getStructure(locationId)?.name ?? `Structure ${locationId}`
       }
-      const location = hasLocation(locationId) ? getLocation(locationId) : undefined
-      return location?.name ?? `Location ${locationId}`
+      return getLocation(locationId)?.name ?? `Location ${locationId}`
     }
 
     const result: CharacterClones[] = []

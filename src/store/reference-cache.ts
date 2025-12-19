@@ -65,7 +65,7 @@ export interface CachedStructure {
 export interface CachedLocation {
   id: number
   name: string
-  type: 'region' | 'constellation' | 'system' | 'station' | 'structure' | 'celestial'
+  type: 'region' | 'system' | 'station' | 'structure' | 'celestial'
   solarSystemId?: number
   solarSystemName?: string
   regionId?: number
@@ -506,11 +506,73 @@ export function hasStructure(id: number): boolean {
 }
 
 export function getLocation(id: number): CachedLocation | undefined {
-  return locationsCache.get(id)
+  const cached = locationsCache.get(id)
+  if (cached) return cached
+
+  const station = stationsCache.get(id)
+  if (station) {
+    const system = systemsCache.get(station.systemId)
+    const region = system ? regionsCache.get(system.regionId) : undefined
+    return {
+      id,
+      name: station.name,
+      type: 'station',
+      solarSystemId: station.systemId,
+      solarSystemName: system?.name,
+      regionId: system?.regionId,
+      regionName: region?.name,
+    }
+  }
+
+  const refStructure = refStructuresCache.get(id)
+  if (refStructure) {
+    const system = refStructure.systemId ? systemsCache.get(refStructure.systemId) : undefined
+    const region = system ? regionsCache.get(system.regionId) : undefined
+    return {
+      id,
+      name: refStructure.name,
+      type: 'structure',
+      solarSystemId: refStructure.systemId ?? undefined,
+      solarSystemName: system?.name,
+      regionId: system?.regionId,
+      regionName: region?.name,
+    }
+  }
+
+  const system = systemsCache.get(id)
+  if (system) {
+    const region = regionsCache.get(system.regionId)
+    return {
+      id,
+      name: system.name,
+      type: 'system',
+      solarSystemId: id,
+      solarSystemName: system.name,
+      regionId: system.regionId,
+      regionName: region?.name,
+    }
+  }
+
+  const region = regionsCache.get(id)
+  if (region) {
+    return {
+      id,
+      name: region.name,
+      type: 'region',
+      regionId: id,
+      regionName: region.name,
+    }
+  }
+
+  return undefined
 }
 
 export function hasLocation(id: number): boolean {
   return locationsCache.has(id)
+    || stationsCache.has(id)
+    || refStructuresCache.has(id)
+    || systemsCache.has(id)
+    || regionsCache.has(id)
 }
 
 export function getLocationName(id: number): string {
@@ -518,7 +580,7 @@ export function getLocationName(id: number): string {
     const structure = structuresCache.get(id)
     return structure?.name ?? `Structure ${id}`
   }
-  const location = locationsCache.get(id)
+  const location = getLocation(id)
   return location?.name ?? `Location ${id}`
 }
 

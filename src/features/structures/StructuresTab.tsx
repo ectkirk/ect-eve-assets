@@ -6,7 +6,7 @@ import { useStarbaseDetailsStore } from '@/store/starbase-details-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useTabControls } from '@/context'
 import { useCacheVersion } from '@/hooks'
-import { hasType, getType, hasLocation, getLocation } from '@/store/reference-cache'
+import { hasType, getType, getLocation } from '@/store/reference-cache'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import { formatFuelExpiry } from '@/lib/timer-utils'
 import { STRUCTURE_CATEGORY_ID } from '@/lib/structure-constants'
@@ -188,7 +188,7 @@ export function StructuresTab() {
     for (const { owner, structures } of filteredStructures) {
       for (const structure of structures) {
         const type = hasType(structure.type_id) ? getType(structure.type_id) : undefined
-        const location = hasLocation(structure.system_id) ? getLocation(structure.system_id) : undefined
+        const location = getLocation(structure.system_id)
 
         const assetData = structureAssetMap.get(structure.structure_id)
         const treeNode = assetData
@@ -230,8 +230,8 @@ export function StructuresTab() {
     for (const { owner, starbases } of filteredStarbases) {
       for (const starbase of starbases) {
         const type = hasType(starbase.type_id) ? getType(starbase.type_id) : undefined
-        const location = hasLocation(starbase.system_id) ? getLocation(starbase.system_id) : undefined
-        const moon = starbase.moon_id && hasLocation(starbase.moon_id) ? getLocation(starbase.moon_id) : undefined
+        const location = getLocation(starbase.system_id)
+        const moon = starbase.moon_id ? getLocation(starbase.moon_id) : undefined
 
         rows.push({
           kind: 'pos',
