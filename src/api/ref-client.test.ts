@@ -7,14 +7,21 @@ vi.mock('@/store/reference-cache', () => ({
   hasLocation: vi.fn(),
   getLocation: vi.fn(),
   saveLocations: vi.fn(),
+  getGroup: vi.fn(),
+  getCategory: vi.fn(),
+  setCategories: vi.fn(),
+  setGroups: vi.fn(),
+  isReferenceDataLoaded: vi.fn(() => true),
 }))
 
-import { getType, saveTypes, hasLocation, getLocation, saveLocations } from '@/store/reference-cache'
+import { getType, saveTypes, hasLocation, getLocation, saveLocations, getGroup, getCategory } from '@/store/reference-cache'
 
 const mockRefTypes = vi.fn()
 const mockRefUniverse = vi.fn()
 const mockRefMarket = vi.fn()
 const mockRefMarketJita = vi.fn()
+const mockRefCategories = vi.fn()
+const mockRefGroups = vi.fn()
 
 async function runWithTimers<T>(promise: Promise<T>): Promise<T> {
   await vi.advanceTimersByTimeAsync(2100)
@@ -26,11 +33,26 @@ describe('ref-client', () => {
     vi.resetAllMocks()
     vi.useFakeTimers()
     _resetForTests()
+
+    vi.mocked(getGroup).mockImplementation((id) => {
+      if (id === 18) return { id: 18, name: 'Mineral', categoryId: 4 }
+      return undefined
+    })
+    vi.mocked(getCategory).mockImplementation((id) => {
+      if (id === 4) return { id: 4, name: 'Material' }
+      return undefined
+    })
+
+    mockRefCategories.mockResolvedValue({ items: { '4': { id: 4, name: 'Material' } } })
+    mockRefGroups.mockResolvedValue({ items: { '18': { id: 18, name: 'Mineral', categoryId: 4 } } })
+
     window.electronAPI = {
       refTypes: mockRefTypes,
       refUniverse: mockRefUniverse,
       refMarket: mockRefMarket,
       refMarketJita: mockRefMarketJita,
+      refCategories: mockRefCategories,
+      refGroups: mockRefGroups,
     } as unknown as typeof window.electronAPI
   })
 
@@ -72,11 +94,7 @@ describe('ref-client', () => {
             id: 34,
             name: 'Tritanium',
             groupId: 18,
-            groupName: 'Mineral',
-            categoryId: 4,
-            categoryName: 'Material',
             volume: 0.01,
-            marketPrice: { lowestSell: 5 },
           },
         },
       })
@@ -85,6 +103,8 @@ describe('ref-client', () => {
 
       expect(result.size).toBe(1)
       expect(result.get(34)?.name).toBe('Tritanium')
+      expect(result.get(34)?.groupName).toBe('Mineral')
+      expect(result.get(34)?.categoryName).toBe('Material')
       expect(saveTypes).toHaveBeenCalled()
     })
 

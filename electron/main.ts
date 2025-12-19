@@ -600,6 +600,63 @@ ipcMain.handle('ref:types', async (_event, ids: unknown, stationId?: unknown) =>
   }
 })
 
+ipcMain.handle('ref:categories', async () => {
+  await waitForGlobalBackoff()
+  try {
+    const response = await fetchRefWithRetry(`${REF_API_BASE}/categories`, {
+      headers: getRefHeaders(),
+    })
+    if (!response.ok) {
+      return { error: `HTTP ${response.status}` }
+    }
+    return await response.json()
+  } catch (err) {
+    logger.error('ref:categories fetch failed', err, { module: 'Main' })
+    return { error: String(err) }
+  }
+})
+
+ipcMain.handle('ref:groups', async () => {
+  await waitForGlobalBackoff()
+  try {
+    const response = await fetchRefWithRetry(`${REF_API_BASE}/groups`, {
+      headers: getRefHeaders(),
+    })
+    if (!response.ok) {
+      return { error: `HTTP ${response.status}` }
+    }
+    return await response.json()
+  } catch (err) {
+    logger.error('ref:groups fetch failed', err, { module: 'Main' })
+    return { error: String(err) }
+  }
+})
+
+ipcMain.handle('ref:implants', async (_event, ids: unknown) => {
+  if (!Array.isArray(ids) || ids.length === 0 || ids.length > MAX_REF_IDS) {
+    return { error: 'Invalid ids array' }
+  }
+  if (!ids.every((id) => typeof id === 'number' && Number.isInteger(id) && id > 0)) {
+    return { error: 'Invalid id values' }
+  }
+
+  await waitForGlobalBackoff()
+  try {
+    const response = await fetchRefWithRetry(`${REF_API_BASE}/implants`, {
+      method: 'POST',
+      headers: getRefHeaders('json'),
+      body: JSON.stringify({ ids }),
+    })
+    if (!response.ok) {
+      return { error: `HTTP ${response.status}` }
+    }
+    return await response.json()
+  } catch (err) {
+    logger.error('ref:implants fetch failed', err, { module: 'Main' })
+    return { error: String(err) }
+  }
+})
+
 ipcMain.handle('ref:universe', async (_event, ids: unknown) => {
   if (!Array.isArray(ids) || ids.length === 0 || ids.length > MAX_REF_IDS) {
     return { error: 'Invalid ids array' }
@@ -626,8 +683,8 @@ ipcMain.handle('ref:universe', async (_event, ids: unknown) => {
 })
 
 ipcMain.handle('ref:ships', async (_event, ids: unknown) => {
-  if (!Array.isArray(ids) || ids.length === 0 || ids.length > MAX_REF_IDS) {
-    return { error: 'Invalid ids array' }
+  if (!Array.isArray(ids) || ids.length === 0 || ids.length > 500) {
+    return { error: 'Invalid ids array (max 500)' }
   }
   if (!ids.every((id) => typeof id === 'number' && Number.isInteger(id) && id > 0)) {
     return { error: 'Invalid id values' }

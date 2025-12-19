@@ -377,48 +377,43 @@ export const ESICorporationDivisionsSchema = z.object({
 })
 
 // ref-client schemas
-const RefPriceLevelSchema = z.object({
-  highestBuy: z.number().nullable(),
-  lowestSell: z.number().nullable(),
-})
-
-const RefContractPriceSchema = z.object({
-  price: z.number().nullable(),
-  salesCount: z.number(),
-  timeWindow: z.string().nullable(),
-  hasSufficientData: z.boolean(),
-})
-
-export const RefMarketPriceSchema = z.object({
-  adjusted: z.union([z.string(), z.number(), z.null()]).optional(),
-  average: z.union([z.string(), z.number(), z.null()]).optional(),
-  salesCount: z.number().optional(),
-  timeWindow: z.string().nullable().optional(),
-  hasSufficientData: z.boolean().optional(),
-  station: RefPriceLevelSchema.optional(),
-  system: RefPriceLevelSchema.optional(),
-  region: RefPriceLevelSchema.optional(),
-})
-
 export const RefTypeSchema = z.object({
   id: z.number(),
   name: z.string(),
   groupId: z.number().nullable().optional(),
-  groupName: z.string().nullable().optional(),
-  categoryId: z.number().nullable().optional(),
-  categoryName: z.string().nullable().optional(),
   volume: z.number().nullable().optional(),
   packagedVolume: z.number().nullable().optional(),
-  basePrice: z.number().nullable().optional(),
-  marketPrice: RefMarketPriceSchema,
-  contractPrice: RefContractPriceSchema.optional(),
-  implantSlot: z.number().optional(),
-  towerSize: z.number().optional(),
-  fuelTier: z.number().optional(),
 })
 
 export const RefTypeBulkResponseSchema = z.object({
   items: z.record(z.string(), RefTypeSchema),
+})
+
+export const RefCategorySchema = z.object({
+  id: z.number(),
+  name: z.string(),
+})
+
+export const RefCategoriesResponseSchema = z.object({
+  items: z.record(z.string(), RefCategorySchema),
+})
+
+export const RefGroupSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  categoryId: z.number(),
+})
+
+export const RefGroupsResponseSchema = z.object({
+  items: z.record(z.string(), RefGroupSchema),
+})
+
+export const RefImplantSchema = z.object({
+  slot: z.number(),
+})
+
+export const RefImplantsResponseSchema = z.object({
+  items: z.record(z.string(), RefImplantSchema),
 })
 
 export const RefUniverseItemSchema = z.object({

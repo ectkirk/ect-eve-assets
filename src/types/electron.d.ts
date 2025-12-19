@@ -381,6 +381,9 @@ declare global {
     openLogsFolder: () => Promise<void>
     submitBugReport: (characterName: string, description: string) => Promise<{ success: boolean; error?: string }>
     refTypes: (ids: number[], stationId?: number) => Promise<RefApiResult>
+    refCategories: () => Promise<RefApiResult>
+    refGroups: () => Promise<RefApiResult>
+    refImplants: (ids: number[]) => Promise<RefApiResult>
     refUniverse: (ids: number[]) => Promise<RefApiResult>
     refShips: (ids: number[]) => Promise<RefShipsResult>
     refMarket: (params: RefMarketParams) => Promise<RefMarketResult>

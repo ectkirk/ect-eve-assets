@@ -381,6 +381,9 @@ export interface ElectronAPI {
   openLogsFolder: () => Promise<void>
   submitBugReport: (characterName: string, description: string) => Promise<{ success: boolean; error?: string }>
   refTypes: (ids: number[], stationId?: number) => Promise<RefApiResult>
+  refCategories: () => Promise<RefApiResult>
+  refGroups: () => Promise<RefApiResult>
+  refImplants: (ids: number[]) => Promise<RefApiResult>
   refUniverse: (ids: number[]) => Promise<RefApiResult>
   refShips: (ids: number[]) => Promise<RefShipsResult>
   refMarket: (params: RefMarketParams) => Promise<RefMarketResult>
@@ -447,6 +450,9 @@ const electronAPI: ElectronAPI = {
   submitBugReport: (characterName: string, description: string) =>
     ipcRenderer.invoke('bug:report', characterName, description),
   refTypes: (ids: number[], stationId?: number) => ipcRenderer.invoke('ref:types', ids, stationId),
+  refCategories: () => ipcRenderer.invoke('ref:categories'),
+  refGroups: () => ipcRenderer.invoke('ref:groups'),
+  refImplants: (ids: number[]) => ipcRenderer.invoke('ref:implants', ids),
   refUniverse: (ids: number[]) => ipcRenderer.invoke('ref:universe', ids),
   refShips: (ids: number[]) => ipcRenderer.invoke('ref:ships', ids),
   refMarket: (params: RefMarketParams) => ipcRenderer.invoke('ref:market', params),

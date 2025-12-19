@@ -5,6 +5,11 @@ import {
   hasLocation,
   getLocation,
   saveLocations,
+  getGroup,
+  getCategory,
+  setCategories,
+  setGroups,
+  isReferenceDataLoaded,
   type CachedType,
   type CachedLocation,
 } from '@/store/reference-cache'
@@ -13,6 +18,9 @@ import {
   RefUniverseBulkResponseSchema,
   RefTypeSchema,
   RefUniverseItemSchema,
+  RefCategoriesResponseSchema,
+  RefGroupsResponseSchema,
+  RefImplantsResponseSchema,
   MarketBulkResponseSchema,
   MarketBulkItemSchema,
   MarketJitaResponseSchema,
@@ -29,6 +37,24 @@ export type UniverseEntityType = RefUniverseItem['type']
 const PLEX_GROUP = 1875
 const CONTRACT_GROUPS = new Set([883, 547, 4594, 485, 1538, 659, 30])
 const CHUNK_CONCURRENCY = 3
+
+const CONTROL_TOWER_GROUP_ID = 365
+const TIER_2_TOWER_PREFIXES = ['Dark Blood', 'Dread Guristas', 'Shadow', 'Domination', 'True Sansha']
+const TIER_1_TOWER_PREFIXES = ['Angel', 'Blood', 'Guristas', 'Sansha', 'Serpentis']
+
+function getTowerInfo(groupId: number, name: string): { towerSize?: number; fuelTier?: number } {
+  if (groupId !== CONTROL_TOWER_GROUP_ID) return {}
+
+  const towerSize = name.includes('Small') ? 1
+                  : name.includes('Medium') ? 2
+                  : 3
+
+  const fuelTier = TIER_2_TOWER_PREFIXES.some(p => name.startsWith(p)) ? 2
+                 : TIER_1_TOWER_PREFIXES.some(p => name.startsWith(p)) ? 1
+                 : 0
+
+  return { towerSize, fuelTier }
+}
 
 async function processChunksParallel<T, R>(
   items: T[],
@@ -72,11 +98,68 @@ let pendingTypeIds = new Set<number>()
 let inFlightLocations: Promise<Map<number, RefUniverseItem>> | null = null
 let pendingLocationIds = new Set<number>()
 
+let referenceDataPromise: Promise<void> | null = null
+
 export function _resetForTests(): void {
   inFlightTypes = null
   pendingTypeIds = new Set()
   inFlightLocations = null
   pendingLocationIds = new Set()
+  referenceDataPromise = null
+}
+
+export async function loadReferenceData(): Promise<void> {
+  if (isReferenceDataLoaded()) return
+
+  if (referenceDataPromise) {
+    return referenceDataPromise
+  }
+
+  referenceDataPromise = (async () => {
+    const start = performance.now()
+
+    const [categoriesRaw, groupsRaw] = await Promise.all([
+      window.electronAPI!.refCategories(),
+      window.electronAPI!.refGroups(),
+    ])
+
+    if (categoriesRaw && 'error' in categoriesRaw) {
+      logger.error('Failed to load categories', undefined, { module: 'RefAPI', error: categoriesRaw.error })
+      return
+    }
+
+    if (groupsRaw && 'error' in groupsRaw) {
+      logger.error('Failed to load groups', undefined, { module: 'RefAPI', error: groupsRaw.error })
+      return
+    }
+
+    const categoriesResult = RefCategoriesResponseSchema.safeParse(categoriesRaw)
+    if (!categoriesResult.success) {
+      logger.error('Categories validation failed', undefined, { module: 'RefAPI', errors: categoriesResult.error.issues.slice(0, 3) })
+      return
+    }
+
+    const groupsResult = RefGroupsResponseSchema.safeParse(groupsRaw)
+    if (!groupsResult.success) {
+      logger.error('Groups validation failed', undefined, { module: 'RefAPI', errors: groupsResult.error.issues.slice(0, 3) })
+      return
+    }
+
+    const categories = Object.values(categoriesResult.data.items)
+    const groups = Object.values(groupsResult.data.items)
+
+    setCategories(categories)
+    setGroups(groups)
+
+    const duration = Math.round(performance.now() - start)
+    logger.info('Reference data loaded', { module: 'RefAPI', categories: categories.length, groups: groups.length, duration })
+  })().finally(() => {
+    if (!isReferenceDataLoaded()) {
+      referenceDataPromise = null
+    }
+  })
+
+  return referenceDataPromise
 }
 
 async function fetchTypesChunk(chunk: number[]): Promise<Map<number, RefType>> {
@@ -202,6 +285,8 @@ async function executeTypesFetch(): Promise<Map<number, RefType>> {
 }
 
 export async function resolveTypes(typeIds: number[]): Promise<Map<number, CachedType>> {
+  await loadReferenceData()
+
   const results = new Map<number, CachedType>()
   const uncachedIds: number[] = []
 
@@ -233,18 +318,22 @@ export async function resolveTypes(typeIds: number[]): Promise<Map<number, Cache
 
     const refType = fetched.get(id)
     if (refType) {
+      const groupId = refType.groupId ?? 0
+      const group = getGroup(groupId)
+      const categoryId = group?.categoryId ?? 0
+      const category = getCategory(categoryId)
+      const towerInfo = getTowerInfo(groupId, refType.name)
+
       const cached: CachedType = {
         id: refType.id,
         name: refType.name,
-        groupId: refType.groupId ?? 0,
-        groupName: refType.groupName ?? '',
-        categoryId: refType.categoryId ?? 0,
-        categoryName: refType.categoryName ?? '',
+        groupId,
+        groupName: group?.name ?? '',
+        categoryId,
+        categoryName: category?.name ?? '',
         volume: refType.volume ?? 0,
         packagedVolume: refType.packagedVolume ?? undefined,
-        implantSlot: refType.implantSlot,
-        towerSize: refType.towerSize,
-        fuelTier: refType.fuelTier,
+        ...towerInfo,
       }
       results.set(id, cached)
       toCache.push(cached)
@@ -669,6 +758,42 @@ export async function fetchMarketComparison(
       highestBuy: item.highestBuy ?? null,
       lowestSell: item.lowestSell,
     })
+  }
+
+  return results
+}
+
+export async function fetchImplantSlots(typeIds: number[]): Promise<Map<number, number>> {
+  if (typeIds.length === 0) return new Map()
+
+  const start = performance.now()
+  const results = new Map<number, number>()
+
+  try {
+    const rawData = await window.electronAPI!.refImplants(typeIds)
+    const duration = Math.round(performance.now() - start)
+
+    if (rawData && typeof rawData === 'object' && 'error' in rawData) {
+      logger.warn('RefAPI /implants failed', { module: 'RefAPI', error: rawData.error, duration })
+      return results
+    }
+
+    const parseResult = RefImplantsResponseSchema.safeParse(rawData)
+    if (!parseResult.success) {
+      logger.error('RefAPI /implants validation failed', undefined, {
+        module: 'RefAPI',
+        errors: parseResult.error.issues.slice(0, 3),
+      })
+      return results
+    }
+
+    for (const [idStr, item] of Object.entries(parseResult.data.items)) {
+      results.set(Number(idStr), item.slot)
+    }
+
+    logger.info('RefAPI /implants', { module: 'RefAPI', requested: typeIds.length, returned: results.size, duration })
+  } catch (error) {
+    logger.error('RefAPI /implants error', error, { module: 'RefAPI' })
   }
 
   return results

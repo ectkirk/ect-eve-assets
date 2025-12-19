@@ -3,6 +3,17 @@ import { logger } from '@/lib/logger'
 const DB_NAME = 'ecteveassets-cache'
 const DB_VERSION = 5
 
+export interface CachedCategory {
+  id: number
+  name: string
+}
+
+export interface CachedGroup {
+  id: number
+  name: string
+  categoryId: number
+}
+
 export interface CachedType {
   id: number
   name: string
@@ -64,6 +75,8 @@ export interface CachedName {
 }
 
 let db: IDBDatabase | null = null
+let categoriesCache = new Map<number, CachedCategory>()
+let groupsCache = new Map<number, CachedGroup>()
 let typesCache = new Map<number, CachedType>()
 let structuresCache = new Map<number, CachedStructure>()
 let locationsCache = new Map<number, CachedLocation>()
@@ -72,6 +85,7 @@ const namesCache = new Map<number, CachedName>()
 const contractItemsKnown = new Set<number>()
 const contractItemsCache = new Map<number, CachedContractItems['items']>()
 let initialized = false
+let referenceDataLoaded = false
 
 const listeners = new Set<() => void>()
 
@@ -198,6 +212,29 @@ export function getTypeName(id: number): string {
 
 export function hasType(id: number): boolean {
   return typesCache.has(id)
+}
+
+export function getCategory(id: number): CachedCategory | undefined {
+  return categoriesCache.get(id)
+}
+
+export function getGroup(id: number): CachedGroup | undefined {
+  return groupsCache.get(id)
+}
+
+export function isReferenceDataLoaded(): boolean {
+  return referenceDataLoaded
+}
+
+export function setCategories(categories: CachedCategory[]): void {
+  categoriesCache = new Map(categories.map(c => [c.id, c]))
+  logger.info('Categories loaded', { module: 'ReferenceCache', count: categories.length })
+}
+
+export function setGroups(groups: CachedGroup[]): void {
+  groupsCache = new Map(groups.map(g => [g.id, g]))
+  referenceDataLoaded = true
+  logger.info('Groups loaded', { module: 'ReferenceCache', count: groups.length })
 }
 
 export function getStructure(id: number): CachedStructure | undefined {
@@ -433,6 +470,8 @@ export async function saveAbyssals(abyssals: CachedAbyssal[]): Promise<void> {
 export async function clearReferenceCache(): Promise<void> {
   logger.info('Clearing reference cache', { module: 'ReferenceCache' })
 
+  categoriesCache.clear()
+  groupsCache.clear()
   typesCache.clear()
   structuresCache.clear()
   locationsCache.clear()
@@ -441,6 +480,7 @@ export async function clearReferenceCache(): Promise<void> {
   contractItemsKnown.clear()
   contractItemsCache.clear()
   initialized = false
+  referenceDataLoaded = false
 
   if (db) {
     db.close()
