@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { resolveTypes, resolveLocations, fetchPrices } from './ref-client'
+import { resolveTypes, resolveLocations, fetchPrices, _resetForTests } from './ref-client'
 
 vi.mock('@/store/reference-cache', () => ({
   getType: vi.fn(),
@@ -23,8 +23,9 @@ async function runWithTimers<T>(promise: Promise<T>): Promise<T> {
 
 describe('ref-client', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     vi.useFakeTimers()
+    _resetForTests()
     window.electronAPI = {
       refTypes: mockRefTypes,
       refUniverse: mockRefUniverse,
