@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { resolveTypes, resolveLocations, fetchPrices, loadReferenceData, _resetForTests } from './ref-client'
+import { resolveTypes, resolveLocations, fetchPrices, loadReferenceData, loadUniverseData, _resetForTests } from './ref-client'
 
 vi.mock('@/store/reference-cache', () => ({
   getType: vi.fn(),
@@ -9,13 +9,19 @@ vi.mock('@/store/reference-cache', () => ({
   saveLocations: vi.fn(),
   getGroup: vi.fn(),
   getCategory: vi.fn(),
+  getRegion: vi.fn(),
+  getSystem: vi.fn(),
+  getStation: vi.fn(),
   setCategories: vi.fn(),
   setGroups: vi.fn(),
+  setRegions: vi.fn(),
+  setSystems: vi.fn(),
+  setStations: vi.fn(),
   isReferenceDataLoaded: vi.fn(() => true),
   isAllTypesLoaded: vi.fn(() => false),
   setAllTypesLoaded: vi.fn(),
-  getTypesEtag: vi.fn(() => null),
-  setTypesEtag: vi.fn(),
+  isUniverseDataLoaded: vi.fn(() => false),
+  setUniverseDataLoaded: vi.fn(),
 }))
 
 import {
@@ -28,11 +34,14 @@ import {
   getCategory,
   setCategories,
   setGroups,
+  setRegions,
+  setSystems,
+  setStations,
   isReferenceDataLoaded,
   isAllTypesLoaded,
   setAllTypesLoaded,
-  getTypesEtag,
-  setTypesEtag,
+  isUniverseDataLoaded,
+  setUniverseDataLoaded,
 } from '@/store/reference-cache'
 
 const mockRefTypes = vi.fn()
@@ -42,6 +51,9 @@ const mockRefMarket = vi.fn()
 const mockRefMarketJita = vi.fn()
 const mockRefCategories = vi.fn()
 const mockRefGroups = vi.fn()
+const mockRefUniverseRegions = vi.fn()
+const mockRefUniverseSystems = vi.fn()
+const mockRefUniverseStations = vi.fn()
 
 async function runWithTimers<T>(promise: Promise<T>): Promise<T> {
   await vi.advanceTimersByTimeAsync(2100)
@@ -67,6 +79,10 @@ describe('ref-client', () => {
     mockRefGroups.mockResolvedValue({ items: { '18': { id: 18, name: 'Mineral', categoryId: 4 } } })
     mockRefTypesPage.mockResolvedValue({ items: {}, pagination: { total: 0, limit: 5000, hasMore: false }, etag: 'test-etag' })
 
+    mockRefUniverseRegions.mockResolvedValue({ items: { '10000002': { id: 10000002, name: 'The Forge' } } })
+    mockRefUniverseSystems.mockResolvedValue({ items: { '30000142': { id: 30000142, name: 'Jita', regionId: 10000002, securityStatus: 0.9 } } })
+    mockRefUniverseStations.mockResolvedValue({ items: { '60003760': { id: 60003760, name: 'Jita IV - Moon 4 - Caldari Navy Assembly Plant', systemId: 30000142 } } })
+
     window.electronAPI = {
       refTypes: mockRefTypes,
       refTypesPage: mockRefTypesPage,
@@ -75,6 +91,9 @@ describe('ref-client', () => {
       refMarketJita: mockRefMarketJita,
       refCategories: mockRefCategories,
       refGroups: mockRefGroups,
+      refUniverseRegions: mockRefUniverseRegions,
+      refUniverseSystems: mockRefUniverseSystems,
+      refUniverseStations: mockRefUniverseStations,
     } as unknown as typeof window.electronAPI
   })
 
@@ -404,12 +423,10 @@ describe('ref-client', () => {
         .mockResolvedValueOnce({
           items: { '34': { id: 34, name: 'Tritanium', groupId: 18, volume: 0.01 } },
           pagination: { total: 2, limit: 1, hasMore: true, nextCursor: 34 },
-          etag: 'etag-1',
         })
         .mockResolvedValueOnce({
           items: { '35': { id: 35, name: 'Pyerite', groupId: 18, volume: 0.01 } },
           pagination: { total: 2, limit: 1, hasMore: false },
-          etag: 'etag-2',
         })
 
       await loadReferenceData()
@@ -418,41 +435,6 @@ describe('ref-client', () => {
       expect(mockRefTypesPage).toHaveBeenNthCalledWith(1, {})
       expect(mockRefTypesPage).toHaveBeenNthCalledWith(2, { after: 34 })
       expect(saveTypes).toHaveBeenCalledTimes(2)
-      expect(setTypesEtag).toHaveBeenCalledWith('etag-2')
-      expect(setAllTypesLoaded).toHaveBeenCalledWith(true)
-    })
-
-    it('validates cache with ETag and skips reload on 304', async () => {
-      vi.mocked(isReferenceDataLoaded).mockReturnValue(false)
-      vi.mocked(isAllTypesLoaded).mockReturnValue(true)
-      vi.mocked(getTypesEtag).mockReturnValue('cached-etag')
-
-      mockRefTypesPage.mockResolvedValueOnce({ notModified: true })
-
-      await loadReferenceData()
-
-      expect(mockRefTypesPage).toHaveBeenCalledWith({ etag: 'cached-etag' })
-      expect(saveTypes).not.toHaveBeenCalled()
-      expect(setAllTypesLoaded).not.toHaveBeenCalled()
-    })
-
-    it('reloads types when ETag validation fails', async () => {
-      vi.mocked(isReferenceDataLoaded).mockReturnValue(false)
-      vi.mocked(isAllTypesLoaded).mockReturnValue(true)
-      vi.mocked(getTypesEtag).mockReturnValue('stale-etag')
-
-      mockRefTypesPage
-        .mockResolvedValueOnce({ error: 'ETag mismatch' })
-        .mockResolvedValueOnce({
-          items: { '34': { id: 34, name: 'Tritanium', groupId: 18, volume: 0.01 } },
-          pagination: { total: 1, limit: 5000, hasMore: false },
-          etag: 'new-etag',
-        })
-
-      await loadReferenceData()
-
-      expect(mockRefTypesPage).toHaveBeenCalledTimes(2)
-      expect(setTypesEtag).toHaveBeenCalledWith('new-etag')
       expect(setAllTypesLoaded).toHaveBeenCalledWith(true)
     })
 
@@ -540,6 +522,78 @@ describe('ref-client', () => {
           volume: 0,
         }),
       ])
+    })
+  })
+
+  describe('loadUniverseData', () => {
+    it('skips loading if universe data already loaded', async () => {
+      vi.mocked(isUniverseDataLoaded).mockReturnValue(true)
+
+      await loadUniverseData()
+
+      expect(mockRefUniverseRegions).not.toHaveBeenCalled()
+      expect(mockRefUniverseSystems).not.toHaveBeenCalled()
+      expect(mockRefUniverseStations).not.toHaveBeenCalled()
+    })
+
+    it('loads regions, systems, and stations when not loaded', async () => {
+      vi.mocked(isUniverseDataLoaded).mockReturnValue(false)
+
+      await loadUniverseData()
+
+      expect(mockRefUniverseRegions).toHaveBeenCalled()
+      expect(mockRefUniverseSystems).toHaveBeenCalled()
+      expect(mockRefUniverseStations).toHaveBeenCalled()
+      expect(setRegions).toHaveBeenCalledWith([{ id: 10000002, name: 'The Forge' }])
+      expect(setSystems).toHaveBeenCalledWith([{ id: 30000142, name: 'Jita', regionId: 10000002, securityStatus: 0.9 }])
+      expect(setStations).toHaveBeenCalledWith([{ id: 60003760, name: 'Jita IV - Moon 4 - Caldari Navy Assembly Plant', systemId: 30000142 }])
+      expect(setUniverseDataLoaded).toHaveBeenCalledWith(true)
+    })
+
+    it('handles regions API error gracefully', async () => {
+      vi.mocked(isUniverseDataLoaded).mockReturnValue(false)
+
+      mockRefUniverseRegions.mockResolvedValueOnce({ error: 'HTTP 500' })
+
+      await loadUniverseData()
+
+      expect(setRegions).not.toHaveBeenCalled()
+      expect(mockRefUniverseSystems).toHaveBeenCalled()
+    })
+
+    it('handles systems API error gracefully', async () => {
+      vi.mocked(isUniverseDataLoaded).mockReturnValue(false)
+
+      mockRefUniverseSystems.mockResolvedValueOnce({ error: 'HTTP 500' })
+
+      await loadUniverseData()
+
+      expect(setSystems).not.toHaveBeenCalled()
+      expect(mockRefUniverseStations).toHaveBeenCalled()
+    })
+
+    it('handles stations API error gracefully', async () => {
+      vi.mocked(isUniverseDataLoaded).mockReturnValue(false)
+
+      mockRefUniverseStations.mockResolvedValueOnce({ error: 'HTTP 500' })
+
+      await loadUniverseData()
+
+      expect(setStations).not.toHaveBeenCalled()
+      expect(setUniverseDataLoaded).toHaveBeenCalledWith(true)
+    })
+
+    it('deduplicates concurrent calls', async () => {
+      vi.mocked(isUniverseDataLoaded).mockReturnValue(false)
+
+      const promise1 = loadUniverseData()
+      const promise2 = loadUniverseData()
+
+      await Promise.all([promise1, promise2])
+
+      expect(mockRefUniverseRegions).toHaveBeenCalledTimes(1)
+      expect(mockRefUniverseSystems).toHaveBeenCalledTimes(1)
+      expect(mockRefUniverseStations).toHaveBeenCalledTimes(1)
     })
   })
 })

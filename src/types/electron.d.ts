@@ -25,14 +25,26 @@ declare global {
 
   interface RefTypesPageParams {
     after?: number
-    etag?: string
   }
 
   interface RefTypesPageResult {
     items?: Record<string, { id: number; name: string; groupId?: number | null; volume?: number | null; packagedVolume?: number | null }>
     pagination?: { total: number; limit: number; nextCursor?: number; hasMore: boolean }
-    etag?: string | null
-    notModified?: boolean
+    error?: string
+  }
+
+  interface RefRegionsResult {
+    items?: Record<string, { id: number; name: string }>
+    error?: string
+  }
+
+  interface RefSystemsResult {
+    items?: Record<string, { id: number; name: string; regionId: number; securityStatus?: number | null }>
+    error?: string
+  }
+
+  interface RefStationsResult {
+    items?: Record<string, { id: number; name: string; systemId: number }>
     error?: string
   }
 
@@ -397,6 +409,9 @@ declare global {
     refTypesPage: (params?: RefTypesPageParams) => Promise<RefTypesPageResult>
     refCategories: () => Promise<RefApiResult>
     refGroups: () => Promise<RefApiResult>
+    refUniverseRegions: () => Promise<RefRegionsResult>
+    refUniverseSystems: () => Promise<RefSystemsResult>
+    refUniverseStations: () => Promise<RefStationsResult>
     refImplants: (ids: number[]) => Promise<RefApiResult>
     refUniverse: (ids: number[]) => Promise<RefApiResult>
     refShips: (ids: number[]) => Promise<RefShipsResult>

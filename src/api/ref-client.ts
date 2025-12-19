@@ -9,13 +9,22 @@ import {
   getCategory,
   setCategories,
   setGroups,
+  setRegions,
+  setSystems,
+  setStations,
+  getRegion,
+  getSystem,
+  getStation,
   isReferenceDataLoaded,
   isAllTypesLoaded,
   setAllTypesLoaded,
-  getTypesEtag,
-  setTypesEtag,
+  isUniverseDataLoaded,
+  setUniverseDataLoaded,
   type CachedType,
   type CachedLocation,
+  type CachedRegion,
+  type CachedSystem,
+  type CachedStation,
 } from '@/store/reference-cache'
 import {
   RefTypeBulkResponseSchema,
@@ -24,6 +33,9 @@ import {
   RefUniverseItemSchema,
   RefCategoriesResponseSchema,
   RefGroupsResponseSchema,
+  RefRegionsResponseSchema,
+  RefSystemsResponseSchema,
+  RefStationsResponseSchema,
   RefImplantsResponseSchema,
   MarketBulkResponseSchema,
   MarketBulkItemSchema,
@@ -214,21 +226,7 @@ function enrichType(raw: RawType): CachedType {
 }
 
 async function loadAllTypes(onProgress?: ReferenceDataProgress): Promise<void> {
-  const storedEtag = getTypesEtag()
-
-  if (storedEtag && isAllTypesLoaded()) {
-    onProgress?.('Validating types cache...')
-    const result = await window.electronAPI!.refTypesPage({ etag: storedEtag })
-
-    if (result.notModified) {
-      logger.info('Types cache valid (304)', { module: 'RefAPI' })
-      return
-    }
-
-    if (result.error) {
-      logger.warn('Types ETag check failed, will reload', { module: 'RefAPI', error: result.error })
-    }
-  }
+  if (isAllTypesLoaded()) return
 
   onProgress?.('Loading types...')
   const start = performance.now()
@@ -236,7 +234,6 @@ async function loadAllTypes(onProgress?: ReferenceDataProgress): Promise<void> {
   let total = 0
   let loaded = 0
   let pageCount = 0
-  let lastEtag: string | null = null
 
   do {
     const result = await window.electronAPI!.refTypesPage({ after: cursor })
@@ -261,22 +258,152 @@ async function loadAllTypes(onProgress?: ReferenceDataProgress): Promise<void> {
       await saveTypes(enrichedTypes)
     }
 
-    if (result.etag) {
-      lastEtag = result.etag
-    }
-
     onProgress?.(`Loading types (${loaded.toLocaleString()}/${total.toLocaleString()})...`)
 
     cursor = result.pagination.hasMore ? result.pagination.nextCursor : undefined
   } while (cursor !== undefined)
 
-  if (lastEtag) {
-    setTypesEtag(lastEtag)
-  }
   setAllTypesLoaded(true)
 
   const duration = Math.round(performance.now() - start)
   logger.info('All types loaded', { module: 'RefAPI', total: loaded, pages: pageCount, duration })
+}
+
+let universeDataPromise: Promise<void> | null = null
+
+export async function loadUniverseData(onProgress?: ReferenceDataProgress): Promise<void> {
+  if (isUniverseDataLoaded()) return
+
+  if (universeDataPromise) {
+    return universeDataPromise
+  }
+
+  universeDataPromise = (async () => {
+    const start = performance.now()
+
+    try {
+      onProgress?.('Loading regions...')
+      await loadAllRegions()
+
+      onProgress?.('Loading systems...')
+      await loadAllSystems()
+
+      onProgress?.('Loading stations...')
+      await loadAllStations()
+
+      setUniverseDataLoaded(true)
+
+      const duration = Math.round(performance.now() - start)
+      logger.info('Universe data loaded', { module: 'RefAPI', duration })
+    } catch (error) {
+      logger.error('Failed to load universe data', error, { module: 'RefAPI' })
+    }
+  })().finally(() => {
+    universeDataPromise = null
+  })
+
+  return universeDataPromise
+}
+
+async function loadAllRegions(): Promise<void> {
+  const result = await window.electronAPI!.refUniverseRegions()
+
+  if (result.error) {
+    logger.error('Failed to load regions', undefined, { module: 'RefAPI', error: result.error })
+    return
+  }
+
+  if (!result.items) {
+    logger.warn('No regions returned', { module: 'RefAPI' })
+    return
+  }
+
+  const parseResult = RefRegionsResponseSchema.safeParse(result)
+  if (!parseResult.success) {
+    logger.error('Regions validation failed', undefined, {
+      module: 'RefAPI',
+      errors: parseResult.error.issues.slice(0, 3),
+    })
+    return
+  }
+
+  const regions: CachedRegion[] = Object.values(parseResult.data.items).map(r => ({
+    id: r.id,
+    name: r.name,
+  }))
+
+  await setRegions(regions)
+}
+
+async function loadAllSystems(): Promise<void> {
+  const start = performance.now()
+  const result = await window.electronAPI!.refUniverseSystems()
+
+  if (result.error) {
+    logger.error('Failed to load systems', undefined, { module: 'RefAPI', error: result.error })
+    return
+  }
+
+  if (!result.items) {
+    logger.warn('No systems returned', { module: 'RefAPI' })
+    return
+  }
+
+  const parseResult = RefSystemsResponseSchema.safeParse(result)
+  if (!parseResult.success) {
+    logger.error('Systems validation failed', undefined, {
+      module: 'RefAPI',
+      errors: parseResult.error.issues.slice(0, 3),
+    })
+    return
+  }
+
+  const systems: CachedSystem[] = Object.values(parseResult.data.items).map(s => ({
+    id: s.id,
+    name: s.name,
+    regionId: s.regionId,
+    securityStatus: s.securityStatus,
+  }))
+
+  await setSystems(systems)
+
+  const duration = Math.round(performance.now() - start)
+  logger.info('Systems loaded', { module: 'RefAPI', count: systems.length, duration })
+}
+
+async function loadAllStations(): Promise<void> {
+  const start = performance.now()
+  const result = await window.electronAPI!.refUniverseStations()
+
+  if (result.error) {
+    logger.error('Failed to load stations', undefined, { module: 'RefAPI', error: result.error })
+    return
+  }
+
+  if (!result.items) {
+    logger.warn('No stations returned', { module: 'RefAPI' })
+    return
+  }
+
+  const parseResult = RefStationsResponseSchema.safeParse(result)
+  if (!parseResult.success) {
+    logger.error('Stations validation failed', undefined, {
+      module: 'RefAPI',
+      errors: parseResult.error.issues.slice(0, 3),
+    })
+    return
+  }
+
+  const stations: CachedStation[] = Object.values(parseResult.data.items).map(s => ({
+    id: s.id,
+    name: s.name,
+    systemId: s.systemId,
+  }))
+
+  await setStations(stations)
+
+  const duration = Math.round(performance.now() - start)
+  logger.info('Stations loaded', { module: 'RefAPI', count: stations.length, duration })
 }
 
 async function fetchTypesChunk(chunk: number[]): Promise<Map<number, RefType>> {
@@ -485,18 +612,70 @@ async function executeLocationsFetch(): Promise<LocationFetchResult> {
   return { requestedIds, results }
 }
 
+function resolveFromPreloadedUniverse(id: number): CachedLocation | undefined {
+  const station = getStation(id)
+  if (station) {
+    const system = getSystem(station.systemId)
+    const region = system ? getRegion(system.regionId) : undefined
+    return {
+      id,
+      name: station.name,
+      type: 'station',
+      solarSystemId: station.systemId,
+      solarSystemName: system?.name,
+      regionId: system?.regionId,
+      regionName: region?.name,
+    }
+  }
+
+  const system = getSystem(id)
+  if (system) {
+    const region = getRegion(system.regionId)
+    return {
+      id,
+      name: system.name,
+      type: 'system',
+      solarSystemId: id,
+      solarSystemName: system.name,
+      regionId: system.regionId,
+      regionName: region?.name,
+    }
+  }
+
+  const region = getRegion(id)
+  if (region) {
+    return {
+      id,
+      name: region.name,
+      type: 'region',
+      regionId: id,
+      regionName: region.name,
+    }
+  }
+
+  return undefined
+}
+
 export async function resolveLocations(locationIds: number[]): Promise<Map<number, CachedLocation>> {
   const results = new Map<number, CachedLocation>()
   const uncachedIds: number[] = []
 
   for (const id of locationIds) {
     if (id > 1_000_000_000_000) continue
+
     if (hasLocation(id)) {
       results.set(id, getLocation(id)!)
-    } else {
-      uncachedIds.push(id)
-      pendingLocationIds.add(id)
+      continue
     }
+
+    const preloaded = resolveFromPreloadedUniverse(id)
+    if (preloaded) {
+      results.set(id, preloaded)
+      continue
+    }
+
+    uncachedIds.push(id)
+    pendingLocationIds.add(id)
   }
 
   if (uncachedIds.length === 0) return results

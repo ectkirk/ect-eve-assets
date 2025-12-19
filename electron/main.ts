@@ -636,7 +636,7 @@ ipcMain.handle('ref:groups', async () => {
 })
 
 ipcMain.handle('ref:types-page', async (_event, args: unknown) => {
-  const { after, etag } = (args ?? {}) as { after?: number; etag?: string }
+  const { after } = (args ?? {}) as { after?: number }
 
   if (after !== undefined && (typeof after !== 'number' || !Number.isInteger(after) || after <= 0)) {
     return { error: 'Invalid after cursor' }
@@ -648,31 +648,76 @@ ipcMain.handle('ref:types-page', async (_event, args: unknown) => {
       ? `${REF_API_BASE}/reference/types?after=${after}`
       : `${REF_API_BASE}/reference/types`
 
-    const headers = getRefHeaders()
-    if (etag) {
-      headers['If-None-Match'] = etag
-    }
-
-    const response = await fetchRefWithRetry(url, { headers })
-
-    if (response.status === 304) {
-      return { notModified: true }
-    }
+    const response = await fetchRefWithRetry(url, { headers: getRefHeaders() })
 
     if (!response.ok) {
       return { error: `HTTP ${response.status}` }
     }
 
     const data = await response.json()
-    const responseEtag = response.headers.get('ETag')
-
     return {
       items: data.items,
       pagination: data.pagination,
-      etag: responseEtag,
     }
   } catch (err) {
     logger.error('ref:types-page fetch failed', err, { module: 'Main' })
+    return { error: String(err) }
+  }
+})
+
+ipcMain.handle('ref:universe-regions', async () => {
+  await waitForRefRateLimit()
+  try {
+    const response = await fetchRefWithRetry(`${REF_API_BASE}/reference/regions`, {
+      headers: getRefHeaders(),
+    })
+
+    if (!response.ok) {
+      return { error: `HTTP ${response.status}` }
+    }
+
+    const data = await response.json()
+    return { items: data.items }
+  } catch (err) {
+    logger.error('ref:regions fetch failed', err, { module: 'Main' })
+    return { error: String(err) }
+  }
+})
+
+ipcMain.handle('ref:universe-systems', async () => {
+  await waitForRefRateLimit()
+  try {
+    const response = await fetchRefWithRetry(`${REF_API_BASE}/reference/systems`, {
+      headers: getRefHeaders(),
+    })
+
+    if (!response.ok) {
+      return { error: `HTTP ${response.status}` }
+    }
+
+    const data = await response.json()
+    return { items: data.items }
+  } catch (err) {
+    logger.error('ref:universe-systems fetch failed', err, { module: 'Main' })
+    return { error: String(err) }
+  }
+})
+
+ipcMain.handle('ref:universe-stations', async () => {
+  await waitForRefRateLimit()
+  try {
+    const response = await fetchRefWithRetry(`${REF_API_BASE}/reference/stations`, {
+      headers: getRefHeaders(),
+    })
+
+    if (!response.ok) {
+      return { error: `HTTP ${response.status}` }
+    }
+
+    const data = await response.json()
+    return { items: data.items }
+  } catch (err) {
+    logger.error('ref:universe-stations fetch failed', err, { module: 'Main' })
     return { error: String(err) }
   }
 })

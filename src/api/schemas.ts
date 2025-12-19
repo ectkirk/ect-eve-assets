@@ -408,6 +408,36 @@ export const RefGroupsResponseSchema = z.object({
   items: z.record(z.string(), RefGroupSchema),
 })
 
+export const RefRegionSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+})
+
+export const RefRegionsResponseSchema = z.object({
+  items: z.record(z.string(), RefRegionSchema),
+})
+
+export const RefSystemSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  regionId: z.number(),
+  securityStatus: z.number().nullable().optional(),
+})
+
+export const RefSystemsResponseSchema = z.object({
+  items: z.record(z.string(), RefSystemSchema),
+})
+
+export const RefStationSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  systemId: z.number(),
+})
+
+export const RefStationsResponseSchema = z.object({
+  items: z.record(z.string(), RefStationSchema),
+})
+
 export const RefImplantSchema = z.object({
   slot: z.number(),
 })

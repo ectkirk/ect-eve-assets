@@ -26,14 +26,26 @@ export interface RefApiResult {
 
 export interface RefTypesPageParams {
   after?: number
-  etag?: string
 }
 
 export interface RefTypesPageResult {
   items?: Record<string, { id: number; name: string; groupId?: number | null; volume?: number | null; packagedVolume?: number | null }>
   pagination?: { total: number; limit: number; nextCursor?: number; hasMore: boolean }
-  etag?: string | null
-  notModified?: boolean
+  error?: string
+}
+
+export interface RefRegionsResult {
+  items?: Record<string, { id: number; name: string }>
+  error?: string
+}
+
+export interface RefSystemsResult {
+  items?: Record<string, { id: number; name: string; regionId: number; securityStatus?: number | null }>
+  error?: string
+}
+
+export interface RefStationsResult {
+  items?: Record<string, { id: number; name: string; systemId: number }>
   error?: string
 }
 
@@ -397,6 +409,9 @@ export interface ElectronAPI {
   refTypesPage: (params?: RefTypesPageParams) => Promise<RefTypesPageResult>
   refCategories: () => Promise<RefApiResult>
   refGroups: () => Promise<RefApiResult>
+  refUniverseRegions: () => Promise<RefRegionsResult>
+  refUniverseSystems: () => Promise<RefSystemsResult>
+  refUniverseStations: () => Promise<RefStationsResult>
   refImplants: (ids: number[]) => Promise<RefApiResult>
   refUniverse: (ids: number[]) => Promise<RefApiResult>
   refShips: (ids: number[]) => Promise<RefShipsResult>
@@ -467,6 +482,9 @@ const electronAPI: ElectronAPI = {
   refTypesPage: (params?: RefTypesPageParams) => ipcRenderer.invoke('ref:types-page', params),
   refCategories: () => ipcRenderer.invoke('ref:categories'),
   refGroups: () => ipcRenderer.invoke('ref:groups'),
+  refUniverseRegions: () => ipcRenderer.invoke('ref:universe-regions'),
+  refUniverseSystems: () => ipcRenderer.invoke('ref:universe-systems'),
+  refUniverseStations: () => ipcRenderer.invoke('ref:universe-stations'),
   refImplants: (ids: number[]) => ipcRenderer.invoke('ref:implants', ids),
   refUniverse: (ids: number[]) => ipcRenderer.invoke('ref:universe', ids),
   refShips: (ids: number[]) => ipcRenderer.invoke('ref:ships', ids),

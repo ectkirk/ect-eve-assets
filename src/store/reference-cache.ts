@@ -1,7 +1,25 @@
 import { logger } from '@/lib/logger'
 
 const DB_NAME = 'ecteveassets-cache'
-const DB_VERSION = 7
+const DB_VERSION = 8
+
+export interface CachedRegion {
+  id: number
+  name: string
+}
+
+export interface CachedSystem {
+  id: number
+  name: string
+  regionId: number
+  securityStatus?: number | null
+}
+
+export interface CachedStation {
+  id: number
+  name: string
+  systemId: number
+}
 
 export interface CachedCategory {
   id: number
@@ -64,6 +82,9 @@ let db: IDBDatabase | null = null
 let categoriesCache = new Map<number, CachedCategory>()
 let groupsCache = new Map<number, CachedGroup>()
 let typesCache = new Map<number, CachedType>()
+let regionsCache = new Map<number, CachedRegion>()
+let systemsCache = new Map<number, CachedSystem>()
+let stationsCache = new Map<number, CachedStation>()
 let structuresCache = new Map<number, CachedStructure>()
 let locationsCache = new Map<number, CachedLocation>()
 let abyssalsCache = new Map<number, CachedAbyssal>()
@@ -71,10 +92,10 @@ let namesCache = new Map<number, CachedName>()
 let initialized = false
 let referenceDataLoaded = false
 let allTypesLoaded = false
-let typesEtag: string | null = null
+let universeDataLoaded = false
 
-const TYPES_ETAG_KEY = 'ecteveassets-types-etag'
 const ALL_TYPES_LOADED_KEY = 'ecteveassets-all-types-loaded'
+const UNIVERSE_LOADED_KEY = 'ecteveassets-universe-loaded'
 
 const listeners = new Set<() => void>()
 
@@ -128,6 +149,15 @@ async function openDB(): Promise<IDBDatabase> {
       if (!database.objectStoreNames.contains('groups')) {
         database.createObjectStore('groups', { keyPath: 'id' })
       }
+      if (!database.objectStoreNames.contains('regions')) {
+        database.createObjectStore('regions', { keyPath: 'id' })
+      }
+      if (!database.objectStoreNames.contains('systems')) {
+        database.createObjectStore('systems', { keyPath: 'id' })
+      }
+      if (!database.objectStoreNames.contains('stations')) {
+        database.createObjectStore('stations', { keyPath: 'id' })
+      }
 
       if (oldVersion < 4 && database.objectStoreNames.contains('locations')) {
         const tx = (event.target as IDBOpenDBRequest).transaction!
@@ -162,19 +192,35 @@ export async function initCache(): Promise<void> {
   logger.debug('Initializing reference cache', { module: 'ReferenceCache' })
 
   try {
-    typesCache = await loadStore<CachedType>('types')
-    structuresCache = await loadStore<CachedStructure>('structures')
-    locationsCache = await loadStore<CachedLocation>('locations')
-    abyssalsCache = await loadStore<CachedAbyssal>('abyssals')
-    namesCache = await loadStore<CachedName>('names')
-    categoriesCache = await loadStore<CachedCategory>('categories')
-    groupsCache = await loadStore<CachedGroup>('groups')
+    const [types, regions, systems, stations, structures, locations, abyssals, names, categories, groups] = await Promise.all([
+      loadStore<CachedType>('types'),
+      loadStore<CachedRegion>('regions'),
+      loadStore<CachedSystem>('systems'),
+      loadStore<CachedStation>('stations'),
+      loadStore<CachedStructure>('structures'),
+      loadStore<CachedLocation>('locations'),
+      loadStore<CachedAbyssal>('abyssals'),
+      loadStore<CachedName>('names'),
+      loadStore<CachedCategory>('categories'),
+      loadStore<CachedGroup>('groups'),
+    ])
+
+    typesCache = types
+    regionsCache = regions
+    systemsCache = systems
+    stationsCache = stations
+    structuresCache = structures
+    locationsCache = locations
+    abyssalsCache = abyssals
+    namesCache = names
+    categoriesCache = categories
+    groupsCache = groups
     initialized = true
     referenceDataLoaded = groupsCache.size > 0
 
     try {
-      typesEtag = localStorage.getItem(TYPES_ETAG_KEY)
-      allTypesLoaded = localStorage.getItem(ALL_TYPES_LOADED_KEY) === 'true' && typesCache.size > 40000
+      allTypesLoaded = localStorage.getItem(ALL_TYPES_LOADED_KEY) === 'true' && typesCache.size > 0
+      universeDataLoaded = localStorage.getItem(UNIVERSE_LOADED_KEY) === 'true' && systemsCache.size > 0
     } catch {
       // localStorage not available
     }
@@ -183,6 +229,10 @@ export async function initCache(): Promise<void> {
       module: 'ReferenceCache',
       types: typesCache.size,
       allTypesLoaded,
+      regions: regionsCache.size,
+      systems: systemsCache.size,
+      stations: stationsCache.size,
+      universeDataLoaded,
       structures: structuresCache.size,
       locations: locationsCache.size,
       abyssals: abyssalsCache.size,
@@ -237,21 +287,108 @@ export function setAllTypesLoaded(loaded: boolean): void {
   }
 }
 
-export function getTypesEtag(): string | null {
-  return typesEtag
+export function isUniverseDataLoaded(): boolean {
+  return universeDataLoaded
 }
 
-export function setTypesEtag(etag: string | null): void {
-  typesEtag = etag
+export function setUniverseDataLoaded(loaded: boolean): void {
+  universeDataLoaded = loaded
   try {
-    if (etag) {
-      localStorage.setItem(TYPES_ETAG_KEY, etag)
+    if (loaded) {
+      localStorage.setItem(UNIVERSE_LOADED_KEY, 'true')
     } else {
-      localStorage.removeItem(TYPES_ETAG_KEY)
+      localStorage.removeItem(UNIVERSE_LOADED_KEY)
     }
   } catch {
     // localStorage not available
   }
+}
+
+export function getRegion(id: number): CachedRegion | undefined {
+  return regionsCache.get(id)
+}
+
+export function getSystem(id: number): CachedSystem | undefined {
+  return systemsCache.get(id)
+}
+
+export function getStation(id: number): CachedStation | undefined {
+  return stationsCache.get(id)
+}
+
+export function hasRegion(id: number): boolean {
+  return regionsCache.has(id)
+}
+
+export function hasSystem(id: number): boolean {
+  return systemsCache.has(id)
+}
+
+export function hasStation(id: number): boolean {
+  return stationsCache.has(id)
+}
+
+export async function setRegions(regions: CachedRegion[]): Promise<void> {
+  if (regions.length === 0) return
+
+  const database = await openDB()
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction('regions', 'readwrite')
+    const store = tx.objectStore('regions')
+
+    tx.onerror = () => reject(tx.error)
+    tx.oncomplete = () => {
+      regionsCache = new Map(regions.map(r => [r.id, r]))
+      logger.info('Regions saved', { module: 'ReferenceCache', count: regions.length })
+      resolve()
+    }
+
+    for (const region of regions) {
+      store.put(region)
+    }
+  })
+}
+
+export async function setSystems(systems: CachedSystem[]): Promise<void> {
+  if (systems.length === 0) return
+
+  const database = await openDB()
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction('systems', 'readwrite')
+    const store = tx.objectStore('systems')
+
+    tx.onerror = () => reject(tx.error)
+    tx.oncomplete = () => {
+      systemsCache = new Map(systems.map(s => [s.id, s]))
+      logger.info('Systems saved', { module: 'ReferenceCache', count: systems.length })
+      resolve()
+    }
+
+    for (const system of systems) {
+      store.put(system)
+    }
+  })
+}
+
+export async function setStations(stations: CachedStation[]): Promise<void> {
+  if (stations.length === 0) return
+
+  const database = await openDB()
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction('stations', 'readwrite')
+    const store = tx.objectStore('stations')
+
+    tx.onerror = () => reject(tx.error)
+    tx.oncomplete = () => {
+      stationsCache = new Map(stations.map(s => [s.id, s]))
+      logger.info('Stations saved', { module: 'ReferenceCache', count: stations.length })
+      resolve()
+    }
+
+    for (const station of stations) {
+      store.put(station)
+    }
+  })
 }
 
 export async function setCategories(categories: CachedCategory[]): Promise<void> {
@@ -464,12 +601,17 @@ export async function clearReferenceCache(): Promise<void> {
   categoriesCache.clear()
   groupsCache.clear()
   typesCache.clear()
+  regionsCache.clear()
+  systemsCache.clear()
+  stationsCache.clear()
   structuresCache.clear()
   locationsCache.clear()
   abyssalsCache.clear()
   namesCache.clear()
   initialized = false
   referenceDataLoaded = false
+  setAllTypesLoaded(false)
+  setUniverseDataLoaded(false)
 
   if (db) {
     db.close()
@@ -504,7 +646,6 @@ export async function clearTypesCache(): Promise<void> {
   logger.info('Clearing types cache', { module: 'ReferenceCache' })
   typesCache.clear()
   setAllTypesLoaded(false)
-  setTypesEtag(null)
   await clearStore('types')
   notifyListeners()
 }
@@ -549,6 +690,20 @@ export async function clearGroupsCache(): Promise<void> {
   groupsCache.clear()
   referenceDataLoaded = false
   await clearStore('groups')
+  notifyListeners()
+}
+
+export async function clearUniverseCache(): Promise<void> {
+  logger.info('Clearing universe cache', { module: 'ReferenceCache' })
+  regionsCache.clear()
+  systemsCache.clear()
+  stationsCache.clear()
+  setUniverseDataLoaded(false)
+  await Promise.all([
+    clearStore('regions'),
+    clearStore('systems'),
+    clearStore('stations'),
+  ])
   notifyListeners()
 }
 
