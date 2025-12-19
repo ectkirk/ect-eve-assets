@@ -383,24 +383,6 @@ function ColumnsDropdown() {
   )
 }
 
-function ComparisonLevelDropdown() {
-  const { comparisonLevel } = useTabControls()
-
-  if (!comparisonLevel) return null
-
-  return (
-    <select
-      value={comparisonLevel.value}
-      onChange={(e) => comparisonLevel.onChange(e.target.value as 'station' | 'system' | 'region')}
-      className="rounded border border-border bg-surface-tertiary px-2 py-1.5 text-sm focus:border-accent focus:outline-hidden"
-    >
-      <option value="station">Station</option>
-      <option value="system">System</option>
-      <option value="region">Region</option>
-    </select>
-  )
-}
-
 const ASSET_TYPE_OPTIONS = [
   { value: '', label: 'All Types' },
   { value: 'ACTIVE_SHIP', label: 'Active Ship' },
@@ -522,7 +504,6 @@ function SearchBar() {
 
       <div className="flex-1" />
 
-      <ComparisonLevelDropdown />
       <ExpandCollapseButton />
       <ColumnsDropdown />
     </div>

@@ -13,10 +13,12 @@ import {
   RefUniverseBulkResponseSchema,
   RefTypeSchema,
   RefUniverseItemSchema,
+  MarketBulkResponseSchema,
+  MarketBulkItemSchema,
 } from './schemas'
 import { z } from 'zod'
 
-export type RefMarketPrice = z.infer<typeof RefTypeSchema>['marketPrice']
+export type MarketBulkItem = z.infer<typeof MarketBulkItemSchema>
 export type RefType = z.infer<typeof RefTypeSchema>
 export type RefUniverseItem = z.infer<typeof RefUniverseItemSchema>
 export type UniverseEntityType = RefUniverseItem['type']
@@ -30,10 +32,7 @@ let locationBatchPromise: Promise<Map<number, CachedLocation>> | null = null
 let pendingTypeIds = new Set<number>()
 let typeBatchPromise: Promise<Map<number, CachedType>> | null = null
 
-async function fetchTypesFromAPI(
-  ids: number[],
-  stationId?: number
-): Promise<Map<number, RefType>> {
+async function fetchTypesFromAPI(ids: number[]): Promise<Map<number, RefType>> {
   if (ids.length === 0) return new Map()
 
   const results = new Map<number, RefType>()
@@ -42,7 +41,7 @@ async function fetchTypesFromAPI(
     const chunk = ids.slice(i, i + 1000)
 
     try {
-      const rawData = await window.electronAPI!.refTypes(chunk, stationId)
+      const rawData = await window.electronAPI!.refTypes(chunk)
       if (rawData && typeof rawData === 'object' && 'error' in rawData) {
         logger.warn('RefAPI /types failed', { module: 'RefAPI', error: rawData.error })
         continue
@@ -278,37 +277,64 @@ export async function resolveLocations(locationIds: number[]): Promise<Map<numbe
   return results
 }
 
-export async function fetchPrices(typeIds: number[]): Promise<Map<number, number>> {
-  const fetched = await fetchTypesFromAPI(typeIds)
-  const prices = new Map<number, number>()
-  const toCache: CachedType[] = []
+const THE_FORGE_REGION_ID = 10000002
 
-  for (const [typeId, type] of fetched) {
-    const contractPrice = type.contractPrice?.price
-    const lowestSell = type.marketPrice.region?.lowestSell
-    const average = type.marketPrice.average
-    const price = contractPrice ?? lowestSell ?? (typeof average === 'string' ? parseFloat(average) : average) ?? 0
-    if (price > 0) {
-      prices.set(typeId, price)
+interface MarketBulkOptions {
+  avg?: boolean
+  buy?: boolean
+  jita?: boolean
+}
+
+async function fetchMarketFromAPI(
+  typeIds: number[],
+  options: MarketBulkOptions = {}
+): Promise<Map<number, MarketBulkItem>> {
+  if (typeIds.length === 0) return new Map()
+
+  const results = new Map<number, MarketBulkItem>()
+
+  for (let i = 0; i < typeIds.length; i += 100) {
+    const chunk = typeIds.slice(i, i + 100)
+
+    try {
+      const rawData = await window.electronAPI!.refMarket({
+        regionId: THE_FORGE_REGION_ID,
+        typeIds: chunk,
+        ...options,
+      })
+      if (rawData && typeof rawData === 'object' && 'error' in rawData) {
+        logger.warn('RefAPI /market/bulk failed', { module: 'RefAPI', error: rawData.error })
+        continue
+      }
+
+      const parseResult = MarketBulkResponseSchema.safeParse(rawData)
+      if (!parseResult.success) {
+        logger.error('RefAPI /market/bulk validation failed', undefined, {
+          module: 'RefAPI',
+          errors: parseResult.error.issues.slice(0, 3),
+        })
+        continue
+      }
+
+      for (const [idStr, item] of Object.entries(parseResult.data.items)) {
+        results.set(Number(idStr), item)
+      }
+    } catch (error) {
+      logger.error('RefAPI /market/bulk error', error, { module: 'RefAPI' })
     }
-
-    toCache.push({
-      id: type.id,
-      name: type.name,
-      groupId: type.groupId ?? 0,
-      groupName: type.groupName ?? '',
-      categoryId: type.categoryId ?? 0,
-      categoryName: type.categoryName ?? '',
-      volume: type.volume ?? 0,
-      packagedVolume: type.packagedVolume ?? undefined,
-      implantSlot: type.implantSlot,
-      towerSize: type.towerSize,
-      fuelTier: type.fuelTier,
-    })
   }
 
-  if (toCache.length > 0) {
-    await saveTypes(toCache)
+  return results
+}
+
+export async function fetchPrices(typeIds: number[]): Promise<Map<number, number>> {
+  const fetched = await fetchMarketFromAPI(typeIds, { jita: true })
+  const prices = new Map<number, number>()
+
+  for (const [typeId, item] of fetched) {
+    if (item.lowestSell !== null && item.lowestSell > 0) {
+      prices.set(typeId, item.lowestSell)
+    }
   }
 
   return prices
@@ -316,27 +342,21 @@ export async function fetchPrices(typeIds: number[]): Promise<Map<number, number
 
 export interface MarketComparisonPrices {
   averagePrice: number | null
-  station: { highestBuy: number | null; lowestSell: number | null } | null
-  system: { highestBuy: number | null; lowestSell: number | null } | null
-  region: { highestBuy: number | null; lowestSell: number | null } | null
+  highestBuy: number | null
+  lowestSell: number | null
 }
 
 export async function fetchMarketComparison(
-  typeIds: number[],
-  stationId: number
+  typeIds: number[]
 ): Promise<Map<number, MarketComparisonPrices>> {
-  const fetched = await fetchTypesFromAPI(typeIds, stationId)
+  const fetched = await fetchMarketFromAPI(typeIds, { avg: true, buy: true, jita: true })
   const results = new Map<number, MarketComparisonPrices>()
 
-  for (const [typeId, type] of fetched) {
-    const mp = type.marketPrice
-    const avgRaw = mp.average
-    const averagePrice = avgRaw !== null && avgRaw !== undefined ? Number(avgRaw) : null
+  for (const [typeId, item] of fetched) {
     results.set(typeId, {
-      averagePrice: averagePrice !== null && !isNaN(averagePrice) ? averagePrice : null,
-      station: mp.station ?? null,
-      system: mp.system ?? null,
-      region: mp.region ?? null,
+      averagePrice: item.averagePrice ?? null,
+      highestBuy: item.highestBuy ?? null,
+      lowestSell: item.lowestSell,
     })
   }
 

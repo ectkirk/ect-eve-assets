@@ -13,6 +13,7 @@ import { getType, saveTypes, hasLocation, getLocation, saveLocations } from '@/s
 
 const mockRefTypes = vi.fn()
 const mockRefUniverse = vi.fn()
+const mockRefMarket = vi.fn()
 
 async function runWithTimers<T>(promise: Promise<T>): Promise<T> {
   await vi.advanceTimersByTimeAsync(2100)
@@ -26,6 +27,7 @@ describe('ref-client', () => {
     window.electronAPI = {
       refTypes: mockRefTypes,
       refUniverse: mockRefUniverse,
+      refMarket: mockRefMarket,
     } as unknown as typeof window.electronAPI
   })
 
@@ -255,62 +257,29 @@ describe('ref-client', () => {
       expect(result.size).toBe(0)
     })
 
-    it('extracts lowestSell price from region', async () => {
-      mockRefTypes.mockResolvedValueOnce({
+    it('extracts lowestSell price', async () => {
+      mockRefMarket.mockResolvedValueOnce({
+        regionId: 10000002,
         items: {
-          '34': {
-            id: 34,
-            name: 'Tritanium',
-            marketPrice: { region: { highestBuy: 5.0, lowestSell: 5.5 } },
-          },
+          '34': { lowestSell: 5.5 },
         },
       })
 
       const result = await fetchPrices([34])
 
       expect(result.get(34)).toBe(5.5)
-    })
-
-    it('falls back to average price if no lowestSell', async () => {
-      mockRefTypes.mockResolvedValueOnce({
-        items: {
-          '34': {
-            id: 34,
-            name: 'Tritanium',
-            marketPrice: { average: '4.5' },
-          },
-        },
+      expect(mockRefMarket).toHaveBeenCalledWith({
+        regionId: 10000002,
+        typeIds: [34],
+        jita: true,
       })
-
-      const result = await fetchPrices([34])
-
-      expect(result.get(34)).toBe(4.5)
     })
 
-    it('handles numeric average', async () => {
-      mockRefTypes.mockResolvedValueOnce({
+    it('excludes null prices', async () => {
+      mockRefMarket.mockResolvedValueOnce({
+        regionId: 10000002,
         items: {
-          '34': {
-            id: 34,
-            name: 'Tritanium',
-            marketPrice: { average: 4.5 },
-          },
-        },
-      })
-
-      const result = await fetchPrices([34])
-
-      expect(result.get(34)).toBe(4.5)
-    })
-
-    it('excludes zero prices', async () => {
-      mockRefTypes.mockResolvedValueOnce({
-        items: {
-          '34': {
-            id: 34,
-            name: 'Tritanium',
-            marketPrice: { lowestSell: 0 },
-          },
+          '34': { lowestSell: null },
         },
       })
 
@@ -319,29 +288,34 @@ describe('ref-client', () => {
       expect(result.has(34)).toBe(false)
     })
 
-    it('caches type data from price response', async () => {
-      mockRefTypes.mockResolvedValueOnce({
+    it('excludes zero prices', async () => {
+      mockRefMarket.mockResolvedValueOnce({
+        regionId: 10000002,
         items: {
-          '34': {
-            id: 34,
-            name: 'Tritanium',
-            groupId: 18,
-            groupName: 'Mineral',
-            categoryId: 4,
-            categoryName: 'Material',
-            volume: 0.01,
-            marketPrice: { lowestSell: 5 },
-          },
+          '34': { lowestSell: 0 },
         },
       })
 
-      await fetchPrices([34])
+      const result = await fetchPrices([34])
 
-      expect(saveTypes).toHaveBeenCalledWith(
-        expect.arrayContaining([
-          expect.objectContaining({ id: 34, name: 'Tritanium' }),
-        ])
-      )
+      expect(result.has(34)).toBe(false)
+    })
+
+    it('handles multiple items', async () => {
+      mockRefMarket.mockResolvedValueOnce({
+        regionId: 10000002,
+        items: {
+          '34': { lowestSell: 5.5 },
+          '35': { lowestSell: 10.0 },
+          '36': { lowestSell: null },
+        },
+      })
+
+      const result = await fetchPrices([34, 35, 36])
+
+      expect(result.get(34)).toBe(5.5)
+      expect(result.get(35)).toBe(10.0)
+      expect(result.has(36)).toBe(false)
     })
   })
 })

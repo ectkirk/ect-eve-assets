@@ -48,6 +48,28 @@ declare global {
     error?: string
   }
 
+  interface RefMarketParams {
+    regionId: number
+    typeIds: number[]
+    avg?: boolean
+    buy?: boolean
+    jita?: boolean
+  }
+
+  interface RefMarketItem {
+    lowestSell: number | null
+    averagePrice?: number | null
+    avg30dPrice?: number | null
+    avg30dVolume?: number | null
+    highestBuy?: number | null
+  }
+
+  interface RefMarketResult {
+    regionId?: number
+    items?: Record<string, RefMarketItem>
+    error?: string
+  }
+
   interface ManufacturingCostParams {
     product_id?: number
     blueprint_id?: number
@@ -337,6 +359,7 @@ declare global {
     refTypes: (ids: number[], stationId?: number) => Promise<RefApiResult>
     refUniverse: (ids: number[]) => Promise<RefApiResult>
     refShips: (ids: number[]) => Promise<RefShipsResult>
+    refMarket: (params: RefMarketParams) => Promise<RefMarketResult>
     refManufacturingCost: (params: ManufacturingCostParams) => Promise<ManufacturingCostResult>
     refBlueprintResearch: (params: BlueprintResearchParams) => Promise<BlueprintResearchResult>
     refBlueprints: () => Promise<BlueprintsResult>

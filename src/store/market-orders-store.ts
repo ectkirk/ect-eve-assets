@@ -18,7 +18,7 @@ export interface OwnerOrders {
 }
 
 interface MarketOrdersExtraState {
-  comparisonData: Map<string, MarketComparisonPrices>
+  comparisonData: Map<number, MarketComparisonPrices>
   comparisonFetching: boolean
 }
 
@@ -86,35 +86,23 @@ export const useMarketOrdersStore = createOwnerStore<
 
       set({ comparisonFetching: true })
 
-      const ordersByLocation = new Map<number, Set<number>>()
+      const typeIds = new Set<number>()
       for (const { orders } of state.dataByOwner) {
         for (const order of orders) {
-          let typeIds = ordersByLocation.get(order.location_id)
-          if (!typeIds) {
-            typeIds = new Set()
-            ordersByLocation.set(order.location_id, typeIds)
-          }
           typeIds.add(order.type_id)
         }
       }
 
-      const newData = new Map<string, MarketComparisonPrices>()
-      for (const [locationId, typeIds] of ordersByLocation) {
-        try {
-          const result = await fetchMarketComparison(Array.from(typeIds), locationId)
-          for (const [typeId, prices] of result) {
-            newData.set(`${locationId}-${typeId}`, prices)
-          }
-        } catch (err) {
-          logger.warn('Failed to fetch comparison data', {
-            module: 'MarketOrdersStore',
-            locationId,
-            error: err instanceof Error ? err.message : String(err),
-          })
-        }
+      try {
+        const result = await fetchMarketComparison(Array.from(typeIds))
+        set({ comparisonData: result, comparisonFetching: false })
+      } catch (err) {
+        logger.warn('Failed to fetch comparison data', {
+          module: 'MarketOrdersStore',
+          error: err instanceof Error ? err.message : String(err),
+        })
+        set({ comparisonFetching: false })
       }
-
-      set({ comparisonData: newData, comparisonFetching: false })
     },
   }),
   onAfterBatchUpdate: async (results) => {
@@ -129,6 +117,8 @@ export const useMarketOrdersStore = createOwnerStore<
     return { previousData: previousOrders }
   },
   onAfterOwnerUpdate: ({ owner, newData, previousData }) => {
+    useMarketOrdersStore.getState().fetchComparisonData()
+
     if (!previousData || previousData.length === 0) return
 
     const newOrderIds = new Set(newData.map((o) => o.order_id))
@@ -151,7 +141,5 @@ export const useMarketOrdersStore = createOwnerStore<
         count: completedOrders.length,
       })
     }
-
-    useMarketOrdersStore.getState().fetchComparisonData()
   },
 })

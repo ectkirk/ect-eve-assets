@@ -28,13 +28,6 @@ interface ResultCount {
   total: number
 }
 
-export type ComparisonLevel = 'station' | 'system' | 'region'
-
-interface ComparisonLevelConfig {
-  value: ComparisonLevel
-  onChange: (value: ComparisonLevel) => void
-}
-
 export interface TotalValueConfig {
   value: number
   label?: string
@@ -59,8 +52,6 @@ interface TabControlsContextValue {
   setResultCount: (count: ResultCount | null) => void
   totalValue: TotalValueConfig | null
   setTotalValue: (value: TotalValueConfig | null) => void
-  comparisonLevel: ComparisonLevelConfig | null
-  setComparisonLevel: (config: ComparisonLevelConfig | null) => void
 }
 
 const TabControlsContext = createContext<TabControlsContextValue | null>(null)
@@ -73,7 +64,6 @@ export function TabControlsProvider({ children }: { children: ReactNode }) {
   const [assetTypeFilter, setAssetTypeFilter] = useState<AssetTypeFilterConfig | null>(null)
   const [resultCount, setResultCount] = useState<ResultCount | null>(null)
   const [totalValue, setTotalValue] = useState<TotalValueConfig | null>(null)
-  const [comparisonLevel, setComparisonLevel] = useState<ComparisonLevelConfig | null>(null)
 
   const value = useMemo(() => ({
     columns,
@@ -90,9 +80,7 @@ export function TabControlsProvider({ children }: { children: ReactNode }) {
     setResultCount,
     totalValue,
     setTotalValue,
-    comparisonLevel,
-    setComparisonLevel,
-  }), [columns, expandCollapse, search, categoryFilter, assetTypeFilter, resultCount, totalValue, comparisonLevel])
+  }), [columns, expandCollapse, search, categoryFilter, assetTypeFilter, resultCount, totalValue])
 
   return (
     <TabControlsContext.Provider value={value}>

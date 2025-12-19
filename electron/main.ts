@@ -481,11 +481,12 @@ interface RefQueue {
   paused: boolean
 }
 
-type RefQueueName = 'types' | 'universe' | 'other'
+type RefQueueName = 'types' | 'universe' | 'market' | 'other'
 
 const refQueues: Record<RefQueueName, RefQueue> = {
   types: { lastRequestTime: 0, queue: [], processing: false, paused: false },
   universe: { lastRequestTime: 0, queue: [], processing: false, paused: false },
+  market: { lastRequestTime: 0, queue: [], processing: false, paused: false },
   other: { lastRequestTime: 0, queue: [], processing: false, paused: false },
 }
 
@@ -673,6 +674,47 @@ ipcMain.handle('ref:ships', async (_event, ids: unknown) => {
       return { error: String(err) }
     }
   })
+})
+
+ipcMain.handle('ref:market', async (_event, params: unknown) => {
+  if (typeof params !== 'object' || params === null) {
+    return { error: 'Invalid params' }
+  }
+  const p = params as Record<string, unknown>
+  if (typeof p.regionId !== 'number' || !Number.isInteger(p.regionId) || p.regionId <= 0) {
+    return { error: 'Invalid regionId' }
+  }
+  if (!Array.isArray(p.typeIds) || p.typeIds.length === 0 || p.typeIds.length > 100) {
+    return { error: 'Invalid typeIds array (max 100)' }
+  }
+  if (!p.typeIds.every((id) => typeof id === 'number' && Number.isInteger(id) && id > 0)) {
+    return { error: 'Invalid typeId values' }
+  }
+
+  return queueRefRequest(async () => {
+    try {
+      const body: Record<string, unknown> = {
+        regionId: p.regionId,
+        typeIds: p.typeIds,
+      }
+      if (p.avg === true) body.avg = true
+      if (p.buy === true) body.buy = true
+      if (p.jita === true) body.jita = true
+
+      const response = await fetchRefWithRetry(`${REF_API_BASE}/market/bulk`, {
+        method: 'POST',
+        headers: getRefHeaders('json'),
+        body: JSON.stringify(body),
+      })
+      if (!response.ok) {
+        return { error: `HTTP ${response.status}` }
+      }
+      return await response.json()
+    } catch (err) {
+      logger.error('ref:market fetch failed', err, { module: 'Main' })
+      return { error: String(err) }
+    }
+  }, 'market')
 })
 
 ipcMain.handle('ref:manufacturingCost', async (_event, params: unknown) => {

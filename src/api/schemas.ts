@@ -434,6 +434,19 @@ export const RefUniverseBulkResponseSchema = z.object({
   items: z.record(z.string(), RefUniverseItemSchema),
 })
 
+export const MarketBulkItemSchema = z.object({
+  lowestSell: z.number().nullable(),
+  averagePrice: z.number().nullable().optional(),
+  avg30dPrice: z.number().nullable().optional(),
+  avg30dVolume: z.number().nullable().optional(),
+  highestBuy: z.number().nullable().optional(),
+})
+
+export const MarketBulkResponseSchema = z.object({
+  regionId: z.number(),
+  items: z.record(z.string(), MarketBulkItemSchema),
+})
+
 // Mutamarket schemas
 export const MutamarketModuleSchema = z.object({
   id: z.number(),

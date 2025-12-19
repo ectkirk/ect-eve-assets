@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ChevronRight, ChevronDown, History, TrendingUp, TrendingDown, Copy, Check } from 'lucide-react'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { useMarketOrderHistoryStore, type MarketOrderHistory } from '@/store/market-order-history-store'
 import { useAssetData } from '@/hooks/useAssetData'
-import { useTabControls, type ComparisonLevel } from '@/context'
+import { useTabControls } from '@/context'
 import { useColumnSettings, useCacheVersion, useExpandCollapse, SortableHeader, type ColumnConfig, type SortDirection } from '@/hooks'
 import { type MarketOrder } from '@/store/market-orders-store'
 import { hasType, getType } from '@/store/reference-cache'
@@ -70,20 +70,6 @@ function formatExpiry(issued: string, duration: number): string {
   return `${hours}h`
 }
 
-function getComparisonValue(
-  comparison: MarketComparisonPrices | undefined,
-  level: ComparisonLevel,
-  isBuyOrder: boolean
-): number | null {
-  if (!comparison) return null
-  let levelData: { highestBuy: number | null; lowestSell: number | null } | null = null
-  if (level === 'station') levelData = comparison.station
-  else if (level === 'system') levelData = comparison.system
-  else if (level === 'region') levelData = comparison.region
-  if (!levelData) return null
-  return isBuyOrder ? levelData.highestBuy : levelData.lowestSell
-}
-
 function DifferenceCell({ orderPrice, comparisonValue, isBuyOrder }: { orderPrice: number; comparisonValue: number | null; isBuyOrder: boolean }) {
   if (comparisonValue === null) return <span className="text-content-muted">-</span>
   const diff = orderPrice - comparisonValue
@@ -127,7 +113,6 @@ function sortOrders(
   orders: OrderRow[],
   sortColumn: SortColumn,
   sortDirection: SortDirection,
-  comparisonLevel: ComparisonLevel,
   isBuyOrder: boolean
 ): OrderRow[] {
   return [...orders].sort((a, b) => {
@@ -144,17 +129,17 @@ function sortOrders(
         bVal = b.order.price
         break
       case 'comparison': {
-        const aComp = getComparisonValue(a.comparison, comparisonLevel, isBuyOrder)
-        const bComp = getComparisonValue(b.comparison, comparisonLevel, isBuyOrder)
+        const aComp = isBuyOrder ? a.comparison?.highestBuy : a.comparison?.lowestSell
+        const bComp = isBuyOrder ? b.comparison?.highestBuy : b.comparison?.lowestSell
         aVal = aComp ?? (sortDirection === 'asc' ? Infinity : -Infinity)
         bVal = bComp ?? (sortDirection === 'asc' ? Infinity : -Infinity)
         break
       }
       case 'difference': {
-        const aComp = getComparisonValue(a.comparison, comparisonLevel, isBuyOrder)
-        const bComp = getComparisonValue(b.comparison, comparisonLevel, isBuyOrder)
-        aVal = aComp !== null ? a.order.price - aComp : (sortDirection === 'asc' ? Infinity : -Infinity)
-        bVal = bComp !== null ? b.order.price - bComp : (sortDirection === 'asc' ? Infinity : -Infinity)
+        const aComp = isBuyOrder ? a.comparison?.highestBuy : a.comparison?.lowestSell
+        const bComp = isBuyOrder ? b.comparison?.highestBuy : b.comparison?.lowestSell
+        aVal = aComp !== null && aComp !== undefined ? a.order.price - aComp : (sortDirection === 'asc' ? Infinity : -Infinity)
+        bVal = bComp !== null && bComp !== undefined ? b.order.price - bComp : (sortDirection === 'asc' ? Infinity : -Infinity)
         break
       }
       case 'qty':
@@ -181,7 +166,7 @@ function sortOrders(
   })
 }
 
-function OrdersTable({ orders, comparisonLevel }: { orders: OrderRow[]; comparisonLevel: ComparisonLevel }) {
+function OrdersTable({ orders }: { orders: OrderRow[] }) {
   const [sellSort, setSellSort] = useState<SortColumn>('total')
   const [sellDirection, setSellDirection] = useState<SortDirection>('desc')
   const [buySort, setBuySort] = useState<SortColumn>('total')
@@ -209,13 +194,13 @@ function OrdersTable({ orders, comparisonLevel }: { orders: OrderRow[]; comparis
   const sellOrders = orders.filter((o) => !o.order.is_buy_order)
 
   const sortedSellOrders = useMemo(() =>
-    sortOrders(sellOrders, sellSort, sellDirection, comparisonLevel, false),
-    [sellOrders, sellSort, sellDirection, comparisonLevel]
+    sortOrders(sellOrders, sellSort, sellDirection, false),
+    [sellOrders, sellSort, sellDirection]
   )
 
   const sortedBuyOrders = useMemo(() =>
-    sortOrders(buyOrders, buySort, buyDirection, comparisonLevel, true),
-    [buyOrders, buySort, buyDirection, comparisonLevel]
+    sortOrders(buyOrders, buySort, buyDirection, true),
+    [buyOrders, buySort, buyDirection]
   )
 
   return (
@@ -239,9 +224,8 @@ function OrdersTable({ orders, comparisonLevel }: { orders: OrderRow[]; comparis
             <TableBody>
               {sortedSellOrders.map((row) => {
                 const total = row.order.price * row.order.volume_remain
-                const comparisonValue = getComparisonValue(row.comparison, comparisonLevel, false)
+                const comparisonValue = row.comparison?.lowestSell ?? null
                 const averagePrice = row.comparison?.averagePrice ?? null
-                const lowestSell = row.comparison?.region?.lowestSell ?? null
                 return (
                   <TableRow key={row.order.order_id}>
                     <TableCell className="py-1.5">
@@ -270,10 +254,10 @@ function OrdersTable({ orders, comparisonLevel }: { orders: OrderRow[]; comparis
                       {averagePrice !== null ? (
                         <span className="flex items-center justify-end gap-1">
                           {averagePrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          {lowestSell !== null && (
-                            averagePrice < lowestSell
+                          {comparisonValue !== null && (
+                            averagePrice < comparisonValue
                               ? <TrendingUp className="h-3 w-3 text-status-positive" />
-                              : averagePrice > lowestSell
+                              : averagePrice > comparisonValue
                                 ? <TrendingDown className="h-3 w-3 text-status-negative" />
                                 : null
                           )}
@@ -316,9 +300,8 @@ function OrdersTable({ orders, comparisonLevel }: { orders: OrderRow[]; comparis
             <TableBody>
               {sortedBuyOrders.map((row) => {
                 const total = row.order.price * row.order.volume_remain
-                const comparisonValue = getComparisonValue(row.comparison, comparisonLevel, true)
+                const comparisonValue = row.comparison?.highestBuy ?? null
                 const averagePrice = row.comparison?.averagePrice ?? null
-                const lowestSell = row.comparison?.region?.lowestSell ?? null
                 return (
                   <TableRow key={row.order.order_id}>
                     <TableCell className="py-1.5">
@@ -347,10 +330,10 @@ function OrdersTable({ orders, comparisonLevel }: { orders: OrderRow[]; comparis
                       {averagePrice !== null ? (
                         <span className="flex items-center justify-end gap-1">
                           {averagePrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          {lowestSell !== null && (
-                            averagePrice < lowestSell
+                          {comparisonValue !== null && (
+                            averagePrice < comparisonValue
                               ? <TrendingUp className="h-3 w-3 text-status-positive" />
-                              : averagePrice > lowestSell
+                              : averagePrice > comparisonValue
                                 ? <TrendingDown className="h-3 w-3 text-status-negative" />
                                 : null
                           )}
@@ -382,12 +365,10 @@ function LocationGroupRow({
   group,
   isExpanded,
   onToggle,
-  comparisonLevel,
 }: {
   group: LocationGroup
   isExpanded: boolean
   onToggle: () => void
-  comparisonLevel: ComparisonLevel
 }) {
   const buyOrders = group.orders.filter((o) => o.order.is_buy_order)
   const sellOrders = group.orders.filter((o) => !o.order.is_buy_order)
@@ -419,7 +400,7 @@ function LocationGroupRow({
       </button>
       {isExpanded && (
         <div className="border-t border-border/50 bg-surface/30 px-4 pb-2">
-          <OrdersTable orders={group.orders} comparisonLevel={comparisonLevel} />
+          <OrdersTable orders={group.orders} />
         </div>
       )}
     </div>
@@ -637,11 +618,10 @@ export function MarketOrdersTab() {
     }
   }, [initialized, ordersByOwner.length, comparisonData.size, comparisonFetching, fetchComparisonData])
 
-  const { setExpandCollapse, search, setResultCount, setTotalValue, setColumns, setComparisonLevel } = useTabControls()
+  const { setExpandCollapse, search, setResultCount, setTotalValue, setColumns } = useTabControls()
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
   const selectedSet = useMemo(() => new Set(selectedOwnerIds), [selectedOwnerIds])
 
-  const [comparisonLevelValue, setComparisonLevelValue] = useState<ComparisonLevel>('station')
   const [showHistory, setShowHistory] = useState(false)
 
   useEffect(() => {
@@ -649,15 +629,6 @@ export function MarketOrdersTab() {
       initHistory().then(() => updateHistory())
     }
   }, [showHistory, initHistory, updateHistory])
-
-  const handleComparisonLevelChange = useCallback((value: ComparisonLevel) => {
-    setComparisonLevelValue(value)
-  }, [])
-
-  useEffect(() => {
-    setComparisonLevel({ value: comparisonLevelValue, onChange: handleComparisonLevelChange })
-    return () => setComparisonLevel(null)
-  }, [comparisonLevelValue, handleComparisonLevelChange, setComparisonLevel])
 
   const ORDER_COLUMNS: ColumnConfig[] = useMemo(() => [
     { id: 'item', label: 'Item' },
@@ -685,7 +656,7 @@ export function MarketOrdersTab() {
       for (const order of orders) {
         const type = hasType(order.type_id) ? getType(order.type_id) : undefined
         const locationInfo = getLocationInfo(order.location_id)
-        const comparison = comparisonData.get(`${order.location_id}-${order.type_id}`)
+        const comparison = comparisonData.get(order.type_id)
 
         const row: OrderRow = {
           order,
@@ -864,7 +835,6 @@ export function MarketOrdersTab() {
               group={group}
               isExpanded={isExpanded(group.locationId)}
               onToggle={() => toggle(group.locationId)}
-              comparisonLevel={comparisonLevelValue}
             />
           ))}
         </div>
