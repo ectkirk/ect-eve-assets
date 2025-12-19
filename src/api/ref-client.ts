@@ -15,6 +15,7 @@ import {
   RefUniverseItemSchema,
   MarketBulkResponseSchema,
   MarketBulkItemSchema,
+  MarketJitaResponseSchema,
 } from './schemas'
 import { z } from 'zod'
 
@@ -36,14 +37,18 @@ async function fetchTypesFromAPI(ids: number[]): Promise<Map<number, RefType>> {
   if (ids.length === 0) return new Map()
 
   const results = new Map<number, RefType>()
+  const totalStart = performance.now()
 
   for (let i = 0; i < ids.length; i += 1000) {
     const chunk = ids.slice(i, i + 1000)
+    const chunkStart = performance.now()
 
     try {
       const rawData = await window.electronAPI!.refTypes(chunk)
+      const duration = Math.round(performance.now() - chunkStart)
+
       if (rawData && typeof rawData === 'object' && 'error' in rawData) {
-        logger.warn('RefAPI /types failed', { module: 'RefAPI', error: rawData.error })
+        logger.warn('RefAPI /types failed', { module: 'RefAPI', error: rawData.error, requested: chunk.length, duration })
         continue
       }
 
@@ -56,12 +61,20 @@ async function fetchTypesFromAPI(ids: number[]): Promise<Map<number, RefType>> {
         continue
       }
 
+      const returned = Object.keys(parseResult.data.items).length
+      logger.info(`RefAPI /types`, { module: 'RefAPI', requested: chunk.length, returned, duration })
+
       for (const [idStr, type] of Object.entries(parseResult.data.items)) {
         results.set(Number(idStr), type)
       }
     } catch (error) {
       logger.error('RefAPI /types error', error, { module: 'RefAPI' })
     }
+  }
+
+  if (ids.length > 1000) {
+    const totalDuration = Math.round(performance.now() - totalStart)
+    logger.info(`RefAPI /types total`, { module: 'RefAPI', requested: ids.length, returned: results.size, duration: totalDuration })
   }
 
   return results
@@ -71,14 +84,18 @@ async function fetchUniverseFromAPI(ids: number[]): Promise<Map<number, RefUnive
   if (ids.length === 0) return new Map()
 
   const results = new Map<number, RefUniverseItem>()
+  const totalStart = performance.now()
 
   for (let i = 0; i < ids.length; i += 1000) {
     const chunk = ids.slice(i, i + 1000)
+    const chunkStart = performance.now()
 
     try {
       const rawData = await window.electronAPI!.refUniverse(chunk)
+      const duration = Math.round(performance.now() - chunkStart)
+
       if (rawData && typeof rawData === 'object' && 'error' in rawData) {
-        logger.warn('RefAPI /universe failed', { module: 'RefAPI', error: rawData.error })
+        logger.warn('RefAPI /universe failed', { module: 'RefAPI', error: rawData.error, requested: chunk.length, duration })
         continue
       }
 
@@ -91,12 +108,20 @@ async function fetchUniverseFromAPI(ids: number[]): Promise<Map<number, RefUnive
         continue
       }
 
+      const returned = Object.keys(parseResult.data.items).length
+      logger.info(`RefAPI /universe`, { module: 'RefAPI', requested: chunk.length, returned, duration })
+
       for (const [idStr, item] of Object.entries(parseResult.data.items)) {
         results.set(Number(idStr), item)
       }
     } catch (error) {
       logger.error('RefAPI /universe error', error, { module: 'RefAPI' })
     }
+  }
+
+  if (ids.length > 1000) {
+    const totalDuration = Math.round(performance.now() - totalStart)
+    logger.info(`RefAPI /universe total`, { module: 'RefAPI', requested: ids.length, returned: results.size, duration: totalDuration })
   }
 
   return results
@@ -292,9 +317,11 @@ async function fetchMarketFromAPI(
   if (typeIds.length === 0) return new Map()
 
   const results = new Map<number, MarketBulkItem>()
+  const totalStart = performance.now()
 
   for (let i = 0; i < typeIds.length; i += 100) {
     const chunk = typeIds.slice(i, i + 100)
+    const chunkStart = performance.now()
 
     try {
       const rawData = await window.electronAPI!.refMarket({
@@ -302,8 +329,10 @@ async function fetchMarketFromAPI(
         typeIds: chunk,
         ...options,
       })
+      const duration = Math.round(performance.now() - chunkStart)
+
       if (rawData && typeof rawData === 'object' && 'error' in rawData) {
-        logger.warn('RefAPI /market/bulk failed', { module: 'RefAPI', error: rawData.error })
+        logger.warn('RefAPI /market/bulk failed', { module: 'RefAPI', error: rawData.error, requested: chunk.length, duration })
         continue
       }
 
@@ -316,6 +345,9 @@ async function fetchMarketFromAPI(
         continue
       }
 
+      const returned = Object.keys(parseResult.data.items).length
+      logger.info(`RefAPI /market/bulk`, { module: 'RefAPI', requested: chunk.length, returned, duration })
+
       for (const [idStr, item] of Object.entries(parseResult.data.items)) {
         results.set(Number(idStr), item)
       }
@@ -324,20 +356,65 @@ async function fetchMarketFromAPI(
     }
   }
 
+  if (typeIds.length > 100) {
+    const totalDuration = Math.round(performance.now() - totalStart)
+    logger.info(`RefAPI /market/bulk total`, { module: 'RefAPI', requested: typeIds.length, returned: results.size, duration: totalDuration })
+  }
+
+  return results
+}
+
+async function fetchJitaPricesFromAPI(typeIds: number[]): Promise<Map<number, number>> {
+  if (typeIds.length === 0) return new Map()
+
+  const results = new Map<number, number>()
+  const totalStart = performance.now()
+
+  for (let i = 0; i < typeIds.length; i += 1000) {
+    const chunk = typeIds.slice(i, i + 1000)
+    const chunkStart = performance.now()
+
+    try {
+      const rawData = await window.electronAPI!.refMarketJita(chunk)
+      const duration = Math.round(performance.now() - chunkStart)
+
+      if (rawData && typeof rawData === 'object' && 'error' in rawData) {
+        logger.warn('RefAPI /market/jita failed', { module: 'RefAPI', error: rawData.error, requested: chunk.length, duration })
+        continue
+      }
+
+      const parseResult = MarketJitaResponseSchema.safeParse(rawData)
+      if (!parseResult.success) {
+        logger.error('RefAPI /market/jita validation failed', undefined, {
+          module: 'RefAPI',
+          errors: parseResult.error.issues.slice(0, 3),
+        })
+        continue
+      }
+
+      let returned = 0
+      for (const [idStr, price] of Object.entries(parseResult.data.items)) {
+        if (price !== null && price > 0) {
+          results.set(Number(idStr), price)
+          returned++
+        }
+      }
+      logger.info(`RefAPI /market/jita`, { module: 'RefAPI', requested: chunk.length, returned, duration })
+    } catch (error) {
+      logger.error('RefAPI /market/jita error', error, { module: 'RefAPI' })
+    }
+  }
+
+  if (typeIds.length > 1000) {
+    const totalDuration = Math.round(performance.now() - totalStart)
+    logger.info(`RefAPI /market/jita total`, { module: 'RefAPI', requested: typeIds.length, returned: results.size, duration: totalDuration })
+  }
+
   return results
 }
 
 export async function fetchPrices(typeIds: number[]): Promise<Map<number, number>> {
-  const fetched = await fetchMarketFromAPI(typeIds, { jita: true })
-  const prices = new Map<number, number>()
-
-  for (const [typeId, item] of fetched) {
-    if (item.lowestSell !== null && item.lowestSell > 0) {
-      prices.set(typeId, item.lowestSell)
-    }
-  }
-
-  return prices
+  return fetchJitaPricesFromAPI(typeIds)
 }
 
 export interface MarketComparisonPrices {

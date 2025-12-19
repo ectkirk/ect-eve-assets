@@ -14,6 +14,7 @@ import { getType, saveTypes, hasLocation, getLocation, saveLocations } from '@/s
 const mockRefTypes = vi.fn()
 const mockRefUniverse = vi.fn()
 const mockRefMarket = vi.fn()
+const mockRefMarketJita = vi.fn()
 
 async function runWithTimers<T>(promise: Promise<T>): Promise<T> {
   await vi.advanceTimersByTimeAsync(2100)
@@ -28,6 +29,7 @@ describe('ref-client', () => {
       refTypes: mockRefTypes,
       refUniverse: mockRefUniverse,
       refMarket: mockRefMarket,
+      refMarketJita: mockRefMarketJita,
     } as unknown as typeof window.electronAPI
   })
 
@@ -257,29 +259,23 @@ describe('ref-client', () => {
       expect(result.size).toBe(0)
     })
 
-    it('extracts lowestSell price', async () => {
-      mockRefMarket.mockResolvedValueOnce({
-        regionId: 10000002,
+    it('extracts prices from /market/jita', async () => {
+      mockRefMarketJita.mockResolvedValueOnce({
         items: {
-          '34': { lowestSell: 5.5 },
+          '34': 5.5,
         },
       })
 
       const result = await fetchPrices([34])
 
       expect(result.get(34)).toBe(5.5)
-      expect(mockRefMarket).toHaveBeenCalledWith({
-        regionId: 10000002,
-        typeIds: [34],
-        jita: true,
-      })
+      expect(mockRefMarketJita).toHaveBeenCalledWith([34])
     })
 
     it('excludes null prices', async () => {
-      mockRefMarket.mockResolvedValueOnce({
-        regionId: 10000002,
+      mockRefMarketJita.mockResolvedValueOnce({
         items: {
-          '34': { lowestSell: null },
+          '34': null,
         },
       })
 
@@ -289,10 +285,9 @@ describe('ref-client', () => {
     })
 
     it('excludes zero prices', async () => {
-      mockRefMarket.mockResolvedValueOnce({
-        regionId: 10000002,
+      mockRefMarketJita.mockResolvedValueOnce({
         items: {
-          '34': { lowestSell: 0 },
+          '34': 0,
         },
       })
 
@@ -302,12 +297,11 @@ describe('ref-client', () => {
     })
 
     it('handles multiple items', async () => {
-      mockRefMarket.mockResolvedValueOnce({
-        regionId: 10000002,
+      mockRefMarketJita.mockResolvedValueOnce({
         items: {
-          '34': { lowestSell: 5.5 },
-          '35': { lowestSell: 10.0 },
-          '36': { lowestSell: null },
+          '34': 5.5,
+          '35': 10.0,
+          '36': null,
         },
       })
 

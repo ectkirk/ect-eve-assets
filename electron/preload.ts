@@ -71,6 +71,11 @@ export interface RefMarketResult {
   error?: string
 }
 
+export interface RefMarketJitaResult {
+  items?: Record<string, number | null>
+  error?: string
+}
+
 export interface ManufacturingCostParams {
   product_id?: number
   blueprint_id?: number
@@ -360,6 +365,7 @@ export interface ElectronAPI {
   refUniverse: (ids: number[]) => Promise<RefApiResult>
   refShips: (ids: number[]) => Promise<RefShipsResult>
   refMarket: (params: RefMarketParams) => Promise<RefMarketResult>
+  refMarketJita: (typeIds: number[]) => Promise<RefMarketJitaResult>
   refManufacturingCost: (params: ManufacturingCostParams) => Promise<ManufacturingCostResult>
   refBlueprintResearch: (params: BlueprintResearchParams) => Promise<BlueprintResearchResult>
   refBlueprints: () => Promise<BlueprintsResult>
@@ -421,6 +427,7 @@ const electronAPI: ElectronAPI = {
   refUniverse: (ids: number[]) => ipcRenderer.invoke('ref:universe', ids),
   refShips: (ids: number[]) => ipcRenderer.invoke('ref:ships', ids),
   refMarket: (params: RefMarketParams) => ipcRenderer.invoke('ref:market', params),
+  refMarketJita: (typeIds: number[]) => ipcRenderer.invoke('ref:marketJita', typeIds),
   refManufacturingCost: (params: ManufacturingCostParams) =>
     ipcRenderer.invoke('ref:manufacturingCost', params),
   refBlueprintResearch: (params: BlueprintResearchParams) =>

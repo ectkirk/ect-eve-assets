@@ -70,6 +70,11 @@ declare global {
     error?: string
   }
 
+  interface RefMarketJitaResult {
+    items?: Record<string, number | null>
+    error?: string
+  }
+
   interface ManufacturingCostParams {
     product_id?: number
     blueprint_id?: number
@@ -360,6 +365,7 @@ declare global {
     refUniverse: (ids: number[]) => Promise<RefApiResult>
     refShips: (ids: number[]) => Promise<RefShipsResult>
     refMarket: (params: RefMarketParams) => Promise<RefMarketResult>
+    refMarketJita: (typeIds: number[]) => Promise<RefMarketJitaResult>
     refManufacturingCost: (params: ManufacturingCostParams) => Promise<ManufacturingCostResult>
     refBlueprintResearch: (params: BlueprintResearchParams) => Promise<BlueprintResearchResult>
     refBlueprints: () => Promise<BlueprintsResult>
