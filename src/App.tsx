@@ -11,7 +11,7 @@ import { useExpiryCacheStore } from './store/expiry-cache-store'
 import { useNotificationStore } from './store/toast-store'
 import { MainLayout } from './components/layout/MainLayout'
 import { initCache } from './store/reference-cache'
-import { loadReferenceData, loadUniverseData } from './api/ref-client'
+import { loadReferenceData, loadUniverseData, loadRefStructures } from './api/ref-client'
 import { logger } from './lib/logger'
 import { setupESITokenProvider } from './api/esi'
 import { initTheme } from './store/theme-store'
@@ -96,6 +96,7 @@ function App() {
         logger.info('Cache initialized', { module: 'App' })
         await loadReferenceData(setLoadingStatus)
         await loadUniverseData(setLoadingStatus)
+        await loadRefStructures(setLoadingStatus)
         setLoadingStatus('Initializing data stores...')
         return useExpiryCacheStore.getState().init()
       })

@@ -438,6 +438,22 @@ export const RefStationsResponseSchema = z.object({
   items: z.record(z.string(), RefStationSchema),
 })
 
+export const RefStructureSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  systemId: z.number().nullable().optional(),
+})
+
+export const RefStructuresPageResponseSchema = z.object({
+  items: z.record(z.string(), RefStructureSchema),
+  pagination: z.object({
+    total: z.number(),
+    limit: z.number(),
+    nextCursor: z.string().nullable().optional(),
+    hasMore: z.boolean(),
+  }),
+})
+
 export const RefImplantSchema = z.object({
   slot: z.number(),
 })

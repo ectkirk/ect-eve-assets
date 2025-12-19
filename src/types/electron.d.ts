@@ -48,6 +48,16 @@ declare global {
     error?: string
   }
 
+  interface RefStructuresPageParams {
+    after?: string
+  }
+
+  interface RefStructuresPageResult {
+    items?: Record<string, { id: string; name: string; systemId?: number | null }>
+    pagination?: { total: number; limit: number; nextCursor?: string | null; hasMore: boolean }
+    error?: string
+  }
+
   interface MutamarketResult {
     estimated_value?: number | null
     error?: string
@@ -412,6 +422,7 @@ declare global {
     refUniverseRegions: () => Promise<RefRegionsResult>
     refUniverseSystems: () => Promise<RefSystemsResult>
     refUniverseStations: () => Promise<RefStationsResult>
+    refUniverseStructuresPage: (params?: RefStructuresPageParams) => Promise<RefStructuresPageResult>
     refImplants: (ids: number[]) => Promise<RefApiResult>
     refUniverse: (ids: number[]) => Promise<RefApiResult>
     refShips: (ids: number[]) => Promise<RefShipsResult>

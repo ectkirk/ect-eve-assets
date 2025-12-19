@@ -12,19 +12,24 @@ import {
   setRegions,
   setSystems,
   setStations,
+  setRefStructures,
   getRegion,
   getSystem,
   getStation,
+  getRefStructure,
   isReferenceDataLoaded,
   isAllTypesLoaded,
   setAllTypesLoaded,
   isUniverseDataLoaded,
   setUniverseDataLoaded,
+  isRefStructuresLoaded,
+  setRefStructuresLoaded,
   type CachedType,
   type CachedLocation,
   type CachedRegion,
   type CachedSystem,
   type CachedStation,
+  type CachedRefStructure,
 } from '@/store/reference-cache'
 import {
   RefTypeBulkResponseSchema,
@@ -36,6 +41,7 @@ import {
   RefRegionsResponseSchema,
   RefSystemsResponseSchema,
   RefStationsResponseSchema,
+  RefStructuresPageResponseSchema,
   RefImplantsResponseSchema,
   MarketBulkResponseSchema,
   MarketBulkItemSchema,
@@ -406,6 +412,77 @@ async function loadAllStations(): Promise<void> {
   logger.info('Stations loaded', { module: 'RefAPI', count: stations.length, duration })
 }
 
+let refStructuresPromise: Promise<void> | null = null
+
+export async function loadRefStructures(onProgress?: ReferenceDataProgress): Promise<void> {
+  if (isRefStructuresLoaded()) return
+
+  if (refStructuresPromise) {
+    return refStructuresPromise
+  }
+
+  refStructuresPromise = (async () => {
+    onProgress?.('Loading structures...')
+    const start = performance.now()
+    let cursor: string | undefined
+    let total = 0
+    let loaded = 0
+    let pageCount = 0
+    const allStructures: CachedRefStructure[] = []
+
+    do {
+      const result = await window.electronAPI!.refUniverseStructuresPage({ after: cursor })
+
+      if (result.error) {
+        logger.error('Failed to load structures page', undefined, { module: 'RefAPI', error: result.error })
+        return
+      }
+
+      if (!result.items || !result.pagination) {
+        logger.warn('No structures returned', { module: 'RefAPI' })
+        return
+      }
+
+      const parseResult = RefStructuresPageResponseSchema.safeParse(result)
+      if (!parseResult.success) {
+        logger.error('Structures validation failed', undefined, {
+          module: 'RefAPI',
+          errors: parseResult.error.issues.slice(0, 3),
+        })
+        return
+      }
+
+      const structures: CachedRefStructure[] = Object.values(parseResult.data.items).map(s => ({
+        id: parseInt(s.id, 10),
+        name: s.name,
+        systemId: s.systemId,
+      }))
+
+      allStructures.push(...structures)
+
+      if (pageCount === 0) {
+        total = result.pagination.total
+      }
+      loaded += structures.length
+      pageCount++
+
+      onProgress?.(`Loading structures (${loaded.toLocaleString()}/${total.toLocaleString()})...`)
+
+      cursor = result.pagination.hasMore ? (result.pagination.nextCursor ?? undefined) : undefined
+    } while (cursor !== undefined)
+
+    await setRefStructures(allStructures)
+    setRefStructuresLoaded(true)
+
+    const duration = Math.round(performance.now() - start)
+    logger.info('RefStructures loaded', { module: 'RefAPI', count: allStructures.length, pages: pageCount, duration })
+  })().finally(() => {
+    refStructuresPromise = null
+  })
+
+  return refStructuresPromise
+}
+
 async function fetchTypesChunk(chunk: number[]): Promise<Map<number, RefType>> {
   const results = new Map<number, RefType>()
   const chunkStart = performance.now()
@@ -622,6 +699,21 @@ function resolveFromPreloadedUniverse(id: number): CachedLocation | undefined {
       name: station.name,
       type: 'station',
       solarSystemId: station.systemId,
+      solarSystemName: system?.name,
+      regionId: system?.regionId,
+      regionName: region?.name,
+    }
+  }
+
+  const refStructure = getRefStructure(id)
+  if (refStructure) {
+    const system = refStructure.systemId ? getSystem(refStructure.systemId) : undefined
+    const region = system ? getRegion(system.regionId) : undefined
+    return {
+      id,
+      name: refStructure.name,
+      type: 'structure',
+      solarSystemId: refStructure.systemId ?? undefined,
       solarSystemName: system?.name,
       regionId: system?.regionId,
       regionName: region?.name,

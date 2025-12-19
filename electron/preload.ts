@@ -49,6 +49,16 @@ export interface RefStationsResult {
   error?: string
 }
 
+export interface RefStructuresPageParams {
+  after?: string
+}
+
+export interface RefStructuresPageResult {
+  items?: Record<string, { id: string; name: string; systemId?: number | null }>
+  pagination?: { total: number; limit: number; nextCursor?: string | null; hasMore: boolean }
+  error?: string
+}
+
 export interface MutamarketResult {
   estimated_value?: number | null
   error?: string
@@ -412,6 +422,7 @@ export interface ElectronAPI {
   refUniverseRegions: () => Promise<RefRegionsResult>
   refUniverseSystems: () => Promise<RefSystemsResult>
   refUniverseStations: () => Promise<RefStationsResult>
+  refUniverseStructuresPage: (params?: RefStructuresPageParams) => Promise<RefStructuresPageResult>
   refImplants: (ids: number[]) => Promise<RefApiResult>
   refUniverse: (ids: number[]) => Promise<RefApiResult>
   refShips: (ids: number[]) => Promise<RefShipsResult>
@@ -485,6 +496,8 @@ const electronAPI: ElectronAPI = {
   refUniverseRegions: () => ipcRenderer.invoke('ref:universe-regions'),
   refUniverseSystems: () => ipcRenderer.invoke('ref:universe-systems'),
   refUniverseStations: () => ipcRenderer.invoke('ref:universe-stations'),
+  refUniverseStructuresPage: (params?: RefStructuresPageParams) =>
+    ipcRenderer.invoke('ref:universe-structures-page', params),
   refImplants: (ids: number[]) => ipcRenderer.invoke('ref:implants', ids),
   refUniverse: (ids: number[]) => ipcRenderer.invoke('ref:universe', ids),
   refShips: (ids: number[]) => ipcRenderer.invoke('ref:ships', ids),

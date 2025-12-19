@@ -12,6 +12,7 @@ vi.mock('@/store/reference-cache', () => ({
   getRegion: vi.fn(),
   getSystem: vi.fn(),
   getStation: vi.fn(),
+  getRefStructure: vi.fn(),
   setCategories: vi.fn(),
   setGroups: vi.fn(),
   setRegions: vi.fn(),

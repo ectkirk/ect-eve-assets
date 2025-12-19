@@ -1,7 +1,7 @@
 import { logger } from '@/lib/logger'
 
 const DB_NAME = 'ecteveassets-cache'
-const DB_VERSION = 8
+const DB_VERSION = 9
 
 export interface CachedRegion {
   id: number
@@ -19,6 +19,12 @@ export interface CachedStation {
   id: number
   name: string
   systemId: number
+}
+
+export interface CachedRefStructure {
+  id: number
+  name: string
+  systemId?: number | null
 }
 
 export interface CachedCategory {
@@ -85,6 +91,7 @@ let typesCache = new Map<number, CachedType>()
 let regionsCache = new Map<number, CachedRegion>()
 let systemsCache = new Map<number, CachedSystem>()
 let stationsCache = new Map<number, CachedStation>()
+let refStructuresCache = new Map<number, CachedRefStructure>()
 let structuresCache = new Map<number, CachedStructure>()
 let locationsCache = new Map<number, CachedLocation>()
 let abyssalsCache = new Map<number, CachedAbyssal>()
@@ -93,9 +100,11 @@ let initialized = false
 let referenceDataLoaded = false
 let allTypesLoaded = false
 let universeDataLoaded = false
+let refStructuresLoaded = false
 
 const ALL_TYPES_LOADED_KEY = 'ecteveassets-all-types-loaded'
 const UNIVERSE_LOADED_KEY = 'ecteveassets-universe-loaded'
+const REF_STRUCTURES_LOADED_KEY = 'ecteveassets-ref-structures-loaded'
 
 const listeners = new Set<() => void>()
 
@@ -158,6 +167,9 @@ async function openDB(): Promise<IDBDatabase> {
       if (!database.objectStoreNames.contains('stations')) {
         database.createObjectStore('stations', { keyPath: 'id' })
       }
+      if (!database.objectStoreNames.contains('refStructures')) {
+        database.createObjectStore('refStructures', { keyPath: 'id' })
+      }
 
       if (oldVersion < 4 && database.objectStoreNames.contains('locations')) {
         const tx = (event.target as IDBOpenDBRequest).transaction!
@@ -192,11 +204,12 @@ export async function initCache(): Promise<void> {
   logger.debug('Initializing reference cache', { module: 'ReferenceCache' })
 
   try {
-    const [types, regions, systems, stations, structures, locations, abyssals, names, categories, groups] = await Promise.all([
+    const [types, regions, systems, stations, refStructures, structures, locations, abyssals, names, categories, groups] = await Promise.all([
       loadStore<CachedType>('types'),
       loadStore<CachedRegion>('regions'),
       loadStore<CachedSystem>('systems'),
       loadStore<CachedStation>('stations'),
+      loadStore<CachedRefStructure>('refStructures'),
       loadStore<CachedStructure>('structures'),
       loadStore<CachedLocation>('locations'),
       loadStore<CachedAbyssal>('abyssals'),
@@ -209,6 +222,7 @@ export async function initCache(): Promise<void> {
     regionsCache = regions
     systemsCache = systems
     stationsCache = stations
+    refStructuresCache = refStructures
     structuresCache = structures
     locationsCache = locations
     abyssalsCache = abyssals
@@ -221,6 +235,7 @@ export async function initCache(): Promise<void> {
     try {
       allTypesLoaded = localStorage.getItem(ALL_TYPES_LOADED_KEY) === 'true' && typesCache.size > 0
       universeDataLoaded = localStorage.getItem(UNIVERSE_LOADED_KEY) === 'true' && systemsCache.size > 0
+      refStructuresLoaded = localStorage.getItem(REF_STRUCTURES_LOADED_KEY) === 'true' && refStructuresCache.size > 0
     } catch {
       // localStorage not available
     }
@@ -232,6 +247,8 @@ export async function initCache(): Promise<void> {
       regions: regionsCache.size,
       systems: systemsCache.size,
       stations: stationsCache.size,
+      refStructures: refStructuresCache.size,
+      refStructuresLoaded,
       universeDataLoaded,
       structures: structuresCache.size,
       locations: locationsCache.size,
@@ -302,6 +319,31 @@ export function setUniverseDataLoaded(loaded: boolean): void {
   } catch {
     // localStorage not available
   }
+}
+
+export function isRefStructuresLoaded(): boolean {
+  return refStructuresLoaded
+}
+
+export function setRefStructuresLoaded(loaded: boolean): void {
+  refStructuresLoaded = loaded
+  try {
+    if (loaded) {
+      localStorage.setItem(REF_STRUCTURES_LOADED_KEY, 'true')
+    } else {
+      localStorage.removeItem(REF_STRUCTURES_LOADED_KEY)
+    }
+  } catch {
+    // localStorage not available
+  }
+}
+
+export function getRefStructure(id: number): CachedRefStructure | undefined {
+  return refStructuresCache.get(id)
+}
+
+export function hasRefStructure(id: number): boolean {
+  return refStructuresCache.has(id)
 }
 
 export function getRegion(id: number): CachedRegion | undefined {
@@ -387,6 +429,27 @@ export async function setStations(stations: CachedStation[]): Promise<void> {
 
     for (const station of stations) {
       store.put(station)
+    }
+  })
+}
+
+export async function setRefStructures(structures: CachedRefStructure[]): Promise<void> {
+  if (structures.length === 0) return
+
+  const database = await openDB()
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction('refStructures', 'readwrite')
+    const store = tx.objectStore('refStructures')
+
+    tx.onerror = () => reject(tx.error)
+    tx.oncomplete = () => {
+      refStructuresCache = new Map(structures.map(s => [s.id, s]))
+      logger.info('RefStructures saved', { module: 'ReferenceCache', count: structures.length })
+      resolve()
+    }
+
+    for (const structure of structures) {
+      store.put(structure)
     }
   })
 }
@@ -604,6 +667,7 @@ export async function clearReferenceCache(): Promise<void> {
   regionsCache.clear()
   systemsCache.clear()
   stationsCache.clear()
+  refStructuresCache.clear()
   structuresCache.clear()
   locationsCache.clear()
   abyssalsCache.clear()
@@ -612,6 +676,7 @@ export async function clearReferenceCache(): Promise<void> {
   referenceDataLoaded = false
   setAllTypesLoaded(false)
   setUniverseDataLoaded(false)
+  setRefStructuresLoaded(false)
 
   if (db) {
     db.close()
@@ -698,11 +763,14 @@ export async function clearUniverseCache(): Promise<void> {
   regionsCache.clear()
   systemsCache.clear()
   stationsCache.clear()
+  refStructuresCache.clear()
   setUniverseDataLoaded(false)
+  setRefStructuresLoaded(false)
   await Promise.all([
     clearStore('regions'),
     clearStore('systems'),
     clearStore('stations'),
+    clearStore('refStructures'),
   ])
   notifyListeners()
 }

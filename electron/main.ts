@@ -722,6 +722,36 @@ ipcMain.handle('ref:universe-stations', async () => {
   }
 })
 
+ipcMain.handle('ref:universe-structures-page', async (_event, args: unknown) => {
+  const { after } = (args ?? {}) as { after?: string }
+
+  if (after !== undefined && (typeof after !== 'string' || after.length === 0)) {
+    return { error: 'Invalid after cursor' }
+  }
+
+  await waitForRefRateLimit()
+  try {
+    const url = after
+      ? `${REF_API_BASE}/reference/structures?after=${after}`
+      : `${REF_API_BASE}/reference/structures`
+
+    const response = await fetchRefWithRetry(url, { headers: getRefHeaders() })
+
+    if (!response.ok) {
+      return { error: `HTTP ${response.status}` }
+    }
+
+    const data = await response.json()
+    return {
+      items: data.items,
+      pagination: data.pagination,
+    }
+  } catch (err) {
+    logger.error('ref:universe-structures-page fetch failed', err, { module: 'Main' })
+    return { error: String(err) }
+  }
+})
+
 ipcMain.handle('ref:implants', async (_event, ids: unknown) => {
   if (!Array.isArray(ids) || ids.length === 0 || ids.length > MAX_REF_IDS) {
     return { error: 'Invalid ids array' }
