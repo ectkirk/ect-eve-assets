@@ -361,6 +361,8 @@ async function runResolution(): Promise<void> {
   )
 
   await resolveAllReferenceData(ids)
+
+  useAssetStore.getState().rebuildSyntheticAssets()
 }
 
 export async function triggerResolution(): Promise<void> {
