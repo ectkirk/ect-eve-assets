@@ -381,6 +381,8 @@ export interface ElectronAPI {
   windowMaximize: () => Promise<void>
   windowClose: () => Promise<void>
   windowIsMaximized: () => Promise<boolean>
+  windowGetPlatform: () => Promise<string>
+  windowSetTitleBarOverlay: (options: { color?: string; symbolColor?: string; height?: number }) => Promise<void>
   onWindowMaximizeChange: (callback: (isMaximized: boolean) => void) => () => void
   onWindowMinimizeChange: (callback: (isMinimized: boolean) => void) => () => void
   esi: ESIAPI
@@ -459,6 +461,9 @@ const electronAPI: ElectronAPI = {
   windowMaximize: () => ipcRenderer.invoke('window:maximize'),
   windowClose: () => ipcRenderer.invoke('window:close'),
   windowIsMaximized: () => ipcRenderer.invoke('window:isMaximized'),
+  windowGetPlatform: () => ipcRenderer.invoke('window:getPlatform'),
+  windowSetTitleBarOverlay: (options: { color?: string; symbolColor?: string; height?: number }) =>
+    ipcRenderer.invoke('window:setTitleBarOverlay', options),
   onWindowMaximizeChange: (callback: (isMaximized: boolean) => void) => {
     const handler = (_event: unknown, isMaximized: boolean) => callback(isMaximized)
     ipcRenderer.on('window:maximizeChange', handler)

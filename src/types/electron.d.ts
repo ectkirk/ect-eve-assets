@@ -381,6 +381,8 @@ declare global {
     windowMaximize: () => Promise<void>
     windowClose: () => Promise<void>
     windowIsMaximized: () => Promise<boolean>
+    windowGetPlatform: () => Promise<string>
+    windowSetTitleBarOverlay: (options: { color?: string; symbolColor?: string; height?: number }) => Promise<void>
     onWindowMaximizeChange: (callback: (isMaximized: boolean) => void) => () => void
     onWindowMinimizeChange: (callback: (isMinimized: boolean) => void) => () => void
     esi: ESIAPI

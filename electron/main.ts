@@ -108,7 +108,7 @@ export const VITE_PUBLIC = VITE_DEV_SERVER_URL
   : RENDERER_DIST
 
 let mainWindow: BrowserWindow | null = null
-let isManuallyMaximized = false
+let manualMaximized = false
 let restoreBounds: Electron.Rectangle | null = null
 const characterTokens = new Map<number, string>()
 
@@ -135,24 +135,33 @@ function createWindow() {
   })
 
   if (savedState.isMaximized) {
-    mainWindow.maximize()
+    const display = screen.getDisplayMatching(mainWindow.getBounds())
+    restoreBounds = mainWindow.getBounds()
+    mainWindow.setBounds(display.workArea)
+    manualMaximized = true
   }
+
+  let normalBounds = mainWindow.getBounds()
 
   const saveCurrentState = () => {
     if (!mainWindow) return
-    const bounds = mainWindow.getBounds()
+    const isMaximized = mainWindow.isMaximized()
+    if (!isMaximized) {
+      normalBounds = mainWindow.getBounds()
+    }
     saveWindowState({
-      x: bounds.x,
-      y: bounds.y,
-      width: bounds.width,
-      height: bounds.height,
-      isMaximized: mainWindow.isMaximized(),
+      ...normalBounds,
+      isMaximized,
     })
   }
 
   mainWindow.on('close', saveCurrentState)
-  mainWindow.on('resized', saveCurrentState)
-  mainWindow.on('moved', saveCurrentState)
+  mainWindow.on('resize', () => {
+    if (!mainWindow?.isMaximized()) saveCurrentState()
+  })
+  mainWindow.on('move', () => {
+    if (!mainWindow?.isMaximized()) saveCurrentState()
+  })
 
   // Open external links in default browser (validate protocol)
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -253,13 +262,10 @@ function createWindow() {
     console.error('[CRASH] Renderer process gone:', details.reason)
   })
 
-  // Sync state when native maximize/unmaximize occurs (e.g., Windows snap)
   mainWindow.on('maximize', () => {
-    isManuallyMaximized = true
     mainWindow?.webContents.send('window:maximizeChange', true)
   })
   mainWindow.on('unmaximize', () => {
-    isManuallyMaximized = false
     mainWindow?.webContents.send('window:maximizeChange', false)
   })
 
@@ -1082,17 +1088,17 @@ ipcMain.handle('window:minimize', () => {
 ipcMain.handle('window:maximize', () => {
   if (!mainWindow) return
 
-  if (isManuallyMaximized) {
+  if (manualMaximized) {
     if (restoreBounds) {
       mainWindow.setBounds(restoreBounds)
     }
-    isManuallyMaximized = false
+    manualMaximized = false
     mainWindow.webContents.send('window:maximizeChange', false)
   } else {
     restoreBounds = mainWindow.getBounds()
     const display = screen.getDisplayMatching(restoreBounds)
     mainWindow.setBounds(display.workArea)
-    isManuallyMaximized = true
+    manualMaximized = true
     mainWindow.webContents.send('window:maximizeChange', true)
   }
 })
@@ -1102,7 +1108,22 @@ ipcMain.handle('window:close', () => {
 })
 
 ipcMain.handle('window:isMaximized', () => {
-  return isManuallyMaximized
+  return manualMaximized
+})
+
+ipcMain.handle('window:getPlatform', () => {
+  return process.platform
+})
+
+ipcMain.handle('window:setTitleBarOverlay', (_event, options: unknown) => {
+  if (process.platform === 'darwin' || !mainWindow) return
+  if (typeof options !== 'object' || options === null) return
+  const opts = options as Record<string, unknown>
+  const overlayOptions: Electron.TitleBarOverlayOptions = {}
+  if (typeof opts.color === 'string') overlayOptions.color = opts.color
+  if (typeof opts.symbolColor === 'string') overlayOptions.symbolColor = opts.symbolColor
+  if (typeof opts.height === 'number') overlayOptions.height = opts.height
+  mainWindow.setTitleBarOverlay(overlayOptions)
 })
 
 app.whenReady().then(() => {
