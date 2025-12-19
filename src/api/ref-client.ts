@@ -16,6 +16,8 @@ import {
   MarketBulkResponseSchema,
   MarketBulkItemSchema,
   MarketJitaResponseSchema,
+  MarketPlexResponseSchema,
+  MarketContractsResponseSchema,
 } from './schemas'
 import { z } from 'zod'
 
@@ -32,6 +34,12 @@ let locationBatchPromise: Promise<Map<number, CachedLocation>> | null = null
 
 let pendingTypeIds = new Set<number>()
 let typeBatchPromise: Promise<Map<number, CachedType>> | null = null
+
+let pendingPriceIds = new Set<number>()
+let priceBatchPromise: Promise<Map<number, number>> | null = null
+
+const PLEX_GROUP = 1875
+const CONTRACT_GROUPS = new Set([883, 547, 4594, 485, 1538, 659, 30])
 
 async function fetchTypesFromAPI(ids: number[]): Promise<Map<number, RefType>> {
   if (ids.length === 0) return new Map()
@@ -413,8 +421,201 @@ async function fetchJitaPricesFromAPI(typeIds: number[]): Promise<Map<number, nu
   return results
 }
 
+async function fetchPlexPriceFromAPI(): Promise<number | null> {
+  const start = performance.now()
+  try {
+    const rawData = await window.electronAPI!.refMarketPlex()
+    const duration = Math.round(performance.now() - start)
+
+    if (rawData && typeof rawData === 'object' && 'error' in rawData) {
+      logger.warn('RefAPI /market/plex failed', { module: 'RefAPI', error: rawData.error, duration })
+      return null
+    }
+
+    const parseResult = MarketPlexResponseSchema.safeParse(rawData)
+    if (!parseResult.success) {
+      logger.error('RefAPI /market/plex validation failed', undefined, {
+        module: 'RefAPI',
+        errors: parseResult.error.issues.slice(0, 3),
+      })
+      return null
+    }
+
+    logger.info('RefAPI /market/plex', { module: 'RefAPI', duration })
+    return parseResult.data.lowestSell
+  } catch (error) {
+    logger.error('RefAPI /market/plex error', error, { module: 'RefAPI' })
+    return null
+  }
+}
+
+async function fetchContractPricesFromAPI(typeIds: number[]): Promise<Map<number, number>> {
+  if (typeIds.length === 0) return new Map()
+
+  const results = new Map<number, number>()
+  const totalStart = performance.now()
+
+  for (let i = 0; i < typeIds.length; i += 100) {
+    const chunk = typeIds.slice(i, i + 100)
+    const chunkStart = performance.now()
+
+    try {
+      const rawData = await window.electronAPI!.refMarketContracts(chunk)
+      const duration = Math.round(performance.now() - chunkStart)
+
+      if (rawData && typeof rawData === 'object' && 'error' in rawData) {
+        logger.warn('RefAPI /market/contracts failed', { module: 'RefAPI', error: rawData.error, requested: chunk.length, duration })
+        continue
+      }
+
+      const parseResult = MarketContractsResponseSchema.safeParse(rawData)
+      if (!parseResult.success) {
+        logger.error('RefAPI /market/contracts validation failed', undefined, {
+          module: 'RefAPI',
+          errors: parseResult.error.issues.slice(0, 3),
+        })
+        continue
+      }
+
+      let returned = 0
+      for (const [idStr, item] of Object.entries(parseResult.data.items)) {
+        if (item.price !== null && item.price > 0 && item.hasSufficientData) {
+          results.set(Number(idStr), item.price)
+          returned++
+        }
+      }
+      logger.info('RefAPI /market/contracts', { module: 'RefAPI', requested: chunk.length, returned, duration })
+    } catch (error) {
+      logger.error('RefAPI /market/contracts error', error, { module: 'RefAPI' })
+    }
+  }
+
+  if (typeIds.length > 100) {
+    const totalDuration = Math.round(performance.now() - totalStart)
+    logger.info('RefAPI /market/contracts total', { module: 'RefAPI', requested: typeIds.length, returned: results.size, duration: totalDuration })
+  }
+
+  return results
+}
+
+function categorizeTypeIdsByEndpoint(typeIds: number[]): {
+  plexIds: number[]
+  contractIds: number[]
+  jitaIds: number[]
+} {
+  const plexIds: number[] = []
+  const contractIds: number[] = []
+  const jitaIds: number[] = []
+
+  for (const typeId of typeIds) {
+    const cachedType = getType(typeId)
+    const groupId = cachedType?.groupId ?? 0
+
+    if (groupId === PLEX_GROUP) {
+      plexIds.push(typeId)
+    } else if (CONTRACT_GROUPS.has(groupId)) {
+      contractIds.push(typeId)
+    } else {
+      jitaIds.push(typeId)
+    }
+  }
+
+  return { plexIds, contractIds, jitaIds }
+}
+
+async function fetchPricesRouted(typeIds: number[]): Promise<Map<number, number>> {
+  if (typeIds.length === 0) return new Map()
+
+  const { plexIds, contractIds, jitaIds } = categorizeTypeIdsByEndpoint(typeIds)
+  const results = new Map<number, number>()
+
+  const promises: Promise<void>[] = []
+
+  if (plexIds.length > 0) {
+    promises.push(
+      fetchPlexPriceFromAPI().then((price) => {
+        if (price !== null) {
+          for (const id of plexIds) {
+            results.set(id, price)
+          }
+        }
+      })
+    )
+  }
+
+  if (contractIds.length > 0) {
+    promises.push(
+      fetchContractPricesFromAPI(contractIds).then((prices) => {
+        for (const [id, price] of prices) {
+          results.set(id, price)
+        }
+      })
+    )
+  }
+
+  if (jitaIds.length > 0) {
+    promises.push(
+      fetchJitaPricesFromAPI(jitaIds).then((prices) => {
+        for (const [id, price] of prices) {
+          results.set(id, price)
+        }
+      })
+    )
+  }
+
+  await Promise.all(promises)
+
+  logger.info('Prices fetched', {
+    module: 'RefAPI',
+    total: typeIds.length,
+    plex: plexIds.length,
+    contracts: contractIds.length,
+    jita: jitaIds.length,
+    returned: results.size,
+  })
+
+  return results
+}
+
+async function executePriceBatch(): Promise<Map<number, number>> {
+  const idsToFetch = Array.from(pendingPriceIds)
+  pendingPriceIds = new Set()
+
+  if (idsToFetch.length === 0) return new Map()
+
+  return fetchPricesRouted(idsToFetch)
+}
+
+export async function queuePriceRefresh(typeIds: number[]): Promise<Map<number, number>> {
+  if (typeIds.length === 0) return new Map()
+
+  for (const id of typeIds) {
+    pendingPriceIds.add(id)
+  }
+
+  if (!priceBatchPromise) {
+    priceBatchPromise = new Promise((resolve) => {
+      setTimeout(async () => {
+        const result = await executePriceBatch()
+        priceBatchPromise = null
+        resolve(result)
+      }, REF_BATCH_DELAY_MS)
+    })
+  }
+
+  const allResults = await priceBatchPromise
+  const results = new Map<number, number>()
+  for (const id of typeIds) {
+    const price = allResults.get(id)
+    if (price !== undefined) {
+      results.set(id, price)
+    }
+  }
+  return results
+}
+
 export async function fetchPrices(typeIds: number[]): Promise<Map<number, number>> {
-  return fetchJitaPricesFromAPI(typeIds)
+  return fetchPricesRouted(typeIds)
 }
 
 export interface MarketComparisonPrices {

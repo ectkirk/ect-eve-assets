@@ -787,6 +787,49 @@ ipcMain.handle('ref:marketJita', async (_event, typeIds: unknown) => {
   }, 'market')
 })
 
+ipcMain.handle('ref:marketPlex', async () => {
+  return queueRefRequest(async () => {
+    try {
+      const response = await fetchRefWithRetry(`${REF_API_BASE}/market/plex`, {
+        headers: getRefHeaders(),
+      })
+      if (!response.ok) {
+        return { error: `HTTP ${response.status}` }
+      }
+      return await response.json()
+    } catch (err) {
+      logger.error('ref:marketPlex fetch failed', err, { module: 'Main' })
+      return { error: String(err) }
+    }
+  }, 'market')
+})
+
+ipcMain.handle('ref:marketContracts', async (_event, typeIds: unknown) => {
+  if (!Array.isArray(typeIds) || typeIds.length === 0 || typeIds.length > 100) {
+    return { error: 'Invalid typeIds array (max 100)' }
+  }
+  if (!typeIds.every((id) => typeof id === 'number' && Number.isInteger(id) && id > 0)) {
+    return { error: 'Invalid typeId values' }
+  }
+
+  return queueRefRequest(async () => {
+    try {
+      const response = await fetchRefWithRetry(`${REF_API_BASE}/market/contracts`, {
+        method: 'POST',
+        headers: getRefHeaders('json'),
+        body: JSON.stringify({ typeIds }),
+      })
+      if (!response.ok) {
+        return { error: `HTTP ${response.status}` }
+      }
+      return await response.json()
+    } catch (err) {
+      logger.error('ref:marketContracts fetch failed', err, { module: 'Main' })
+      return { error: String(err) }
+    }
+  }, 'market')
+})
+
 ipcMain.handle('ref:manufacturingCost', async (_event, params: unknown) => {
   if (typeof params !== 'object' || params === null) {
     return { error: 'Invalid params' }

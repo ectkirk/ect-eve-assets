@@ -75,6 +75,25 @@ declare global {
     error?: string
   }
 
+  interface RefMarketPlexResult {
+    typeId?: number
+    lowestSell?: number | null
+    highestBuy?: number | null
+    error?: string
+  }
+
+  interface RefMarketContractItem {
+    price: number | null
+    salesCount: number
+    timeWindow: string
+    hasSufficientData: boolean
+  }
+
+  interface RefMarketContractsResult {
+    items?: Record<string, RefMarketContractItem>
+    error?: string
+  }
+
   interface ManufacturingCostParams {
     product_id?: number
     blueprint_id?: number
@@ -366,6 +385,8 @@ declare global {
     refShips: (ids: number[]) => Promise<RefShipsResult>
     refMarket: (params: RefMarketParams) => Promise<RefMarketResult>
     refMarketJita: (typeIds: number[]) => Promise<RefMarketJitaResult>
+    refMarketPlex: () => Promise<RefMarketPlexResult>
+    refMarketContracts: (typeIds: number[]) => Promise<RefMarketContractsResult>
     refManufacturingCost: (params: ManufacturingCostParams) => Promise<ManufacturingCostResult>
     refBlueprintResearch: (params: BlueprintResearchParams) => Promise<BlueprintResearchResult>
     refBlueprints: () => Promise<BlueprintsResult>

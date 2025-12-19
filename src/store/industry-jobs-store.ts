@@ -3,7 +3,7 @@ import { createOwnerStore } from './create-owner-store'
 import { useAssetStore } from './asset-store'
 import { esi } from '@/api/esi'
 import { ESIIndustryJobSchema } from '@/api/schemas'
-import { fetchPrices } from '@/api/ref-client'
+import { queuePriceRefresh } from '@/api/ref-client'
 import { logger } from '@/lib/logger'
 import { z } from 'zod'
 
@@ -37,17 +37,19 @@ async function fetchJobsForOwner(owner: Owner) {
 }
 
 async function fetchProductPrices(jobs: ESIIndustryJob[]) {
-  const productTypeIds = new Set<number>()
+  const existingPrices = useAssetStore.getState().prices
+  const deltaTypeIds: number[] = []
+
   for (const job of jobs) {
-    if (job.product_type_id) {
-      productTypeIds.add(job.product_type_id)
+    if (job.product_type_id && !existingPrices.has(job.product_type_id)) {
+      deltaTypeIds.push(job.product_type_id)
     }
   }
 
-  if (productTypeIds.size === 0) return
+  if (deltaTypeIds.length === 0) return
 
   try {
-    const prices = await fetchPrices(Array.from(productTypeIds))
+    const prices = await queuePriceRefresh(deltaTypeIds)
     if (prices.size > 0) {
       await useAssetStore.getState().setPrices(prices)
     }

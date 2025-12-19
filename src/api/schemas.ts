@@ -451,6 +451,23 @@ export const MarketJitaResponseSchema = z.object({
   items: z.record(z.string(), z.number().nullable()),
 })
 
+export const MarketPlexResponseSchema = z.object({
+  typeId: z.number(),
+  lowestSell: z.number().nullable(),
+  highestBuy: z.number().nullable(),
+})
+
+export const MarketContractItemSchema = z.object({
+  price: z.number().nullable(),
+  salesCount: z.number(),
+  timeWindow: z.string(),
+  hasSufficientData: z.boolean(),
+})
+
+export const MarketContractsResponseSchema = z.object({
+  items: z.record(z.string(), MarketContractItemSchema),
+})
+
 // Mutamarket schemas
 export const MutamarketModuleSchema = z.object({
   id: z.number(),

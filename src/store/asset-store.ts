@@ -5,7 +5,7 @@ import { getCharacterAssetNames, getCorporationAssetNames, type ESIAsset, type E
 import { getCharacterShip, getCharacterLocation } from '@/api/endpoints/location'
 import { esi, type ESIResponseMeta } from '@/api/esi'
 import { ESIAssetSchema } from '@/api/schemas'
-import { fetchPrices, resolveTypes } from '@/api/ref-client'
+import { fetchPrices, queuePriceRefresh, resolveTypes } from '@/api/ref-client'
 import { getType, getContractItemsSync } from '@/store/reference-cache'
 import { createOwnerDB } from '@/lib/owner-indexed-db'
 import { logger } from '@/lib/logger'
@@ -116,6 +116,7 @@ interface AssetState {
   unifiedAssetsByOwner: OwnerAssets[]
   assetNames: Map<number, string>
   prices: Map<number, number>
+  lastPriceRefreshAt: number | null
   isUpdating: boolean
   updateError: string | null
   updateProgress: { current: number; total: number } | null
@@ -145,10 +146,14 @@ const db = createOwnerDB<ESIAsset[]>({
 
 async function saveMetaToDB(
   assetNames: Map<number, string>,
-  prices: Map<number, number>
+  prices: Map<number, number>,
+  lastPriceRefreshAt?: number | null
 ): Promise<void> {
   await db.saveMeta('assetNames', Array.from(assetNames.entries()))
   await db.saveMeta('prices', Array.from(prices.entries()))
+  if (lastPriceRefreshAt !== undefined) {
+    await db.saveMeta('lastPriceRefreshAt', lastPriceRefreshAt)
+  }
 }
 
 function getAssetEndpoint(owner: Owner): string {
@@ -346,11 +351,14 @@ function buildSyntheticAssets(
   return syntheticByOwner
 }
 
+const PRICE_REFRESH_INTERVAL_MS = 60 * 60 * 1000
+
 export const useAssetStore = create<AssetStore>((set, get) => ({
   assetsByOwner: [],
   unifiedAssetsByOwner: [],
   assetNames: new Map(),
   prices: new Map(),
+  lastPriceRefreshAt: null,
   isUpdating: false,
   updateError: null,
   updateProgress: null,
@@ -365,16 +373,23 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
 
       const assetNamesEntries = await db.loadMeta<[number, string][]>('assetNames')
       const pricesEntries = await db.loadMeta<[number, number][]>('prices')
+      const lastPriceRefreshAt = await db.loadMeta<number | null>('lastPriceRefreshAt')
       const assetNames = new Map(assetNamesEntries ?? [])
       const prices = new Map(pricesEntries ?? [])
 
-      set({ assetsByOwner, assetNames, prices, initialized: true })
+      set({ assetsByOwner, assetNames, prices, lastPriceRefreshAt: lastPriceRefreshAt ?? null, initialized: true })
       get().rebuildSyntheticAssets()
       logger.info('Asset store initialized from DB', {
         module: 'AssetStore',
         owners: assetsByOwner.length,
         assets: assetsByOwner.reduce((sum, o) => sum + o.assets.length, 0),
       })
+
+      const pricesAreStale = !lastPriceRefreshAt || Date.now() - lastPriceRefreshAt > PRICE_REFRESH_INTERVAL_MS
+      if (pricesAreStale && prices.size > 0) {
+        logger.info('Prices are stale, triggering refresh', { module: 'AssetStore' })
+        get().refreshPrices()
+      }
     } catch (err) {
       logger.error('Failed to load assets from DB', err instanceof Error ? err : undefined, { module: 'AssetStore' })
       set({ initialized: true })
@@ -466,19 +481,21 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
       )
 
       const prices = new Map(state.prices)
+      let lastPriceRefreshAt = state.lastPriceRefreshAt
       if (typeIds.size > 0) {
         try {
           const fetchedPrices = await fetchPrices(Array.from(typeIds))
           for (const [id, price] of fetchedPrices) {
             prices.set(id, price)
           }
+          lastPriceRefreshAt = Date.now()
           logger.info('Prices loaded', { module: 'AssetStore', count: prices.size })
         } catch (err) {
           logger.error('Failed to fetch prices', err instanceof Error ? err : undefined, { module: 'AssetStore' })
         }
       }
 
-      await saveMetaToDB(allNames, prices)
+      await saveMetaToDB(allNames, prices, lastPriceRefreshAt)
 
       triggerResolution()
 
@@ -486,6 +503,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         assetsByOwner: results,
         assetNames: allNames,
         prices,
+        lastPriceRefreshAt,
         isUpdating: false,
         updateProgress: null,
         updateError: results.length === 0 ? 'Failed to fetch any assets' : null,
@@ -538,22 +556,13 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         }
       }
 
-      const updatedAssetsList = state.assetsByOwner
-        .filter((oa) => `${oa.owner.type}-${oa.owner.id}` !== ownerKey)
-        .concat([{ owner, assets }])
-
-      const typeIds = collectAllTypeIds(
-        updatedAssetsList,
-        useMarketOrdersStore.getState().dataByOwner,
-        useContractsStore.getState().contractsByOwner,
-        useIndustryJobsStore.getState().dataByOwner,
-        useStructuresStore.getState().dataByOwner
-      )
-
       const newPrices = new Map(state.prices)
-      if (typeIds.size > 0) {
+      const ownerTypeIds = new Set(assets.map((a) => a.type_id))
+      const deltaTypeIds = Array.from(ownerTypeIds).filter((id) => !newPrices.has(id))
+
+      if (deltaTypeIds.length > 0) {
         try {
-          const fetchedPrices = await fetchPrices(Array.from(typeIds))
+          const fetchedPrices = await queuePriceRefresh(deltaTypeIds)
           for (const [id, price] of fetchedPrices) {
             newPrices.set(id, price)
           }
@@ -642,8 +651,9 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
     logger.info('Refreshing prices', { module: 'AssetStore', typeCount: typeIds.size })
     try {
       const fetchedPrices = await fetchPrices(Array.from(typeIds))
-      await saveMetaToDB(state.assetNames, fetchedPrices)
-      set({ prices: fetchedPrices })
+      const now = Date.now()
+      await saveMetaToDB(get().assetNames, fetchedPrices, now)
+      set({ prices: fetchedPrices, lastPriceRefreshAt: now })
       logger.info('Prices refreshed', { module: 'AssetStore', count: fetchedPrices.size })
     } catch (err) {
       logger.error('Failed to refresh prices', err instanceof Error ? err : undefined, { module: 'AssetStore' })
@@ -675,6 +685,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
       unifiedAssetsByOwner: [],
       assetNames: new Map(),
       prices: new Map(),
+      lastPriceRefreshAt: null,
       updateError: null,
       updateProgress: null,
       initialized: false,
@@ -690,6 +701,20 @@ useExpiryCacheStore.getState().registerRefreshCallback(ENDPOINT_PATTERN, async (
   }
   await useAssetStore.getState().updateForOwner(owner)
 })
+
+function startPriceRefreshTimer() {
+  setInterval(async () => {
+    const state = useAssetStore.getState()
+    if (!state.initialized || state.isUpdating) return
+
+    if (useExpiryCacheStore.getState().isPaused) return
+
+    logger.info('Hourly price refresh triggered', { module: 'AssetStore' })
+    await state.refreshPrices()
+  }, PRICE_REFRESH_INTERVAL_MS)
+}
+
+startPriceRefreshTimer()
 
 export function setupSyntheticAssetSubscriptions(): void {
   const rebuild = () => useAssetStore.getState().rebuildSyntheticAssets()
