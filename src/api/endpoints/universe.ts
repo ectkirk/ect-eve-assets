@@ -183,7 +183,7 @@ export async function resolveNames(ids: number[]): Promise<Map<number, ESIName>>
   }
 
   if (toSave.length > 0) {
-    saveNames(toSave)
+    await saveNames(toSave)
   }
 
   return results

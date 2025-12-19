@@ -28,6 +28,14 @@ export interface OwnerDB<T> {
 
 export function createOwnerDB<T>(config: OwnerDBConfig<T>): OwnerDB<T> {
   const { dbName, storeName, dataKey, metaStoreName, version = 1, moduleName, serialize, deserialize } = config
+
+  if (!dataKey && !deserialize) {
+    throw new Error(`OwnerDB ${storeName}: either dataKey or deserialize must be provided`)
+  }
+  if (!dataKey && !serialize) {
+    throw new Error(`OwnerDB ${storeName}: either dataKey or serialize must be provided`)
+  }
+
   let db: IDBDatabase | null = null
 
   const openDB = async (): Promise<IDBDatabase> => {

@@ -158,8 +158,8 @@ export async function loadReferenceData(): Promise<void> {
     const categories = Object.values(categoriesResult.data.items)
     const groups = Object.values(groupsResult.data.items)
 
-    setCategories(categories)
-    setGroups(groups)
+    await setCategories(categories)
+    await setGroups(groups)
 
     const duration = Math.round(performance.now() - start)
     logger.info('Reference data loaded', { module: 'RefAPI', categories: categories.length, groups: groups.length, duration })

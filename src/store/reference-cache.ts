@@ -1,7 +1,7 @@
 import { logger } from '@/lib/logger'
 
 const DB_NAME = 'ecteveassets-cache'
-const DB_VERSION = 5
+const DB_VERSION = 7
 
 export interface CachedCategory {
   id: number
@@ -54,20 +54,6 @@ export interface CachedAbyssal {
   fetchedAt: number // timestamp
 }
 
-export interface CachedContractItems {
-  contractId: number
-  items: Array<{
-    record_id: number
-    type_id: number
-    quantity: number
-    is_included: boolean
-    is_singleton: boolean
-    raw_quantity?: number
-    item_id?: number
-    is_blueprint_copy?: boolean
-  }>
-}
-
 export interface CachedName {
   id: number
   name: string
@@ -81,7 +67,7 @@ let typesCache = new Map<number, CachedType>()
 let structuresCache = new Map<number, CachedStructure>()
 let locationsCache = new Map<number, CachedLocation>()
 let abyssalsCache = new Map<number, CachedAbyssal>()
-const namesCache = new Map<number, CachedName>()
+let namesCache = new Map<number, CachedName>()
 let initialized = false
 let referenceDataLoaded = false
 
@@ -128,8 +114,14 @@ async function openDB(): Promise<IDBDatabase> {
       if (!database.objectStoreNames.contains('abyssals')) {
         database.createObjectStore('abyssals', { keyPath: 'id' })
       }
-      if (!database.objectStoreNames.contains('contractItems')) {
-        database.createObjectStore('contractItems', { keyPath: 'contractId' })
+      if (!database.objectStoreNames.contains('names')) {
+        database.createObjectStore('names', { keyPath: 'id' })
+      }
+      if (!database.objectStoreNames.contains('categories')) {
+        database.createObjectStore('categories', { keyPath: 'id' })
+      }
+      if (!database.objectStoreNames.contains('groups')) {
+        database.createObjectStore('groups', { keyPath: 'id' })
       }
 
       if (oldVersion < 4 && database.objectStoreNames.contains('locations')) {
@@ -169,7 +161,11 @@ export async function initCache(): Promise<void> {
     structuresCache = await loadStore<CachedStructure>('structures')
     locationsCache = await loadStore<CachedLocation>('locations')
     abyssalsCache = await loadStore<CachedAbyssal>('abyssals')
+    namesCache = await loadStore<CachedName>('names')
+    categoriesCache = await loadStore<CachedCategory>('categories')
+    groupsCache = await loadStore<CachedGroup>('groups')
     initialized = true
+    referenceDataLoaded = groupsCache.size > 0
 
     logger.info('Reference cache initialized', {
       module: 'ReferenceCache',
@@ -177,6 +173,9 @@ export async function initCache(): Promise<void> {
       structures: structuresCache.size,
       locations: locationsCache.size,
       abyssals: abyssalsCache.size,
+      names: namesCache.size,
+      categories: categoriesCache.size,
+      groups: groupsCache.size,
     })
   } catch (err) {
     logger.error('Failed to initialize cache', err, { module: 'ReferenceCache' })
@@ -208,15 +207,47 @@ export function isReferenceDataLoaded(): boolean {
   return referenceDataLoaded
 }
 
-export function setCategories(categories: CachedCategory[]): void {
-  categoriesCache = new Map(categories.map(c => [c.id, c]))
-  logger.info('Categories loaded', { module: 'ReferenceCache', count: categories.length })
+export async function setCategories(categories: CachedCategory[]): Promise<void> {
+  if (categories.length === 0) return
+
+  const database = await openDB()
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction('categories', 'readwrite')
+    const store = tx.objectStore('categories')
+
+    tx.onerror = () => reject(tx.error)
+    tx.oncomplete = () => {
+      categoriesCache = new Map(categories.map(c => [c.id, c]))
+      logger.info('Categories saved', { module: 'ReferenceCache', count: categories.length })
+      resolve()
+    }
+
+    for (const category of categories) {
+      store.put(category)
+    }
+  })
 }
 
-export function setGroups(groups: CachedGroup[]): void {
-  groupsCache = new Map(groups.map(g => [g.id, g]))
-  referenceDataLoaded = true
-  logger.info('Groups loaded', { module: 'ReferenceCache', count: groups.length })
+export async function setGroups(groups: CachedGroup[]): Promise<void> {
+  if (groups.length === 0) return
+
+  const database = await openDB()
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction('groups', 'readwrite')
+    const store = tx.objectStore('groups')
+
+    tx.onerror = () => reject(tx.error)
+    tx.oncomplete = () => {
+      groupsCache = new Map(groups.map(g => [g.id, g]))
+      referenceDataLoaded = true
+      logger.info('Groups saved', { module: 'ReferenceCache', count: groups.length })
+      resolve()
+    }
+
+    for (const group of groups) {
+      store.put(group)
+    }
+  })
 }
 
 export function getStructure(id: number): CachedStructure | undefined {
@@ -264,12 +295,27 @@ export function hasName(id: number): boolean {
   return namesCache.has(id)
 }
 
-export function saveNames(names: CachedName[]): void {
+export async function saveNames(names: CachedName[]): Promise<void> {
   if (names.length === 0) return
-  for (const name of names) {
-    namesCache.set(name.id, name)
-  }
-  notifyListeners()
+
+  const database = await openDB()
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction('names', 'readwrite')
+    const store = tx.objectStore('names')
+
+    tx.onerror = () => reject(tx.error)
+    tx.oncomplete = () => {
+      for (const name of names) {
+        namesCache.set(name.id, name)
+      }
+      notifyListeners()
+      resolve()
+    }
+
+    for (const name of names) {
+      store.put(name)
+    }
+  })
 }
 
 
@@ -435,6 +481,27 @@ export async function clearAbyssalsCache(): Promise<void> {
   notifyListeners()
 }
 
+export async function clearNamesCache(): Promise<void> {
+  logger.info('Clearing names cache', { module: 'ReferenceCache' })
+  namesCache.clear()
+  await clearStore('names')
+  notifyListeners()
+}
+
+export async function clearCategoriesCache(): Promise<void> {
+  logger.info('Clearing categories cache', { module: 'ReferenceCache' })
+  categoriesCache.clear()
+  await clearStore('categories')
+  notifyListeners()
+}
+
+export async function clearGroupsCache(): Promise<void> {
+  logger.info('Clearing groups cache', { module: 'ReferenceCache' })
+  groupsCache.clear()
+  referenceDataLoaded = false
+  await clearStore('groups')
+  notifyListeners()
+}
 
 export const CategoryIds = {
   SHIP: 6,

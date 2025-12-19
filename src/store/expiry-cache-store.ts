@@ -126,7 +126,7 @@ async function saveToDB(key: string, expiry: EndpointExpiry): Promise<void> {
   })
 }
 
-async function deleteByPrefixFromDB(prefix: string): Promise<void> {
+async function deleteFromDBWhere(predicate: (key: string) => boolean): Promise<void> {
   const database = await openDB()
 
   return new Promise((resolve, reject) => {
@@ -137,30 +137,7 @@ async function deleteByPrefixFromDB(prefix: string): Promise<void> {
     request.onsuccess = () => {
       const cursor = request.result
       if (cursor) {
-        if ((cursor.key as string).startsWith(prefix)) {
-          cursor.delete()
-        }
-        cursor.continue()
-      }
-    }
-
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
-async function deleteByPatternFromDB(pattern: string): Promise<void> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_EXPIRY], 'readwrite')
-    const store = tx.objectStore(STORE_EXPIRY)
-    const request = store.openCursor()
-
-    request.onsuccess = () => {
-      const cursor = request.result
-      if (cursor) {
-        if ((cursor.key as string).includes(pattern)) {
+        if (predicate(cursor.key as string)) {
           cursor.delete()
         }
         cursor.continue()
@@ -187,8 +164,9 @@ function findCallback(
   callbacks: Map<string, RefreshCallback>,
   endpoint: string
 ): RefreshCallback | undefined {
-  for (const [pattern, callback] of callbacks) {
-    if (endpoint.includes(pattern)) return callback
+  const sortedPatterns = [...callbacks.keys()].sort((a, b) => b.length - a.length)
+  for (const pattern of sortedPatterns) {
+    if (endpoint.includes(pattern)) return callbacks.get(pattern)
   }
   return undefined
 }
@@ -465,7 +443,7 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
       return { endpoints, refreshQueue }
     })
 
-    deleteByPrefixFromDB(prefix).catch((error) => {
+    deleteFromDBWhere((key) => key.startsWith(prefix)).catch((error) => {
       logger.error('Failed to clear expiry for owner', error, { module: 'ExpiryCacheStore', ownerKey })
     })
 
@@ -483,7 +461,7 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
     })
 
     try {
-      await deleteByPatternFromDB(pattern)
+      await deleteFromDBWhere((key) => key.includes(pattern))
       logger.debug('Cleared expiry by endpoint', { module: 'ExpiryCacheStore', pattern })
     } catch (error) {
       logger.error('Failed to clear expiry by endpoint', error, { module: 'ExpiryCacheStore', pattern })

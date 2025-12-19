@@ -670,11 +670,22 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
     const syntheticByOwner = buildSyntheticAssets(contractsByOwner, ordersByOwner, jobsByOwner, structuresByOwner)
 
     const state = get()
+    const assetOwnerKeys = new Set(state.assetsByOwner.map(({ owner }) => makeOwnerKey(owner.type, owner.id)))
+
     const unifiedAssetsByOwner: OwnerAssets[] = state.assetsByOwner.map(({ owner, assets }) => {
       const key = makeOwnerKey(owner.type, owner.id)
       const synthetics = syntheticByOwner.get(key) ?? []
       return { owner, assets: [...assets, ...synthetics] }
     })
+
+    for (const [key, synthetics] of syntheticByOwner) {
+      if (!assetOwnerKeys.has(key) && synthetics.length > 0) {
+        const owner = findOwnerByKey(key)
+        if (owner) {
+          unifiedAssetsByOwner.push({ owner, assets: synthetics })
+        }
+      }
+    }
 
     set({ unifiedAssetsByOwner })
   },

@@ -119,6 +119,8 @@ export function createOwnerStore<
     })
   }
 
+  const updatingOwners = new Set<string>()
+
   const storeCreator: StateCreator<OwnerStore<TOwnerData, TExtraState, TExtraActions>> = (
     set,
     get
@@ -289,13 +291,21 @@ export function createOwnerStore<
           return
         }
 
+        const ownerKey = `${owner.type}-${owner.id}`
+        if (updatingOwners.has(ownerKey)) {
+          logger.debug(`Skipping ${name} update for ${owner.name} - already in progress`, {
+            module: moduleName,
+          })
+          return
+        }
+        updatingOwners.add(ownerKey)
+
         const state = get()
         const preHookResult = onBeforeOwnerUpdate
           ? onBeforeOwnerUpdate(owner, state as BaseState<TOwnerData> & TExtraState)
           : {}
 
         try {
-          const ownerKey = `${owner.type}-${owner.id}`
           const endpoint = getEndpoint(owner)
 
           logger.info(`Fetching ${name} for owner`, { module: moduleName, owner: owner.name })
@@ -342,6 +352,8 @@ export function createOwnerStore<
               module: moduleName,
             })
           }
+        } finally {
+          updatingOwners.delete(ownerKey)
         }
       },
 
