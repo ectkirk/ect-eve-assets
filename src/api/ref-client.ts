@@ -92,10 +92,20 @@ async function processChunksParallel<T, R>(
   return results
 }
 
-let inFlightTypes: Promise<Map<number, RefType>> | null = null
+interface TypeFetchResult {
+  requestedIds: number[]
+  results: Map<number, RefType>
+}
+
+interface LocationFetchResult {
+  requestedIds: number[]
+  results: Map<number, RefUniverseItem>
+}
+
+let inFlightTypes: Promise<TypeFetchResult> | null = null
 let pendingTypeIds = new Set<number>()
 
-let inFlightLocations: Promise<Map<number, RefUniverseItem>> | null = null
+let inFlightLocations: Promise<LocationFetchResult> | null = null
 let pendingLocationIds = new Set<number>()
 
 let referenceDataPromise: Promise<void> | null = null
@@ -274,14 +284,15 @@ async function fetchUniverseFromAPI(ids: number[]): Promise<Map<number, RefUnive
   return results
 }
 
-async function executeTypesFetch(): Promise<Map<number, RefType>> {
-  const idsToFetch = Array.from(pendingTypeIds)
+async function executeTypesFetch(): Promise<TypeFetchResult> {
+  const requestedIds = Array.from(pendingTypeIds)
   pendingTypeIds = new Set()
 
-  if (idsToFetch.length === 0) return new Map()
+  if (requestedIds.length === 0) return { requestedIds: [], results: new Map() }
 
-  logger.debug(`Fetching ${idsToFetch.length} types from ref API`, { module: 'RefAPI' })
-  return fetchTypesFromAPI(idsToFetch)
+  logger.debug(`Fetching ${requestedIds.length} types from ref API`, { module: 'RefAPI' })
+  const results = await fetchTypesFromAPI(requestedIds)
+  return { requestedIds, results }
 }
 
 export async function resolveTypes(typeIds: number[]): Promise<Map<number, CachedType>> {
@@ -306,7 +317,8 @@ export async function resolveTypes(typeIds: number[]): Promise<Map<number, Cache
     inFlightTypes = executeTypesFetch().finally(() => { inFlightTypes = null })
   }
 
-  const fetched = await inFlightTypes
+  const { requestedIds, results: fetched } = await inFlightTypes
+  const requestedSet = new Set(requestedIds)
   const toCache: CachedType[] = []
 
   for (const id of uncachedIds) {
@@ -337,7 +349,7 @@ export async function resolveTypes(typeIds: number[]): Promise<Map<number, Cache
       }
       results.set(id, cached)
       toCache.push(cached)
-    } else {
+    } else if (requestedSet.has(id) && fetched.size > 0) {
       const placeholder: CachedType = {
         id,
         name: `Unknown Type ${id}`,
@@ -360,14 +372,15 @@ export async function resolveTypes(typeIds: number[]): Promise<Map<number, Cache
   return results
 }
 
-async function executeLocationsFetch(): Promise<Map<number, RefUniverseItem>> {
-  const idsToFetch = Array.from(pendingLocationIds)
+async function executeLocationsFetch(): Promise<LocationFetchResult> {
+  const requestedIds = Array.from(pendingLocationIds)
   pendingLocationIds = new Set()
 
-  if (idsToFetch.length === 0) return new Map()
+  if (requestedIds.length === 0) return { requestedIds: [], results: new Map() }
 
-  logger.debug(`Fetching ${idsToFetch.length} locations from ref API`, { module: 'RefAPI' })
-  return fetchUniverseFromAPI(idsToFetch)
+  logger.debug(`Fetching ${requestedIds.length} locations from ref API`, { module: 'RefAPI' })
+  const results = await fetchUniverseFromAPI(requestedIds)
+  return { requestedIds, results }
 }
 
 export async function resolveLocations(locationIds: number[]): Promise<Map<number, CachedLocation>> {
@@ -390,7 +403,8 @@ export async function resolveLocations(locationIds: number[]): Promise<Map<numbe
     inFlightLocations = executeLocationsFetch().finally(() => { inFlightLocations = null })
   }
 
-  const fetched = await inFlightLocations
+  const { requestedIds, results: fetched } = await inFlightLocations
+  const requestedSet = new Set(requestedIds)
   const toCache: CachedLocation[] = []
 
   for (const id of uncachedIds) {
@@ -413,20 +427,14 @@ export async function resolveLocations(locationIds: number[]): Promise<Map<numbe
       }
       results.set(id, cached)
       toCache.push(cached)
-    }
-  }
-
-  if (fetched.size > 0) {
-    for (const id of uncachedIds) {
-      if (!results.has(id)) {
-        const placeholder: CachedLocation = {
-          id,
-          name: `Unknown Location ${id}`,
-          type: 'station',
-        }
-        results.set(id, placeholder)
-        toCache.push(placeholder)
+    } else if (requestedSet.has(id) && fetched.size > 0) {
+      const placeholder: CachedLocation = {
+        id,
+        name: `Unknown Location ${id}`,
+        type: 'station',
       }
+      results.set(id, placeholder)
+      toCache.push(placeholder)
     }
   }
 
@@ -683,13 +691,20 @@ function categorizeTypeIdsByEndpoint(typeIds: number[]): {
 async function fetchPricesRouted(typeIds: number[]): Promise<Map<number, number>> {
   if (typeIds.length === 0) return new Map()
 
-  const { plexIds, contractIds, jitaIds } = categorizeTypeIdsByEndpoint(typeIds)
+  await resolveTypes(typeIds)
+
+  const { plexIds, contractIds } = categorizeTypeIdsByEndpoint(typeIds)
   const results = new Map<number, number>()
 
-  const promises: Promise<void>[] = []
+  const jitaPrices = await fetchJitaPricesFromAPI(typeIds)
+  for (const [id, price] of jitaPrices) {
+    results.set(id, price)
+  }
+
+  const enhancePromises: Promise<void>[] = []
 
   if (plexIds.length > 0) {
-    promises.push(
+    enhancePromises.push(
       fetchPlexPriceFromAPI().then((price) => {
         if (price !== null) {
           for (const id of plexIds) {
@@ -701,7 +716,7 @@ async function fetchPricesRouted(typeIds: number[]): Promise<Map<number, number>
   }
 
   if (contractIds.length > 0) {
-    promises.push(
+    enhancePromises.push(
       fetchContractPricesFromAPI(contractIds).then((prices) => {
         for (const [id, price] of prices) {
           results.set(id, price)
@@ -710,24 +725,16 @@ async function fetchPricesRouted(typeIds: number[]): Promise<Map<number, number>
     )
   }
 
-  if (jitaIds.length > 0) {
-    promises.push(
-      fetchJitaPricesFromAPI(jitaIds).then((prices) => {
-        for (const [id, price] of prices) {
-          results.set(id, price)
-        }
-      })
-    )
+  if (enhancePromises.length > 0) {
+    await Promise.all(enhancePromises)
   }
-
-  await Promise.all(promises)
 
   logger.info('Prices fetched', {
     module: 'RefAPI',
     total: typeIds.length,
+    jita: jitaPrices.size,
     plex: plexIds.length,
     contracts: contractIds.length,
-    jita: jitaIds.length,
     returned: results.size,
   })
 

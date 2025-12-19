@@ -328,6 +328,15 @@ export async function resolveAllReferenceData(ids: ResolutionIds): Promise<void>
 
   await Promise.all([typesPromise, entitiesPromise, locationsPromise])
 
+  if (ids.typeIds.size > 0) {
+    const { fetchPrices } = await import('@/api/ref-client')
+    const { useAssetStore } = await import('@/store/asset-store')
+    const prices = await fetchPrices(Array.from(ids.typeIds))
+    if (prices.size > 0) {
+      await useAssetStore.getState().setPrices(prices)
+    }
+  }
+
   logger.info('Reference data resolution complete', { module: 'DataResolver' })
 }
 

@@ -6,7 +6,7 @@ import { getCharacterShip, getCharacterLocation } from '@/api/endpoints/location
 import { esi, type ESIResponseMeta } from '@/api/esi'
 import { ESIAssetSchema } from '@/api/schemas'
 import { fetchPrices, queuePriceRefresh, resolveTypes } from '@/api/ref-client'
-import { getType, getContractItemsSync } from '@/store/reference-cache'
+import { getType, getContractItems, getContractItemsSync, hasContractItems } from '@/store/reference-cache'
 import { createOwnerDB } from '@/lib/owner-indexed-db'
 import { logger } from '@/lib/logger'
 import { triggerResolution } from '@/lib/data-resolver'
@@ -196,13 +196,13 @@ async function fetchOwnerAssetNames(owner: Owner, assets: ESIAsset[]): Promise<E
   return getCharacterAssetNames(owner.id, owner.characterId, nameableIds)
 }
 
-function collectAllTypeIds(
+async function collectAllTypeIds(
   assetsByOwner: OwnerAssets[],
   ordersByOwner: OwnerOrders[],
   contractsByOwner: OwnerContracts[],
   jobsByOwner: OwnerJobs[],
   structuresByOwner: OwnerStructures[]
-): Set<number> {
+): Promise<Set<number>> {
   const typeIds = new Set<number>()
 
   for (const { assets } of assetsByOwner) {
@@ -219,10 +219,12 @@ function collectAllTypeIds(
 
   for (const { contracts } of contractsByOwner) {
     for (const { contract } of contracts) {
-      const items = getContractItemsSync(contract.contract_id)
-      if (items) {
-        for (const item of items) {
-          typeIds.add(item.type_id)
+      if (hasContractItems(contract.contract_id)) {
+        const items = await getContractItems(contract.contract_id)
+        if (items) {
+          for (const item of items) {
+            typeIds.add(item.type_id)
+          }
         }
       }
     }
@@ -472,7 +474,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
 
       const results = Array.from(existingAssets.values())
 
-      const typeIds = collectAllTypeIds(
+      const typeIds = await collectAllTypeIds(
         results,
         useMarketOrdersStore.getState().dataByOwner,
         useContractsStore.getState().contractsByOwner,
@@ -635,7 +637,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
 
   refreshPrices: async () => {
     const state = get()
-    const typeIds = collectAllTypeIds(
+    const typeIds = await collectAllTypeIds(
       state.assetsByOwner,
       useMarketOrdersStore.getState().dataByOwner,
       useContractsStore.getState().contractsByOwner,
@@ -652,9 +654,13 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
     try {
       const fetchedPrices = await fetchPrices(Array.from(typeIds))
       const now = Date.now()
-      await saveMetaToDB(get().assetNames, fetchedPrices, now)
-      set({ prices: fetchedPrices, lastPriceRefreshAt: now })
-      logger.info('Prices refreshed', { module: 'AssetStore', count: fetchedPrices.size })
+      const merged = new Map(get().prices)
+      for (const [id, price] of fetchedPrices) {
+        merged.set(id, price)
+      }
+      await saveMetaToDB(get().assetNames, merged, now)
+      set({ prices: merged, lastPriceRefreshAt: now })
+      logger.info('Prices refreshed', { module: 'AssetStore', count: merged.size })
     } catch (err) {
       logger.error('Failed to refresh prices', err instanceof Error ? err : undefined, { module: 'AssetStore' })
     }

@@ -11,6 +11,7 @@ import { useExpiryCacheStore } from './store/expiry-cache-store'
 import { useNotificationStore } from './store/toast-store'
 import { MainLayout } from './components/layout/MainLayout'
 import { initCache } from './store/reference-cache'
+import { loadReferenceData } from './api/ref-client'
 import { logger } from './lib/logger'
 import { setupESITokenProvider } from './api/esi'
 import { initTheme } from './store/theme-store'
@@ -92,6 +93,7 @@ function App() {
     initCache()
       .then(() => {
         logger.info('Cache initialized', { module: 'App' })
+        loadReferenceData().catch(() => {})
         return useExpiryCacheStore.getState().init()
       })
       .then(() => {
@@ -114,6 +116,7 @@ function App() {
         logger.info('All stores initialized', { module: 'App' })
         setupSyntheticAssetSubscriptions()
         useAssetStore.getState().rebuildSyntheticAssets()
+        useAssetStore.getState().refreshPrices()
         const ownerKeys = Object.keys(useAuthStore.getState().owners)
         useExpiryCacheStore.getState().queueMissingEndpoints(ownerKeys)
         appInitComplete = true

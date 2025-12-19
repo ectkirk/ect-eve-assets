@@ -501,6 +501,7 @@ const REF_API_KEY = process.env['REF_API_KEY'] || ''
 const MAX_REF_IDS = 1000
 const REF_MAX_RETRIES = 3
 const REF_RETRY_BASE_DELAY_MS = 2000
+const REF_MIN_REQUEST_INTERVAL_MS = 250
 
 function getRefHeaders(contentType?: 'json'): Record<string, string> {
   const headers: Record<string, string> = {
@@ -516,6 +517,7 @@ function getRefHeaders(contentType?: 'json'): Record<string, string> {
 }
 
 let refGlobalRetryAfter = 0
+let refLastRequestTime = 0
 
 function setRefGlobalBackoff(delayMs: number): void {
   const retryAt = Date.now() + delayMs
@@ -525,13 +527,21 @@ function setRefGlobalBackoff(delayMs: number): void {
   }
 }
 
-async function waitForGlobalBackoff(): Promise<void> {
+async function waitForRefRateLimit(): Promise<void> {
   const now = Date.now()
+
   if (refGlobalRetryAfter > now) {
     const waitMs = refGlobalRetryAfter - now
     logger.debug('Waiting for global backoff', { module: 'Main', waitMs })
     await new Promise((r) => setTimeout(r, waitMs))
   }
+
+  const timeSinceLastRequest = Date.now() - refLastRequestTime
+  if (timeSinceLastRequest < REF_MIN_REQUEST_INTERVAL_MS) {
+    await new Promise((r) => setTimeout(r, REF_MIN_REQUEST_INTERVAL_MS - timeSinceLastRequest))
+  }
+
+  refLastRequestTime = Date.now()
 }
 
 async function fetchRefWithRetry(url: string, options: RequestInit): Promise<Response> {
@@ -579,7 +589,7 @@ ipcMain.handle('ref:types', async (_event, ids: unknown, stationId?: unknown) =>
     return { error: 'Invalid station_id' }
   }
 
-  await waitForGlobalBackoff()
+  await waitForRefRateLimit()
   try {
     let url = `${REF_API_BASE}/types`
     if (stationId) {
@@ -601,7 +611,7 @@ ipcMain.handle('ref:types', async (_event, ids: unknown, stationId?: unknown) =>
 })
 
 ipcMain.handle('ref:categories', async () => {
-  await waitForGlobalBackoff()
+  await waitForRefRateLimit()
   try {
     const response = await fetchRefWithRetry(`${REF_API_BASE}/categories`, {
       headers: getRefHeaders(),
@@ -617,7 +627,7 @@ ipcMain.handle('ref:categories', async () => {
 })
 
 ipcMain.handle('ref:groups', async () => {
-  await waitForGlobalBackoff()
+  await waitForRefRateLimit()
   try {
     const response = await fetchRefWithRetry(`${REF_API_BASE}/groups`, {
       headers: getRefHeaders(),
@@ -640,7 +650,7 @@ ipcMain.handle('ref:implants', async (_event, ids: unknown) => {
     return { error: 'Invalid id values' }
   }
 
-  await waitForGlobalBackoff()
+  await waitForRefRateLimit()
   try {
     const response = await fetchRefWithRetry(`${REF_API_BASE}/implants`, {
       method: 'POST',
@@ -665,7 +675,7 @@ ipcMain.handle('ref:universe', async (_event, ids: unknown) => {
     return { error: 'Invalid id values' }
   }
 
-  await waitForGlobalBackoff()
+  await waitForRefRateLimit()
   try {
     const response = await fetchRefWithRetry(`${REF_API_BASE}/universe`, {
       method: 'POST',
@@ -690,7 +700,7 @@ ipcMain.handle('ref:ships', async (_event, ids: unknown) => {
     return { error: 'Invalid id values' }
   }
 
-  await waitForGlobalBackoff()
+  await waitForRefRateLimit()
   try {
     const response = await fetchRefWithRetry(`${REF_API_BASE}/ships`, {
       method: 'POST',
@@ -722,7 +732,7 @@ ipcMain.handle('ref:market', async (_event, params: unknown) => {
     return { error: 'Invalid typeId values' }
   }
 
-  await waitForGlobalBackoff()
+  await waitForRefRateLimit()
   try {
     const body: Record<string, unknown> = {
       regionId: p.regionId,
@@ -755,7 +765,7 @@ ipcMain.handle('ref:marketJita', async (_event, typeIds: unknown) => {
     return { error: 'Invalid typeId values' }
   }
 
-  await waitForGlobalBackoff()
+  await waitForRefRateLimit()
   try {
     const response = await fetchRefWithRetry(`${REF_API_BASE}/market/jita`, {
       method: 'POST',
@@ -773,7 +783,7 @@ ipcMain.handle('ref:marketJita', async (_event, typeIds: unknown) => {
 })
 
 ipcMain.handle('ref:marketPlex', async () => {
-  await waitForGlobalBackoff()
+  await waitForRefRateLimit()
   try {
     const response = await fetchRefWithRetry(`${REF_API_BASE}/market/plex`, {
       headers: getRefHeaders(),
@@ -796,7 +806,7 @@ ipcMain.handle('ref:marketContracts', async (_event, typeIds: unknown) => {
     return { error: 'Invalid typeId values' }
   }
 
-  await waitForGlobalBackoff()
+  await waitForRefRateLimit()
   try {
     const response = await fetchRefWithRetry(`${REF_API_BASE}/market/contracts`, {
       method: 'POST',
@@ -825,7 +835,7 @@ ipcMain.handle('ref:manufacturingCost', async (_event, params: unknown) => {
     return { error: 'product_id or blueprint_id is required' }
   }
 
-  await waitForGlobalBackoff()
+  await waitForRefRateLimit()
   try {
     const searchParams = new URLSearchParams()
     for (const [key, value] of Object.entries(p)) {
@@ -859,7 +869,7 @@ ipcMain.handle('ref:blueprintResearch', async (_event, params: unknown) => {
     return { error: 'system_id is required' }
   }
 
-  await waitForGlobalBackoff()
+  await waitForRefRateLimit()
   try {
     const searchParams = new URLSearchParams()
     for (const [key, value] of Object.entries(p)) {
@@ -882,7 +892,7 @@ ipcMain.handle('ref:blueprintResearch', async (_event, params: unknown) => {
 })
 
 ipcMain.handle('ref:blueprints', async () => {
-  await waitForGlobalBackoff()
+  await waitForRefRateLimit()
   try {
     const response = await fetchRefWithRetry(`${REF_API_BASE}/blueprints`, {
       headers: getRefHeaders(),
@@ -898,7 +908,7 @@ ipcMain.handle('ref:blueprints', async () => {
 })
 
 ipcMain.handle('ref:systems', async () => {
-  await waitForGlobalBackoff()
+  await waitForRefRateLimit()
   try {
     const response = await fetchRefWithRetry(`${REF_API_BASE}/systems`, {
       headers: getRefHeaders(),
@@ -927,7 +937,7 @@ ipcMain.handle(
       return { error: 'Config is required' }
     }
 
-    await waitForGlobalBackoff()
+    await waitForRefRateLimit()
     try {
       const response = await fetchRefWithRetry(`${REF_API_BASE}/buyback/calculate`, {
         method: 'POST',
@@ -953,7 +963,7 @@ ipcMain.handle(
       return { error: 'Text is required' }
     }
 
-    await waitForGlobalBackoff()
+    await waitForRefRateLimit()
     try {
       const response = await fetchRefWithRetry('https://edencom.net/api/buyback/calculator', {
         method: 'POST',

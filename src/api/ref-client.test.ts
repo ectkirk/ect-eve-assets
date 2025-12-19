@@ -108,16 +108,32 @@ describe('ref-client', () => {
       expect(saveTypes).toHaveBeenCalled()
     })
 
-    it('creates placeholder for types not returned by API', async () => {
+    it('creates placeholder for types not returned by API when API succeeds', async () => {
+      vi.mocked(getType).mockReturnValue(undefined)
+
+      mockRefTypes.mockResolvedValueOnce({
+        items: {
+          '34': { id: 34, name: 'Tritanium', groupId: 18 },
+        },
+      })
+
+      const result = await runWithTimers(resolveTypes([34, 99999]))
+
+      expect(result.size).toBe(2)
+      expect(result.get(34)?.name).toBe('Tritanium')
+      expect(result.get(99999)?.name).toBe('Unknown Type 99999')
+      expect(saveTypes).toHaveBeenCalled()
+    })
+
+    it('does not create placeholder when API returns empty (prevents caching on failures)', async () => {
       vi.mocked(getType).mockReturnValue(undefined)
 
       mockRefTypes.mockResolvedValueOnce({ items: {} })
 
       const result = await runWithTimers(resolveTypes([99999]))
 
-      expect(result.size).toBe(1)
-      expect(result.get(99999)?.name).toBe('Unknown Type 99999')
-      expect(saveTypes).toHaveBeenCalled()
+      expect(result.size).toBe(0)
+      expect(saveTypes).not.toHaveBeenCalled()
     })
 
     it('skips already cached Unknown Types', async () => {
@@ -142,26 +158,26 @@ describe('ref-client', () => {
       expect(result.get(99999)?.name).toBe('Unknown Type 99999')
     })
 
-    it('handles API errors gracefully and creates placeholder', async () => {
+    it('handles API errors gracefully without caching bad placeholders', async () => {
       vi.mocked(getType).mockReturnValue(undefined)
 
       mockRefTypes.mockResolvedValueOnce({ error: 'HTTP 500' })
 
       const result = await runWithTimers(resolveTypes([34]))
 
-      expect(result.size).toBe(1)
-      expect(result.get(34)?.name).toBe('Unknown Type 34')
+      expect(result.size).toBe(0)
+      expect(saveTypes).not.toHaveBeenCalled()
     })
 
-    it('handles network errors gracefully and creates placeholder', async () => {
+    it('handles network errors gracefully without caching bad placeholders', async () => {
       vi.mocked(getType).mockReturnValue(undefined)
 
       mockRefTypes.mockRejectedValueOnce(new Error('Network error'))
 
       const result = await runWithTimers(resolveTypes([34]))
 
-      expect(result.size).toBe(1)
-      expect(result.get(34)?.name).toBe('Unknown Type 34')
+      expect(result.size).toBe(0)
+      expect(saveTypes).not.toHaveBeenCalled()
     })
 
     it('chunks requests for large type lists', async () => {
