@@ -112,8 +112,31 @@ let manualMaximized = false
 let restoreBounds: Electron.Rectangle | null = null
 const characterTokens = new Map<number, string>()
 
+function getValidatedWindowState(state: WindowState): WindowState {
+  if (state.x === undefined || state.y === undefined) {
+    return state
+  }
+  const displays = screen.getAllDisplays()
+  const centerX = state.x + state.width / 2
+  const centerY = state.y + state.height / 2
+  for (const display of displays) {
+    const { x, y, width, height } = display.workArea
+    if (centerX >= x && centerX < x + width && centerY >= y && centerY < y + height) {
+      return state
+    }
+  }
+  const primary = screen.getPrimaryDisplay().workArea
+  return {
+    ...state,
+    x: primary.x + Math.round((primary.width - state.width) / 2),
+    y: primary.y + Math.round((primary.height - state.height) / 2),
+    width: Math.min(state.width, primary.width),
+    height: Math.min(state.height, primary.height),
+  }
+}
+
 function createWindow() {
-  const savedState = loadWindowState()
+  const savedState = getValidatedWindowState(loadWindowState())
 
   mainWindow = new BrowserWindow({
     x: savedState.x,
@@ -142,25 +165,34 @@ function createWindow() {
   }
 
   let normalBounds = mainWindow.getBounds()
+  let saveTimeout: NodeJS.Timeout | null = null
 
   const saveCurrentState = () => {
     if (!mainWindow) return
-    const isMaximized = mainWindow.isMaximized()
-    if (!isMaximized) {
+    const isMax = manualMaximized || mainWindow.isMaximized()
+    if (!isMax) {
       normalBounds = mainWindow.getBounds()
     }
     saveWindowState({
       ...normalBounds,
-      isMaximized,
+      isMaximized: isMax,
     })
   }
 
-  mainWindow.on('close', saveCurrentState)
+  const debouncedSave = () => {
+    if (saveTimeout) clearTimeout(saveTimeout)
+    saveTimeout = setTimeout(saveCurrentState, 300)
+  }
+
+  mainWindow.on('close', () => {
+    if (saveTimeout) clearTimeout(saveTimeout)
+    saveCurrentState()
+  })
   mainWindow.on('resize', () => {
-    if (!mainWindow?.isMaximized()) saveCurrentState()
+    if (!manualMaximized && !mainWindow?.isMaximized()) debouncedSave()
   })
   mainWindow.on('move', () => {
-    if (!mainWindow?.isMaximized()) saveCurrentState()
+    if (!manualMaximized && !mainWindow?.isMaximized()) debouncedSave()
   })
 
   // Open external links in default browser (validate protocol)
@@ -263,9 +295,15 @@ function createWindow() {
   })
 
   mainWindow.on('maximize', () => {
+    if (!manualMaximized && mainWindow) {
+      restoreBounds = normalBounds
+    }
+    manualMaximized = true
     mainWindow?.webContents.send('window:maximizeChange', true)
   })
   mainWindow.on('unmaximize', () => {
+    manualMaximized = false
+    restoreBounds = null
     mainWindow?.webContents.send('window:maximizeChange', false)
   })
 
@@ -1085,12 +1123,31 @@ ipcMain.handle('window:minimize', () => {
   mainWindow?.minimize()
 })
 
+function getValidBounds(bounds: Electron.Rectangle): Electron.Rectangle {
+  const displays = screen.getAllDisplays()
+  for (const display of displays) {
+    const { x, y, width, height } = display.workArea
+    const centerX = bounds.x + bounds.width / 2
+    const centerY = bounds.y + bounds.height / 2
+    if (centerX >= x && centerX < x + width && centerY >= y && centerY < y + height) {
+      return bounds
+    }
+  }
+  const primary = screen.getPrimaryDisplay().workArea
+  return {
+    x: primary.x + Math.round((primary.width - bounds.width) / 2),
+    y: primary.y + Math.round((primary.height - bounds.height) / 2),
+    width: Math.min(bounds.width, primary.width),
+    height: Math.min(bounds.height, primary.height),
+  }
+}
+
 ipcMain.handle('window:maximize', () => {
   if (!mainWindow) return
 
   if (manualMaximized) {
     if (restoreBounds) {
-      mainWindow.setBounds(restoreBounds)
+      mainWindow.setBounds(getValidBounds(restoreBounds))
     }
     manualMaximized = false
     mainWindow.webContents.send('window:maximizeChange', false)
