@@ -16,7 +16,7 @@ import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useContractsStore, type ContractWithItems } from '@/store/contracts-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { type ESIContract, type ESIContractItem } from '@/api/endpoints/contracts'
-import { hasType, getType, hasContractItems, getContractItemsBatch, saveContractItems } from '@/store/reference-cache'
+import { hasType, getType } from '@/store/reference-cache'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import { useAssetStore } from '@/store/asset-store'
 import { getName } from '@/api/endpoints/universe'
@@ -463,19 +463,15 @@ export function ContractsTab() {
   }, [init])
 
   useEffect(() => {
-    const loadCachedItems = async () => {
-      const contractIds: number[] = []
-      for (const { contracts } of contractsByOwner) {
-        for (const { contract } of contracts) {
-          if (hasContractItems(contract.contract_id)) {
-            contractIds.push(contract.contract_id)
-          }
+    const itemsMap = new Map<number, ESIContractItem[]>()
+    for (const { contracts } of contractsByOwner) {
+      for (const { contract, items } of contracts) {
+        if (items) {
+          itemsMap.set(contract.contract_id, items)
         }
       }
-      const batchResult = await getContractItemsBatch(contractIds)
-      setLoadedItems(batchResult as Map<number, ESIContractItem[]>)
     }
-    loadCachedItems()
+    setLoadedItems(itemsMap)
   }, [contractsByOwner, updateCounter])
 
   const cacheVersion = useCacheVersion()
@@ -493,11 +489,10 @@ export function ContractsTab() {
 
     const fetchCompletedItems = async () => {
       const contractsToFetch: number[] = []
-      const contractsToMarkEmpty: number[] = []
 
       for (const { contracts } of contractsByOwner) {
-        for (const { contract } of contracts) {
-          if (hasContractItems(contract.contract_id)) continue
+        for (const { contract, items } of contracts) {
+          if (items !== undefined) continue
 
           const isActive = contract.status === 'outstanding' || contract.status === 'in_progress'
           if (isActive) continue
@@ -507,16 +502,10 @@ export function ContractsTab() {
           const refTime = new Date(contract.date_completed ?? contract.date_expired).getTime()
           const isWithin30Days = Date.now() - refTime < THIRTY_DAYS_MS
 
-          if (!isItemContract || !isFinished || !isWithin30Days) {
-            contractsToMarkEmpty.push(contract.contract_id)
-          } else {
+          if (isItemContract && isFinished && isWithin30Days) {
             contractsToFetch.push(contract.contract_id)
           }
         }
-      }
-
-      if (contractsToMarkEmpty.length > 0) {
-        await Promise.all(contractsToMarkEmpty.map((id) => saveContractItems(id, [])))
       }
 
       if (contractsToFetch.length === 0) return

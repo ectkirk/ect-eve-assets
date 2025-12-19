@@ -13,7 +13,6 @@ import {
   clearLocationsCache,
   clearStructuresCache,
   clearAbyssalsCache,
-  clearContractItemsCache,
 } from '@/store/reference-cache'
 import { useAssetStore } from '@/store/asset-store'
 import { useMarketOrdersStore } from '@/store/market-orders-store'
@@ -123,10 +122,7 @@ const CACHE_OPTIONS: CacheOption[] = [
     group: 'data',
     requiresReload: false,
     endpointPattern: '/contracts/',
-    clear: async () => {
-      await useContractsStore.getState().clear()
-      await clearContractItemsCache()
-    },
+    clear: () => useContractsStore.getState().clear(),
     refetch: async () => {
       await useContractsStore.getState().init()
       await useContractsStore.getState().update(true)

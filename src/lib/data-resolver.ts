@@ -14,8 +14,6 @@ import {
   hasLocation,
   hasStructure,
   getStructure,
-  hasContractItems,
-  getContractItems,
 } from '@/store/reference-cache'
 import { resolveTypes, resolveLocations } from '@/api/ref-client'
 import { resolveStructures, resolveNames } from '@/api/endpoints/universe'
@@ -86,10 +84,10 @@ function collectFromAssets(
   }
 }
 
-async function collectFromContracts(
+function collectFromContracts(
   contractsByOwner: OwnerContracts[],
   ids: ResolutionIds
-): Promise<void> {
+): void {
   const checkLocation = (locationId: number | undefined, characterId: number) => {
     if (!locationId) return
     if (locationId > 1_000_000_000_000) {
@@ -102,7 +100,7 @@ async function collectFromContracts(
   }
 
   for (const { owner, contracts } of contractsByOwner) {
-    for (const { contract } of contracts) {
+    for (const { contract, items } of contracts) {
       checkLocation(contract.start_location_id, owner.characterId)
       checkLocation(contract.end_location_id, owner.characterId)
 
@@ -111,13 +109,10 @@ async function collectFromContracts(
         ids.entityIds.add(contract.assignee_id)
       }
 
-      if (hasContractItems(contract.contract_id)) {
-        const items = await getContractItems(contract.contract_id)
-        if (items) {
-          for (const item of items) {
-            if (needsTypeResolution(item.type_id)) {
-              ids.typeIds.add(item.type_id)
-            }
+      if (items) {
+        for (const item of items) {
+          if (needsTypeResolution(item.type_id)) {
+            ids.typeIds.add(item.type_id)
           }
         }
       }
@@ -275,7 +270,7 @@ export async function collectResolutionIds(
   }
 
   collectFromAssets(assetsByOwner, ids)
-  await collectFromContracts(contractsByOwner, ids)
+  collectFromContracts(contractsByOwner, ids)
   collectFromOrders(ordersByOwner, ids)
   collectFromJobs(jobsByOwner, ids)
   collectFromStructures(structuresByOwner, ids)

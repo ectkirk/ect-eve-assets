@@ -6,7 +6,7 @@ import { getCharacterShip, getCharacterLocation } from '@/api/endpoints/location
 import { esi, type ESIResponseMeta } from '@/api/esi'
 import { ESIAssetSchema } from '@/api/schemas'
 import { fetchPrices, queuePriceRefresh, resolveTypes } from '@/api/ref-client'
-import { getType, getContractItems, getContractItemsSync, hasContractItems } from '@/store/reference-cache'
+import { getType } from '@/store/reference-cache'
 import { createOwnerDB } from '@/lib/owner-indexed-db'
 import { logger } from '@/lib/logger'
 import { triggerResolution } from '@/lib/data-resolver'
@@ -196,13 +196,13 @@ async function fetchOwnerAssetNames(owner: Owner, assets: ESIAsset[]): Promise<E
   return getCharacterAssetNames(owner.id, owner.characterId, nameableIds)
 }
 
-async function collectAllTypeIds(
+function collectAllTypeIds(
   assetsByOwner: OwnerAssets[],
   ordersByOwner: OwnerOrders[],
   contractsByOwner: OwnerContracts[],
   jobsByOwner: OwnerJobs[],
   structuresByOwner: OwnerStructures[]
-): Promise<Set<number>> {
+): Set<number> {
   const typeIds = new Set<number>()
 
   for (const { assets } of assetsByOwner) {
@@ -218,13 +218,10 @@ async function collectAllTypeIds(
   }
 
   for (const { contracts } of contractsByOwner) {
-    for (const { contract } of contracts) {
-      if (hasContractItems(contract.contract_id)) {
-        const items = await getContractItems(contract.contract_id)
-        if (items) {
-          for (const item of items) {
-            typeIds.add(item.type_id)
-          }
+    for (const { items } of contracts) {
+      if (items) {
+        for (const item of items) {
+          typeIds.add(item.type_id)
         }
       }
     }
@@ -263,12 +260,10 @@ function buildSyntheticAssets(
     const key = makeOwnerKey(owner.type, owner.id)
     const synthetics: ESIAsset[] = syntheticByOwner.get(key) ?? []
 
-    for (const { contract } of contracts) {
+    for (const { contract, items } of contracts) {
       if (contract.status !== 'outstanding') continue
       const isIssuer = ownerCharIds.has(contract.issuer_id) || ownerCorpIds.has(contract.issuer_corporation_id)
       if (!isIssuer) continue
-
-      const items = getContractItemsSync(contract.contract_id)
       if (!items) continue
 
       const locationId = contract.start_location_id ?? 0
@@ -474,7 +469,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
 
       const results = Array.from(existingAssets.values())
 
-      const typeIds = await collectAllTypeIds(
+      const typeIds = collectAllTypeIds(
         results,
         useMarketOrdersStore.getState().dataByOwner,
         useContractsStore.getState().contractsByOwner,
@@ -637,7 +632,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
 
   refreshPrices: async () => {
     const state = get()
-    const typeIds = await collectAllTypeIds(
+    const typeIds = collectAllTypeIds(
       state.assetsByOwner,
       useMarketOrdersStore.getState().dataByOwner,
       useContractsStore.getState().contractsByOwner,

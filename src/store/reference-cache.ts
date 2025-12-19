@@ -82,8 +82,6 @@ let structuresCache = new Map<number, CachedStructure>()
 let locationsCache = new Map<number, CachedLocation>()
 let abyssalsCache = new Map<number, CachedAbyssal>()
 const namesCache = new Map<number, CachedName>()
-const contractItemsKnown = new Set<number>()
-const contractItemsCache = new Map<number, CachedContractItems['items']>()
 let initialized = false
 let referenceDataLoaded = false
 
@@ -161,20 +159,6 @@ async function loadStore<T>(storeName: string): Promise<Map<number, T>> {
   })
 }
 
-async function loadContractItemKeys(): Promise<Set<number>> {
-  const database = await openDB()
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction('contractItems', 'readonly')
-    const store = tx.objectStore('contractItems')
-    const request = store.getAllKeys()
-
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => {
-      resolve(new Set(request.result as number[]))
-    }
-  })
-}
-
 export async function initCache(): Promise<void> {
   if (initialized) return
 
@@ -185,8 +169,6 @@ export async function initCache(): Promise<void> {
     structuresCache = await loadStore<CachedStructure>('structures')
     locationsCache = await loadStore<CachedLocation>('locations')
     abyssalsCache = await loadStore<CachedAbyssal>('abyssals')
-    const contractKeys = await loadContractItemKeys()
-    contractKeys.forEach((k) => contractItemsKnown.add(k))
     initialized = true
 
     logger.info('Reference cache initialized', {
@@ -290,90 +272,6 @@ export function saveNames(names: CachedName[]): void {
   notifyListeners()
 }
 
-export function hasContractItems(contractId: number): boolean {
-  return contractItemsKnown.has(contractId)
-}
-
-export function getContractItemsSync(contractId: number): CachedContractItems['items'] | undefined {
-  return contractItemsCache.get(contractId)
-}
-
-export async function getContractItems(contractId: number): Promise<CachedContractItems['items'] | undefined> {
-  if (!contractItemsKnown.has(contractId)) return undefined
-
-  const cached = contractItemsCache.get(contractId)
-  if (cached) return cached
-
-  const database = await openDB()
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction('contractItems', 'readonly')
-    const store = tx.objectStore('contractItems')
-    const request = store.get(contractId)
-
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => {
-      const result = request.result as CachedContractItems | undefined
-      if (result?.items) {
-        contractItemsCache.set(contractId, result.items)
-      }
-      resolve(result?.items)
-    }
-  })
-}
-
-export async function getContractItemsBatch(contractIds: number[]): Promise<Map<number, CachedContractItems['items']>> {
-  const result = new Map<number, CachedContractItems['items']>()
-  const toFetch: number[] = []
-
-  for (const id of contractIds) {
-    if (!contractItemsKnown.has(id)) continue
-    const cached = contractItemsCache.get(id)
-    if (cached) {
-      result.set(id, cached)
-    } else {
-      toFetch.push(id)
-    }
-  }
-
-  if (toFetch.length === 0) return result
-
-  const database = await openDB()
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction('contractItems', 'readonly')
-    const store = tx.objectStore('contractItems')
-
-    tx.onerror = () => reject(tx.error)
-    tx.oncomplete = () => resolve(result)
-
-    for (const id of toFetch) {
-      const request = store.get(id)
-      request.onsuccess = () => {
-        const data = request.result as CachedContractItems | undefined
-        if (data?.items) {
-          contractItemsCache.set(id, data.items)
-          result.set(id, data.items)
-        }
-      }
-    }
-  })
-}
-
-export async function saveContractItems(contractId: number, items: CachedContractItems['items']): Promise<void> {
-  const database = await openDB()
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction('contractItems', 'readwrite')
-    const store = tx.objectStore('contractItems')
-
-    tx.onerror = () => reject(tx.error)
-    tx.oncomplete = () => {
-      contractItemsKnown.add(contractId)
-      contractItemsCache.set(contractId, items)
-      resolve()
-    }
-
-    store.put({ contractId, items } as CachedContractItems)
-  })
-}
 
 export async function saveTypes(types: CachedType[]): Promise<void> {
   if (types.length === 0) return
@@ -477,8 +375,6 @@ export async function clearReferenceCache(): Promise<void> {
   locationsCache.clear()
   abyssalsCache.clear()
   namesCache.clear()
-  contractItemsKnown.clear()
-  contractItemsCache.clear()
   initialized = false
   referenceDataLoaded = false
 
@@ -539,13 +435,6 @@ export async function clearAbyssalsCache(): Promise<void> {
   notifyListeners()
 }
 
-export async function clearContractItemsCache(): Promise<void> {
-  logger.info('Clearing contract items cache', { module: 'ReferenceCache' })
-  contractItemsKnown.clear()
-  contractItemsCache.clear()
-  await clearStore('contractItems')
-  notifyListeners()
-}
 
 export const CategoryIds = {
   SHIP: 6,
