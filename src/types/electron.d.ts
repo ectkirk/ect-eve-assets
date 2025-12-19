@@ -23,6 +23,19 @@ declare global {
     error?: string
   }
 
+  interface RefTypesPageParams {
+    after?: number
+    etag?: string
+  }
+
+  interface RefTypesPageResult {
+    items?: Record<string, { id: number; name: string; groupId: number; volume: number; packagedVolume?: number }>
+    pagination?: { total: number; limit: number; nextCursor?: number; hasMore: boolean }
+    etag?: string | null
+    notModified?: boolean
+    error?: string
+  }
+
   interface MutamarketResult {
     estimated_value?: number | null
     error?: string
@@ -381,6 +394,7 @@ declare global {
     openLogsFolder: () => Promise<void>
     submitBugReport: (characterName: string, description: string) => Promise<{ success: boolean; error?: string }>
     refTypes: (ids: number[], stationId?: number) => Promise<RefApiResult>
+    refTypesPage: (params?: RefTypesPageParams) => Promise<RefTypesPageResult>
     refCategories: () => Promise<RefApiResult>
     refGroups: () => Promise<RefApiResult>
     refImplants: (ids: number[]) => Promise<RefApiResult>

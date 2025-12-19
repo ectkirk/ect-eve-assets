@@ -12,11 +12,16 @@ vi.mock('@/store/reference-cache', () => ({
   setCategories: vi.fn(),
   setGroups: vi.fn(),
   isReferenceDataLoaded: vi.fn(() => true),
+  isAllTypesLoaded: vi.fn(() => false),
+  setAllTypesLoaded: vi.fn(),
+  getTypesEtag: vi.fn(() => null),
+  setTypesEtag: vi.fn(),
 }))
 
 import { getType, saveTypes, hasLocation, getLocation, saveLocations, getGroup, getCategory } from '@/store/reference-cache'
 
 const mockRefTypes = vi.fn()
+const mockRefTypesPage = vi.fn()
 const mockRefUniverse = vi.fn()
 const mockRefMarket = vi.fn()
 const mockRefMarketJita = vi.fn()
@@ -45,9 +50,11 @@ describe('ref-client', () => {
 
     mockRefCategories.mockResolvedValue({ items: { '4': { id: 4, name: 'Material' } } })
     mockRefGroups.mockResolvedValue({ items: { '18': { id: 18, name: 'Mineral', categoryId: 4 } } })
+    mockRefTypesPage.mockResolvedValue({ items: {}, pagination: { total: 0, limit: 5000, hasMore: false }, etag: 'test-etag' })
 
     window.electronAPI = {
       refTypes: mockRefTypes,
+      refTypesPage: mockRefTypesPage,
       refUniverse: mockRefUniverse,
       refMarket: mockRefMarket,
       refMarketJita: mockRefMarketJita,

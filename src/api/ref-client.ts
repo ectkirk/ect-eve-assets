@@ -10,6 +10,10 @@ import {
   setCategories,
   setGroups,
   isReferenceDataLoaded,
+  isAllTypesLoaded,
+  setAllTypesLoaded,
+  getTypesEtag,
+  setTypesEtag,
   type CachedType,
   type CachedLocation,
 } from '@/store/reference-cache'
@@ -110,6 +114,8 @@ let pendingLocationIds = new Set<number>()
 
 let referenceDataPromise: Promise<void> | null = null
 
+export type ReferenceDataProgress = (status: string) => void
+
 export function _resetForTests(): void {
   inFlightTypes = null
   pendingTypeIds = new Set()
@@ -118,8 +124,8 @@ export function _resetForTests(): void {
   referenceDataPromise = null
 }
 
-export async function loadReferenceData(): Promise<void> {
-  if (isReferenceDataLoaded()) return
+export async function loadReferenceData(onProgress?: ReferenceDataProgress): Promise<void> {
+  if (isReferenceDataLoaded() && isAllTypesLoaded()) return
 
   if (referenceDataPromise) {
     return referenceDataPromise
@@ -128,48 +134,148 @@ export async function loadReferenceData(): Promise<void> {
   referenceDataPromise = (async () => {
     const start = performance.now()
 
-    const [categoriesRaw, groupsRaw] = await Promise.all([
-      window.electronAPI!.refCategories(),
-      window.electronAPI!.refGroups(),
-    ])
+    if (!isReferenceDataLoaded()) {
+      onProgress?.('Loading categories...')
+      const [categoriesRaw, groupsRaw] = await Promise.all([
+        window.electronAPI!.refCategories(),
+        window.electronAPI!.refGroups(),
+      ])
 
-    if (categoriesRaw && 'error' in categoriesRaw) {
-      logger.error('Failed to load categories', undefined, { module: 'RefAPI', error: categoriesRaw.error })
-      return
+      if (categoriesRaw && 'error' in categoriesRaw) {
+        logger.error('Failed to load categories', undefined, { module: 'RefAPI', error: categoriesRaw.error })
+        return
+      }
+
+      if (groupsRaw && 'error' in groupsRaw) {
+        logger.error('Failed to load groups', undefined, { module: 'RefAPI', error: groupsRaw.error })
+        return
+      }
+
+      const categoriesResult = RefCategoriesResponseSchema.safeParse(categoriesRaw)
+      if (!categoriesResult.success) {
+        logger.error('Categories validation failed', undefined, { module: 'RefAPI', errors: categoriesResult.error.issues.slice(0, 3) })
+        return
+      }
+
+      const groupsResult = RefGroupsResponseSchema.safeParse(groupsRaw)
+      if (!groupsResult.success) {
+        logger.error('Groups validation failed', undefined, { module: 'RefAPI', errors: groupsResult.error.issues.slice(0, 3) })
+        return
+      }
+
+      const categories = Object.values(categoriesResult.data.items)
+      const groups = Object.values(groupsResult.data.items)
+
+      await setCategories(categories)
+      await setGroups(groups)
+
+      const catGroupDuration = Math.round(performance.now() - start)
+      logger.info('Categories and groups loaded', { module: 'RefAPI', categories: categories.length, groups: groups.length, duration: catGroupDuration })
     }
 
-    if (groupsRaw && 'error' in groupsRaw) {
-      logger.error('Failed to load groups', undefined, { module: 'RefAPI', error: groupsRaw.error })
-      return
-    }
-
-    const categoriesResult = RefCategoriesResponseSchema.safeParse(categoriesRaw)
-    if (!categoriesResult.success) {
-      logger.error('Categories validation failed', undefined, { module: 'RefAPI', errors: categoriesResult.error.issues.slice(0, 3) })
-      return
-    }
-
-    const groupsResult = RefGroupsResponseSchema.safeParse(groupsRaw)
-    if (!groupsResult.success) {
-      logger.error('Groups validation failed', undefined, { module: 'RefAPI', errors: groupsResult.error.issues.slice(0, 3) })
-      return
-    }
-
-    const categories = Object.values(categoriesResult.data.items)
-    const groups = Object.values(groupsResult.data.items)
-
-    await setCategories(categories)
-    await setGroups(groups)
+    await loadAllTypes(onProgress)
 
     const duration = Math.round(performance.now() - start)
-    logger.info('Reference data loaded', { module: 'RefAPI', categories: categories.length, groups: groups.length, duration })
+    logger.info('Reference data loaded', { module: 'RefAPI', duration })
   })().finally(() => {
-    if (!isReferenceDataLoaded()) {
+    if (!isReferenceDataLoaded() || !isAllTypesLoaded()) {
       referenceDataPromise = null
     }
   })
 
   return referenceDataPromise
+}
+
+interface RawType {
+  id: number
+  name: string
+  groupId: number
+  volume: number
+  packagedVolume?: number
+}
+
+function enrichType(raw: RawType): CachedType {
+  const group = getGroup(raw.groupId)
+  const category = group ? getCategory(group.categoryId) : undefined
+  const towerInfo = getTowerInfo(raw.groupId, raw.name)
+
+  return {
+    id: raw.id,
+    name: raw.name,
+    groupId: raw.groupId,
+    groupName: group?.name ?? '',
+    categoryId: group?.categoryId ?? 0,
+    categoryName: category?.name ?? '',
+    volume: raw.volume,
+    packagedVolume: raw.packagedVolume,
+    ...towerInfo,
+  }
+}
+
+async function loadAllTypes(onProgress?: ReferenceDataProgress): Promise<void> {
+  const storedEtag = getTypesEtag()
+
+  if (storedEtag && isAllTypesLoaded()) {
+    onProgress?.('Validating types cache...')
+    const result = await window.electronAPI!.refTypesPage({ etag: storedEtag })
+
+    if (result.notModified) {
+      logger.info('Types cache valid (304)', { module: 'RefAPI' })
+      return
+    }
+
+    if (result.error) {
+      logger.warn('Types ETag check failed, will reload', { module: 'RefAPI', error: result.error })
+    }
+  }
+
+  onProgress?.('Loading types...')
+  const start = performance.now()
+  let cursor: number | undefined
+  let total = 0
+  let loaded = 0
+  let pageCount = 0
+  let lastEtag: string | null = null
+
+  do {
+    const result = await window.electronAPI!.refTypesPage({ after: cursor })
+
+    if (result.error) {
+      logger.error('Failed to load types page', undefined, { module: 'RefAPI', error: result.error, cursor })
+      return
+    }
+
+    if (!result.items || !result.pagination) {
+      logger.error('Invalid types page response', undefined, { module: 'RefAPI', cursor })
+      return
+    }
+
+    const rawTypes = Object.values(result.items) as RawType[]
+    total = result.pagination.total
+    loaded += rawTypes.length
+    pageCount++
+
+    if (rawTypes.length > 0) {
+      const enrichedTypes = rawTypes.map(enrichType)
+      await saveTypes(enrichedTypes)
+    }
+
+    if (result.etag) {
+      lastEtag = result.etag
+    }
+
+    onProgress?.(`Loading types (${loaded.toLocaleString()}/${total.toLocaleString()})...`)
+
+    cursor = result.pagination.hasMore ? result.pagination.nextCursor : undefined
+  } while (cursor !== undefined)
+
+  if (lastEtag) {
+    setTypesEtag(lastEtag)
+  }
+  setAllTypesLoaded(true)
+
+  const duration = Math.round(performance.now() - start)
+  logger.info('All types loaded', { module: 'RefAPI', total: loaded, pages: pageCount, duration })
 }
 
 async function fetchTypesChunk(chunk: number[]): Promise<Map<number, RefType>> {
@@ -299,6 +405,17 @@ export async function resolveTypes(typeIds: number[]): Promise<Map<number, Cache
   await loadReferenceData()
 
   const results = new Map<number, CachedType>()
+
+  if (isAllTypesLoaded()) {
+    for (const id of typeIds) {
+      const cached = getType(id)
+      if (cached) {
+        results.set(id, cached)
+      }
+    }
+    return results
+  }
+
   const uncachedIds: number[] = []
 
   for (const id of typeIds) {

@@ -613,7 +613,7 @@ ipcMain.handle('ref:types', async (_event, ids: unknown, stationId?: unknown) =>
 ipcMain.handle('ref:categories', async () => {
   await waitForRefRateLimit()
   try {
-    const response = await fetchRefWithRetry(`${REF_API_BASE}/categories`, {
+    const response = await fetchRefWithRetry(`${REF_API_BASE}/reference/categories`, {
       headers: getRefHeaders(),
     })
     if (!response.ok) {
@@ -629,7 +629,7 @@ ipcMain.handle('ref:categories', async () => {
 ipcMain.handle('ref:groups', async () => {
   await waitForRefRateLimit()
   try {
-    const response = await fetchRefWithRetry(`${REF_API_BASE}/groups`, {
+    const response = await fetchRefWithRetry(`${REF_API_BASE}/reference/groups`, {
       headers: getRefHeaders(),
     })
     if (!response.ok) {
@@ -638,6 +638,48 @@ ipcMain.handle('ref:groups', async () => {
     return await response.json()
   } catch (err) {
     logger.error('ref:groups fetch failed', err, { module: 'Main' })
+    return { error: String(err) }
+  }
+})
+
+ipcMain.handle('ref:types-page', async (_event, args: unknown) => {
+  const { after, etag } = (args ?? {}) as { after?: number; etag?: string }
+
+  if (after !== undefined && (typeof after !== 'number' || !Number.isInteger(after) || after <= 0)) {
+    return { error: 'Invalid after cursor' }
+  }
+
+  await waitForRefRateLimit()
+  try {
+    const url = after
+      ? `${REF_API_BASE}/reference/types?after=${after}`
+      : `${REF_API_BASE}/reference/types`
+
+    const headers = getRefHeaders()
+    if (etag) {
+      headers['If-None-Match'] = etag
+    }
+
+    const response = await fetchRefWithRetry(url, { headers })
+
+    if (response.status === 304) {
+      return { notModified: true }
+    }
+
+    if (!response.ok) {
+      return { error: `HTTP ${response.status}` }
+    }
+
+    const data = await response.json()
+    const responseEtag = response.headers.get('ETag')
+
+    return {
+      items: data.items,
+      pagination: data.pagination,
+      etag: responseEtag,
+    }
+  } catch (err) {
+    logger.error('ref:types-page fetch failed', err, { module: 'Main' })
     return { error: String(err) }
   }
 })

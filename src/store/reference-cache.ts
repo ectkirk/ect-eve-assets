@@ -70,6 +70,11 @@ let abyssalsCache = new Map<number, CachedAbyssal>()
 let namesCache = new Map<number, CachedName>()
 let initialized = false
 let referenceDataLoaded = false
+let allTypesLoaded = false
+let typesEtag: string | null = null
+
+const TYPES_ETAG_KEY = 'ecteveassets-types-etag'
+const ALL_TYPES_LOADED_KEY = 'ecteveassets-all-types-loaded'
 
 const listeners = new Set<() => void>()
 
@@ -167,9 +172,17 @@ export async function initCache(): Promise<void> {
     initialized = true
     referenceDataLoaded = groupsCache.size > 0
 
+    try {
+      typesEtag = localStorage.getItem(TYPES_ETAG_KEY)
+      allTypesLoaded = localStorage.getItem(ALL_TYPES_LOADED_KEY) === 'true' && typesCache.size > 40000
+    } catch {
+      // localStorage not available
+    }
+
     logger.info('Reference cache initialized', {
       module: 'ReferenceCache',
       types: typesCache.size,
+      allTypesLoaded,
       structures: structuresCache.size,
       locations: locationsCache.size,
       abyssals: abyssalsCache.size,
@@ -205,6 +218,40 @@ export function getGroup(id: number): CachedGroup | undefined {
 
 export function isReferenceDataLoaded(): boolean {
   return referenceDataLoaded
+}
+
+export function isAllTypesLoaded(): boolean {
+  return allTypesLoaded
+}
+
+export function setAllTypesLoaded(loaded: boolean): void {
+  allTypesLoaded = loaded
+  try {
+    if (loaded) {
+      localStorage.setItem(ALL_TYPES_LOADED_KEY, 'true')
+    } else {
+      localStorage.removeItem(ALL_TYPES_LOADED_KEY)
+    }
+  } catch {
+    // localStorage not available
+  }
+}
+
+export function getTypesEtag(): string | null {
+  return typesEtag
+}
+
+export function setTypesEtag(etag: string | null): void {
+  typesEtag = etag
+  try {
+    if (etag) {
+      localStorage.setItem(TYPES_ETAG_KEY, etag)
+    } else {
+      localStorage.removeItem(TYPES_ETAG_KEY)
+    }
+  } catch {
+    // localStorage not available
+  }
 }
 
 export async function setCategories(categories: CachedCategory[]): Promise<void> {
@@ -456,6 +503,8 @@ async function clearStore(storeName: string): Promise<void> {
 export async function clearTypesCache(): Promise<void> {
   logger.info('Clearing types cache', { module: 'ReferenceCache' })
   typesCache.clear()
+  setAllTypesLoaded(false)
+  setTypesEtag(null)
   await clearStore('types')
   notifyListeners()
 }

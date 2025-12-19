@@ -68,6 +68,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
 function App() {
   const [cacheReady, setCacheReady] = useState(appInitComplete)
   const [cacheError, setCacheError] = useState<string | null>(null)
+  const [loadingStatus, setLoadingStatus] = useState('Initializing...')
 
   useEffect(() => {
     const cleanupTokenProvider = setupESITokenProvider()
@@ -91,9 +92,10 @@ function App() {
 
     logger.info('App starting', { module: 'App' })
     initCache()
-      .then(() => {
+      .then(async () => {
         logger.info('Cache initialized', { module: 'App' })
-        loadReferenceData().catch(() => {})
+        await loadReferenceData(setLoadingStatus)
+        setLoadingStatus('Initializing data stores...')
         return useExpiryCacheStore.getState().init()
       })
       .then(() => {
@@ -142,7 +144,7 @@ function App() {
   if (!cacheReady) {
     return (
       <div className="flex h-screen items-center justify-center bg-surface text-content">
-        <p className="text-content-secondary">Initializing...</p>
+        <p className="text-content-secondary">{loadingStatus}</p>
       </div>
     )
   }

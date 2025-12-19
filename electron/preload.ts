@@ -24,6 +24,19 @@ export interface RefApiResult {
   error?: string
 }
 
+export interface RefTypesPageParams {
+  after?: number
+  etag?: string
+}
+
+export interface RefTypesPageResult {
+  items?: Record<string, { id: number; name: string; groupId: number; volume: number; packagedVolume?: number }>
+  pagination?: { total: number; limit: number; nextCursor?: number; hasMore: boolean }
+  etag?: string | null
+  notModified?: boolean
+  error?: string
+}
+
 export interface MutamarketResult {
   estimated_value?: number | null
   error?: string
@@ -381,6 +394,7 @@ export interface ElectronAPI {
   openLogsFolder: () => Promise<void>
   submitBugReport: (characterName: string, description: string) => Promise<{ success: boolean; error?: string }>
   refTypes: (ids: number[], stationId?: number) => Promise<RefApiResult>
+  refTypesPage: (params?: RefTypesPageParams) => Promise<RefTypesPageResult>
   refCategories: () => Promise<RefApiResult>
   refGroups: () => Promise<RefApiResult>
   refImplants: (ids: number[]) => Promise<RefApiResult>
@@ -450,6 +464,7 @@ const electronAPI: ElectronAPI = {
   submitBugReport: (characterName: string, description: string) =>
     ipcRenderer.invoke('bug:report', characterName, description),
   refTypes: (ids: number[], stationId?: number) => ipcRenderer.invoke('ref:types', ids, stationId),
+  refTypesPage: (params?: RefTypesPageParams) => ipcRenderer.invoke('ref:types-page', params),
   refCategories: () => ipcRenderer.invoke('ref:categories'),
   refGroups: () => ipcRenderer.invoke('ref:groups'),
   refImplants: (ids: number[]) => ipcRenderer.invoke('ref:implants', ids),
