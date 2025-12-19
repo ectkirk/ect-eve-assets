@@ -26,18 +26,6 @@ export type RefType = z.infer<typeof RefTypeSchema>
 export type RefUniverseItem = z.infer<typeof RefUniverseItemSchema>
 export type UniverseEntityType = RefUniverseItem['type']
 
-// Request coalescing - batches requests within a window to match API rate limit (30 req/min)
-const REF_BATCH_DELAY_MS = 2000
-
-let pendingLocationIds = new Set<number>()
-let locationBatchPromise: Promise<Map<number, CachedLocation>> | null = null
-
-let pendingTypeIds = new Set<number>()
-let typeBatchPromise: Promise<Map<number, CachedType>> | null = null
-
-let pendingPriceIds = new Set<number>()
-let priceBatchPromise: Promise<Map<number, number>> | null = null
-
 const PLEX_GROUP = 1875
 const CONTRACT_GROUPS = new Set([883, 547, 4594, 485, 1538, 659, 30])
 
@@ -135,14 +123,11 @@ async function fetchUniverseFromAPI(ids: number[]): Promise<Map<number, RefUnive
   return results
 }
 
-async function executeTypeBatch(): Promise<Map<number, CachedType>> {
-  const idsToFetch = Array.from(pendingTypeIds)
-  pendingTypeIds = new Set()
-
+export async function resolveTypes(typeIds: number[]): Promise<Map<number, CachedType>> {
   const results = new Map<number, CachedType>()
   const uncachedIds: number[] = []
 
-  for (const id of idsToFetch) {
+  for (const id of typeIds) {
     const cached = getType(id)
     if (cached) {
       results.set(id, cached)
@@ -174,7 +159,6 @@ async function executeTypeBatch(): Promise<Map<number, CachedType>> {
       toCache.push(cached)
     }
 
-    // Cache placeholder entries for types not returned by API (BPCs, abyssals, etc.)
     for (const id of uncachedIds) {
       if (!fetched.has(id)) {
         const placeholder: CachedType = {
@@ -200,40 +184,11 @@ async function executeTypeBatch(): Promise<Map<number, CachedType>> {
   return results
 }
 
-export async function resolveTypes(typeIds: number[]): Promise<Map<number, CachedType>> {
-  for (const id of typeIds) {
-    pendingTypeIds.add(id)
-  }
-
-  if (!typeBatchPromise) {
-    typeBatchPromise = new Promise((resolve) => {
-      setTimeout(async () => {
-        const result = await executeTypeBatch()
-        typeBatchPromise = null
-        resolve(result)
-      }, REF_BATCH_DELAY_MS)
-    })
-  }
-
-  const allResults = await typeBatchPromise
-  const results = new Map<number, CachedType>()
-  for (const id of typeIds) {
-    const cached = allResults.get(id) ?? getType(id)
-    if (cached) {
-      results.set(id, cached)
-    }
-  }
-  return results
-}
-
-async function executeLocationBatch(): Promise<Map<number, CachedLocation>> {
-  const idsToFetch = Array.from(pendingLocationIds)
-  pendingLocationIds = new Set()
-
+export async function resolveLocations(locationIds: number[]): Promise<Map<number, CachedLocation>> {
   const results = new Map<number, CachedLocation>()
   const uncachedIds: number[] = []
 
-  for (const id of idsToFetch) {
+  for (const id of locationIds) {
     if (id > 1_000_000_000_000) continue
     if (hasLocation(id)) {
       results.set(id, getLocation(id)!)
@@ -281,32 +236,6 @@ async function executeLocationBatch(): Promise<Map<number, CachedLocation>> {
     }
   }
 
-  return results
-}
-
-export async function resolveLocations(locationIds: number[]): Promise<Map<number, CachedLocation>> {
-  for (const id of locationIds) {
-    pendingLocationIds.add(id)
-  }
-
-  if (!locationBatchPromise) {
-    locationBatchPromise = new Promise((resolve) => {
-      setTimeout(async () => {
-        const result = await executeLocationBatch()
-        locationBatchPromise = null
-        resolve(result)
-      }, REF_BATCH_DELAY_MS)
-    })
-  }
-
-  const allResults = await locationBatchPromise
-  const results = new Map<number, CachedLocation>()
-  for (const id of locationIds) {
-    const cached = allResults.get(id) ?? getLocation(id)
-    if (cached) {
-      results.set(id, cached)
-    }
-  }
   return results
 }
 
@@ -577,41 +506,9 @@ async function fetchPricesRouted(typeIds: number[]): Promise<Map<number, number>
   return results
 }
 
-async function executePriceBatch(): Promise<Map<number, number>> {
-  const idsToFetch = Array.from(pendingPriceIds)
-  pendingPriceIds = new Set()
-
-  if (idsToFetch.length === 0) return new Map()
-
-  return fetchPricesRouted(idsToFetch)
-}
-
 export async function queuePriceRefresh(typeIds: number[]): Promise<Map<number, number>> {
   if (typeIds.length === 0) return new Map()
-
-  for (const id of typeIds) {
-    pendingPriceIds.add(id)
-  }
-
-  if (!priceBatchPromise) {
-    priceBatchPromise = new Promise((resolve) => {
-      setTimeout(async () => {
-        const result = await executePriceBatch()
-        priceBatchPromise = null
-        resolve(result)
-      }, REF_BATCH_DELAY_MS)
-    })
-  }
-
-  const allResults = await priceBatchPromise
-  const results = new Map<number, number>()
-  for (const id of typeIds) {
-    const price = allResults.get(id)
-    if (price !== undefined) {
-      results.set(id, price)
-    }
-  }
-  return results
+  return fetchPricesRouted(typeIds)
 }
 
 export async function fetchPrices(typeIds: number[]): Promise<Map<number, number>> {

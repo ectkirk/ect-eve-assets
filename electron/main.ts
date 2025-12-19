@@ -311,13 +311,11 @@ function createWindow() {
   mainWindow.on('minimize', () => {
     logger.info('Window minimized, pausing API operations', { module: 'Main' })
     getESIService().pause()
-    setRefQueuesPaused(true)
     mainWindow?.webContents.send('window:minimizeChange', true)
   })
   mainWindow.on('restore', () => {
     logger.info('Window restored, resuming API operations', { module: 'Main' })
     getESIService().resume()
-    setRefQueuesPaused(false)
     mainWindow?.webContents.send('window:minimizeChange', false)
   })
 }
@@ -501,7 +499,6 @@ ipcMain.handle('updater:install', () => {
 const REF_API_BASE = 'https://edencom.net/api/v1'
 const REF_API_KEY = process.env['REF_API_KEY'] || ''
 const MAX_REF_IDS = 1000
-const REF_REQUEST_DELAY_MS = 2000
 const REF_MAX_RETRIES = 3
 const REF_RETRY_BASE_DELAY_MS = 2000
 
@@ -516,34 +513,6 @@ function getRefHeaders(contentType?: 'json'): Record<string, string> {
     headers['Content-Type'] = 'application/json'
   }
   return headers
-}
-
-interface RefQueue {
-  lastRequestTime: number
-  queue: Array<() => void>
-  processing: boolean
-  paused: boolean
-}
-
-type RefQueueName = 'types' | 'universe' | 'market' | 'other'
-
-const refQueues: Record<RefQueueName, RefQueue> = {
-  types: { lastRequestTime: 0, queue: [], processing: false, paused: false },
-  universe: { lastRequestTime: 0, queue: [], processing: false, paused: false },
-  market: { lastRequestTime: 0, queue: [], processing: false, paused: false },
-  other: { lastRequestTime: 0, queue: [], processing: false, paused: false },
-}
-
-function setRefQueuesPaused(paused: boolean): void {
-  for (const queueName of Object.keys(refQueues) as RefQueueName[]) {
-    refQueues[queueName].paused = paused
-  }
-  logger.debug(`Ref queues ${paused ? 'paused' : 'resumed'}`, { module: 'Main' })
-  if (!paused) {
-    for (const queueName of Object.keys(refQueues) as RefQueueName[]) {
-      processRefQueue(queueName)
-    }
-  }
 }
 
 let refGlobalRetryAfter = 0
@@ -563,42 +532,6 @@ async function waitForGlobalBackoff(): Promise<void> {
     logger.debug('Waiting for global backoff', { module: 'Main', waitMs })
     await new Promise((r) => setTimeout(r, waitMs))
   }
-}
-
-async function processRefQueue(queueName: RefQueueName): Promise<void> {
-  const q = refQueues[queueName]
-  if (q.processing || q.paused) return
-  q.processing = true
-
-  while (q.queue.length > 0) {
-    if (q.paused) {
-      q.processing = false
-      return
-    }
-
-    await waitForGlobalBackoff()
-
-    const now = Date.now()
-    const timeSinceLastRequest = now - q.lastRequestTime
-    if (timeSinceLastRequest < REF_REQUEST_DELAY_MS) {
-      await new Promise((r) => setTimeout(r, REF_REQUEST_DELAY_MS - timeSinceLastRequest))
-    }
-    q.lastRequestTime = Date.now()
-    const next = q.queue.shift()
-    if (next) next()
-  }
-
-  q.processing = false
-}
-
-function queueRefRequest<T>(fn: () => Promise<T>, queueName: RefQueueName = 'other'): Promise<T> {
-  const q = refQueues[queueName]
-  return new Promise((resolve, reject) => {
-    q.queue.push(() => {
-      fn().then(resolve).catch(reject)
-    })
-    processRefQueue(queueName)
-  })
 }
 
 async function fetchRefWithRetry(url: string, options: RequestInit): Promise<Response> {
@@ -646,26 +579,25 @@ ipcMain.handle('ref:types', async (_event, ids: unknown, stationId?: unknown) =>
     return { error: 'Invalid station_id' }
   }
 
-  return queueRefRequest(async () => {
-    try {
-      let url = `${REF_API_BASE}/types`
-      if (stationId) {
-        url += `?station_id=${stationId}`
-      }
-      const response = await fetchRefWithRetry(url, {
-        method: 'POST',
-        headers: getRefHeaders('json'),
-        body: JSON.stringify({ ids }),
-      })
-      if (!response.ok) {
-        return { error: `HTTP ${response.status}` }
-      }
-      return await response.json()
-    } catch (err) {
-      logger.error('ref:types fetch failed', err, { module: 'Main' })
-      return { error: String(err) }
+  await waitForGlobalBackoff()
+  try {
+    let url = `${REF_API_BASE}/types`
+    if (stationId) {
+      url += `?station_id=${stationId}`
     }
-  }, 'types')
+    const response = await fetchRefWithRetry(url, {
+      method: 'POST',
+      headers: getRefHeaders('json'),
+      body: JSON.stringify({ ids }),
+    })
+    if (!response.ok) {
+      return { error: `HTTP ${response.status}` }
+    }
+    return await response.json()
+  } catch (err) {
+    logger.error('ref:types fetch failed', err, { module: 'Main' })
+    return { error: String(err) }
+  }
 })
 
 ipcMain.handle('ref:universe', async (_event, ids: unknown) => {
@@ -676,22 +608,21 @@ ipcMain.handle('ref:universe', async (_event, ids: unknown) => {
     return { error: 'Invalid id values' }
   }
 
-  return queueRefRequest(async () => {
-    try {
-      const response = await fetchRefWithRetry(`${REF_API_BASE}/universe`, {
-        method: 'POST',
-        headers: getRefHeaders('json'),
-        body: JSON.stringify({ ids }),
-      })
-      if (!response.ok) {
-        return { error: `HTTP ${response.status}` }
-      }
-      return await response.json()
-    } catch (err) {
-      logger.error('ref:universe fetch failed', err, { module: 'Main' })
-      return { error: String(err) }
+  await waitForGlobalBackoff()
+  try {
+    const response = await fetchRefWithRetry(`${REF_API_BASE}/universe`, {
+      method: 'POST',
+      headers: getRefHeaders('json'),
+      body: JSON.stringify({ ids }),
+    })
+    if (!response.ok) {
+      return { error: `HTTP ${response.status}` }
     }
-  }, 'universe')
+    return await response.json()
+  } catch (err) {
+    logger.error('ref:universe fetch failed', err, { module: 'Main' })
+    return { error: String(err) }
+  }
 })
 
 ipcMain.handle('ref:ships', async (_event, ids: unknown) => {
@@ -702,22 +633,21 @@ ipcMain.handle('ref:ships', async (_event, ids: unknown) => {
     return { error: 'Invalid id values' }
   }
 
-  return queueRefRequest(async () => {
-    try {
-      const response = await fetchRefWithRetry(`${REF_API_BASE}/ships`, {
-        method: 'POST',
-        headers: getRefHeaders('json'),
-        body: JSON.stringify({ ids }),
-      })
-      if (!response.ok) {
-        return { error: `HTTP ${response.status}` }
-      }
-      return await response.json()
-    } catch (err) {
-      logger.error('ref:ships fetch failed', err, { module: 'Main' })
-      return { error: String(err) }
+  await waitForGlobalBackoff()
+  try {
+    const response = await fetchRefWithRetry(`${REF_API_BASE}/ships`, {
+      method: 'POST',
+      headers: getRefHeaders('json'),
+      body: JSON.stringify({ ids }),
+    })
+    if (!response.ok) {
+      return { error: `HTTP ${response.status}` }
     }
-  })
+    return await response.json()
+  } catch (err) {
+    logger.error('ref:ships fetch failed', err, { module: 'Main' })
+    return { error: String(err) }
+  }
 })
 
 ipcMain.handle('ref:market', async (_event, params: unknown) => {
@@ -735,30 +665,29 @@ ipcMain.handle('ref:market', async (_event, params: unknown) => {
     return { error: 'Invalid typeId values' }
   }
 
-  return queueRefRequest(async () => {
-    try {
-      const body: Record<string, unknown> = {
-        regionId: p.regionId,
-        typeIds: p.typeIds,
-      }
-      if (p.avg === true) body.avg = true
-      if (p.buy === true) body.buy = true
-      if (p.jita === true) body.jita = true
-
-      const response = await fetchRefWithRetry(`${REF_API_BASE}/market/bulk`, {
-        method: 'POST',
-        headers: getRefHeaders('json'),
-        body: JSON.stringify(body),
-      })
-      if (!response.ok) {
-        return { error: `HTTP ${response.status}` }
-      }
-      return await response.json()
-    } catch (err) {
-      logger.error('ref:market fetch failed', err, { module: 'Main' })
-      return { error: String(err) }
+  await waitForGlobalBackoff()
+  try {
+    const body: Record<string, unknown> = {
+      regionId: p.regionId,
+      typeIds: p.typeIds,
     }
-  }, 'market')
+    if (p.avg === true) body.avg = true
+    if (p.buy === true) body.buy = true
+    if (p.jita === true) body.jita = true
+
+    const response = await fetchRefWithRetry(`${REF_API_BASE}/market/bulk`, {
+      method: 'POST',
+      headers: getRefHeaders('json'),
+      body: JSON.stringify(body),
+    })
+    if (!response.ok) {
+      return { error: `HTTP ${response.status}` }
+    }
+    return await response.json()
+  } catch (err) {
+    logger.error('ref:market fetch failed', err, { module: 'Main' })
+    return { error: String(err) }
+  }
 })
 
 ipcMain.handle('ref:marketJita', async (_event, typeIds: unknown) => {
@@ -769,39 +698,37 @@ ipcMain.handle('ref:marketJita', async (_event, typeIds: unknown) => {
     return { error: 'Invalid typeId values' }
   }
 
-  return queueRefRequest(async () => {
-    try {
-      const response = await fetchRefWithRetry(`${REF_API_BASE}/market/jita`, {
-        method: 'POST',
-        headers: getRefHeaders('json'),
-        body: JSON.stringify({ typeIds }),
-      })
-      if (!response.ok) {
-        return { error: `HTTP ${response.status}` }
-      }
-      return await response.json()
-    } catch (err) {
-      logger.error('ref:marketJita fetch failed', err, { module: 'Main' })
-      return { error: String(err) }
+  await waitForGlobalBackoff()
+  try {
+    const response = await fetchRefWithRetry(`${REF_API_BASE}/market/jita`, {
+      method: 'POST',
+      headers: getRefHeaders('json'),
+      body: JSON.stringify({ typeIds }),
+    })
+    if (!response.ok) {
+      return { error: `HTTP ${response.status}` }
     }
-  }, 'market')
+    return await response.json()
+  } catch (err) {
+    logger.error('ref:marketJita fetch failed', err, { module: 'Main' })
+    return { error: String(err) }
+  }
 })
 
 ipcMain.handle('ref:marketPlex', async () => {
-  return queueRefRequest(async () => {
-    try {
-      const response = await fetchRefWithRetry(`${REF_API_BASE}/market/plex`, {
-        headers: getRefHeaders(),
-      })
-      if (!response.ok) {
-        return { error: `HTTP ${response.status}` }
-      }
-      return await response.json()
-    } catch (err) {
-      logger.error('ref:marketPlex fetch failed', err, { module: 'Main' })
-      return { error: String(err) }
+  await waitForGlobalBackoff()
+  try {
+    const response = await fetchRefWithRetry(`${REF_API_BASE}/market/plex`, {
+      headers: getRefHeaders(),
+    })
+    if (!response.ok) {
+      return { error: `HTTP ${response.status}` }
     }
-  }, 'market')
+    return await response.json()
+  } catch (err) {
+    logger.error('ref:marketPlex fetch failed', err, { module: 'Main' })
+    return { error: String(err) }
+  }
 })
 
 ipcMain.handle('ref:marketContracts', async (_event, typeIds: unknown) => {
@@ -812,22 +739,21 @@ ipcMain.handle('ref:marketContracts', async (_event, typeIds: unknown) => {
     return { error: 'Invalid typeId values' }
   }
 
-  return queueRefRequest(async () => {
-    try {
-      const response = await fetchRefWithRetry(`${REF_API_BASE}/market/contracts`, {
-        method: 'POST',
-        headers: getRefHeaders('json'),
-        body: JSON.stringify({ typeIds }),
-      })
-      if (!response.ok) {
-        return { error: `HTTP ${response.status}` }
-      }
-      return await response.json()
-    } catch (err) {
-      logger.error('ref:marketContracts fetch failed', err, { module: 'Main' })
-      return { error: String(err) }
+  await waitForGlobalBackoff()
+  try {
+    const response = await fetchRefWithRetry(`${REF_API_BASE}/market/contracts`, {
+      method: 'POST',
+      headers: getRefHeaders('json'),
+      body: JSON.stringify({ typeIds }),
+    })
+    if (!response.ok) {
+      return { error: `HTTP ${response.status}` }
     }
-  }, 'market')
+    return await response.json()
+  } catch (err) {
+    logger.error('ref:marketContracts fetch failed', err, { module: 'Main' })
+    return { error: String(err) }
+  }
 })
 
 ipcMain.handle('ref:manufacturingCost', async (_event, params: unknown) => {
@@ -842,27 +768,26 @@ ipcMain.handle('ref:manufacturingCost', async (_event, params: unknown) => {
     return { error: 'product_id or blueprint_id is required' }
   }
 
-  return queueRefRequest(async () => {
-    try {
-      const searchParams = new URLSearchParams()
-      for (const [key, value] of Object.entries(p)) {
-        if (value !== undefined && value !== null) {
-          searchParams.set(key, String(value))
-        }
+  await waitForGlobalBackoff()
+  try {
+    const searchParams = new URLSearchParams()
+    for (const [key, value] of Object.entries(p)) {
+      if (value !== undefined && value !== null) {
+        searchParams.set(key, String(value))
       }
-      const response = await fetchRefWithRetry(`${REF_API_BASE}/manufacturing-cost?${searchParams}`, {
-        headers: getRefHeaders(),
-      })
-      if (!response.ok) {
-        const text = await response.text()
-        return { error: `HTTP ${response.status}: ${text}` }
-      }
-      return await response.json()
-    } catch (err) {
-      logger.error('ref:manufacturingCost fetch failed', err, { module: 'Main' })
-      return { error: String(err) }
     }
-  })
+    const response = await fetchRefWithRetry(`${REF_API_BASE}/manufacturing-cost?${searchParams}`, {
+      headers: getRefHeaders(),
+    })
+    if (!response.ok) {
+      const text = await response.text()
+      return { error: `HTTP ${response.status}: ${text}` }
+    }
+    return await response.json()
+  } catch (err) {
+    logger.error('ref:manufacturingCost fetch failed', err, { module: 'Main' })
+    return { error: String(err) }
+  }
 })
 
 ipcMain.handle('ref:blueprintResearch', async (_event, params: unknown) => {
@@ -877,61 +802,58 @@ ipcMain.handle('ref:blueprintResearch', async (_event, params: unknown) => {
     return { error: 'system_id is required' }
   }
 
-  return queueRefRequest(async () => {
-    try {
-      const searchParams = new URLSearchParams()
-      for (const [key, value] of Object.entries(p)) {
-        if (value !== undefined && value !== null) {
-          searchParams.set(key, String(value))
-        }
+  await waitForGlobalBackoff()
+  try {
+    const searchParams = new URLSearchParams()
+    for (const [key, value] of Object.entries(p)) {
+      if (value !== undefined && value !== null) {
+        searchParams.set(key, String(value))
       }
-      const response = await fetchRefWithRetry(`${REF_API_BASE}/blueprint-research?${searchParams}`, {
-        headers: getRefHeaders(),
-      })
-      if (!response.ok) {
-        const text = await response.text()
-        return { error: `HTTP ${response.status}: ${text}` }
-      }
-      return await response.json()
-    } catch (err) {
-      logger.error('ref:blueprintResearch fetch failed', err, { module: 'Main' })
-      return { error: String(err) }
     }
-  })
+    const response = await fetchRefWithRetry(`${REF_API_BASE}/blueprint-research?${searchParams}`, {
+      headers: getRefHeaders(),
+    })
+    if (!response.ok) {
+      const text = await response.text()
+      return { error: `HTTP ${response.status}: ${text}` }
+    }
+    return await response.json()
+  } catch (err) {
+    logger.error('ref:blueprintResearch fetch failed', err, { module: 'Main' })
+    return { error: String(err) }
+  }
 })
 
 ipcMain.handle('ref:blueprints', async () => {
-  return queueRefRequest(async () => {
-    try {
-      const response = await fetchRefWithRetry(`${REF_API_BASE}/blueprints`, {
-        headers: getRefHeaders(),
-      })
-      if (!response.ok) {
-        return { error: `HTTP ${response.status}` }
-      }
-      return await response.json()
-    } catch (err) {
-      logger.error('ref:blueprints fetch failed', err, { module: 'Main' })
-      return { error: String(err) }
+  await waitForGlobalBackoff()
+  try {
+    const response = await fetchRefWithRetry(`${REF_API_BASE}/blueprints`, {
+      headers: getRefHeaders(),
+    })
+    if (!response.ok) {
+      return { error: `HTTP ${response.status}` }
     }
-  })
+    return await response.json()
+  } catch (err) {
+    logger.error('ref:blueprints fetch failed', err, { module: 'Main' })
+    return { error: String(err) }
+  }
 })
 
 ipcMain.handle('ref:systems', async () => {
-  return queueRefRequest(async () => {
-    try {
-      const response = await fetchRefWithRetry(`${REF_API_BASE}/systems`, {
-        headers: getRefHeaders(),
-      })
-      if (!response.ok) {
-        return { error: `HTTP ${response.status}` }
-      }
-      return await response.json()
-    } catch (err) {
-      logger.error('ref:systems fetch failed', err, { module: 'Main' })
-      return { error: String(err) }
+  await waitForGlobalBackoff()
+  try {
+    const response = await fetchRefWithRetry(`${REF_API_BASE}/systems`, {
+      headers: getRefHeaders(),
+    })
+    if (!response.ok) {
+      return { error: `HTTP ${response.status}` }
     }
-  })
+    return await response.json()
+  } catch (err) {
+    logger.error('ref:systems fetch failed', err, { module: 'Main' })
+    return { error: String(err) }
+  }
 })
 
 ipcMain.handle(
@@ -948,23 +870,22 @@ ipcMain.handle(
       return { error: 'Config is required' }
     }
 
-    return queueRefRequest(async () => {
-      try {
-        const response = await fetchRefWithRetry(`${REF_API_BASE}/buyback/calculate`, {
-          method: 'POST',
-          headers: getRefHeaders('json'),
-          body: JSON.stringify({ text, config }),
-        })
-        if (!response.ok) {
-          const errorText = await response.text()
-          return { error: `HTTP ${response.status}: ${errorText}` }
-        }
-        return await response.json()
-      } catch (err) {
-        logger.error('ref:buybackCalculate fetch failed', err, { module: 'Main' })
-        return { error: String(err) }
+    await waitForGlobalBackoff()
+    try {
+      const response = await fetchRefWithRetry(`${REF_API_BASE}/buyback/calculate`, {
+        method: 'POST',
+        headers: getRefHeaders('json'),
+        body: JSON.stringify({ text, config }),
+      })
+      if (!response.ok) {
+        const errorText = await response.text()
+        return { error: `HTTP ${response.status}: ${errorText}` }
       }
-    })
+      return await response.json()
+    } catch (err) {
+      logger.error('ref:buybackCalculate fetch failed', err, { module: 'Main' })
+      return { error: String(err) }
+    }
   }
 )
 
@@ -975,23 +896,22 @@ ipcMain.handle(
       return { error: 'Text is required' }
     }
 
-    return queueRefRequest(async () => {
-      try {
-        const response = await fetchRefWithRetry('https://edencom.net/api/buyback/calculator', {
-          method: 'POST',
-          headers: getRefHeaders('json'),
-          body: JSON.stringify({ text }),
-        })
-        if (!response.ok) {
-          const errorText = await response.text()
-          return { error: `HTTP ${response.status}: ${errorText}` }
-        }
-        return await response.json()
-      } catch (err) {
-        logger.error('ref:buybackCalculator fetch failed', err, { module: 'Main' })
-        return { error: String(err) }
+    await waitForGlobalBackoff()
+    try {
+      const response = await fetchRefWithRetry('https://edencom.net/api/buyback/calculator', {
+        method: 'POST',
+        headers: getRefHeaders('json'),
+        body: JSON.stringify({ text }),
+      })
+      if (!response.ok) {
+        const errorText = await response.text()
+        return { error: `HTTP ${response.status}: ${errorText}` }
       }
-    })
+      return await response.json()
+    } catch (err) {
+      logger.error('ref:buybackCalculator fetch failed', err, { module: 'Main' })
+      return { error: String(err) }
+    }
   }
 )
 
