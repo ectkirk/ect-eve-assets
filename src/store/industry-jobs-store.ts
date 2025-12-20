@@ -351,11 +351,12 @@ export const useIndustryJobsStore = create<IndustryJobsStore>((set, get) => ({
         }
       }
 
-      set({
+      set((s) => ({
         jobsById: jobs,
         visibilityByOwner: visibility,
         initialized: true,
-      })
+        updateCounter: s.updateCounter + 1,
+      }))
 
       if (jobs.size > 0) {
         triggerResolution()

@@ -362,11 +362,12 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
         }
       }
 
-      set({
+      set((s) => ({
         contractsById: contracts,
         visibilityByOwner: visibility,
         initialized: true,
-      })
+        updateCounter: s.updateCounter + 1,
+      }))
 
       if (contracts.size > 0) {
         triggerResolution()

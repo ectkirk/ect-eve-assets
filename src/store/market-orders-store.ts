@@ -333,11 +333,12 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
         }
       }
 
-      set({
+      set((s) => ({
         ordersById: orders,
         visibilityByOwner: visibility,
         initialized: true,
-      })
+        updateCounter: s.updateCounter + 1,
+      }))
 
       if (orders.size > 0) {
         triggerResolution()
