@@ -108,7 +108,7 @@ async function fetchContractItemsBatch(
       }
       return fetchContractItemsFromESI(owner.characterId, contract.contract_id)
     },
-    { batchSize: 20 }
+    { batchSize: 1 }
   )
 
   for (const [contract, items] of fetchedItems) {
@@ -190,6 +190,7 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
       const existingContracts = new Map(
         state.contractsByOwner.map((oc) => [`${oc.owner.type}-${oc.owner.id}`, oc])
       )
+      const sessionFetchedItems = new Map<number, ESIContractItem[]>()
 
       for (const owner of ownersToUpdate) {
         const currentOwnerKey = ownerKey(owner.type, owner.id)
@@ -213,7 +214,7 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
           const activeToFetch = contracts.filter((contract) => {
             if (!canFetchItems(contract)) return false
             const isActive = contract.status === 'outstanding' || contract.status === 'in_progress'
-            return isActive && !existingItemsMap.has(contract.contract_id)
+            return isActive && !existingItemsMap.has(contract.contract_id) && !sessionFetchedItems.has(contract.contract_id)
           })
 
           let fetchedItemsMap = new Map<number, ESIContractItem[]>()
@@ -224,11 +225,14 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
               toFetch: activeToFetch.length,
             })
             fetchedItemsMap = await fetchContractItemsBatch(owner, activeToFetch)
+            for (const [contractId, items] of fetchedItemsMap) {
+              sessionFetchedItems.set(contractId, items)
+            }
           }
 
           const contractsWithItems: ContractWithItems[] = contracts.map((contract) => ({
             contract,
-            items: fetchedItemsMap.get(contract.contract_id) ?? existingItemsMap.get(contract.contract_id),
+            items: fetchedItemsMap.get(contract.contract_id) ?? sessionFetchedItems.get(contract.contract_id) ?? existingItemsMap.get(contract.contract_id),
           }))
 
           await db.save(currentOwnerKey, owner, contractsWithItems)
@@ -285,9 +289,11 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
         previousContracts.map((c) => [c.contract.contract_id, c.contract.status])
       )
       const existingItemsMap = new Map<number, ESIContractItem[]>()
-      for (const cwi of previousContracts) {
-        if (cwi.items) {
-          existingItemsMap.set(cwi.contract.contract_id, cwi.items)
+      for (const oc of state.contractsByOwner) {
+        for (const cwi of oc.contracts) {
+          if (cwi.items && !existingItemsMap.has(cwi.contract.contract_id)) {
+            existingItemsMap.set(cwi.contract.contract_id, cwi.items)
+          }
         }
       }
 
@@ -387,31 +393,23 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
     const state = get()
     let targetOwner: Owner | undefined
     let targetContract: ContractWithItems | undefined
-    let targetOwnerKey: string | undefined
 
     for (const { owner, contracts } of state.contractsByOwner) {
       for (const cwi of contracts) {
         if (cwi.contract.contract_id === contractId) {
-          targetOwner = owner
-          targetContract = cwi
-          targetOwnerKey = ownerKey(owner.type, owner.id)
-          break
+          if (cwi.items) {
+            return cwi.items
+          }
+          if (!targetOwner && canFetchItems(cwi.contract)) {
+            targetOwner = owner
+            targetContract = cwi
+          }
         }
       }
-      if (targetContract) break
     }
 
-    if (!targetOwner || !targetContract || !targetOwnerKey) {
-      logger.warn('Contract not found for items fetch', { module: 'ContractsStore', contractId })
-      return undefined
-    }
-
-    if (targetContract.items) {
-      return targetContract.items
-    }
-
-    if (!canFetchItems(targetContract.contract)) {
-      logger.debug('Contract items not fetchable', { module: 'ContractsStore', contractId })
+    if (!targetOwner || !targetContract) {
+      logger.debug('Contract not found or not fetchable', { module: 'ContractsStore', contractId })
       return undefined
     }
 
@@ -425,19 +423,30 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
         items = await fetchContractItemsFromESI(targetOwner.characterId, contractId)
       }
 
-      const updatedContracts = state.contractsByOwner.map((oc) => {
-        if (`${oc.owner.type}-${oc.owner.id}` !== targetOwnerKey) return oc
-        return {
-          ...oc,
-          contracts: oc.contracts.map((cwi) =>
-            cwi.contract.contract_id === contractId ? { ...cwi, items } : cwi
-          ),
-        }
-      })
+      const currentState = get().contractsByOwner
+      const updatedContracts: OwnerContracts[] = []
+      const ownersToSave: { key: string; owner: Owner; contracts: ContractWithItems[] }[] = []
 
-      const ownerContracts = updatedContracts.find((oc) => `${oc.owner.type}-${oc.owner.id}` === targetOwnerKey)
-      if (ownerContracts) {
-        await db.save(targetOwnerKey, targetOwner, ownerContracts.contracts)
+      for (const oc of currentState) {
+        const hasContract = oc.contracts.some((cwi) => cwi.contract.contract_id === contractId)
+        if (!hasContract) {
+          updatedContracts.push(oc)
+          continue
+        }
+
+        const updatedOwnerContracts = oc.contracts.map((cwi) =>
+          cwi.contract.contract_id === contractId ? { ...cwi, items } : cwi
+        )
+        updatedContracts.push({ ...oc, contracts: updatedOwnerContracts })
+        ownersToSave.push({
+          key: ownerKey(oc.owner.type, oc.owner.id),
+          owner: oc.owner,
+          contracts: updatedOwnerContracts,
+        })
+      }
+
+      for (const { key, owner, contracts } of ownersToSave) {
+        await db.save(key, owner, contracts)
       }
 
       set((s) => ({ contractsByOwner: updatedContracts, updateCounter: s.updateCounter + 1 }))

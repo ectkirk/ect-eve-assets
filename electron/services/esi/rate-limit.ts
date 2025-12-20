@@ -19,7 +19,6 @@ interface GroupErrorLimitState {
 
 export class RateLimitTracker {
   private groups = new Map<string, RateLimitGroupState>()
-  private groupRetryAfter = new Map<string, number>()
   private groupErrors = new Map<string, GroupErrorState>()
   private groupErrorLimits = new Map<string, GroupErrorLimitState>()
   private globalRetryAfter: number | null = null
@@ -97,13 +96,6 @@ export class RateLimitTracker {
       return this.globalRetryAfter - Date.now()
     }
 
-    const groupRetry = this.groupRetryAfter.get(group)
-    if (groupRetry && Date.now() < groupRetry) {
-      return groupRetry - Date.now()
-    } else if (groupRetry) {
-      this.groupRetryAfter.delete(group)
-    }
-
     const groupErrorDelay = this.getGroupErrorDelay(group)
     if (groupErrorDelay > 0) {
       return groupErrorDelay
@@ -143,10 +135,6 @@ export class RateLimitTracker {
 
   setGlobalRetryAfter(retryAfterSec: number): void {
     this.globalRetryAfter = Date.now() + retryAfterSec * 1000
-  }
-
-  setGroupRetryAfter(group: string, retryAfterSec: number): void {
-    this.groupRetryAfter.set(group, Date.now() + retryAfterSec * 1000)
   }
 
   recordGroupError(group: string): void {
@@ -244,7 +232,6 @@ export class RateLimitTracker {
 
   clear(): void {
     this.groups.clear()
-    this.groupRetryAfter.clear()
     this.groupErrors.clear()
     this.groupErrorLimits.clear()
     this.globalRetryAfter = null

@@ -542,15 +542,15 @@ export function ContractsTab() {
 
     const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
     const FINISHED_STATUSES = new Set(['finished', 'finished_issuer', 'finished_contractor'])
-    const FETCH_BATCH_SIZE = 10
 
     const fetchCompletedItems = async () => {
-      const contractsToFetch: number[] = []
+      const contractsToFetch = new Set<number>()
 
       for (const { contracts } of contractsByOwner) {
-        for (const { contract, items } of contracts) {
-          if (items !== undefined) continue
+        for (const { contract } of contracts) {
+          if (loadedItems.has(contract.contract_id)) continue
           if (fetchedContractIds.has(contract.contract_id)) continue
+          if (contractsToFetch.has(contract.contract_id)) continue
 
           const isActive = contract.status === 'outstanding' || contract.status === 'in_progress'
           if (isActive) continue
@@ -561,24 +561,19 @@ export function ContractsTab() {
           const isWithin30Days = Date.now() - refTime < THIRTY_DAYS_MS
 
           if (isItemContract && isFinished && isWithin30Days) {
-            contractsToFetch.push(contract.contract_id)
+            contractsToFetch.add(contract.contract_id)
           }
         }
       }
 
-      if (contractsToFetch.length === 0) return
+      if (contractsToFetch.size === 0) return
 
-      setFetchedContractIds(prev => {
-        const next = new Set(prev)
-        for (const id of contractsToFetch) next.add(id)
-        return next
-      })
+      setFetchedContractIds(prev => new Set([...prev, ...contractsToFetch]))
 
       setIsLoadingItems(true)
       try {
-        for (let i = 0; i < contractsToFetch.length; i += FETCH_BATCH_SIZE) {
-          const batch = contractsToFetch.slice(i, i + FETCH_BATCH_SIZE)
-          await Promise.all(batch.map((id) => fetchItemsForContract(id)))
+        for (const id of contractsToFetch) {
+          await fetchItemsForContract(id)
         }
       } finally {
         setIsLoadingItems(false)
@@ -586,7 +581,7 @@ export function ContractsTab() {
     }
 
     fetchCompletedItems()
-  }, [showCompleted, contractsByOwner, fetchItemsForContract, fetchedContractIds])
+  }, [showCompleted, contractsByOwner, fetchItemsForContract, fetchedContractIds, loadedItems])
 
   const { setExpandCollapse, search, setResultCount, setTotalValue, setColumns } = useTabControls()
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
