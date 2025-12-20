@@ -1,7 +1,18 @@
 {
-  "version": "1.7.2",
-  "date": "2025-12-18",
+  "version": "1.8.0",
+  "date": "2025-12-20",
   "changes": [
-    { "type": "fix", "scope": "assets", "description": "Resolve station locations (e.g., Thera) that were showing as 'Unknown Region'" }
+    { "type": "feat", "scope": "esi", "description": "Add per-group rate limiting and error handling" },
+    { "type": "feat", "scope": "ref-api", "description": "Preload blueprints, structures, and all types on startup" },
+    { "type": "feat", "scope": "ref-api", "description": "Add dedicated moon endpoint for starbase locations" },
+    { "type": "feat", "scope": "pricing", "description": "Add Jita market endpoint for improved price accuracy" },
+    { "type": "feat", "description": "Pause ESI and API operations when window is minimized" },
+    { "type": "perf", "scope": "tabs", "description": "Optimize assets and contracts tab performance" },
+    { "type": "fix", "scope": "assets", "description": "Force re-render when contracts or market orders update" },
+    { "type": "fix", "scope": "contracts", "description": "Prevent duplicate API calls and fix race conditions" },
+    { "type": "fix", "scope": "cache", "description": "Ensure reference data reloads after cache clear" },
+    { "type": "fix", "scope": "pricing", "description": "Resolve race conditions in price fetching and type resolution" },
+    { "type": "refactor", "scope": "tree", "description": "Simplify tree building and fix location resolution" },
+    { "type": "refactor", "scope": "buyback", "description": "Fetch config dynamically from API" }
   ]
 }
