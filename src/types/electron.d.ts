@@ -280,7 +280,7 @@ declare global {
     productName: string
   }
 
-  type BlueprintsResult = BlueprintListItem[] | { error: string }
+  type BlueprintsResult = { items: Record<string, number> } | { error: string }
 
   interface SystemListItem {
     id: number

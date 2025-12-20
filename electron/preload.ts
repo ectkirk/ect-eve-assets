@@ -279,7 +279,7 @@ export interface BlueprintListItem {
   productName: string
 }
 
-export type BlueprintsResult = BlueprintListItem[] | { error: string }
+export type BlueprintsResult = { items: Record<string, number> } | { error: string }
 
 export interface SystemListItem {
   id: number

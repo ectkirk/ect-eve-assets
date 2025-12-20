@@ -14,6 +14,7 @@ import {
   setSystems,
   setStations,
   setRefStructures,
+  setBlueprints,
   isReferenceDataLoaded,
   isAllTypesLoaded,
   setAllTypesLoaded,
@@ -21,12 +22,15 @@ import {
   setUniverseDataLoaded,
   isRefStructuresLoaded,
   setRefStructuresLoaded,
+  isBlueprintsLoaded,
+  setBlueprintsLoaded,
   type CachedType,
   type CachedLocation,
   type CachedRegion,
   type CachedSystem,
   type CachedStation,
   type CachedRefStructure,
+  type CachedBlueprint,
 } from '@/store/reference-cache'
 import {
   RefTypeSchema,
@@ -117,7 +121,7 @@ export function _resetForTests(): void {
 }
 
 export async function loadReferenceData(onProgress?: ReferenceDataProgress): Promise<void> {
-  if (isReferenceDataLoaded() && isAllTypesLoaded()) return
+  if (isReferenceDataLoaded() && isAllTypesLoaded() && isBlueprintsLoaded()) return
 
   if (referenceDataPromise) {
     return referenceDataPromise
@@ -166,11 +170,12 @@ export async function loadReferenceData(onProgress?: ReferenceDataProgress): Pro
     }
 
     await loadAllTypes(onProgress)
+    await loadBlueprints(onProgress)
 
     const duration = Math.round(performance.now() - start)
     logger.info('Reference data loaded', { module: 'RefAPI', duration })
   })().finally(() => {
-    if (!isReferenceDataLoaded() || !isAllTypesLoaded()) {
+    if (!isReferenceDataLoaded() || !isAllTypesLoaded() || !isBlueprintsLoaded()) {
       referenceDataPromise = null
     }
   })
@@ -247,6 +252,31 @@ async function loadAllTypes(onProgress?: ReferenceDataProgress): Promise<void> {
 
   const duration = Math.round(performance.now() - start)
   logger.info('All types loaded', { module: 'RefAPI', total: loaded, pages: pageCount, duration })
+}
+
+async function loadBlueprints(onProgress?: ReferenceDataProgress): Promise<void> {
+  if (isBlueprintsLoaded()) return
+
+  onProgress?.('Loading blueprints...')
+  const start = performance.now()
+
+  const result = await window.electronAPI!.refBlueprints()
+
+  if ('error' in result) {
+    logger.error('Failed to load blueprints', undefined, { module: 'RefAPI', error: result.error })
+    return
+  }
+
+  const blueprints: CachedBlueprint[] = Object.entries(result.items).map(([bpId, productId]) => ({
+    id: Number(bpId),
+    productId,
+  }))
+
+  await setBlueprints(blueprints)
+  setBlueprintsLoaded(true)
+
+  const duration = Math.round(performance.now() - start)
+  logger.info('Blueprints loaded', { module: 'RefAPI', count: blueprints.length, duration })
 }
 
 let universeDataPromise: Promise<void> | null = null

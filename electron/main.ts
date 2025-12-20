@@ -975,7 +975,7 @@ ipcMain.handle('ref:blueprintResearch', async (_event, params: unknown) => {
 ipcMain.handle('ref:blueprints', async () => {
   await waitForRefRateLimit()
   try {
-    const response = await fetchRefWithRetry(`${REF_API_BASE}/blueprints`, {
+    const response = await fetchRefWithRetry(`${REF_API_BASE}/reference/blueprints`, {
       headers: getRefHeaders(),
     })
     if (!response.ok) {

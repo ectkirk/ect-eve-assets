@@ -1,7 +1,7 @@
 import { logger } from '@/lib/logger'
 
 const DB_NAME = 'ecteveassets-cache'
-const DB_VERSION = 9
+const DB_VERSION = 10
 
 export interface CachedRegion {
   id: number
@@ -36,6 +36,11 @@ export interface CachedGroup {
   id: number
   name: string
   categoryId: number
+}
+
+export interface CachedBlueprint {
+  id: number
+  productId: number
 }
 
 export interface CachedType {
@@ -96,15 +101,18 @@ let structuresCache = new Map<number, CachedStructure>()
 let locationsCache = new Map<number, CachedLocation>()
 let abyssalsCache = new Map<number, CachedAbyssal>()
 let namesCache = new Map<number, CachedName>()
+let blueprintsCache = new Map<number, CachedBlueprint>()
 let initialized = false
 let referenceDataLoaded = false
 let allTypesLoaded = false
 let universeDataLoaded = false
 let refStructuresLoaded = false
+let blueprintsLoaded = false
 
 const ALL_TYPES_LOADED_KEY = 'ecteveassets-all-types-loaded'
 const UNIVERSE_LOADED_KEY = 'ecteveassets-universe-loaded'
 const REF_STRUCTURES_LOADED_KEY = 'ecteveassets-ref-structures-loaded'
+const BLUEPRINTS_LOADED_KEY = 'ecteveassets-blueprints-loaded'
 
 const listeners = new Set<() => void>()
 
@@ -170,6 +178,9 @@ async function openDB(): Promise<IDBDatabase> {
       if (!database.objectStoreNames.contains('refStructures')) {
         database.createObjectStore('refStructures', { keyPath: 'id' })
       }
+      if (!database.objectStoreNames.contains('blueprints')) {
+        database.createObjectStore('blueprints', { keyPath: 'id' })
+      }
 
       if (oldVersion < 4 && database.objectStoreNames.contains('locations')) {
         const tx = (event.target as IDBOpenDBRequest).transaction!
@@ -204,7 +215,7 @@ export async function initCache(): Promise<void> {
   logger.debug('Initializing reference cache', { module: 'ReferenceCache' })
 
   try {
-    const [types, regions, systems, stations, refStructures, structures, locations, abyssals, names, categories, groups] = await Promise.all([
+    const [types, regions, systems, stations, refStructures, structures, locations, abyssals, names, categories, groups, blueprints] = await Promise.all([
       loadStore<CachedType>('types'),
       loadStore<CachedRegion>('regions'),
       loadStore<CachedSystem>('systems'),
@@ -216,6 +227,7 @@ export async function initCache(): Promise<void> {
       loadStore<CachedName>('names'),
       loadStore<CachedCategory>('categories'),
       loadStore<CachedGroup>('groups'),
+      loadStore<CachedBlueprint>('blueprints'),
     ])
 
     typesCache = types
@@ -229,6 +241,7 @@ export async function initCache(): Promise<void> {
     namesCache = names
     categoriesCache = categories
     groupsCache = groups
+    blueprintsCache = blueprints
     initialized = true
     referenceDataLoaded = groupsCache.size > 0
 
@@ -236,6 +249,7 @@ export async function initCache(): Promise<void> {
       allTypesLoaded = localStorage.getItem(ALL_TYPES_LOADED_KEY) === 'true' && typesCache.size > 0
       universeDataLoaded = localStorage.getItem(UNIVERSE_LOADED_KEY) === 'true' && systemsCache.size > 0
       refStructuresLoaded = localStorage.getItem(REF_STRUCTURES_LOADED_KEY) === 'true' && refStructuresCache.size > 0
+      blueprintsLoaded = localStorage.getItem(BLUEPRINTS_LOADED_KEY) === 'true' && blueprintsCache.size > 0
     } catch {
       // localStorage not available
     }
@@ -256,6 +270,8 @@ export async function initCache(): Promise<void> {
       names: namesCache.size,
       categories: categoriesCache.size,
       groups: groupsCache.size,
+      blueprints: blueprintsCache.size,
+      blueprintsLoaded,
     })
   } catch (err) {
     logger.error('Failed to initialize cache', err, { module: 'ReferenceCache' })
@@ -497,6 +513,52 @@ export async function setGroups(groups: CachedGroup[]): Promise<void> {
   })
 }
 
+export async function setBlueprints(blueprints: CachedBlueprint[]): Promise<void> {
+  if (blueprints.length === 0) return
+
+  const database = await openDB()
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction('blueprints', 'readwrite')
+    const store = tx.objectStore('blueprints')
+
+    tx.onerror = () => reject(tx.error)
+    tx.oncomplete = () => {
+      blueprintsCache = new Map(blueprints.map(b => [b.id, b]))
+      logger.info('Blueprints saved', { module: 'ReferenceCache', count: blueprints.length })
+      resolve()
+    }
+
+    for (const blueprint of blueprints) {
+      store.put(blueprint)
+    }
+  })
+}
+
+export function getBlueprint(id: number): CachedBlueprint | undefined {
+  return blueprintsCache.get(id)
+}
+
+export function getAllBlueprints(): Map<number, CachedBlueprint> {
+  return blueprintsCache
+}
+
+export function isBlueprintsLoaded(): boolean {
+  return blueprintsLoaded
+}
+
+export function setBlueprintsLoaded(loaded: boolean): void {
+  blueprintsLoaded = loaded
+  try {
+    if (loaded) {
+      localStorage.setItem(BLUEPRINTS_LOADED_KEY, 'true')
+    } else {
+      localStorage.removeItem(BLUEPRINTS_LOADED_KEY)
+    }
+  } catch {
+    // localStorage not available
+  }
+}
+
 export function getStructure(id: number): CachedStructure | undefined {
   return structuresCache.get(id)
 }
@@ -734,11 +796,13 @@ export async function clearReferenceCache(): Promise<void> {
   locationsCache.clear()
   abyssalsCache.clear()
   namesCache.clear()
+  blueprintsCache.clear()
   initialized = false
   referenceDataLoaded = false
   setAllTypesLoaded(false)
   setUniverseDataLoaded(false)
   setRefStructuresLoaded(false)
+  setBlueprintsLoaded(false)
 
   if (db) {
     db.close()

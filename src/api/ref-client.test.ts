@@ -16,6 +16,7 @@ vi.mock('@/store/reference-cache', () => ({
   setSystems: vi.fn(),
   setStations: vi.fn(),
   setRefStructures: vi.fn(),
+  setBlueprints: vi.fn(),
   isReferenceDataLoaded: vi.fn(() => true),
   isAllTypesLoaded: vi.fn(() => false),
   setAllTypesLoaded: vi.fn(),
@@ -23,6 +24,8 @@ vi.mock('@/store/reference-cache', () => ({
   setUniverseDataLoaded: vi.fn(),
   isRefStructuresLoaded: vi.fn(() => false),
   setRefStructuresLoaded: vi.fn(),
+  isBlueprintsLoaded: vi.fn(() => true),
+  setBlueprintsLoaded: vi.fn(),
 }))
 
 import {

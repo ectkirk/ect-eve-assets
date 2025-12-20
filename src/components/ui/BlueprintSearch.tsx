@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { Search, Loader2, X } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 import { TypeIcon } from './type-icon'
+import { getAllBlueprints, getType } from '@/store/reference-cache'
 
 interface BlueprintSearchProps {
   mode: 'product' | 'blueprint'
@@ -10,50 +11,34 @@ interface BlueprintSearchProps {
   className?: string
 }
 
-let blueprintsCache: BlueprintListItem[] | null = null
-let loadingPromise: Promise<BlueprintListItem[]> | null = null
+function buildBlueprintList(): BlueprintListItem[] {
+  const blueprints = getAllBlueprints()
+  const items: BlueprintListItem[] = []
 
-async function loadBlueprints(): Promise<BlueprintListItem[]> {
-  if (blueprintsCache) return blueprintsCache
-  if (loadingPromise) return loadingPromise
-
-  loadingPromise = (async () => {
-    const result = await window.electronAPI!.refBlueprints()
-    if (Array.isArray(result)) {
-      blueprintsCache = result
-      return result
+  for (const [bpId, bp] of blueprints) {
+    const bpType = getType(bpId)
+    const productType = getType(bp.productId)
+    if (bpType && productType) {
+      items.push({
+        id: bpId,
+        name: bpType.name,
+        productId: bp.productId,
+        productName: productType.name,
+      })
     }
-    throw new Error('error' in result ? result.error : 'Failed to load blueprints')
-  })()
+  }
 
-  return loadingPromise
+  return items.sort((a, b) => a.name.localeCompare(b.name))
 }
 
 export function BlueprintSearch({ mode, value, onChange, placeholder, className = '' }: BlueprintSearchProps) {
   const [query, setQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
-  const [blueprints, setBlueprints] = useState<BlueprintListItem[]>(blueprintsCache ?? [])
-  const [loadStatus, setLoadStatus] = useState<'idle' | 'done' | 'error'>('idle')
-  const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [highlightIndex, setHighlightIndex] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const isLoading = isOpen && blueprints.length === 0 && loadStatus === 'idle'
-
-  useEffect(() => {
-    if (!isLoading) return
-
-    loadBlueprints()
-      .then((data) => {
-        setBlueprints(data)
-        setLoadStatus('done')
-      })
-      .catch((err) => {
-        setErrorMsg(String(err))
-        setLoadStatus('error')
-      })
-  }, [isLoading])
+  const blueprints = useMemo(() => buildBlueprintList(), [])
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -141,24 +126,15 @@ export function BlueprintSearch({ mode, value, onChange, placeholder, className 
             placeholder={displayPlaceholder}
             className="w-full rounded border border-border bg-surface-tertiary pl-9 pr-3 py-2 text-sm focus:border-accent focus:outline-none"
           />
-          {isLoading && (
-            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-content-secondary" />
-          )}
         </div>
       )}
 
       {isOpen && !value && (
         <div className="absolute z-50 mt-1 w-full rounded border border-border bg-surface-secondary shadow-lg max-h-64 overflow-y-auto">
-          {errorMsg && (
-            <div className="px-3 py-2 text-sm text-semantic-negative">{errorMsg}</div>
-          )}
-          {isLoading && !errorMsg && (
-            <div className="px-3 py-2 text-sm text-content-secondary">Loading...</div>
-          )}
-          {!isLoading && !errorMsg && query.trim() && filtered.length === 0 && (
+          {query.trim() && filtered.length === 0 && (
             <div className="px-3 py-2 text-sm text-content-secondary">No matches found</div>
           )}
-          {!isLoading && !errorMsg && !query.trim() && (
+          {!query.trim() && (
             <div className="px-3 py-2 text-sm text-content-secondary">Type to search...</div>
           )}
           {filtered.map((bp, i) => {
