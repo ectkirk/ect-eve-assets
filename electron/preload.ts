@@ -59,11 +59,8 @@ export interface RefStructuresPageResult {
   error?: string
 }
 
-export interface RefMoonResult {
-  id?: number
-  name?: string
-  systemId?: number
-  regionId?: number
+export interface RefMoonsResult {
+  items?: Record<string, { id: number; name: string; systemId: number }>
   error?: string
 }
 
@@ -431,7 +428,7 @@ export interface ElectronAPI {
   refUniverseStations: () => Promise<RefStationsResult>
   refUniverseStructuresPage: (params?: RefStructuresPageParams) => Promise<RefStructuresPageResult>
   refImplants: (ids: number[]) => Promise<RefApiResult>
-  refMoon: (id: number) => Promise<RefMoonResult>
+  refMoons: (ids: number[]) => Promise<RefMoonsResult>
   refShipSlots: (ids: number[]) => Promise<RefShipsResult>
   refMarket: (params: RefMarketParams) => Promise<RefMarketResult>
   refMarketJita: (typeIds: number[]) => Promise<RefMarketJitaResult>
@@ -505,7 +502,7 @@ const electronAPI: ElectronAPI = {
   refUniverseStructuresPage: (params?: RefStructuresPageParams) =>
     ipcRenderer.invoke('ref:universe-structures-page', params),
   refImplants: (ids: number[]) => ipcRenderer.invoke('ref:implants', ids),
-  refMoon: (id: number) => ipcRenderer.invoke('ref:moon', id),
+  refMoons: (ids: number[]) => ipcRenderer.invoke('ref:moons', ids),
   refShipSlots: (ids: number[]) => ipcRenderer.invoke('ref:shipslots', ids),
   refMarket: (params: RefMarketParams) => ipcRenderer.invoke('ref:market', params),
   refMarketJita: (typeIds: number[]) => ipcRenderer.invoke('ref:marketJita', typeIds),

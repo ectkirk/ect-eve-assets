@@ -462,7 +462,10 @@ export const RefMoonSchema = z.object({
   id: z.number(),
   name: z.string(),
   systemId: z.number(),
-  regionId: z.number(),
+})
+
+export const RefMoonsResponseSchema = z.object({
+  items: z.record(z.string(), RefMoonSchema),
 })
 
 export const MarketBulkItemSchema = z.object({

@@ -752,23 +752,27 @@ ipcMain.handle('ref:implants', async (_event, ids: unknown) => {
   }
 })
 
-ipcMain.handle('ref:moon', async (_event, id: unknown) => {
-  if (typeof id !== 'number' || !Number.isInteger(id) || id <= 0) {
-    return { error: 'Invalid moon id' }
+ipcMain.handle('ref:moons', async (_event, ids: unknown) => {
+  if (!Array.isArray(ids) || ids.length === 0 || ids.length > 1000) {
+    return { error: 'Invalid ids array (max 1000)' }
+  }
+  if (!ids.every((id) => typeof id === 'number' && Number.isInteger(id) && id > 0)) {
+    return { error: 'Invalid id values' }
   }
 
   await waitForRefRateLimit()
   try {
-    const response = await fetchRefWithRetry(`${REF_API_BASE}/reference/moons/${id}`, {
-      method: 'GET',
-      headers: getRefHeaders(),
+    const response = await fetchRefWithRetry(`${REF_API_BASE}/reference/moons`, {
+      method: 'POST',
+      headers: getRefHeaders('json'),
+      body: JSON.stringify({ ids }),
     })
     if (!response.ok) {
       return { error: `HTTP ${response.status}` }
     }
     return await response.json()
   } catch (err) {
-    logger.error('ref:moon fetch failed', err, { module: 'Main' })
+    logger.error('ref:moons fetch failed', err, { module: 'Main' })
     return { error: String(err) }
   }
 })

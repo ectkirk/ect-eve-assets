@@ -35,6 +35,8 @@ import {
   saveLocations,
   getGroup,
   getCategory,
+  getSystem,
+  getRegion,
   setCategories,
   setGroups,
   setRegions,
@@ -48,7 +50,7 @@ import {
 } from '@/store/reference-cache'
 
 const mockRefTypesPage = vi.fn()
-const mockRefMoon = vi.fn()
+const mockRefMoons = vi.fn()
 const mockRefMarket = vi.fn()
 const mockRefMarketJita = vi.fn()
 const mockRefCategories = vi.fn()
@@ -87,7 +89,7 @@ describe('ref-client', () => {
 
     window.electronAPI = {
       refTypesPage: mockRefTypesPage,
-      refMoon: mockRefMoon,
+      refMoons: mockRefMoons,
       refMarket: mockRefMarket,
       refMarketJita: mockRefMarketJita,
       refCategories: mockRefCategories,
@@ -185,17 +187,18 @@ describe('ref-client', () => {
 
       expect(result.size).toBe(1)
       expect(result.get(60003760)?.name).toContain('Jita')
-      expect(mockRefMoon).not.toHaveBeenCalled()
+      expect(mockRefMoons).not.toHaveBeenCalled()
     })
 
     it('fetches uncached moons from API', async () => {
       vi.mocked(getLocation).mockReturnValue(undefined)
+      vi.mocked(getSystem).mockReturnValue({ id: 30000142, name: 'Jita', regionId: 10000002, securityStatus: 0.9 })
+      vi.mocked(getRegion).mockReturnValue({ id: 10000002, name: 'The Forge' })
 
-      mockRefMoon.mockResolvedValueOnce({
-        id: 40009082,
-        name: 'Jita IV - Moon 4',
-        systemId: 30000142,
-        regionId: 10000002,
+      mockRefMoons.mockResolvedValueOnce({
+        items: {
+          '40009082': { id: 40009082, name: 'Jita IV - Moon 4', systemId: 30000142 },
+        },
       })
 
       const result = await runWithTimers(resolveLocations([40009082]))
@@ -209,7 +212,7 @@ describe('ref-client', () => {
     it('handles API errors gracefully', async () => {
       vi.mocked(getLocation).mockReturnValue(undefined)
 
-      mockRefMoon.mockResolvedValueOnce({ error: 'HTTP 500' })
+      mockRefMoons.mockResolvedValueOnce({ error: 'HTTP 500' })
 
       const result = await runWithTimers(resolveLocations([40009082]))
 
@@ -220,15 +223,14 @@ describe('ref-client', () => {
 
     it('caches placeholder for moons not returned by API', async () => {
       vi.mocked(getLocation).mockReturnValue(undefined)
+      vi.mocked(getSystem).mockReturnValue({ id: 30000142, name: 'Jita', regionId: 10000002, securityStatus: 0.9 })
+      vi.mocked(getRegion).mockReturnValue({ id: 10000002, name: 'The Forge' })
 
-      mockRefMoon
-        .mockResolvedValueOnce({
-          id: 40009082,
-          name: 'Jita IV - Moon 4',
-          systemId: 30000142,
-          regionId: 10000002,
-        })
-        .mockResolvedValueOnce({ error: 'Not found' })
+      mockRefMoons.mockResolvedValueOnce({
+        items: {
+          '40009082': { id: 40009082, name: 'Jita IV - Moon 4', systemId: 30000142 },
+        },
+      })
 
       const result = await runWithTimers(resolveLocations([40009082, 40099999]))
 

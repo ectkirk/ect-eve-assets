@@ -58,11 +58,8 @@ declare global {
     error?: string
   }
 
-  interface RefMoonResult {
-    id?: number
-    name?: string
-    systemId?: number
-    regionId?: number
+  interface RefMoonsResult {
+    items?: Record<string, { id: number; name: string; systemId: number }>
     error?: string
   }
 
@@ -431,7 +428,7 @@ declare global {
     refUniverseStations: () => Promise<RefStationsResult>
     refUniverseStructuresPage: (params?: RefStructuresPageParams) => Promise<RefStructuresPageResult>
     refImplants: (ids: number[]) => Promise<RefApiResult>
-    refMoon: (id: number) => Promise<RefMoonResult>
+    refMoons: (ids: number[]) => Promise<RefMoonsResult>
     refShipSlots: (ids: number[]) => Promise<RefShipsResult>
     refMarket: (params: RefMarketParams) => Promise<RefMarketResult>
     refMarketJita: (typeIds: number[]) => Promise<RefMarketJitaResult>

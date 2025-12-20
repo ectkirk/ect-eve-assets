@@ -41,7 +41,7 @@ import {
   RefStationsResponseSchema,
   RefStructuresPageResponseSchema,
   RefImplantsResponseSchema,
-  RefMoonSchema,
+  RefMoonsResponseSchema,
   MarketBulkResponseSchema,
   MarketBulkItemSchema,
   MarketJitaResponseSchema,
@@ -52,7 +52,6 @@ import { z } from 'zod'
 
 export type MarketBulkItem = z.infer<typeof MarketBulkItemSchema>
 export type RefType = z.infer<typeof RefTypeSchema>
-export type RefMoon = z.infer<typeof RefMoonSchema>
 
 const PLEX_GROUP = 1875
 const CONTRACT_GROUPS = new Set([883, 547, 4594, 485, 1538, 659, 30])
@@ -487,36 +486,43 @@ export async function loadRefStructures(onProgress?: ReferenceDataProgress): Pro
   return refStructuresPromise
 }
 
-async function fetchMoon(id: number): Promise<RefMoon | null> {
-  try {
-    const rawData = await window.electronAPI!.refMoon(id)
-
-    if (rawData && typeof rawData === 'object' && 'error' in rawData) {
-      return null
-    }
-
-    const parseResult = RefMoonSchema.safeParse(rawData)
-    if (!parseResult.success) {
-      logger.error('RefAPI /moon validation failed', undefined, { module: 'RefAPI', id })
-      return null
-    }
-
-    return parseResult.data
-  } catch (error) {
-    logger.error('RefAPI /moon error', error, { module: 'RefAPI', id })
-    return null
-  }
+interface MoonData {
+  id: number
+  name: string
+  systemId: number
 }
 
-async function fetchMoonBatch(ids: number[]): Promise<Map<number, RefMoon>> {
-  const results = new Map<number, RefMoon>()
-  const moonResults = await Promise.all(ids.map(fetchMoon))
+async function fetchMoons(ids: number[]): Promise<Map<number, MoonData>> {
+  if (ids.length === 0) return new Map()
 
-  for (let i = 0; i < ids.length; i++) {
-    const moon = moonResults[i]
-    if (moon) {
-      results.set(ids[i]!, moon)
+  const start = performance.now()
+  const results = new Map<number, MoonData>()
+
+  try {
+    const rawData = await window.electronAPI!.refMoons(ids)
+    const duration = Math.round(performance.now() - start)
+
+    if (rawData && 'error' in rawData && rawData.error) {
+      logger.warn('RefAPI /moons failed', { module: 'RefAPI', error: rawData.error, requested: ids.length, duration })
+      return results
     }
+
+    const parseResult = RefMoonsResponseSchema.safeParse(rawData)
+    if (!parseResult.success) {
+      logger.error('RefAPI /moons validation failed', undefined, {
+        module: 'RefAPI',
+        errors: parseResult.error.issues.slice(0, 3),
+      })
+      return results
+    }
+
+    for (const [idStr, moon] of Object.entries(parseResult.data.items)) {
+      results.set(Number(idStr), moon)
+    }
+
+    logger.info('RefAPI /moons', { module: 'RefAPI', requested: ids.length, returned: results.size, duration })
+  } catch (error) {
+    logger.error('RefAPI /moons error', error, { module: 'RefAPI' })
   }
 
   return results
@@ -553,18 +559,7 @@ export async function resolveLocations(locationIds: number[]): Promise<Map<numbe
 
   if (uncachedIds.length === 0) return results
 
-  const start = performance.now()
-
-  const fetched = await processChunksParallel(
-    uncachedIds,
-    10,
-    fetchMoonBatch,
-    (chunk, acc) => { for (const [k, v] of chunk) acc.set(k, v) },
-    new Map<number, RefMoon>()
-  )
-
-  const duration = Math.round(performance.now() - start)
-  logger.info('RefAPI /moon batch', { module: 'RefAPI', requested: uncachedIds.length, found: fetched.size, duration })
+  const fetched = await fetchMoons(uncachedIds)
 
   const toCache: CachedLocation[] = []
 
@@ -572,14 +567,15 @@ export async function resolveLocations(locationIds: number[]): Promise<Map<numbe
     const moon = fetched.get(id)
 
     if (moon) {
+      const system = getSystem(moon.systemId)
       const cached: CachedLocation = {
         id,
         name: moon.name,
         type: 'celestial',
         solarSystemId: moon.systemId,
-        solarSystemName: getSystem(moon.systemId)?.name,
-        regionId: moon.regionId,
-        regionName: getRegion(moon.regionId)?.name,
+        solarSystemName: system?.name,
+        regionId: system?.regionId,
+        regionName: system?.regionId ? getRegion(system.regionId)?.name : undefined,
       }
       results.set(id, cached)
       toCache.push(cached)
