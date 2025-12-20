@@ -8,6 +8,8 @@ vi.mock('@/store/reference-cache', () => ({
   saveLocations: vi.fn(),
   getGroup: vi.fn(),
   getCategory: vi.fn(),
+  getSystem: vi.fn(),
+  getRegion: vi.fn(),
   setCategories: vi.fn(),
   setGroups: vi.fn(),
   setRegions: vi.fn(),
@@ -44,7 +46,7 @@ import {
 
 const mockRefTypes = vi.fn()
 const mockRefTypesPage = vi.fn()
-const mockRefUniverse = vi.fn()
+const mockRefMoon = vi.fn()
 const mockRefMarket = vi.fn()
 const mockRefMarketJita = vi.fn()
 const mockRefCategories = vi.fn()
@@ -84,7 +86,7 @@ describe('ref-client', () => {
     window.electronAPI = {
       refTypes: mockRefTypes,
       refTypesPage: mockRefTypesPage,
-      refUniverse: mockRefUniverse,
+      refMoon: mockRefMoon,
       refMarket: mockRefMarket,
       refMarketJita: mockRefMarketJita,
       refCategories: mockRefCategories,
@@ -259,69 +261,61 @@ describe('ref-client', () => {
 
       expect(result.size).toBe(1)
       expect(result.get(60003760)?.name).toContain('Jita')
-      expect(mockRefUniverse).not.toHaveBeenCalled()
+      expect(mockRefMoon).not.toHaveBeenCalled()
     })
 
-    it('fetches uncached locations from API', async () => {
+    it('fetches uncached moons from API', async () => {
       vi.mocked(getLocation).mockReturnValue(undefined)
 
-      mockRefUniverse.mockResolvedValueOnce({
-        items: {
-          '60003760': {
-            type: 'station',
-            name: 'Jita IV - Moon 4 - Caldari Navy Assembly Plant',
-            solarSystemId: 30000142,
-            solarSystemName: 'Jita',
-            regionId: 10000002,
-            regionName: 'The Forge',
-          },
-        },
+      mockRefMoon.mockResolvedValueOnce({
+        id: 40009082,
+        name: 'Jita IV - Moon 4',
+        systemId: 30000142,
+        regionId: 10000002,
       })
 
-      const result = await runWithTimers(resolveLocations([60003760]))
+      const result = await runWithTimers(resolveLocations([40009082]))
 
       expect(result.size).toBe(1)
-      expect(result.get(60003760)?.name).toContain('Jita')
+      expect(result.get(40009082)?.name).toBe('Jita IV - Moon 4')
+      expect(result.get(40009082)?.type).toBe('celestial')
       expect(saveLocations).toHaveBeenCalled()
     })
 
     it('handles API errors gracefully', async () => {
       vi.mocked(getLocation).mockReturnValue(undefined)
 
-      mockRefUniverse.mockResolvedValueOnce({ error: 'HTTP 500' })
+      mockRefMoon.mockResolvedValueOnce({ error: 'HTTP 500' })
 
-      const result = await runWithTimers(resolveLocations([60003760]))
+      const result = await runWithTimers(resolveLocations([40009082]))
 
-      expect(result.size).toBe(0)
-      expect(saveLocations).not.toHaveBeenCalled()
+      expect(result.size).toBe(1)
+      expect(result.get(40009082)?.name).toBe('Unknown Moon 40009082')
+      expect(saveLocations).toHaveBeenCalled()
     })
 
-    it('caches placeholder for locations not returned by API', async () => {
+    it('caches placeholder for moons not returned by API', async () => {
       vi.mocked(getLocation).mockReturnValue(undefined)
 
-      mockRefUniverse.mockResolvedValueOnce({
-        items: {
-          '60003760': {
-            type: 'station',
-            name: 'Jita IV - Moon 4 - Caldari Navy Assembly Plant',
-            solarSystemId: 30000142,
-            solarSystemName: 'Jita',
-            regionId: 10000002,
-            regionName: 'The Forge',
-          },
-        },
-      })
+      mockRefMoon
+        .mockResolvedValueOnce({
+          id: 40009082,
+          name: 'Jita IV - Moon 4',
+          systemId: 30000142,
+          regionId: 10000002,
+        })
+        .mockResolvedValueOnce({ error: 'Not found' })
 
-      const result = await runWithTimers(resolveLocations([60003760, 99999]))
+      const result = await runWithTimers(resolveLocations([40009082, 40099999]))
 
       expect(result.size).toBe(2)
-      expect(result.get(60003760)?.name).toContain('Jita')
-      expect(result.get(99999)?.name).toBe('Unknown Location 99999')
-      expect(result.get(99999)?.type).toBe('celestial')
+      expect(result.get(40009082)?.name).toBe('Jita IV - Moon 4')
+      expect(result.get(40099999)?.name).toBe('Unknown Moon 40099999')
+      expect(result.get(40099999)?.type).toBe('celestial')
       expect(saveLocations).toHaveBeenCalledWith(
         expect.arrayContaining([
-          expect.objectContaining({ id: 60003760 }),
-          expect.objectContaining({ id: 99999, name: 'Unknown Location 99999', type: 'celestial' }),
+          expect.objectContaining({ id: 40009082, name: 'Jita IV - Moon 4' }),
+          expect.objectContaining({ id: 40099999, name: 'Unknown Moon 40099999', type: 'celestial' }),
         ])
       )
     })

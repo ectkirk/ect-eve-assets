@@ -6,6 +6,8 @@ import {
   saveLocations,
   getGroup,
   getCategory,
+  getSystem,
+  getRegion,
   setCategories,
   setGroups,
   setRegions,
@@ -28,9 +30,7 @@ import {
 } from '@/store/reference-cache'
 import {
   RefTypeBulkResponseSchema,
-  RefUniverseBulkResponseSchema,
   RefTypeSchema,
-  RefUniverseItemSchema,
   RefCategoriesResponseSchema,
   RefGroupsResponseSchema,
   RefRegionsResponseSchema,
@@ -38,6 +38,7 @@ import {
   RefStationsResponseSchema,
   RefStructuresPageResponseSchema,
   RefImplantsResponseSchema,
+  RefMoonSchema,
   MarketBulkResponseSchema,
   MarketBulkItemSchema,
   MarketJitaResponseSchema,
@@ -48,8 +49,7 @@ import { z } from 'zod'
 
 export type MarketBulkItem = z.infer<typeof MarketBulkItemSchema>
 export type RefType = z.infer<typeof RefTypeSchema>
-export type RefUniverseItem = z.infer<typeof RefUniverseItemSchema>
-export type UniverseEntityType = RefUniverseItem['type']
+export type RefMoon = z.infer<typeof RefMoonSchema>
 
 const PLEX_GROUP = 1875
 const CONTRACT_GROUPS = new Set([883, 547, 4594, 485, 1538, 659, 30])
@@ -114,16 +114,8 @@ interface TypeFetchResult {
   results: Map<number, RefType>
 }
 
-interface LocationFetchResult {
-  requestedIds: number[]
-  results: Map<number, RefUniverseItem>
-}
-
 let inFlightTypes: Promise<TypeFetchResult> | null = null
 let pendingTypeIds = new Set<number>()
-
-let inFlightLocations: Promise<LocationFetchResult> | null = null
-let pendingLocationIds = new Set<number>()
 
 let referenceDataPromise: Promise<void> | null = null
 
@@ -132,8 +124,6 @@ export type ReferenceDataProgress = (status: string) => void
 export function _resetForTests(): void {
   inFlightTypes = null
   pendingTypeIds = new Set()
-  inFlightLocations = null
-  pendingLocationIds = new Set()
   referenceDataPromise = null
 }
 
@@ -534,57 +524,36 @@ async function fetchTypesFromAPI(ids: number[]): Promise<Map<number, RefType>> {
   return results
 }
 
-async function fetchUniverseChunk(chunk: number[]): Promise<Map<number, RefUniverseItem>> {
-  const results = new Map<number, RefUniverseItem>()
-  const chunkStart = performance.now()
-
+async function fetchMoon(id: number): Promise<RefMoon | null> {
   try {
-    const rawData = await window.electronAPI!.refUniverse(chunk)
-    const duration = Math.round(performance.now() - chunkStart)
+    const rawData = await window.electronAPI!.refMoon(id)
 
     if (rawData && typeof rawData === 'object' && 'error' in rawData) {
-      logger.warn('RefAPI /universe failed', { module: 'RefAPI', error: rawData.error, requested: chunk.length, duration })
-      return results
+      return null
     }
 
-    const parseResult = RefUniverseBulkResponseSchema.safeParse(rawData)
+    const parseResult = RefMoonSchema.safeParse(rawData)
     if (!parseResult.success) {
-      logger.error('RefAPI /universe validation failed', undefined, {
-        module: 'RefAPI',
-        errors: parseResult.error.issues.slice(0, 3),
-      })
-      return results
+      logger.error('RefAPI /moon validation failed', undefined, { module: 'RefAPI', id })
+      return null
     }
 
-    const returned = Object.keys(parseResult.data.items).length
-    logger.info('RefAPI /universe', { module: 'RefAPI', requested: chunk.length, returned, duration })
-
-    for (const [idStr, item] of Object.entries(parseResult.data.items)) {
-      results.set(Number(idStr), item)
-    }
+    return parseResult.data
   } catch (error) {
-    logger.error('RefAPI /universe error', error, { module: 'RefAPI' })
+    logger.error('RefAPI /moon error', error, { module: 'RefAPI', id })
+    return null
   }
-
-  return results
 }
 
-async function fetchUniverseFromAPI(ids: number[]): Promise<Map<number, RefUniverseItem>> {
-  if (ids.length === 0) return new Map()
+async function fetchMoonBatch(ids: number[]): Promise<Map<number, RefMoon>> {
+  const results = new Map<number, RefMoon>()
+  const moonResults = await Promise.all(ids.map(fetchMoon))
 
-  const totalStart = performance.now()
-
-  const results = await processChunksParallel(
-    ids,
-    1000,
-    fetchUniverseChunk,
-    (chunk, acc) => { for (const [k, v] of chunk) acc.set(k, v) },
-    new Map<number, RefUniverseItem>()
-  )
-
-  if (ids.length > 1000) {
-    const totalDuration = Math.round(performance.now() - totalStart)
-    logger.info('RefAPI /universe total', { module: 'RefAPI', requested: ids.length, returned: results.size, duration: totalDuration })
+  for (let i = 0; i < ids.length; i++) {
+    const moon = moonResults[i]
+    if (moon) {
+      results.set(ids[i]!, moon)
+    }
   }
 
   return results
@@ -673,17 +642,6 @@ export async function resolveTypes(typeIds: number[]): Promise<Map<number, Cache
   return results
 }
 
-async function executeLocationsFetch(): Promise<LocationFetchResult> {
-  const requestedIds = Array.from(pendingLocationIds)
-  pendingLocationIds = new Set()
-
-  if (requestedIds.length === 0) return { requestedIds: [], results: new Map() }
-
-  logger.debug(`Fetching ${requestedIds.length} locations from ref API`, { module: 'RefAPI' })
-  const results = await fetchUniverseFromAPI(requestedIds)
-  return { requestedIds, results }
-}
-
 export async function resolveLocations(locationIds: number[]): Promise<Map<number, CachedLocation>> {
   const results = new Map<number, CachedLocation>()
   const uncachedIds: number[] = []
@@ -698,43 +656,44 @@ export async function resolveLocations(locationIds: number[]): Promise<Map<numbe
     }
 
     uncachedIds.push(id)
-    pendingLocationIds.add(id)
   }
 
   if (uncachedIds.length === 0) return results
 
-  if (!inFlightLocations) {
-    inFlightLocations = executeLocationsFetch().finally(() => { inFlightLocations = null })
-  }
+  const start = performance.now()
 
-  const { requestedIds, results: fetched } = await inFlightLocations
-  const requestedSet = new Set(requestedIds)
+  const fetched = await processChunksParallel(
+    uncachedIds,
+    10,
+    fetchMoonBatch,
+    (chunk, acc) => { for (const [k, v] of chunk) acc.set(k, v) },
+    new Map<number, RefMoon>()
+  )
+
+  const duration = Math.round(performance.now() - start)
+  logger.info('RefAPI /moon batch', { module: 'RefAPI', requested: uncachedIds.length, found: fetched.size, duration })
+
   const toCache: CachedLocation[] = []
 
   for (const id of uncachedIds) {
-    const existing = getLocation(id)
-    if (existing) {
-      results.set(id, existing)
-      continue
-    }
+    const moon = fetched.get(id)
 
-    const item = fetched.get(id)
-    if (item && item.type !== 'constellation') {
+    if (moon) {
       const cached: CachedLocation = {
         id,
-        name: item.name,
-        type: item.type,
-        solarSystemId: item.solarSystemId,
-        solarSystemName: item.solarSystemName,
-        regionId: item.regionId,
-        regionName: item.regionName,
+        name: moon.name,
+        type: 'celestial',
+        solarSystemId: moon.systemId,
+        solarSystemName: getSystem(moon.systemId)?.name,
+        regionId: moon.regionId,
+        regionName: getRegion(moon.regionId)?.name,
       }
       results.set(id, cached)
       toCache.push(cached)
-    } else if (requestedSet.has(id) && fetched.size > 0) {
+    } else {
       const placeholder: CachedLocation = {
         id,
-        name: `Unknown Location ${id}`,
+        name: `Unknown Moon ${id}`,
         type: 'celestial',
       }
       results.set(id, placeholder)
@@ -744,7 +703,6 @@ export async function resolveLocations(locationIds: number[]): Promise<Map<numbe
 
   if (toCache.length > 0) {
     await saveLocations(toCache)
-    logger.debug(`Cached ${toCache.length} locations`, { module: 'RefAPI' })
   }
 
   return results

@@ -462,17 +462,11 @@ export const RefImplantsResponseSchema = z.object({
   items: z.record(z.string(), RefImplantSchema),
 })
 
-export const RefUniverseItemSchema = z.object({
-  type: z.enum(['region', 'constellation', 'system', 'station', 'structure', 'celestial']),
+export const RefMoonSchema = z.object({
+  id: z.number(),
   name: z.string(),
-  solarSystemId: z.number().optional(),
-  solarSystemName: z.string().optional(),
-  regionId: z.number().optional(),
-  regionName: z.string().optional(),
-})
-
-export const RefUniverseBulkResponseSchema = z.object({
-  items: z.record(z.string(), RefUniverseItemSchema),
+  systemId: z.number(),
+  regionId: z.number(),
 })
 
 export const MarketBulkItemSchema = z.object({
