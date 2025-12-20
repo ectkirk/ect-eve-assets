@@ -2,15 +2,27 @@ import type { RateLimitGroupState } from './types'
 import { logger } from '../logger.js'
 
 const DEFAULT_WINDOW_MS = 15 * 60 * 1000
+const ERROR_WINDOW_MS = 60 * 1000
+const GROUP_ERROR_BACKOFF_THRESHOLD = 3
 const ERROR_LIMIT_WARN_THRESHOLD = 50
-const ERROR_LIMIT_PAUSE_THRESHOLD = 10
+const ERROR_LIMIT_PAUSE_THRESHOLD = 20
+
+interface GroupErrorState {
+  errors: number
+  windowStart: number
+}
+
+interface GroupErrorLimitState {
+  remain: number
+  resetAt: number
+}
 
 export class RateLimitTracker {
   private groups = new Map<string, RateLimitGroupState>()
+  private groupRetryAfter = new Map<string, number>()
+  private groupErrors = new Map<string, GroupErrorState>()
+  private groupErrorLimits = new Map<string, GroupErrorLimitState>()
   private globalRetryAfter: number | null = null
-  private errorLimitRemain: number = 100
-  private errorLimitReset: number | null = null
-  private lastErrorLimitWarnAt: number = 0
 
   makeKey(characterId: number, group: string): string {
     return `${characterId}:${group}`
@@ -20,29 +32,25 @@ export class RateLimitTracker {
     characterId: number,
     headers: Headers
   ): { group: string; state: RateLimitGroupState } | null {
+    const group = headers.get('X-Ratelimit-Group')
+    if (!group) return null
+
     const errorRemain = headers.get('X-ESI-Error-Limit-Remain')
     const errorReset = headers.get('X-ESI-Error-Limit-Reset')
 
     if (errorRemain !== null) {
-      const newRemain = parseInt(errorRemain, 10)
-      const crossedThreshold =
-        (this.errorLimitRemain > ERROR_LIMIT_WARN_THRESHOLD && newRemain <= ERROR_LIMIT_WARN_THRESHOLD) ||
-        (this.errorLimitRemain > ERROR_LIMIT_PAUSE_THRESHOLD && newRemain <= ERROR_LIMIT_PAUSE_THRESHOLD)
-      if (crossedThreshold) {
-        logger.warn('ESI error limit low', {
-          module: 'ESI',
-          errorLimitRemain: newRemain,
-          errorLimitReset: errorReset,
-        })
-      }
-      this.errorLimitRemain = newRemain
-    }
-    if (errorReset !== null) {
-      this.errorLimitReset = Date.now() + parseInt(errorReset, 10) * 1000
-    }
+      const remain = parseInt(errorRemain, 10)
+      const resetAt = errorReset ? Date.now() + parseInt(errorReset, 10) * 1000 : Date.now() + 60000
+      const existing = this.groupErrorLimits.get(group)
 
-    const group = headers.get('X-Ratelimit-Group')
-    if (!group) return null
+      if (!existing || remain < existing.remain) {
+        if (remain <= ERROR_LIMIT_WARN_THRESHOLD && (!existing || existing.remain > ERROR_LIMIT_WARN_THRESHOLD)) {
+          logger.warn('ESI error limit getting low for group', { module: 'ESI', group, remain })
+        }
+      }
+
+      this.groupErrorLimits.set(group, { remain, resetAt })
+    }
 
     const remaining = headers.get('X-Ratelimit-Remaining')
     const used = headers.get('X-Ratelimit-Used')
@@ -89,9 +97,21 @@ export class RateLimitTracker {
       return this.globalRetryAfter - Date.now()
     }
 
-    const errorDelay = this.getErrorLimitDelay()
-    if (errorDelay > 0) {
-      return errorDelay
+    const groupRetry = this.groupRetryAfter.get(group)
+    if (groupRetry && Date.now() < groupRetry) {
+      return groupRetry - Date.now()
+    } else if (groupRetry) {
+      this.groupRetryAfter.delete(group)
+    }
+
+    const groupErrorDelay = this.getGroupErrorDelay(group)
+    if (groupErrorDelay > 0) {
+      return groupErrorDelay
+    }
+
+    const groupErrorLimitDelay = this.getGroupErrorLimitDelay(group)
+    if (groupErrorLimitDelay > 0) {
+      return groupErrorLimitDelay
     }
 
     const key = this.makeKey(characterId, group)
@@ -121,40 +141,68 @@ export class RateLimitTracker {
     return 100
   }
 
-  getErrorLimitDelay(): number {
-    if (this.errorLimitReset && Date.now() >= this.errorLimitReset) {
-      this.errorLimitRemain = 100
-      this.errorLimitReset = null
+  setGlobalRetryAfter(retryAfterSec: number): void {
+    this.globalRetryAfter = Date.now() + retryAfterSec * 1000
+  }
+
+  setGroupRetryAfter(group: string, retryAfterSec: number): void {
+    this.groupRetryAfter.set(group, Date.now() + retryAfterSec * 1000)
+  }
+
+  recordGroupError(group: string): void {
+    const now = Date.now()
+    const existing = this.groupErrors.get(group)
+
+    if (existing && now - existing.windowStart < ERROR_WINDOW_MS) {
+      existing.errors++
+      if (existing.errors >= GROUP_ERROR_BACKOFF_THRESHOLD) {
+        logger.warn('Group generating errors, backing off', {
+          module: 'ESI',
+          group,
+          errors: existing.errors,
+        })
+      }
+    } else {
+      this.groupErrors.set(group, { errors: 1, windowStart: now })
+    }
+  }
+
+  getGroupErrorDelay(group: string): number {
+    const state = this.groupErrors.get(group)
+    if (!state) return 0
+
+    const elapsed = Date.now() - state.windowStart
+    if (elapsed >= ERROR_WINDOW_MS) {
+      this.groupErrors.delete(group)
       return 0
     }
 
-    if (this.errorLimitRemain <= ERROR_LIMIT_PAUSE_THRESHOLD) {
-      const resetDelay = this.errorLimitReset ? this.errorLimitReset - Date.now() : 60000
-      const now = Date.now()
-      if (now - this.lastErrorLimitWarnAt > 10000) {
-        this.lastErrorLimitWarnAt = now
-        logger.warn('ESI error limit critical, pausing requests', {
-          module: 'ESI',
-          errorLimitRemain: this.errorLimitRemain,
-          pauseMs: resetDelay,
-        })
-      }
-      return Math.max(resetDelay, 1000)
-    }
-
-    if (this.errorLimitRemain <= ERROR_LIMIT_WARN_THRESHOLD) {
-      return 500 + Math.random() * 1000
+    if (state.errors >= GROUP_ERROR_BACKOFF_THRESHOLD) {
+      const backoffMs = Math.min(state.errors * 2000, 30000)
+      return backoffMs
     }
 
     return 0
   }
 
-  getErrorLimitRemain(): number {
-    return this.errorLimitRemain
-  }
+  getGroupErrorLimitDelay(group: string): number {
+    const state = this.groupErrorLimits.get(group)
+    if (!state) return 0
 
-  setGlobalRetryAfter(retryAfterSec: number): void {
-    this.globalRetryAfter = Date.now() + retryAfterSec * 1000
+    if (Date.now() >= state.resetAt) {
+      this.groupErrorLimits.delete(group)
+      return 0
+    }
+
+    if (state.remain <= ERROR_LIMIT_PAUSE_THRESHOLD) {
+      return state.resetAt - Date.now()
+    }
+
+    if (state.remain <= ERROR_LIMIT_WARN_THRESHOLD) {
+      return 500 + Math.random() * 1000
+    }
+
+    return 0
   }
 
   isGloballyLimited(): boolean {
@@ -196,9 +244,9 @@ export class RateLimitTracker {
 
   clear(): void {
     this.groups.clear()
+    this.groupRetryAfter.clear()
+    this.groupErrors.clear()
+    this.groupErrorLimits.clear()
     this.globalRetryAfter = null
-    this.errorLimitRemain = 100
-    this.errorLimitReset = null
-    this.lastErrorLimitWarnAt = 0
   }
 }

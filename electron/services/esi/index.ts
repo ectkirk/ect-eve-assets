@@ -193,6 +193,26 @@ export class MainESIService {
         }
       }
 
+      if (response.status === 520) {
+        const group = this.queue.guessRateLimitGroup(endpoint)
+        try {
+          const errorBody = (await response.json()) as { error?: string; remainingTime?: number }
+          const remainingMs = errorBody.remainingTime ?? 60000
+          const waitSec = Math.ceil(remainingMs / 1000)
+          this.rateLimiter.setGroupRetryAfter(group, waitSec)
+          logger.warn('ConStopSpamming endpoint rate limit', { module: 'ESI', group, waitSec, url })
+          return {
+            success: false,
+            error: errorBody.error ?? 'ConStopSpamming',
+            status: 520,
+            retryAfter: waitSec,
+          }
+        } catch {
+          this.rateLimiter.setGroupRetryAfter(group, 60)
+          return { success: false, error: 'ConStopSpamming', status: 520, retryAfter: 60 }
+        }
+      }
+
       const expiresHeader = response.headers.get('Expires')
       const expiresAt = expiresHeader ? new Date(expiresHeader).getTime() : null
       const etag = response.headers.get('ETag')
@@ -222,6 +242,8 @@ export class MainESIService {
       }
 
       if (!response.ok) {
+        const group = this.queue.guessRateLimitGroup(endpoint)
+        this.rateLimiter.recordGroupError(group)
         let errorMessage = `ESI error: ${response.status}`
         try {
           const errorBody = (await response.json()) as { error?: string }
@@ -266,11 +288,10 @@ export class MainESIService {
     return this.cache.clearByPattern(pattern)
   }
 
-  getRateLimitInfo(): { globalRetryAfter: number | null; queueLength: number; errorLimitRemain: number } {
+  getRateLimitInfo(): { globalRetryAfter: number | null; queueLength: number } {
     return {
       globalRetryAfter: this.rateLimiter.getGlobalRetryAfter(),
       queueLength: this.queue.length,
-      errorLimitRemain: this.rateLimiter.getErrorLimitRemain(),
     }
   }
 

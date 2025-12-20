@@ -71,7 +71,7 @@ export class RequestQueue {
     this.processing = false
   }
 
-  private guessRateLimitGroup(endpoint: string): string {
+  guessRateLimitGroup(endpoint: string): string {
     if (endpoint.includes('/characters/') && endpoint.includes('/assets')) return 'char-asset'
     if (endpoint.includes('/corporations/') && endpoint.includes('/assets')) return 'corp-asset'
     if (endpoint.includes('/characters/') && endpoint.includes('/wallet')) return 'char-wallet'
