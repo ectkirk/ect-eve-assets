@@ -737,7 +737,7 @@ ipcMain.handle('ref:implants', async (_event, ids: unknown) => {
 
   await waitForRefRateLimit()
   try {
-    const response = await fetchRefWithRetry(`${REF_API_BASE}/implants`, {
+    const response = await fetchRefWithRetry(`${REF_API_BASE}/reference/implants`, {
       method: 'POST',
       headers: getRefHeaders('json'),
       body: JSON.stringify({ ids }),
