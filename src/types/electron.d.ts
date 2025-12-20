@@ -134,66 +134,6 @@ declare global {
     error?: string
   }
 
-  interface ManufacturingCostParams {
-    product_id?: number
-    blueprint_id?: number
-    system_id: number
-    me?: number
-    te?: number
-    runs?: number
-    facility?: number
-    facility_type_id?: number
-    me_rig?: number
-    te_rig?: number
-    rig_type_id?: number
-    rig_type_ids?: string
-    security_status?: 'h' | 'l' | 'n'
-    facility_tax?: number
-    use_buy_orders?: boolean
-    alpha_clone?: boolean
-    system_cost_bonus?: number
-    industry?: number
-    advanced_industry?: number
-  }
-
-  interface ManufacturingMaterial {
-    type_id: number
-    type_name: string
-    quantity: number
-    volume_per_unit: number
-    volume: number
-    cost_per_unit: number
-    cost: number
-  }
-
-  interface ManufacturingCostResult {
-    productId?: number
-    blueprintId?: number
-    runs?: number
-    me?: number
-    te?: number
-    units?: number
-    unitsPerRun?: number
-    time?: string
-    timePerRun?: string
-    timePerUnit?: string
-    materials?: Record<string, ManufacturingMaterial>
-    materialsVolume?: number
-    productVolume?: number
-    estimatedItemValue?: number
-    systemCostIndex?: number
-    systemCostBonuses?: number
-    facilityTax?: number
-    sccSurcharge?: number
-    alphaCloneTax?: number
-    totalJobCost?: number
-    totalMaterialCost?: number
-    totalCost?: number
-    totalCostPerRun?: number
-    totalCostPerUnit?: number
-    error?: string
-  }
-
   interface BlueprintResearchParams {
     blueprint_id: number
     system_id: number
@@ -434,7 +374,6 @@ declare global {
     refMarketJita: (typeIds: number[]) => Promise<RefMarketJitaResult>
     refMarketPlex: () => Promise<RefMarketPlexResult>
     refMarketContracts: (typeIds: number[]) => Promise<RefMarketContractsResult>
-    refManufacturingCost: (params: ManufacturingCostParams) => Promise<ManufacturingCostResult>
     refBlueprintResearch: (params: BlueprintResearchParams) => Promise<BlueprintResearchResult>
     refBlueprints: () => Promise<BlueprintsResult>
     refSystems: () => Promise<SystemsResult>

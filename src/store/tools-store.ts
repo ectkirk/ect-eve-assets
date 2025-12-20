@@ -6,18 +6,6 @@ interface SelectedItem {
   security?: number
 }
 
-interface ManufacturingInputs {
-  product: SelectedItem | null
-  system: SelectedItem | null
-  me: number
-  te: number
-  runs: number
-  facility: number
-  meRig: number
-  securityStatus: 'h' | 'l' | 'n'
-  facilityTax: number
-}
-
 interface ResearchInputs {
   blueprint: SelectedItem | null
   system: SelectedItem | null
@@ -49,30 +37,14 @@ interface CopyingInputs {
 }
 
 interface ToolsState {
-  manufacturing: ManufacturingInputs
-  manufacturingResult: ManufacturingCostResult | null
   research: ResearchInputs
   researchResult: BlueprintResearchResult | null
   copying: CopyingInputs
   copyingResult: BlueprintResearchResult | null
-  setManufacturing: (partial: Partial<ManufacturingInputs>) => void
-  setManufacturingResult: (result: ManufacturingCostResult | null) => void
   setResearch: (partial: Partial<ResearchInputs>) => void
   setResearchResult: (result: BlueprintResearchResult | null) => void
   setCopying: (partial: Partial<CopyingInputs>) => void
   setCopyingResult: (result: BlueprintResearchResult | null) => void
-}
-
-const DEFAULT_MANUFACTURING: ManufacturingInputs = {
-  product: null,
-  system: null,
-  me: 10,
-  te: 20,
-  runs: 1,
-  facility: 0,
-  meRig: 0,
-  securityStatus: 'h',
-  facilityTax: 0,
 }
 
 const DEFAULT_RESEARCH: ResearchInputs = {
@@ -106,17 +78,10 @@ const DEFAULT_COPYING: CopyingInputs = {
 }
 
 export const useToolsStore = create<ToolsState>((set) => ({
-  manufacturing: DEFAULT_MANUFACTURING,
-  manufacturingResult: null,
   research: DEFAULT_RESEARCH,
   researchResult: null,
   copying: DEFAULT_COPYING,
   copyingResult: null,
-
-  setManufacturing: (partial) =>
-    set((state) => ({ manufacturing: { ...state.manufacturing, ...partial } })),
-
-  setManufacturingResult: (result) => set({ manufacturingResult: result }),
 
   setResearch: (partial) =>
     set((state) => ({ research: { ...state.research, ...partial } })),

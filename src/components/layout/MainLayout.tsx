@@ -11,7 +11,6 @@ import { ClonesTab } from '@/features/clones'
 import { LoyaltyTab } from '@/features/loyalty'
 import { ContractsTab } from '@/features/contracts'
 import { WalletTab } from '@/features/wallet'
-import { ManufacturingTab } from '@/features/manufacturing'
 import { BlueprintResearchTab, CopyingTab } from '@/features/research'
 import { CalculatorTab } from '@/features/calculator'
 import { BuybackTab, BUYBACK_TABS, getConfigByTabName, type BuybackTabType } from '@/features/buyback'
@@ -47,7 +46,6 @@ const ASSET_TABS = [
 ] as const
 
 const TOOL_TABS = [
-  'Manufacturing',
   'Research',
   'Copying',
   'Calculator',
@@ -81,8 +79,6 @@ function AssetTabContent({ tab }: { tab: AssetTab }) {
 
 function ToolTabContent({ tab }: { tab: ToolTab }) {
   switch (tab) {
-    case 'Manufacturing':
-      return <ManufacturingTab />
     case 'Research':
       return <BlueprintResearchTab />
     case 'Copying':
@@ -739,7 +735,7 @@ function WindowControls() {
 function MainLayoutInner() {
   const [mode, setMode] = useState<AppMode>('assets')
   const [activeAssetTab, setActiveAssetTab] = useState<AssetTab>('Assets')
-  const [activeToolTab, setActiveToolTab] = useState<ToolTab>('Manufacturing')
+  const [activeToolTab, setActiveToolTab] = useState<ToolTab>('Research')
   const [activeBuybackTab, setActiveBuybackTab] = useState<BuybackTabType>(BUYBACK_TABS[1])
 
   return (

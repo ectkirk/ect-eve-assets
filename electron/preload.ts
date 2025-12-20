@@ -135,64 +135,6 @@ export interface RefMarketContractsResult {
   error?: string
 }
 
-export interface ManufacturingCostParams {
-  product_id?: number
-  blueprint_id?: number
-  system_id: number
-  me?: number
-  te?: number
-  runs?: number
-  facility?: number
-  facility_type_id?: number
-  me_rig?: number
-  te_rig?: number
-  rig_type_id?: number
-  rig_type_ids?: string
-  security_status?: 'h' | 'l' | 'n'
-  facility_tax?: number
-  use_buy_orders?: boolean
-  alpha_clone?: boolean
-  system_cost_bonus?: number
-  industry?: number
-  advanced_industry?: number
-}
-
-export interface ManufacturingCostResult {
-  productId?: number
-  blueprintId?: number
-  runs?: number
-  me?: number
-  te?: number
-  units?: number
-  unitsPerRun?: number
-  time?: string
-  timePerRun?: string
-  timePerUnit?: string
-  materials?: Record<string, {
-    type_id: number
-    type_name: string
-    quantity: number
-    volume_per_unit: number
-    volume: number
-    cost_per_unit: number
-    cost: number
-  }>
-  materialsVolume?: number
-  productVolume?: number
-  estimatedItemValue?: number
-  systemCostIndex?: number
-  systemCostBonuses?: number
-  facilityTax?: number
-  sccSurcharge?: number
-  alphaCloneTax?: number
-  totalJobCost?: number
-  totalMaterialCost?: number
-  totalCost?: number
-  totalCostPerRun?: number
-  totalCostPerUnit?: number
-  error?: string
-}
-
 export interface BlueprintResearchParams {
   blueprint_id: number
   system_id: number
@@ -434,7 +376,6 @@ export interface ElectronAPI {
   refMarketJita: (typeIds: number[]) => Promise<RefMarketJitaResult>
   refMarketPlex: () => Promise<RefMarketPlexResult>
   refMarketContracts: (typeIds: number[]) => Promise<RefMarketContractsResult>
-  refManufacturingCost: (params: ManufacturingCostParams) => Promise<ManufacturingCostResult>
   refBlueprintResearch: (params: BlueprintResearchParams) => Promise<BlueprintResearchResult>
   refBlueprints: () => Promise<BlueprintsResult>
   refSystems: () => Promise<SystemsResult>
@@ -508,8 +449,6 @@ const electronAPI: ElectronAPI = {
   refMarketJita: (typeIds: number[]) => ipcRenderer.invoke('ref:marketJita', typeIds),
   refMarketPlex: () => ipcRenderer.invoke('ref:marketPlex'),
   refMarketContracts: (typeIds: number[]) => ipcRenderer.invoke('ref:marketContracts', typeIds),
-  refManufacturingCost: (params: ManufacturingCostParams) =>
-    ipcRenderer.invoke('ref:manufacturingCost', params),
   refBlueprintResearch: (params: BlueprintResearchParams) =>
     ipcRenderer.invoke('ref:blueprintResearch', params),
   refBlueprints: () => ipcRenderer.invoke('ref:blueprints'),

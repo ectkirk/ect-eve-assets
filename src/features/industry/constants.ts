@@ -4,13 +4,6 @@ export const SECURITY_STATUS = [
   { id: 'n', name: 'Nullsec/WH' },
 ] as const
 
-export const MANUFACTURING_FACILITIES = [
-  { id: 0, name: 'NPC Station' },
-  { id: 1, name: 'Raitaru' },
-  { id: 2, name: 'Azbel' },
-  { id: 3, name: 'Sotiyo' },
-] as const
-
 export const RESEARCH_FACILITIES = [
   { id: 0, name: 'NPC Station' },
   { id: 1, name: 'Raitaru' },

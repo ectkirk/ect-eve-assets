@@ -908,40 +908,6 @@ ipcMain.handle('ref:marketContracts', async (_event, typeIds: unknown) => {
   }
 })
 
-ipcMain.handle('ref:manufacturingCost', async (_event, params: unknown) => {
-  if (typeof params !== 'object' || params === null) {
-    return { error: 'Invalid params' }
-  }
-  const p = params as Record<string, unknown>
-  if (typeof p.system_id !== 'number') {
-    return { error: 'system_id is required' }
-  }
-  if (p.product_id === undefined && p.blueprint_id === undefined) {
-    return { error: 'product_id or blueprint_id is required' }
-  }
-
-  await waitForRefRateLimit()
-  try {
-    const searchParams = new URLSearchParams()
-    for (const [key, value] of Object.entries(p)) {
-      if (value !== undefined && value !== null) {
-        searchParams.set(key, String(value))
-      }
-    }
-    const response = await fetchRefWithRetry(`${REF_API_BASE}/manufacturing-cost?${searchParams}`, {
-      headers: getRefHeaders(),
-    })
-    if (!response.ok) {
-      const text = await response.text()
-      return { error: `HTTP ${response.status}: ${text}` }
-    }
-    return await response.json()
-  } catch (err) {
-    logger.error('ref:manufacturingCost fetch failed', err, { module: 'Main' })
-    return { error: String(err) }
-  }
-})
-
 ipcMain.handle('ref:blueprintResearch', async (_event, params: unknown) => {
   if (typeof params !== 'object' || params === null) {
     return { error: 'Invalid params' }
