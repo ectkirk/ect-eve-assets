@@ -26,14 +26,21 @@ vi.mock('@/lib/data-resolver', () => ({
   triggerResolution: vi.fn(),
 }))
 
+vi.mock('./regional-market-store', () => ({
+  useRegionalMarketStore: {
+    getState: vi.fn(() => ({
+      getPrice: vi.fn((typeId: number) => typeId === 34 ? 10 : undefined),
+      fetchPricesForTypes: vi.fn(),
+    })),
+  },
+}))
+
 describe('market-orders-store', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     useMarketOrdersStore.setState({
       ordersById: new Map(),
       visibilityByOwner: new Map(),
-      comparisonData: new Map(),
-      comparisonFetching: false,
       isUpdating: false,
       updateError: null,
       initialized: true,
@@ -209,8 +216,7 @@ describe('market-orders-store', () => {
         initialized: true,
       })
 
-      const prices = new Map([[34, 10]])
-      const total = useMarketOrdersStore.getState().getTotal(prices, ['character-12345'])
+      const total = useMarketOrdersStore.getState().getTotal(['character-12345'])
       expect(total).toBe(1000) // 10 * 100
     })
 
@@ -241,8 +247,7 @@ describe('market-orders-store', () => {
         initialized: true,
       })
 
-      const prices = new Map<number, number>()
-      const total = useMarketOrdersStore.getState().getTotal(prices, ['character-12345'])
+      const total = useMarketOrdersStore.getState().getTotal(['character-12345'])
       expect(total).toBe(500)
     })
 
@@ -293,8 +298,7 @@ describe('market-orders-store', () => {
         initialized: true,
       })
 
-      const prices = new Map([[34, 10]])
-      const total = useMarketOrdersStore.getState().getTotal(prices, ['character-12345'])
+      const total = useMarketOrdersStore.getState().getTotal(['character-12345'])
       expect(total).toBe(1000) // Only first owner's order
     })
   })

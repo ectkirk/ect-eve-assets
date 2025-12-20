@@ -5,7 +5,7 @@ import { useToastStore } from './toast-store'
 import { esi } from '@/api/esi'
 import { ESIMarketOrderSchema, ESICorporationMarketOrderSchema } from '@/api/schemas'
 import { getTypeName } from '@/store/reference-cache'
-import { fetchMarketComparison, type MarketComparisonPrices } from '@/api/ref-client'
+import { useRegionalMarketStore } from '@/store/regional-market-store'
 import { logger } from '@/lib/logger'
 import { triggerResolution } from '@/lib/data-resolver'
 import { z } from 'zod'
@@ -40,8 +40,6 @@ export interface OwnerOrders {
 interface MarketOrdersState {
   ordersById: Map<number, StoredOrder>
   visibilityByOwner: Map<string, Set<number>>
-  comparisonData: Map<number, MarketComparisonPrices>
-  comparisonFetching: boolean
   isUpdating: boolean
   updateError: string | null
   initialized: boolean
@@ -54,8 +52,7 @@ interface MarketOrdersActions {
   updateForOwner: (owner: Owner) => Promise<void>
   removeForOwner: (ownerType: string, ownerId: number) => Promise<void>
   clear: () => Promise<void>
-  fetchComparisonData: () => Promise<void>
-  getTotal: (prices: Map<number, number>, selectedOwnerIds: string[]) => number
+  getTotal: (selectedOwnerIds: string[]) => number
   getOrdersByOwner: () => OwnerOrders[]
 }
 
@@ -310,8 +307,6 @@ async function fetchOrdersForOwner(owner: Owner): Promise<{
 export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
   ordersById: new Map(),
   visibilityByOwner: new Map(),
-  comparisonData: new Map(),
-  comparisonFetching: false,
   isUpdating: false,
   updateError: null,
   initialized: false,
@@ -442,7 +437,19 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
       }))
 
       triggerResolution()
-      await get().fetchComparisonData()
+
+      const typeIds = new Set<number>()
+      const regionIds = new Set<number>()
+      for (const { order } of ordersById.values()) {
+        typeIds.add(order.type_id)
+        regionIds.add(order.region_id)
+      }
+      if (typeIds.size > 0) {
+        useRegionalMarketStore.getState().fetchPricesForTypes(
+          Array.from(typeIds),
+          Array.from(regionIds)
+        )
+      }
 
       logger.info('Market orders updated', {
         module: 'MarketOrdersStore',
@@ -534,7 +541,19 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
       }))
 
       triggerResolution()
-      await get().fetchComparisonData()
+
+      const typeIds = new Set<number>()
+      const regionIds = new Set<number>()
+      for (const { order } of ordersById.values()) {
+        typeIds.add(order.type_id)
+        regionIds.add(order.region_id)
+      }
+      if (typeIds.size > 0) {
+        useRegionalMarketStore.getState().fetchPricesForTypes(
+          Array.from(typeIds),
+          Array.from(regionIds)
+        )
+      }
 
       logger.info('Market orders updated for owner', {
         module: 'MarketOrdersStore',
@@ -572,40 +591,15 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
     set({
       ordersById: new Map(),
       visibilityByOwner: new Map(),
-      comparisonData: new Map(),
-      comparisonFetching: false,
       updateError: null,
       initialized: false,
     })
   },
 
-  fetchComparisonData: async () => {
-    const state = get()
-    if (state.comparisonFetching) return
-    if (state.ordersById.size === 0) return
-
-    set({ comparisonFetching: true })
-
-    const typeIds = new Set<number>()
-    for (const { order } of state.ordersById.values()) {
-      typeIds.add(order.type_id)
-    }
-
-    try {
-      const result = await fetchMarketComparison(Array.from(typeIds))
-      set({ comparisonData: result, comparisonFetching: false })
-    } catch (err) {
-      logger.warn('Failed to fetch comparison data', {
-        module: 'MarketOrdersStore',
-        error: err instanceof Error ? err.message : String(err),
-      })
-      set({ comparisonFetching: false })
-    }
-  },
-
-  getTotal: (prices, selectedOwnerIds) => {
+  getTotal: (selectedOwnerIds) => {
     const state = get()
     const selectedSet = new Set(selectedOwnerIds)
+    const regionalStore = useRegionalMarketStore.getState()
 
     const visibleOrderIds = new Set<number>()
     for (const [key, orderIds] of state.visibilityByOwner) {
@@ -625,7 +619,7 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
       if (order.is_buy_order) {
         total += order.escrow ?? 0
       } else {
-        total += (prices.get(order.type_id) ?? 0) * order.volume_remain
+        total += (regionalStore.getPrice(order.type_id) ?? 0) * order.volume_remain
       }
     }
     return total

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronRight, ChevronDown, History, TrendingUp, TrendingDown, Copy, Check } from 'lucide-react'
+import { ChevronRight, ChevronDown, History, Copy, Check } from 'lucide-react'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { useMarketOrderHistoryStore, type MarketOrderHistory } from '@/store/market-order-history-store'
@@ -8,8 +8,8 @@ import { useTabControls } from '@/context'
 import { useColumnSettings, useCacheVersion, useExpandCollapse, SortableHeader, type ColumnConfig, type SortDirection } from '@/hooks'
 import { type MarketOrder } from '@/store/market-orders-store'
 import { hasType, getType } from '@/store/reference-cache'
+import { useRegionalMarketStore } from '@/store/regional-market-store'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
-import { type MarketComparisonPrices } from '@/api/ref-client'
 import {
   Table,
   TableBody,
@@ -32,7 +32,7 @@ interface OrderRow {
   locationName: string
   regionName: string
   systemName: string
-  comparison?: MarketComparisonPrices
+  lowestSell: number | null
 }
 
 interface HistoryOrderRow {
@@ -103,7 +103,7 @@ function CopyButton({ text }: { text: string }) {
   )
 }
 
-type SortColumn = 'item' | 'price' | 'comparison' | 'difference' | 'average' | 'qty' | 'total' | 'expires'
+type SortColumn = 'item' | 'price' | 'comparison' | 'difference' | 'qty' | 'total' | 'expires'
 
 function getExpiryTime(issued: string, duration: number): number {
   return new Date(issued).getTime() + duration * 24 * 60 * 60 * 1000
@@ -112,8 +112,7 @@ function getExpiryTime(issued: string, duration: number): number {
 function sortOrders(
   orders: OrderRow[],
   sortColumn: SortColumn,
-  sortDirection: SortDirection,
-  isBuyOrder: boolean
+  sortDirection: SortDirection
 ): OrderRow[] {
   return [...orders].sort((a, b) => {
     let aVal: number | string = 0
@@ -128,20 +127,14 @@ function sortOrders(
         aVal = a.order.price
         bVal = b.order.price
         break
-      case 'comparison': {
-        const aComp = isBuyOrder ? a.comparison?.highestBuy : a.comparison?.lowestSell
-        const bComp = isBuyOrder ? b.comparison?.highestBuy : b.comparison?.lowestSell
-        aVal = aComp ?? (sortDirection === 'asc' ? Infinity : -Infinity)
-        bVal = bComp ?? (sortDirection === 'asc' ? Infinity : -Infinity)
+      case 'comparison':
+        aVal = a.lowestSell ?? (sortDirection === 'asc' ? Infinity : -Infinity)
+        bVal = b.lowestSell ?? (sortDirection === 'asc' ? Infinity : -Infinity)
         break
-      }
-      case 'difference': {
-        const aComp = isBuyOrder ? a.comparison?.highestBuy : a.comparison?.lowestSell
-        const bComp = isBuyOrder ? b.comparison?.highestBuy : b.comparison?.lowestSell
-        aVal = aComp !== null && aComp !== undefined ? a.order.price - aComp : (sortDirection === 'asc' ? Infinity : -Infinity)
-        bVal = bComp !== null && bComp !== undefined ? b.order.price - bComp : (sortDirection === 'asc' ? Infinity : -Infinity)
+      case 'difference':
+        aVal = a.lowestSell !== null ? a.order.price - a.lowestSell : (sortDirection === 'asc' ? Infinity : -Infinity)
+        bVal = b.lowestSell !== null ? b.order.price - b.lowestSell : (sortDirection === 'asc' ? Infinity : -Infinity)
         break
-      }
       case 'qty':
         aVal = a.order.volume_remain
         bVal = b.order.volume_remain
@@ -153,10 +146,6 @@ function sortOrders(
       case 'expires':
         aVal = getExpiryTime(a.order.issued, a.order.duration)
         bVal = getExpiryTime(b.order.issued, b.order.duration)
-        break
-      case 'average':
-        aVal = a.comparison?.averagePrice ?? (sortDirection === 'asc' ? Infinity : -Infinity)
-        bVal = b.comparison?.averagePrice ?? (sortDirection === 'asc' ? Infinity : -Infinity)
         break
     }
 
@@ -194,12 +183,12 @@ function OrdersTable({ orders }: { orders: OrderRow[] }) {
   const sellOrders = orders.filter((o) => !o.order.is_buy_order)
 
   const sortedSellOrders = useMemo(() =>
-    sortOrders(sellOrders, sellSort, sellDirection, false),
+    sortOrders(sellOrders, sellSort, sellDirection),
     [sellOrders, sellSort, sellDirection]
   )
 
   const sortedBuyOrders = useMemo(() =>
-    sortOrders(buyOrders, buySort, buyDirection, true),
+    sortOrders(buyOrders, buySort, buyDirection),
     [buyOrders, buySort, buyDirection]
   )
 
@@ -215,7 +204,6 @@ function OrdersTable({ orders }: { orders: OrderRow[] }) {
                 <SortableHeader column="price" label="Price" sortColumn={sellSort} sortDirection={sellDirection} onSort={handleSellSort} className="text-right" />
                 <SortableHeader column="comparison" label="Lowest Sell" sortColumn={sellSort} sortDirection={sellDirection} onSort={handleSellSort} className="text-right" />
                 <SortableHeader column="difference" label="Difference" sortColumn={sellSort} sortDirection={sellDirection} onSort={handleSellSort} className="text-right" />
-                <SortableHeader column="average" label="Average" sortColumn={sellSort} sortDirection={sellDirection} onSort={handleSellSort} className="text-right" />
                 <SortableHeader column="qty" label="Qty" sortColumn={sellSort} sortDirection={sellDirection} onSort={handleSellSort} className="text-right" />
                 <SortableHeader column="total" label="Total" sortColumn={sellSort} sortDirection={sellDirection} onSort={handleSellSort} className="text-right" />
                 <SortableHeader column="expires" label="Expires" sortColumn={sellSort} sortDirection={sellDirection} onSort={handleSellSort} className="text-right" />
@@ -224,8 +212,6 @@ function OrdersTable({ orders }: { orders: OrderRow[] }) {
             <TableBody>
               {sortedSellOrders.map((row) => {
                 const total = row.order.price * row.order.volume_remain
-                const comparisonValue = row.comparison?.lowestSell ?? null
-                const averagePrice = row.comparison?.averagePrice ?? null
                 return (
                   <TableRow key={row.order.order_id}>
                     <TableCell className="py-1.5">
@@ -245,26 +231,10 @@ function OrdersTable({ orders }: { orders: OrderRow[] }) {
                     </TableCell>
                     <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">{row.order.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                     <TableCell className="py-1.5 text-right tabular-nums text-content-secondary whitespace-nowrap">
-                      {comparisonValue !== null ? comparisonValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : <span className="text-content-muted">-</span>}
+                      {row.lowestSell !== null ? row.lowestSell.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : <span className="text-content-muted">-</span>}
                     </TableCell>
                     <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
-                      <DifferenceCell orderPrice={row.order.price} comparisonValue={comparisonValue} isBuyOrder={false} />
-                    </TableCell>
-                    <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
-                      {averagePrice !== null ? (
-                        <span className="flex items-center justify-end gap-1">
-                          {averagePrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          {comparisonValue !== null && (
-                            averagePrice < comparisonValue
-                              ? <TrendingUp className="h-3 w-3 text-status-positive" />
-                              : averagePrice > comparisonValue
-                                ? <TrendingDown className="h-3 w-3 text-status-negative" />
-                                : null
-                          )}
-                        </span>
-                      ) : (
-                        <span className="text-content-muted">-</span>
-                      )}
+                      <DifferenceCell orderPrice={row.order.price} comparisonValue={row.lowestSell} isBuyOrder={false} />
                     </TableCell>
                     <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
                       {row.order.volume_remain.toLocaleString()}
@@ -289,9 +259,6 @@ function OrdersTable({ orders }: { orders: OrderRow[] }) {
               <TableRow className="hover:bg-transparent">
                 <SortableHeader column="item" label="Item" sortColumn={buySort} sortDirection={buyDirection} onSort={handleBuySort} />
                 <SortableHeader column="price" label="Price" sortColumn={buySort} sortDirection={buyDirection} onSort={handleBuySort} className="text-right" />
-                <SortableHeader column="comparison" label="Highest Buy" sortColumn={buySort} sortDirection={buyDirection} onSort={handleBuySort} className="text-right" />
-                <SortableHeader column="difference" label="Difference" sortColumn={buySort} sortDirection={buyDirection} onSort={handleBuySort} className="text-right" />
-                <SortableHeader column="average" label="Average" sortColumn={buySort} sortDirection={buyDirection} onSort={handleBuySort} className="text-right" />
                 <SortableHeader column="qty" label="Qty" sortColumn={buySort} sortDirection={buyDirection} onSort={handleBuySort} className="text-right" />
                 <SortableHeader column="total" label="Total" sortColumn={buySort} sortDirection={buyDirection} onSort={handleBuySort} className="text-right" />
                 <SortableHeader column="expires" label="Expires" sortColumn={buySort} sortDirection={buyDirection} onSort={handleBuySort} className="text-right" />
@@ -300,8 +267,6 @@ function OrdersTable({ orders }: { orders: OrderRow[] }) {
             <TableBody>
               {sortedBuyOrders.map((row) => {
                 const total = row.order.price * row.order.volume_remain
-                const comparisonValue = row.comparison?.highestBuy ?? null
-                const averagePrice = row.comparison?.averagePrice ?? null
                 return (
                   <TableRow key={row.order.order_id}>
                     <TableCell className="py-1.5">
@@ -320,28 +285,6 @@ function OrdersTable({ orders }: { orders: OrderRow[] }) {
                       </div>
                     </TableCell>
                     <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">{row.order.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                    <TableCell className="py-1.5 text-right tabular-nums text-content-secondary whitespace-nowrap">
-                      {comparisonValue !== null ? comparisonValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : <span className="text-content-muted">-</span>}
-                    </TableCell>
-                    <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
-                      <DifferenceCell orderPrice={row.order.price} comparisonValue={comparisonValue} isBuyOrder={true} />
-                    </TableCell>
-                    <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
-                      {averagePrice !== null ? (
-                        <span className="flex items-center justify-end gap-1">
-                          {averagePrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          {comparisonValue !== null && (
-                            averagePrice < comparisonValue
-                              ? <TrendingUp className="h-3 w-3 text-status-positive" />
-                              : averagePrice > comparisonValue
-                                ? <TrendingDown className="h-3 w-3 text-status-negative" />
-                                : null
-                          )}
-                        </span>
-                      ) : (
-                        <span className="text-content-muted">-</span>
-                      )}
-                    </TableCell>
                     <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
                       {row.order.volume_remain.toLocaleString()}
                       {row.order.volume_remain !== row.order.volume_total && (
@@ -613,15 +556,7 @@ export function MarketOrdersTab() {
 
   const cacheVersion = useCacheVersion()
 
-  const comparisonData = useMarketOrdersStore((s) => s.comparisonData)
-  const comparisonFetching = useMarketOrdersStore((s) => s.comparisonFetching)
-  const fetchComparisonData = useMarketOrdersStore((s) => s.fetchComparisonData)
-
-  useEffect(() => {
-    if (initialized && ordersByOwner.length > 0 && comparisonData.size === 0 && !comparisonFetching) {
-      fetchComparisonData()
-    }
-  }, [initialized, ordersByOwner, comparisonData.size, comparisonFetching, fetchComparisonData])
+  const regionalMarketStore = useRegionalMarketStore()
 
   const { setExpandCollapse, search, setResultCount, setTotalValue, setColumns } = useTabControls()
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
@@ -640,7 +575,6 @@ export function MarketOrdersTab() {
     { id: 'price', label: 'Price' },
     { id: 'comparison', label: 'Comparison' },
     { id: 'difference', label: 'Difference' },
-    { id: 'average', label: 'Average' },
     { id: 'quantity', label: 'Quantity' },
     { id: 'total', label: 'Total' },
     { id: 'expires', label: 'Expires' },
@@ -661,7 +595,7 @@ export function MarketOrdersTab() {
       for (const order of orders) {
         const type = hasType(order.type_id) ? getType(order.type_id) : undefined
         const locationInfo = getLocationInfo(order.location_id)
-        const comparison = comparisonData.get(order.type_id)
+        const lowestSell = regionalMarketStore.getPriceAtLocation(order.type_id, order.location_id) ?? null
 
         const row: OrderRow = {
           order,
@@ -674,7 +608,7 @@ export function MarketOrdersTab() {
           locationName: locationInfo.name,
           regionName: locationInfo.regionName,
           systemName: locationInfo.systemName,
-          comparison,
+          lowestSell,
         }
 
         let group = groups.get(order.location_id)
@@ -736,7 +670,7 @@ export function MarketOrdersTab() {
     }
 
     return sorted
-  }, [ordersByOwner, cacheVersion, search, selectedSet, comparisonData])
+  }, [ordersByOwner, cacheVersion, search, selectedSet, regionalMarketStore])
 
   const historyOrders = useMemo(() => {
     void cacheVersion
