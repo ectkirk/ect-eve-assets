@@ -798,7 +798,7 @@ ipcMain.handle('ref:moon', async (_event, id: unknown) => {
   }
 })
 
-ipcMain.handle('ref:ships', async (_event, ids: unknown) => {
+ipcMain.handle('ref:shipslots', async (_event, ids: unknown) => {
   if (!Array.isArray(ids) || ids.length === 0 || ids.length > 500) {
     return { error: 'Invalid ids array (max 500)' }
   }
@@ -808,7 +808,7 @@ ipcMain.handle('ref:ships', async (_event, ids: unknown) => {
 
   await waitForRefRateLimit()
   try {
-    const response = await fetchRefWithRetry(`${REF_API_BASE}/ships`, {
+    const response = await fetchRefWithRetry(`${REF_API_BASE}/reference/shipslots`, {
       method: 'POST',
       headers: getRefHeaders('json'),
       body: JSON.stringify({ ids }),
@@ -818,7 +818,7 @@ ipcMain.handle('ref:ships', async (_event, ids: unknown) => {
     }
     return await response.json()
   } catch (err) {
-    logger.error('ref:ships fetch failed', err, { module: 'Main' })
+    logger.error('ref:shipslots fetch failed', err, { module: 'Main' })
     return { error: String(err) }
   }
 })

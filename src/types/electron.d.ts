@@ -433,7 +433,7 @@ declare global {
     refUniverseStructuresPage: (params?: RefStructuresPageParams) => Promise<RefStructuresPageResult>
     refImplants: (ids: number[]) => Promise<RefApiResult>
     refMoon: (id: number) => Promise<RefMoonResult>
-    refShips: (ids: number[]) => Promise<RefShipsResult>
+    refShipSlots: (ids: number[]) => Promise<RefShipsResult>
     refMarket: (params: RefMarketParams) => Promise<RefMarketResult>
     refMarketJita: (typeIds: number[]) => Promise<RefMarketJitaResult>
     refMarketPlex: () => Promise<RefMarketPlexResult>

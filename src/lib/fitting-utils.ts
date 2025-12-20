@@ -288,7 +288,7 @@ export function extractFitting(shipNode: TreeNode): ExtractedFitting {
 
 export async function fetchShipSlots(shipTypeId: number): Promise<ShipSlots | null> {
   try {
-    const result = await window.electronAPI?.refShips([shipTypeId])
+    const result = await window.electronAPI?.refShipSlots([shipTypeId])
     if (!result || 'error' in result) return null
 
     const ship = result.ships?.[shipTypeId]
