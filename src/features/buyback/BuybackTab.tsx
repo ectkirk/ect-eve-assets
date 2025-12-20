@@ -2,15 +2,16 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { BuybackForm } from './BuybackForm'
 import { BuybackResults } from './BuybackResults'
 import { BuybackFAQ } from './BuybackFAQ'
+import { useBuybackInfoStore } from '@/store/buyback-info-store'
 import {
-  getConfigByTabName,
-  SECURITY_CONFIGS,
-  ASSET_SAFETY_RATES,
+  getStyling,
+  tabToKey,
   formatPercent,
   type BuybackTabType,
-  type SecurityConfig,
+  type RuntimeSecurityConfig,
   type AssetSafetySecurityLevel,
 } from './config'
+import { Loader2 } from 'lucide-react'
 
 type NPCStationOption = 'yes' | 'no'
 
@@ -64,6 +65,7 @@ interface BuybackTabProps {
 }
 
 export function BuybackTab({ activeTab }: BuybackTabProps) {
+  const { info, isLoading: isLoadingInfo, error: infoError, fetchInfo } = useBuybackInfoStore()
   const [result, setResult] = useState<BuybackResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -72,30 +74,42 @@ export function BuybackTab({ activeTab }: BuybackTabProps) {
   const [assetSafetySecLevel, setAssetSafetySecLevel] = useState<AssetSafetySecurityLevel>('nullsec')
   const [npcStation, setNpcStation] = useState<NPCStationOption>('no')
 
-  const config: SecurityConfig | null = useMemo(() => {
+  useEffect(() => {
+    fetchInfo()
+  }, [fetchInfo])
+
+  const config: RuntimeSecurityConfig | null = useMemo(() => {
+    if (!info?.securityConfigs || !info?.assetSafetyRates) return null
+
+    const key = tabToKey(activeTab)
+
     if (activeTab !== 'Asset Safety') {
-      return getConfigByTabName(activeTab)
+      const apiConfig = info.securityConfigs[key]
+      if (!apiConfig) return null
+      return {
+        name: apiConfig.name,
+        key,
+        buyRate: apiConfig.buyRate,
+        iskPerM3: apiConfig.iskPerM3,
+        acceptCapitals: apiConfig.acceptCapitals,
+        styling: getStyling(key),
+      }
     }
-    const assetSafetyConfig = SECURITY_CONFIGS.assetsafety
-    if (!assetSafetyConfig) return null
-    const rates = ASSET_SAFETY_RATES[assetSafetySecLevel]
-    const buyRate = npcStation === 'yes' ? rates.npc : rates.noNpc
-    const feeRate =
-      npcStation === 'yes' ? ASSET_SAFETY_RATES.NPC_STATION_FEE_RATE : ASSET_SAFETY_RATES.FEE_RATE
+
+    const assetSafetyRates = info.assetSafetyRates[assetSafetySecLevel]
+    const buyRate = npcStation === 'yes' ? assetSafetyRates.npcStation : assetSafetyRates.noNpcStation
+    const feeRate = npcStation === 'yes' ? info.assetSafetyRates.npcStationFeeRate : info.assetSafetyRates.feeRate
+
     return {
-      name: assetSafetyConfig.name,
-      key: assetSafetyConfig.key,
-      color: assetSafetyConfig.color,
-      colorForeground: assetSafetyConfig.colorForeground,
-      textColor: assetSafetyConfig.textColor,
-      borderColor: assetSafetyConfig.borderColor,
-      bgColor: assetSafetyConfig.bgColor,
-      acceptCapitals: assetSafetySecLevel !== 'highsec',
+      name: 'Asset Safety',
+      key: 'assetsafety',
       buyRate,
-      iskPerM3: rates.iskPerM3,
+      iskPerM3: assetSafetyRates.iskPerM3,
+      acceptCapitals: assetSafetySecLevel !== 'highsec',
       assetSafetyRate: feeRate,
+      styling: getStyling('assetsafety'),
     }
-  }, [activeTab, assetSafetySecLevel, npcStation])
+  }, [info, activeTab, assetSafetySecLevel, npcStation])
 
   useEffect(() => {
     if (prevTabRef.current !== activeTab) {
@@ -150,14 +164,37 @@ export function BuybackTab({ activeTab }: BuybackTabProps) {
     setError(null)
   }
 
+  if (isLoadingInfo && !info) {
+    return (
+      <div className="mx-auto flex max-w-5xl items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-accent" />
+      </div>
+    )
+  }
+
+  if (infoError && !info) {
+    return (
+      <div className="mx-auto max-w-5xl">
+        <div className="rounded-lg border border-semantic-danger/30 bg-semantic-danger/10 p-4 text-status-negative">
+          Failed to load buyback configuration: {infoError}
+        </div>
+      </div>
+    )
+  }
+
+  const serviceName = info?.service?.name ?? 'Buyback'
+  const feeRate = info?.assetSafetyRates
+    ? (npcStation === 'yes' ? info.assetSafetyRates.npcStationFeeRate : info.assetSafetyRates.feeRate)
+    : 0.15
+
   return (
     <div className="mx-auto max-w-5xl">
       <div className="mb-6">
         <h1 className="mb-2 flex items-center gap-3 text-2xl font-bold text-content">
-          EC Trade Buyback
+          {serviceName}
           {config && (
             <span
-              className={`rounded px-2 py-0.5 text-xs font-semibold ${config.colorForeground} ${config.color}`}
+              className={`rounded px-2 py-0.5 text-xs font-semibold ${config.styling.colorForeground} ${config.styling.color}`}
             >
               {config.name}
             </span>
@@ -165,7 +202,7 @@ export function BuybackTab({ activeTab }: BuybackTabProps) {
         </h1>
         <p className="text-content-secondary">
           {activeTab === 'Asset Safety'
-            ? `${SECURITY_LABELS[assetSafetySecLevel]} at ${formatPercent(config?.buyRate ?? 0)} with ${formatPercent(npcStation === 'yes' ? ASSET_SAFETY_RATES.NPC_STATION_FEE_RATE : ASSET_SAFETY_RATES.FEE_RATE)} asset safety fee.`
+            ? `${SECURITY_LABELS[assetSafetySecLevel]} at ${formatPercent(config?.buyRate ?? 0)} with ${formatPercent(feeRate)} asset safety fee.`
             : `${config?.name} buyback. General buyback for items${config?.acceptCapitals ? ' and capitals' : ''}.`}
         </p>
       </div>

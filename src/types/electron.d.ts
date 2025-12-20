@@ -134,82 +134,6 @@ declare global {
     error?: string
   }
 
-  interface BlueprintResearchParams {
-    blueprint_id: number
-    system_id: number
-    facility?: number
-    metallurgy_level?: number
-    research_level?: number
-    science_level?: number
-    advanced_industry_level?: number
-    me_implant?: number
-    te_implant?: number
-    copy_implant?: number
-    me_rig?: number
-    te_rig?: number
-    copy_rig?: number
-    security_status?: 'h' | 'l' | 'n'
-    facility_tax?: number
-    faction_warfare_bonus?: boolean
-    runs_per_copy?: number
-  }
-
-  interface BlueprintResearchResult {
-    blueprint?: { id: number; name: string }
-    systemId?: number
-    facility?: string
-    costIndices?: {
-      researching_material_efficiency: number
-      researching_time_efficiency: number
-      copying: number
-    }
-    modifiers?: {
-      facility: string
-      skills: { metallurgy: number; research: number; science: number; advancedIndustry: number }
-      implants: { me: number; te: number; copy: number }
-      rigs: { me: string; te: string; copy: string }
-      securityStatus: string
-      factionWarfareBonus: boolean
-    }
-    meResearch?: Array<{
-      level: number
-      duration: number
-      durationFormatted: string
-      cost: number
-      cumulativeDuration: number
-      cumulativeDurationFormatted: string
-      cumulativeCost: number
-    }>
-    teResearch?: Array<{
-      level: number
-      duration: number
-      durationFormatted: string
-      cost: number
-      cumulativeDuration: number
-      cumulativeDurationFormatted: string
-      cumulativeCost: number
-    }>
-    copying?: {
-      baseTime: number
-      runsPerCopy: number
-      duration: number
-      durationFormatted: string
-      installationCost: number
-      materials: Array<{ typeId: number; name: string; quantity: number; price: number; total: number }>
-      materialsCost: number
-      totalCost: number
-      maxRuns: number
-      maxCopyDuration: number
-      maxCopyDurationFormatted: string
-      maxCopyInstallationCost: number
-      maxCopyMaterialsCost: number
-      maxCopyTotalCost: number
-      exceeds30DayLimit: boolean
-      copiesIn30Days: number
-    }
-    error?: string
-  }
-
   interface BlueprintListItem {
     id: number
     name: string
@@ -218,14 +142,6 @@ declare global {
   }
 
   type BlueprintsResult = { items: Record<string, number> } | { error: string }
-
-  interface SystemListItem {
-    id: number
-    name: string
-    security: number
-  }
-
-  type SystemsResult = SystemListItem[] | { error: string }
 
   interface BuybackConfig {
     buyRate: number
@@ -317,6 +233,50 @@ declare global {
     error?: string
   }
 
+  interface BuybackSecurityConfig {
+    name: string
+    path: string
+    description: string
+    buyRate: number
+    buyRatePercent: number
+    iskPerM3: number
+    acceptCapitals: boolean
+  }
+
+  interface BuybackAssetSafetyRates {
+    highsec: { noNpcStation: number; npcStation: number; iskPerM3: number }
+    lowsec: { noNpcStation: number; npcStation: number; iskPerM3: number }
+    nullsec: { noNpcStation: number; npcStation: number; iskPerM3: number }
+    feeRate: number
+    npcStationFeeRate: number
+  }
+
+  interface BuybackFAQItem {
+    question: string
+    answer: string
+  }
+
+  interface BuybackInfoResult {
+    service?: {
+      name: string
+      website: string
+      discord: string
+      corporation: string
+    }
+    securityConfigs?: Record<string, BuybackSecurityConfig>
+    assetSafetyRates?: BuybackAssetSafetyRates
+    specialItems?: { buyRate: number; groupIds: number[] }
+    capitalShips?: { groupIds: number[] }
+    excludedCategories?: Record<string, string>
+    excludedGroups?: Record<string, string>
+    priceAdjustments?: Record<string, { name: string; adjustment: number; adjustmentPercent: number }>
+    alwaysExcluded?: string[]
+    highsecIslands?: Array<{ region: string; systems: string[] }>
+    faq?: BuybackFAQItem[]
+    note?: string
+    error?: string
+  }
+
   interface ESIRequestOptions {
     method?: 'GET' | 'POST'
     body?: string
@@ -374,11 +334,10 @@ declare global {
     refMarketJita: (typeIds: number[]) => Promise<RefMarketJitaResult>
     refMarketPlex: () => Promise<RefMarketPlexResult>
     refMarketContracts: (typeIds: number[]) => Promise<RefMarketContractsResult>
-    refBlueprintResearch: (params: BlueprintResearchParams) => Promise<BlueprintResearchResult>
     refBlueprints: () => Promise<BlueprintsResult>
-    refSystems: () => Promise<SystemsResult>
     refBuybackCalculate: (text: string, config: BuybackConfig) => Promise<BuybackResult>
     refBuybackCalculator: (text: string) => Promise<BuybackCalculatorResult>
+    refBuybackInfo: () => Promise<BuybackInfoResult>
     mutamarketModule: (itemId: number, typeId?: number) => Promise<MutamarketResult>
     onUpdateAvailable: (callback: (version: string) => void) => () => void
     onUpdateDownloadProgress: (callback: (percent: number) => void) => () => void

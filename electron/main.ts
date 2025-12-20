@@ -908,40 +908,6 @@ ipcMain.handle('ref:marketContracts', async (_event, typeIds: unknown) => {
   }
 })
 
-ipcMain.handle('ref:blueprintResearch', async (_event, params: unknown) => {
-  if (typeof params !== 'object' || params === null) {
-    return { error: 'Invalid params' }
-  }
-  const p = params as Record<string, unknown>
-  if (typeof p.blueprint_id !== 'number') {
-    return { error: 'blueprint_id is required' }
-  }
-  if (typeof p.system_id !== 'number') {
-    return { error: 'system_id is required' }
-  }
-
-  await waitForRefRateLimit()
-  try {
-    const searchParams = new URLSearchParams()
-    for (const [key, value] of Object.entries(p)) {
-      if (value !== undefined && value !== null) {
-        searchParams.set(key, String(value))
-      }
-    }
-    const response = await fetchRefWithRetry(`${REF_API_BASE}/blueprint-research?${searchParams}`, {
-      headers: getRefHeaders(),
-    })
-    if (!response.ok) {
-      const text = await response.text()
-      return { error: `HTTP ${response.status}: ${text}` }
-    }
-    return await response.json()
-  } catch (err) {
-    logger.error('ref:blueprintResearch fetch failed', err, { module: 'Main' })
-    return { error: String(err) }
-  }
-})
-
 ipcMain.handle('ref:blueprints', async () => {
   await waitForRefRateLimit()
   try {
@@ -954,22 +920,6 @@ ipcMain.handle('ref:blueprints', async () => {
     return await response.json()
   } catch (err) {
     logger.error('ref:blueprints fetch failed', err, { module: 'Main' })
-    return { error: String(err) }
-  }
-})
-
-ipcMain.handle('ref:systems', async () => {
-  await waitForRefRateLimit()
-  try {
-    const response = await fetchRefWithRetry(`${REF_API_BASE}/systems`, {
-      headers: getRefHeaders(),
-    })
-    if (!response.ok) {
-      return { error: `HTTP ${response.status}` }
-    }
-    return await response.json()
-  } catch (err) {
-    logger.error('ref:systems fetch failed', err, { module: 'Main' })
     return { error: String(err) }
   }
 })
@@ -1032,6 +982,22 @@ ipcMain.handle(
     }
   }
 )
+
+ipcMain.handle('ref:buybackInfo', async () => {
+  await waitForRefRateLimit()
+  try {
+    const response = await fetchRefWithRetry(`${REF_API_BASE}/buyback/info`, {
+      headers: getRefHeaders(),
+    })
+    if (!response.ok) {
+      return { error: `HTTP ${response.status}` }
+    }
+    return await response.json()
+  } catch (err) {
+    logger.error('ref:buybackInfo fetch failed', err, { module: 'Main' })
+    return { error: String(err) }
+  }
+})
 
 const MUTAMARKET_API_BASE = 'https://mutamarket.com/api'
 const MUTAMARKET_TIMEOUT_MS = 5000

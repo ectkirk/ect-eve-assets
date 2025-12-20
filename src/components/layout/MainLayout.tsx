@@ -11,9 +11,7 @@ import { ClonesTab } from '@/features/clones'
 import { LoyaltyTab } from '@/features/loyalty'
 import { ContractsTab } from '@/features/contracts'
 import { WalletTab } from '@/features/wallet'
-import { BlueprintResearchTab, CopyingTab } from '@/features/research'
-import { CalculatorTab } from '@/features/calculator'
-import { BuybackTab, BUYBACK_TABS, getConfigByTabName, type BuybackTabType } from '@/features/buyback'
+import { BuybackTab, BUYBACK_TABS, getStyling, tabToKey, type BuybackTabType } from '@/features/buyback'
 import { Loader2, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp, Search, X, AlertTriangle, Minus, Square, Copy, Settings, Info, Heart, Shield, FileText, History, Trash2, Sparkles, Bug, FolderOpen } from 'lucide-react'
 import { useThemeStore, THEME_OPTIONS } from '@/store/theme-store'
 import eveSsoLoginWhite from '/eve-sso-login-white.png'
@@ -31,7 +29,7 @@ import { useTotalAssets } from '@/hooks'
 import { formatNumber } from '@/lib/utils'
 import { TabControlsProvider, useTabControls } from '@/context'
 
-type AppMode = 'assets' | 'tools' | 'buyback'
+type AppMode = 'assets' | 'buyback'
 
 const ASSET_TABS = [
   'Assets',
@@ -45,14 +43,7 @@ const ASSET_TABS = [
   'Wallet',
 ] as const
 
-const TOOL_TABS = [
-  'Research',
-  'Copying',
-  'Calculator',
-] as const
-
 type AssetTab = (typeof ASSET_TABS)[number]
-type ToolTab = (typeof TOOL_TABS)[number]
 
 function AssetTabContent({ tab }: { tab: AssetTab }) {
   switch (tab) {
@@ -77,17 +68,6 @@ function AssetTabContent({ tab }: { tab: AssetTab }) {
   }
 }
 
-function ToolTabContent({ tab }: { tab: ToolTab }) {
-  switch (tab) {
-    case 'Research':
-      return <BlueprintResearchTab />
-    case 'Copying':
-      return <CopyingTab />
-    case 'Calculator':
-      return <CalculatorTab />
-  }
-}
-
 function ModeSwitcher({ mode, onModeChange }: { mode: AppMode; onModeChange: (mode: AppMode) => void }) {
   return (
     <div className="flex rounded-md bg-surface-tertiary/50 p-0.5">
@@ -100,16 +80,6 @@ function ModeSwitcher({ mode, onModeChange }: { mode: AppMode; onModeChange: (mo
         }`}
       >
         Assets
-      </button>
-      <button
-        onClick={() => onModeChange('tools')}
-        className={`rounded px-3 py-1 text-sm font-medium transition-colors ${
-          mode === 'tools'
-            ? 'bg-surface-tertiary text-content'
-            : 'text-content-muted hover:text-content-secondary'
-        }`}
-      >
-        Tools
       </button>
       <button
         onClick={() => onModeChange('buyback')}
@@ -735,7 +705,6 @@ function WindowControls() {
 function MainLayoutInner() {
   const [mode, setMode] = useState<AppMode>('assets')
   const [activeAssetTab, setActiveAssetTab] = useState<AssetTab>('Assets')
-  const [activeToolTab, setActiveToolTab] = useState<ToolTab>('Research')
   const [activeBuybackTab, setActiveBuybackTab] = useState<BuybackTabType>(BUYBACK_TABS[1])
 
   return (
@@ -797,23 +766,9 @@ function MainLayoutInner() {
                 {tab}
               </button>
             ))
-          ) : mode === 'tools' ? (
-            TOOL_TABS.map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveToolTab(tab)}
-                className={`px-3 py-2 text-sm transition-colors ${
-                  activeToolTab === tab
-                    ? 'border-b-2 border-accent text-accent'
-                    : 'text-content-secondary hover:text-content'
-                }`}
-              >
-                {tab}
-              </button>
-            ))
           ) : (
             BUYBACK_TABS.map((tab) => {
-              const config = getConfigByTabName(tab)
+              const styling = getStyling(tabToKey(tab))
               return (
                 <button
                   key={tab}
@@ -824,7 +779,7 @@ function MainLayoutInner() {
                       : 'text-content-secondary hover:text-content'
                   }`}
                 >
-                  {config && <span className={`h-2 w-2 rounded-full ${config.color}`} />}
+                  <span className={`h-2 w-2 rounded-full ${styling.color}`} />
                   {tab}
                 </button>
               )
@@ -842,8 +797,6 @@ function MainLayoutInner() {
       <main className="flex-1 overflow-auto p-4">
         {mode === 'assets' ? (
           <AssetTabContent tab={activeAssetTab} />
-        ) : mode === 'tools' ? (
-          <ToolTabContent tab={activeToolTab} />
         ) : (
           <BuybackTab activeTab={activeBuybackTab} />
         )}

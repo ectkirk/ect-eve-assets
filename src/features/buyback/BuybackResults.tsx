@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import type { SecurityConfig } from './config'
+import type { RuntimeSecurityConfig } from './config'
 
 interface BuybackResultsProps {
   result: BuybackResult
-  config: SecurityConfig
+  config: RuntimeSecurityConfig
 }
 
 function CopyButton({ text, label }: { text: string; label: string }) {
