@@ -29,11 +29,11 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { cn, formatNumber } from '@/lib/utils'
-
-type ContractSortColumn = 'type' | 'items' | 'location' | 'assigner' | 'assignee' | 'price' | 'value' | 'expires' | 'completed' | 'volume' | 'collateral' | 'days'
 import { getLocationName } from '@/lib/location-utils'
 import { TypeIcon as ItemTypeIcon } from '@/components/ui/type-icon'
 import { ContractItemsDialog } from '@/components/dialogs/ContractItemsDialog'
+
+type ContractSortColumn = 'type' | 'items' | 'location' | 'assigner' | 'assignee' | 'price' | 'value' | 'expires' | 'completed' | 'volume' | 'collateral' | 'days'
 
 const CONTRACT_TYPE_NAMES: Record<ESIContract['type'], string> = {
   unknown: 'Unknown',
@@ -119,6 +119,64 @@ function getDaysLeft(contract: ESIContract): number {
     return Math.ceil((deadline - Date.now()) / (24 * 60 * 60 * 1000))
   }
   return 0
+}
+
+function buildContractRow(
+  contractWithItems: ContractWithItems,
+  ownerType: 'character' | 'corporation',
+  ownerId: number,
+  isIssuer: boolean,
+  loadedItems: Map<number, ESIContractItem[]>,
+  prices: Map<number, number>
+): ContractRow {
+  const contract = contractWithItems.contract
+  const items = loadedItems.get(contract.contract_id) ?? []
+  const direction: ContractDirection = isIssuer ? 'out' : 'in'
+
+  const firstItem = items[0]
+  const firstItemType = firstItem && hasType(firstItem.type_id) ? getType(firstItem.type_id) : undefined
+
+  const assignerName = getName(contract.issuer_id)?.name ?? `ID ${contract.issuer_id}`
+
+  let assigneeName: string
+  if (contract.availability === 'public') {
+    assigneeName = 'Public'
+  } else if (contract.assignee_id) {
+    assigneeName = getName(contract.assignee_id)?.name ?? `ID ${contract.assignee_id}`
+  } else {
+    assigneeName = '-'
+  }
+
+  let itemValue = 0
+  for (const item of items) {
+    if (item.is_blueprint_copy) continue
+    let price: number
+    if (isAbyssalTypeId(item.type_id) && item.item_id) {
+      price = getCachedAbyssalPrice(item.item_id) ?? 0
+    } else {
+      price = prices.get(item.type_id) ?? 0
+    }
+    itemValue += price * item.quantity
+  }
+
+  return {
+    contractWithItems,
+    items,
+    ownerType,
+    ownerId,
+    locationName: getLocationName(contract.start_location_id),
+    endLocationName: contract.end_location_id ? getLocationName(contract.end_location_id) : '',
+    firstItemTypeId: firstItem?.type_id,
+    firstItemCategoryId: firstItemType?.categoryId,
+    firstItemIsBlueprintCopy: firstItem?.is_blueprint_copy,
+    typeName: firstItemType?.name ?? (firstItem ? `Unknown Type ${firstItem.type_id}` : ''),
+    direction,
+    assignerName,
+    assigneeName,
+    itemValue,
+    status: contract.status,
+    dateCompleted: contract.date_completed,
+  }
 }
 
 function ContractsTable({
@@ -212,8 +270,7 @@ function ContractsTable({
           const hasMultipleItems = items.length > 1
 
           return (
-            <React.Fragment key={contract.contract_id}>
-              <TableRow>
+            <TableRow key={contract.contract_id}>
                 <TableCell className="py-1.5 w-8">
                   <img
                     src={row.ownerType === 'corporation'
@@ -340,8 +397,7 @@ function ContractsTable({
                   {row.status === 'deleted' && <span className="text-content-muted">Deleted</span>}
                   {row.status === 'reversed' && <span className="text-status-warning">Reversed</span>}
                 </TableCell>
-              </TableRow>
-            </React.Fragment>
+            </TableRow>
           )
         })}
       </TableBody>
@@ -457,6 +513,7 @@ export function ContractsTab() {
 
   const [loadedItems, setLoadedItems] = useState<Map<number, ESIContractItem[]>>(new Map())
   const [isLoadingItems, setIsLoadingItems] = useState(false)
+  const [fetchedContractIds, setFetchedContractIds] = useState<Set<number>>(new Set())
 
   useEffect(() => {
     init()
@@ -493,6 +550,7 @@ export function ContractsTab() {
       for (const { contracts } of contractsByOwner) {
         for (const { contract, items } of contracts) {
           if (items !== undefined) continue
+          if (fetchedContractIds.has(contract.contract_id)) continue
 
           const isActive = contract.status === 'outstanding' || contract.status === 'in_progress'
           if (isActive) continue
@@ -510,6 +568,12 @@ export function ContractsTab() {
 
       if (contractsToFetch.length === 0) return
 
+      setFetchedContractIds(prev => {
+        const next = new Set(prev)
+        for (const id of contractsToFetch) next.add(id)
+        return next
+      })
+
       setIsLoadingItems(true)
       try {
         for (let i = 0; i < contractsToFetch.length; i += FETCH_BATCH_SIZE) {
@@ -522,7 +586,7 @@ export function ContractsTab() {
     }
 
     fetchCompletedItems()
-  }, [showCompleted, contractsByOwner, fetchItemsForContract])
+  }, [showCompleted, contractsByOwner, fetchItemsForContract, fetchedContractIds])
 
   const { setExpandCollapse, search, setResultCount, setTotalValue, setColumns } = useTabControls()
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
@@ -550,10 +614,8 @@ export function ContractsTab() {
     )
 
     const ownerIds = new Set<number>()
-    const ownerCorpIds = new Set<number>()
     for (const owner of owners) {
       ownerIds.add(owner.characterId)
-      if (owner.corporationId) ownerCorpIds.add(owner.corporationId)
     }
 
     const groups: Record<ContractDirection, DirectionGroup> = {
@@ -563,65 +625,7 @@ export function ContractsTab() {
 
     const courier: ContractRow[] = []
     const completed: ContractRow[] = []
-
     const seenContracts = new Set<number>()
-
-    const buildContractRow = (
-      contractWithItems: ContractWithItems,
-      ownerType: 'character' | 'corporation',
-      ownerId: number,
-      isIssuer: boolean
-    ): ContractRow => {
-      const contract = contractWithItems.contract
-      const items = loadedItems.get(contract.contract_id) ?? []
-      const direction: ContractDirection = isIssuer ? 'out' : 'in'
-
-      const firstItem = items[0]
-      const firstItemType =
-        firstItem && hasType(firstItem.type_id) ? getType(firstItem.type_id) : undefined
-
-      const assignerName = getName(contract.issuer_id)?.name ?? `ID ${contract.issuer_id}`
-
-      let assigneeName: string
-      if (contract.availability === 'public') {
-        assigneeName = 'Public'
-      } else if (contract.assignee_id) {
-        assigneeName = getName(contract.assignee_id)?.name ?? `ID ${contract.assignee_id}`
-      } else {
-        assigneeName = '-'
-      }
-
-      let itemValue = 0
-      for (const item of items) {
-        if (item.is_blueprint_copy) continue
-        let price: number
-        if (isAbyssalTypeId(item.type_id) && item.item_id) {
-          price = getCachedAbyssalPrice(item.item_id) ?? 0
-        } else {
-          price = prices.get(item.type_id) ?? 0
-        }
-        itemValue += price * item.quantity
-      }
-
-      return {
-        contractWithItems,
-        items,
-        ownerType,
-        ownerId,
-        locationName: getLocationName(contract.start_location_id),
-        endLocationName: contract.end_location_id ? getLocationName(contract.end_location_id) : '',
-        firstItemTypeId: firstItem?.type_id,
-        firstItemCategoryId: firstItemType?.categoryId,
-        firstItemIsBlueprintCopy: firstItem?.is_blueprint_copy,
-        typeName: firstItemType?.name ?? (firstItem ? `Unknown Type ${firstItem.type_id}` : ''),
-        direction,
-        assignerName,
-        assigneeName,
-        itemValue,
-        status: contract.status,
-        dateCompleted: contract.date_completed,
-      }
-    }
 
     for (const { owner, contracts } of filteredContractsByOwner) {
       for (const contractWithItems of contracts) {
@@ -634,12 +638,12 @@ export function ContractsTab() {
         const isActive = contract.status === 'outstanding' || contract.status === 'in_progress'
         const isCourier = contract.type === 'courier'
 
+        const row = buildContractRow(contractWithItems, owner.type, owner.id, isIssuer, loadedItems, prices)
+
         if (!isActive) {
-          completed.push(buildContractRow(contractWithItems, owner.type, owner.id, isIssuer))
+          completed.push(row)
           continue
         }
-
-        const row = buildContractRow(contractWithItems, owner.type, owner.id, isIssuer)
 
         if (isCourier) {
           courier.push(row)
@@ -650,38 +654,50 @@ export function ContractsTab() {
       }
     }
 
-    const sortByValue = (contracts: ContractRow[]): ContractRow[] =>
-      [...contracts].sort((a, b) => b.itemValue - a.itemValue)
-
-    const filterContracts = (contracts: ContractRow[]): ContractRow[] => {
-      if (!search) return sortByValue(contracts)
+    const filterAndSort = (contracts: ContractRow[], sortByDate = false): { filtered: ContractRow[]; totalValue: number } => {
       const searchLower = search.toLowerCase()
-      return sortByValue(contracts.filter((row) =>
-        row.typeName.toLowerCase().includes(searchLower) ||
-        row.assignerName.toLowerCase().includes(searchLower) ||
-        row.locationName.toLowerCase().includes(searchLower) ||
-        row.assigneeName.toLowerCase().includes(searchLower)
-      ))
+      let totalValue = 0
+
+      const filtered = contracts.filter((row) => {
+        if (search) {
+          const matches =
+            row.typeName.toLowerCase().includes(searchLower) ||
+            row.assignerName.toLowerCase().includes(searchLower) ||
+            row.locationName.toLowerCase().includes(searchLower) ||
+            row.assigneeName.toLowerCase().includes(searchLower)
+          if (!matches) return false
+        }
+        totalValue += row.itemValue
+        return true
+      })
+
+      if (sortByDate) {
+        filtered.sort((a, b) => {
+          const dateA = a.dateCompleted ? new Date(a.dateCompleted).getTime() : 0
+          const dateB = b.dateCompleted ? new Date(b.dateCompleted).getTime() : 0
+          return dateB - dateA
+        })
+      } else {
+        filtered.sort((a, b) => b.itemValue - a.itemValue)
+      }
+
+      return { filtered, totalValue }
     }
 
-    const filteredIn = filterContracts(groups.in.contracts)
-    const filteredOut = filterContracts(groups.out.contracts)
-    const filteredCourier = filterContracts(courier)
-    const filteredCompleted = filterContracts(completed).sort((a, b) => {
-      const dateA = a.dateCompleted ? new Date(a.dateCompleted).getTime() : 0
-      const dateB = b.dateCompleted ? new Date(b.dateCompleted).getTime() : 0
-      return dateB - dateA
-    })
+    const inResult = filterAndSort(groups.in.contracts)
+    const outResult = filterAndSort(groups.out.contracts)
+    const courierResult = filterAndSort(courier)
+    const completedResult = filterAndSort(completed, true)
 
     return {
       directionGroups: [
-        { ...groups.in, contracts: filteredIn, totalValue: filteredIn.reduce((acc, c) => acc + c.itemValue, 0) },
-        { ...groups.out, contracts: filteredOut, totalValue: filteredOut.reduce((acc, c) => acc + c.itemValue, 0) },
+        { ...groups.in, contracts: inResult.filtered, totalValue: inResult.totalValue },
+        { ...groups.out, contracts: outResult.filtered, totalValue: outResult.totalValue },
       ].filter((g) => g.contracts.length > 0),
-      courierGroup: filteredCourier.length > 0
-        ? { direction: 'out' as ContractDirection, displayName: 'Active Couriers', contracts: filteredCourier, totalValue: filteredCourier.reduce((acc, c) => acc + c.itemValue, 0) }
+      courierGroup: courierResult.filtered.length > 0
+        ? { direction: 'out' as ContractDirection, displayName: 'Active Couriers', contracts: courierResult.filtered, totalValue: courierResult.totalValue }
         : null,
-      completedContracts: filteredCompleted,
+      completedContracts: completedResult.filtered,
     }
   }, [contractsByOwner, cacheVersion, owners, prices, search, selectedSet, loadedItems])
 
@@ -720,55 +736,46 @@ export function ContractsTab() {
     return () => setExpandCollapse(null)
   }, [isAllExpanded, expandAll, collapseAll, setExpandCollapse])
 
-  const totals = useMemo(() => {
+  const { totals, contractPrice, totalCollateral } = useMemo(() => {
     let activeCount = 0
-    let assetsIn = 0
-    let assetsOut = 0
     let valueIn = 0
     let valueOut = 0
+    let contractPriceSum = 0
 
     for (const group of directionGroups) {
       activeCount += group.contracts.length
       if (group.direction === 'in') {
-        assetsIn = group.contracts.length
         valueIn = group.totalValue
       } else {
-        assetsOut = group.contracts.length
         valueOut = group.totalValue
+      }
+      for (const row of group.contracts) {
+        contractPriceSum += (row.contractWithItems.contract.price ?? 0) + (row.contractWithItems.contract.reward ?? 0)
+      }
+    }
+
+    let collateralSum = 0
+    if (courierGroup) {
+      for (const row of courierGroup.contracts) {
+        collateralSum += row.contractWithItems.contract.collateral ?? 0
       }
     }
 
     const courierCount = courierGroup?.contracts.length ?? 0
     const completedCount = completedContracts.length
 
-    return { activeCount, assetsIn, assetsOut, valueIn, valueOut, courierCount, completedCount }
+    return {
+      totals: { activeCount, valueIn, valueOut, courierCount, completedCount },
+      contractPrice: contractPriceSum,
+      totalCollateral: collateralSum,
+    }
   }, [directionGroups, courierGroup, completedContracts])
 
   useEffect(() => {
     const showingCount = totals.activeCount + totals.courierCount + totals.completedCount
-    const totalCount = showingCount
-    setResultCount({ showing: showingCount, total: totalCount })
+    setResultCount({ showing: showingCount, total: showingCount })
     return () => setResultCount(null)
   }, [totals.activeCount, totals.courierCount, totals.completedCount, setResultCount])
-
-  const contractPrice = useMemo(() => {
-    let total = 0
-    for (const group of directionGroups) {
-      for (const row of group.contracts) {
-        total += (row.contractWithItems.contract.price ?? 0) + (row.contractWithItems.contract.reward ?? 0)
-      }
-    }
-    return total
-  }, [directionGroups])
-
-  const totalCollateral = useMemo(() => {
-    if (!courierGroup) return 0
-    let total = 0
-    for (const row of courierGroup.contracts) {
-      total += row.contractWithItems.contract.collateral ?? 0
-    }
-    return total
-  }, [courierGroup])
 
   useEffect(() => {
     setTotalValue({

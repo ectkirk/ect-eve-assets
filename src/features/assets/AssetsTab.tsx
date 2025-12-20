@@ -1,9 +1,8 @@
-import { useMemo, useState, useEffect, useRef } from 'react'
+import { useMemo, useState, useEffect, useRef, Fragment } from 'react'
 import {
   useReactTable,
   getCoreRowModel,
   getSortedRowModel,
-  getFilteredRowModel,
   flexRender,
   type ColumnDef,
   type SortingState,
@@ -25,7 +24,7 @@ import {
 } from '@/components/ui/context-menu'
 import { formatNumber, cn } from '@/lib/utils'
 import { useTabControls } from '@/context'
-import { matchesAssetTypeFilter, matchesSearch, type AssetModeFlags } from '@/lib/resolved-asset'
+import { matchesAssetTypeFilter, matchesSearch, type AssetModeFlags, type ResolvedAsset } from '@/lib/resolved-asset'
 
 interface AssetRow {
   itemId: number
@@ -40,6 +39,7 @@ interface AssetRow {
   locationFlag: string
   isSingleton: boolean
   isBlueprintCopy: boolean
+  isAbyssal: boolean
   price: number
   totalValue: number
   volume: number
@@ -52,7 +52,6 @@ interface AssetRow {
   ownerType: 'character' | 'corporation'
   modeFlags: AssetModeFlags
 }
-
 
 function formatVolume(value: number): string {
   return value.toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' m³'
@@ -69,7 +68,7 @@ const COLUMN_LABELS: Record<string, string> = {
 
 const STORAGE_KEY_VISIBILITY = 'assets-column-visibility'
 
-const TOGGLEABLE_COLUMNS = ['ownerName', 'quantity', 'locationFlag', 'price', 'totalValue', 'totalVolume']
+const TOGGLEABLE_COLUMNS = new Set(['ownerName', 'quantity', 'locationFlag', 'price', 'totalValue', 'totalVolume'])
 
 const DEFAULT_COLUMN_VISIBILITY: VisibilityState = {
   locationFlag: false,
@@ -93,6 +92,34 @@ function saveColumnVisibility(state: VisibilityState): void {
   }
 }
 
+function createAssetRow(ra: ResolvedAsset, displayFlag: string, isAbyssal: boolean): AssetRow {
+  return {
+    itemId: ra.asset.item_id,
+    typeId: ra.typeId,
+    typeName: ra.typeName,
+    quantity: ra.asset.quantity,
+    locationId: ra.asset.location_id,
+    resolvedLocationId: ra.rootLocationId,
+    locationName: ra.locationName,
+    systemName: ra.systemName,
+    regionName: ra.regionName,
+    locationFlag: displayFlag,
+    isSingleton: ra.asset.is_singleton,
+    isBlueprintCopy: ra.isBlueprintCopy,
+    isAbyssal,
+    price: ra.price,
+    totalValue: ra.totalValue,
+    volume: ra.volume,
+    totalVolume: ra.totalVolume,
+    categoryId: ra.categoryId,
+    categoryName: ra.categoryName,
+    groupName: ra.groupName,
+    ownerId: ra.owner.id,
+    ownerName: ra.owner.name,
+    ownerType: ra.owner.type,
+    modeFlags: ra.modeFlags,
+  }
+}
 
 const columns: ColumnDef<AssetRow>[] = [
   {
@@ -129,7 +156,7 @@ const columns: ColumnDef<AssetRow>[] = [
       const isBpc = row.original.isBlueprintCopy
       const categoryId = row.original.categoryId
       const modeFlags = row.original.modeFlags
-      const isAbyssalResolved = isAbyssalTypeId(typeId) && hasAbyssal(row.original.itemId)
+      const isAbyssalResolved = row.original.isAbyssal && hasAbyssal(row.original.itemId)
       const nameSpan = <span className={cn('truncate', isBpc && 'text-status-special')}>{typeName}</span>
 
       return (
@@ -298,75 +325,59 @@ export function AssetsTab() {
     saveColumnVisibility(columnVisibility)
   }, [columnVisibility])
 
-  const data = useMemo<AssetRow[]>(() => {
+  const { data, categories } = useMemo(() => {
     void cacheVersion
 
-    const rows: AssetRow[] = selectedResolvedAssets.map((ra) => {
+    const aggregated = new Map<string, AssetRow>()
+    const cats = new Set<string>()
+
+    for (const ra of selectedResolvedAssets) {
       const displayFlag = ra.modeFlags.isContract
         ? 'In Contract'
         : ra.modeFlags.isMarketOrder
           ? 'Sell Order'
           : ra.asset.location_flag
 
-      return {
-        itemId: ra.asset.item_id,
-        typeId: ra.typeId,
-        typeName: ra.typeName,
-        quantity: ra.asset.quantity,
-        locationId: ra.asset.location_id,
-        resolvedLocationId: ra.rootLocationId,
-        locationName: ra.locationName,
-        systemName: ra.systemName,
-        regionName: ra.regionName,
-        locationFlag: displayFlag,
-        isSingleton: ra.asset.is_singleton,
-        isBlueprintCopy: ra.isBlueprintCopy,
-        price: ra.price,
-        totalValue: ra.totalValue,
-        volume: ra.volume,
-        totalVolume: ra.totalVolume,
-        categoryId: ra.categoryId,
-        categoryName: ra.categoryName,
-        groupName: ra.groupName,
-        ownerId: ra.owner.id,
-        ownerName: ra.owner.name,
-        ownerType: ra.owner.type,
-        modeFlags: ra.modeFlags,
-      }
-    })
+      const isBlueprint = ra.categoryId === CategoryIds.BLUEPRINT
+      const isAbyssal = isAbyssalTypeId(ra.typeId)
 
-    const aggregated = new Map<string, AssetRow>()
-    for (const row of rows) {
-      const isBlueprint = row.categoryId === CategoryIds.BLUEPRINT
-      if (isAbyssalTypeId(row.typeId) || (row.isSingleton && !isBlueprint)) {
-        aggregated.set(`unique-${row.itemId}`, row)
+      if (ra.categoryName) cats.add(ra.categoryName)
+
+      if (isAbyssal || (ra.asset.is_singleton && !isBlueprint)) {
+        aggregated.set(`unique-${ra.asset.item_id}`, createAssetRow(ra, displayFlag, isAbyssal))
         continue
       }
-      const key = `${row.ownerId}-${row.typeId}-${row.locationId}-${row.locationFlag}-${row.resolvedLocationId}-${row.typeName}`
+
+      const key = `${ra.owner.id}-${ra.typeId}-${ra.asset.location_id}-${displayFlag}-${ra.rootLocationId}-${ra.typeName}`
       const existing = aggregated.get(key)
       if (existing) {
-        existing.quantity += row.quantity
-        existing.totalValue += row.totalValue
-        existing.totalVolume += row.totalVolume
+        existing.quantity += ra.asset.quantity
+        existing.totalValue += ra.totalValue
+        existing.totalVolume += ra.totalVolume
       } else {
-        aggregated.set(key, { ...row })
+        aggregated.set(key, createAssetRow(ra, displayFlag, isAbyssal))
       }
     }
 
-    return Array.from(aggregated.values())
+    return {
+      data: Array.from(aggregated.values()),
+      categories: Array.from(cats).sort(),
+    }
   }, [selectedResolvedAssets, cacheVersion])
 
-  const categories = useMemo(() => {
-    const cats = new Set<string>()
-    for (const row of data) {
-      if (row.categoryName) cats.add(row.categoryName)
-    }
-    return Array.from(cats).sort()
-  }, [data])
-
-  const filteredData = useMemo(() => {
+  const { filteredData, filteredTotalValue, sourceCount } = useMemo(() => {
     const searchLower = search.toLowerCase()
-    return data.filter((row) => {
+    let totalValue = 0
+    let sourceShowing = 0
+
+    for (const ra of selectedResolvedAssets) {
+      if (!matchesAssetTypeFilter(ra.modeFlags, assetTypeFilterValue)) continue
+      if (categoryFilterValue && ra.categoryName !== categoryFilterValue) continue
+      if (search && !matchesSearch(ra, search)) continue
+      sourceShowing++
+    }
+
+    const filtered = data.filter((row) => {
       if (!matchesAssetTypeFilter(row.modeFlags, assetTypeFilterValue)) return false
       if (categoryFilterValue && row.categoryName !== categoryFilterValue) return false
       if (search) {
@@ -378,16 +389,22 @@ export function AssetsTab() {
           row.regionName.toLowerCase().includes(searchLower)
         if (!matches) return false
       }
+      totalValue += row.totalValue
       return true
     })
-  }, [data, assetTypeFilterValue, categoryFilterValue, search])
+
+    return {
+      filteredData: filtered,
+      filteredTotalValue: totalValue,
+      sourceCount: { showing: sourceShowing, total: selectedResolvedAssets.length },
+    }
+  }, [data, selectedResolvedAssets, assetTypeFilterValue, categoryFilterValue, search])
 
   const table = useReactTable({
     data: filteredData,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
@@ -400,7 +417,7 @@ export function AssetsTab() {
 
   useEffect(() => {
     const cols = table.getAllColumns()
-      .filter((col) => col.getCanHide() && TOGGLEABLE_COLUMNS.includes(col.id))
+      .filter((col) => col.getCanHide() && TOGGLEABLE_COLUMNS.has(col.id))
       .map((col) => ({
         id: col.id,
         label: COLUMN_LABELS[col.id] ?? col.id,
@@ -428,25 +445,10 @@ export function AssetsTab() {
     return () => setAssetTypeFilter(null)
   }, [assetTypeFilterValue, setAssetTypeFilter])
 
-  const sourceCount = useMemo(() => {
-    let showing = 0
-    for (const ra of selectedResolvedAssets) {
-      if (!matchesAssetTypeFilter(ra.modeFlags, assetTypeFilterValue)) continue
-      if (categoryFilterValue && ra.categoryName !== categoryFilterValue) continue
-      if (!matchesSearch(ra, search)) continue
-      showing++
-    }
-    return { showing, total: selectedResolvedAssets.length }
-  }, [selectedResolvedAssets, assetTypeFilterValue, categoryFilterValue, search])
-
   useEffect(() => {
     setResultCount(sourceCount)
     return () => setResultCount(null)
   }, [sourceCount, setResultCount])
-
-  const filteredTotalValue = useMemo(() => {
-    return filteredData.reduce((sum, row) => sum + row.totalValue, 0)
-  }, [filteredData])
 
   useEffect(() => {
     setTotalValue({ value: filteredTotalValue })
@@ -521,19 +523,21 @@ export function AssetsTab() {
         <div className="grid" style={{ gridTemplateColumns }}>
           <div className="contents">
             {table.getHeaderGroups().map((headerGroup) => (
-              headerGroup.headers.filter(h => h.column.getIsVisible()).map((header) => (
-                <div
-                  key={header.id}
-                  className={`sticky top-0 z-10 bg-surface-secondary py-3 text-left text-sm font-medium text-content-secondary border-b border-border ${header.column.id === 'ownerName' ? 'px-2' : 'px-4'}`}
-                >
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext()
-                      )}
-                </div>
-              ))
+              <Fragment key={headerGroup.id}>
+                {headerGroup.headers.filter(h => h.column.getIsVisible()).map((header) => (
+                  <div
+                    key={header.id}
+                    className={`sticky top-0 z-10 bg-surface-secondary py-3 text-left text-sm font-medium text-content-secondary border-b border-border ${header.column.id === 'ownerName' ? 'px-2' : 'px-4'}`}
+                  >
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                  </div>
+                ))}
+              </Fragment>
             ))}
           </div>
           {rows.length ? (
@@ -545,7 +549,7 @@ export function AssetsTab() {
                 const row = rows[virtualRow.index]
                 if (!row) return null
                 const modeFlags = row.original.modeFlags
-                const isAbyssalResolved = isAbyssalTypeId(row.original.typeId) && hasAbyssal(row.original.itemId)
+                const isAbyssalResolved = row.original.isAbyssal && hasAbyssal(row.original.itemId)
                 const rowContent = (
                   <div key={row.id} data-index={virtualRow.index} className="contents group">
                     {row.getVisibleCells().map((cell) => (
