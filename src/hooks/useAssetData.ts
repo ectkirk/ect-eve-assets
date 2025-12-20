@@ -25,6 +25,7 @@ export function useAssetData(): AssetDataResult {
 
   const assetsByOwner = useAssetStore((s) => s.assetsByOwner)
   const unifiedAssetsByOwner = useAssetStore((s) => s.unifiedAssetsByOwner)
+  const syntheticAssetsVersion = useAssetStore((s) => s.syntheticAssetsVersion)
   const assetNames = useAssetStore((s) => s.assetNames)
   const prices = useAssetStore((s) => s.prices)
   const isUpdating = useAssetStore((s) => s.isUpdating)
@@ -48,7 +49,7 @@ export function useAssetData(): AssetDataResult {
     errorMessage: updateError,
     prices,
     assetNames,
-    cacheVersion,
+    cacheVersion: cacheVersion + syntheticAssetsVersion,
     updateProgress,
   }
 }

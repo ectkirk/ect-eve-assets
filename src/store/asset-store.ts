@@ -114,6 +114,7 @@ export interface OwnerAssets {
 interface AssetState {
   assetsByOwner: OwnerAssets[]
   unifiedAssetsByOwner: OwnerAssets[]
+  syntheticAssetsVersion: number
   assetNames: Map<number, string>
   prices: Map<number, number>
   lastPriceRefreshAt: number | null
@@ -353,6 +354,7 @@ const PRICE_REFRESH_INTERVAL_MS = 60 * 60 * 1000
 export const useAssetStore = create<AssetStore>((set, get) => ({
   assetsByOwner: [],
   unifiedAssetsByOwner: [],
+  syntheticAssetsVersion: 0,
   assetNames: new Map(),
   prices: new Map(),
   lastPriceRefreshAt: null,
@@ -687,7 +689,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
       }
     }
 
-    set({ unifiedAssetsByOwner })
+    set((s) => ({ unifiedAssetsByOwner, syntheticAssetsVersion: s.syntheticAssetsVersion + 1 }))
   },
 
   clear: async () => {
@@ -695,6 +697,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
     set({
       assetsByOwner: [],
       unifiedAssetsByOwner: [],
+      syntheticAssetsVersion: 0,
       assetNames: new Map(),
       prices: new Map(),
       lastPriceRefreshAt: null,

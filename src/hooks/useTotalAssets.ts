@@ -20,6 +20,7 @@ export interface AssetTotals {
 
 export function useTotalAssets(): AssetTotals {
   const unifiedAssetsByOwner = useAssetStore((s) => s.unifiedAssetsByOwner)
+  const syntheticAssetsVersion = useAssetStore((s) => s.syntheticAssetsVersion)
   const prices = useAssetStore((s) => s.prices)
   const ordersByOwner = useMarketOrdersStore((s) => s.dataByOwner)
   const contractsByOwner = useContractsStore((s) => s.contractsByOwner)
@@ -28,6 +29,8 @@ export function useTotalAssets(): AssetTotals {
   const selectedSet = useMemo(() => new Set(selectedOwnerIds), [selectedOwnerIds])
 
   return useMemo(() => {
+    void syntheticAssetsVersion
+
     const matchesOwner = (type: 'character' | 'corporation', id: number) =>
       selectedSet.has(ownerKey(type, id))
 
@@ -115,5 +118,5 @@ export function useTotalAssets(): AssetTotals {
       walletTotal,
       structuresTotal,
     }
-  }, [unifiedAssetsByOwner, prices, ordersByOwner, contractsByOwner, walletsByOwner, selectedSet])
+  }, [unifiedAssetsByOwner, syntheticAssetsVersion, prices, ordersByOwner, contractsByOwner, walletsByOwner, selectedSet])
 }
