@@ -8,6 +8,7 @@ vi.mock('./auth-store', () => ({
     getState: vi.fn(() => ({ owners: {}, ownerHasScope: () => false })),
   },
   ownerKey: (type: string, id: number) => `${type}-${id}`,
+  findOwnerByKey: vi.fn(),
 }))
 
 vi.mock('./expiry-cache-store', () => ({
@@ -41,17 +42,21 @@ describe('contracts-store', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     useContractsStore.setState({
-      contractsByOwner: [],
+      contractsById: new Map(),
+      visibilityByOwner: new Map(),
+      itemFetchesInProgress: new Set(),
       isUpdating: false,
       updateError: null,
       initialized: false,
+      updateCounter: 0,
     })
   })
 
   describe('initial state', () => {
     it('has correct initial values', () => {
       const state = useContractsStore.getState()
-      expect(state.contractsByOwner).toEqual([])
+      expect(state.contractsById.size).toBe(0)
+      expect(state.visibilityByOwner.size).toBe(0)
       expect(state.isUpdating).toBe(false)
       expect(state.updateError).toBeNull()
       expect(state.initialized).toBe(false)
@@ -69,7 +74,7 @@ describe('contracts-store', () => {
     })
 
     it('updates both character and corporation owners', async () => {
-      const { useAuthStore } = await import('./auth-store')
+      const { useAuthStore, findOwnerByKey } = await import('./auth-store')
       const { esi } = await import('@/api/esi')
 
       const charOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
@@ -78,6 +83,11 @@ describe('contracts-store', () => {
         'character-12345': charOwner,
         'corporation-98000001': corpOwner,
       }))
+      vi.mocked(findOwnerByKey).mockImplementation((key: string) => {
+        if (key === 'character-12345') return charOwner
+        if (key === 'corporation-98000001') return corpOwner
+        return undefined
+      })
 
       vi.mocked(esi.fetchPaginatedWithMeta).mockResolvedValue({
         data: [],
@@ -88,15 +98,16 @@ describe('contracts-store', () => {
 
       await useContractsStore.getState().update(true)
 
-      expect(useContractsStore.getState().contractsByOwner).toHaveLength(2)
+      expect(useContractsStore.getState().visibilityByOwner.size).toBe(2)
     })
 
     it('fetches contracts successfully', async () => {
-      const { useAuthStore } = await import('./auth-store')
+      const { useAuthStore, findOwnerByKey } = await import('./auth-store')
       const { esi } = await import('@/api/esi')
 
       const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
       vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
+      vi.mocked(findOwnerByKey).mockReturnValue(mockOwner)
 
       vi.mocked(esi.fetchPaginatedWithMeta).mockResolvedValue({
         data: [
@@ -129,11 +140,13 @@ describe('contracts-store', () => {
 
       await useContractsStore.getState().update(true)
 
-      expect(useContractsStore.getState().contractsByOwner).toHaveLength(1)
+      const state = useContractsStore.getState()
+      expect(state.contractsById.size).toBe(1)
+      expect(state.visibilityByOwner.get('character-12345')?.size).toBe(1)
     })
 
     it('filters out corporation contracts from character results', async () => {
-      const { useAuthStore } = await import('./auth-store')
+      const { useAuthStore, findOwnerByKey } = await import('./auth-store')
       const { esi } = await import('@/api/esi')
 
       const mockOwner = createMockOwner({
@@ -143,6 +156,7 @@ describe('contracts-store', () => {
         corporationId: 98000001,
       })
       vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
+      vi.mocked(findOwnerByKey).mockReturnValue(mockOwner)
 
       const personalContract = {
         contract_id: 1,
@@ -169,13 +183,12 @@ describe('contracts-store', () => {
         etag: 'test-etag',
         notModified: false,
       })
-      vi.mocked(esi.fetchBatch).mockResolvedValue(new Map())
 
       await useContractsStore.getState().update(true)
 
-      const contracts = useContractsStore.getState().contractsByOwner[0]?.contracts
-      expect(contracts).toHaveLength(1)
-      expect(contracts?.[0]?.contract.for_corporation).toBe(false)
+      const state = useContractsStore.getState()
+      expect(state.contractsById.size).toBe(1)
+      expect(state.contractsById.get(1)?.contract.for_corporation).toBe(false)
     })
 
     it('handles fetch errors gracefully', async () => {
@@ -196,15 +209,100 @@ describe('contracts-store', () => {
   describe('clear', () => {
     it('resets store state', async () => {
       useContractsStore.setState({
-        contractsByOwner: [{ owner: {} as never, contracts: [] }],
+        contractsById: new Map([[1, { contract: {} as never, sourceOwner: {} as never }]]),
+        visibilityByOwner: new Map([['test', new Set([1])]]),
         updateError: 'error',
       })
 
       await useContractsStore.getState().clear()
 
       const state = useContractsStore.getState()
-      expect(state.contractsByOwner).toHaveLength(0)
+      expect(state.contractsById.size).toBe(0)
+      expect(state.visibilityByOwner.size).toBe(0)
       expect(state.updateError).toBeNull()
+    })
+  })
+
+  describe('getContractsByOwner', () => {
+    it('returns contracts grouped by owner', async () => {
+      const { findOwnerByKey } = await import('./auth-store')
+
+      const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
+      vi.mocked(findOwnerByKey).mockReturnValue(mockOwner)
+
+      const mockContract = {
+        contract_id: 1,
+        issuer_id: 12345,
+        issuer_corporation_id: 98000001,
+        assignee_id: 0,
+        acceptor_id: 0,
+        type: 'item_exchange',
+        status: 'outstanding',
+        for_corporation: false,
+        availability: 'public',
+        date_issued: new Date().toISOString(),
+        date_expired: new Date(Date.now() + 86400000).toISOString(),
+      }
+
+      useContractsStore.setState({
+        contractsById: new Map([[1, {
+          contract: mockContract as never,
+          items: undefined,
+          sourceOwner: { type: 'character', id: 12345, characterId: 12345 },
+        }]]),
+        visibilityByOwner: new Map([['character-12345', new Set([1])]]),
+      })
+
+      const result = useContractsStore.getState().getContractsByOwner()
+
+      expect(result).toHaveLength(1)
+      expect(result[0]?.owner).toEqual(mockOwner)
+      expect(result[0]?.contracts).toHaveLength(1)
+      expect(result[0]?.contracts[0]?.contract.contract_id).toBe(1)
+    })
+  })
+
+  describe('getTotal', () => {
+    it('counts each contract only once even if visible to multiple owners', () => {
+      const mockContract = {
+        contract_id: 1,
+        issuer_id: 12345,
+        issuer_corporation_id: 98000001,
+        assignee_id: 67890,
+        acceptor_id: 0,
+        type: 'item_exchange',
+        status: 'outstanding',
+        for_corporation: false,
+        availability: 'personal',
+        date_issued: new Date().toISOString(),
+        date_expired: new Date(Date.now() + 86400000).toISOString(),
+        collateral: 1000000,
+      }
+
+      const mockItem = {
+        record_id: 1,
+        type_id: 34,
+        quantity: 100,
+        is_included: true,
+        is_singleton: false,
+      }
+
+      useContractsStore.setState({
+        contractsById: new Map([[1, {
+          contract: mockContract as never,
+          items: [mockItem as never],
+          sourceOwner: { type: 'character', id: 12345, characterId: 12345 },
+        }]]),
+        visibilityByOwner: new Map([
+          ['character-12345', new Set([1])],
+          ['character-67890', new Set([1])],
+        ]),
+      })
+
+      const prices = new Map([[34, 10]])
+      const total = useContractsStore.getState().getTotal(prices, ['character-12345', 'character-67890'])
+
+      expect(total).toBe(1001000)
     })
   })
 })

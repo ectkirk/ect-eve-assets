@@ -1,6 +1,6 @@
 import { useEffect, useState, Component, type ReactNode } from 'react'
 import { useAuthStore } from './store/auth-store'
-import { useAssetStore, setupSyntheticAssetSubscriptions } from './store/asset-store'
+import { useAssetStore } from './store/asset-store'
 import { useMarketOrdersStore } from './store/market-orders-store'
 import { useContractsStore } from './store/contracts-store'
 import { useWalletStore } from './store/wallet-store'
@@ -118,8 +118,6 @@ function App() {
       })
       .then(async () => {
         logger.info('All stores initialized', { module: 'App' })
-        setupSyntheticAssetSubscriptions()
-        useAssetStore.getState().rebuildSyntheticAssets()
         useAssetStore.getState().refreshPrices()
         const ownerKeys = Object.keys(useAuthStore.getState().owners)
         useExpiryCacheStore.getState().queueMissingEndpoints(ownerKeys)

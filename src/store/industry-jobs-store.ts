@@ -1,4 +1,4 @@
-import { type Owner } from './auth-store'
+import { type Owner, ownerKey } from './auth-store'
 import { createOwnerStore } from './create-owner-store'
 import { useAssetStore } from './asset-store'
 import { esi } from '@/api/esi'
@@ -60,7 +60,16 @@ async function fetchProductPrices(jobs: ESIIndustryJob[]) {
   }
 }
 
-export const useIndustryJobsStore = createOwnerStore<ESIIndustryJob[], OwnerJobs>({
+interface IndustryJobsExtraActions {
+  getTotal: (prices: Map<number, number>, selectedOwnerIds: string[]) => number
+}
+
+export const useIndustryJobsStore = createOwnerStore<
+  ESIIndustryJob[],
+  OwnerJobs,
+  object,
+  IndustryJobsExtraActions
+>({
   name: 'industry jobs',
   moduleName: 'IndustryJobsStore',
   endpointPattern: '/industry/jobs/',
@@ -79,4 +88,19 @@ export const useIndustryJobsStore = createOwnerStore<ESIIndustryJob[], OwnerJobs
   },
   toOwnerData: (owner, data) => ({ owner, jobs: data }),
   isEmpty: (data) => data.length === 0,
+  extraActions: (_set, get) => ({
+    getTotal: (prices, selectedOwnerIds) => {
+      const selectedSet = new Set(selectedOwnerIds)
+      let total = 0
+      for (const { owner, jobs } of get().dataByOwner) {
+        if (!selectedSet.has(ownerKey(owner.type, owner.id))) continue
+        for (const job of jobs) {
+          if (job.status !== 'active' && job.status !== 'ready') continue
+          const productTypeId = job.product_type_id ?? job.blueprint_type_id
+          total += (prices.get(productTypeId) ?? 0) * job.runs
+        }
+      }
+      return total
+    },
+  }),
 })

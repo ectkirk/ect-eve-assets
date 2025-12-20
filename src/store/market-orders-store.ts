@@ -24,6 +24,7 @@ interface MarketOrdersExtraState {
 
 interface MarketOrdersExtraActions {
   fetchComparisonData: () => Promise<void>
+  getTotal: (prices: Map<number, number>, selectedOwnerIds: string[]) => number
 }
 
 function getEndpoint(owner: Owner): string {
@@ -103,6 +104,21 @@ export const useMarketOrdersStore = createOwnerStore<
         })
         set({ comparisonFetching: false })
       }
+    },
+    getTotal: (prices, selectedOwnerIds) => {
+      const selectedSet = new Set(selectedOwnerIds)
+      let total = 0
+      for (const { owner, orders } of get().dataByOwner) {
+        if (!selectedSet.has(ownerKey(owner.type, owner.id))) continue
+        for (const order of orders) {
+          if (order.is_buy_order) {
+            total += order.escrow ?? 0
+          } else {
+            total += (prices.get(order.type_id) ?? 0) * order.volume_remain
+          }
+        }
+      }
+      return total
     },
   }),
   onAfterBatchUpdate: async (results) => {

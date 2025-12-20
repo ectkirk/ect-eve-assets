@@ -46,16 +46,16 @@ export function useResolvedAssets(): ResolvedAssetsResult {
   const resolvedAssets = useMemo(() => {
     void assetData.cacheVersion
 
-    if (assetData.unifiedAssetsByOwner.length === 0) return []
+    if (assetData.assetsByOwner.length === 0) return []
 
-    return resolveAllAssets(assetData.unifiedAssetsByOwner, {
+    return resolveAllAssets(assetData.assetsByOwner, {
       prices: assetData.prices,
       assetNames: assetData.assetNames,
       ownedStructureIds,
       starbaseMoonIds,
     })
   }, [
-    assetData.unifiedAssetsByOwner,
+    assetData.assetsByOwner,
     assetData.prices,
     assetData.assetNames,
     assetData.cacheVersion,

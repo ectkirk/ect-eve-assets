@@ -7,7 +7,6 @@ export type { OwnerAssets }
 
 export interface AssetDataResult {
   assetsByOwner: OwnerAssets[]
-  unifiedAssetsByOwner: OwnerAssets[]
   owners: Owner[]
   isLoading: boolean
   hasData: boolean
@@ -24,8 +23,6 @@ export function useAssetData(): AssetDataResult {
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
 
   const assetsByOwner = useAssetStore((s) => s.assetsByOwner)
-  const unifiedAssetsByOwner = useAssetStore((s) => s.unifiedAssetsByOwner)
-  const syntheticAssetsVersion = useAssetStore((s) => s.syntheticAssetsVersion)
   const assetNames = useAssetStore((s) => s.assetNames)
   const prices = useAssetStore((s) => s.prices)
   const isUpdating = useAssetStore((s) => s.isUpdating)
@@ -41,7 +38,6 @@ export function useAssetData(): AssetDataResult {
 
   return {
     assetsByOwner,
-    unifiedAssetsByOwner,
     owners,
     isLoading: isUpdating && !hasData,
     hasData,
@@ -49,7 +45,7 @@ export function useAssetData(): AssetDataResult {
     errorMessage: updateError,
     prices,
     assetNames,
-    cacheVersion: cacheVersion + syntheticAssetsVersion,
+    cacheVersion,
     updateProgress,
   }
 }

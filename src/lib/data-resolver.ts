@@ -352,7 +352,7 @@ async function runResolution(): Promise<void> {
 
   const ids = await collectResolutionIds(
     useAssetStore.getState().assetsByOwner,
-    useContractsStore.getState().contractsByOwner,
+    useContractsStore.getState().getContractsByOwner(),
     useMarketOrdersStore.getState().dataByOwner,
     useIndustryJobsStore.getState().dataByOwner,
     useStructuresStore.getState().dataByOwner,
@@ -362,8 +362,6 @@ async function runResolution(): Promise<void> {
   )
 
   await resolveAllReferenceData(ids)
-
-  useAssetStore.getState().rebuildSyntheticAssets()
 }
 
 export async function triggerResolution(): Promise<void> {

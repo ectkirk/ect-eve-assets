@@ -500,13 +500,15 @@ export function ContractsTab() {
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
 
   const prices = useAssetStore((s) => s.prices)
-  const contractsByOwner = useContractsStore((s) => s.contractsByOwner)
+  const getContractsByOwner = useContractsStore((s) => s.getContractsByOwner)
   const contractsUpdating = useContractsStore((s) => s.isUpdating)
   const fetchItemsForContract = useContractsStore((s) => s.fetchItemsForContract)
   const updateError = useContractsStore((s) => s.updateError)
   const init = useContractsStore((s) => s.init)
   const initialized = useContractsStore((s) => s.initialized)
   const updateCounter = useContractsStore((s) => s.updateCounter)
+
+  const contractsByOwner = useMemo(() => getContractsByOwner(), [getContractsByOwner, updateCounter])
 
   const { isLoading: assetsUpdating } = useAssetData()
   const isUpdating = assetsUpdating || contractsUpdating
