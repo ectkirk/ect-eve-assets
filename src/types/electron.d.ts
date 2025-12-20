@@ -294,7 +294,7 @@ declare global {
 
   interface ESIRateLimitInfo {
     globalRetryAfter: number | null
-    queueLength: number
+    activeRequests: number
   }
 
   interface ESIAPI {

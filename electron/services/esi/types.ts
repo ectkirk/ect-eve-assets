@@ -36,27 +36,8 @@ export interface ESIErrorResponse {
 
 export type ESIResponse<T> = ESISuccessResponse<T> | ESIErrorResponse
 
-export interface RateLimitGroupState {
-  remaining: number
-  used: number
-  limit: number
-  windowMs: number
-  lastUpdated: number
-  windowStart: number
-}
-
 export interface CacheEntry {
   data: unknown
   etag: string
   expires: number
 }
-
-export interface PendingRequest {
-  id: string
-  endpoint: string
-  options: ESIRequestOptions
-  resolve: (value: ESIResponse<unknown>) => void
-  characterId?: number
-  rateLimitGroup?: string
-}
-

@@ -296,7 +296,7 @@ export interface ESIResponseMeta<T> {
 
 export interface ESIRateLimitInfo {
   globalRetryAfter: number | null
-  queueLength: number
+  activeRequests: number
 }
 
 export interface ESIAPI {

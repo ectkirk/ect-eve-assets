@@ -15,7 +15,7 @@ export interface ESIResponseMeta<T> {
 
 export interface ESIRateLimitInfo {
   globalRetryAfter: number | null
-  queueLength: number
+  activeRequests: number
 }
 
 export class ESIError extends Error {
