@@ -349,6 +349,8 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
         orders: orders.size,
         owners: visibility.size,
       })
+
+      get().update()
     } catch (err) {
       logger.error('Failed to load market orders from DB', err instanceof Error ? err : undefined, {
         module: 'MarketOrdersStore',
