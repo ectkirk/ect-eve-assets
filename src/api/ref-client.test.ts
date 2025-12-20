@@ -44,7 +44,6 @@ import {
   setUniverseDataLoaded,
 } from '@/store/reference-cache'
 
-const mockRefTypes = vi.fn()
 const mockRefTypesPage = vi.fn()
 const mockRefMoon = vi.fn()
 const mockRefMarket = vi.fn()
@@ -84,7 +83,6 @@ describe('ref-client', () => {
     mockRefUniverseStations.mockResolvedValue({ items: { '60003760': { id: 60003760, name: 'Jita IV - Moon 4 - Caldari Navy Assembly Plant', systemId: 30000142 } } })
 
     window.electronAPI = {
-      refTypes: mockRefTypes,
       refTypesPage: mockRefTypesPage,
       refMoon: mockRefMoon,
       refMarket: mockRefMarket,
@@ -103,7 +101,7 @@ describe('ref-client', () => {
       expect(result.size).toBe(0)
     })
 
-    it('uses cached types when available', async () => {
+    it('returns cached types', async () => {
       vi.mocked(getType).mockImplementation((id) => {
         if (id === 34) {
           return {
@@ -123,114 +121,37 @@ describe('ref-client', () => {
 
       expect(result.size).toBe(1)
       expect(result.get(34)?.name).toBe('Tritanium')
-      expect(mockRefTypes).not.toHaveBeenCalled()
     })
 
-    it('fetches uncached types from API', async () => {
+    it('returns empty for uncached types', async () => {
       vi.mocked(getType).mockReturnValue(undefined)
-
-      mockRefTypes.mockResolvedValueOnce({
-        items: {
-          '34': {
-            id: 34,
-            name: 'Tritanium',
-            groupId: 18,
-            volume: 0.01,
-          },
-        },
-      })
-
-      const result = await runWithTimers(resolveTypes([34]))
-
-      expect(result.size).toBe(1)
-      expect(result.get(34)?.name).toBe('Tritanium')
-      expect(result.get(34)?.groupName).toBe('Mineral')
-      expect(result.get(34)?.categoryName).toBe('Material')
-      expect(saveTypes).toHaveBeenCalled()
-    })
-
-    it('creates placeholder for types not returned by API when API succeeds', async () => {
-      vi.mocked(getType).mockReturnValue(undefined)
-
-      mockRefTypes.mockResolvedValueOnce({
-        items: {
-          '34': { id: 34, name: 'Tritanium', groupId: 18 },
-        },
-      })
-
-      const result = await runWithTimers(resolveTypes([34, 99999]))
-
-      expect(result.size).toBe(2)
-      expect(result.get(34)?.name).toBe('Tritanium')
-      expect(result.get(99999)?.name).toBe('Unknown Type 99999')
-      expect(saveTypes).toHaveBeenCalled()
-    })
-
-    it('does not create placeholder when API returns empty (prevents caching on failures)', async () => {
-      vi.mocked(getType).mockReturnValue(undefined)
-
-      mockRefTypes.mockResolvedValueOnce({ items: {} })
 
       const result = await runWithTimers(resolveTypes([99999]))
 
       expect(result.size).toBe(0)
-      expect(saveTypes).not.toHaveBeenCalled()
     })
 
-    it('skips already cached Unknown Types', async () => {
+    it('returns only cached types from mixed input', async () => {
       vi.mocked(getType).mockImplementation((id) => {
-        if (id === 99999) {
+        if (id === 34) {
           return {
-            id: 99999,
-            name: 'Unknown Type 99999',
-            groupId: 0,
-            groupName: '',
-            categoryId: 0,
-            categoryName: '',
-            volume: 0,
+            id: 34,
+            name: 'Tritanium',
+            groupId: 18,
+            groupName: 'Mineral',
+            categoryId: 4,
+            categoryName: 'Material',
+            volume: 0.01,
           }
         }
         return undefined
       })
 
-      const result = await runWithTimers(resolveTypes([99999]))
+      const result = await runWithTimers(resolveTypes([34, 99999]))
 
-      expect(mockRefTypes).not.toHaveBeenCalled()
-      expect(result.get(99999)?.name).toBe('Unknown Type 99999')
-    })
-
-    it('handles API errors gracefully without caching bad placeholders', async () => {
-      vi.mocked(getType).mockReturnValue(undefined)
-
-      mockRefTypes.mockResolvedValueOnce({ error: 'HTTP 500' })
-
-      const result = await runWithTimers(resolveTypes([34]))
-
-      expect(result.size).toBe(0)
-      expect(saveTypes).not.toHaveBeenCalled()
-    })
-
-    it('handles network errors gracefully without caching bad placeholders', async () => {
-      vi.mocked(getType).mockReturnValue(undefined)
-
-      mockRefTypes.mockRejectedValueOnce(new Error('Network error'))
-
-      const result = await runWithTimers(resolveTypes([34]))
-
-      expect(result.size).toBe(0)
-      expect(saveTypes).not.toHaveBeenCalled()
-    })
-
-    it('chunks requests for large type lists', async () => {
-      vi.mocked(getType).mockReturnValue(undefined)
-
-      const largeList = Array.from({ length: 1500 }, (_, i) => i + 1)
-
-      mockRefTypes.mockResolvedValue({ items: {} })
-
-      await runWithTimers(resolveTypes(largeList))
-
-      expect(mockRefTypes).toHaveBeenCalledTimes(2)
+      expect(result.size).toBe(1)
+      expect(result.get(34)?.name).toBe('Tritanium')
+      expect(result.has(99999)).toBe(false)
     })
   })
 

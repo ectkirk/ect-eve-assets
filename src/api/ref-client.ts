@@ -29,7 +29,6 @@ import {
   type CachedRefStructure,
 } from '@/store/reference-cache'
 import {
-  RefTypeBulkResponseSchema,
   RefTypeSchema,
   RefCategoriesResponseSchema,
   RefGroupsResponseSchema,
@@ -109,21 +108,11 @@ async function processChunksParallel<T, R>(
   return results
 }
 
-interface TypeFetchResult {
-  requestedIds: number[]
-  results: Map<number, RefType>
-}
-
-let inFlightTypes: Promise<TypeFetchResult> | null = null
-let pendingTypeIds = new Set<number>()
-
 let referenceDataPromise: Promise<void> | null = null
 
 export type ReferenceDataProgress = (status: string) => void
 
 export function _resetForTests(): void {
-  inFlightTypes = null
-  pendingTypeIds = new Set()
   referenceDataPromise = null
 }
 
@@ -468,62 +457,6 @@ export async function loadRefStructures(onProgress?: ReferenceDataProgress): Pro
   return refStructuresPromise
 }
 
-async function fetchTypesChunk(chunk: number[]): Promise<Map<number, RefType>> {
-  const results = new Map<number, RefType>()
-  const chunkStart = performance.now()
-
-  try {
-    const rawData = await window.electronAPI!.refTypes(chunk)
-    const duration = Math.round(performance.now() - chunkStart)
-
-    if (rawData && typeof rawData === 'object' && 'error' in rawData) {
-      logger.warn('RefAPI /types failed', { module: 'RefAPI', error: rawData.error, requested: chunk.length, duration })
-      return results
-    }
-
-    const parseResult = RefTypeBulkResponseSchema.safeParse(rawData)
-    if (!parseResult.success) {
-      logger.error('RefAPI /types validation failed', undefined, {
-        module: 'RefAPI',
-        errors: parseResult.error.issues.slice(0, 3),
-      })
-      return results
-    }
-
-    const returned = Object.keys(parseResult.data.items).length
-    logger.info('RefAPI /types', { module: 'RefAPI', requested: chunk.length, returned, duration })
-
-    for (const [idStr, type] of Object.entries(parseResult.data.items)) {
-      results.set(Number(idStr), type)
-    }
-  } catch (error) {
-    logger.error('RefAPI /types error', error, { module: 'RefAPI' })
-  }
-
-  return results
-}
-
-async function fetchTypesFromAPI(ids: number[]): Promise<Map<number, RefType>> {
-  if (ids.length === 0) return new Map()
-
-  const totalStart = performance.now()
-
-  const results = await processChunksParallel(
-    ids,
-    1000,
-    fetchTypesChunk,
-    (chunk, acc) => { for (const [k, v] of chunk) acc.set(k, v) },
-    new Map<number, RefType>()
-  )
-
-  if (ids.length > 1000) {
-    const totalDuration = Math.round(performance.now() - totalStart)
-    logger.info('RefAPI /types total', { module: 'RefAPI', requested: ids.length, returned: results.size, duration: totalDuration })
-  }
-
-  return results
-}
-
 async function fetchMoon(id: number): Promise<RefMoon | null> {
   try {
     const rawData = await window.electronAPI!.refMoon(id)
@@ -559,86 +492,16 @@ async function fetchMoonBatch(ids: number[]): Promise<Map<number, RefMoon>> {
   return results
 }
 
-async function executeTypesFetch(): Promise<TypeFetchResult> {
-  const requestedIds = Array.from(pendingTypeIds)
-  pendingTypeIds = new Set()
-
-  if (requestedIds.length === 0) return { requestedIds: [], results: new Map() }
-
-  logger.debug(`Fetching ${requestedIds.length} types from ref API`, { module: 'RefAPI' })
-  const results = await fetchTypesFromAPI(requestedIds)
-  return { requestedIds, results }
-}
-
 export async function resolveTypes(typeIds: number[]): Promise<Map<number, CachedType>> {
   await loadReferenceData()
 
   const results = new Map<number, CachedType>()
-
-  if (isAllTypesLoaded()) {
-    for (const id of typeIds) {
-      const cached = getType(id)
-      if (cached) {
-        results.set(id, cached)
-      }
-    }
-    return results
-  }
-
-  const uncachedIds: number[] = []
-
   for (const id of typeIds) {
     const cached = getType(id)
     if (cached) {
       results.set(id, cached)
-    } else {
-      uncachedIds.push(id)
-      pendingTypeIds.add(id)
     }
   }
-
-  if (uncachedIds.length === 0) return results
-
-  if (!inFlightTypes) {
-    inFlightTypes = executeTypesFetch().finally(() => { inFlightTypes = null })
-  }
-
-  const { requestedIds, results: fetched } = await inFlightTypes
-  const requestedSet = new Set(requestedIds)
-  const toCache: CachedType[] = []
-
-  for (const id of uncachedIds) {
-    const existing = getType(id)
-    if (existing) {
-      results.set(id, existing)
-      continue
-    }
-
-    const refType = fetched.get(id)
-    if (refType) {
-      const cached = enrichType(refType)
-      results.set(id, cached)
-      toCache.push(cached)
-    } else if (requestedSet.has(id) && fetched.size > 0) {
-      const placeholder: CachedType = {
-        id,
-        name: `Unknown Type ${id}`,
-        groupId: 0,
-        groupName: '',
-        categoryId: 0,
-        categoryName: '',
-        volume: 0,
-      }
-      results.set(id, placeholder)
-      toCache.push(placeholder)
-    }
-  }
-
-  if (toCache.length > 0) {
-    await saveTypes(toCache)
-    logger.debug(`Cached ${toCache.length} types`, { module: 'RefAPI' })
-  }
-
   return results
 }
 

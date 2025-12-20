@@ -423,7 +423,6 @@ export interface ElectronAPI {
   getLogDir: () => Promise<string>
   openLogsFolder: () => Promise<void>
   submitBugReport: (characterName: string, description: string) => Promise<{ success: boolean; error?: string }>
-  refTypes: (ids: number[]) => Promise<RefApiResult>
   refTypesPage: (params?: RefTypesPageParams) => Promise<RefTypesPageResult>
   refCategories: () => Promise<RefApiResult>
   refGroups: () => Promise<RefApiResult>
@@ -497,7 +496,6 @@ const electronAPI: ElectronAPI = {
   openLogsFolder: () => ipcRenderer.invoke('log:openFolder'),
   submitBugReport: (characterName: string, description: string) =>
     ipcRenderer.invoke('bug:report', characterName, description),
-  refTypes: (ids: number[]) => ipcRenderer.invoke('ref:types', ids),
   refTypesPage: (params?: RefTypesPageParams) => ipcRenderer.invoke('ref:types-page', params),
   refCategories: () => ipcRenderer.invoke('ref:categories'),
   refGroups: () => ipcRenderer.invoke('ref:groups'),

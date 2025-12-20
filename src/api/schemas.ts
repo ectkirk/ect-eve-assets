@@ -385,10 +385,6 @@ export const RefTypeSchema = z.object({
   packagedVolume: z.number().nullable().optional(),
 })
 
-export const RefTypeBulkResponseSchema = z.object({
-  items: z.record(z.string(), RefTypeSchema),
-})
-
 export const RefCategorySchema = z.object({
   id: z.number(),
   name: z.string(),

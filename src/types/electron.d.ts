@@ -423,7 +423,6 @@ declare global {
     getLogDir: () => Promise<string>
     openLogsFolder: () => Promise<void>
     submitBugReport: (characterName: string, description: string) => Promise<{ success: boolean; error?: string }>
-    refTypes: (ids: number[]) => Promise<RefApiResult>
     refTypesPage: (params?: RefTypesPageParams) => Promise<RefTypesPageResult>
     refCategories: () => Promise<RefApiResult>
     refGroups: () => Promise<RefApiResult>

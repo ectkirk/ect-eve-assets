@@ -578,31 +578,6 @@ async function fetchRefWithRetry(url: string, options: RequestInit): Promise<Res
   throw lastError ?? new Error('Ref API request failed after retries')
 }
 
-ipcMain.handle('ref:types', async (_event, ids: unknown) => {
-  if (!Array.isArray(ids) || ids.length === 0 || ids.length > MAX_REF_IDS) {
-    return { error: 'Invalid ids array' }
-  }
-  if (!ids.every((id) => typeof id === 'number' && Number.isInteger(id) && id > 0)) {
-    return { error: 'Invalid id values' }
-  }
-
-  await waitForRefRateLimit()
-  try {
-    const response = await fetchRefWithRetry(`${REF_API_BASE}/types`, {
-      method: 'POST',
-      headers: getRefHeaders('json'),
-      body: JSON.stringify({ ids }),
-    })
-    if (!response.ok) {
-      return { error: `HTTP ${response.status}` }
-    }
-    return await response.json()
-  } catch (err) {
-    logger.error('ref:types fetch failed', err, { module: 'Main' })
-    return { error: String(err) }
-  }
-})
-
 ipcMain.handle('ref:categories', async () => {
   await waitForRefRateLimit()
   try {
