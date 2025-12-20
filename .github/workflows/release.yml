@@ -36,7 +36,7 @@ jobs:
           name: win-build
           path: |
             release/*.exe
-            release/*.yml
+            release/latest.yml
           if-no-files-found: error
 
   build-linux:
@@ -67,7 +67,7 @@ jobs:
           name: linux-build
           path: |
             release/*.AppImage
-            release/*.yml
+            release/latest-linux.yml
           if-no-files-found: error
 
   release:
