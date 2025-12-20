@@ -1,30 +1,282 @@
-import { type Owner, ownerKey } from './auth-store'
-import { createOwnerStore, type BaseState } from './create-owner-store'
+import { create } from 'zustand'
+import { useAuthStore, type Owner, type OwnerType, ownerKey, findOwnerByKey } from './auth-store'
+import { useExpiryCacheStore } from './expiry-cache-store'
 import { useToastStore } from './toast-store'
 import { esi } from '@/api/esi'
 import { ESIMarketOrderSchema, ESICorporationMarketOrderSchema } from '@/api/schemas'
 import { getTypeName } from '@/store/reference-cache'
 import { fetchMarketComparison, type MarketComparisonPrices } from '@/api/ref-client'
 import { logger } from '@/lib/logger'
+import { triggerResolution } from '@/lib/data-resolver'
 import { z } from 'zod'
 
 export type ESIMarketOrder = z.infer<typeof ESIMarketOrderSchema>
 export type ESICorporationMarketOrder = z.infer<typeof ESICorporationMarketOrderSchema>
 export type MarketOrder = ESIMarketOrder | ESICorporationMarketOrder
 
+const ENDPOINT_PATTERN = '/orders/'
+const DB_NAME = 'ecteveassets-market-orders-v2'
+const OLD_DB_NAME = 'ecteveassets-market-orders'
+const DB_VERSION = 1
+const STORE_ORDERS = 'orders'
+const STORE_VISIBILITY = 'visibility'
+
+interface SourceOwner {
+  type: OwnerType
+  id: number
+  characterId: number
+}
+
+export interface StoredOrder {
+  order: MarketOrder
+  sourceOwner: SourceOwner
+}
+
 export interface OwnerOrders {
   owner: Owner
   orders: MarketOrder[]
 }
 
-interface MarketOrdersExtraState {
+interface MarketOrdersState {
+  ordersById: Map<number, StoredOrder>
+  visibilityByOwner: Map<string, Set<number>>
   comparisonData: Map<number, MarketComparisonPrices>
   comparisonFetching: boolean
+  isUpdating: boolean
+  updateError: string | null
+  initialized: boolean
+  updateCounter: number
 }
 
-interface MarketOrdersExtraActions {
+interface MarketOrdersActions {
+  init: () => Promise<void>
+  update: (force?: boolean) => Promise<void>
+  updateForOwner: (owner: Owner) => Promise<void>
+  removeForOwner: (ownerType: string, ownerId: number) => Promise<void>
+  clear: () => Promise<void>
   fetchComparisonData: () => Promise<void>
   getTotal: (prices: Map<number, number>, selectedOwnerIds: string[]) => number
+  getOrdersByOwner: () => OwnerOrders[]
+}
+
+type MarketOrdersStore = MarketOrdersState & MarketOrdersActions
+
+let db: IDBDatabase | null = null
+
+async function openDB(): Promise<IDBDatabase> {
+  if (db) return db
+
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION)
+
+    request.onerror = () => {
+      logger.error('Failed to open market orders DB', request.error, { module: 'MarketOrdersStore' })
+      reject(request.error)
+    }
+
+    request.onsuccess = () => {
+      db = request.result
+      resolve(db)
+    }
+
+    request.onupgradeneeded = (event) => {
+      const database = (event.target as IDBOpenDBRequest).result
+      if (!database.objectStoreNames.contains(STORE_ORDERS)) {
+        database.createObjectStore(STORE_ORDERS, { keyPath: 'orderId' })
+      }
+      if (!database.objectStoreNames.contains(STORE_VISIBILITY)) {
+        database.createObjectStore(STORE_VISIBILITY, { keyPath: 'ownerKey' })
+      }
+    }
+  })
+}
+
+interface StoredOrderRecord {
+  orderId: number
+  order: MarketOrder
+  sourceOwner: SourceOwner
+}
+
+interface VisibilityRecord {
+  ownerKey: string
+  orderIds: number[]
+}
+
+async function loadFromDB(): Promise<{
+  orders: Map<number, StoredOrder>
+  visibility: Map<string, Set<number>>
+}> {
+  const database = await openDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction([STORE_ORDERS, STORE_VISIBILITY], 'readonly')
+    const ordersStore = tx.objectStore(STORE_ORDERS)
+    const visibilityStore = tx.objectStore(STORE_VISIBILITY)
+
+    const ordersRequest = ordersStore.getAll()
+    const visibilityRequest = visibilityStore.getAll()
+
+    tx.oncomplete = () => {
+      const orders = new Map<number, StoredOrder>()
+      for (const record of ordersRequest.result as StoredOrderRecord[]) {
+        orders.set(record.orderId, {
+          order: record.order,
+          sourceOwner: record.sourceOwner,
+        })
+      }
+
+      const visibility = new Map<string, Set<number>>()
+      for (const record of visibilityRequest.result as VisibilityRecord[]) {
+        visibility.set(record.ownerKey, new Set(record.orderIds))
+      }
+
+      resolve({ orders, visibility })
+    }
+
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
+async function saveOrderToDB(orderId: number, stored: StoredOrder): Promise<void> {
+  const database = await openDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction([STORE_ORDERS], 'readwrite')
+    const store = tx.objectStore(STORE_ORDERS)
+    store.put({
+      orderId,
+      order: stored.order,
+      sourceOwner: stored.sourceOwner,
+    } as StoredOrderRecord)
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
+async function saveVisibilityToDB(ownerKeyStr: string, orderIds: Set<number>): Promise<void> {
+  const database = await openDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction([STORE_VISIBILITY], 'readwrite')
+    const store = tx.objectStore(STORE_VISIBILITY)
+    store.put({
+      ownerKey: ownerKeyStr,
+      orderIds: [...orderIds],
+    } as VisibilityRecord)
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
+async function deleteVisibilityFromDB(ownerKeyStr: string): Promise<void> {
+  const database = await openDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction([STORE_VISIBILITY], 'readwrite')
+    const store = tx.objectStore(STORE_VISIBILITY)
+    store.delete(ownerKeyStr)
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
+async function clearDB(): Promise<void> {
+  const database = await openDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction([STORE_ORDERS, STORE_VISIBILITY], 'readwrite')
+    tx.objectStore(STORE_ORDERS).clear()
+    tx.objectStore(STORE_VISIBILITY).clear()
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
+async function migrateFromOldDB(): Promise<{
+  orders: Map<number, StoredOrder>
+  visibility: Map<string, Set<number>>
+} | null> {
+  return new Promise((resolve) => {
+    const request = indexedDB.open(OLD_DB_NAME)
+
+    request.onerror = () => {
+      resolve(null)
+    }
+
+    request.onsuccess = () => {
+      const oldDb = request.result
+      if (!oldDb.objectStoreNames.contains('orders')) {
+        oldDb.close()
+        resolve(null)
+        return
+      }
+
+      const tx = oldDb.transaction(['orders'], 'readonly')
+      const store = tx.objectStore('orders')
+      const getAllRequest = store.getAll()
+
+      tx.oncomplete = async () => {
+        const oldData = getAllRequest.result as Array<{
+          key: string
+          owner: Owner
+          data: MarketOrder[]
+        }>
+
+        if (!oldData || oldData.length === 0) {
+          oldDb.close()
+          resolve(null)
+          return
+        }
+
+        const orders = new Map<number, StoredOrder>()
+        const visibility = new Map<string, Set<number>>()
+
+        for (const entry of oldData) {
+          if (!Array.isArray(entry.data)) continue
+
+          const ownerKeyStr = ownerKey(entry.owner.type, entry.owner.id)
+          const ownerVisibility = new Set<number>()
+
+          for (const order of entry.data) {
+            ownerVisibility.add(order.order_id)
+
+            if (!orders.has(order.order_id)) {
+              orders.set(order.order_id, {
+                order,
+                sourceOwner: {
+                  type: entry.owner.type,
+                  id: entry.owner.id,
+                  characterId: entry.owner.characterId,
+                },
+              })
+            }
+          }
+
+          visibility.set(ownerKeyStr, ownerVisibility)
+        }
+
+        oldDb.close()
+
+        try {
+          indexedDB.deleteDatabase(OLD_DB_NAME)
+          logger.info('Migrated market orders from old DB format', {
+            module: 'MarketOrdersStore',
+            orders: orders.size,
+            owners: visibility.size,
+          })
+        } catch {
+          logger.warn('Failed to delete old market orders DB', { module: 'MarketOrdersStore' })
+        }
+
+        resolve({ orders, visibility })
+      }
+
+      tx.onerror = () => {
+        oldDb.close()
+        resolve(null)
+      }
+    }
+  })
 }
 
 function getEndpoint(owner: Owner): string {
@@ -55,107 +307,358 @@ async function fetchOrdersForOwner(owner: Owner): Promise<{
   return result
 }
 
-export const useMarketOrdersStore = createOwnerStore<
-  MarketOrder[],
-  OwnerOrders,
-  MarketOrdersExtraState,
-  MarketOrdersExtraActions
->({
-  name: 'market orders',
-  moduleName: 'MarketOrdersStore',
-  endpointPattern: '/orders/',
-  dbConfig: {
-    dbName: 'ecteveassets-market-orders',
-    storeName: 'orders',
-    dataKey: 'orders',
-    metaStoreName: 'meta',
-    version: 2,
-  },
-  getEndpoint,
-  fetchData: fetchOrdersForOwner,
-  toOwnerData: (owner, data) => ({ owner, orders: data }),
-  isEmpty: (data) => data.length === 0,
-  extraState: {
-    comparisonData: new Map(),
-    comparisonFetching: false,
-  },
-  extraActions: (set, get) => ({
-    fetchComparisonData: async () => {
-      const state = get()
-      if (state.comparisonFetching) return
-      if (state.dataByOwner.length === 0) return
+export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
+  ordersById: new Map(),
+  visibilityByOwner: new Map(),
+  comparisonData: new Map(),
+  comparisonFetching: false,
+  isUpdating: false,
+  updateError: null,
+  initialized: false,
+  updateCounter: 0,
 
-      set({ comparisonFetching: true })
+  init: async () => {
+    if (get().initialized) return
 
-      const typeIds = new Set<number>()
-      for (const { orders } of state.dataByOwner) {
-        for (const order of orders) {
-          typeIds.add(order.type_id)
-        }
-      }
+    try {
+      let { orders, visibility } = await loadFromDB()
 
-      try {
-        const result = await fetchMarketComparison(Array.from(typeIds))
-        set({ comparisonData: result, comparisonFetching: false })
-      } catch (err) {
-        logger.warn('Failed to fetch comparison data', {
-          module: 'MarketOrdersStore',
-          error: err instanceof Error ? err.message : String(err),
-        })
-        set({ comparisonFetching: false })
-      }
-    },
-    getTotal: (prices, selectedOwnerIds) => {
-      const selectedSet = new Set(selectedOwnerIds)
-      let total = 0
-      for (const { owner, orders } of get().dataByOwner) {
-        if (!selectedSet.has(ownerKey(owner.type, owner.id))) continue
-        for (const order of orders) {
-          if (order.is_buy_order) {
-            total += order.escrow ?? 0
-          } else {
-            total += (prices.get(order.type_id) ?? 0) * order.volume_remain
+      if (orders.size === 0) {
+        const migrated = await migrateFromOldDB()
+        if (migrated) {
+          orders = migrated.orders
+          visibility = migrated.visibility
+
+          for (const [orderId, stored] of orders) {
+            await saveOrderToDB(orderId, stored)
+          }
+          for (const [ownerKeyStr, orderIds] of visibility) {
+            await saveVisibilityToDB(ownerKeyStr, orderIds)
           }
         }
       }
-      return total
-    },
-  }),
-  onAfterBatchUpdate: async (results) => {
-    if (results.length > 0) {
-      await useMarketOrdersStore.getState().fetchComparisonData()
+
+      set({
+        ordersById: orders,
+        visibilityByOwner: visibility,
+        initialized: true,
+      })
+
+      if (orders.size > 0) {
+        triggerResolution()
+      }
+
+      logger.info('Market orders store initialized', {
+        module: 'MarketOrdersStore',
+        orders: orders.size,
+        owners: visibility.size,
+      })
+    } catch (err) {
+      logger.error('Failed to load market orders from DB', err instanceof Error ? err : undefined, {
+        module: 'MarketOrdersStore',
+      })
+      set({ initialized: true })
     }
   },
-  onBeforeOwnerUpdate: (owner, state: BaseState<OwnerOrders>) => {
-    const key = ownerKey(owner.type, owner.id)
-    const previousOrders =
-      state.dataByOwner.find((oo) => ownerKey(oo.owner.type, oo.owner.id) === key)?.orders ?? []
-    return { previousData: previousOrders }
-  },
-  onAfterOwnerUpdate: ({ owner, newData, previousData }) => {
-    useMarketOrdersStore.getState().fetchComparisonData()
 
-    if (!previousData || previousData.length === 0) return
+  update: async (force = false) => {
+    const state = get()
+    if (!state.initialized) {
+      await get().init()
+    }
+    if (get().isUpdating) return
 
-    const newOrderIds = new Set(newData.map((o) => o.order_id))
-    const completedOrders = previousData.filter((o) => !newOrderIds.has(o.order_id))
+    const allOwners = Object.values(useAuthStore.getState().owners)
+    if (allOwners.length === 0) {
+      set({ updateError: 'No owners logged in' })
+      return
+    }
 
-    if (completedOrders.length > 0) {
-      const toastStore = useToastStore.getState()
-      for (const order of completedOrders) {
-        const typeName = getTypeName(order.type_id)
-        const action = order.is_buy_order ? 'Buy' : 'Sell'
-        toastStore.addToast(
-          'order-filled',
-          `${action} Order Filled`,
-          `${order.volume_total.toLocaleString()}x ${typeName}`
-        )
+    const expiryCacheStore = useExpiryCacheStore.getState()
+
+    const ownersToUpdate = force
+      ? allOwners.filter((o): o is Owner => o !== undefined && !o.authFailed)
+      : allOwners.filter((owner): owner is Owner => {
+          if (!owner || owner.authFailed) return false
+          const key = `${owner.type}-${owner.id}`
+          const endpoint = getEndpoint(owner)
+          return expiryCacheStore.isExpired(key, endpoint)
+        })
+
+    if (ownersToUpdate.length === 0) return
+
+    set({ isUpdating: true, updateError: null })
+
+    try {
+      const ordersById = new Map(get().ordersById)
+      const visibilityByOwner = new Map(get().visibilityByOwner)
+
+      for (const owner of ownersToUpdate) {
+        const currentOwnerKey = ownerKey(owner.type, owner.id)
+        const endpoint = getEndpoint(owner)
+
+        try {
+          logger.info('Fetching market orders', { module: 'MarketOrdersStore', owner: owner.name })
+
+          const { data: orders, expiresAt, etag } = await fetchOrdersForOwner(owner)
+
+          const ownerVisibility = new Set<number>()
+
+          for (const order of orders) {
+            ownerVisibility.add(order.order_id)
+
+            if (!ordersById.has(order.order_id)) {
+              const stored: StoredOrder = {
+                order,
+                sourceOwner: { type: owner.type, id: owner.id, characterId: owner.characterId },
+              }
+              ordersById.set(order.order_id, stored)
+              await saveOrderToDB(order.order_id, stored)
+            } else {
+              const existing = ordersById.get(order.order_id)!
+              existing.order = order
+              await saveOrderToDB(order.order_id, existing)
+            }
+          }
+
+          visibilityByOwner.set(currentOwnerKey, ownerVisibility)
+          await saveVisibilityToDB(currentOwnerKey, ownerVisibility)
+
+          useExpiryCacheStore.getState().setExpiry(currentOwnerKey, endpoint, expiresAt, etag, orders.length === 0)
+        } catch (err) {
+          logger.error('Failed to fetch market orders', err instanceof Error ? err : undefined, {
+            module: 'MarketOrdersStore',
+            owner: owner.name,
+          })
+        }
       }
-      logger.info('Market orders completed', {
+
+      set((s) => ({
+        ordersById,
+        visibilityByOwner,
+        isUpdating: false,
+        updateError: ordersById.size === 0 ? 'Failed to fetch any market orders' : null,
+        updateCounter: s.updateCounter + 1,
+      }))
+
+      triggerResolution()
+      await get().fetchComparisonData()
+
+      logger.info('Market orders updated', {
         module: 'MarketOrdersStore',
-        owner: owner.name,
-        count: completedOrders.length,
+        owners: ownersToUpdate.length,
+        totalOrders: ordersById.size,
+      })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      set({ isUpdating: false, updateError: message })
+      logger.error('Market orders update failed', err instanceof Error ? err : undefined, {
+        module: 'MarketOrdersStore',
       })
     }
   },
+
+  updateForOwner: async (owner: Owner) => {
+    const state = get()
+    if (!state.initialized) {
+      await get().init()
+    }
+
+    try {
+      const currentOwnerKey = ownerKey(owner.type, owner.id)
+      const endpoint = getEndpoint(owner)
+
+      const previousVisibility = state.visibilityByOwner.get(currentOwnerKey) ?? new Set()
+      const previousOrders = new Map<number, MarketOrder>()
+      for (const orderId of previousVisibility) {
+        const stored = state.ordersById.get(orderId)
+        if (stored) previousOrders.set(orderId, stored.order)
+      }
+
+      logger.info('Fetching market orders for owner', { module: 'MarketOrdersStore', owner: owner.name })
+
+      const { data: orders, expiresAt, etag } = await fetchOrdersForOwner(owner)
+
+      const ordersById = new Map(state.ordersById)
+      const visibilityByOwner = new Map(state.visibilityByOwner)
+
+      const ownerVisibility = new Set<number>()
+
+      for (const order of orders) {
+        ownerVisibility.add(order.order_id)
+
+        if (!ordersById.has(order.order_id)) {
+          const stored: StoredOrder = {
+            order,
+            sourceOwner: { type: owner.type, id: owner.id, characterId: owner.characterId },
+          }
+          ordersById.set(order.order_id, stored)
+          await saveOrderToDB(order.order_id, stored)
+        } else {
+          const existing = ordersById.get(order.order_id)!
+          existing.order = order
+          await saveOrderToDB(order.order_id, existing)
+        }
+      }
+
+      visibilityByOwner.set(currentOwnerKey, ownerVisibility)
+      await saveVisibilityToDB(currentOwnerKey, ownerVisibility)
+
+      const newOrderIds = new Set(orders.map((o) => o.order_id))
+      const completedOrders = [...previousOrders.values()].filter((o) => !newOrderIds.has(o.order_id))
+
+      if (completedOrders.length > 0) {
+        const toastStore = useToastStore.getState()
+        for (const order of completedOrders) {
+          const typeName = getTypeName(order.type_id)
+          const action = order.is_buy_order ? 'Buy' : 'Sell'
+          toastStore.addToast(
+            'order-filled',
+            `${action} Order Filled`,
+            `${order.volume_total.toLocaleString()}x ${typeName}`
+          )
+        }
+        logger.info('Market orders completed', {
+          module: 'MarketOrdersStore',
+          owner: owner.name,
+          count: completedOrders.length,
+        })
+      }
+
+      useExpiryCacheStore.getState().setExpiry(currentOwnerKey, endpoint, expiresAt, etag, orders.length === 0)
+
+      set((s) => ({
+        ordersById,
+        visibilityByOwner,
+        updateCounter: s.updateCounter + 1,
+      }))
+
+      triggerResolution()
+      await get().fetchComparisonData()
+
+      logger.info('Market orders updated for owner', {
+        module: 'MarketOrdersStore',
+        owner: owner.name,
+        orders: orders.length,
+      })
+    } catch (err) {
+      logger.error('Failed to fetch market orders for owner', err instanceof Error ? err : undefined, {
+        module: 'MarketOrdersStore',
+        owner: owner.name,
+      })
+    }
+  },
+
+  removeForOwner: async (ownerType: string, ownerId: number) => {
+    const state = get()
+    const currentOwnerKey = `${ownerType}-${ownerId}`
+
+    if (!state.visibilityByOwner.has(currentOwnerKey)) return
+
+    const visibilityByOwner = new Map(state.visibilityByOwner)
+    visibilityByOwner.delete(currentOwnerKey)
+
+    await deleteVisibilityFromDB(currentOwnerKey)
+
+    set({ visibilityByOwner })
+
+    useExpiryCacheStore.getState().clearForOwner(currentOwnerKey)
+
+    logger.info('Market orders removed for owner', { module: 'MarketOrdersStore', ownerKey: currentOwnerKey })
+  },
+
+  clear: async () => {
+    await clearDB()
+    set({
+      ordersById: new Map(),
+      visibilityByOwner: new Map(),
+      comparisonData: new Map(),
+      comparisonFetching: false,
+      updateError: null,
+      initialized: false,
+    })
+  },
+
+  fetchComparisonData: async () => {
+    const state = get()
+    if (state.comparisonFetching) return
+    if (state.ordersById.size === 0) return
+
+    set({ comparisonFetching: true })
+
+    const typeIds = new Set<number>()
+    for (const { order } of state.ordersById.values()) {
+      typeIds.add(order.type_id)
+    }
+
+    try {
+      const result = await fetchMarketComparison(Array.from(typeIds))
+      set({ comparisonData: result, comparisonFetching: false })
+    } catch (err) {
+      logger.warn('Failed to fetch comparison data', {
+        module: 'MarketOrdersStore',
+        error: err instanceof Error ? err.message : String(err),
+      })
+      set({ comparisonFetching: false })
+    }
+  },
+
+  getTotal: (prices, selectedOwnerIds) => {
+    const state = get()
+    const selectedSet = new Set(selectedOwnerIds)
+
+    const visibleOrderIds = new Set<number>()
+    for (const [key, orderIds] of state.visibilityByOwner) {
+      if (selectedSet.has(key)) {
+        for (const id of orderIds) {
+          visibleOrderIds.add(id)
+        }
+      }
+    }
+
+    let total = 0
+    for (const orderId of visibleOrderIds) {
+      const stored = state.ordersById.get(orderId)
+      if (!stored) continue
+
+      const { order } = stored
+      if (order.is_buy_order) {
+        total += order.escrow ?? 0
+      } else {
+        total += (prices.get(order.type_id) ?? 0) * order.volume_remain
+      }
+    }
+    return total
+  },
+
+  getOrdersByOwner: () => {
+    const state = get()
+    const result: OwnerOrders[] = []
+
+    for (const [ownerKeyStr, orderIds] of state.visibilityByOwner) {
+      const owner = findOwnerByKey(ownerKeyStr)
+      if (!owner) continue
+
+      const orders: MarketOrder[] = []
+      for (const orderId of orderIds) {
+        const stored = state.ordersById.get(orderId)
+        if (stored) {
+          orders.push(stored.order)
+        }
+      }
+
+      result.push({ owner, orders })
+    }
+
+    return result
+  },
+}))
+
+useExpiryCacheStore.getState().registerRefreshCallback(ENDPOINT_PATTERN, async (ownerKeyStr) => {
+  const owner = findOwnerByKey(ownerKeyStr)
+  if (!owner) {
+    logger.warn('Owner not found for refresh', { module: 'MarketOrdersStore', ownerKey: ownerKeyStr })
+    return
+  }
+  await useMarketOrdersStore.getState().updateForOwner(owner)
 })

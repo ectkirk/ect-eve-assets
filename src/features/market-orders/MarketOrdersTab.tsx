@@ -588,11 +588,16 @@ export function MarketOrdersTab() {
   const ownersRecord = useAuthStore((s) => s.owners)
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
 
-  const ordersByOwner = useMarketOrdersStore((s) => s.dataByOwner)
+  const updateCounter = useMarketOrdersStore((s) => s.updateCounter)
   const ordersUpdating = useMarketOrdersStore((s) => s.isUpdating)
   const updateError = useMarketOrdersStore((s) => s.updateError)
   const init = useMarketOrdersStore((s) => s.init)
   const initialized = useMarketOrdersStore((s) => s.initialized)
+
+  const ordersByOwner = useMemo(
+    () => useMarketOrdersStore.getState().getOrdersByOwner(),
+    [updateCounter]
+  )
 
   const historyByOwner = useMarketOrderHistoryStore((s) => s.dataByOwner)
   const historyUpdating = useMarketOrderHistoryStore((s) => s.isUpdating)
@@ -616,7 +621,7 @@ export function MarketOrdersTab() {
     if (initialized && ordersByOwner.length > 0 && comparisonData.size === 0 && !comparisonFetching) {
       fetchComparisonData()
     }
-  }, [initialized, ordersByOwner.length, comparisonData.size, comparisonFetching, fetchComparisonData])
+  }, [initialized, ordersByOwner, comparisonData.size, comparisonFetching, fetchComparisonData])
 
   const { setExpandCollapse, search, setResultCount, setTotalValue, setColumns } = useTabControls()
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
