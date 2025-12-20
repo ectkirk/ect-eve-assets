@@ -409,10 +409,7 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
           return expiryCacheStore.isExpired(key, endpoint)
         })
 
-    if (ownersToUpdate.length === 0) {
-      logger.debug('No owners need contracts update', { module: 'ContractsStore' })
-      return
-    }
+    if (ownersToUpdate.length === 0) return
 
     set({ isUpdating: true, updateError: null })
 
@@ -691,31 +688,15 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
     const state = get()
     const stored = state.contractsById.get(contractId)
 
-    if (!stored) {
-      logger.debug('Contract not found', { module: 'ContractsStore', contractId })
-      return undefined
-    }
-
-    if (stored.items) {
-      return stored.items
-    }
-
-    if (!canFetchItems(stored.contract)) {
-      logger.debug('Contract not fetchable', { module: 'ContractsStore', contractId })
-      return undefined
-    }
-
-    if (state.itemFetchesInProgress.has(contractId)) {
-      logger.debug('Items fetch already in progress', { module: 'ContractsStore', contractId })
-      return undefined
-    }
+    if (!stored) return undefined
+    if (stored.items) return stored.items
+    if (!canFetchItems(stored.contract)) return undefined
+    if (state.itemFetchesInProgress.has(contractId)) return undefined
 
     try {
       const itemFetchesInProgress = new Set(state.itemFetchesInProgress)
       itemFetchesInProgress.add(contractId)
       set({ itemFetchesInProgress })
-
-      logger.debug('Fetching items for contract', { module: 'ContractsStore', contractId })
 
       const items = await fetchItemsForContractFromAPI(stored.sourceOwner, contractId)
       stored.items = items
