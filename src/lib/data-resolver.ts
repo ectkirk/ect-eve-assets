@@ -354,7 +354,7 @@ async function runResolution(): Promise<void> {
     useAssetStore.getState().assetsByOwner,
     useContractsStore.getState().getContractsByOwner(),
     useMarketOrdersStore.getState().getOrdersByOwner(),
-    useIndustryJobsStore.getState().dataByOwner,
+    useIndustryJobsStore.getState().getJobsByOwner(),
     useStructuresStore.getState().dataByOwner,
     useStarbasesStore.getState().dataByOwner,
     useClonesStore.getState().dataByOwner,

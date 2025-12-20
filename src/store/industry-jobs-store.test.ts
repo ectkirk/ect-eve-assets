@@ -7,6 +7,8 @@ vi.mock('./auth-store', () => ({
   useAuthStore: {
     getState: vi.fn(() => ({ owners: {} })),
   },
+  ownerKey: (type: string, id: number) => `${type}-${id}`,
+  findOwnerByKey: vi.fn(),
 }))
 
 vi.mock('./expiry-cache-store', () => ({
@@ -31,21 +33,42 @@ vi.mock('@/lib/logger', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
+vi.mock('@/lib/data-resolver', () => ({
+  triggerResolution: vi.fn(),
+}))
+
+vi.mock('./asset-store', () => ({
+  useAssetStore: {
+    getState: () => ({
+      prices: new Map(),
+      setPrices: vi.fn(),
+    }),
+  },
+}))
+
+vi.mock('@/api/ref-client', () => ({
+  queuePriceRefresh: vi.fn().mockResolvedValue(new Map()),
+}))
+
 describe('industry-jobs-store', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks()
+    await useIndustryJobsStore.getState().clear()
     useIndustryJobsStore.setState({
-      dataByOwner: [],
+      jobsById: new Map(),
+      visibilityByOwner: new Map(),
       isUpdating: false,
       updateError: null,
       initialized: false,
+      updateCounter: 0,
     })
   })
 
   describe('initial state', () => {
     it('has correct initial values', () => {
       const state = useIndustryJobsStore.getState()
-      expect(state.dataByOwner).toEqual([])
+      expect(state.jobsById.size).toBe(0)
+      expect(state.visibilityByOwner.size).toBe(0)
       expect(state.isUpdating).toBe(false)
       expect(state.updateError).toBeNull()
       expect(state.initialized).toBe(false)
@@ -98,7 +121,8 @@ describe('industry-jobs-store', () => {
       await useIndustryJobsStore.getState().update(true)
 
       expect(esi.fetchWithMeta).toHaveBeenCalled()
-      expect(useIndustryJobsStore.getState().dataByOwner).toHaveLength(1)
+      expect(useIndustryJobsStore.getState().jobsById.size).toBe(1)
+      expect(useIndustryJobsStore.getState().visibilityByOwner.size).toBe(1)
     })
 
     it('fetches corporation jobs for corporation owners', async () => {
@@ -131,7 +155,7 @@ describe('industry-jobs-store', () => {
 
       await useIndustryJobsStore.getState().update(true)
 
-      expect(useIndustryJobsStore.getState().dataByOwner).toHaveLength(0)
+      expect(useIndustryJobsStore.getState().jobsById.size).toBe(0)
       expect(useIndustryJobsStore.getState().isUpdating).toBe(false)
     })
   })
@@ -139,14 +163,16 @@ describe('industry-jobs-store', () => {
   describe('clear', () => {
     it('resets store state', async () => {
       useIndustryJobsStore.setState({
-        dataByOwner: [{ owner: {} as never, jobs: [] }],
+        jobsById: new Map([[1, { job: {} as never, sourceOwner: {} as never }]]),
+        visibilityByOwner: new Map([['test', new Set([1])]]),
         updateError: 'error',
       })
 
       await useIndustryJobsStore.getState().clear()
 
       const state = useIndustryJobsStore.getState()
-      expect(state.dataByOwner).toHaveLength(0)
+      expect(state.jobsById.size).toBe(0)
+      expect(state.visibilityByOwner.size).toBe(0)
       expect(state.updateError).toBeNull()
     })
   })

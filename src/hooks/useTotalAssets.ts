@@ -27,7 +27,7 @@ export function useTotalAssets(): AssetTotals {
 
   const ordersUpdateCounter = useMarketOrdersStore((s) => s.updateCounter)
   const contractsUpdateCounter = useContractsStore((s) => s.updateCounter)
-  const jobsByOwner = useIndustryJobsStore((s) => s.dataByOwner)
+  const jobsUpdateCounter = useIndustryJobsStore((s) => s.updateCounter)
   const structuresByOwner = useStructuresStore((s) => s.dataByOwner)
   const walletsByOwner = useWalletStore((s) => s.dataByOwner)
 
@@ -80,5 +80,5 @@ export function useTotalAssets(): AssetTotals {
       walletTotal,
       structuresTotal,
     }
-  }, [assetsByOwner, prices, selectedOwnerIds, ordersUpdateCounter, contractsUpdateCounter, jobsByOwner, structuresByOwner, walletsByOwner])
+  }, [assetsByOwner, prices, selectedOwnerIds, ordersUpdateCounter, contractsUpdateCounter, jobsUpdateCounter, structuresByOwner, walletsByOwner])
 }

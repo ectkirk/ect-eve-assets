@@ -365,7 +365,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         results,
         useMarketOrdersStore.getState().getOrdersByOwner(),
         useContractsStore.getState().getContractsByOwner(),
-        useIndustryJobsStore.getState().dataByOwner,
+        useIndustryJobsStore.getState().getJobsByOwner(),
         useStructuresStore.getState().dataByOwner
       )
 
@@ -526,7 +526,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
       state.assetsByOwner,
       useMarketOrdersStore.getState().getOrdersByOwner(),
       useContractsStore.getState().getContractsByOwner(),
-      useIndustryJobsStore.getState().dataByOwner,
+      useIndustryJobsStore.getState().getJobsByOwner(),
       useStructuresStore.getState().dataByOwner
     )
 
