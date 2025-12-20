@@ -153,4 +153,42 @@ describe('RateLimitTracker', () => {
       expect(tracker.getAllStates().size).toBe(0)
     })
   })
+
+  describe('contract items throttling', () => {
+    it('returns 0 delay when no requests recorded', () => {
+      expect(tracker.getContractItemsDelay(12345)).toBe(0)
+    })
+
+    it('returns 0 delay when under limit', () => {
+      for (let i = 0; i < 10; i++) {
+        tracker.recordContractItemsRequest(12345)
+      }
+      expect(tracker.getContractItemsDelay(12345)).toBe(0)
+    })
+
+    it('returns delay when at limit', () => {
+      for (let i = 0; i < 20; i++) {
+        tracker.recordContractItemsRequest(12345)
+      }
+      const delay = tracker.getContractItemsDelay(12345)
+      expect(delay).toBeGreaterThan(0)
+      expect(delay).toBeLessThanOrEqual(10100)
+    })
+
+    it('tracks per character', () => {
+      for (let i = 0; i < 20; i++) {
+        tracker.recordContractItemsRequest(111)
+      }
+      expect(tracker.getContractItemsDelay(111)).toBeGreaterThan(0)
+      expect(tracker.getContractItemsDelay(222)).toBe(0)
+    })
+
+    it('clears contract timestamps on clear', () => {
+      for (let i = 0; i < 20; i++) {
+        tracker.recordContractItemsRequest(12345)
+      }
+      tracker.clear()
+      expect(tracker.getContractItemsDelay(12345)).toBe(0)
+    })
+  })
 })

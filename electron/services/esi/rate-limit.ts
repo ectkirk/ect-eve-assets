@@ -7,6 +7,9 @@ const GROUP_ERROR_BACKOFF_THRESHOLD = 3
 const ERROR_LIMIT_WARN_THRESHOLD = 50
 const ERROR_LIMIT_PAUSE_THRESHOLD = 20
 
+const CONTRACT_ITEMS_LIMIT = 20
+const CONTRACT_ITEMS_WINDOW_MS = 10_000
+
 interface GroupErrorState {
   errors: number
   windowStart: number
@@ -22,6 +25,7 @@ export class RateLimitTracker {
   private groupErrors = new Map<string, GroupErrorState>()
   private groupErrorLimits = new Map<string, GroupErrorLimitState>()
   private globalRetryAfter: number | null = null
+  private contractItemsTimestamps = new Map<number, number[]>()
 
   makeKey(characterId: number, group: string): string {
     return `${characterId}:${group}`
@@ -193,6 +197,29 @@ export class RateLimitTracker {
     return 0
   }
 
+  getContractItemsDelay(characterId: number): number {
+    const now = Date.now()
+    const timestamps = this.contractItemsTimestamps.get(characterId)
+    if (!timestamps || timestamps.length === 0) return 0
+
+    const cutoff = now - CONTRACT_ITEMS_WINDOW_MS
+    const recentTimestamps = timestamps.filter((t) => t > cutoff)
+
+    if (recentTimestamps.length < CONTRACT_ITEMS_LIMIT) return 0
+
+    const oldestInWindow = recentTimestamps[0]!
+    return oldestInWindow + CONTRACT_ITEMS_WINDOW_MS - now + 100
+  }
+
+  recordContractItemsRequest(characterId: number): void {
+    const now = Date.now()
+    const timestamps = this.contractItemsTimestamps.get(characterId) ?? []
+    const cutoff = now - CONTRACT_ITEMS_WINDOW_MS
+    const filtered = timestamps.filter((t) => t > cutoff)
+    filtered.push(now)
+    this.contractItemsTimestamps.set(characterId, filtered)
+  }
+
   isGloballyLimited(): boolean {
     return this.globalRetryAfter !== null && Date.now() < this.globalRetryAfter
   }
@@ -235,5 +262,6 @@ export class RateLimitTracker {
     this.groupErrors.clear()
     this.groupErrorLimits.clear()
     this.globalRetryAfter = null
+    this.contractItemsTimestamps.clear()
   }
 }

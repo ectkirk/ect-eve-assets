@@ -113,4 +113,44 @@ describe('RequestQueue', () => {
       await expect(second).rejects.toThrow('Queue cleared')
     })
   })
+
+  describe('isContractItemsEndpoint', () => {
+    it('identifies character contract items', () => {
+      expect(queue.isContractItemsEndpoint('/characters/123/contracts/456/items/')).toBe(true)
+    })
+
+    it('identifies corporation contract items', () => {
+      expect(queue.isContractItemsEndpoint('/corporations/123/contracts/456/items/')).toBe(true)
+    })
+
+    it('does not match contract list endpoints', () => {
+      expect(queue.isContractItemsEndpoint('/characters/123/contracts/')).toBe(false)
+      expect(queue.isContractItemsEndpoint('/corporations/123/contracts/')).toBe(false)
+    })
+
+    it('does not match other endpoints', () => {
+      expect(queue.isContractItemsEndpoint('/characters/123/assets/')).toBe(false)
+      expect(queue.isContractItemsEndpoint('/markets/items/')).toBe(false)
+    })
+  })
+
+  describe('contract items throttling', () => {
+    it('records contract item requests', async () => {
+      vi.spyOn(rateLimiter, 'recordContractItemsRequest')
+      executeRequest.mockResolvedValue({ success: true, data: [] })
+
+      await queue.enqueue('/characters/123/contracts/456/items/', { characterId: 123 })
+
+      expect(rateLimiter.recordContractItemsRequest).toHaveBeenCalledWith(123)
+    })
+
+    it('does not record non-contract item requests', async () => {
+      vi.spyOn(rateLimiter, 'recordContractItemsRequest')
+      executeRequest.mockResolvedValue({ success: true, data: [] })
+
+      await queue.enqueue('/characters/123/contracts/', { characterId: 123 })
+
+      expect(rateLimiter.recordContractItemsRequest).not.toHaveBeenCalled()
+    })
+  })
 })

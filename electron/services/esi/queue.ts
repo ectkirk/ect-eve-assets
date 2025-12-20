@@ -58,7 +58,18 @@ export class RequestQueue {
         await this.delay(delayMs)
       }
 
+      const isContractItems = this.isContractItemsEndpoint(request.endpoint)
+      if (isContractItems) {
+        const contractDelay = this.rateLimiter.getContractItemsDelay(characterId)
+        if (contractDelay > 0) {
+          await this.delay(contractDelay)
+        }
+      }
+
       try {
+        if (isContractItems) {
+          this.rateLimiter.recordContractItemsRequest(characterId)
+        }
         const result = await this.executeRequest(request.endpoint, request.options)
         request.resolve(result)
       } catch (error) {
@@ -90,6 +101,10 @@ export class RequestQueue {
     if (endpoint.includes('/markets/')) return 'market'
     if (endpoint.includes('/universe/')) return 'universe'
     return 'default'
+  }
+
+  isContractItemsEndpoint(endpoint: string): boolean {
+    return endpoint.includes('/contracts/') && endpoint.includes('/items')
   }
 
   private delay(ms: number): Promise<void> {
