@@ -9,13 +9,13 @@ import {
 } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
-  clearTypesCache,
+  clearCoreReferenceCache,
   clearLocationsCache,
   clearStructuresCache,
   clearAbyssalsCache,
   clearUniverseCache,
 } from '@/store/reference-cache'
-import { loadUniverseData, loadRefStructures } from '@/api/ref-client'
+import { loadReferenceData, loadUniverseData, loadRefStructures } from '@/api/ref-client'
 import { useAssetStore } from '@/store/asset-store'
 import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { useMarketOrderHistoryStore } from '@/store/market-order-history-store'
@@ -50,11 +50,12 @@ interface CacheOption {
 
 const CACHE_OPTIONS: CacheOption[] = [
   {
-    id: 'types',
-    label: 'Item Types',
+    id: 'coreReference',
+    label: 'Core Reference Data (Types & Blueprints)',
     group: 'reference',
-    requiresReload: true,
-    clear: clearTypesCache,
+    requiresReload: false,
+    clear: clearCoreReferenceCache,
+    refetch: loadReferenceData,
   },
   {
     id: 'universe',

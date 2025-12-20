@@ -24,6 +24,7 @@ import {
   setRefStructuresLoaded,
   isBlueprintsLoaded,
   setBlueprintsLoaded,
+  notifyCacheListeners,
   type CachedType,
   type CachedLocation,
   type CachedRegion,
@@ -174,9 +175,7 @@ export async function loadReferenceData(onProgress?: ReferenceDataProgress): Pro
     const duration = Math.round(performance.now() - start)
     logger.info('Reference data loaded', { module: 'RefAPI', duration })
   })().finally(() => {
-    if (!isReferenceDataLoaded() || !isAllTypesLoaded() || !isBlueprintsLoaded()) {
-      referenceDataPromise = null
-    }
+    referenceDataPromise = null
   })
 
   return referenceDataPromise
@@ -248,6 +247,7 @@ async function loadAllTypes(onProgress?: ReferenceDataProgress): Promise<void> {
   } while (cursor !== undefined)
 
   setAllTypesLoaded(true)
+  notifyCacheListeners()
 
   const duration = Math.round(performance.now() - start)
   logger.info('All types loaded', { module: 'RefAPI', total: loaded, pages: pageCount, duration })
@@ -273,6 +273,7 @@ async function loadBlueprints(onProgress?: ReferenceDataProgress): Promise<void>
 
   await setBlueprints(blueprints)
   setBlueprintsLoaded(true)
+  notifyCacheListeners()
 
   const duration = Math.round(performance.now() - start)
   logger.info('Blueprints loaded', { module: 'RefAPI', count: blueprints.length, duration })
@@ -301,6 +302,7 @@ export async function loadUniverseData(onProgress?: ReferenceDataProgress): Prom
       await loadAllStations()
 
       setUniverseDataLoaded(true)
+      notifyCacheListeners()
 
       const duration = Math.round(performance.now() - start)
       logger.info('Universe data loaded', { module: 'RefAPI', duration })
@@ -476,6 +478,7 @@ export async function loadRefStructures(onProgress?: ReferenceDataProgress): Pro
 
     await setRefStructures(allStructures)
     setRefStructuresLoaded(true)
+    notifyCacheListeners()
 
     const duration = Math.round(performance.now() - start)
     logger.info('RefStructures loaded', { module: 'RefAPI', count: allStructures.length, pages: pageCount, duration })

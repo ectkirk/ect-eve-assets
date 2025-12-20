@@ -425,7 +425,7 @@ export const RefSystemsResponseSchema = z.object({
 })
 
 export const RefStationSchema = z.object({
-  id: z.number(),
+  id: z.coerce.number(),
   name: z.string(),
   systemId: z.number(),
 })

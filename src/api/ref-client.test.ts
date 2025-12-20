@@ -26,6 +26,7 @@ vi.mock('@/store/reference-cache', () => ({
   setRefStructuresLoaded: vi.fn(),
   isBlueprintsLoaded: vi.fn(() => true),
   setBlueprintsLoaded: vi.fn(),
+  notifyCacheListeners: vi.fn(),
 }))
 
 import {

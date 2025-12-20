@@ -125,6 +125,8 @@ function notifyListeners(): void {
   listeners.forEach((fn) => fn())
 }
 
+export { notifyListeners as notifyCacheListeners }
+
 async function openDB(): Promise<IDBDatabase> {
   if (db) return db
 
@@ -243,11 +245,12 @@ export async function initCache(): Promise<void> {
     groupsCache = groups
     blueprintsCache = blueprints
     initialized = true
-    referenceDataLoaded = groupsCache.size > 0
+    referenceDataLoaded = categoriesCache.size > 0 && groupsCache.size > 0
 
     try {
       allTypesLoaded = localStorage.getItem(ALL_TYPES_LOADED_KEY) === 'true' && typesCache.size > 0
-      universeDataLoaded = localStorage.getItem(UNIVERSE_LOADED_KEY) === 'true' && systemsCache.size > 0
+      universeDataLoaded = localStorage.getItem(UNIVERSE_LOADED_KEY) === 'true'
+        && regionsCache.size > 0 && systemsCache.size > 0 && stationsCache.size > 0
       refStructuresLoaded = localStorage.getItem(REF_STRUCTURES_LOADED_KEY) === 'true' && refStructuresCache.size > 0
       blueprintsLoaded = localStorage.getItem(BLUEPRINTS_LOADED_KEY) === 'true' && blueprintsCache.size > 0
     } catch {
@@ -897,6 +900,32 @@ export async function clearUniverseCache(): Promise<void> {
     clearStore('systems'),
     clearStore('stations'),
     clearStore('refStructures'),
+  ])
+  notifyListeners()
+}
+
+export async function clearBlueprintsCache(): Promise<void> {
+  logger.info('Clearing blueprints cache', { module: 'ReferenceCache' })
+  blueprintsCache.clear()
+  setBlueprintsLoaded(false)
+  await clearStore('blueprints')
+  notifyListeners()
+}
+
+export async function clearCoreReferenceCache(): Promise<void> {
+  logger.info('Clearing core reference cache', { module: 'ReferenceCache' })
+  typesCache.clear()
+  categoriesCache.clear()
+  groupsCache.clear()
+  blueprintsCache.clear()
+  referenceDataLoaded = false
+  setAllTypesLoaded(false)
+  setBlueprintsLoaded(false)
+  await Promise.all([
+    clearStore('types'),
+    clearStore('categories'),
+    clearStore('groups'),
+    clearStore('blueprints'),
   ])
   notifyListeners()
 }
