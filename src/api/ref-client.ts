@@ -541,9 +541,25 @@ export async function resolveTypes(typeIds: number[]): Promise<Map<number, Cache
   return results
 }
 
+function getLocationFallbackName(id: number): string {
+  if (id >= 60000000 && id < 70000000) return `Station ${id}`
+  if (id >= 50000000 && id < 60000000) return `Stargate ${id}`
+  if (id >= 40000000 && id < 50000000) return `Celestial ${id}`
+  if (id >= 30000000 && id < 40000000) return `System ${id}`
+  if (id >= 20000000 && id < 30000000) return `Constellation ${id}`
+  if (id >= 10000000 && id < 20000000) return `Region ${id}`
+  return `Location ${id}`
+}
+
+function isCelestialIdRange(id: number): boolean {
+  return id >= 40000000 && id < 50000000
+}
+
 export async function resolveLocations(locationIds: number[]): Promise<Map<number, CachedLocation>> {
+  await loadUniverseData()
+
   const results = new Map<number, CachedLocation>()
-  const uncachedIds: number[] = []
+  const moonIds: number[] = []
 
   for (const id of locationIds) {
     if (id > 1_000_000_000_000) continue
@@ -554,16 +570,24 @@ export async function resolveLocations(locationIds: number[]): Promise<Map<numbe
       continue
     }
 
-    uncachedIds.push(id)
+    if (isCelestialIdRange(id)) {
+      moonIds.push(id)
+    } else {
+      results.set(id, {
+        id,
+        name: getLocationFallbackName(id),
+        type: 'station',
+      })
+    }
   }
 
-  if (uncachedIds.length === 0) return results
+  if (moonIds.length === 0) return results
 
-  const fetched = await fetchMoons(uncachedIds)
+  const fetched = await fetchMoons(moonIds)
 
   const toCache: CachedLocation[] = []
 
-  for (const id of uncachedIds) {
+  for (const id of moonIds) {
     const moon = fetched.get(id)
 
     if (moon) {
@@ -582,7 +606,7 @@ export async function resolveLocations(locationIds: number[]): Promise<Map<numbe
     } else {
       const placeholder: CachedLocation = {
         id,
-        name: `Unknown Moon ${id}`,
+        name: `Celestial ${id}`,
         type: 'celestial',
       }
       results.set(id, placeholder)

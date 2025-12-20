@@ -6,7 +6,6 @@ import {
   Globe,
   Sun,
   Building2,
-  Package,
   Rocket,
   Box,
   Briefcase,
@@ -124,10 +123,8 @@ const NODE_TYPE_ICONS: Record<TreeNodeType, React.ElementType> = {
   station: Building2,
   office: Briefcase,
   division: Layers,
-  container: Package,
   ship: Rocket,
   item: Box,
-  stack: Box,
 }
 
 const NODE_TYPE_COLORS: Record<TreeNodeType, string> = {
@@ -136,10 +133,8 @@ const NODE_TYPE_COLORS: Record<TreeNodeType, string> = {
   station: 'text-status-info',
   office: 'text-status-highlight',
   division: 'text-content-secondary',
-  container: 'text-status-warning',
   ship: 'text-status-special',
   item: 'text-content-secondary',
-  stack: 'text-content-secondary',
 }
 
 const DIVISION_COLORS = [
@@ -205,8 +200,7 @@ const TreeRowContent = memo(function TreeRowContent({
   const hasChildren = node.children.length > 0
   const indentPx = node.depth * 20
 
-  const isAssetNode = node.nodeType === 'item' || node.nodeType === 'stack' ||
-    node.nodeType === 'ship' || node.nodeType === 'container'
+  const isAssetNode = node.nodeType === 'item' || node.nodeType === 'ship'
   const isLocationNode = node.nodeType === 'region' || node.nodeType === 'system' ||
     node.nodeType === 'station'
   const isOfficeNode = node.nodeType === 'office'

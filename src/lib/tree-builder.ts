@@ -23,20 +23,6 @@ function isOffice(typeId: number): boolean {
   return typeId === OFFICE_TYPE_ID
 }
 
-function isContainer(type: CachedType | undefined): boolean {
-  if (!type) return false
-  if (type.id === OFFICE_TYPE_ID) return false
-  const name = type.name.toLowerCase()
-  return (
-    name.includes('container') ||
-    name.includes('depot') ||
-    name.includes('can') ||
-    name.includes('vault') ||
-    name.includes('hangar array') ||
-    type.groupName?.toLowerCase().includes('container') === true
-  )
-}
-
 export function shouldIncludeByMode(ra: ResolvedAsset, mode: TreeMode): boolean {
   const mf = ra.modeFlags
 
@@ -83,8 +69,6 @@ function createItemNode(
     displayName = stationName ?? 'Unknown Location'
   } else if (isShip(type)) {
     nodeType = 'ship'
-  } else if (isContainer(type)) {
-    nodeType = 'container'
   }
 
   return {
@@ -117,7 +101,7 @@ function createItemNode(
 }
 
 function getDivisionNumber(flag: string): number | undefined {
-  const match = flag.match(/^CorpSAG(\d)$/)
+  const match = flag.match(/^CorpSAG([1-7])$/)
   return match ? parseInt(match[1]!, 10) : undefined
 }
 
@@ -172,8 +156,7 @@ function createLocationNode(
 }
 
 function countItemLines(node: TreeNode): number {
-  const isItemNode = node.nodeType === 'item' || node.nodeType === 'stack' ||
-    node.nodeType === 'ship' || node.nodeType === 'container'
+  const isItemNode = node.nodeType === 'item' || node.nodeType === 'ship'
   let count = isItemNode ? 1 : 0
   for (const child of node.children) {
     count += countItemLines(child)
@@ -182,11 +165,13 @@ function countItemLines(node: TreeNode): number {
 }
 
 function aggregateTotals(node: TreeNode): void {
-  let totalCount = node.quantity ?? 0
-  let totalValue = node.price ? node.price * (node.quantity ?? 0) : 0
+  const isItemNode = node.nodeType === 'item' || node.nodeType === 'ship'
+
+  let totalCount = isItemNode ? (node.quantity ?? 0) : 0
+  let totalValue = isItemNode ? (node.price ?? 0) * (node.quantity ?? 0) : 0
   let totalVolume = 0
 
-  if (node.asset) {
+  if (isItemNode && node.asset) {
     const type = getType(node.asset.type_id)
     totalVolume = (type?.packagedVolume ?? type?.volume ?? 0) * (node.quantity ?? 0)
   }
@@ -207,23 +192,12 @@ function aggregateTotals(node: TreeNode): void {
   node.totalVolume = totalVolume
 }
 
-function findNodeRecursive(nodes: TreeNode[], id: string): TreeNode | undefined {
-  for (const node of nodes) {
-    if (node.id === id) return node
-    if (node.children.length > 0) {
-      const found = findNodeRecursive(node.children, id)
-      if (found) return found
-    }
-  }
-  return undefined
-}
-
 function stackIdenticalItems(nodes: TreeNode[]): TreeNode[] {
   const stackMap = new Map<string, TreeNode>()
   const result: TreeNode[] = []
 
   for (const node of nodes) {
-    if (node.children.length > 0 || node.nodeType === 'container' || node.nodeType === 'ship') {
+    if (node.children.length > 0 || node.nodeType === 'ship') {
       result.push(node)
       continue
     }
@@ -273,6 +247,7 @@ export function buildTree(
   }
 
   const stationNodes = new Map<string, TreeNode>()
+  const nodeIndex = new Map<string, TreeNode>()
   const addedItemIds = new Set<number>()
 
   for (const ra of filteredAssets) {
@@ -291,6 +266,9 @@ export function buildTree(
       stationNodes.set(stationKey, stationNode)
     }
 
+    // Filter out the root structure if it appears in the chain (for owned structures where
+    // rootLocationId is the structure's item_id). For stations, rootLocationId is a station
+    // ID which won't match any asset's item_id.
     const parentChain = ra.parentChain.filter((p) => p.item_id !== ra.rootLocationId)
 
     let officeIndex = -1
@@ -319,11 +297,12 @@ export function buildTree(
       const parentResolved = itemIdToResolved.get(parentAsset.item_id)
       const parentNodeId = `asset-${parentAsset.item_id}`
 
-      let parentNode = findNodeRecursive(currentParent.children, parentNodeId)
+      let parentNode = nodeIndex.get(parentNodeId)
 
       if (!parentNode && parentResolved) {
         parentNode = createItemNode(parentResolved, currentDepth, ra.locationName)
         currentParent.children.push(parentNode)
+        nodeIndex.set(parentNodeId, parentNode)
         addedItemIds.add(parentAsset.item_id)
       } else if (!parentNode) {
         const parentType = getType(parentAsset.type_id)
@@ -332,8 +311,6 @@ export function buildTree(
           pNodeType = 'office'
         } else if (isShip(parentType)) {
           pNodeType = 'ship'
-        } else if (isContainer(parentType)) {
-          pNodeType = 'container'
         }
 
         parentNode = {
@@ -357,6 +334,7 @@ export function buildTree(
           ownerType: ra.owner.type,
         }
         currentParent.children.push(parentNode)
+        nodeIndex.set(parentNodeId, parentNode)
         addedItemIds.add(parentAsset.item_id)
       }
 
@@ -365,7 +343,7 @@ export function buildTree(
 
       if (i === officeIndex && divisionFlag && !divisionInserted) {
         const divisionNodeId = `division-${parentAsset.item_id}-${divisionFlag}`
-        let divisionNode = currentParent.children.find((n) => n.id === divisionNodeId)
+        let divisionNode = nodeIndex.get(divisionNodeId)
 
         if (!divisionNode) {
           divisionNode = createDivisionNode(
@@ -375,6 +353,7 @@ export function buildTree(
             hangarDivisionNames
           )
           currentParent.children.push(divisionNode)
+          nodeIndex.set(divisionNodeId, divisionNode)
         }
 
         currentParent = divisionNode
@@ -385,6 +364,7 @@ export function buildTree(
 
     const itemNode = createItemNode(ra, currentDepth, ra.locationName)
     currentParent.children.push(itemNode)
+    nodeIndex.set(itemNode.id, itemNode)
     addedItemIds.add(ra.asset.item_id)
   }
 
@@ -503,42 +483,13 @@ function filterTreeRecursive(nodes: TreeNode[], searchLower: string, category?: 
   return result
 }
 
-function recomputeTotals(node: TreeNode): void {
-  const isItemNode = node.nodeType === 'item' || node.nodeType === 'stack' ||
-    node.nodeType === 'ship' || node.nodeType === 'container'
-
-  let totalCount = isItemNode ? (node.quantity ?? 0) : 0
-  let totalValue = isItemNode ? (node.price ?? 0) * (node.quantity ?? 0) : 0
-  let totalVolume = 0
-
-  if (isItemNode && node.asset) {
-    const type = getType(node.asset.type_id)
-    totalVolume = (type?.packagedVolume ?? type?.volume ?? 0) * (node.quantity ?? 0)
-  }
-
-  for (const child of node.children) {
-    recomputeTotals(child)
-    totalCount += child.totalCount
-    totalValue += child.totalValue
-    totalVolume += child.totalVolume
-  }
-
-  if (node.nodeType === 'station') {
-    totalCount = countItemLines(node)
-  }
-
-  node.totalCount = totalCount
-  node.totalValue = totalValue
-  node.totalVolume = totalVolume
-}
-
 export function filterTree(nodes: TreeNode[], search: string, category?: string): TreeNode[] {
   if (!search && !category) return nodes
 
   const filtered = filterTreeRecursive(nodes, search.toLowerCase(), category)
 
   for (const node of filtered) {
-    recomputeTotals(node)
+    aggregateTotals(node)
   }
 
   return filtered

@@ -47,8 +47,6 @@ export interface ResolvedAsset {
 
   customName: string | undefined
   isBlueprintCopy: boolean
-
-  stackKey: string
 }
 
 export interface ResolvedAssetsByOwner {

@@ -133,7 +133,6 @@ function createResolvedAsset(
     modeFlags: overrides.modeFlags ?? createModeFlags({ inItemHangar: true, inHangar: true }),
     customName: overrides.customName,
     isBlueprintCopy: overrides.isBlueprintCopy ?? false,
-    stackKey: overrides.stackKey ?? `${owner.id}-${asset.type_id}-60003760-${asset.location_flag}-false-${typeInfo.name}`,
   }
 }
 
@@ -383,8 +382,8 @@ describe('buildTree', () => {
 
       expect(tree).toHaveLength(1)
       const containerNode = tree[0]!.children[0]!
-      expect(containerNode.nodeType).toBe('container')
       expect(containerNode.children).toHaveLength(1)
+      expect(containerNode.children[0]!.typeId).toBe(34)
     })
   })
 })

@@ -222,23 +222,6 @@ export function computeModeFlags(
   }
 }
 
-export function buildStackKey(
-  asset: ESIAsset,
-  owner: Owner,
-  rootLocationId: number,
-  rootFlag: string,
-  typeName: string
-): string {
-  return [
-    owner.id,
-    asset.type_id,
-    rootLocationId,
-    rootFlag,
-    asset.is_blueprint_copy ?? false,
-    typeName,
-  ].join('-')
-}
-
 export function resolveAsset(
   asset: ESIAsset,
   owner: Owner,
@@ -267,8 +250,6 @@ export function resolveAsset(
 
   const isAbyssal = isAbyssalTypeId(asset.type_id)
   const categoryName = isAbyssal ? 'Abyssals' : (sdeType?.categoryName ?? '')
-
-  const stackKey = buildStackKey(asset, owner, rootLocation.rootLocationId, rootFlag, typeName)
 
   return {
     asset,
@@ -301,8 +282,6 @@ export function resolveAsset(
 
     customName,
     isBlueprintCopy: isBpc,
-
-    stackKey,
   }
 }
 

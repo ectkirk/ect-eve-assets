@@ -13,7 +13,9 @@ import {
   clearLocationsCache,
   clearStructuresCache,
   clearAbyssalsCache,
+  clearUniverseCache,
 } from '@/store/reference-cache'
+import { loadUniverseData, loadRefStructures } from '@/api/ref-client'
 import { useAssetStore } from '@/store/asset-store'
 import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { useMarketOrderHistoryStore } from '@/store/market-order-history-store'
@@ -55,17 +57,28 @@ const CACHE_OPTIONS: CacheOption[] = [
     clear: clearTypesCache,
   },
   {
-    id: 'locations',
-    label: 'Location Names',
+    id: 'universe',
+    label: 'Universe Data (Regions/Systems/Stations)',
     group: 'reference',
-    requiresReload: true,
+    requiresReload: false,
+    clear: clearUniverseCache,
+    refetch: async () => {
+      await loadUniverseData()
+      await loadRefStructures()
+    },
+  },
+  {
+    id: 'locations',
+    label: 'Moon Names',
+    group: 'reference',
+    requiresReload: false,
     clear: clearLocationsCache,
   },
   {
     id: 'playerStructures',
-    label: 'Structure Names',
+    label: 'Player Structure Names',
     group: 'reference',
-    requiresReload: true,
+    requiresReload: false,
     clear: clearStructuresCache,
   },
   {

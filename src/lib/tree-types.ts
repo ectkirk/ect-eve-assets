@@ -20,10 +20,8 @@ export type TreeNodeType =
   | 'station'
   | 'office'
   | 'division'
-  | 'container'
   | 'ship'
   | 'item'
-  | 'stack'
 
 export interface TreeNode {
   id: string

@@ -217,7 +217,7 @@ describe('ref-client', () => {
       const result = await runWithTimers(resolveLocations([40009082]))
 
       expect(result.size).toBe(1)
-      expect(result.get(40009082)?.name).toBe('Unknown Moon 40009082')
+      expect(result.get(40009082)?.name).toBe('Celestial 40009082')
       expect(saveLocations).toHaveBeenCalled()
     })
 
@@ -236,12 +236,12 @@ describe('ref-client', () => {
 
       expect(result.size).toBe(2)
       expect(result.get(40009082)?.name).toBe('Jita IV - Moon 4')
-      expect(result.get(40099999)?.name).toBe('Unknown Moon 40099999')
+      expect(result.get(40099999)?.name).toBe('Celestial 40099999')
       expect(result.get(40099999)?.type).toBe('celestial')
       expect(saveLocations).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({ id: 40009082, name: 'Jita IV - Moon 4' }),
-          expect.objectContaining({ id: 40099999, name: 'Unknown Moon 40099999', type: 'celestial' }),
+          expect.objectContaining({ id: 40099999, name: 'Celestial 40099999', type: 'celestial' }),
         ])
       )
     })
