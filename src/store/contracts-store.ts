@@ -152,6 +152,52 @@ async function clearItemsDb(): Promise<void> {
 // Module state for hook coordination (toast notifications)
 let previousContracts: Map<number, ESIContract> | undefined
 
+// Shared function for fetching contract items (used by both hooks)
+async function fetchItemsForContracts(
+  contractsById: Map<number, StoredContract>
+): Promise<void> {
+  const itemsState = baseStore.getState().itemsByContractId
+  const toFetch = new Map<number, SourceOwner>()
+
+  for (const [contractId, stored] of contractsById) {
+    if (isActiveItemExchange(stored.item) && !itemsState.has(contractId)) {
+      toFetch.set(contractId, stored.sourceOwner)
+    }
+  }
+
+  if (toFetch.size === 0) return
+
+  const results = await Promise.allSettled(
+    Array.from(toFetch.entries()).map(async ([contractId, sourceOwner]) => {
+      const items = await fetchItemsFromAPI(sourceOwner, contractId)
+      return { contractId, items }
+    })
+  )
+
+  const currentItems = new Map(itemsState)
+  const toSave: Array<{ contractId: number; items: ESIContractItem[] }> = []
+
+  for (const result of results) {
+    if (result.status === 'fulfilled') {
+      currentItems.set(result.value.contractId, result.value.items)
+      toSave.push(result.value)
+    } else {
+      logger.error('Failed to fetch contract items', result.reason, {
+        module: 'ContractsStore',
+      })
+    }
+  }
+
+  if (toSave.length > 0) {
+    await saveItemsBatch(toSave)
+    baseStore.setState((s) => ({
+      itemsByContractId: currentItems,
+      updateCounter: s.updateCounter + 1,
+    }))
+    triggerResolution()
+  }
+}
+
 const baseStore = createVisibilityStore<
   ESIContract,
   StoredContract,
@@ -201,7 +247,7 @@ const baseStore = createVisibilityStore<
     }
   },
 
-  onAfterOwnerUpdate: ({ owner, newItems }) => {
+  onAfterOwnerUpdate: ({ owner, newItems, itemsById }) => {
     const prev = previousContracts ?? new Map()
     previousContracts = undefined
 
@@ -251,6 +297,9 @@ const baseStore = createVisibilityStore<
         )
       }
     }
+
+    // Fetch items for single-owner updates (updateForOwner doesn't call onAfterBatchUpdate)
+    fetchItemsForContracts(itemsById)
   },
 
   onAfterBatchUpdate: async (updatedItemsById) => {
