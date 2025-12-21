@@ -389,7 +389,7 @@ export function AssetsTab() {
           row.regionName.toLowerCase().includes(searchLower)
         if (!matches) return false
       }
-      if (!row.modeFlags.isOwnedStructure && !row.modeFlags.isMarketOrder) {
+      if (!row.modeFlags.isOwnedStructure && !row.modeFlags.isMarketOrder && !row.modeFlags.isContract) {
         totalValue += row.totalValue
       }
       return true
