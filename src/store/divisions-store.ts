@@ -5,6 +5,7 @@ import {
   type ESICorporationDivisions,
 } from '@/api/endpoints/corporation'
 import { logger } from '@/lib/logger'
+import { useStoreRegistry } from './store-registry'
 
 const DB_NAME = 'ecteveassets-divisions'
 const DB_VERSION = 1
@@ -28,6 +29,7 @@ interface DivisionsActions {
   getDivisions: (corporationId: number) => CorporationDivisions | undefined
   getHangarName: (corporationId: number, division: number) => string | undefined
   getWalletName: (corporationId: number, division: number) => string | undefined
+  removeForOwner: (ownerType: string, ownerId: number) => Promise<void>
   clear: () => Promise<void>
 }
 
@@ -91,6 +93,17 @@ async function saveToDB(divisions: CorporationDivisions): Promise<void> {
     const tx = database.transaction([STORE_DIVISIONS], 'readwrite')
     const store = tx.objectStore(STORE_DIVISIONS)
     store.put(divisions)
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
+async function deleteFromDB(corporationId: number): Promise<void> {
+  const database = await openDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction([STORE_DIVISIONS], 'readwrite')
+    tx.objectStore(STORE_DIVISIONS).delete(corporationId)
     tx.oncomplete = () => resolve()
     tx.onerror = () => reject(tx.error)
   })
@@ -195,11 +208,30 @@ export const useDivisionsStore = create<DivisionsStore>((set, get) => ({
     return wallet?.name
   },
 
+  removeForOwner: async (ownerType: string, ownerId: number) => {
+    if (ownerType !== 'corporation') return
+    const state = get()
+    if (!state.divisionsByCorp.has(ownerId)) return
+
+    await deleteFromDB(ownerId)
+    const updated = new Map(state.divisionsByCorp)
+    updated.delete(ownerId)
+    set({ divisionsByCorp: updated })
+  },
+
   clear: async () => {
     await clearDB()
     set({ divisionsByCorp: new Map() })
   },
 }))
+
+useStoreRegistry.getState().register({
+  name: 'divisions',
+  removeForOwner: useDivisionsStore.getState().removeForOwner,
+  clear: useDivisionsStore.getState().clear,
+  getIsUpdating: () => useDivisionsStore.getState().isLoading,
+  init: useDivisionsStore.getState().init,
+})
 
 export function useCorporationDivisions(owner: Owner | null) {
   const { divisionsByCorp, fetchForOwner, initialized, init } =

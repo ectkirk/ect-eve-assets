@@ -139,13 +139,13 @@ const CACHE_OPTIONS: CacheOption[] = [
   },
   {
     id: 'wallet',
-    label: 'Wallet & Journal',
+    label: 'Wallet',
     group: 'data',
     requiresReload: false,
     endpointPattern: '/wallet',
-    storeNames: ['wallet', 'journal'],
-    clear: () => registry().clearByNames(['wallet', 'journal']),
-    refetch: () => registry().refetchByNames(['wallet', 'journal']),
+    storeNames: ['wallet'],
+    clear: () => registry().clearByNames(['wallet']),
+    refetch: () => registry().refetchByNames(['wallet']),
   },
   {
     id: 'clones',
