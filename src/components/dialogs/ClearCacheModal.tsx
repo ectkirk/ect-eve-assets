@@ -23,7 +23,6 @@ import {
 import { useStoreRegistry } from '@/store/store-registry'
 import { useRegionalMarketStore } from '@/store/regional-market-store'
 import { useESIPricesStore } from '@/store/esi-prices-store'
-import { useStarbaseDetailsStore } from '@/store/starbase-details-store'
 import { useExpiryCacheStore } from '@/store/expiry-cache-store'
 import { useDivisionsStore } from '@/store/divisions-store'
 import { logger } from '@/lib/logger'
@@ -193,11 +192,8 @@ const CACHE_OPTIONS: CacheOption[] = [
     group: 'structures',
     requiresReload: false,
     endpointPattern: '/starbases',
-    storeNames: ['starbases'],
-    clear: async () => {
-      await registry().clearByNames(['starbases'])
-      await useStarbaseDetailsStore.getState().clear()
-    },
+    storeNames: ['starbases', 'starbase details'],
+    clear: () => registry().clearByNames(['starbases', 'starbase details']),
     refetch: () => registry().refetchByNames(['starbases']),
   },
   {
