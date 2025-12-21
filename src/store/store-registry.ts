@@ -12,6 +12,7 @@
  */
 
 import { create } from 'zustand'
+import { logger } from '@/lib/logger'
 
 export interface RegisteredStore {
   name: string
@@ -70,46 +71,81 @@ export const useStoreRegistry = create<StoreRegistry>((set, get) => ({
 
   removeForOwnerAll: async (ownerType, ownerId) => {
     const { stores } = get()
-    await Promise.all(
+    const results = await Promise.allSettled(
       Array.from(stores.values()).map((store) =>
         store.removeForOwner(ownerType, ownerId)
       )
     )
+    for (const result of results) {
+      if (result.status === 'rejected') {
+        logger.error('Store removeForOwner failed', result.reason, {
+          module: 'StoreRegistry',
+        })
+      }
+    }
   },
 
   clearAll: async () => {
     const { stores } = get()
-    await Promise.all(
+    const results = await Promise.allSettled(
       Array.from(stores.values()).map((store) => store.clear())
     )
+    for (const result of results) {
+      if (result.status === 'rejected') {
+        logger.error('Store clear failed', result.reason, {
+          module: 'StoreRegistry',
+        })
+      }
+    }
   },
 
   clearByNames: async (names) => {
     const { stores } = get()
-    await Promise.all(
+    const results = await Promise.allSettled(
       names.map((name) => {
         const store = stores.get(name)
         return store?.clear()
       })
     )
+    for (const result of results) {
+      if (result.status === 'rejected') {
+        logger.error('Store clear failed', result.reason, {
+          module: 'StoreRegistry',
+        })
+      }
+    }
   },
 
   initAll: async (exclude = []) => {
     const { stores } = get()
     const excludeSet = new Set(exclude)
-    await Promise.all(
+    const results = await Promise.allSettled(
       Array.from(stores.values())
         .filter((store) => !excludeSet.has(store.name) && store.init)
         .map((store) => store.init!())
     )
+    for (const result of results) {
+      if (result.status === 'rejected') {
+        logger.error('Store init failed', result.reason, {
+          module: 'StoreRegistry',
+        })
+      }
+    }
   },
 
   refetchByNames: async (names) => {
     const { stores } = get()
     for (const name of names) {
       const store = stores.get(name)
-      if (store?.init) await store.init()
-      if (store?.update) await store.update(true)
+      try {
+        if (store?.init) await store.init()
+        if (store?.update) await store.update(true)
+      } catch (err) {
+        logger.error('Store refetch failed', err, {
+          module: 'StoreRegistry',
+          storeName: name,
+        })
+      }
     }
   },
 

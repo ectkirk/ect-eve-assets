@@ -92,7 +92,7 @@ function CopyButton({ text }: { text: string }) {
     e.stopPropagation()
     navigator.clipboard.writeText(text)
     setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
+    setTimeout(() => setCopied(false), 2000)
   }
 
   return (

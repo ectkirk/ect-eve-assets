@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { logger } from '@/lib/logger'
 
 export interface ColumnConfig {
   id: string
@@ -20,7 +21,10 @@ export function useColumnSettings(storageKey: string, columns: ColumnConfig[]) {
         return { ...defaults, ...parsed }
       }
     } catch (e) {
-      console.warn(`Failed to load column settings for ${storageKey}:`, e)
+      logger.warn(`Failed to load column settings for ${storageKey}`, {
+        module: 'ColumnSettings',
+        error: e instanceof Error ? e.message : String(e),
+      })
     }
 
     return defaults
@@ -30,7 +34,10 @@ export function useColumnSettings(storageKey: string, columns: ColumnConfig[]) {
     try {
       localStorage.setItem(storageKey, JSON.stringify(visibility))
     } catch (e) {
-      console.warn(`Failed to save column settings for ${storageKey}:`, e)
+      logger.warn(`Failed to save column settings for ${storageKey}`, {
+        module: 'ColumnSettings',
+        error: e instanceof Error ? e.message : String(e),
+      })
     }
   }, [storageKey, visibility])
 
