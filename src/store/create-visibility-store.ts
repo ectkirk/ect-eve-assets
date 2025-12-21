@@ -2,29 +2,20 @@ import { create, type StoreApi, type UseBoundStore } from 'zustand'
 import {
   useAuthStore,
   type Owner,
-  type OwnerType,
   ownerKey as makeOwnerKey,
   findOwnerByKey,
 } from './auth-store'
 import { useExpiryCacheStore } from './expiry-cache-store'
 import { logger } from '@/lib/logger'
 import { triggerResolution } from '@/lib/data-resolver'
+import {
+  createVisibilityDB,
+  type SourceOwner,
+  type StoredItem,
+} from '@/lib/visibility-indexed-db'
+import { useStoreRegistry } from './store-registry'
 
-export interface SourceOwner {
-  type: OwnerType
-  id: number
-  characterId: number
-}
-
-export interface StoredItem<T> {
-  item: T
-  sourceOwner: SourceOwner
-}
-
-interface VisibilityRecord {
-  ownerKey: string
-  itemIds: number[]
-}
+export type { SourceOwner, StoredItem }
 
 export interface VisibilityStoreConfig<
   TItem,
@@ -99,175 +90,6 @@ export type VisibilityStore<
   TExtraState &
   TExtraActions
 
-interface DBContext {
-  db: IDBDatabase | null
-  dbName: string
-  itemStoreName: string
-  visibilityStoreName: string
-  itemKeyName: string
-  moduleName: string
-}
-
-async function openDB(ctx: DBContext): Promise<IDBDatabase> {
-  if (ctx.db) return ctx.db
-
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(ctx.dbName, 1)
-
-    request.onerror = () => {
-      logger.error(`Failed to open ${ctx.itemStoreName} DB`, request.error, {
-        module: ctx.moduleName,
-      })
-      reject(request.error)
-    }
-
-    request.onsuccess = () => {
-      ctx.db = request.result
-      resolve(ctx.db)
-    }
-
-    request.onupgradeneeded = (event) => {
-      const database = (event.target as IDBOpenDBRequest).result
-      if (!database.objectStoreNames.contains(ctx.itemStoreName)) {
-        database.createObjectStore(ctx.itemStoreName, {
-          keyPath: ctx.itemKeyName,
-        })
-      }
-      if (!database.objectStoreNames.contains(ctx.visibilityStoreName)) {
-        database.createObjectStore(ctx.visibilityStoreName, {
-          keyPath: 'ownerKey',
-        })
-      }
-    }
-  })
-}
-
-async function loadFromDB<TStoredItem>(
-  ctx: DBContext,
-  toStoredItem: (record: Record<string, unknown>) => TStoredItem,
-  getItemId: (stored: TStoredItem) => number
-): Promise<{
-  items: Map<number, TStoredItem>
-  visibility: Map<string, Set<number>>
-}> {
-  const database = await openDB(ctx)
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction(
-      [ctx.itemStoreName, ctx.visibilityStoreName],
-      'readonly'
-    )
-    const itemsStore = tx.objectStore(ctx.itemStoreName)
-    const visibilityStore = tx.objectStore(ctx.visibilityStoreName)
-
-    const itemsRequest = itemsStore.getAll()
-    const visibilityRequest = visibilityStore.getAll()
-
-    tx.oncomplete = () => {
-      const items = new Map<number, TStoredItem>()
-      for (const record of itemsRequest.result) {
-        const stored = toStoredItem(record)
-        items.set(getItemId(stored), stored)
-      }
-
-      const visibility = new Map<string, Set<number>>()
-      for (const record of visibilityRequest.result as VisibilityRecord[]) {
-        visibility.set(record.ownerKey, new Set(record.itemIds))
-      }
-
-      resolve({ items, visibility })
-    }
-
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
-async function saveItemsToDB<TStoredItem>(
-  ctx: DBContext,
-  items: Array<{ id: number; stored: TStoredItem }>,
-  toRecord: (id: number, stored: TStoredItem) => Record<string, unknown>
-): Promise<void> {
-  if (items.length === 0) return
-  const database = await openDB(ctx)
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([ctx.itemStoreName], 'readwrite')
-    const store = tx.objectStore(ctx.itemStoreName)
-    for (const { id, stored } of items) {
-      store.put(toRecord(id, stored))
-    }
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
-async function deleteItemsFromDB(
-  ctx: DBContext,
-  itemIds: number[]
-): Promise<void> {
-  if (itemIds.length === 0) return
-  const database = await openDB(ctx)
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([ctx.itemStoreName], 'readwrite')
-    const store = tx.objectStore(ctx.itemStoreName)
-    for (const id of itemIds) {
-      store.delete(id)
-    }
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
-async function saveVisibilityToDB(
-  ctx: DBContext,
-  ownerKeyStr: string,
-  itemIds: Set<number>
-): Promise<void> {
-  const database = await openDB(ctx)
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([ctx.visibilityStoreName], 'readwrite')
-    const store = tx.objectStore(ctx.visibilityStoreName)
-    store.put({
-      ownerKey: ownerKeyStr,
-      itemIds: [...itemIds],
-    } as VisibilityRecord)
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
-async function deleteVisibilityFromDB(
-  ctx: DBContext,
-  ownerKeyStr: string
-): Promise<void> {
-  const database = await openDB(ctx)
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([ctx.visibilityStoreName], 'readwrite')
-    const store = tx.objectStore(ctx.visibilityStoreName)
-    store.delete(ownerKeyStr)
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
-async function clearDB(ctx: DBContext): Promise<void> {
-  const database = await openDB(ctx)
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction(
-      [ctx.itemStoreName, ctx.visibilityStoreName],
-      'readwrite'
-    )
-    tx.objectStore(ctx.itemStoreName).clear()
-    tx.objectStore(ctx.visibilityStoreName).clear()
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
 function collectVisibleItemIds(
   visibilityByOwner: Map<string, Set<number>>
 ): Set<number> {
@@ -325,34 +147,10 @@ export function createVisibilityStore<
     extraActions,
   } = config
 
-  const dbCtx: DBContext = {
-    db: null,
-    dbName,
-    itemStoreName,
-    visibilityStoreName: 'visibility',
-    itemKeyName,
-    moduleName,
-  }
-
-  const toRecord = (
-    id: number,
-    stored: TStoredItem
-  ): Record<string, unknown> => ({
-    [itemKeyName]: id,
-    item: stored.item,
-    sourceOwner: stored.sourceOwner,
-  })
-
-  const fromRecord = (record: Record<string, unknown>): TStoredItem => {
-    const item =
-      (record.item as TItem) ??
-      (record.job as TItem) ??
-      (record.order as TItem)
-    return {
-      item,
-      sourceOwner: record.sourceOwner as SourceOwner,
-    } as TStoredItem
-  }
+  const db = createVisibilityDB<TItem, TStoredItem>(
+    { dbName, itemStoreName, itemKeyName, moduleName },
+    (stored) => getItemId(stored.item)
+  )
 
   type FullStore = VisibilityStore<TStoredItem, TExtraState, TExtraActions>
   type FullState = VisibilityState<TStoredItem> & TExtraState
@@ -379,11 +177,7 @@ export function createVisibilityStore<
         if (get().initialized) return
 
         try {
-          const { items, visibility } = await loadFromDB(
-            dbCtx,
-            fromRecord,
-            (s) => getItemId(s.item)
-          )
+          const { items, visibility } = await db.loadAll()
           const extra = rebuildExtraState ? rebuildExtraState(items) : {}
 
           set({
@@ -408,9 +202,7 @@ export function createVisibilityStore<
           logger.error(
             `Failed to load ${name} from DB`,
             err instanceof Error ? err : undefined,
-            {
-              module: moduleName,
-            }
+            { module: moduleName }
           )
           set({ initialized: true } as Partial<FullStore>)
         }
@@ -471,7 +263,7 @@ export function createVisibilityStore<
               }
 
               visibilityByOwner.set(currentOwnerKey, ownerVisibility)
-              await saveVisibilityToDB(dbCtx, currentOwnerKey, ownerVisibility)
+              await db.saveVisibility(currentOwnerKey, ownerVisibility)
 
               const isDataEmpty = isEmpty ? isEmpty(items) : items.length === 0
               useExpiryCacheStore
@@ -487,21 +279,18 @@ export function createVisibilityStore<
               logger.error(
                 `Failed to fetch ${name}`,
                 err instanceof Error ? err : undefined,
-                {
-                  module: moduleName,
-                  owner: owner.name,
-                }
+                { module: moduleName, owner: owner.name }
               )
             }
           }
 
-          await saveItemsToDB(dbCtx, itemBatch, toRecord)
+          await db.saveItems(itemBatch)
 
           if (shouldDeleteStaleItems) {
             const visibleIds = collectVisibleItemIds(visibilityByOwner)
             const staleIds = removeStaleItems(itemsById, visibleIds)
             if (staleIds.length > 0) {
-              await deleteItemsFromDB(dbCtx, staleIds)
+              await db.deleteItems(staleIds)
               logger.info(`Cleaned up stale ${name}`, {
                 module: moduleName,
                 count: staleIds.length,
@@ -572,9 +361,9 @@ export function createVisibilityStore<
             itemBatch.push({ id: itemId, stored })
           }
 
-          await saveItemsToDB(dbCtx, itemBatch, toRecord)
+          await db.saveItems(itemBatch)
           visibilityByOwner.set(currentOwnerKey, ownerVisibility)
-          await saveVisibilityToDB(dbCtx, currentOwnerKey, ownerVisibility)
+          await db.saveVisibility(currentOwnerKey, ownerVisibility)
 
           onAfterOwnerUpdate?.({
             owner,
@@ -587,7 +376,7 @@ export function createVisibilityStore<
             const visibleIds = collectVisibleItemIds(visibilityByOwner)
             const staleIds = removeStaleItems(itemsById, visibleIds)
             if (staleIds.length > 0) {
-              await deleteItemsFromDB(dbCtx, staleIds)
+              await db.deleteItems(staleIds)
               logger.info(`Cleaned up stale ${name}`, {
                 module: moduleName,
                 count: staleIds.length,
@@ -619,10 +408,7 @@ export function createVisibilityStore<
           logger.error(
             `Failed to fetch ${name} for owner`,
             err instanceof Error ? err : undefined,
-            {
-              module: moduleName,
-              owner: owner.name,
-            }
+            { module: moduleName, owner: owner.name }
           )
         }
       },
@@ -636,14 +422,14 @@ export function createVisibilityStore<
         const visibilityByOwner = new Map(state.visibilityByOwner)
         visibilityByOwner.delete(currentOwnerKey)
 
-        await deleteVisibilityFromDB(dbCtx, currentOwnerKey)
+        await db.deleteVisibility(currentOwnerKey)
 
         const itemsById = new Map(state.itemsById)
         if (shouldDeleteStaleItems) {
           const visibleIds = collectVisibleItemIds(visibilityByOwner)
           const staleIds = removeStaleItems(itemsById, visibleIds)
           if (staleIds.length > 0) {
-            await deleteItemsFromDB(dbCtx, staleIds)
+            await db.deleteItems(staleIds)
           }
         }
 
@@ -659,7 +445,7 @@ export function createVisibilityStore<
       },
 
       clear: async () => {
-        await clearDB(dbCtx)
+        await db.clear()
         const extra = extraState ? { ...extraState } : {}
         set({
           itemsById: new Map(),
@@ -685,6 +471,15 @@ export function createVisibilityStore<
       }
       await store.getState().updateForOwner(owner)
     })
+
+  useStoreRegistry.getState().register({
+    name,
+    removeForOwner: store.getState().removeForOwner,
+    clear: store.getState().clear,
+    getIsUpdating: () => store.getState().isUpdating,
+    init: store.getState().init,
+    update: store.getState().update,
+  })
 
   return store
 }

@@ -15,7 +15,7 @@ export const useLoyaltyStore = createOwnerStore<
   ESILoyaltyPoints[],
   OwnerLoyalty
 >({
-  name: 'loyalty points',
+  name: 'loyalty',
   moduleName: 'LoyaltyStore',
   endpointPattern: '/loyalty/points',
   dbConfig: {

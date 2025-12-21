@@ -19,6 +19,7 @@ import { ESIContractSchema } from '@/api/schemas'
 import { logger } from '@/lib/logger'
 import { formatNumber } from '@/lib/utils'
 import { triggerResolution } from '@/lib/data-resolver'
+import { useStoreRegistry } from './store-registry'
 
 const ENDPOINT_PATTERN = '/contracts/'
 const DB_NAME = 'ecteveassets-contracts-v2'
@@ -850,3 +851,12 @@ useExpiryCacheStore
     }
     await useContractsStore.getState().updateForOwner(owner)
   })
+
+useStoreRegistry.getState().register({
+  name: 'contracts',
+  removeForOwner: useContractsStore.getState().removeForOwner,
+  clear: useContractsStore.getState().clear,
+  getIsUpdating: () => useContractsStore.getState().isUpdating,
+  init: useContractsStore.getState().init,
+  update: useContractsStore.getState().update,
+})

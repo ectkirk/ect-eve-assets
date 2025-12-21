@@ -14,6 +14,7 @@ import { useExpiryCacheStore } from './expiry-cache-store'
 import { createOwnerDB, type OwnerDBConfig } from '@/lib/owner-indexed-db'
 import { logger } from '@/lib/logger'
 import { triggerResolution } from '@/lib/data-resolver'
+import { useStoreRegistry } from './store-registry'
 
 function isScopeError(err: unknown): boolean {
   if (!(err instanceof Error)) return false
@@ -480,6 +481,15 @@ export function createOwnerStore<
         await store.getState().updateForOwner(owner)
       })
   }
+
+  useStoreRegistry.getState().register({
+    name,
+    removeForOwner: store.getState().removeForOwner,
+    clear: store.getState().clear,
+    getIsUpdating: () => store.getState().isUpdating,
+    init: store.getState().init,
+    update: store.getState().update,
+  })
 
   return store
 }

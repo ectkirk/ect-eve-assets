@@ -10,6 +10,7 @@ import { esi } from '@/api/esi'
 import { ESIWalletJournalEntrySchema } from '@/api/schemas'
 import { createOwnerDB } from '@/lib/owner-indexed-db'
 import { logger } from '@/lib/logger'
+import { useStoreRegistry } from './store-registry'
 import { z } from 'zod'
 
 export const CORPORATION_WALLET_DIVISIONS = 7
@@ -441,3 +442,12 @@ useExpiryCacheStore
     }
     await useWalletJournalStore.getState().updateForOwner(owner)
   })
+
+useStoreRegistry.getState().register({
+  name: 'journal',
+  removeForOwner: useWalletJournalStore.getState().removeForOwner,
+  clear: useWalletJournalStore.getState().clear,
+  getIsUpdating: () => useWalletJournalStore.getState().isUpdating,
+  init: useWalletJournalStore.getState().init,
+  update: useWalletJournalStore.getState().update,
+})

@@ -1,12 +1,7 @@
 import { useEffect, useState, Component, type ReactNode } from 'react'
 import { useAuthStore } from './store/auth-store'
 import { useAssetStore } from './store/asset-store'
-import { useMarketOrdersStore } from './store/market-orders-store'
-import { useContractsStore } from './store/contracts-store'
-import { useWalletStore } from './store/wallet-store'
-import { useBlueprintsStore } from './store/blueprints-store'
-import { useStructuresStore } from './store/structures-store'
-import { useIndustryJobsStore } from './store/industry-jobs-store'
+import { useStoreRegistry } from './store/store-registry'
 import { useRegionalMarketStore } from './store/regional-market-store'
 import { useESIPricesStore } from './store/esi-prices-store'
 import { useExpiryCacheStore } from './store/expiry-cache-store'
@@ -120,14 +115,9 @@ function App() {
       .then(() => {
         logger.info('Asset store initialized', { module: 'App' })
         return Promise.all([
-          useMarketOrdersStore.getState().init(),
+          useStoreRegistry.getState().initAll(['assets']),
           useRegionalMarketStore.getState().init(),
           useESIPricesStore.getState().init(),
-          useContractsStore.getState().init(),
-          useWalletStore.getState().init(),
-          useBlueprintsStore.getState().init(),
-          useStructuresStore.getState().init(),
-          useIndustryJobsStore.getState().init(),
           useNotificationStore.getState().init(),
         ])
       })

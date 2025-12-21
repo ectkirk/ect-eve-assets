@@ -18,6 +18,7 @@ import { getType } from '@/store/reference-cache'
 import { createOwnerDB } from '@/lib/owner-indexed-db'
 import { logger } from '@/lib/logger'
 import { triggerResolution } from '@/lib/data-resolver'
+import { useStoreRegistry } from './store-registry'
 import { useContractsStore, type OwnerContracts } from './contracts-store'
 import { useMarketOrdersStore, type OwnerOrders } from './market-orders-store'
 import { useIndustryJobsStore, type OwnerJobs } from './industry-jobs-store'
@@ -725,6 +726,15 @@ useExpiryCacheStore
     }
     await useAssetStore.getState().updateForOwner(owner)
   })
+
+useStoreRegistry.getState().register({
+  name: 'assets',
+  removeForOwner: useAssetStore.getState().removeForOwner,
+  clear: useAssetStore.getState().clear,
+  getIsUpdating: () => useAssetStore.getState().isUpdating,
+  init: useAssetStore.getState().init,
+  update: useAssetStore.getState().update,
+})
 
 function startPriceRefreshTimer() {
   setInterval(async () => {

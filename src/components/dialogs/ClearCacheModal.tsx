@@ -20,19 +20,9 @@ import {
   loadUniverseData,
   loadRefStructures,
 } from '@/api/ref-client'
-import { useAssetStore } from '@/store/asset-store'
-import { useMarketOrdersStore } from '@/store/market-orders-store'
+import { useStoreRegistry } from '@/store/store-registry'
 import { useRegionalMarketStore } from '@/store/regional-market-store'
 import { useESIPricesStore } from '@/store/esi-prices-store'
-import { useIndustryJobsStore } from '@/store/industry-jobs-store'
-import { useContractsStore } from '@/store/contracts-store'
-import { useWalletStore } from '@/store/wallet-store'
-import { useWalletJournalStore } from '@/store/wallet-journal-store'
-import { useClonesStore } from '@/store/clones-store'
-import { useLoyaltyStore } from '@/store/loyalty-store'
-import { useBlueprintsStore } from '@/store/blueprints-store'
-import { useStructuresStore } from '@/store/structures-store'
-import { useStarbasesStore } from '@/store/starbases-store'
 import { useStarbaseDetailsStore } from '@/store/starbase-details-store'
 import { useExpiryCacheStore } from '@/store/expiry-cache-store'
 import { useDivisionsStore } from '@/store/divisions-store'
@@ -43,15 +33,20 @@ interface ClearCacheModalProps {
   onOpenChange: (open: boolean) => void
 }
 
+type CacheGroup = 'reference' | 'data' | 'structures' | 'system'
+
 interface CacheOption {
   id: string
   label: string
-  group: 'reference' | 'data' | 'structures' | 'system'
+  group: CacheGroup
   requiresReload: boolean
   endpointPattern?: string
+  storeNames?: string[]
   clear: () => Promise<void>
   refetch?: () => Promise<void>
 }
+
+const registry = () => useStoreRegistry.getState()
 
 const CACHE_OPTIONS: CacheOption[] = [
   {
@@ -100,11 +95,9 @@ const CACHE_OPTIONS: CacheOption[] = [
     group: 'data',
     requiresReload: false,
     endpointPattern: '/assets/',
-    clear: () => useAssetStore.getState().clear(),
-    refetch: async () => {
-      await useAssetStore.getState().init()
-      await useAssetStore.getState().update(true)
-    },
+    storeNames: ['assets'],
+    clear: () => registry().clearByNames(['assets']),
+    refetch: () => registry().refetchByNames(['assets']),
   },
   {
     id: 'orders',
@@ -112,14 +105,14 @@ const CACHE_OPTIONS: CacheOption[] = [
     group: 'data',
     requiresReload: false,
     endpointPattern: '/orders/',
+    storeNames: ['market orders'],
     clear: async () => {
-      await useMarketOrdersStore.getState().clear()
+      await registry().clearByNames(['market orders'])
       await useRegionalMarketStore.getState().clear()
       await useESIPricesStore.getState().clear()
     },
     refetch: async () => {
-      await useMarketOrdersStore.getState().init()
-      await useMarketOrdersStore.getState().update(true)
+      await registry().refetchByNames(['market orders'])
       await useRegionalMarketStore.getState().init()
       await useESIPricesStore.getState().update(true)
     },
@@ -130,11 +123,9 @@ const CACHE_OPTIONS: CacheOption[] = [
     group: 'data',
     requiresReload: false,
     endpointPattern: '/industry/jobs/',
-    clear: () => useIndustryJobsStore.getState().clear(),
-    refetch: async () => {
-      await useIndustryJobsStore.getState().init()
-      await useIndustryJobsStore.getState().update(true)
-    },
+    storeNames: ['industry jobs'],
+    clear: () => registry().clearByNames(['industry jobs']),
+    refetch: () => registry().refetchByNames(['industry jobs']),
   },
   {
     id: 'contracts',
@@ -142,11 +133,9 @@ const CACHE_OPTIONS: CacheOption[] = [
     group: 'data',
     requiresReload: false,
     endpointPattern: '/contracts/',
-    clear: () => useContractsStore.getState().clear(),
-    refetch: async () => {
-      await useContractsStore.getState().init()
-      await useContractsStore.getState().update(true)
-    },
+    storeNames: ['contracts'],
+    clear: () => registry().clearByNames(['contracts']),
+    refetch: () => registry().refetchByNames(['contracts']),
   },
   {
     id: 'wallet',
@@ -154,16 +143,9 @@ const CACHE_OPTIONS: CacheOption[] = [
     group: 'data',
     requiresReload: false,
     endpointPattern: '/wallet',
-    clear: async () => {
-      await useWalletStore.getState().clear()
-      await useWalletJournalStore.getState().clear()
-    },
-    refetch: async () => {
-      await useWalletStore.getState().init()
-      await useWalletStore.getState().update(true)
-      await useWalletJournalStore.getState().init()
-      await useWalletJournalStore.getState().update(true)
-    },
+    storeNames: ['wallet', 'journal'],
+    clear: () => registry().clearByNames(['wallet', 'journal']),
+    refetch: () => registry().refetchByNames(['wallet', 'journal']),
   },
   {
     id: 'clones',
@@ -171,11 +153,9 @@ const CACHE_OPTIONS: CacheOption[] = [
     group: 'data',
     requiresReload: false,
     endpointPattern: '/clones/',
-    clear: () => useClonesStore.getState().clear(),
-    refetch: async () => {
-      await useClonesStore.getState().init()
-      await useClonesStore.getState().update(true)
-    },
+    storeNames: ['clones'],
+    clear: () => registry().clearByNames(['clones']),
+    refetch: () => registry().refetchByNames(['clones']),
   },
   {
     id: 'loyalty',
@@ -183,11 +163,9 @@ const CACHE_OPTIONS: CacheOption[] = [
     group: 'data',
     requiresReload: false,
     endpointPattern: '/loyalty/points',
-    clear: () => useLoyaltyStore.getState().clear(),
-    refetch: async () => {
-      await useLoyaltyStore.getState().init()
-      await useLoyaltyStore.getState().update(true)
-    },
+    storeNames: ['loyalty'],
+    clear: () => registry().clearByNames(['loyalty']),
+    refetch: () => registry().refetchByNames(['loyalty']),
   },
   {
     id: 'blueprints',
@@ -195,11 +173,9 @@ const CACHE_OPTIONS: CacheOption[] = [
     group: 'data',
     requiresReload: false,
     endpointPattern: '/blueprints/',
-    clear: () => useBlueprintsStore.getState().clear(),
-    refetch: async () => {
-      await useBlueprintsStore.getState().init()
-      await useBlueprintsStore.getState().update(true)
-    },
+    storeNames: ['blueprints'],
+    clear: () => registry().clearByNames(['blueprints']),
+    refetch: () => registry().refetchByNames(['blueprints']),
   },
   {
     id: 'ownedStructures',
@@ -207,11 +183,9 @@ const CACHE_OPTIONS: CacheOption[] = [
     group: 'structures',
     requiresReload: false,
     endpointPattern: '/structures',
-    clear: () => useStructuresStore.getState().clear(),
-    refetch: async () => {
-      await useStructuresStore.getState().init()
-      await useStructuresStore.getState().update(true)
-    },
+    storeNames: ['structures'],
+    clear: () => registry().clearByNames(['structures']),
+    refetch: () => registry().refetchByNames(['structures']),
   },
   {
     id: 'starbases',
@@ -219,14 +193,12 @@ const CACHE_OPTIONS: CacheOption[] = [
     group: 'structures',
     requiresReload: false,
     endpointPattern: '/starbases',
+    storeNames: ['starbases'],
     clear: async () => {
-      await useStarbasesStore.getState().clear()
+      await registry().clearByNames(['starbases'])
       await useStarbaseDetailsStore.getState().clear()
     },
-    refetch: async () => {
-      await useStarbasesStore.getState().init()
-      await useStarbasesStore.getState().update(true)
-    },
+    refetch: () => registry().refetchByNames(['starbases']),
   },
   {
     id: 'esiCache',
@@ -244,19 +216,14 @@ const CACHE_OPTIONS: CacheOption[] = [
   },
 ]
 
-const GROUP_LABELS: Record<CacheOption['group'], string> = {
+const GROUP_LABELS: Record<CacheGroup, string> = {
   reference: 'Reference Data',
   data: 'Character & Corporation Data',
   structures: 'Structure Ownership',
   system: 'System Caches',
 }
 
-const GROUP_ORDER: CacheOption['group'][] = [
-  'reference',
-  'data',
-  'structures',
-  'system',
-]
+const GROUP_ORDER: CacheGroup[] = ['reference', 'data', 'structures', 'system']
 
 export function ClearCacheModal({ open, onOpenChange }: ClearCacheModalProps) {
   const [selected, setSelected] = useState<Set<string>>(new Set())
