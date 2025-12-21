@@ -1,5 +1,11 @@
 import { create, type StoreApi, type UseBoundStore } from 'zustand'
-import { useAuthStore, type Owner, type OwnerType, ownerKey as makeOwnerKey, findOwnerByKey } from './auth-store'
+import {
+  useAuthStore,
+  type Owner,
+  type OwnerType,
+  ownerKey as makeOwnerKey,
+  findOwnerByKey,
+} from './auth-store'
 import { useExpiryCacheStore } from './expiry-cache-store'
 import { logger } from '@/lib/logger'
 import { triggerResolution } from '@/lib/data-resolver'
@@ -20,7 +26,12 @@ interface VisibilityRecord {
   itemIds: number[]
 }
 
-export interface VisibilityStoreConfig<TItem, TStoredItem extends StoredItem<TItem>> {
+export interface VisibilityStoreConfig<
+  TItem,
+  TStoredItem extends StoredItem<TItem>,
+  TExtraState extends object = object,
+  TExtraActions extends object = object,
+> {
   name: string
   moduleName: string
   endpointPattern: string
@@ -29,11 +40,17 @@ export interface VisibilityStoreConfig<TItem, TStoredItem extends StoredItem<TIt
   itemKeyName: string
   getEndpoint: (owner: Owner) => string
   getItemId: (item: TItem) => number
-  fetchData: (owner: Owner) => Promise<{ data: TItem[]; expiresAt: number; etag: string | null }>
+  fetchData: (
+    owner: Owner
+  ) => Promise<{ data: TItem[]; expiresAt: number; etag: string | null }>
   toStoredItem: (owner: Owner, item: TItem) => TStoredItem
   isEmpty?: (items: TItem[]) => boolean
   onAfterInit?: (itemsById: Map<number, TStoredItem>) => void
-  onBeforeOwnerUpdate?: (owner: Owner, previousVisibility: Set<number>, itemsById: Map<number, TStoredItem>) => void
+  onBeforeOwnerUpdate?: (
+    owner: Owner,
+    previousVisibility: Set<number>,
+    itemsById: Map<number, TStoredItem>
+  ) => void
   onAfterOwnerUpdate?: (params: {
     owner: Owner
     newItems: TItem[]
@@ -42,6 +59,18 @@ export interface VisibilityStoreConfig<TItem, TStoredItem extends StoredItem<TIt
   }) => void
   onAfterBatchUpdate?: (itemsById: Map<number, TStoredItem>) => void
   shouldDeleteStaleItems?: boolean
+  shouldUpdateExisting?: boolean
+  extraState?: TExtraState
+  rebuildExtraState?: (
+    itemsById: Map<number, TStoredItem>
+  ) => Partial<TExtraState>
+  extraActions?: (
+    set: (partial: Partial<VisibilityState<TStoredItem> & TExtraState>) => void,
+    get: () => VisibilityState<TStoredItem> &
+      VisibilityActions &
+      TExtraState &
+      TExtraActions
+  ) => TExtraActions
 }
 
 export interface VisibilityState<TStoredItem> {
@@ -61,7 +90,14 @@ export interface VisibilityActions {
   clear: () => Promise<void>
 }
 
-export type VisibilityStore<TStoredItem> = VisibilityState<TStoredItem> & VisibilityActions
+export type VisibilityStore<
+  TStoredItem,
+  TExtraState extends object = object,
+  TExtraActions extends object = object,
+> = VisibilityState<TStoredItem> &
+  VisibilityActions &
+  TExtraState &
+  TExtraActions
 
 interface DBContext {
   db: IDBDatabase | null
@@ -79,7 +115,9 @@ async function openDB(ctx: DBContext): Promise<IDBDatabase> {
     const request = indexedDB.open(ctx.dbName, 1)
 
     request.onerror = () => {
-      logger.error(`Failed to open ${ctx.itemStoreName} DB`, request.error, { module: ctx.moduleName })
+      logger.error(`Failed to open ${ctx.itemStoreName} DB`, request.error, {
+        module: ctx.moduleName,
+      })
       reject(request.error)
     }
 
@@ -91,10 +129,14 @@ async function openDB(ctx: DBContext): Promise<IDBDatabase> {
     request.onupgradeneeded = (event) => {
       const database = (event.target as IDBOpenDBRequest).result
       if (!database.objectStoreNames.contains(ctx.itemStoreName)) {
-        database.createObjectStore(ctx.itemStoreName, { keyPath: ctx.itemKeyName })
+        database.createObjectStore(ctx.itemStoreName, {
+          keyPath: ctx.itemKeyName,
+        })
       }
       if (!database.objectStoreNames.contains(ctx.visibilityStoreName)) {
-        database.createObjectStore(ctx.visibilityStoreName, { keyPath: 'ownerKey' })
+        database.createObjectStore(ctx.visibilityStoreName, {
+          keyPath: 'ownerKey',
+        })
       }
     }
   })
@@ -104,11 +146,17 @@ async function loadFromDB<TStoredItem>(
   ctx: DBContext,
   toStoredItem: (record: Record<string, unknown>) => TStoredItem,
   getItemId: (stored: TStoredItem) => number
-): Promise<{ items: Map<number, TStoredItem>; visibility: Map<string, Set<number>> }> {
+): Promise<{
+  items: Map<number, TStoredItem>
+  visibility: Map<string, Set<number>>
+}> {
   const database = await openDB(ctx)
 
   return new Promise((resolve, reject) => {
-    const tx = database.transaction([ctx.itemStoreName, ctx.visibilityStoreName], 'readonly')
+    const tx = database.transaction(
+      [ctx.itemStoreName, ctx.visibilityStoreName],
+      'readonly'
+    )
     const itemsStore = tx.objectStore(ctx.itemStoreName)
     const visibilityStore = tx.objectStore(ctx.visibilityStoreName)
 
@@ -153,7 +201,10 @@ async function saveItemsToDB<TStoredItem>(
   })
 }
 
-async function deleteItemsFromDB(ctx: DBContext, itemIds: number[]): Promise<void> {
+async function deleteItemsFromDB(
+  ctx: DBContext,
+  itemIds: number[]
+): Promise<void> {
   if (itemIds.length === 0) return
   const database = await openDB(ctx)
 
@@ -168,19 +219,29 @@ async function deleteItemsFromDB(ctx: DBContext, itemIds: number[]): Promise<voi
   })
 }
 
-async function saveVisibilityToDB(ctx: DBContext, ownerKeyStr: string, itemIds: Set<number>): Promise<void> {
+async function saveVisibilityToDB(
+  ctx: DBContext,
+  ownerKeyStr: string,
+  itemIds: Set<number>
+): Promise<void> {
   const database = await openDB(ctx)
 
   return new Promise((resolve, reject) => {
     const tx = database.transaction([ctx.visibilityStoreName], 'readwrite')
     const store = tx.objectStore(ctx.visibilityStoreName)
-    store.put({ ownerKey: ownerKeyStr, itemIds: [...itemIds] } as VisibilityRecord)
+    store.put({
+      ownerKey: ownerKeyStr,
+      itemIds: [...itemIds],
+    } as VisibilityRecord)
     tx.oncomplete = () => resolve()
     tx.onerror = () => reject(tx.error)
   })
 }
 
-async function deleteVisibilityFromDB(ctx: DBContext, ownerKeyStr: string): Promise<void> {
+async function deleteVisibilityFromDB(
+  ctx: DBContext,
+  ownerKeyStr: string
+): Promise<void> {
   const database = await openDB(ctx)
 
   return new Promise((resolve, reject) => {
@@ -196,7 +257,10 @@ async function clearDB(ctx: DBContext): Promise<void> {
   const database = await openDB(ctx)
 
   return new Promise((resolve, reject) => {
-    const tx = database.transaction([ctx.itemStoreName, ctx.visibilityStoreName], 'readwrite')
+    const tx = database.transaction(
+      [ctx.itemStoreName, ctx.visibilityStoreName],
+      'readwrite'
+    )
     tx.objectStore(ctx.itemStoreName).clear()
     tx.objectStore(ctx.visibilityStoreName).clear()
     tx.oncomplete = () => resolve()
@@ -204,7 +268,9 @@ async function clearDB(ctx: DBContext): Promise<void> {
   })
 }
 
-function collectVisibleItemIds(visibilityByOwner: Map<string, Set<number>>): Set<number> {
+function collectVisibleItemIds(
+  visibilityByOwner: Map<string, Set<number>>
+): Set<number> {
   const visible = new Set<number>()
   for (const itemIds of visibilityByOwner.values()) {
     for (const id of itemIds) visible.add(id)
@@ -226,9 +292,16 @@ function removeStaleItems<TStoredItem>(
   return staleIds
 }
 
-export function createVisibilityStore<TItem, TStoredItem extends StoredItem<TItem>>(
-  config: VisibilityStoreConfig<TItem, TStoredItem>
-): UseBoundStore<StoreApi<VisibilityStore<TStoredItem>>> {
+export function createVisibilityStore<
+  TItem,
+  TStoredItem extends StoredItem<TItem>,
+  TExtraState extends object = object,
+  TExtraActions extends object = object,
+>(
+  config: VisibilityStoreConfig<TItem, TStoredItem, TExtraState, TExtraActions>
+): UseBoundStore<
+  StoreApi<VisibilityStore<TStoredItem, TExtraState, TExtraActions>>
+> {
   const {
     name,
     moduleName,
@@ -246,6 +319,10 @@ export function createVisibilityStore<TItem, TStoredItem extends StoredItem<TIte
     onAfterOwnerUpdate,
     onAfterBatchUpdate,
     shouldDeleteStaleItems = true,
+    shouldUpdateExisting = false,
+    extraState,
+    rebuildExtraState,
+    extraActions,
   } = config
 
   const dbCtx: DBContext = {
@@ -257,266 +334,352 @@ export function createVisibilityStore<TItem, TStoredItem extends StoredItem<TIte
     moduleName,
   }
 
-  const toRecord = (id: number, stored: TStoredItem): Record<string, unknown> => ({
+  const toRecord = (
+    id: number,
+    stored: TStoredItem
+  ): Record<string, unknown> => ({
     [itemKeyName]: id,
     item: stored.item,
     sourceOwner: stored.sourceOwner,
   })
 
-  const fromRecord = (record: Record<string, unknown>): TStoredItem => ({
-    item: record.item as TItem,
-    sourceOwner: record.sourceOwner as SourceOwner,
-  }) as TStoredItem
+  const fromRecord = (record: Record<string, unknown>): TStoredItem =>
+    ({
+      item: record.item as TItem,
+      sourceOwner: record.sourceOwner as SourceOwner,
+    }) as TStoredItem
 
-  const store = create<VisibilityStore<TStoredItem>>((set, get) => ({
-    itemsById: new Map(),
-    visibilityByOwner: new Map(),
-    isUpdating: false,
-    updateError: null,
-    initialized: false,
-    updateCounter: 0,
+  type FullStore = VisibilityStore<TStoredItem, TExtraState, TExtraActions>
+  type FullState = VisibilityState<TStoredItem> & TExtraState
 
-    init: async () => {
-      if (get().initialized) return
+  const store = create<FullStore>((set, get) => {
+    const baseSet = (partial: Partial<FullState>) =>
+      set(partial as Partial<FullStore>)
 
-      try {
-        const { items, visibility } = await loadFromDB(dbCtx, fromRecord, (s) => getItemId(s.item))
+    const extras = extraActions
+      ? extraActions(baseSet, get as () => FullStore)
+      : ({} as TExtraActions)
 
-        set((s) => ({
-          itemsById: items,
-          visibilityByOwner: visibility,
-          initialized: true,
-          updateCounter: s.updateCounter + 1,
-        }))
+    return {
+      itemsById: new Map(),
+      visibilityByOwner: new Map(),
+      isUpdating: false,
+      updateError: null,
+      initialized: false,
+      updateCounter: 0,
+      ...(extraState ?? ({} as TExtraState)),
+      ...extras,
 
-        if (items.size > 0) {
-          triggerResolution()
-          onAfterInit?.(items)
+      init: async () => {
+        if (get().initialized) return
+
+        try {
+          const { items, visibility } = await loadFromDB(
+            dbCtx,
+            fromRecord,
+            (s) => getItemId(s.item)
+          )
+          const extra = rebuildExtraState ? rebuildExtraState(items) : {}
+
+          set({
+            itemsById: items,
+            visibilityByOwner: visibility,
+            initialized: true,
+            updateCounter: get().updateCounter + 1,
+            ...extra,
+          } as Partial<FullStore>)
+
+          if (items.size > 0) {
+            triggerResolution()
+            onAfterInit?.(items)
+          }
+
+          logger.info(`${name} store initialized`, {
+            module: moduleName,
+            items: items.size,
+            owners: visibility.size,
+          })
+        } catch (err) {
+          logger.error(
+            `Failed to load ${name} from DB`,
+            err instanceof Error ? err : undefined,
+            {
+              module: moduleName,
+            }
+          )
+          set({ initialized: true } as Partial<FullStore>)
+        }
+      },
+
+      update: async (force = false) => {
+        const state = get()
+        if (!state.initialized) await get().init()
+        if (get().isUpdating) return
+
+        const allOwners = Object.values(useAuthStore.getState().owners)
+        if (allOwners.length === 0) {
+          set({ updateError: 'No owners logged in' } as Partial<FullStore>)
+          return
         }
 
-        logger.info(`${name} store initialized`, {
-          module: moduleName,
-          items: items.size,
-          owners: visibility.size,
-        })
-      } catch (err) {
-        logger.error(`Failed to load ${name} from DB`, err instanceof Error ? err : undefined, {
-          module: moduleName,
-        })
-        set({ initialized: true })
-      }
-    },
+        const expiryCacheStore = useExpiryCacheStore.getState()
+        const ownersToUpdate = force
+          ? allOwners.filter(
+              (o): o is Owner => o !== undefined && !o.authFailed
+            )
+          : allOwners.filter((owner): owner is Owner => {
+              if (!owner || owner.authFailed) return false
+              const key = `${owner.type}-${owner.id}`
+              return expiryCacheStore.isExpired(key, getEndpoint(owner))
+            })
 
-    update: async (force = false) => {
-      const state = get()
-      if (!state.initialized) await get().init()
-      if (get().isUpdating) return
+        if (ownersToUpdate.length === 0) return
 
-      const allOwners = Object.values(useAuthStore.getState().owners)
-      if (allOwners.length === 0) {
-        set({ updateError: 'No owners logged in' })
-        return
-      }
+        set({ isUpdating: true, updateError: null } as Partial<FullStore>)
 
-      const expiryCacheStore = useExpiryCacheStore.getState()
-      const ownersToUpdate = force
-        ? allOwners.filter((o): o is Owner => o !== undefined && !o.authFailed)
-        : allOwners.filter((owner): owner is Owner => {
-            if (!owner || owner.authFailed) return false
-            const key = `${owner.type}-${owner.id}`
-            return expiryCacheStore.isExpired(key, getEndpoint(owner))
+        try {
+          const itemsById = new Map(get().itemsById)
+          const visibilityByOwner = new Map(get().visibilityByOwner)
+          const itemBatch: Array<{ id: number; stored: TStoredItem }> = []
+
+          for (const owner of ownersToUpdate) {
+            const currentOwnerKey = makeOwnerKey(owner.type, owner.id)
+            const endpoint = getEndpoint(owner)
+
+            try {
+              logger.info(`Fetching ${name}`, {
+                module: moduleName,
+                owner: owner.name,
+              })
+              const { data: items, expiresAt, etag } = await fetchData(owner)
+
+              const ownerVisibility = new Set<number>()
+              for (const item of items) {
+                const itemId = getItemId(item)
+                ownerVisibility.add(itemId)
+
+                if (!itemsById.has(itemId) || shouldUpdateExisting) {
+                  const stored = toStoredItem(owner, item)
+                  itemsById.set(itemId, stored)
+                  itemBatch.push({ id: itemId, stored })
+                }
+              }
+
+              visibilityByOwner.set(currentOwnerKey, ownerVisibility)
+              await saveVisibilityToDB(dbCtx, currentOwnerKey, ownerVisibility)
+
+              const isDataEmpty = isEmpty ? isEmpty(items) : items.length === 0
+              useExpiryCacheStore
+                .getState()
+                .setExpiry(
+                  currentOwnerKey,
+                  endpoint,
+                  expiresAt,
+                  etag,
+                  isDataEmpty
+                )
+            } catch (err) {
+              logger.error(
+                `Failed to fetch ${name}`,
+                err instanceof Error ? err : undefined,
+                {
+                  module: moduleName,
+                  owner: owner.name,
+                }
+              )
+            }
+          }
+
+          await saveItemsToDB(dbCtx, itemBatch, toRecord)
+
+          if (shouldDeleteStaleItems) {
+            const visibleIds = collectVisibleItemIds(visibilityByOwner)
+            const staleIds = removeStaleItems(itemsById, visibleIds)
+            if (staleIds.length > 0) {
+              await deleteItemsFromDB(dbCtx, staleIds)
+              logger.info(`Cleaned up stale ${name}`, {
+                module: moduleName,
+                count: staleIds.length,
+              })
+            }
+          }
+
+          onAfterBatchUpdate?.(itemsById)
+
+          const extra = rebuildExtraState ? rebuildExtraState(itemsById) : {}
+          set({
+            itemsById,
+            visibilityByOwner,
+            isUpdating: false,
+            updateError:
+              itemsById.size === 0 ? `Failed to fetch any ${name}` : null,
+            updateCounter: get().updateCounter + 1,
+            ...extra,
+          } as Partial<FullStore>)
+
+          triggerResolution()
+
+          logger.info(`${name} updated`, {
+            module: moduleName,
+            owners: ownersToUpdate.length,
+            totalItems: itemsById.size,
           })
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'Unknown error'
+          set({ isUpdating: false, updateError: message } as Partial<FullStore>)
+          logger.error(
+            `${name} update failed`,
+            err instanceof Error ? err : undefined,
+            { module: moduleName }
+          )
+        }
+      },
 
-      if (ownersToUpdate.length === 0) return
+      updateForOwner: async (owner: Owner) => {
+        const state = get()
+        if (!state.initialized) await get().init()
 
-      set({ isUpdating: true, updateError: null })
-
-      try {
-        const itemsById = new Map(get().itemsById)
-        const visibilityByOwner = new Map(get().visibilityByOwner)
-        const itemBatch: Array<{ id: number; stored: TStoredItem }> = []
-
-        for (const owner of ownersToUpdate) {
+        try {
           const currentOwnerKey = makeOwnerKey(owner.type, owner.id)
           const endpoint = getEndpoint(owner)
+          const previousVisibility =
+            state.visibilityByOwner.get(currentOwnerKey) ?? new Set()
 
-          try {
-            logger.info(`Fetching ${name}`, { module: moduleName, owner: owner.name })
-            const { data: items, expiresAt, etag } = await fetchData(owner)
+          onBeforeOwnerUpdate?.(owner, previousVisibility, state.itemsById)
 
-            const ownerVisibility = new Set<number>()
-            for (const item of items) {
-              const itemId = getItemId(item)
-              ownerVisibility.add(itemId)
+          logger.info(`Fetching ${name} for owner`, {
+            module: moduleName,
+            owner: owner.name,
+          })
+          const { data: items, expiresAt, etag } = await fetchData(owner)
 
-              if (!itemsById.has(itemId)) {
-                const stored = toStoredItem(owner, item)
-                itemsById.set(itemId, stored)
-                itemBatch.push({ id: itemId, stored })
-              }
+          const itemsById = new Map(state.itemsById)
+          const visibilityByOwner = new Map(state.visibilityByOwner)
+          const itemBatch: Array<{ id: number; stored: TStoredItem }> = []
+
+          const ownerVisibility = new Set<number>()
+          for (const item of items) {
+            const itemId = getItemId(item)
+            ownerVisibility.add(itemId)
+
+            const stored = toStoredItem(owner, item)
+            itemsById.set(itemId, stored)
+            itemBatch.push({ id: itemId, stored })
+          }
+
+          await saveItemsToDB(dbCtx, itemBatch, toRecord)
+          visibilityByOwner.set(currentOwnerKey, ownerVisibility)
+          await saveVisibilityToDB(dbCtx, currentOwnerKey, ownerVisibility)
+
+          onAfterOwnerUpdate?.({
+            owner,
+            newItems: items,
+            previousVisibility,
+            itemsById,
+          })
+
+          if (shouldDeleteStaleItems) {
+            const visibleIds = collectVisibleItemIds(visibilityByOwner)
+            const staleIds = removeStaleItems(itemsById, visibleIds)
+            if (staleIds.length > 0) {
+              await deleteItemsFromDB(dbCtx, staleIds)
+              logger.info(`Cleaned up stale ${name}`, {
+                module: moduleName,
+                count: staleIds.length,
+              })
             }
+          }
 
-            visibilityByOwner.set(currentOwnerKey, ownerVisibility)
-            await saveVisibilityToDB(dbCtx, currentOwnerKey, ownerVisibility)
+          const isDataEmpty = isEmpty ? isEmpty(items) : items.length === 0
+          useExpiryCacheStore
+            .getState()
+            .setExpiry(currentOwnerKey, endpoint, expiresAt, etag, isDataEmpty)
 
-            const isDataEmpty = isEmpty ? isEmpty(items) : items.length === 0
-            useExpiryCacheStore.getState().setExpiry(currentOwnerKey, endpoint, expiresAt, etag, isDataEmpty)
-          } catch (err) {
-            logger.error(`Failed to fetch ${name}`, err instanceof Error ? err : undefined, {
+          const extra = rebuildExtraState ? rebuildExtraState(itemsById) : {}
+          set({
+            itemsById,
+            visibilityByOwner,
+            updateCounter: get().updateCounter + 1,
+            ...extra,
+          } as Partial<FullStore>)
+
+          triggerResolution()
+
+          logger.info(`${name} updated for owner`, {
+            module: moduleName,
+            owner: owner.name,
+            items: items.length,
+          })
+        } catch (err) {
+          logger.error(
+            `Failed to fetch ${name} for owner`,
+            err instanceof Error ? err : undefined,
+            {
               module: moduleName,
               owner: owner.name,
-            })
-          }
+            }
+          )
         }
+      },
 
-        await saveItemsToDB(dbCtx, itemBatch, toRecord)
+      removeForOwner: async (ownerType: string, ownerId: number) => {
+        const state = get()
+        const currentOwnerKey = `${ownerType}-${ownerId}`
 
-        if (shouldDeleteStaleItems) {
-          const visibleIds = collectVisibleItemIds(visibilityByOwner)
-          const staleIds = removeStaleItems(itemsById, visibleIds)
-          if (staleIds.length > 0) {
-            await deleteItemsFromDB(dbCtx, staleIds)
-            logger.info(`Cleaned up stale ${name}`, { module: moduleName, count: staleIds.length })
-          }
-        }
+        if (!state.visibilityByOwner.has(currentOwnerKey)) return
 
-        onAfterBatchUpdate?.(itemsById)
+        const visibilityByOwner = new Map(state.visibilityByOwner)
+        visibilityByOwner.delete(currentOwnerKey)
 
-        set((s) => ({
-          itemsById,
-          visibilityByOwner,
-          isUpdating: false,
-          updateError: itemsById.size === 0 ? `Failed to fetch any ${name}` : null,
-          updateCounter: s.updateCounter + 1,
-        }))
-
-        triggerResolution()
-
-        logger.info(`${name} updated`, {
-          module: moduleName,
-          owners: ownersToUpdate.length,
-          totalItems: itemsById.size,
-        })
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Unknown error'
-        set({ isUpdating: false, updateError: message })
-        logger.error(`${name} update failed`, err instanceof Error ? err : undefined, { module: moduleName })
-      }
-    },
-
-    updateForOwner: async (owner: Owner) => {
-      const state = get()
-      if (!state.initialized) await get().init()
-
-      try {
-        const currentOwnerKey = makeOwnerKey(owner.type, owner.id)
-        const endpoint = getEndpoint(owner)
-        const previousVisibility = state.visibilityByOwner.get(currentOwnerKey) ?? new Set()
-
-        onBeforeOwnerUpdate?.(owner, previousVisibility, state.itemsById)
-
-        logger.info(`Fetching ${name} for owner`, { module: moduleName, owner: owner.name })
-        const { data: items, expiresAt, etag } = await fetchData(owner)
+        await deleteVisibilityFromDB(dbCtx, currentOwnerKey)
 
         const itemsById = new Map(state.itemsById)
-        const visibilityByOwner = new Map(state.visibilityByOwner)
-        const itemBatch: Array<{ id: number; stored: TStoredItem }> = []
-
-        const ownerVisibility = new Set<number>()
-        for (const item of items) {
-          const itemId = getItemId(item)
-          ownerVisibility.add(itemId)
-
-          const stored = toStoredItem(owner, item)
-          itemsById.set(itemId, stored)
-          itemBatch.push({ id: itemId, stored })
-        }
-
-        await saveItemsToDB(dbCtx, itemBatch, toRecord)
-        visibilityByOwner.set(currentOwnerKey, ownerVisibility)
-        await saveVisibilityToDB(dbCtx, currentOwnerKey, ownerVisibility)
-
-        onAfterOwnerUpdate?.({ owner, newItems: items, previousVisibility, itemsById })
-
         if (shouldDeleteStaleItems) {
           const visibleIds = collectVisibleItemIds(visibilityByOwner)
           const staleIds = removeStaleItems(itemsById, visibleIds)
           if (staleIds.length > 0) {
             await deleteItemsFromDB(dbCtx, staleIds)
-            logger.info(`Cleaned up stale ${name}`, { module: moduleName, count: staleIds.length })
           }
         }
 
-        const isDataEmpty = isEmpty ? isEmpty(items) : items.length === 0
-        useExpiryCacheStore.getState().setExpiry(currentOwnerKey, endpoint, expiresAt, etag, isDataEmpty)
+        const extra = rebuildExtraState ? rebuildExtraState(itemsById) : {}
+        set({ itemsById, visibilityByOwner, ...extra } as Partial<FullStore>)
 
-        set((s) => ({
-          itemsById,
-          visibilityByOwner,
-          updateCounter: s.updateCounter + 1,
-        }))
+        useExpiryCacheStore.getState().clearForOwner(currentOwnerKey)
 
-        triggerResolution()
-
-        logger.info(`${name} updated for owner`, {
+        logger.info(`${name} removed for owner`, {
           module: moduleName,
-          owner: owner.name,
-          items: items.length,
+          ownerKey: currentOwnerKey,
         })
-      } catch (err) {
-        logger.error(`Failed to fetch ${name} for owner`, err instanceof Error ? err : undefined, {
-          module: moduleName,
-          owner: owner.name,
-        })
-      }
-    },
+      },
 
-    removeForOwner: async (ownerType: string, ownerId: number) => {
-      const state = get()
-      const currentOwnerKey = `${ownerType}-${ownerId}`
-
-      if (!state.visibilityByOwner.has(currentOwnerKey)) return
-
-      const visibilityByOwner = new Map(state.visibilityByOwner)
-      visibilityByOwner.delete(currentOwnerKey)
-
-      await deleteVisibilityFromDB(dbCtx, currentOwnerKey)
-
-      const itemsById = new Map(state.itemsById)
-      if (shouldDeleteStaleItems) {
-        const visibleIds = collectVisibleItemIds(visibilityByOwner)
-        const staleIds = removeStaleItems(itemsById, visibleIds)
-        if (staleIds.length > 0) {
-          await deleteItemsFromDB(dbCtx, staleIds)
-        }
-      }
-
-      set({ itemsById, visibilityByOwner })
-
-      useExpiryCacheStore.getState().clearForOwner(currentOwnerKey)
-
-      logger.info(`${name} removed for owner`, { module: moduleName, ownerKey: currentOwnerKey })
-    },
-
-    clear: async () => {
-      await clearDB(dbCtx)
-      set({
-        itemsById: new Map(),
-        visibilityByOwner: new Map(),
-        updateError: null,
-        initialized: false,
-      })
-    },
-  }))
-
-  useExpiryCacheStore.getState().registerRefreshCallback(endpointPattern, async (ownerKeyStr) => {
-    const owner = findOwnerByKey(ownerKeyStr)
-    if (!owner) {
-      logger.warn('Owner not found for refresh', { module: moduleName, ownerKey: ownerKeyStr })
-      return
+      clear: async () => {
+        await clearDB(dbCtx)
+        const extra = extraState ? { ...extraState } : {}
+        set({
+          itemsById: new Map(),
+          visibilityByOwner: new Map(),
+          updateError: null,
+          initialized: false,
+          ...extra,
+        } as Partial<FullStore>)
+      },
     }
-    await store.getState().updateForOwner(owner)
   })
+
+  useExpiryCacheStore
+    .getState()
+    .registerRefreshCallback(endpointPattern, async (ownerKeyStr) => {
+      const owner = findOwnerByKey(ownerKeyStr)
+      if (!owner) {
+        logger.warn('Owner not found for refresh', {
+          module: moduleName,
+          ownerKey: ownerKeyStr,
+        })
+        return
+      }
+      await store.getState().updateForOwner(owner)
+    })
 
   return store
 }

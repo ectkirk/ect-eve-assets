@@ -68,12 +68,20 @@ function collectFromAssets(
         ids.typeIds.add(asset.type_id)
       }
 
-      if (asset.location_type !== 'item' && asset.location_id <= 1_000_000_000_000 && !hasLocation(asset.location_id)) {
+      if (
+        asset.location_type !== 'item' &&
+        asset.location_id <= 1_000_000_000_000 &&
+        !hasLocation(asset.location_id)
+      ) {
         ids.locationIds.add(asset.location_id)
       }
 
       const type = hasType(asset.type_id) ? getType(asset.type_id) : undefined
-      if (type?.categoryId === 65 && asset.location_type === 'solar_system' && !hasStructure(asset.item_id)) {
+      if (
+        type?.categoryId === 65 &&
+        asset.location_type === 'solar_system' &&
+        !hasStructure(asset.item_id)
+      ) {
         ids.structureToCharacter.set(asset.item_id, owner.characterId)
       }
 
@@ -89,7 +97,10 @@ function collectFromContracts(
   contractsByOwner: OwnerContracts[],
   ids: ResolutionIds
 ): void {
-  const checkLocation = (locationId: number | undefined, characterId: number) => {
+  const checkLocation = (
+    locationId: number | undefined,
+    characterId: number
+  ) => {
     if (!locationId) return
     if (locationId > 1_000_000_000_000) {
       if (!hasStructure(locationId)) {
@@ -141,10 +152,7 @@ function collectFromOrders(
   }
 }
 
-function collectFromJobs(
-  jobsByOwner: OwnerJobs[],
-  ids: ResolutionIds
-): void {
+function collectFromJobs(jobsByOwner: OwnerJobs[], ids: ResolutionIds): void {
   for (const { owner, jobs } of jobsByOwner) {
     for (const job of jobs) {
       if (needsTypeResolution(job.blueprint_type_id)) {
@@ -282,7 +290,9 @@ export async function collectResolutionIds(
   return ids
 }
 
-export async function resolveAllReferenceData(ids: ResolutionIds): Promise<void> {
+export async function resolveAllReferenceData(
+  ids: ResolutionIds
+): Promise<void> {
   const hasWork =
     ids.typeIds.size > 0 ||
     ids.structureToCharacter.size > 0 ||
@@ -299,13 +309,15 @@ export async function resolveAllReferenceData(ids: ResolutionIds): Promise<void>
     entities: ids.entityIds.size,
   })
 
-  const typesPromise = ids.typeIds.size > 0
-    ? resolveTypes(Array.from(ids.typeIds)).catch(() => {})
-    : Promise.resolve()
+  const typesPromise =
+    ids.typeIds.size > 0
+      ? resolveTypes(Array.from(ids.typeIds)).catch(() => {})
+      : Promise.resolve()
 
-  const entitiesPromise = ids.entityIds.size > 0
-    ? resolveNames(Array.from(ids.entityIds)).catch(() => {})
-    : Promise.resolve()
+  const entitiesPromise =
+    ids.entityIds.size > 0
+      ? resolveNames(Array.from(ids.entityIds)).catch(() => {})
+      : Promise.resolve()
 
   if (ids.structureToCharacter.size > 0) {
     await resolveStructures(ids.structureToCharacter).catch(() => {})
@@ -318,9 +330,10 @@ export async function resolveAllReferenceData(ids: ResolutionIds): Promise<void>
     }
   }
 
-  const locationsPromise = ids.locationIds.size > 0
-    ? resolveLocations(Array.from(ids.locationIds)).catch(() => {})
-    : Promise.resolve()
+  const locationsPromise =
+    ids.locationIds.size > 0
+      ? resolveLocations(Array.from(ids.locationIds)).catch(() => {})
+      : Promise.resolve()
 
   await Promise.all([typesPromise, entitiesPromise, locationsPromise])
 
@@ -354,7 +367,7 @@ async function runResolution(): Promise<void> {
     useAssetStore.getState().assetsByOwner,
     useContractsStore.getState().getContractsByOwner(),
     useMarketOrdersStore.getOrdersByOwner(),
-    useIndustryJobsStore.getState().getJobsByOwner(),
+    useIndustryJobsStore.getJobsByOwner(),
     useStructuresStore.getState().dataByOwner,
     useStarbasesStore.getState().dataByOwner,
     useClonesStore.getState().dataByOwner,

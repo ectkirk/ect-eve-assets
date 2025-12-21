@@ -1,8 +1,16 @@
 import { create } from 'zustand'
 import { useAuthStore, type Owner, findOwnerByKey } from './auth-store'
 import { useExpiryCacheStore } from './expiry-cache-store'
-import { getCharacterAssetNames, getCorporationAssetNames, type ESIAsset, type ESIAssetName } from '@/api/endpoints/assets'
-import { getCharacterShip, getCharacterLocation } from '@/api/endpoints/location'
+import {
+  getCharacterAssetNames,
+  getCorporationAssetNames,
+  type ESIAsset,
+  type ESIAssetName,
+} from '@/api/endpoints/assets'
+import {
+  getCharacterShip,
+  getCharacterLocation,
+} from '@/api/endpoints/location'
 import { esi, type ESIResponseMeta } from '@/api/esi'
 import { ESIAssetSchema } from '@/api/schemas'
 import { fetchPrices, queuePriceRefresh, resolveTypes } from '@/api/ref-client'
@@ -18,7 +26,10 @@ import { useStructuresStore, type OwnerStructures } from './structures-store'
 const NAMEABLE_CATEGORIES = new Set([6, 22, 65])
 const NAMEABLE_GROUPS = new Set([12, 14, 340, 448, 649])
 const ENDPOINT_PATTERN = '/assets/'
-const LOCATION_SCOPES = ['esi-location.read_location.v1', 'esi-location.read_ship_type.v1']
+const LOCATION_SCOPES = [
+  'esi-location.read_location.v1',
+  'esi-location.read_ship_type.v1',
+]
 
 interface ActiveShipResult {
   syntheticShip: ESIAsset | null
@@ -31,11 +42,15 @@ async function detectAndInjectActiveShip(
   assets: ESIAsset[],
   ownerKey: string
 ): Promise<ActiveShipResult> {
-  const nullResult: ActiveShipResult = { syntheticShip: null, shipName: null, shipItemId: null }
+  const nullResult: ActiveShipResult = {
+    syntheticShip: null,
+    shipName: null,
+    shipItemId: null,
+  }
 
   if (owner.type !== 'character') return nullResult
 
-  const allItemIds = new Set(assets.map(a => a.item_id))
+  const allItemIds = new Set(assets.map((a) => a.item_id))
   const missingParentIds = new Set<number>()
   for (const asset of assets) {
     if (asset.location_type === 'item' && !allItemIds.has(asset.location_id)) {
@@ -45,7 +60,7 @@ async function detectAndInjectActiveShip(
 
   if (missingParentIds.size === 0) return nullResult
 
-  const hasLocationScopes = LOCATION_SCOPES.every(scope =>
+  const hasLocationScopes = LOCATION_SCOPES.every((scope) =>
     useAuthStore.getState().ownerHasScope(ownerKey, scope)
   )
 
@@ -78,8 +93,15 @@ async function detectAndInjectActiveShip(
     const syntheticShip: ESIAsset = {
       item_id: shipInfo.ship_item_id,
       type_id: shipInfo.ship_type_id,
-      location_id: locationInfo.structure_id ?? locationInfo.station_id ?? locationInfo.solar_system_id,
-      location_type: locationInfo.structure_id ? 'other' : locationInfo.station_id ? 'station' : 'solar_system',
+      location_id:
+        locationInfo.structure_id ??
+        locationInfo.station_id ??
+        locationInfo.solar_system_id,
+      location_type: locationInfo.structure_id
+        ? 'other'
+        : locationInfo.station_id
+          ? 'station'
+          : 'solar_system',
       location_flag: 'ActiveShip',
       quantity: 1,
       is_singleton: true,
@@ -101,7 +123,10 @@ async function detectAndInjectActiveShip(
       shipItemId: shipInfo.ship_item_id,
     }
   } catch {
-    logger.warn('Failed to fetch active ship info', { module: 'AssetStore', owner: owner.name })
+    logger.warn('Failed to fetch active ship info', {
+      module: 'AssetStore',
+      owner: owner.name,
+    })
     return nullResult
   }
 }
@@ -161,7 +186,9 @@ function getAssetEndpoint(owner: Owner): string {
   return `/characters/${owner.id}/assets/`
 }
 
-async function fetchOwnerAssetsWithMeta(owner: Owner): Promise<ESIResponseMeta<ESIAsset[]>> {
+async function fetchOwnerAssetsWithMeta(
+  owner: Owner
+): Promise<ESIResponseMeta<ESIAsset[]>> {
   const endpoint = getAssetEndpoint(owner)
   return esi.fetchPaginatedWithMeta<ESIAsset>(endpoint, {
     characterId: owner.characterId,
@@ -172,22 +199,44 @@ async function fetchOwnerAssetsWithMeta(owner: Owner): Promise<ESIResponseMeta<E
 function isNameable(typeId: number): boolean {
   const type = getType(typeId)
   if (!type) return false
-  return NAMEABLE_CATEGORIES.has(type.categoryId) || NAMEABLE_GROUPS.has(type.groupId)
+  return (
+    NAMEABLE_CATEGORIES.has(type.categoryId) ||
+    NAMEABLE_GROUPS.has(type.groupId)
+  )
 }
 
-async function fetchOwnerAssetNames(owner: Owner, assets: ESIAsset[]): Promise<ESIAssetName[]> {
+async function fetchOwnerAssetNames(
+  owner: Owner,
+  assets: ESIAsset[]
+): Promise<ESIAssetName[]> {
   const nameableIds = assets
     .filter((a) => a.is_singleton && isNameable(a.type_id))
     .map((a) => a.item_id)
-  logger.debug('Nameable items', { module: 'AssetStore', owner: owner.name, count: nameableIds.length, total: assets.length })
+  logger.debug('Nameable items', {
+    module: 'AssetStore',
+    owner: owner.name,
+    count: nameableIds.length,
+    total: assets.length,
+  })
   if (nameableIds.length === 0) return []
   if (owner.type === 'corporation') {
     try {
-      const names = await getCorporationAssetNames(owner.id, owner.characterId, nameableIds)
-      logger.debug('Corp asset names returned', { module: 'AssetStore', count: names.length })
+      const names = await getCorporationAssetNames(
+        owner.id,
+        owner.characterId,
+        nameableIds
+      )
+      logger.debug('Corp asset names returned', {
+        module: 'AssetStore',
+        count: names.length,
+      })
       return names
     } catch (err) {
-      logger.error('Corp asset names failed', err instanceof Error ? err : undefined, { module: 'AssetStore' })
+      logger.error(
+        'Corp asset names failed',
+        err instanceof Error ? err : undefined,
+        { module: 'AssetStore' }
+      )
       return []
     }
   }
@@ -259,28 +308,48 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
 
     try {
       const loaded = await db.loadAll()
-      const assetsByOwner = loaded.map((d) => ({ owner: d.owner, assets: d.data }))
+      const assetsByOwner = loaded.map((d) => ({
+        owner: d.owner,
+        assets: d.data,
+      }))
 
-      const assetNamesEntries = await db.loadMeta<[number, string][]>('assetNames')
+      const assetNamesEntries =
+        await db.loadMeta<[number, string][]>('assetNames')
       const pricesEntries = await db.loadMeta<[number, number][]>('prices')
-      const lastPriceRefreshAt = await db.loadMeta<number | null>('lastPriceRefreshAt')
+      const lastPriceRefreshAt = await db.loadMeta<number | null>(
+        'lastPriceRefreshAt'
+      )
       const assetNames = new Map(assetNamesEntries ?? [])
       const prices = new Map(pricesEntries ?? [])
 
-      set({ assetsByOwner, assetNames, prices, lastPriceRefreshAt: lastPriceRefreshAt ?? null, initialized: true })
+      set({
+        assetsByOwner,
+        assetNames,
+        prices,
+        lastPriceRefreshAt: lastPriceRefreshAt ?? null,
+        initialized: true,
+      })
       logger.info('Asset store initialized from DB', {
         module: 'AssetStore',
         owners: assetsByOwner.length,
         assets: assetsByOwner.reduce((sum, o) => sum + o.assets.length, 0),
       })
 
-      const pricesAreStale = !lastPriceRefreshAt || Date.now() - lastPriceRefreshAt > PRICE_REFRESH_INTERVAL_MS
+      const pricesAreStale =
+        !lastPriceRefreshAt ||
+        Date.now() - lastPriceRefreshAt > PRICE_REFRESH_INTERVAL_MS
       if (pricesAreStale && prices.size > 0) {
-        logger.info('Prices are stale, triggering refresh', { module: 'AssetStore' })
+        logger.info('Prices are stale, triggering refresh', {
+          module: 'AssetStore',
+        })
         get().refreshPrices()
       }
     } catch (err) {
-      logger.error('Failed to load assets from DB', err instanceof Error ? err : undefined, { module: 'AssetStore' })
+      logger.error(
+        'Failed to load assets from DB',
+        err instanceof Error ? err : undefined,
+        { module: 'AssetStore' }
+      )
       set({ initialized: true })
     }
   },
@@ -311,7 +380,11 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
       return
     }
 
-    set({ isUpdating: true, updateError: null, updateProgress: { current: 0, total: ownersToUpdate.length } })
+    set({
+      isUpdating: true,
+      updateError: null,
+      updateProgress: { current: 0, total: ownersToUpdate.length },
+    })
 
     try {
       const existingAssets = new Map(
@@ -328,21 +401,38 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         const endpoint = getAssetEndpoint(owner)
 
         try {
-          logger.info('Fetching assets', { module: 'AssetStore', owner: owner.name, type: owner.type })
-          const { data: assets, expiresAt, etag } = await fetchOwnerAssetsWithMeta(owner)
+          logger.info('Fetching assets', {
+            module: 'AssetStore',
+            owner: owner.name,
+            type: owner.type,
+          })
+          const {
+            data: assets,
+            expiresAt,
+            etag,
+          } = await fetchOwnerAssetsWithMeta(owner)
 
-          const activeShipResult = await detectAndInjectActiveShip(owner, assets, ownerKey)
+          const activeShipResult = await detectAndInjectActiveShip(
+            owner,
+            assets,
+            ownerKey
+          )
           if (activeShipResult.syntheticShip) {
             assets.push(activeShipResult.syntheticShip)
             if (activeShipResult.shipItemId && activeShipResult.shipName) {
-              allNames.set(activeShipResult.shipItemId, activeShipResult.shipName)
+              allNames.set(
+                activeShipResult.shipItemId,
+                activeShipResult.shipName
+              )
             }
           }
 
           await db.save(ownerKey, owner, assets)
           existingAssets.set(ownerKey, { owner, assets })
 
-          useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag)
+          useExpiryCacheStore
+            .getState()
+            .setExpiry(ownerKey, endpoint, expiresAt, etag)
 
           resolveTypes(Array.from(new Set(assets.map((a) => a.type_id))))
           const names = await fetchOwnerAssetNames(owner, assets)
@@ -352,10 +442,14 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
             }
           }
         } catch (err) {
-          logger.error('Failed to fetch assets for owner', err instanceof Error ? err : undefined, {
-            module: 'AssetStore',
-            owner: owner.name,
-          })
+          logger.error(
+            'Failed to fetch assets for owner',
+            err instanceof Error ? err : undefined,
+            {
+              module: 'AssetStore',
+              owner: owner.name,
+            }
+          )
         }
       }
 
@@ -365,7 +459,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         results,
         useMarketOrdersStore.getOrdersByOwner(),
         useContractsStore.getState().getContractsByOwner(),
-        useIndustryJobsStore.getState().getJobsByOwner(),
+        useIndustryJobsStore.getJobsByOwner(),
         useStructuresStore.getState().dataByOwner
       )
 
@@ -378,9 +472,16 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
             prices.set(id, price)
           }
           lastPriceRefreshAt = Date.now()
-          logger.info('Prices loaded', { module: 'AssetStore', count: prices.size })
+          logger.info('Prices loaded', {
+            module: 'AssetStore',
+            count: prices.size,
+          })
         } catch (err) {
-          logger.error('Failed to fetch prices', err instanceof Error ? err : undefined, { module: 'AssetStore' })
+          logger.error(
+            'Failed to fetch prices',
+            err instanceof Error ? err : undefined,
+            { module: 'AssetStore' }
+          )
         }
       }
 
@@ -406,7 +507,11 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error'
       set({ isUpdating: false, updateProgress: null, updateError: message })
-      logger.error('Asset update failed', err instanceof Error ? err : undefined, { module: 'AssetStore' })
+      logger.error(
+        'Asset update failed',
+        err instanceof Error ? err : undefined,
+        { module: 'AssetStore' }
+      )
     }
   },
 
@@ -414,18 +519,34 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
     const state = get()
     if (state.isUpdating) return
 
-    set({ isUpdating: true, updateError: null, updateProgress: { current: 0, total: 1 } })
+    set({
+      isUpdating: true,
+      updateError: null,
+      updateProgress: { current: 0, total: 1 },
+    })
 
     try {
       const ownerKey = `${owner.type}-${owner.id}`
       const endpoint = getAssetEndpoint(owner)
 
-      logger.info('Fetching assets for owner', { module: 'AssetStore', owner: owner.name, type: owner.type })
-      const { data: assets, expiresAt, etag } = await fetchOwnerAssetsWithMeta(owner)
+      logger.info('Fetching assets for owner', {
+        module: 'AssetStore',
+        owner: owner.name,
+        type: owner.type,
+      })
+      const {
+        data: assets,
+        expiresAt,
+        etag,
+      } = await fetchOwnerAssetsWithMeta(owner)
 
       const newNames = new Map(state.assetNames)
 
-      const activeShipResult = await detectAndInjectActiveShip(owner, assets, ownerKey)
+      const activeShipResult = await detectAndInjectActiveShip(
+        owner,
+        assets,
+        ownerKey
+      )
       if (activeShipResult.syntheticShip) {
         assets.push(activeShipResult.syntheticShip)
         if (activeShipResult.shipItemId && activeShipResult.shipName) {
@@ -434,7 +555,9 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
       }
 
       await db.save(ownerKey, owner, assets)
-      useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag)
+      useExpiryCacheStore
+        .getState()
+        .setExpiry(ownerKey, endpoint, expiresAt, etag)
 
       resolveTypes(Array.from(new Set(assets.map((a) => a.type_id))))
       const names = await fetchOwnerAssetNames(owner, assets)
@@ -446,7 +569,9 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
 
       const newPrices = new Map(state.prices)
       const ownerTypeIds = new Set(assets.map((a) => a.type_id))
-      const deltaTypeIds = Array.from(ownerTypeIds).filter((id) => !newPrices.has(id))
+      const deltaTypeIds = Array.from(ownerTypeIds).filter(
+        (id) => !newPrices.has(id)
+      )
 
       if (deltaTypeIds.length > 0) {
         try {
@@ -455,7 +580,11 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
             newPrices.set(id, price)
           }
         } catch (err) {
-          logger.error('Failed to fetch prices', err instanceof Error ? err : undefined, { module: 'AssetStore' })
+          logger.error(
+            'Failed to fetch prices',
+            err instanceof Error ? err : undefined,
+            { module: 'AssetStore' }
+          )
         }
       }
 
@@ -485,7 +614,11 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error'
       set({ isUpdating: false, updateProgress: null, updateError: message })
-      logger.error('Asset update failed for owner', err instanceof Error ? err : undefined, { module: 'AssetStore' })
+      logger.error(
+        'Asset update failed for owner',
+        err instanceof Error ? err : undefined,
+        { module: 'AssetStore' }
+      )
     }
   },
 
@@ -516,7 +649,11 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
       await saveMetaToDB(state.assetNames, merged)
       set({ prices: merged })
     } catch (err) {
-      logger.error('Failed to persist prices', err instanceof Error ? err : undefined, { module: 'AssetStore' })
+      logger.error(
+        'Failed to persist prices',
+        err instanceof Error ? err : undefined,
+        { module: 'AssetStore' }
+      )
     }
   },
 
@@ -526,7 +663,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
       state.assetsByOwner,
       useMarketOrdersStore.getOrdersByOwner(),
       useContractsStore.getState().getContractsByOwner(),
-      useIndustryJobsStore.getState().getJobsByOwner(),
+      useIndustryJobsStore.getJobsByOwner(),
       useStructuresStore.getState().dataByOwner
     )
 
@@ -535,7 +672,10 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
       return
     }
 
-    logger.info('Refreshing prices', { module: 'AssetStore', typeCount: typeIds.size })
+    logger.info('Refreshing prices', {
+      module: 'AssetStore',
+      typeCount: typeIds.size,
+    })
     try {
       const fetchedPrices = await fetchPrices(Array.from(typeIds))
       const now = Date.now()
@@ -545,9 +685,16 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
       }
       await saveMetaToDB(get().assetNames, merged, now)
       set({ prices: merged, lastPriceRefreshAt: now })
-      logger.info('Prices refreshed', { module: 'AssetStore', count: merged.size })
+      logger.info('Prices refreshed', {
+        module: 'AssetStore',
+        count: merged.size,
+      })
     } catch (err) {
-      logger.error('Failed to refresh prices', err instanceof Error ? err : undefined, { module: 'AssetStore' })
+      logger.error(
+        'Failed to refresh prices',
+        err instanceof Error ? err : undefined,
+        { module: 'AssetStore' }
+      )
     }
   },
 
@@ -565,14 +712,19 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
   },
 }))
 
-useExpiryCacheStore.getState().registerRefreshCallback(ENDPOINT_PATTERN, async (ownerKeyStr) => {
-  const owner = findOwnerByKey(ownerKeyStr)
-  if (!owner) {
-    logger.warn('Owner not found for refresh', { module: 'AssetStore', ownerKey: ownerKeyStr })
-    return
-  }
-  await useAssetStore.getState().updateForOwner(owner)
-})
+useExpiryCacheStore
+  .getState()
+  .registerRefreshCallback(ENDPOINT_PATTERN, async (ownerKeyStr) => {
+    const owner = findOwnerByKey(ownerKeyStr)
+    if (!owner) {
+      logger.warn('Owner not found for refresh', {
+        module: 'AssetStore',
+        ownerKey: ownerKeyStr,
+      })
+      return
+    }
+    await useAssetStore.getState().updateForOwner(owner)
+  })
 
 function startPriceRefreshTimer() {
   setInterval(async () => {

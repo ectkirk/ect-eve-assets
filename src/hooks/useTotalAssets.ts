@@ -49,7 +49,11 @@ export function useTotalAssets(): AssetTotals {
         if (asset.location_flag === 'SellOrder') continue
 
         const type = getType(asset.type_id)
-        if (type?.categoryId === CategoryIds.OWNER || type?.categoryId === CategoryIds.STATION) continue
+        if (
+          type?.categoryId === CategoryIds.OWNER ||
+          type?.categoryId === CategoryIds.STATION
+        )
+          continue
         if (asset.is_blueprint_copy) continue
 
         const abyssalPrice = isAbyssalTypeId(asset.type_id)
@@ -61,8 +65,13 @@ export function useTotalAssets(): AssetTotals {
     }
 
     const marketTotal = useMarketOrdersStore.getTotal(selectedOwnerIds)
-    const contractsTotal = useContractsStore.getState().getTotal(prices, selectedOwnerIds)
-    const industryTotal = useIndustryJobsStore.getState().getTotal(prices, selectedOwnerIds)
+    const contractsTotal = useContractsStore
+      .getState()
+      .getTotal(prices, selectedOwnerIds)
+    const industryTotal = useIndustryJobsStore.getTotal(
+      prices,
+      selectedOwnerIds
+    )
 
     let walletTotal = 0
     for (const wallet of walletsByOwner) {
@@ -76,7 +85,13 @@ export function useTotalAssets(): AssetTotals {
       }
     }
 
-    const total = assetsTotal + marketTotal + industryTotal + contractsTotal + walletTotal + structuresTotal
+    const total =
+      assetsTotal +
+      marketTotal +
+      industryTotal +
+      contractsTotal +
+      walletTotal +
+      structuresTotal
 
     return {
       total,
@@ -87,5 +102,13 @@ export function useTotalAssets(): AssetTotals {
       walletTotal,
       structuresTotal,
     }
-  }, [assetsByOwner, prices, selectedOwnerIds, ordersUpdateCounter, contractsUpdateCounter, jobsUpdateCounter, walletsByOwner])
+  }, [
+    assetsByOwner,
+    prices,
+    selectedOwnerIds,
+    ordersUpdateCounter,
+    contractsUpdateCounter,
+    jobsUpdateCounter,
+    walletsByOwner,
+  ])
 }

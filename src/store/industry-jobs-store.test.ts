@@ -55,7 +55,7 @@ describe('industry-jobs-store', () => {
     vi.clearAllMocks()
     await useIndustryJobsStore.getState().clear()
     useIndustryJobsStore.setState({
-      jobsById: new Map(),
+      itemsById: new Map(),
       visibilityByOwner: new Map(),
       isUpdating: false,
       updateError: null,
@@ -67,7 +67,7 @@ describe('industry-jobs-store', () => {
   describe('initial state', () => {
     it('has correct initial values', () => {
       const state = useIndustryJobsStore.getState()
-      expect(state.jobsById.size).toBe(0)
+      expect(state.itemsById.size).toBe(0)
       expect(state.visibilityByOwner.size).toBe(0)
       expect(state.isUpdating).toBe(false)
       expect(state.updateError).toBeNull()
@@ -82,15 +82,23 @@ describe('industry-jobs-store', () => {
 
       await useIndustryJobsStore.getState().update(true)
 
-      expect(useIndustryJobsStore.getState().updateError).toBe('No owners logged in')
+      expect(useIndustryJobsStore.getState().updateError).toBe(
+        'No owners logged in'
+      )
     })
 
     it('fetches character jobs for character owners', async () => {
       const { useAuthStore } = await import('./auth-store')
       const { esi } = await import('@/api/esi')
 
-      const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
-      vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
+      const mockOwner = createMockOwner({
+        id: 12345,
+        name: 'Test',
+        type: 'character',
+      })
+      vi.mocked(useAuthStore.getState).mockReturnValue(
+        createMockAuthState({ 'character-12345': mockOwner })
+      )
 
       vi.mocked(esi.fetchWithMeta).mockResolvedValue({
         data: [
@@ -121,7 +129,7 @@ describe('industry-jobs-store', () => {
       await useIndustryJobsStore.getState().update(true)
 
       expect(esi.fetchWithMeta).toHaveBeenCalled()
-      expect(useIndustryJobsStore.getState().jobsById.size).toBe(1)
+      expect(useIndustryJobsStore.getState().itemsById.size).toBe(1)
       expect(useIndustryJobsStore.getState().visibilityByOwner.size).toBe(1)
     })
 
@@ -129,8 +137,15 @@ describe('industry-jobs-store', () => {
       const { useAuthStore } = await import('./auth-store')
       const { esi } = await import('@/api/esi')
 
-      const mockCorpOwner = createMockOwner({ id: 98000001, characterId: 12345, name: 'Test Corp', type: 'corporation' })
-      vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'corporation-98000001': mockCorpOwner }))
+      const mockCorpOwner = createMockOwner({
+        id: 98000001,
+        characterId: 12345,
+        name: 'Test Corp',
+        type: 'corporation',
+      })
+      vi.mocked(useAuthStore.getState).mockReturnValue(
+        createMockAuthState({ 'corporation-98000001': mockCorpOwner })
+      )
 
       vi.mocked(esi.fetchPaginatedWithMeta).mockResolvedValue({
         data: [],
@@ -148,14 +163,20 @@ describe('industry-jobs-store', () => {
       const { useAuthStore } = await import('./auth-store')
       const { esi } = await import('@/api/esi')
 
-      const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
-      vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
+      const mockOwner = createMockOwner({
+        id: 12345,
+        name: 'Test',
+        type: 'character',
+      })
+      vi.mocked(useAuthStore.getState).mockReturnValue(
+        createMockAuthState({ 'character-12345': mockOwner })
+      )
 
       vi.mocked(esi.fetchWithMeta).mockRejectedValue(new Error('API Error'))
 
       await useIndustryJobsStore.getState().update(true)
 
-      expect(useIndustryJobsStore.getState().jobsById.size).toBe(0)
+      expect(useIndustryJobsStore.getState().itemsById.size).toBe(0)
       expect(useIndustryJobsStore.getState().isUpdating).toBe(false)
     })
   })
@@ -163,7 +184,9 @@ describe('industry-jobs-store', () => {
   describe('clear', () => {
     it('resets store state', async () => {
       useIndustryJobsStore.setState({
-        jobsById: new Map([[1, { job: {} as never, sourceOwner: {} as never }]]),
+        itemsById: new Map([
+          [1, { item: {} as never, sourceOwner: {} as never }],
+        ]),
         visibilityByOwner: new Map([['test', new Set([1])]]),
         updateError: 'error',
       })
@@ -171,7 +194,7 @@ describe('industry-jobs-store', () => {
       await useIndustryJobsStore.getState().clear()
 
       const state = useIndustryJobsStore.getState()
-      expect(state.jobsById.size).toBe(0)
+      expect(state.itemsById.size).toBe(0)
       expect(state.visibilityByOwner.size).toBe(0)
       expect(state.updateError).toBeNull()
     })
