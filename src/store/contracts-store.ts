@@ -189,7 +189,7 @@ const baseStore = createVisibilityStore<
   shouldDeleteStaleItems: true,
 
   extraState: { itemsByContractId: new Map() },
-  rebuildExtraState: () => ({ itemsByContractId: new Map() }),
+  rebuildExtraState: undefined,
 
   onAfterInit: async () => {
     baseStore.setState({ itemsByContractId: await loadAllItems() })
