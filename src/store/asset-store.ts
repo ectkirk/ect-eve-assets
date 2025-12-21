@@ -582,8 +582,11 @@ useStoreRegistry.getState().register({
   update: useAssetStore.getState().update,
 })
 
+let priceRefreshInterval: ReturnType<typeof setInterval> | null = null
+
 function startPriceRefreshTimer() {
-  setInterval(async () => {
+  if (priceRefreshInterval) return
+  priceRefreshInterval = setInterval(async () => {
     const state = useAssetStore.getState()
     if (!state.initialized || state.isUpdating) return
 
@@ -592,6 +595,13 @@ function startPriceRefreshTimer() {
     logger.info('Hourly price refresh triggered', { module: 'AssetStore' })
     await state.refreshPrices()
   }, PRICE_REFRESH_INTERVAL_MS)
+}
+
+export function stopPriceRefreshTimer() {
+  if (priceRefreshInterval) {
+    clearInterval(priceRefreshInterval)
+    priceRefreshInterval = null
+  }
 }
 
 startPriceRefreshTimer()

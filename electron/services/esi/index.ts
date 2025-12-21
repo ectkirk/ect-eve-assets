@@ -377,6 +377,15 @@ export class MainESIService {
       // Ignore save errors
     }
   }
+
+  saveImmediately(): void {
+    if (this.saveStateTimeout) {
+      clearTimeout(this.saveStateTimeout)
+      this.saveStateTimeout = null
+    }
+    this.saveState()
+    this.cache.saveImmediately()
+  }
 }
 
 let instance: MainESIService | null = null

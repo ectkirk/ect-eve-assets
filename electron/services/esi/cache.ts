@@ -57,6 +57,14 @@ export class ESICache {
     }
   }
 
+  saveImmediately(): void {
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout)
+      this.saveTimeout = null
+    }
+    this.save()
+  }
+
   get(key: string): CacheEntry | undefined {
     const entry = this.cache.get(key)
     if (!entry) return undefined

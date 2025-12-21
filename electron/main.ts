@@ -5,7 +5,7 @@ import { app, BrowserWindow } from 'electron'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 import { logger, initLogger } from './services/logger.js'
-import { initUpdater } from './services/updater.js'
+import { initUpdater, stopUpdater } from './services/updater.js'
 import {
   createWindow,
   readStorage,
@@ -26,6 +26,7 @@ import {
   setupESIService,
   registerESIHandlers,
 } from './services/esi-handlers.js'
+import { getESIService } from './services/esi/index.js'
 
 const APP_ROOT = path.join(__dirname, '..')
 export const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
@@ -106,4 +107,9 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
+})
+
+app.on('before-quit', () => {
+  stopUpdater()
+  getESIService().saveImmediately()
 })

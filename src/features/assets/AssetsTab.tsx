@@ -4,355 +4,38 @@ import {
   getCoreRowModel,
   getSortedRowModel,
   flexRender,
-  type ColumnDef,
   type SortingState,
   type ColumnFiltersState,
   type VisibilityState,
 } from '@tanstack/react-table'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { ArrowUpDown, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { isAbyssalTypeId, getMutamarketUrl } from '@/api/mutamarket-client'
 import { CategoryIds, hasAbyssal } from '@/store/reference-cache'
 import { useResolvedAssets } from '@/hooks/useResolvedAssets'
-import { TypeIcon, OwnerIcon } from '@/components/ui/type-icon'
-import { AbyssalPreview } from '@/components/ui/abyssal-preview'
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
-import { formatNumber, cn } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import { useTabControls } from '@/context'
 import {
   matchesAssetTypeFilter,
   matchesSearch,
   getAssetDisplayNames,
-  type AssetModeFlags,
-  type ResolvedAsset,
 } from '@/lib/resolved-asset'
 import { useBlueprintsStore } from '@/store/blueprints-store'
-
-interface AssetRow {
-  itemId: number
-  typeId: number
-  typeName: string
-  quantity: number
-  locationId: number
-  resolvedLocationId: number
-  locationName: string
-  systemName: string
-  regionName: string
-  locationFlag: string
-  isSingleton: boolean
-  isBlueprintCopy: boolean
-  isAbyssal: boolean
-  price: number
-  totalValue: number
-  volume: number
-  totalVolume: number
-  categoryId: number
-  categoryName: string
-  groupName: string
-  ownerId: number
-  ownerName: string
-  ownerType: 'character' | 'corporation'
-  modeFlags: AssetModeFlags
-}
-
-function formatVolume(value: number): string {
-  return value.toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' m³'
-}
-
-const COLUMN_LABELS: Record<string, string> = {
-  ownerName: 'Owner',
-  quantity: 'Quantity',
-  locationFlag: 'Flag',
-  price: 'Price',
-  totalValue: 'Value',
-  totalVolume: 'Volume',
-}
-
-const STORAGE_KEY_VISIBILITY = 'assets-column-visibility'
-
-const TOGGLEABLE_COLUMNS = new Set([
-  'ownerName',
-  'quantity',
-  'locationFlag',
-  'price',
-  'totalValue',
-  'totalVolume',
-])
-
-const DEFAULT_COLUMN_VISIBILITY: VisibilityState = {
-  locationFlag: false,
-  totalVolume: false,
-}
-
-function loadColumnVisibility(): VisibilityState {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY_VISIBILITY)
-    return stored ? JSON.parse(stored) : DEFAULT_COLUMN_VISIBILITY
-  } catch {
-    return DEFAULT_COLUMN_VISIBILITY
-  }
-}
-
-function saveColumnVisibility(state: VisibilityState): void {
-  try {
-    localStorage.setItem(STORAGE_KEY_VISIBILITY, JSON.stringify(state))
-  } catch {
-    // Ignore storage errors
-  }
-}
-
-function createAssetRow(
-  ra: ResolvedAsset,
-  displayFlag: string,
-  isAbyssal: boolean
-): AssetRow {
-  const names = getAssetDisplayNames(ra)
-  return {
-    itemId: ra.asset.item_id,
-    typeId: ra.typeId,
-    typeName: names.typeName,
-    quantity: ra.asset.quantity,
-    locationId: ra.asset.location_id,
-    resolvedLocationId: ra.rootLocationId,
-    locationName: names.locationName,
-    systemName: names.systemName,
-    regionName: names.regionName,
-    locationFlag: displayFlag,
-    isSingleton: ra.asset.is_singleton,
-    isBlueprintCopy: ra.isBlueprintCopy,
-    isAbyssal,
-    price: ra.price,
-    totalValue: ra.totalValue,
-    volume: ra.volume,
-    totalVolume: ra.totalVolume,
-    categoryId: ra.categoryId,
-    categoryName: names.categoryName,
-    groupName: names.groupName,
-    ownerId: ra.owner.id,
-    ownerName: ra.owner.name,
-    ownerType: ra.owner.type,
-    modeFlags: ra.modeFlags,
-  }
-}
-
-const columns: ColumnDef<AssetRow>[] = [
-  {
-    accessorKey: 'ownerName',
-    size: 40,
-    meta: { noFlex: true },
-    header: () => <span className="sr-only">Owner</span>,
-    cell: ({ row }) => {
-      const ownerId = row.original.ownerId
-      const name = row.getValue('ownerName') as string
-      const ownerType = row.original.ownerType
-      return (
-        <span title={name}>
-          <OwnerIcon ownerId={ownerId} ownerType={ownerType} size="lg" />
-        </span>
-      )
-    },
-  },
-  {
-    accessorKey: 'typeName',
-    size: 450,
-    header: ({ column }) => (
-      <button
-        className="flex items-center gap-1 hover:text-content"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      >
-        Name
-        <ArrowUpDown className="h-4 w-4" />
-      </button>
-    ),
-    cell: ({ row }) => {
-      const typeId = row.original.typeId
-      const typeName = row.getValue('typeName') as string
-      const isBpc = row.original.isBlueprintCopy
-      const categoryId = row.original.categoryId
-      const modeFlags = row.original.modeFlags
-      const isAbyssalResolved =
-        row.original.isAbyssal && hasAbyssal(row.original.itemId)
-      const nameSpan = (
-        <span className={cn('truncate', isBpc && 'text-status-special')}>
-          {typeName}
-        </span>
-      )
-
-      return (
-        <div className="flex flex-nowrap items-center gap-2 min-w-0">
-          <TypeIcon
-            typeId={typeId}
-            categoryId={categoryId}
-            isBlueprintCopy={isBpc}
-            size="lg"
-          />
-          {isAbyssalResolved ? (
-            <AbyssalPreview itemId={row.original.itemId}>
-              {nameSpan}
-            </AbyssalPreview>
-          ) : (
-            nameSpan
-          )}
-          {(modeFlags.isContract ||
-            modeFlags.isMarketOrder ||
-            modeFlags.isIndustryJob ||
-            modeFlags.isOwnedStructure ||
-            modeFlags.isActiveShip) && (
-            <span className="shrink-0 inline-flex items-center gap-1 whitespace-nowrap">
-              {modeFlags.isActiveShip && (
-                <span className="text-xs text-status-time bg-status-time/20 px-1.5 py-0.5 rounded whitespace-nowrap">
-                  Active Ship
-                </span>
-              )}
-              {modeFlags.isContract && (
-                <span className="text-xs text-status-corp bg-semantic-warning/20 px-1.5 py-0.5 rounded whitespace-nowrap">
-                  In Contract
-                </span>
-              )}
-              {modeFlags.isMarketOrder && (
-                <span className="text-xs text-status-info bg-accent/20 px-1.5 py-0.5 rounded whitespace-nowrap">
-                  Sell Order
-                </span>
-              )}
-              {modeFlags.isIndustryJob && (
-                <span className="text-xs text-status-positive bg-status-positive/20 px-1.5 py-0.5 rounded whitespace-nowrap">
-                  In Job
-                </span>
-              )}
-              {modeFlags.isOwnedStructure && (
-                <span className="text-xs text-status-special bg-status-special/20 px-1.5 py-0.5 rounded whitespace-nowrap">
-                  Structure
-                </span>
-              )}
-            </span>
-          )}
-        </div>
-      )
-    },
-  },
-  {
-    accessorKey: 'quantity',
-    size: 140,
-    header: ({ column }) => (
-      <button
-        className="flex items-center gap-1 hover:text-content ml-auto"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      >
-        Quantity
-        <ArrowUpDown className="h-4 w-4" />
-      </button>
-    ),
-    cell: ({ row }) => (
-      <span className="tabular-nums text-right w-full">
-        {(row.getValue('quantity') as number).toLocaleString()}
-      </span>
-    ),
-  },
-  {
-    accessorKey: 'price',
-    size: 130,
-    header: ({ column }) => (
-      <button
-        className="flex items-center gap-1 hover:text-content ml-auto"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      >
-        Price
-        <ArrowUpDown className="h-4 w-4" />
-      </button>
-    ),
-    cell: ({ row }) => {
-      const price = row.getValue('price') as number
-      return (
-        <span className="tabular-nums text-right w-full">
-          {price > 0 ? formatNumber(price) + ' ISK' : '-'}
-        </span>
-      )
-    },
-  },
-  {
-    accessorKey: 'totalValue',
-    size: 130,
-    header: ({ column }) => (
-      <button
-        className="flex items-center gap-1 hover:text-content ml-auto"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      >
-        Value
-        <ArrowUpDown className="h-4 w-4" />
-      </button>
-    ),
-    cell: ({ row }) => {
-      const value = row.getValue('totalValue') as number
-      return (
-        <span className="tabular-nums text-right w-full text-status-positive">
-          {value > 0 ? formatNumber(value) + ' ISK' : '-'}
-        </span>
-      )
-    },
-  },
-  {
-    accessorKey: 'totalVolume',
-    size: 130,
-    header: ({ column }) => (
-      <button
-        className="flex items-center gap-1 hover:text-content ml-auto"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      >
-        Volume
-        <ArrowUpDown className="h-4 w-4" />
-      </button>
-    ),
-    cell: ({ row }) => (
-      <span className="tabular-nums text-right w-full text-content-secondary">
-        {formatVolume(row.getValue('totalVolume') as number)}
-      </span>
-    ),
-  },
-  {
-    accessorKey: 'locationName',
-    size: 450,
-    header: ({ column }) => (
-      <button
-        className="flex items-center gap-1 hover:text-content ml-auto"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      >
-        Location
-        <ArrowUpDown className="h-4 w-4" />
-      </button>
-    ),
-    cell: ({ row }) => (
-      <span className="text-right w-full">
-        {row.getValue('locationName') as string}
-      </span>
-    ),
-  },
-  {
-    accessorKey: 'locationFlag',
-    size: 140,
-    meta: { noFlex: true },
-    header: ({ column }) => (
-      <button
-        className="flex items-center gap-1 hover:text-content ml-auto"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      >
-        Flag
-        <ArrowUpDown className="h-4 w-4" />
-      </button>
-    ),
-    cell: ({ row }) => (
-      <div className="w-full text-right">
-        <span className="text-content-secondary text-xs">
-          {row.getValue('locationFlag') as string}
-        </span>
-      </div>
-    ),
-  },
-]
+import {
+  type AssetRow,
+  COLUMN_LABELS,
+  TOGGLEABLE_COLUMNS,
+  loadColumnVisibility,
+  saveColumnVisibility,
+  createAssetRow,
+} from './types'
+import { columns } from './columns'
 
 export function AssetsTab() {
   const {
