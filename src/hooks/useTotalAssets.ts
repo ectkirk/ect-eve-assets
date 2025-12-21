@@ -46,6 +46,7 @@ export function useTotalAssets(): AssetTotals {
       if (!matchesOwner(owner.type, owner.id)) continue
       for (const asset of assets) {
         if (structureRelatedIds.has(asset.item_id)) continue
+        if (asset.location_flag === 'SellOrder') continue
 
         const type = getType(asset.type_id)
         if (type?.categoryId === CategoryIds.OWNER || type?.categoryId === CategoryIds.STATION) continue

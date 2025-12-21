@@ -104,7 +104,7 @@ export function TreeTab({ mode }: TreeTabProps) {
     let showing = 0
     let value = 0
     for (const ra of selectedResolvedAssets) {
-      if (!ra.modeFlags.isOwnedStructure) {
+      if (!ra.modeFlags.isOwnedStructure && !ra.modeFlags.isMarketOrder) {
         value += ra.totalValue
       }
       if (!shouldIncludeByMode(ra, effectiveMode)) continue
