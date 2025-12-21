@@ -329,7 +329,10 @@ const baseStore = createVisibilityStore<
     }
 
     if (hasChanges) {
-      baseStore.setState({ itemsByContractId: currentItems })
+      baseStore.setState((s) => ({
+        itemsByContractId: currentItems,
+        updateCounter: s.updateCounter + 1,
+      }))
       triggerResolution()
     }
   },

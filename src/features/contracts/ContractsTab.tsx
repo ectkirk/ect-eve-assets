@@ -2,8 +2,12 @@ import { useEffect, useMemo, useState, useCallback } from 'react'
 import { ChevronRight, ChevronDown, Truck } from 'lucide-react'
 import { useTabControls } from '@/context'
 import { useColumnSettings, useCacheVersion, type ColumnConfig } from '@/hooks'
-import { useAuthStore, ownerKey } from '@/store/auth-store'
-import { useContractsStore, type OwnerContracts } from '@/store/contracts-store'
+import { useAuthStore, ownerKey, findOwnerByKey } from '@/store/auth-store'
+import {
+  useContractsStore,
+  type OwnerContracts,
+  type ContractWithItems,
+} from '@/store/contracts-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import type { ESIContractItem } from '@/api/endpoints/contracts'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
@@ -70,13 +74,29 @@ export function ContractsTab() {
   const updateError = useContractsStore((s) => s.updateError)
   const init = useContractsStore((s) => s.init)
   const initialized = useContractsStore((s) => s.initialized)
-  const updateCounter = useContractsStore((s) => s.updateCounter)
+  const itemsById = useContractsStore((s) => s.itemsById)
+  const itemsByContractId = useContractsStore((s) => s.itemsByContractId)
+  const visibilityByOwner = useContractsStore((s) => s.visibilityByOwner)
 
-  const contractsByOwner = useMemo<OwnerContracts[]>(
-    () => useContractsStore.getContractsByOwner(),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [updateCounter]
-  )
+  const contractsByOwner = useMemo<OwnerContracts[]>(() => {
+    const result: OwnerContracts[] = []
+    for (const [ownerKey, contractIds] of visibilityByOwner) {
+      const owner = findOwnerByKey(ownerKey)
+      if (!owner) continue
+      const contracts: ContractWithItems[] = []
+      for (const contractId of contractIds) {
+        const stored = itemsById.get(contractId)
+        if (stored) {
+          contracts.push({
+            contract: stored.item,
+            items: itemsByContractId.get(contractId),
+          })
+        }
+      }
+      result.push({ owner, contracts })
+    }
+    return result
+  }, [visibilityByOwner, itemsById, itemsByContractId])
 
   const { isLoading: assetsUpdating } = useAssetData()
   const isUpdating = assetsUpdating || contractsUpdating
@@ -99,7 +119,7 @@ export function ContractsTab() {
       }
     }
     setLoadedItems(itemsMap)
-  }, [contractsByOwner, updateCounter])
+  }, [contractsByOwner])
 
   const cacheVersion = useCacheVersion()
 
