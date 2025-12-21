@@ -121,8 +121,15 @@ export function subscribe(listener: () => void): () => void {
   return () => listeners.delete(listener)
 }
 
+let notificationPending = false
+
 function notifyListeners(): void {
-  listeners.forEach((fn) => fn())
+  if (notificationPending) return
+  notificationPending = true
+  queueMicrotask(() => {
+    notificationPending = false
+    listeners.forEach((fn) => fn())
+  })
 }
 
 export { notifyListeners as notifyCacheListeners }

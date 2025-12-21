@@ -31,6 +31,20 @@ vi.mock('@/store/reference-cache', () => ({
     }
     return locations[id]
   }),
+  getRegion: vi.fn((id: number) => {
+    const regions: Record<number, { id: number; name: string }> = {
+      10000002: { id: 10000002, name: 'The Forge' },
+    }
+    return regions[id]
+  }),
+  getLocationName: vi.fn((id: number) => {
+    const names: Record<number, string> = {
+      60003760: 'Jita IV - Moon 4 - Caldari Navy Assembly Plant',
+      30000142: 'Jita',
+      10000002: 'The Forge',
+    }
+    return names[id] ?? `Location ${id}`
+  }),
   getAbyssalPrice: vi.fn(() => undefined),
   CategoryIds: {
     SHIP: 6,
@@ -96,16 +110,16 @@ function createResolvedAsset(
   overrides: Partial<Omit<ResolvedAsset, 'asset' | 'owner'>> = {},
   owner: Owner = testOwner
 ): ResolvedAsset {
-  const typeMap: Record<number, { name: string; categoryId: number; categoryName: string; groupId: number; groupName: string; volume: number }> = {
-    34: { name: 'Tritanium', categoryId: 4, categoryName: 'Material', groupId: 18, groupName: 'Mineral', volume: 0.01 },
-    35: { name: 'Pyerite', categoryId: 4, categoryName: 'Material', groupId: 18, groupName: 'Mineral', volume: 0.01 },
-    587: { name: 'Rifter', categoryId: 6, categoryName: 'Ship', groupId: 25, groupName: 'Frigate', volume: 2500 },
-    17366: { name: 'Station Container', categoryId: 2, categoryName: 'Celestial', groupId: 448, groupName: 'Audit Log Secure Container', volume: 10000 },
-    27: { name: 'Office', categoryId: 2, categoryName: 'Celestial', groupId: 16, groupName: 'Station Services', volume: 0 },
-    35832: { name: 'Astrahus', categoryId: 65, categoryName: 'Structure', groupId: 1657, groupName: 'Citadel', volume: 8000 },
+  const typeMap: Record<number, { categoryId: number; groupId: number; volume: number }> = {
+    34: { categoryId: 4, groupId: 18, volume: 0.01 },
+    35: { categoryId: 4, groupId: 18, volume: 0.01 },
+    587: { categoryId: 6, groupId: 25, volume: 2500 },
+    17366: { categoryId: 2, groupId: 448, volume: 10000 },
+    27: { categoryId: 2, groupId: 16, volume: 0 },
+    35832: { categoryId: 65, groupId: 1657, volume: 8000 },
   }
 
-  const typeInfo = typeMap[asset.type_id] ?? { name: `Unknown ${asset.type_id}`, categoryId: 0, categoryName: '', groupId: 0, groupName: '', volume: 0 }
+  const typeInfo = typeMap[asset.type_id] ?? { categoryId: 0, groupId: 0, volume: 0 }
   const price = overrides.price ?? 0
 
   return {
@@ -115,17 +129,11 @@ function createResolvedAsset(
     rootLocationType: overrides.rootLocationType ?? 'station',
     parentChain: overrides.parentChain ?? [],
     rootFlag: overrides.rootFlag ?? asset.location_flag,
-    locationName: overrides.locationName ?? 'Jita IV - Moon 4 - Caldari Navy Assembly Plant',
     systemId: overrides.systemId ?? 30000142,
-    systemName: overrides.systemName ?? 'Jita',
     regionId: overrides.regionId ?? 10000002,
-    regionName: overrides.regionName ?? 'The Forge',
     typeId: asset.type_id,
-    typeName: overrides.typeName ?? typeInfo.name,
     categoryId: overrides.categoryId ?? typeInfo.categoryId,
-    categoryName: overrides.categoryName ?? typeInfo.categoryName,
     groupId: overrides.groupId ?? typeInfo.groupId,
-    groupName: overrides.groupName ?? typeInfo.groupName,
     volume: overrides.volume ?? typeInfo.volume,
     price,
     totalValue: overrides.totalValue ?? price * asset.quantity,

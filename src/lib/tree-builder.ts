@@ -1,4 +1,4 @@
-import type { ResolvedAsset } from './resolved-asset'
+import { type ResolvedAsset, getAssetDisplayNames } from './resolved-asset'
 import {
   type TreeNode,
   type TreeNodeType,
@@ -60,9 +60,10 @@ function createItemNode(
   stationName?: string
 ): TreeNode {
   const type = getType(ra.typeId)
+  const names = getAssetDisplayNames(ra)
 
   let nodeType: TreeNodeType = 'item'
-  let displayName = ra.typeName
+  let displayName = names.typeName
 
   if (isOffice(ra.typeId)) {
     nodeType = 'office'
@@ -79,10 +80,10 @@ function createItemNode(
     children: [],
     asset: ra.asset,
     typeId: ra.typeId,
-    typeName: ra.typeName,
+    typeName: names.typeName,
     categoryId: ra.categoryId,
-    categoryName: ra.categoryName,
-    groupName: ra.groupName,
+    categoryName: names.categoryName,
+    groupName: names.groupName,
     quantity: ra.asset.quantity,
     totalCount: ra.asset.quantity,
     totalValue: ra.totalValue,
@@ -253,15 +254,16 @@ export function buildTree(
   for (const ra of filteredAssets) {
     if (addedItemIds.has(ra.asset.item_id)) continue
 
+    const names = getAssetDisplayNames(ra)
     const stationKey = `station-${ra.rootLocationId}`
     let stationNode = stationNodes.get(stationKey)
     if (!stationNode) {
-      stationNode = createLocationNode('station', stationKey, ra.locationName, 0, {
+      stationNode = createLocationNode('station', stationKey, names.locationName, 0, {
         locationId: ra.rootLocationId,
         regionId: ra.regionId,
-        regionName: ra.regionName,
+        regionName: names.regionName,
         systemId: ra.systemId,
-        systemName: ra.systemName,
+        systemName: names.systemName,
       })
       stationNodes.set(stationKey, stationNode)
     }
@@ -300,7 +302,7 @@ export function buildTree(
       let parentNode = nodeIndex.get(parentNodeId)
 
       if (!parentNode && parentResolved) {
-        parentNode = createItemNode(parentResolved, currentDepth, ra.locationName)
+        parentNode = createItemNode(parentResolved, currentDepth, names.locationName)
         currentParent.children.push(parentNode)
         nodeIndex.set(parentNodeId, parentNode)
         addedItemIds.add(parentAsset.item_id)
@@ -316,7 +318,7 @@ export function buildTree(
         parentNode = {
           id: parentNodeId,
           nodeType: pNodeType,
-          name: pNodeType === 'office' ? ra.locationName : (parentType?.name ?? `Unknown ${parentAsset.type_id}`),
+          name: pNodeType === 'office' ? names.locationName : (parentType?.name ?? `Unknown ${parentAsset.type_id}`),
           depth: currentDepth,
           children: [],
           asset: parentAsset,
@@ -362,7 +364,7 @@ export function buildTree(
       }
     }
 
-    const itemNode = createItemNode(ra, currentDepth, ra.locationName)
+    const itemNode = createItemNode(ra, currentDepth, names.locationName)
     currentParent.children.push(itemNode)
     nodeIndex.set(itemNode.id, itemNode)
     addedItemIds.add(ra.asset.item_id)

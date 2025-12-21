@@ -13,14 +13,10 @@ import {
 } from './tree-types'
 import {
   getType,
-  getTypeName,
   getStructure,
   getLocation,
   getAbyssalPrice,
-  CategoryIds as RefCategoryIds,
 } from '@/store/reference-cache'
-import { formatBlueprintName } from '@/store/blueprints-store'
-import { isAbyssalTypeId } from '@/api/mutamarket-client'
 
 export interface AssetLookupMap {
   itemIdToAsset: Map<number, ESIAsset>
@@ -80,11 +76,8 @@ export function getRootFlag(
 interface RootLocationInfo {
   rootLocationId: number
   rootLocationType: 'station' | 'structure' | 'solar_system'
-  locationName: string
   systemId: number | undefined
-  systemName: string
   regionId: number | undefined
-  regionName: string
 }
 
 export function resolveRootLocation(
@@ -98,23 +91,17 @@ export function resolveRootLocation(
 
   let locationId: number
   let locationType: 'station' | 'structure' | 'solar_system'
-  let locationName: string
   let systemId: number | undefined
-  let systemName = ''
   let regionId: number | undefined
-  let regionName = ''
 
   if (rootLocationId > 1_000_000_000_000) {
     locationId = rootLocationId
     locationType = 'structure'
     const structure = getStructure(rootLocationId)
-    locationName = structure?.name ?? `Structure ${rootLocationId}`
     if (structure?.solarSystemId) {
       const system = getLocation(structure.solarSystemId)
       systemId = structure.solarSystemId
-      systemName = system?.name ?? `System ${structure.solarSystemId}`
       regionId = system?.regionId
-      regionName = system?.regionName ?? ''
     }
   } else if (rootLocationType === 'solar_system') {
     const rootType = getType(rootAsset.type_id)
@@ -122,13 +109,10 @@ export function resolveRootLocation(
       locationId = rootAsset.item_id
       locationType = 'structure'
       const structure = getStructure(rootAsset.item_id)
-      locationName = structure?.name ?? `Structure ${rootAsset.item_id}`
       if (structure?.solarSystemId) {
         const system = getLocation(structure.solarSystemId)
         systemId = structure.solarSystemId
-        systemName = system?.name ?? `System ${structure.solarSystemId}`
         regionId = system?.regionId
-        regionName = system?.regionName ?? ''
       }
     } else if (rootType?.categoryId === CategoryIds.STARBASE) {
       locationId = rootAsset.item_id
@@ -136,50 +120,33 @@ export function resolveRootLocation(
       const moonId = starbaseMoonIds.get(rootAsset.item_id)
       if (moonId) {
         const moon = getLocation(moonId)
-        locationName = moon?.name ?? `Moon ${moonId}`
         systemId = moon?.solarSystemId
-        systemName = moon?.solarSystemName ?? ''
         regionId = moon?.regionId
-        regionName = moon?.regionName ?? ''
       } else {
         const system = getLocation(rootLocationId)
-        locationName = system?.name ?? `System ${rootLocationId}`
         systemId = rootLocationId
-        systemName = system?.name ?? ''
         regionId = system?.regionId
-        regionName = system?.regionName ?? ''
       }
     } else {
       locationId = rootLocationId
       locationType = 'solar_system'
       const system = getLocation(rootLocationId)
-      locationName = system?.name ?? `System ${rootLocationId}`
       systemId = rootLocationId
-      systemName = system?.name ?? ''
       regionId = system?.regionId
-      regionName = system?.regionName ?? ''
     }
   } else {
     locationId = rootLocationId
     locationType = 'station'
     const location = getLocation(rootLocationId)
-    locationName = location?.name ?? `Location ${rootLocationId}`
     systemId = location?.solarSystemId
-    systemName = location?.solarSystemName ?? ''
     regionId = location?.regionId
-    regionName = location?.regionName ?? ''
   }
-
-  if (!regionName) regionName = 'Unknown Region'
 
   return {
     rootLocationId: locationId,
     rootLocationType: locationType,
-    locationName,
     systemId,
-    systemName,
     regionId,
-    regionName,
   }
 }
 
@@ -240,18 +207,11 @@ export function resolveAsset(
 
   const sdeType = getType(asset.type_id)
   const customName = assetNames.get(asset.item_id)
-  const rawTypeName = getTypeName(asset.type_id)
-  const baseName = customName ? `${rawTypeName} (${customName})` : rawTypeName
-  const isBlueprint = sdeType?.categoryId === RefCategoryIds.BLUEPRINT
   const isBpc = asset.is_blueprint_copy ?? false
-  const typeName = isBlueprint ? formatBlueprintName(baseName, asset.item_id) : baseName
 
   const volume = sdeType?.packagedVolume ?? sdeType?.volume ?? 0
   const abyssalPrice = getAbyssalPrice(asset.item_id)
   const price = isBpc ? 0 : (abyssalPrice ?? prices.get(asset.type_id) ?? 0)
-
-  const isAbyssal = isAbyssalTypeId(asset.type_id)
-  const categoryName = isAbyssal ? 'Abyssals' : (sdeType?.categoryName ?? '')
 
   return {
     asset,
@@ -262,18 +222,12 @@ export function resolveAsset(
     parentChain,
     rootFlag,
 
-    locationName: rootLocation.locationName,
     systemId: rootLocation.systemId,
-    systemName: rootLocation.systemName,
     regionId: rootLocation.regionId,
-    regionName: rootLocation.regionName,
 
     typeId: asset.type_id,
-    typeName,
     categoryId: sdeType?.categoryId ?? 0,
-    categoryName,
     groupId: sdeType?.groupId ?? 0,
-    groupName: sdeType?.groupName ?? '',
     volume,
 
     price,
@@ -324,40 +278,25 @@ export function resolveMarketOrder(
     is_singleton: false,
   }
 
-  let locationName: string
   let systemId: number | undefined
-  let systemName = ''
   let regionId: number | undefined
-  let regionName = ''
 
   if (isStructure) {
     const structure = getStructure(order.location_id)
-    locationName = structure?.name ?? `Structure ${order.location_id}`
     if (structure?.solarSystemId) {
       const system = getLocation(structure.solarSystemId)
       systemId = structure.solarSystemId
-      systemName = system?.name ?? `System ${structure.solarSystemId}`
       regionId = system?.regionId
-      regionName = system?.regionName ?? ''
     }
   } else {
     const location = getLocation(order.location_id)
-    locationName = location?.name ?? `Location ${order.location_id}`
     systemId = location?.solarSystemId
-    systemName = location?.solarSystemName ?? ''
     regionId = location?.regionId
-    regionName = location?.regionName ?? ''
   }
 
-  if (!regionName) regionName = 'Unknown Region'
-
   const sdeType = getType(order.type_id)
-  const typeName = getTypeName(order.type_id)
   const volume = sdeType?.packagedVolume ?? sdeType?.volume ?? 0
   const price = prices.get(order.type_id) ?? 0
-
-  const isAbyssal = isAbyssalTypeId(order.type_id)
-  const categoryName = isAbyssal ? 'Abyssals' : (sdeType?.categoryName ?? '')
 
   const modeFlags: AssetModeFlags = {
     inHangar: false,
@@ -383,18 +322,12 @@ export function resolveMarketOrder(
     parentChain: [],
     rootFlag: 'SellOrder',
 
-    locationName,
     systemId,
-    systemName,
     regionId,
-    regionName,
 
     typeId: order.type_id,
-    typeName,
     categoryId: sdeType?.categoryId ?? 0,
-    categoryName,
     groupId: sdeType?.groupId ?? 0,
-    groupName: sdeType?.groupName ?? '',
     volume,
 
     price,
@@ -428,46 +361,27 @@ export function resolveContractItem(
     is_blueprint_copy: item.is_blueprint_copy,
   }
 
-  let locationName: string
   let systemId: number | undefined
-  let systemName = ''
   let regionId: number | undefined
-  let regionName = ''
 
   if (isStructure) {
     const structure = getStructure(locationId)
-    locationName = structure?.name ?? `Structure ${locationId}`
     if (structure?.solarSystemId) {
       const system = getLocation(structure.solarSystemId)
       systemId = structure.solarSystemId
-      systemName = system?.name ?? `System ${structure.solarSystemId}`
       regionId = system?.regionId
-      regionName = system?.regionName ?? ''
     }
   } else if (locationId) {
     const location = getLocation(locationId)
-    locationName = location?.name ?? `Location ${locationId}`
     systemId = location?.solarSystemId
-    systemName = location?.solarSystemName ?? ''
     regionId = location?.regionId
-    regionName = location?.regionName ?? ''
-  } else {
-    locationName = 'Unknown Location'
   }
 
-  if (!regionName) regionName = 'Unknown Region'
-
   const sdeType = getType(item.type_id)
-  const rawTypeName = getTypeName(item.type_id)
-  const isBlueprint = sdeType?.categoryId === RefCategoryIds.BLUEPRINT
   const isBpc = item.is_blueprint_copy ?? false
-  const typeName = isBlueprint ? formatBlueprintName(rawTypeName, syntheticAsset.item_id) : rawTypeName
 
   const volume = sdeType?.packagedVolume ?? sdeType?.volume ?? 0
   const price = isBpc ? 0 : (prices.get(item.type_id) ?? 0)
-
-  const isAbyssal = isAbyssalTypeId(item.type_id)
-  const categoryName = isAbyssal ? 'Abyssals' : (sdeType?.categoryName ?? '')
 
   const modeFlags: AssetModeFlags = {
     inHangar: false,
@@ -493,18 +407,12 @@ export function resolveContractItem(
     parentChain: [],
     rootFlag: 'InContract',
 
-    locationName,
     systemId,
-    systemName,
     regionId,
-    regionName,
 
     typeId: item.type_id,
-    typeName,
     categoryId: sdeType?.categoryId ?? 0,
-    categoryName,
     groupId: sdeType?.groupId ?? 0,
-    groupName: sdeType?.groupName ?? '',
     volume,
 
     price,

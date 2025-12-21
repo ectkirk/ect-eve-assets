@@ -6,7 +6,7 @@ import { TreeTable, useTreeState } from '@/components/tree'
 import { buildTree, filterTree, getTreeCategories, shouldIncludeByMode } from '@/lib/tree-builder'
 import { TreeMode } from '@/lib/tree-types'
 import { useTabControls } from '@/context'
-import { matchesSearch } from '@/lib/resolved-asset'
+import { matchesSearch, getAssetDisplayNames } from '@/lib/resolved-asset'
 
 interface TreeTabProps {
   mode: TreeMode
@@ -108,7 +108,8 @@ export function TreeTab({ mode }: TreeTabProps) {
         value += ra.totalValue
       }
       if (!shouldIncludeByMode(ra, effectiveMode)) continue
-      if (categoryFilter && ra.categoryName !== categoryFilter) continue
+      const names = getAssetDisplayNames(ra)
+      if (categoryFilter && names.categoryName !== categoryFilter) continue
       if (!matchesSearch(ra, search)) continue
       showing++
     }

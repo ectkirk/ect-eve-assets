@@ -52,7 +52,6 @@ export function useResolvedAssets(): ResolvedAssetsResult {
   }, [starbasesByOwner, structuresByOwner])
 
   const resolvedAssets = useMemo(() => {
-    void assetData.cacheVersion
     void ordersUpdateCounter
     void contractsUpdateCounter
 
@@ -111,7 +110,6 @@ export function useResolvedAssets(): ResolvedAssetsResult {
     assetData.assetsByOwner,
     assetData.prices,
     assetData.assetNames,
-    assetData.cacheVersion,
     ownedStructureIds,
     starbaseMoonIds,
     ordersById,

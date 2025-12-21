@@ -24,7 +24,8 @@ import {
 } from '@/components/ui/context-menu'
 import { formatNumber, cn } from '@/lib/utils'
 import { useTabControls } from '@/context'
-import { matchesAssetTypeFilter, matchesSearch, type AssetModeFlags, type ResolvedAsset } from '@/lib/resolved-asset'
+import { matchesAssetTypeFilter, matchesSearch, getAssetDisplayNames, type AssetModeFlags, type ResolvedAsset } from '@/lib/resolved-asset'
+import { useBlueprintsStore } from '@/store/blueprints-store'
 
 interface AssetRow {
   itemId: number
@@ -93,16 +94,17 @@ function saveColumnVisibility(state: VisibilityState): void {
 }
 
 function createAssetRow(ra: ResolvedAsset, displayFlag: string, isAbyssal: boolean): AssetRow {
+  const names = getAssetDisplayNames(ra)
   return {
     itemId: ra.asset.item_id,
     typeId: ra.typeId,
-    typeName: ra.typeName,
+    typeName: names.typeName,
     quantity: ra.asset.quantity,
     locationId: ra.asset.location_id,
     resolvedLocationId: ra.rootLocationId,
-    locationName: ra.locationName,
-    systemName: ra.systemName,
-    regionName: ra.regionName,
+    locationName: names.locationName,
+    systemName: names.systemName,
+    regionName: names.regionName,
     locationFlag: displayFlag,
     isSingleton: ra.asset.is_singleton,
     isBlueprintCopy: ra.isBlueprintCopy,
@@ -112,8 +114,8 @@ function createAssetRow(ra: ResolvedAsset, displayFlag: string, isAbyssal: boole
     volume: ra.volume,
     totalVolume: ra.totalVolume,
     categoryId: ra.categoryId,
-    categoryName: ra.categoryName,
-    groupName: ra.groupName,
+    categoryName: names.categoryName,
+    groupName: names.groupName,
     ownerId: ra.owner.id,
     ownerName: ra.owner.name,
     ownerType: ra.owner.type,
@@ -325,6 +327,8 @@ export function AssetsTab() {
     saveColumnVisibility(columnVisibility)
   }, [columnVisibility])
 
+  const blueprintsByItemId = useBlueprintsStore((s) => s.blueprintsByItemId)
+
   const { data, categories } = useMemo(() => {
     void cacheVersion
 
@@ -340,15 +344,24 @@ export function AssetsTab() {
 
       const isBlueprint = ra.categoryId === CategoryIds.BLUEPRINT
       const isAbyssal = isAbyssalTypeId(ra.typeId)
+      const names = getAssetDisplayNames(ra)
 
-      if (ra.categoryName) cats.add(ra.categoryName)
+      if (names.categoryName) cats.add(names.categoryName)
 
       if (isAbyssal || (ra.asset.is_singleton && !isBlueprint)) {
         aggregated.set(`unique-${ra.asset.item_id}`, createAssetRow(ra, displayFlag, isAbyssal))
         continue
       }
 
-      const key = `${ra.owner.id}-${ra.typeId}-${ra.asset.location_id}-${displayFlag}-${ra.rootLocationId}-${ra.typeName}`
+      let bpSuffix = ''
+      if (isBlueprint && ra.isBlueprintCopy) {
+        const bp = blueprintsByItemId.get(ra.asset.item_id)
+        if (bp) {
+          bpSuffix = `-${bp.runs}/${bp.materialEfficiency}/${bp.timeEfficiency}`
+        }
+      }
+
+      const key = `${ra.owner.id}-${ra.typeId}-${ra.asset.location_id}-${displayFlag}-${ra.rootLocationId}${bpSuffix}`
       const existing = aggregated.get(key)
       if (existing) {
         existing.quantity += ra.asset.quantity
@@ -363,7 +376,7 @@ export function AssetsTab() {
       data: Array.from(aggregated.values()),
       categories: Array.from(cats).sort(),
     }
-  }, [selectedResolvedAssets, cacheVersion])
+  }, [selectedResolvedAssets, cacheVersion, blueprintsByItemId])
 
   const { filteredData, filteredTotalValue, sourceCount } = useMemo(() => {
     const searchLower = search.toLowerCase()
@@ -372,7 +385,8 @@ export function AssetsTab() {
 
     for (const ra of selectedResolvedAssets) {
       if (!matchesAssetTypeFilter(ra.modeFlags, assetTypeFilterValue)) continue
-      if (categoryFilterValue && ra.categoryName !== categoryFilterValue) continue
+      const names = getAssetDisplayNames(ra)
+      if (categoryFilterValue && names.categoryName !== categoryFilterValue) continue
       if (search && !matchesSearch(ra, search)) continue
       sourceShowing++
     }
