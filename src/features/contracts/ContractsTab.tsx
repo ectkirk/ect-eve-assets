@@ -9,7 +9,6 @@ import {
   type ContractWithItems,
 } from '@/store/contracts-store'
 import { useAssetData } from '@/hooks/useAssetData'
-import type { ESIContractItem } from '@/api/endpoints/contracts'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import { useAssetStore } from '@/store/asset-store'
 import { cn, formatNumber } from '@/lib/utils'
@@ -101,25 +100,9 @@ export function ContractsTab() {
   const { isLoading: assetsUpdating } = useAssetData()
   const isUpdating = assetsUpdating || contractsUpdating
 
-  const [loadedItems, setLoadedItems] = useState<Map<number, ESIContractItem[]>>(
-    new Map()
-  )
-
   useEffect(() => {
     init()
   }, [init])
-
-  useEffect(() => {
-    const itemsMap = new Map<number, ESIContractItem[]>()
-    for (const { contracts } of contractsByOwner) {
-      for (const { contract, items } of contracts) {
-        if (items) {
-          itemsMap.set(contract.contract_id, items)
-        }
-      }
-    }
-    setLoadedItems(itemsMap)
-  }, [contractsByOwner])
 
   const cacheVersion = useCacheVersion()
 
@@ -207,7 +190,6 @@ export function ContractsTab() {
           owner.type,
           owner.id,
           isIssuer,
-          loadedItems,
           prices
         )
 
@@ -270,7 +252,7 @@ export function ContractsTab() {
             }
           : null,
     }
-  }, [contractsByOwner, cacheVersion, owners, prices, search, selectedSet, loadedItems])
+  }, [contractsByOwner, cacheVersion, owners, prices, search, selectedSet])
 
   const toggleDirection = useCallback((direction: string) => {
     setExpandedDirections((prev) => {

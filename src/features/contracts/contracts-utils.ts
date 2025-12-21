@@ -114,11 +114,10 @@ export function buildContractRow(
   ownerType: 'character' | 'corporation',
   ownerId: number,
   isIssuer: boolean,
-  loadedItems: Map<number, ESIContractItem[]>,
   prices: Map<number, number>
 ): ContractRow {
   const contract = contractWithItems.contract
-  const items = loadedItems.get(contract.contract_id) ?? []
+  const items = contractWithItems.items ?? []
   const direction: ContractDirection = isIssuer ? 'out' : 'in'
 
   const firstItem = items[0]
