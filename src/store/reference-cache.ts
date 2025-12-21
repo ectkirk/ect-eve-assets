@@ -86,7 +86,16 @@ export interface CachedAbyssal {
 export interface CachedName {
   id: number
   name: string
-  category: 'alliance' | 'character' | 'constellation' | 'corporation' | 'inventory_type' | 'region' | 'solar_system' | 'station' | 'faction'
+  category:
+    | 'alliance'
+    | 'character'
+    | 'constellation'
+    | 'corporation'
+    | 'inventory_type'
+    | 'region'
+    | 'solar_system'
+    | 'station'
+    | 'faction'
 }
 
 let db: IDBDatabase | null = null
@@ -141,7 +150,9 @@ async function openDB(): Promise<IDBDatabase> {
     const request = indexedDB.open(DB_NAME, DB_VERSION)
 
     request.onerror = () => {
-      logger.error('Failed to open cache DB', request.error, { module: 'ReferenceCache' })
+      logger.error('Failed to open cache DB', request.error, {
+        module: 'ReferenceCache',
+      })
       reject(request.error)
     }
 
@@ -194,7 +205,9 @@ async function openDB(): Promise<IDBDatabase> {
       if (oldVersion < 4 && database.objectStoreNames.contains('locations')) {
         const tx = (event.target as IDBOpenDBRequest).transaction!
         tx.objectStore('locations').clear()
-        logger.info('Cleared locations cache for v4 upgrade', { module: 'ReferenceCache' })
+        logger.info('Cleared locations cache for v4 upgrade', {
+          module: 'ReferenceCache',
+        })
       }
     }
   })
@@ -248,7 +261,20 @@ export async function initCache(): Promise<void> {
   logger.debug('Initializing reference cache', { module: 'ReferenceCache' })
 
   try {
-    const [types, regions, systems, stations, refStructures, structures, locations, abyssals, names, categories, groups, blueprints] = await Promise.all([
+    const [
+      types,
+      regions,
+      systems,
+      stations,
+      refStructures,
+      structures,
+      locations,
+      abyssals,
+      names,
+      categories,
+      groups,
+      blueprints,
+    ] = await Promise.all([
       loadStore<CachedType>('types'),
       loadStore<CachedRegion>('regions'),
       loadStore<CachedSystem>('systems'),
@@ -279,11 +305,20 @@ export async function initCache(): Promise<void> {
     referenceDataLoaded = categoriesCache.size > 0 && groupsCache.size > 0
 
     try {
-      allTypesLoaded = localStorage.getItem(ALL_TYPES_LOADED_KEY) === 'true' && typesCache.size > 0
-      universeDataLoaded = localStorage.getItem(UNIVERSE_LOADED_KEY) === 'true'
-        && regionsCache.size > 0 && systemsCache.size > 0 && stationsCache.size > 0
-      refStructuresLoaded = localStorage.getItem(REF_STRUCTURES_LOADED_KEY) === 'true' && refStructuresCache.size > 0
-      blueprintsLoaded = localStorage.getItem(BLUEPRINTS_LOADED_KEY) === 'true' && blueprintsCache.size > 0
+      allTypesLoaded =
+        localStorage.getItem(ALL_TYPES_LOADED_KEY) === 'true' &&
+        typesCache.size > 0
+      universeDataLoaded =
+        localStorage.getItem(UNIVERSE_LOADED_KEY) === 'true' &&
+        regionsCache.size > 0 &&
+        systemsCache.size > 0 &&
+        stationsCache.size > 0
+      refStructuresLoaded =
+        localStorage.getItem(REF_STRUCTURES_LOADED_KEY) === 'true' &&
+        refStructuresCache.size > 0
+      blueprintsLoaded =
+        localStorage.getItem(BLUEPRINTS_LOADED_KEY) === 'true' &&
+        blueprintsCache.size > 0
     } catch {
       // localStorage not available
     }
@@ -308,7 +343,9 @@ export async function initCache(): Promise<void> {
       blueprintsLoaded,
     })
   } catch (err) {
-    logger.error('Failed to initialize cache', err, { module: 'ReferenceCache' })
+    logger.error('Failed to initialize cache', err, {
+      module: 'ReferenceCache',
+    })
     initialized = true
   }
 }
@@ -422,51 +459,78 @@ export function hasStation(id: number): boolean {
 
 export async function setRegions(regions: CachedRegion[]): Promise<void> {
   await writeBatch('regions', regions, () => {
-    regionsCache = new Map(regions.map(r => [r.id, r]))
-    logger.info('Regions saved', { module: 'ReferenceCache', count: regions.length })
+    regionsCache = new Map(regions.map((r) => [r.id, r]))
+    logger.info('Regions saved', {
+      module: 'ReferenceCache',
+      count: regions.length,
+    })
   })
 }
 
 export async function setSystems(systems: CachedSystem[]): Promise<void> {
   await writeBatch('systems', systems, () => {
-    systemsCache = new Map(systems.map(s => [s.id, s]))
-    logger.info('Systems saved', { module: 'ReferenceCache', count: systems.length })
+    systemsCache = new Map(systems.map((s) => [s.id, s]))
+    logger.info('Systems saved', {
+      module: 'ReferenceCache',
+      count: systems.length,
+    })
   })
 }
 
 export async function setStations(stations: CachedStation[]): Promise<void> {
   await writeBatch('stations', stations, () => {
-    stationsCache = new Map(stations.map(s => [s.id, s]))
-    logger.info('Stations saved', { module: 'ReferenceCache', count: stations.length })
+    stationsCache = new Map(stations.map((s) => [s.id, s]))
+    logger.info('Stations saved', {
+      module: 'ReferenceCache',
+      count: stations.length,
+    })
   })
 }
 
-export async function setRefStructures(structures: CachedRefStructure[]): Promise<void> {
+export async function setRefStructures(
+  structures: CachedRefStructure[]
+): Promise<void> {
   await writeBatch('refStructures', structures, () => {
-    refStructuresCache = new Map(structures.map(s => [s.id, s]))
-    logger.info('RefStructures saved', { module: 'ReferenceCache', count: structures.length })
+    refStructuresCache = new Map(structures.map((s) => [s.id, s]))
+    logger.info('RefStructures saved', {
+      module: 'ReferenceCache',
+      count: structures.length,
+    })
   })
 }
 
-export async function setCategories(categories: CachedCategory[]): Promise<void> {
+export async function setCategories(
+  categories: CachedCategory[]
+): Promise<void> {
   await writeBatch('categories', categories, () => {
-    categoriesCache = new Map(categories.map(c => [c.id, c]))
-    logger.info('Categories saved', { module: 'ReferenceCache', count: categories.length })
+    categoriesCache = new Map(categories.map((c) => [c.id, c]))
+    logger.info('Categories saved', {
+      module: 'ReferenceCache',
+      count: categories.length,
+    })
   })
 }
 
 export async function setGroups(groups: CachedGroup[]): Promise<void> {
   await writeBatch('groups', groups, () => {
-    groupsCache = new Map(groups.map(g => [g.id, g]))
+    groupsCache = new Map(groups.map((g) => [g.id, g]))
     referenceDataLoaded = true
-    logger.info('Groups saved', { module: 'ReferenceCache', count: groups.length })
+    logger.info('Groups saved', {
+      module: 'ReferenceCache',
+      count: groups.length,
+    })
   })
 }
 
-export async function setBlueprints(blueprints: CachedBlueprint[]): Promise<void> {
+export async function setBlueprints(
+  blueprints: CachedBlueprint[]
+): Promise<void> {
   await writeBatch('blueprints', blueprints, () => {
-    blueprintsCache = new Map(blueprints.map(b => [b.id, b]))
-    logger.info('Blueprints saved', { module: 'ReferenceCache', count: blueprints.length })
+    blueprintsCache = new Map(blueprints.map((b) => [b.id, b]))
+    logger.info('Blueprints saved', {
+      module: 'ReferenceCache',
+      count: blueprints.length,
+    })
   })
 }
 
@@ -524,7 +588,9 @@ export function getLocation(id: number): CachedLocation | undefined {
 
   const refStructure = refStructuresCache.get(id)
   if (refStructure) {
-    const system = refStructure.systemId ? systemsCache.get(refStructure.systemId) : undefined
+    const system = refStructure.systemId
+      ? systemsCache.get(refStructure.systemId)
+      : undefined
     const region = system ? regionsCache.get(system.regionId) : undefined
     return {
       id,
@@ -566,11 +632,13 @@ export function getLocation(id: number): CachedLocation | undefined {
 }
 
 export function hasLocation(id: number): boolean {
-  return locationsCache.has(id)
-    || stationsCache.has(id)
-    || refStructuresCache.has(id)
-    || systemsCache.has(id)
-    || regionsCache.has(id)
+  return (
+    locationsCache.has(id) ||
+    stationsCache.has(id) ||
+    refStructuresCache.has(id) ||
+    systemsCache.has(id) ||
+    regionsCache.has(id)
+  )
 }
 
 export function getLocationName(id: number): string {
@@ -616,14 +684,19 @@ export async function saveTypes(types: CachedType[]): Promise<void> {
   })
 }
 
-export async function saveStructures(structures: CachedStructure[]): Promise<void> {
+export async function saveStructures(
+  structures: CachedStructure[]
+): Promise<void> {
   await writeBatch('structures', structures, () => {
-    for (const structure of structures) structuresCache.set(structure.id, structure)
+    for (const structure of structures)
+      structuresCache.set(structure.id, structure)
     notifyListeners()
   })
 }
 
-export async function saveLocations(locations: CachedLocation[]): Promise<void> {
+export async function saveLocations(
+  locations: CachedLocation[]
+): Promise<void> {
   await writeBatch('locations', locations, () => {
     for (const location of locations) locationsCache.set(location.id, location)
     notifyListeners()
@@ -667,7 +740,9 @@ export async function clearReferenceCache(): Promise<void> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.deleteDatabase(DB_NAME)
     request.onerror = () => {
-      logger.error('Failed to delete cache DB', request.error, { module: 'ReferenceCache' })
+      logger.error('Failed to delete cache DB', request.error, {
+        module: 'ReferenceCache',
+      })
       reject(request.error)
     }
     request.onsuccess = () => {

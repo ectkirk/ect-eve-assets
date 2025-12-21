@@ -4,7 +4,12 @@ import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useClonesStore } from '@/store/clones-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useTabControls } from '@/context'
-import { useColumnSettings, useCacheVersion, useExpandCollapse, type ColumnConfig } from '@/hooks'
+import {
+  useColumnSettings,
+  useCacheVersion,
+  useExpandCollapse,
+  type ColumnConfig,
+} from '@/hooks'
 import {
   hasType,
   getType,
@@ -63,7 +68,9 @@ function getImplantSlot(typeId: number): number {
 
 function ImplantList({ implants }: { implants: ImplantInfo[] }) {
   if (implants.length === 0) {
-    return <span className="text-content-muted text-sm italic">No implants</span>
+    return (
+      <span className="text-content-muted text-sm italic">No implants</span>
+    )
   }
 
   const sorted = [...implants].sort((a, b) => a.slot - b.slot)
@@ -97,14 +104,22 @@ function ImplantList({ implants }: { implants: ImplantInfo[] }) {
   )
 }
 
-function CloneCard({ clone, isActive }: { clone: CloneInfo; isActive?: boolean }) {
+function CloneCard({
+  clone,
+  isActive,
+}: {
+  clone: CloneInfo
+  isActive?: boolean
+}) {
   const [expanded, setExpanded] = useState(isActive)
 
   return (
     <div
       className={cn(
         'border rounded-lg',
-        isActive ? 'border-accent bg-accent/10' : 'border-border bg-surface-secondary/30'
+        isActive
+          ? 'border-accent bg-accent/10'
+          : 'border-border bg-surface-secondary/30'
       )}
     >
       <button
@@ -116,23 +131,34 @@ function CloneCard({ clone, isActive }: { clone: CloneInfo; isActive?: boolean }
         ) : (
           <ChevronRight className="h-4 w-4 text-content-secondary" />
         )}
-        <MapPin className={cn('h-4 w-4', isActive ? 'text-status-info' : 'text-content-secondary')} />
+        <MapPin
+          className={cn(
+            'h-4 w-4',
+            isActive ? 'text-status-info' : 'text-content-secondary'
+          )}
+        />
         <span className={cn('flex-1', isActive && 'text-status-info')}>
           {clone.name || clone.locationName}
         </span>
         {isActive && (
-          <span className="text-xs bg-accent/20 text-status-info px-2 py-0.5 rounded">Active</span>
+          <span className="text-xs bg-accent/20 text-status-info px-2 py-0.5 rounded">
+            Active
+          </span>
         )}
         {clone.isHome && (
           <span title="Home Station">
             <Home className="h-4 w-4 text-status-positive" />
           </span>
         )}
-        <span className="text-xs text-content-muted">{clone.implants.length} implants</span>
+        <span className="text-xs text-content-muted">
+          {clone.implants.length} implants
+        </span>
       </button>
       {expanded && (
         <div className="px-4 pb-3 pt-1 border-t border-border/50">
-          <div className="text-xs text-content-muted mb-2">{clone.locationName}</div>
+          <div className="text-xs text-content-muted mb-2">
+            {clone.locationName}
+          </div>
           <ImplantList implants={clone.implants} />
         </div>
       )}
@@ -163,7 +189,8 @@ function CharacterClonesSection({
         <CharacterPortrait characterId={data.ownerId} size="lg" />
         <span className="font-medium flex-1">{data.ownerName}</span>
         <span className="text-sm text-content-secondary">
-          {data.jumpClones.length} jump clone{data.jumpClones.length !== 1 ? 's' : ''}
+          {data.jumpClones.length} jump clone
+          {data.jumpClones.length !== 1 ? 's' : ''}
         </span>
       </button>
 
@@ -179,7 +206,9 @@ function CharacterClonesSection({
 
           {data.jumpClones.length > 0 && (
             <div>
-              <h4 className="text-xs uppercase text-content-muted mb-2">Jump Clones</h4>
+              <h4 className="text-xs uppercase text-content-muted mb-2">
+                Jump Clones
+              </h4>
               <div className="space-y-2">
                 {data.jumpClones.map((clone) => (
                   <CloneCard key={clone.id} clone={clone} />
@@ -213,15 +242,22 @@ export function ClonesTab() {
 
   const cacheVersion = useCacheVersion()
 
-  const { setExpandCollapse, search, setResultCount, setColumns } = useTabControls()
+  const { setExpandCollapse, search, setResultCount, setColumns } =
+    useTabControls()
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
-  const selectedSet = useMemo(() => new Set(selectedOwnerIds), [selectedOwnerIds])
+  const selectedSet = useMemo(
+    () => new Set(selectedOwnerIds),
+    [selectedOwnerIds]
+  )
 
-  const CLONE_COLUMNS: ColumnConfig[] = useMemo(() => [
-    { id: 'character', label: 'Character' },
-    { id: 'location', label: 'Location' },
-    { id: 'implants', label: 'Implants' },
-  ], [])
+  const CLONE_COLUMNS: ColumnConfig[] = useMemo(
+    () => [
+      { id: 'character', label: 'Character' },
+      { id: 'location', label: 'Location' },
+      { id: 'implants', label: 'Implants' },
+    ],
+    []
+  )
 
   const { getColumnsForDropdown } = useColumnSettings('clones', CLONE_COLUMNS)
 
@@ -308,26 +344,41 @@ export function ClonesTab() {
 
     if (search) {
       const searchLower = search.toLowerCase()
-      sorted = sorted.filter((char) =>
-        char.ownerName.toLowerCase().includes(searchLower) ||
-        char.activeClone.locationName.toLowerCase().includes(searchLower) ||
-        char.activeClone.implants.some((i) => i.name.toLowerCase().includes(searchLower)) ||
-        char.jumpClones.some((jc) =>
-          jc.locationName.toLowerCase().includes(searchLower) ||
-          jc.name.toLowerCase().includes(searchLower) ||
-          jc.implants.some((i) => i.name.toLowerCase().includes(searchLower))
-        )
+      sorted = sorted.filter(
+        (char) =>
+          char.ownerName.toLowerCase().includes(searchLower) ||
+          char.activeClone.locationName.toLowerCase().includes(searchLower) ||
+          char.activeClone.implants.some((i) =>
+            i.name.toLowerCase().includes(searchLower)
+          ) ||
+          char.jumpClones.some(
+            (jc) =>
+              jc.locationName.toLowerCase().includes(searchLower) ||
+              jc.name.toLowerCase().includes(searchLower) ||
+              jc.implants.some((i) =>
+                i.name.toLowerCase().includes(searchLower)
+              )
+          )
       )
     }
 
     return sorted
   }, [clonesByOwner, cacheVersion, search, selectedSet])
 
-  const expandableIds = useMemo(() => characterClones.map((c) => c.ownerId), [characterClones])
-  const { isExpanded, toggle } = useExpandCollapse(expandableIds, setExpandCollapse)
+  const expandableIds = useMemo(
+    () => characterClones.map((c) => c.ownerId),
+    [characterClones]
+  )
+  const { isExpanded, toggle } = useExpandCollapse(
+    expandableIds,
+    setExpandCollapse
+  )
 
   useEffect(() => {
-    setResultCount({ showing: characterClones.length, total: clonesByOwner.length })
+    setResultCount({
+      showing: characterClones.length,
+      total: clonesByOwner.length,
+    })
     return () => setResultCount(null)
   }, [characterClones.length, clonesByOwner.length, setResultCount])
 

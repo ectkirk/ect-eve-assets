@@ -108,12 +108,23 @@ function getShipRenderUrl(typeId: number): string {
   return `https://images.evetech.net/types/${typeId}/render?size=256`
 }
 
-function SlotIcon({ module, position }: { module: ModuleItem | undefined; position: { x: number; y: number } }) {
+function SlotIcon({
+  module,
+  position,
+}: {
+  module: ModuleItem | undefined
+  position: { x: number; y: number }
+}) {
   if (!module || !module.type_id) {
     return (
       <div
         className="absolute"
-        style={{ left: position.x, top: position.y, width: ICON_SIZE, height: ICON_SIZE }}
+        style={{
+          left: position.x,
+          top: position.y,
+          width: ICON_SIZE,
+          height: ICON_SIZE,
+        }}
       />
     )
   }
@@ -121,7 +132,12 @@ function SlotIcon({ module, position }: { module: ModuleItem | undefined; positi
   return (
     <div
       className="absolute"
-      style={{ left: position.x, top: position.y, width: ICON_SIZE, height: ICON_SIZE }}
+      style={{
+        left: position.x,
+        top: position.y,
+        width: ICON_SIZE,
+        height: ICON_SIZE,
+      }}
     >
       <a
         href={`https://everef.net/type/${module.type_id}`}
@@ -181,20 +197,27 @@ export function FittingWheel({
         <PanelLayer src={PANEL_IMAGES.subsystem[slots.subsystem]!} />
       )}
 
-      <div className="absolute -z-20" style={{ left: 72, top: 71, width: 256, height: 256 }}>
+      <div
+        className="absolute -z-20"
+        style={{ left: 72, top: 71, width: 256, height: 256 }}
+      >
         <img
           src={getShipRenderUrl(shipTypeId)}
           alt={shipName}
           className="block rounded"
           style={{ width: 256, height: 256 }}
           onError={(e) => {
-            (e.target as HTMLImageElement).src = getTypeIconUrl(shipTypeId)
+            ;(e.target as HTMLImageElement).src = getTypeIconUrl(shipTypeId)
           }}
         />
       </div>
 
       {SLOT_POSITIONS.high.slice(0, slots.high).map((pos, i) => (
-        <SlotIcon key={`high-${i}`} module={highSlotModules[i]} position={pos} />
+        <SlotIcon
+          key={`high-${i}`}
+          module={highSlotModules[i]}
+          position={pos}
+        />
       ))}
       {SLOT_POSITIONS.mid.slice(0, slots.mid).map((pos, i) => (
         <SlotIcon key={`mid-${i}`} module={midSlotModules[i]} position={pos} />
@@ -205,9 +228,16 @@ export function FittingWheel({
       {SLOT_POSITIONS.rig.slice(0, slots.rig).map((pos, i) => (
         <SlotIcon key={`rig-${i}`} module={rigModules[i]} position={pos} />
       ))}
-      {slots.subsystem > 0 && SLOT_POSITIONS.subsystem.slice(0, slots.subsystem).map((pos, i) => (
-        <SlotIcon key={`sub-${i}`} module={subsystemModules[i]} position={pos} />
-      ))}
+      {slots.subsystem > 0 &&
+        SLOT_POSITIONS.subsystem
+          .slice(0, slots.subsystem)
+          .map((pos, i) => (
+            <SlotIcon
+              key={`sub-${i}`}
+              module={subsystemModules[i]}
+              position={pos}
+            />
+          ))}
     </div>
   )
 }

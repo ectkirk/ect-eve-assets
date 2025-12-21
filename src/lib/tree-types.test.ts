@@ -79,7 +79,8 @@ describe('LocationFlagToNumber', () => {
 
   it('has consistent values where keys overlap with LocationFlagNumbers', () => {
     for (const [key, value] of Object.entries(LocationFlagToNumber)) {
-      const flagNumber = LocationFlagNumbers[key as keyof typeof LocationFlagNumbers]
+      const flagNumber =
+        LocationFlagNumbers[key as keyof typeof LocationFlagNumbers]
       if (flagNumber !== undefined) {
         expect(value).toBe(flagNumber)
       }

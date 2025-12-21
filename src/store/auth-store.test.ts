@@ -91,7 +91,9 @@ describe('useAuthStore', () => {
         },
       })
 
-      expect(useAuthStore.getState().selectedOwnerIds).toEqual(['character-11111'])
+      expect(useAuthStore.getState().selectedOwnerIds).toEqual([
+        'character-11111',
+      ])
 
       addOwner({
         accessToken: 'token2',
@@ -293,12 +295,16 @@ describe('useAuthStore', () => {
     })
 
     it('returns true for selected owner', () => {
-      expect(useAuthStore.getState().isOwnerSelected('character-11111')).toBe(true)
+      expect(useAuthStore.getState().isOwnerSelected('character-11111')).toBe(
+        true
+      )
     })
 
     it('returns false for non-selected owner', () => {
       useAuthStore.setState({ selectedOwnerIds: [] })
-      expect(useAuthStore.getState().isOwnerSelected('character-11111')).toBe(false)
+      expect(useAuthStore.getState().isOwnerSelected('character-11111')).toBe(
+        false
+      )
     })
   })
 
@@ -527,7 +533,9 @@ describe('useAuthStore', () => {
 
   describe('isOwnerTokenExpired', () => {
     it('returns true for unknown owner', () => {
-      expect(useAuthStore.getState().isOwnerTokenExpired('character-99999')).toBe(true)
+      expect(
+        useAuthStore.getState().isOwnerTokenExpired('character-99999')
+      ).toBe(true)
     })
 
     it('returns true for null expiresAt', () => {
@@ -548,7 +556,9 @@ describe('useAuthStore', () => {
         isAuthenticated: true,
       })
 
-      expect(useAuthStore.getState().isOwnerTokenExpired('character-12345')).toBe(true)
+      expect(
+        useAuthStore.getState().isOwnerTokenExpired('character-12345')
+      ).toBe(true)
     })
 
     it('returns true for expired token', () => {
@@ -569,7 +579,9 @@ describe('useAuthStore', () => {
         isAuthenticated: true,
       })
 
-      expect(useAuthStore.getState().isOwnerTokenExpired('character-12345')).toBe(true)
+      expect(
+        useAuthStore.getState().isOwnerTokenExpired('character-12345')
+      ).toBe(true)
     })
 
     it('returns false for valid token', () => {
@@ -590,7 +602,9 @@ describe('useAuthStore', () => {
         isAuthenticated: true,
       })
 
-      expect(useAuthStore.getState().isOwnerTokenExpired('character-12345')).toBe(false)
+      expect(
+        useAuthStore.getState().isOwnerTokenExpired('character-12345')
+      ).toBe(false)
     })
   })
 
@@ -633,7 +647,8 @@ describe('useAuthStore', () => {
     })
 
     it('getAllCharacters works', () => {
-      const { addCharacter, addOwner, getAllCharacters } = useAuthStore.getState()
+      const { addCharacter, addOwner, getAllCharacters } =
+        useAuthStore.getState()
       addCharacter({
         accessToken: 'token1',
         refreshToken: 'refresh1',

@@ -1,4 +1,10 @@
-import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
+import {
+  test,
+  expect,
+  _electron as electron,
+  type ElectronApplication,
+  type Page,
+} from '@playwright/test'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import fs from 'fs'
@@ -59,13 +65,19 @@ test.afterAll(async () => {
 
 test.describe('Main Layout (Authenticated)', () => {
   test('shows main layout with tabs when authenticated', async () => {
-    const hasMainLayout = await page.locator('[data-testid="main-layout"]').count() > 0
-    const hasTabs = await page.locator('button').filter({ hasText: /Assets|Item Hangar|Ship Hangar/ }).count() > 0
+    const hasMainLayout =
+      (await page.locator('[data-testid="main-layout"]').count()) > 0
+    const hasTabs =
+      (await page
+        .locator('button')
+        .filter({ hasText: /Assets|Item Hangar|Ship Hangar/ })
+        .count()) > 0
 
     if (hasMainLayout || hasTabs) {
       expect(true).toBe(true)
     } else {
-      const hasLoginButton = await page.getByAltText('Log in with EVE Online').count() > 0
+      const hasLoginButton =
+        (await page.getByAltText('Log in with EVE Online').count()) > 0
       expect(hasLoginButton).toBe(true)
     }
   })
@@ -103,7 +115,7 @@ test.describe('Application Menu', () => {
   test('has File menu', async () => {
     const hasFileMenu = await electronApp.evaluate(({ Menu }) => {
       const menu = Menu.getApplicationMenu()
-      return menu?.items.some(item => item.label === 'File') ?? false
+      return menu?.items.some((item) => item.label === 'File') ?? false
     })
     expect(hasFileMenu).toBe(true)
   })
@@ -111,7 +123,7 @@ test.describe('Application Menu', () => {
   test('has Data menu', async () => {
     const hasDataMenu = await electronApp.evaluate(({ Menu }) => {
       const menu = Menu.getApplicationMenu()
-      return menu?.items.some(item => item.label === 'Data') ?? false
+      return menu?.items.some((item) => item.label === 'Data') ?? false
     })
     expect(hasDataMenu).toBe(true)
   })
@@ -119,7 +131,7 @@ test.describe('Application Menu', () => {
   test('has View menu', async () => {
     const hasViewMenu = await electronApp.evaluate(({ Menu }) => {
       const menu = Menu.getApplicationMenu()
-      return menu?.items.some(item => item.label === 'View') ?? false
+      return menu?.items.some((item) => item.label === 'View') ?? false
     })
     expect(hasViewMenu).toBe(true)
   })
@@ -127,7 +139,7 @@ test.describe('Application Menu', () => {
   test('has Help menu', async () => {
     const hasHelpMenu = await electronApp.evaluate(({ Menu }) => {
       const menu = Menu.getApplicationMenu()
-      return menu?.items.some(item => item.label === 'Help') ?? false
+      return menu?.items.some((item) => item.label === 'Help') ?? false
     })
     expect(hasHelpMenu).toBe(true)
   })

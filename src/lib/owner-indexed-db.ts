@@ -27,13 +27,26 @@ export interface OwnerDB<T> {
 }
 
 export function createOwnerDB<T>(config: OwnerDBConfig<T>): OwnerDB<T> {
-  const { dbName, storeName, dataKey, metaStoreName, version = 1, moduleName, serialize, deserialize } = config
+  const {
+    dbName,
+    storeName,
+    dataKey,
+    metaStoreName,
+    version = 1,
+    moduleName,
+    serialize,
+    deserialize,
+  } = config
 
   if (!dataKey && !deserialize) {
-    throw new Error(`OwnerDB ${storeName}: either dataKey or deserialize must be provided`)
+    throw new Error(
+      `OwnerDB ${storeName}: either dataKey or deserialize must be provided`
+    )
   }
   if (!dataKey && !serialize) {
-    throw new Error(`OwnerDB ${storeName}: either dataKey or serialize must be provided`)
+    throw new Error(
+      `OwnerDB ${storeName}: either dataKey or serialize must be provided`
+    )
   }
 
   let db: IDBDatabase | null = null
@@ -45,7 +58,9 @@ export function createOwnerDB<T>(config: OwnerDBConfig<T>): OwnerDB<T> {
       const request = indexedDB.open(dbName, version)
 
       request.onerror = () => {
-        logger.error(`Failed to open ${storeName} DB`, request.error, { module: moduleName })
+        logger.error(`Failed to open ${storeName} DB`, request.error, {
+          module: moduleName,
+        })
         reject(request.error)
       }
 
@@ -59,7 +74,10 @@ export function createOwnerDB<T>(config: OwnerDBConfig<T>): OwnerDB<T> {
         if (!database.objectStoreNames.contains(storeName)) {
           database.createObjectStore(storeName, { keyPath: 'ownerKey' })
         }
-        if (metaStoreName && !database.objectStoreNames.contains(metaStoreName)) {
+        if (
+          metaStoreName &&
+          !database.objectStoreNames.contains(metaStoreName)
+        ) {
           database.createObjectStore(metaStoreName, { keyPath: 'key' })
         }
       }
@@ -90,7 +108,11 @@ export function createOwnerDB<T>(config: OwnerDBConfig<T>): OwnerDB<T> {
     })
   }
 
-  const save = async (ownerKey: string, owner: Owner, data: T): Promise<void> => {
+  const save = async (
+    ownerKey: string,
+    owner: Owner,
+    data: T
+  ): Promise<void> => {
     const database = await openDB()
 
     return new Promise((resolve, reject) => {

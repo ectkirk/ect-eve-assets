@@ -1,11 +1,28 @@
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
-import { app, BrowserWindow, ipcMain, shell, safeStorage, screen } from 'electron'
+import {
+  app,
+  BrowserWindow,
+  ipcMain,
+  shell,
+  safeStorage,
+  screen,
+} from 'electron'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 import fs from 'node:fs'
-import { startAuth, refreshAccessToken, revokeToken, cancelAuth } from './services/auth.js'
-import { logger, initLogger, type LogLevel, type LogContext } from './services/logger.js'
+import {
+  startAuth,
+  refreshAccessToken,
+  revokeToken,
+  cancelAuth,
+} from './services/auth.js'
+import {
+  logger,
+  initLogger,
+  type LogLevel,
+  type LogContext,
+} from './services/logger.js'
 import { initUpdater, installUpdate } from './services/updater.js'
 import { getESIService } from './services/esi/index.js'
 import type { ESIRequestOptions } from './services/esi/types.js'
@@ -92,7 +109,10 @@ function writeStorage(data: Record<string, unknown>): void {
       fs.writeFileSync(storageFile, encrypted, { mode: 0o600 })
     } else {
       console.warn('[Storage] Encryption not available, using plaintext')
-      fs.writeFileSync(storageFile, JSON.stringify(data, null, 2), { mode: 0o600, encoding: 'utf-8' })
+      fs.writeFileSync(storageFile, JSON.stringify(data, null, 2), {
+        mode: 0o600,
+        encoding: 'utf-8',
+      })
     }
   } catch (err) {
     console.error('[Storage] Failed to write:', err)
@@ -121,7 +141,12 @@ function getValidatedWindowState(state: WindowState): WindowState {
   const centerY = state.y + state.height / 2
   for (const display of displays) {
     const { x, y, width, height } = display.workArea
-    if (centerX >= x && centerX < x + width && centerY >= y && centerY < y + height) {
+    if (
+      centerX >= x &&
+      centerX < x + width &&
+      centerY >= y &&
+      centerY < y + height
+    ) {
       return state
     }
   }
@@ -284,7 +309,12 @@ function createWindow() {
 
   // Log ALL renderer console messages to terminal
   mainWindow.webContents.on('console-message', (event) => {
-    const levelMap: Record<string, string> = { '0': 'LOG', '1': 'INFO', '2': 'WARN', '3': 'ERROR' }
+    const levelMap: Record<string, string> = {
+      '0': 'LOG',
+      '1': 'INFO',
+      '2': 'WARN',
+      '3': 'ERROR',
+    }
     const levelName = levelMap[String(event.level)] || 'LOG'
     console.log(`[Renderer:${levelName}] ${event.message}`)
   })
@@ -321,36 +351,57 @@ function createWindow() {
 }
 
 // IPC handlers for auth
-ipcMain.handle('auth:start', async (_event, includeCorporationScopes: unknown) => {
-  const includeCorpScopes = typeof includeCorporationScopes === 'boolean' ? includeCorporationScopes : false
-  const result = await startAuth(includeCorpScopes)
-  if (result.success && result.refreshToken && result.characterId) {
-    characterTokens.set(result.characterId, result.refreshToken)
+ipcMain.handle(
+  'auth:start',
+  async (_event, includeCorporationScopes: unknown) => {
+    const includeCorpScopes =
+      typeof includeCorporationScopes === 'boolean'
+        ? includeCorporationScopes
+        : false
+    const result = await startAuth(includeCorpScopes)
+    if (result.success && result.refreshToken && result.characterId) {
+      characterTokens.set(result.characterId, result.refreshToken)
+    }
+    return result
   }
-  return result
-})
+)
 
 ipcMain.handle('auth:cancel', () => {
   cancelAuth()
 })
 
-ipcMain.handle('auth:refresh', async (_event, refreshToken: unknown, characterId: unknown) => {
-  if (typeof refreshToken !== 'string' || refreshToken.length === 0 || refreshToken.length > 4000) {
-    return { success: false, error: 'Invalid refresh token' }
+ipcMain.handle(
+  'auth:refresh',
+  async (_event, refreshToken: unknown, characterId: unknown) => {
+    if (
+      typeof refreshToken !== 'string' ||
+      refreshToken.length === 0 ||
+      refreshToken.length > 4000
+    ) {
+      return { success: false, error: 'Invalid refresh token' }
+    }
+    if (
+      typeof characterId !== 'number' ||
+      !Number.isInteger(characterId) ||
+      characterId <= 0
+    ) {
+      return { success: false, error: 'Invalid character ID' }
+    }
+    const result = await refreshAccessToken(refreshToken)
+    if (result.success && result.refreshToken && characterId) {
+      characterTokens.set(characterId, result.refreshToken)
+    }
+    return result
   }
-  if (typeof characterId !== 'number' || !Number.isInteger(characterId) || characterId <= 0) {
-    return { success: false, error: 'Invalid character ID' }
-  }
-  const result = await refreshAccessToken(refreshToken)
-  if (result.success && result.refreshToken && characterId) {
-    characterTokens.set(characterId, result.refreshToken)
-  }
-  return result
-})
+)
 
 ipcMain.handle('auth:logout', async (_event, characterId: unknown) => {
   if (characterId !== undefined) {
-    if (typeof characterId !== 'number' || !Number.isInteger(characterId) || characterId <= 0) {
+    if (
+      typeof characterId !== 'number' ||
+      !Number.isInteger(characterId) ||
+      characterId <= 0
+    ) {
       return { success: false, error: 'Invalid character ID' }
     }
     const token = characterTokens.get(characterId)
@@ -366,7 +417,6 @@ ipcMain.handle('auth:logout', async (_event, characterId: unknown) => {
   }
   return { success: true }
 })
-
 
 // File-based storage IPC handlers (replaces localStorage for persistence)
 ipcMain.handle('storage:get', () => {
@@ -399,47 +449,57 @@ const VALID_LOG_LEVELS = ['DEBUG', 'INFO', 'WARN', 'ERROR'] as const
 const MAX_LOG_MESSAGE_LENGTH = 10000
 const MAX_LOG_CONTEXT_SIZE = 50000
 
-ipcMain.handle('log:write', (_event, level: unknown, message: unknown, context: unknown) => {
-  if (typeof level !== 'string' || !VALID_LOG_LEVELS.includes(level as LogLevel)) {
-    return
-  }
-  if (typeof message !== 'string') {
-    return
-  }
-  const truncatedMessage = message.slice(0, MAX_LOG_MESSAGE_LENGTH)
-
-  let validContext: LogContext | undefined
-  if (context !== undefined) {
-    if (typeof context !== 'object' || context === null || Array.isArray(context)) {
+ipcMain.handle(
+  'log:write',
+  (_event, level: unknown, message: unknown, context: unknown) => {
+    if (
+      typeof level !== 'string' ||
+      !VALID_LOG_LEVELS.includes(level as LogLevel)
+    ) {
       return
     }
-    try {
-      const contextJson = JSON.stringify(context)
-      if (contextJson.length > MAX_LOG_CONTEXT_SIZE) {
+    if (typeof message !== 'string') {
+      return
+    }
+    const truncatedMessage = message.slice(0, MAX_LOG_MESSAGE_LENGTH)
+
+    let validContext: LogContext | undefined
+    if (context !== undefined) {
+      if (
+        typeof context !== 'object' ||
+        context === null ||
+        Array.isArray(context)
+      ) {
         return
       }
-      validContext = context as LogContext
-    } catch {
-      return
+      try {
+        const contextJson = JSON.stringify(context)
+        if (contextJson.length > MAX_LOG_CONTEXT_SIZE) {
+          return
+        }
+        validContext = context as LogContext
+      } catch {
+        return
+      }
+    }
+
+    const logContext = { ...validContext, source: 'renderer' }
+    switch (level as LogLevel) {
+      case 'DEBUG':
+        logger.debug(truncatedMessage, logContext)
+        break
+      case 'INFO':
+        logger.info(truncatedMessage, logContext)
+        break
+      case 'WARN':
+        logger.warn(truncatedMessage, logContext)
+        break
+      case 'ERROR':
+        logger.error(truncatedMessage, undefined, logContext)
+        break
     }
   }
-
-  const logContext = { ...validContext, source: 'renderer' }
-  switch (level as LogLevel) {
-    case 'DEBUG':
-      logger.debug(truncatedMessage, logContext)
-      break
-    case 'INFO':
-      logger.info(truncatedMessage, logContext)
-      break
-    case 'WARN':
-      logger.warn(truncatedMessage, logContext)
-      break
-    case 'ERROR':
-      logger.error(truncatedMessage, undefined, logContext)
-      break
-  }
-})
+)
 
 ipcMain.handle('log:getDir', () => {
   return logger.getLogDir()
@@ -450,47 +510,56 @@ ipcMain.handle('log:openFolder', () => {
   shell.openPath(logDir)
 })
 
-const BUG_REPORT_WEBHOOK = 'https://discord.com/api/webhooks/1451197565927424001/diQ7bJRG4X526UM3pOmvx2nJ-ZyjzxgvDdXn5lwOgYsMZtnFr_NVqjaiJhRudnTxoGAP'
+const BUG_REPORT_WEBHOOK =
+  'https://discord.com/api/webhooks/1451197565927424001/diQ7bJRG4X526UM3pOmvx2nJ-ZyjzxgvDdXn5lwOgYsMZtnFr_NVqjaiJhRudnTxoGAP'
 
-ipcMain.handle('bug:report', async (_event, characterName: unknown, description: unknown) => {
-  if (typeof description !== 'string' || !description.trim()) {
-    return { success: false, error: 'Description is required' }
-  }
-
-  try {
-    const response = await fetch(BUG_REPORT_WEBHOOK, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        embeds: [{
-          title: 'Bug Report',
-          color: 0xED4245,
-          fields: [
-            {
-              name: 'Contact',
-              value: typeof characterName === 'string' && characterName.trim() ? characterName.trim() : 'Not provided',
-              inline: true,
-            },
-            {
-              name: 'Description',
-              value: description.trim().substring(0, 1024),
-            },
-          ],
-          timestamp: new Date().toISOString(),
-        }],
-      }),
-    })
-
-    if (!response.ok) {
-      return { success: false, error: 'Failed to submit report' }
+ipcMain.handle(
+  'bug:report',
+  async (_event, characterName: unknown, description: unknown) => {
+    if (typeof description !== 'string' || !description.trim()) {
+      return { success: false, error: 'Description is required' }
     }
 
-    return { success: true }
-  } catch (err) {
-    logger.error('Bug report submission failed', err, { module: 'BugReport' })
-    return { success: false, error: 'Failed to submit report' }
+    try {
+      const response = await fetch(BUG_REPORT_WEBHOOK, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          embeds: [
+            {
+              title: 'Bug Report',
+              color: 0xed4245,
+              fields: [
+                {
+                  name: 'Contact',
+                  value:
+                    typeof characterName === 'string' && characterName.trim()
+                      ? characterName.trim()
+                      : 'Not provided',
+                  inline: true,
+                },
+                {
+                  name: 'Description',
+                  value: description.trim().substring(0, 1024),
+                },
+              ],
+              timestamp: new Date().toISOString(),
+            },
+          ],
+        }),
+      })
+
+      if (!response.ok) {
+        return { success: false, error: 'Failed to submit report' }
+      }
+
+      return { success: true }
+    } catch (err) {
+      logger.error('Bug report submission failed', err, { module: 'BugReport' })
+      return { success: false, error: 'Failed to submit report' }
+    }
   }
-})
+)
 
 ipcMain.handle('updater:install', () => {
   installUpdate()
@@ -523,7 +592,11 @@ function setRefGlobalBackoff(delayMs: number): void {
   const retryAt = Date.now() + delayMs
   if (retryAt > refGlobalRetryAfter) {
     refGlobalRetryAfter = retryAt
-    logger.warn('Ref API global backoff set', { module: 'Main', delayMs, retryAt })
+    logger.warn('Ref API global backoff set', {
+      module: 'Main',
+      delayMs,
+      retryAt,
+    })
   }
 }
 
@@ -538,13 +611,18 @@ async function waitForRefRateLimit(): Promise<void> {
 
   const timeSinceLastRequest = Date.now() - refLastRequestTime
   if (timeSinceLastRequest < REF_MIN_REQUEST_INTERVAL_MS) {
-    await new Promise((r) => setTimeout(r, REF_MIN_REQUEST_INTERVAL_MS - timeSinceLastRequest))
+    await new Promise((r) =>
+      setTimeout(r, REF_MIN_REQUEST_INTERVAL_MS - timeSinceLastRequest)
+    )
   }
 
   refLastRequestTime = Date.now()
 }
 
-async function fetchRefWithRetry(url: string, options: RequestInit): Promise<Response> {
+async function fetchRefWithRetry(
+  url: string,
+  options: RequestInit
+): Promise<Response> {
   let lastError: Error | null = null
 
   for (let attempt = 0; attempt <= REF_MAX_RETRIES; attempt++) {
@@ -559,7 +637,11 @@ async function fetchRefWithRetry(url: string, options: RequestInit): Promise<Res
         setRefGlobalBackoff(retryAfterMs)
 
         if (attempt < REF_MAX_RETRIES) {
-          logger.warn('Ref API rate limited, retrying', { module: 'Main', attempt: attempt + 1, delay: retryAfterMs })
+          logger.warn('Ref API rate limited, retrying', {
+            module: 'Main',
+            attempt: attempt + 1,
+            delay: retryAfterMs,
+          })
           await new Promise((r) => setTimeout(r, retryAfterMs))
           continue
         }
@@ -569,7 +651,11 @@ async function fetchRefWithRetry(url: string, options: RequestInit): Promise<Res
       lastError = err instanceof Error ? err : new Error(String(err))
       if (attempt < REF_MAX_RETRIES) {
         const delay = REF_RETRY_BASE_DELAY_MS * Math.pow(2, attempt)
-        logger.warn('Ref API request failed, retrying', { module: 'Main', attempt: attempt + 1, delay })
+        logger.warn('Ref API request failed, retrying', {
+          module: 'Main',
+          attempt: attempt + 1,
+          delay,
+        })
         await new Promise((r) => setTimeout(r, delay))
       }
     }
@@ -581,9 +667,12 @@ async function fetchRefWithRetry(url: string, options: RequestInit): Promise<Res
 ipcMain.handle('ref:categories', async () => {
   await waitForRefRateLimit()
   try {
-    const response = await fetchRefWithRetry(`${REF_API_BASE}/reference/categories`, {
-      headers: getRefHeaders(),
-    })
+    const response = await fetchRefWithRetry(
+      `${REF_API_BASE}/reference/categories`,
+      {
+        headers: getRefHeaders(),
+      }
+    )
     if (!response.ok) {
       return { error: `HTTP ${response.status}` }
     }
@@ -597,9 +686,12 @@ ipcMain.handle('ref:categories', async () => {
 ipcMain.handle('ref:groups', async () => {
   await waitForRefRateLimit()
   try {
-    const response = await fetchRefWithRetry(`${REF_API_BASE}/reference/groups`, {
-      headers: getRefHeaders(),
-    })
+    const response = await fetchRefWithRetry(
+      `${REF_API_BASE}/reference/groups`,
+      {
+        headers: getRefHeaders(),
+      }
+    )
     if (!response.ok) {
       return { error: `HTTP ${response.status}` }
     }
@@ -613,7 +705,10 @@ ipcMain.handle('ref:groups', async () => {
 ipcMain.handle('ref:types-page', async (_event, args: unknown) => {
   const { after } = (args ?? {}) as { after?: number }
 
-  if (after !== undefined && (typeof after !== 'number' || !Number.isInteger(after) || after <= 0)) {
+  if (
+    after !== undefined &&
+    (typeof after !== 'number' || !Number.isInteger(after) || after <= 0)
+  ) {
     return { error: 'Invalid after cursor' }
   }
 
@@ -643,9 +738,12 @@ ipcMain.handle('ref:types-page', async (_event, args: unknown) => {
 ipcMain.handle('ref:universe-regions', async () => {
   await waitForRefRateLimit()
   try {
-    const response = await fetchRefWithRetry(`${REF_API_BASE}/reference/regions`, {
-      headers: getRefHeaders(),
-    })
+    const response = await fetchRefWithRetry(
+      `${REF_API_BASE}/reference/regions`,
+      {
+        headers: getRefHeaders(),
+      }
+    )
 
     if (!response.ok) {
       return { error: `HTTP ${response.status}` }
@@ -662,9 +760,12 @@ ipcMain.handle('ref:universe-regions', async () => {
 ipcMain.handle('ref:universe-systems', async () => {
   await waitForRefRateLimit()
   try {
-    const response = await fetchRefWithRetry(`${REF_API_BASE}/reference/systems`, {
-      headers: getRefHeaders(),
-    })
+    const response = await fetchRefWithRetry(
+      `${REF_API_BASE}/reference/systems`,
+      {
+        headers: getRefHeaders(),
+      }
+    )
 
     if (!response.ok) {
       return { error: `HTTP ${response.status}` }
@@ -681,9 +782,12 @@ ipcMain.handle('ref:universe-systems', async () => {
 ipcMain.handle('ref:universe-stations', async () => {
   await waitForRefRateLimit()
   try {
-    const response = await fetchRefWithRetry(`${REF_API_BASE}/reference/stations`, {
-      headers: getRefHeaders(),
-    })
+    const response = await fetchRefWithRetry(
+      `${REF_API_BASE}/reference/stations`,
+      {
+        headers: getRefHeaders(),
+      }
+    )
 
     if (!response.ok) {
       return { error: `HTTP ${response.status}` }
@@ -697,51 +801,66 @@ ipcMain.handle('ref:universe-stations', async () => {
   }
 })
 
-ipcMain.handle('ref:universe-structures-page', async (_event, args: unknown) => {
-  const { after } = (args ?? {}) as { after?: string }
+ipcMain.handle(
+  'ref:universe-structures-page',
+  async (_event, args: unknown) => {
+    const { after } = (args ?? {}) as { after?: string }
 
-  if (after !== undefined && (typeof after !== 'string' || after.length === 0)) {
-    return { error: 'Invalid after cursor' }
-  }
-
-  await waitForRefRateLimit()
-  try {
-    const url = after
-      ? `${REF_API_BASE}/reference/structures?after=${after}`
-      : `${REF_API_BASE}/reference/structures`
-
-    const response = await fetchRefWithRetry(url, { headers: getRefHeaders() })
-
-    if (!response.ok) {
-      return { error: `HTTP ${response.status}` }
+    if (
+      after !== undefined &&
+      (typeof after !== 'string' || after.length === 0)
+    ) {
+      return { error: 'Invalid after cursor' }
     }
 
-    const data = await response.json()
-    return {
-      items: data.items,
-      pagination: data.pagination,
+    await waitForRefRateLimit()
+    try {
+      const url = after
+        ? `${REF_API_BASE}/reference/structures?after=${after}`
+        : `${REF_API_BASE}/reference/structures`
+
+      const response = await fetchRefWithRetry(url, {
+        headers: getRefHeaders(),
+      })
+
+      if (!response.ok) {
+        return { error: `HTTP ${response.status}` }
+      }
+
+      const data = await response.json()
+      return {
+        items: data.items,
+        pagination: data.pagination,
+      }
+    } catch (err) {
+      logger.error('ref:universe-structures-page fetch failed', err, {
+        module: 'Main',
+      })
+      return { error: String(err) }
     }
-  } catch (err) {
-    logger.error('ref:universe-structures-page fetch failed', err, { module: 'Main' })
-    return { error: String(err) }
   }
-})
+)
 
 ipcMain.handle('ref:implants', async (_event, ids: unknown) => {
   if (!Array.isArray(ids) || ids.length === 0 || ids.length > MAX_REF_IDS) {
     return { error: 'Invalid ids array' }
   }
-  if (!ids.every((id) => typeof id === 'number' && Number.isInteger(id) && id > 0)) {
+  if (
+    !ids.every((id) => typeof id === 'number' && Number.isInteger(id) && id > 0)
+  ) {
     return { error: 'Invalid id values' }
   }
 
   await waitForRefRateLimit()
   try {
-    const response = await fetchRefWithRetry(`${REF_API_BASE}/reference/implants`, {
-      method: 'POST',
-      headers: getRefHeaders('json'),
-      body: JSON.stringify({ ids }),
-    })
+    const response = await fetchRefWithRetry(
+      `${REF_API_BASE}/reference/implants`,
+      {
+        method: 'POST',
+        headers: getRefHeaders('json'),
+        body: JSON.stringify({ ids }),
+      }
+    )
     if (!response.ok) {
       return { error: `HTTP ${response.status}` }
     }
@@ -756,17 +875,22 @@ ipcMain.handle('ref:moons', async (_event, ids: unknown) => {
   if (!Array.isArray(ids) || ids.length === 0 || ids.length > 1000) {
     return { error: 'Invalid ids array (max 1000)' }
   }
-  if (!ids.every((id) => typeof id === 'number' && Number.isInteger(id) && id > 0)) {
+  if (
+    !ids.every((id) => typeof id === 'number' && Number.isInteger(id) && id > 0)
+  ) {
     return { error: 'Invalid id values' }
   }
 
   await waitForRefRateLimit()
   try {
-    const response = await fetchRefWithRetry(`${REF_API_BASE}/reference/moons`, {
-      method: 'POST',
-      headers: getRefHeaders('json'),
-      body: JSON.stringify({ ids }),
-    })
+    const response = await fetchRefWithRetry(
+      `${REF_API_BASE}/reference/moons`,
+      {
+        method: 'POST',
+        headers: getRefHeaders('json'),
+        body: JSON.stringify({ ids }),
+      }
+    )
     if (!response.ok) {
       return { error: `HTTP ${response.status}` }
     }
@@ -781,17 +905,22 @@ ipcMain.handle('ref:shipslots', async (_event, ids: unknown) => {
   if (!Array.isArray(ids) || ids.length === 0 || ids.length > 500) {
     return { error: 'Invalid ids array (max 500)' }
   }
-  if (!ids.every((id) => typeof id === 'number' && Number.isInteger(id) && id > 0)) {
+  if (
+    !ids.every((id) => typeof id === 'number' && Number.isInteger(id) && id > 0)
+  ) {
     return { error: 'Invalid id values' }
   }
 
   await waitForRefRateLimit()
   try {
-    const response = await fetchRefWithRetry(`${REF_API_BASE}/reference/shipslots`, {
-      method: 'POST',
-      headers: getRefHeaders('json'),
-      body: JSON.stringify({ ids }),
-    })
+    const response = await fetchRefWithRetry(
+      `${REF_API_BASE}/reference/shipslots`,
+      {
+        method: 'POST',
+        headers: getRefHeaders('json'),
+        body: JSON.stringify({ ids }),
+      }
+    )
     if (!response.ok) {
       return { error: `HTTP ${response.status}` }
     }
@@ -807,13 +936,25 @@ ipcMain.handle('ref:market', async (_event, params: unknown) => {
     return { error: 'Invalid params' }
   }
   const p = params as Record<string, unknown>
-  if (typeof p.regionId !== 'number' || !Number.isInteger(p.regionId) || p.regionId <= 0) {
+  if (
+    typeof p.regionId !== 'number' ||
+    !Number.isInteger(p.regionId) ||
+    p.regionId <= 0
+  ) {
     return { error: 'Invalid regionId' }
   }
-  if (!Array.isArray(p.typeIds) || p.typeIds.length === 0 || p.typeIds.length > 100) {
+  if (
+    !Array.isArray(p.typeIds) ||
+    p.typeIds.length === 0 ||
+    p.typeIds.length > 100
+  ) {
     return { error: 'Invalid typeIds array (max 100)' }
   }
-  if (!p.typeIds.every((id) => typeof id === 'number' && Number.isInteger(id) && id > 0)) {
+  if (
+    !p.typeIds.every(
+      (id) => typeof id === 'number' && Number.isInteger(id) && id > 0
+    )
+  ) {
     return { error: 'Invalid typeId values' }
   }
 
@@ -843,10 +984,18 @@ ipcMain.handle('ref:market', async (_event, params: unknown) => {
 })
 
 ipcMain.handle('ref:marketJita', async (_event, typeIds: unknown) => {
-  if (!Array.isArray(typeIds) || typeIds.length === 0 || typeIds.length > 1000) {
+  if (
+    !Array.isArray(typeIds) ||
+    typeIds.length === 0 ||
+    typeIds.length > 1000
+  ) {
     return { error: 'Invalid typeIds array (max 1000)' }
   }
-  if (!typeIds.every((id) => typeof id === 'number' && Number.isInteger(id) && id > 0)) {
+  if (
+    !typeIds.every(
+      (id) => typeof id === 'number' && Number.isInteger(id) && id > 0
+    )
+  ) {
     return { error: 'Invalid typeId values' }
   }
 
@@ -887,17 +1036,24 @@ ipcMain.handle('ref:marketContracts', async (_event, typeIds: unknown) => {
   if (!Array.isArray(typeIds) || typeIds.length === 0 || typeIds.length > 100) {
     return { error: 'Invalid typeIds array (max 100)' }
   }
-  if (!typeIds.every((id) => typeof id === 'number' && Number.isInteger(id) && id > 0)) {
+  if (
+    !typeIds.every(
+      (id) => typeof id === 'number' && Number.isInteger(id) && id > 0
+    )
+  ) {
     return { error: 'Invalid typeId values' }
   }
 
   await waitForRefRateLimit()
   try {
-    const response = await fetchRefWithRetry(`${REF_API_BASE}/market/contracts`, {
-      method: 'POST',
-      headers: getRefHeaders('json'),
-      body: JSON.stringify({ typeIds }),
-    })
+    const response = await fetchRefWithRetry(
+      `${REF_API_BASE}/market/contracts`,
+      {
+        method: 'POST',
+        headers: getRefHeaders('json'),
+        body: JSON.stringify({ typeIds }),
+      }
+    )
     if (!response.ok) {
       return { error: `HTTP ${response.status}` }
     }
@@ -911,9 +1067,12 @@ ipcMain.handle('ref:marketContracts', async (_event, typeIds: unknown) => {
 ipcMain.handle('ref:blueprints', async () => {
   await waitForRefRateLimit()
   try {
-    const response = await fetchRefWithRetry(`${REF_API_BASE}/reference/blueprints`, {
-      headers: getRefHeaders(),
-    })
+    const response = await fetchRefWithRetry(
+      `${REF_API_BASE}/reference/blueprints`,
+      {
+        headers: getRefHeaders(),
+      }
+    )
     if (!response.ok) {
       return { error: `HTTP ${response.status}` }
     }
@@ -940,11 +1099,14 @@ ipcMain.handle(
 
     await waitForRefRateLimit()
     try {
-      const response = await fetchRefWithRetry(`${REF_API_BASE}/buyback/calculate`, {
-        method: 'POST',
-        headers: getRefHeaders('json'),
-        body: JSON.stringify({ text, config }),
-      })
+      const response = await fetchRefWithRetry(
+        `${REF_API_BASE}/buyback/calculate`,
+        {
+          method: 'POST',
+          headers: getRefHeaders('json'),
+          body: JSON.stringify({ text, config }),
+        }
+      )
       if (!response.ok) {
         const errorText = await response.text()
         return { error: `HTTP ${response.status}: ${errorText}` }
@@ -966,18 +1128,23 @@ ipcMain.handle(
 
     await waitForRefRateLimit()
     try {
-      const response = await fetchRefWithRetry('https://edencom.net/api/buyback/calculator', {
-        method: 'POST',
-        headers: getRefHeaders('json'),
-        body: JSON.stringify({ text }),
-      })
+      const response = await fetchRefWithRetry(
+        'https://edencom.net/api/buyback/calculator',
+        {
+          method: 'POST',
+          headers: getRefHeaders('json'),
+          body: JSON.stringify({ text }),
+        }
+      )
       if (!response.ok) {
         const errorText = await response.text()
         return { error: `HTTP ${response.status}: ${errorText}` }
       }
       return await response.json()
     } catch (err) {
-      logger.error('ref:buybackCalculator fetch failed', err, { module: 'Main' })
+      logger.error('ref:buybackCalculator fetch failed', err, {
+        module: 'Main',
+      })
       return { error: String(err) }
     }
   }
@@ -1005,7 +1172,11 @@ const MUTAMARKET_TIMEOUT_MS = 5000
 ipcMain.handle(
   'mutamarket:module',
   async (_event, itemId: unknown, typeId?: unknown) => {
-    if (typeof itemId !== 'number' || !Number.isInteger(itemId) || itemId <= 0) {
+    if (
+      typeof itemId !== 'number' ||
+      !Number.isInteger(itemId) ||
+      itemId <= 0
+    ) {
       return { error: 'Invalid item ID' }
     }
 
@@ -1016,12 +1187,18 @@ ipcMain.handle(
 
     try {
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), MUTAMARKET_TIMEOUT_MS)
+      const timeoutId = setTimeout(
+        () => controller.abort(),
+        MUTAMARKET_TIMEOUT_MS
+      )
 
-      const getResponse = await fetch(`${MUTAMARKET_API_BASE}/modules/${itemId}`, {
-        signal: controller.signal,
-        headers,
-      })
+      const getResponse = await fetch(
+        `${MUTAMARKET_API_BASE}/modules/${itemId}`,
+        {
+          signal: controller.signal,
+          headers,
+        }
+      )
       clearTimeout(timeoutId)
 
       if (getResponse.ok) {
@@ -1029,15 +1206,25 @@ ipcMain.handle(
       }
 
       if (getResponse.status !== 404) {
-        return { error: `HTTP ${getResponse.status}`, status: getResponse.status }
+        return {
+          error: `HTTP ${getResponse.status}`,
+          status: getResponse.status,
+        }
       }
 
-      if (typeof typeId !== 'number' || !Number.isInteger(typeId) || typeId <= 0) {
+      if (
+        typeof typeId !== 'number' ||
+        !Number.isInteger(typeId) ||
+        typeId <= 0
+      ) {
         return { error: 'HTTP 404', status: 404 }
       }
 
       const postController = new AbortController()
-      const postTimeoutId = setTimeout(() => postController.abort(), MUTAMARKET_TIMEOUT_MS)
+      const postTimeoutId = setTimeout(
+        () => postController.abort(),
+        MUTAMARKET_TIMEOUT_MS
+      )
 
       const postResponse = await fetch(`${MUTAMARKET_API_BASE}/modules`, {
         method: 'POST',
@@ -1048,14 +1235,20 @@ ipcMain.handle(
       clearTimeout(postTimeoutId)
 
       if (!postResponse.ok) {
-        return { error: `HTTP ${postResponse.status}`, status: postResponse.status }
+        return {
+          error: `HTTP ${postResponse.status}`,
+          status: postResponse.status,
+        }
       }
       return await postResponse.json()
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
         return { error: 'Timeout' }
       }
-      logger.error('mutamarket:module fetch failed', err, { module: 'Main', itemId })
+      logger.error('mutamarket:module fetch failed', err, {
+        module: 'Main',
+        itemId,
+      })
       return { error: String(err) }
     }
   }
@@ -1094,7 +1287,9 @@ function setupESIService() {
       if (existing) {
         existing.push({ resolve: wrappedResolve, timeout })
       } else {
-        pendingTokenRequests.set(characterId, [{ resolve: wrappedResolve, timeout }])
+        pendingTokenRequests.set(characterId, [
+          { resolve: wrappedResolve, timeout },
+        ])
         win.webContents.send('esi:requestToken', characterId)
       }
     })
@@ -1103,60 +1298,89 @@ function setupESIService() {
   return esiService
 }
 
-ipcMain.handle('esi:provideToken', (_event, characterId: unknown, token: unknown) => {
-  if (typeof characterId !== 'number' || !Number.isInteger(characterId) || characterId <= 0) {
-    return
-  }
-  const pending = pendingTokenRequests.get(characterId)
-  if (pending) {
-    const resolvedToken = typeof token === 'string' ? token : null
-    for (const p of pending) {
-      clearTimeout(p.timeout)
-      p.resolve(resolvedToken)
+ipcMain.handle(
+  'esi:provideToken',
+  (_event, characterId: unknown, token: unknown) => {
+    if (
+      typeof characterId !== 'number' ||
+      !Number.isInteger(characterId) ||
+      characterId <= 0
+    ) {
+      return
     }
-    pendingTokenRequests.delete(characterId)
+    const pending = pendingTokenRequests.get(characterId)
+    if (pending) {
+      const resolvedToken = typeof token === 'string' ? token : null
+      for (const p of pending) {
+        clearTimeout(p.timeout)
+        p.resolve(resolvedToken)
+      }
+      pendingTokenRequests.delete(characterId)
+    }
   }
-})
+)
 
 function parseESIOptions(options: unknown): ESIRequestOptions {
   const esiOptions: ESIRequestOptions = {}
   if (options && typeof options === 'object' && !Array.isArray(options)) {
     const opts = options as Record<string, unknown>
-    if (opts.method === 'GET' || opts.method === 'POST') esiOptions.method = opts.method
+    if (opts.method === 'GET' || opts.method === 'POST')
+      esiOptions.method = opts.method
     if (typeof opts.body === 'string') esiOptions.body = opts.body
-    if (typeof opts.characterId === 'number') esiOptions.characterId = opts.characterId
-    if (typeof opts.requiresAuth === 'boolean') esiOptions.requiresAuth = opts.requiresAuth
+    if (typeof opts.characterId === 'number')
+      esiOptions.characterId = opts.characterId
+    if (typeof opts.requiresAuth === 'boolean')
+      esiOptions.requiresAuth = opts.requiresAuth
     if (typeof opts.etag === 'string') esiOptions.etag = opts.etag
   }
   return esiOptions
 }
 
-ipcMain.handle('esi:fetch', async (_event, endpoint: unknown, options: unknown) => {
-  if (typeof endpoint !== 'string') throw new Error('Invalid endpoint')
-  return getESIService().fetch(endpoint, parseESIOptions(options))
-})
+ipcMain.handle(
+  'esi:fetch',
+  async (_event, endpoint: unknown, options: unknown) => {
+    if (typeof endpoint !== 'string') throw new Error('Invalid endpoint')
+    return getESIService().fetch(endpoint, parseESIOptions(options))
+  }
+)
 
-ipcMain.handle('esi:fetchWithMeta', async (_event, endpoint: unknown, options: unknown) => {
-  if (typeof endpoint !== 'string') throw new Error('Invalid endpoint')
-  return getESIService().fetchWithMeta(endpoint, parseESIOptions(options))
-})
+ipcMain.handle(
+  'esi:fetchWithMeta',
+  async (_event, endpoint: unknown, options: unknown) => {
+    if (typeof endpoint !== 'string') throw new Error('Invalid endpoint')
+    return getESIService().fetchWithMeta(endpoint, parseESIOptions(options))
+  }
+)
 
-ipcMain.handle('esi:fetchPaginated', async (_event, endpoint: unknown, options: unknown) => {
-  if (typeof endpoint !== 'string') throw new Error('Invalid endpoint')
-  return getESIService().fetchPaginated(endpoint, parseESIOptions(options))
-})
+ipcMain.handle(
+  'esi:fetchPaginated',
+  async (_event, endpoint: unknown, options: unknown) => {
+    if (typeof endpoint !== 'string') throw new Error('Invalid endpoint')
+    return getESIService().fetchPaginated(endpoint, parseESIOptions(options))
+  }
+)
 
-ipcMain.handle('esi:fetchPaginatedWithMeta', async (_event, endpoint: unknown, options: unknown) => {
-  if (typeof endpoint !== 'string') throw new Error('Invalid endpoint')
-  return getESIService().fetchPaginatedWithMeta(endpoint, parseESIOptions(options))
-})
+ipcMain.handle(
+  'esi:fetchPaginatedWithMeta',
+  async (_event, endpoint: unknown, options: unknown) => {
+    if (typeof endpoint !== 'string') throw new Error('Invalid endpoint')
+    return getESIService().fetchPaginatedWithMeta(
+      endpoint,
+      parseESIOptions(options)
+    )
+  }
+)
 
 ipcMain.handle('esi:clearCache', () => {
   getESIService().clearCache()
 })
 
 ipcMain.handle('esi:clearCacheByPattern', (_event, pattern: unknown) => {
-  if (typeof pattern !== 'string' || pattern.length === 0 || pattern.length > 100) {
+  if (
+    typeof pattern !== 'string' ||
+    pattern.length === 0 ||
+    pattern.length > 100
+  ) {
     return 0
   }
   return getESIService().clearCacheByPattern(pattern)
@@ -1176,7 +1400,12 @@ function getValidBounds(bounds: Electron.Rectangle): Electron.Rectangle {
     const { x, y, width, height } = display.workArea
     const centerX = bounds.x + bounds.width / 2
     const centerY = bounds.y + bounds.height / 2
-    if (centerX >= x && centerX < x + width && centerY >= y && centerY < y + height) {
+    if (
+      centerX >= x &&
+      centerX < x + width &&
+      centerY >= y &&
+      centerY < y + height
+    ) {
       return bounds
     }
   }
@@ -1225,7 +1454,8 @@ ipcMain.handle('window:setTitleBarOverlay', (_event, options: unknown) => {
   const opts = options as Record<string, unknown>
   const overlayOptions: Electron.TitleBarOverlayOptions = {}
   if (typeof opts.color === 'string') overlayOptions.color = opts.color
-  if (typeof opts.symbolColor === 'string') overlayOptions.symbolColor = opts.symbolColor
+  if (typeof opts.symbolColor === 'string')
+    overlayOptions.symbolColor = opts.symbolColor
   if (typeof opts.height === 'number') overlayOptions.height = opts.height
   mainWindow.setTitleBarOverlay(overlayOptions)
 })

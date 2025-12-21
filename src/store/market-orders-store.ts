@@ -2,7 +2,10 @@ import type { StoreApi, UseBoundStore } from 'zustand'
 import { type Owner, findOwnerByKey } from './auth-store'
 import { useToastStore } from './toast-store'
 import { esi } from '@/api/esi'
-import { ESIMarketOrderSchema, ESICorporationMarketOrderSchema } from '@/api/schemas'
+import {
+  ESIMarketOrderSchema,
+  ESICorporationMarketOrderSchema,
+} from '@/api/schemas'
 import { getTypeName } from '@/store/reference-cache'
 import { useRegionalMarketStore } from '@/store/regional-market-store'
 import { logger } from '@/lib/logger'
@@ -15,7 +18,9 @@ import {
 import { z } from 'zod'
 
 export type ESIMarketOrder = z.infer<typeof ESIMarketOrderSchema>
-export type ESICorporationMarketOrder = z.infer<typeof ESICorporationMarketOrderSchema>
+export type ESICorporationMarketOrder = z.infer<
+  typeof ESICorporationMarketOrderSchema
+>
 export type MarketOrder = ESIMarketOrder | ESICorporationMarketOrder
 
 export interface StoredOrder extends StoredItem<MarketOrder> {
@@ -33,12 +38,18 @@ interface MarketOrdersExtras {
   getOrdersByOwner: () => OwnerOrders[]
 }
 
-export type MarketOrdersStore = UseBoundStore<StoreApi<VisibilityStore<StoredOrder>>> & MarketOrdersExtras
+export type MarketOrdersStore = UseBoundStore<
+  StoreApi<VisibilityStore<StoredOrder>>
+> &
+  MarketOrdersExtras
 
 function registerPricesFromOrders(ordersById: Map<number, StoredOrder>): void {
   const typeIds = new Set<number>()
   const regionIds = new Set<number>()
-  const structuresByCharacter = new Map<number, { structureIds: Set<number>; typeIds: Set<number> }>()
+  const structuresByCharacter = new Map<
+    number,
+    { structureIds: Set<number>; typeIds: Set<number> }
+  >()
 
   for (const { item: order, sourceOwner } of ordersById.values()) {
     typeIds.add(order.type_id)
@@ -56,15 +67,22 @@ function registerPricesFromOrders(ordersById: Map<number, StoredOrder>): void {
   }
 
   if (typeIds.size > 0) {
-    useRegionalMarketStore.getState().registerTypes(Array.from(typeIds), Array.from(regionIds))
+    useRegionalMarketStore
+      .getState()
+      .registerTypes(Array.from(typeIds), Array.from(regionIds))
   }
 
-  for (const [characterId, { structureIds, typeIds: structureTypeIds }] of structuresByCharacter) {
-    useRegionalMarketStore.getState().registerStructures(
-      Array.from(structureIds),
-      Array.from(structureTypeIds),
-      characterId
-    )
+  for (const [
+    characterId,
+    { structureIds, typeIds: structureTypeIds },
+  ] of structuresByCharacter) {
+    useRegionalMarketStore
+      .getState()
+      .registerStructures(
+        Array.from(structureIds),
+        Array.from(structureTypeIds),
+        characterId
+      )
   }
 }
 
@@ -108,11 +126,17 @@ const baseStore = createVisibilityStore<MarketOrder, StoredOrder>({
   fetchData: fetchOrdersForOwner,
   toStoredItem: (owner, order) => ({
     item: order,
-    sourceOwner: { type: owner.type, id: owner.id, characterId: owner.characterId },
+    sourceOwner: {
+      type: owner.type,
+      id: owner.id,
+      characterId: owner.characterId,
+    },
   }),
   onAfterInit: registerPricesFromOrders,
   onBeforeOwnerUpdate: (_owner, previousVisibility, itemsById) => {
-    const store = useMarketOrdersStore as unknown as { _previousOrders: Map<number, MarketOrder> }
+    const store = useMarketOrdersStore as unknown as {
+      _previousOrders: Map<number, MarketOrder>
+    }
     store._previousOrders = new Map()
     for (const orderId of previousVisibility) {
       const stored = itemsById.get(orderId)
@@ -120,12 +144,16 @@ const baseStore = createVisibilityStore<MarketOrder, StoredOrder>({
     }
   },
   onAfterOwnerUpdate: ({ owner, newItems, itemsById }) => {
-    const store = useMarketOrdersStore as unknown as { _previousOrders?: Map<number, MarketOrder> }
+    const store = useMarketOrdersStore as unknown as {
+      _previousOrders?: Map<number, MarketOrder>
+    }
     const previousOrders = store._previousOrders ?? new Map()
     delete store._previousOrders
 
     const newOrderIds = new Set(newItems.map((o) => o.order_id))
-    const completedOrders = [...previousOrders.values()].filter((o) => !newOrderIds.has(o.order_id))
+    const completedOrders = [...previousOrders.values()].filter(
+      (o) => !newOrderIds.has(o.order_id)
+    )
 
     if (completedOrders.length > 0) {
       const toastStore = useToastStore.getState()
@@ -176,51 +204,55 @@ const baseStore = createVisibilityStore<MarketOrder, StoredOrder>({
   onAfterBatchUpdate: registerPricesFromOrders,
 })
 
-export const useMarketOrdersStore: MarketOrdersStore = Object.assign(baseStore, {
-  getTotal(selectedOwnerIds: string[]): number {
-    const state = baseStore.getState()
-    const selectedSet = new Set(selectedOwnerIds)
-    const regionalStore = useRegionalMarketStore.getState()
+export const useMarketOrdersStore: MarketOrdersStore = Object.assign(
+  baseStore,
+  {
+    getTotal(selectedOwnerIds: string[]): number {
+      const state = baseStore.getState()
+      const selectedSet = new Set(selectedOwnerIds)
+      const regionalStore = useRegionalMarketStore.getState()
 
-    const visibleOrderIds = new Set<number>()
-    for (const [key, orderIds] of state.visibilityByOwner) {
-      if (selectedSet.has(key)) {
-        for (const id of orderIds) visibleOrderIds.add(id)
+      const visibleOrderIds = new Set<number>()
+      for (const [key, orderIds] of state.visibilityByOwner) {
+        if (selectedSet.has(key)) {
+          for (const id of orderIds) visibleOrderIds.add(id)
+        }
       }
-    }
 
-    let total = 0
-    for (const orderId of visibleOrderIds) {
-      const stored = state.itemsById.get(orderId)
-      if (!stored) continue
-
-      const { item: order } = stored
-      if (order.is_buy_order) {
-        total += order.escrow ?? 0
-      } else {
-        total += (regionalStore.getPrice(order.type_id) ?? 0) * order.volume_remain
-      }
-    }
-    return total
-  },
-
-  getOrdersByOwner(): OwnerOrders[] {
-    const state = baseStore.getState()
-    const result: OwnerOrders[] = []
-
-    for (const [ownerKeyStr, orderIds] of state.visibilityByOwner) {
-      const owner = findOwnerByKey(ownerKeyStr)
-      if (!owner) continue
-
-      const orders: MarketOrder[] = []
-      for (const orderId of orderIds) {
+      let total = 0
+      for (const orderId of visibleOrderIds) {
         const stored = state.itemsById.get(orderId)
-        if (stored) orders.push(stored.item)
+        if (!stored) continue
+
+        const { item: order } = stored
+        if (order.is_buy_order) {
+          total += order.escrow ?? 0
+        } else {
+          total +=
+            (regionalStore.getPrice(order.type_id) ?? 0) * order.volume_remain
+        }
+      }
+      return total
+    },
+
+    getOrdersByOwner(): OwnerOrders[] {
+      const state = baseStore.getState()
+      const result: OwnerOrders[] = []
+
+      for (const [ownerKeyStr, orderIds] of state.visibilityByOwner) {
+        const owner = findOwnerByKey(ownerKeyStr)
+        if (!owner) continue
+
+        const orders: MarketOrder[] = []
+        for (const orderId of orderIds) {
+          const stored = state.itemsById.get(orderId)
+          if (stored) orders.push(stored.item)
+        }
+
+        result.push({ owner, orders })
       }
 
-      result.push({ owner, orders })
-    }
-
-    return result
-  },
-})
+      return result
+    },
+  }
+)

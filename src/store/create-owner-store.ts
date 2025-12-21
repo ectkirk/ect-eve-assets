@@ -1,5 +1,15 @@
-import { create, type StateCreator, type StoreApi, type UseBoundStore } from 'zustand'
-import { useAuthStore, type Owner, findOwnerByKey, ownerKey as makeOwnerKey } from './auth-store'
+import {
+  create,
+  type StateCreator,
+  type StoreApi,
+  type UseBoundStore,
+} from 'zustand'
+import {
+  useAuthStore,
+  type Owner,
+  findOwnerByKey,
+  ownerKey as makeOwnerKey,
+} from './auth-store'
 import { useExpiryCacheStore } from './expiry-cache-store'
 import { createOwnerDB, type OwnerDBConfig } from '@/lib/owner-indexed-db'
 import { logger } from '@/lib/logger'
@@ -58,7 +68,10 @@ export interface OwnerStoreConfig<
     get: () => BaseState<TOwnerData> & TExtraState & BaseActions & TExtraActions
   ) => TExtraActions
   onAfterBatchUpdate?: (results: TOwnerData[]) => Promise<void>
-  onBeforeOwnerUpdate?: (owner: Owner, state: BaseState<TOwnerData> & TExtraState) => {
+  onBeforeOwnerUpdate?: (
+    owner: Owner,
+    state: BaseState<TOwnerData> & TExtraState
+  ) => {
     previousData?: TDBData
   }
   onAfterOwnerUpdate?: (params: {
@@ -121,17 +134,21 @@ export function createOwnerStore<
 
   const updatingOwners = new Set<string>()
 
-  const storeCreator: StateCreator<OwnerStore<TOwnerData, TExtraState, TExtraActions>> = (
-    set,
-    get
-  ) => {
+  const storeCreator: StateCreator<
+    OwnerStore<TOwnerData, TExtraState, TExtraActions>
+  > = (set, get) => {
     const baseSet = (partial: Partial<BaseState<TOwnerData> & TExtraState>) =>
-      set(partial as Partial<OwnerStore<TOwnerData, TExtraState, TExtraActions>>)
+      set(
+        partial as Partial<OwnerStore<TOwnerData, TExtraState, TExtraActions>>
+      )
 
     const extras = extraActions
       ? extraActions(
           baseSet,
-          get as () => BaseState<TOwnerData> & TExtraState & BaseActions & TExtraActions
+          get as () => BaseState<TOwnerData> &
+            TExtraState &
+            BaseActions &
+            TExtraActions
         )
       : ({} as TExtraActions)
 
@@ -161,10 +178,16 @@ export function createOwnerStore<
             owners: dataByOwner.length,
           })
         } catch (err) {
-          logger.error(`Failed to load ${name} from DB`, err instanceof Error ? err : undefined, {
-            module: moduleName,
-          })
-          set({ initialized: true } as Partial<OwnerStore<TOwnerData, TExtraState, TExtraActions>>)
+          logger.error(
+            `Failed to load ${name} from DB`,
+            err instanceof Error ? err : undefined,
+            {
+              module: moduleName,
+            }
+          )
+          set({ initialized: true } as Partial<
+            OwnerStore<TOwnerData, TExtraState, TExtraActions>
+          >)
         }
       },
 
@@ -181,7 +204,9 @@ export function createOwnerStore<
               OwnerStore<TOwnerData, TExtraState, TExtraActions>
             >)
           } else {
-            logger.debug(`No ${ownerFilter} owners for ${name} update`, { module: moduleName })
+            logger.debug(`No ${ownerFilter} owners for ${name} update`, {
+              module: moduleName,
+            })
           }
           return
         }
@@ -206,15 +231,21 @@ export function createOwnerStore<
 
         try {
           const existing = new Map<string, TOwnerData>(
-            state.dataByOwner.map((d: TOwnerData) => [`${d.owner.type}-${d.owner.id}`, d])
+            state.dataByOwner.map((d: TOwnerData) => [
+              `${d.owner.type}-${d.owner.id}`,
+              d,
+            ])
           )
 
           for (const owner of ownersToUpdate) {
             if (!ownerHasRequiredScope(owner)) {
-              logger.debug(`Skipping ${name} for ${owner.name} - missing required scope`, {
-                module: moduleName,
-                requiredScope,
-              })
+              logger.debug(
+                `Skipping ${name} for ${owner.name} - missing required scope`,
+                {
+                  module: moduleName,
+                  requiredScope,
+                }
+              )
               const ownerId = makeOwnerKey(owner.type, owner.id)
               useAuthStore.getState().setOwnerScopesOutdated(ownerId, true)
               continue
@@ -224,25 +255,37 @@ export function createOwnerStore<
             const endpoint = getEndpoint(owner)
 
             try {
-              logger.info(`Fetching ${name}`, { module: moduleName, owner: owner.name })
+              logger.info(`Fetching ${name}`, {
+                module: moduleName,
+                owner: owner.name,
+              })
               const { data, expiresAt, etag } = await fetchData(owner)
 
               await db.save(ownerKey, owner, data)
               existing.set(ownerKey, toOwnerData(owner, data))
 
               const isDataEmpty = isEmpty ? isEmpty(data) : false
-              useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag, isDataEmpty)
+              useExpiryCacheStore
+                .getState()
+                .setExpiry(ownerKey, endpoint, expiresAt, etag, isDataEmpty)
             } catch (err) {
-              logger.error(`Failed to fetch ${name}`, err instanceof Error ? err : undefined, {
-                module: moduleName,
-                owner: owner.name,
-              })
+              logger.error(
+                `Failed to fetch ${name}`,
+                err instanceof Error ? err : undefined,
+                {
+                  module: moduleName,
+                  owner: owner.name,
+                }
+              )
               if (isScopeError(err)) {
                 const ownerId = makeOwnerKey(owner.type, owner.id)
                 useAuthStore.getState().setOwnerScopesOutdated(ownerId, true)
-                logger.warn(`Owner ${owner.name} needs re-authentication for new scopes`, {
-                  module: moduleName,
-                })
+                logger.warn(
+                  `Owner ${owner.name} needs re-authentication for new scopes`,
+                  {
+                    module: moduleName,
+                  }
+                )
               }
             }
           }
@@ -257,7 +300,8 @@ export function createOwnerStore<
           set({
             dataByOwner: results,
             isUpdating: false,
-            updateError: results.length === 0 ? `Failed to fetch any ${name}` : null,
+            updateError:
+              results.length === 0 ? `Failed to fetch any ${name}` : null,
             ...extra,
           } as Partial<OwnerStore<TOwnerData, TExtraState, TExtraActions>>)
 
@@ -272,20 +316,28 @@ export function createOwnerStore<
           set({ isUpdating: false, updateError: message } as Partial<
             OwnerStore<TOwnerData, TExtraState, TExtraActions>
           >)
-          logger.error(`${name} update failed`, err instanceof Error ? err : undefined, {
-            module: moduleName,
-          })
+          logger.error(
+            `${name} update failed`,
+            err instanceof Error ? err : undefined,
+            {
+              module: moduleName,
+            }
+          )
         }
       },
 
       updateForOwner: async (owner: Owner) => {
         if (ownerFilter === 'character' && owner.type !== 'character') return
-        if (ownerFilter === 'corporation' && owner.type !== 'corporation') return
+        if (ownerFilter === 'corporation' && owner.type !== 'corporation')
+          return
         if (!ownerHasRequiredScope(owner)) {
-          logger.debug(`Skipping ${name} for ${owner.name} - missing required scope`, {
-            module: moduleName,
-            requiredScope,
-          })
+          logger.debug(
+            `Skipping ${name} for ${owner.name} - missing required scope`,
+            {
+              module: moduleName,
+              requiredScope,
+            }
+          )
           const ownerId = makeOwnerKey(owner.type, owner.id)
           useAuthStore.getState().setOwnerScopesOutdated(ownerId, true)
           return
@@ -293,22 +345,31 @@ export function createOwnerStore<
 
         const ownerKey = `${owner.type}-${owner.id}`
         if (updatingOwners.has(ownerKey)) {
-          logger.debug(`Skipping ${name} update for ${owner.name} - already in progress`, {
-            module: moduleName,
-          })
+          logger.debug(
+            `Skipping ${name} update for ${owner.name} - already in progress`,
+            {
+              module: moduleName,
+            }
+          )
           return
         }
         updatingOwners.add(ownerKey)
 
         const state = get()
         const preHookResult = onBeforeOwnerUpdate
-          ? onBeforeOwnerUpdate(owner, state as BaseState<TOwnerData> & TExtraState)
+          ? onBeforeOwnerUpdate(
+              owner,
+              state as BaseState<TOwnerData> & TExtraState
+            )
           : {}
 
         try {
           const endpoint = getEndpoint(owner)
 
-          logger.info(`Fetching ${name} for owner`, { module: moduleName, owner: owner.name })
+          logger.info(`Fetching ${name} for owner`, {
+            module: moduleName,
+            owner: owner.name,
+          })
           const { data, expiresAt, etag } = await fetchData(owner)
 
           if (onAfterOwnerUpdate) {
@@ -322,7 +383,9 @@ export function createOwnerStore<
 
           await db.save(ownerKey, owner, data)
           const isDataEmpty = isEmpty ? isEmpty(data) : false
-          useExpiryCacheStore.getState().setExpiry(ownerKey, endpoint, expiresAt, etag, isDataEmpty)
+          useExpiryCacheStore
+            .getState()
+            .setExpiry(ownerKey, endpoint, expiresAt, etag, isDataEmpty)
 
           const updated = (get().dataByOwner as TOwnerData[]).filter(
             (d: TOwnerData) => `${d.owner.type}-${d.owner.id}` !== ownerKey
@@ -341,16 +404,23 @@ export function createOwnerStore<
             owner: owner.name,
           })
         } catch (err) {
-          logger.error(`Failed to fetch ${name} for owner`, err instanceof Error ? err : undefined, {
-            module: moduleName,
-            owner: owner.name,
-          })
+          logger.error(
+            `Failed to fetch ${name} for owner`,
+            err instanceof Error ? err : undefined,
+            {
+              module: moduleName,
+              owner: owner.name,
+            }
+          )
           if (isScopeError(err)) {
             const ownerId = makeOwnerKey(owner.type, owner.id)
             useAuthStore.getState().setOwnerScopesOutdated(ownerId, true)
-            logger.warn(`Owner ${owner.name} needs re-authentication for new scopes`, {
-              module: moduleName,
-            })
+            logger.warn(
+              `Owner ${owner.name} needs re-authentication for new scopes`,
+              {
+                module: moduleName,
+              }
+            )
           }
         } finally {
           updatingOwners.delete(ownerKey)
@@ -373,7 +443,10 @@ export function createOwnerStore<
         >)
 
         useExpiryCacheStore.getState().clearForOwner(ownerKey)
-        logger.info(`${name} removed for owner`, { module: moduleName, ownerKey })
+        logger.info(`${name} removed for owner`, {
+          module: moduleName,
+          ownerKey,
+        })
       },
 
       clear: async () => {
@@ -389,17 +462,23 @@ export function createOwnerStore<
     }
   }
 
-  const store = create<OwnerStore<TOwnerData, TExtraState, TExtraActions>>(storeCreator)
+  const store =
+    create<OwnerStore<TOwnerData, TExtraState, TExtraActions>>(storeCreator)
 
   if (!disableAutoRefresh) {
-    useExpiryCacheStore.getState().registerRefreshCallback(endpointPattern, async (ownerKeyStr) => {
-      const owner = findOwnerByKey(ownerKeyStr)
-      if (!owner) {
-        logger.warn('Owner not found for refresh', { module: moduleName, ownerKey: ownerKeyStr })
-        return
-      }
-      await store.getState().updateForOwner(owner)
-    })
+    useExpiryCacheStore
+      .getState()
+      .registerRefreshCallback(endpointPattern, async (ownerKeyStr) => {
+        const owner = findOwnerByKey(ownerKeyStr)
+        if (!owner) {
+          logger.warn('Owner not found for refresh', {
+            module: moduleName,
+            ownerKey: ownerKeyStr,
+          })
+          return
+        }
+        await store.getState().updateForOwner(owner)
+      })
   }
 
   return store

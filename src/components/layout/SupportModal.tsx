@@ -35,7 +35,11 @@ function CopyButton({ text }: { text: string }) {
       className="inline-flex items-center gap-1.5 rounded bg-surface-tertiary px-2 py-1 font-mono text-accent hover:bg-surface-tertiary/70 transition-colors"
     >
       {text}
-      {copied ? <Check className="h-3.5 w-3.5 text-semantic-success" /> : <Copy className="h-3.5 w-3.5" />}
+      {copied ? (
+        <Check className="h-3.5 w-3.5 text-semantic-success" />
+      ) : (
+        <Copy className="h-3.5 w-3.5" />
+      )}
     </button>
   )
 }
@@ -49,7 +53,8 @@ export function SupportModal({ open, onOpenChange }: SupportModalProps) {
         </DialogHeader>
         <div className="space-y-4 text-sm">
           <p className="text-content-secondary">
-            ECT EVE Assets is free and open source. Here's how you can support the project:
+            ECT EVE Assets is free and open source. Here's how you can support
+            the project:
           </p>
 
           <div className="space-y-3">
@@ -61,7 +66,9 @@ export function SupportModal({ open, onOpenChange }: SupportModalProps) {
             </div>
 
             <div className="rounded-lg border border-border bg-surface-tertiary/30 p-3">
-              <h3 className="font-medium text-content mb-1">Join Our Community</h3>
+              <h3 className="font-medium text-content mb-1">
+                Join Our Community
+              </h3>
               <a
                 href="https://discord.gg/dexSsJYYbv"
                 target="_blank"
@@ -82,9 +89,13 @@ export function SupportModal({ open, onOpenChange }: SupportModalProps) {
             </div>
 
             <div className="rounded-lg border border-border bg-surface-tertiary/30 p-3">
-              <h3 className="font-medium text-content mb-1">Express Delivery</h3>
+              <h3 className="font-medium text-content mb-1">
+                Express Delivery
+              </h3>
               <p className="text-content-muted">
-                Load a shuttle with Large Skill Injectors and autopilot through Ahbazon when <CopyButton text="EnatKinu" /> is online. We'll take care of the rest. Don't forget to fill out the{' '}
+                Load a shuttle with Large Skill Injectors and autopilot through
+                Ahbazon when <CopyButton text="EnatKinu" /> is online. We'll
+                take care of the rest. Don't forget to fill out the{' '}
                 <a
                   href="https://edencom.net/survey"
                   target="_blank"

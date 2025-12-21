@@ -24,7 +24,13 @@ import {
 } from '@/components/ui/context-menu'
 import { formatNumber, cn } from '@/lib/utils'
 import { useTabControls } from '@/context'
-import { matchesAssetTypeFilter, matchesSearch, getAssetDisplayNames, type AssetModeFlags, type ResolvedAsset } from '@/lib/resolved-asset'
+import {
+  matchesAssetTypeFilter,
+  matchesSearch,
+  getAssetDisplayNames,
+  type AssetModeFlags,
+  type ResolvedAsset,
+} from '@/lib/resolved-asset'
 import { useBlueprintsStore } from '@/store/blueprints-store'
 
 interface AssetRow {
@@ -69,7 +75,14 @@ const COLUMN_LABELS: Record<string, string> = {
 
 const STORAGE_KEY_VISIBILITY = 'assets-column-visibility'
 
-const TOGGLEABLE_COLUMNS = new Set(['ownerName', 'quantity', 'locationFlag', 'price', 'totalValue', 'totalVolume'])
+const TOGGLEABLE_COLUMNS = new Set([
+  'ownerName',
+  'quantity',
+  'locationFlag',
+  'price',
+  'totalValue',
+  'totalVolume',
+])
 
 const DEFAULT_COLUMN_VISIBILITY: VisibilityState = {
   locationFlag: false,
@@ -93,7 +106,11 @@ function saveColumnVisibility(state: VisibilityState): void {
   }
 }
 
-function createAssetRow(ra: ResolvedAsset, displayFlag: string, isAbyssal: boolean): AssetRow {
+function createAssetRow(
+  ra: ResolvedAsset,
+  displayFlag: string,
+  isAbyssal: boolean
+): AssetRow {
   const names = getAssetDisplayNames(ra)
   return {
     itemId: ra.asset.item_id,
@@ -158,29 +175,59 @@ const columns: ColumnDef<AssetRow>[] = [
       const isBpc = row.original.isBlueprintCopy
       const categoryId = row.original.categoryId
       const modeFlags = row.original.modeFlags
-      const isAbyssalResolved = row.original.isAbyssal && hasAbyssal(row.original.itemId)
-      const nameSpan = <span className={cn('truncate', isBpc && 'text-status-special')}>{typeName}</span>
+      const isAbyssalResolved =
+        row.original.isAbyssal && hasAbyssal(row.original.itemId)
+      const nameSpan = (
+        <span className={cn('truncate', isBpc && 'text-status-special')}>
+          {typeName}
+        </span>
+      )
 
       return (
         <div className="flex flex-nowrap items-center gap-2 min-w-0">
-          <TypeIcon typeId={typeId} categoryId={categoryId} isBlueprintCopy={isBpc} size="lg" />
-          {isAbyssalResolved ? <AbyssalPreview itemId={row.original.itemId}>{nameSpan}</AbyssalPreview> : nameSpan}
-          {(modeFlags.isContract || modeFlags.isMarketOrder || modeFlags.isIndustryJob || modeFlags.isOwnedStructure || modeFlags.isActiveShip) && (
+          <TypeIcon
+            typeId={typeId}
+            categoryId={categoryId}
+            isBlueprintCopy={isBpc}
+            size="lg"
+          />
+          {isAbyssalResolved ? (
+            <AbyssalPreview itemId={row.original.itemId}>
+              {nameSpan}
+            </AbyssalPreview>
+          ) : (
+            nameSpan
+          )}
+          {(modeFlags.isContract ||
+            modeFlags.isMarketOrder ||
+            modeFlags.isIndustryJob ||
+            modeFlags.isOwnedStructure ||
+            modeFlags.isActiveShip) && (
             <span className="shrink-0 inline-flex items-center gap-1 whitespace-nowrap">
               {modeFlags.isActiveShip && (
-                <span className="text-xs text-status-time bg-status-time/20 px-1.5 py-0.5 rounded whitespace-nowrap">Active Ship</span>
+                <span className="text-xs text-status-time bg-status-time/20 px-1.5 py-0.5 rounded whitespace-nowrap">
+                  Active Ship
+                </span>
               )}
               {modeFlags.isContract && (
-                <span className="text-xs text-status-corp bg-semantic-warning/20 px-1.5 py-0.5 rounded whitespace-nowrap">In Contract</span>
+                <span className="text-xs text-status-corp bg-semantic-warning/20 px-1.5 py-0.5 rounded whitespace-nowrap">
+                  In Contract
+                </span>
               )}
               {modeFlags.isMarketOrder && (
-                <span className="text-xs text-status-info bg-accent/20 px-1.5 py-0.5 rounded whitespace-nowrap">Sell Order</span>
+                <span className="text-xs text-status-info bg-accent/20 px-1.5 py-0.5 rounded whitespace-nowrap">
+                  Sell Order
+                </span>
               )}
               {modeFlags.isIndustryJob && (
-                <span className="text-xs text-status-positive bg-status-positive/20 px-1.5 py-0.5 rounded whitespace-nowrap">In Job</span>
+                <span className="text-xs text-status-positive bg-status-positive/20 px-1.5 py-0.5 rounded whitespace-nowrap">
+                  In Job
+                </span>
               )}
               {modeFlags.isOwnedStructure && (
-                <span className="text-xs text-status-special bg-status-special/20 px-1.5 py-0.5 rounded whitespace-nowrap">Structure</span>
+                <span className="text-xs text-status-special bg-status-special/20 px-1.5 py-0.5 rounded whitespace-nowrap">
+                  Structure
+                </span>
               )}
             </span>
           )}
@@ -279,7 +326,9 @@ const columns: ColumnDef<AssetRow>[] = [
       </button>
     ),
     cell: ({ row }) => (
-      <span className="text-right w-full">{row.getValue('locationName') as string}</span>
+      <span className="text-right w-full">
+        {row.getValue('locationName') as string}
+      </span>
     ),
   },
   {
@@ -297,7 +346,9 @@ const columns: ColumnDef<AssetRow>[] = [
     ),
     cell: ({ row }) => (
       <div className="w-full text-right">
-        <span className="text-content-secondary text-xs">{row.getValue('locationFlag') as string}</span>
+        <span className="text-content-secondary text-xs">
+          {row.getValue('locationFlag') as string}
+        </span>
       </div>
     ),
   },
@@ -315,13 +366,23 @@ export function AssetsTab() {
     updateProgress,
   } = useResolvedAssets()
 
-  const [sorting, setSorting] = useState<SortingState>([{ id: 'totalValue', desc: true }])
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: 'totalValue', desc: true },
+  ])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(loadColumnVisibility)
+  const [columnVisibility, setColumnVisibility] =
+    useState<VisibilityState>(loadColumnVisibility)
   const [categoryFilterValue, setCategoryFilterValue] = useState('')
   const [assetTypeFilterValue, setAssetTypeFilterValue] = useState('')
 
-  const { setColumns, search, setCategoryFilter, setAssetTypeFilter, setResultCount, setTotalValue } = useTabControls()
+  const {
+    setColumns,
+    search,
+    setCategoryFilter,
+    setAssetTypeFilter,
+    setResultCount,
+    setTotalValue,
+  } = useTabControls()
 
   useEffect(() => {
     saveColumnVisibility(columnVisibility)
@@ -349,7 +410,10 @@ export function AssetsTab() {
       if (names.categoryName) cats.add(names.categoryName)
 
       if (isAbyssal || (ra.asset.is_singleton && !isBlueprint)) {
-        aggregated.set(`unique-${ra.asset.item_id}`, createAssetRow(ra, displayFlag, isAbyssal))
+        aggregated.set(
+          `unique-${ra.asset.item_id}`,
+          createAssetRow(ra, displayFlag, isAbyssal)
+        )
         continue
       }
 
@@ -386,14 +450,17 @@ export function AssetsTab() {
     for (const ra of selectedResolvedAssets) {
       if (!matchesAssetTypeFilter(ra.modeFlags, assetTypeFilterValue)) continue
       const names = getAssetDisplayNames(ra)
-      if (categoryFilterValue && names.categoryName !== categoryFilterValue) continue
+      if (categoryFilterValue && names.categoryName !== categoryFilterValue)
+        continue
       if (search && !matchesSearch(ra, search)) continue
       sourceShowing++
     }
 
     const filtered = data.filter((row) => {
-      if (!matchesAssetTypeFilter(row.modeFlags, assetTypeFilterValue)) return false
-      if (categoryFilterValue && row.categoryName !== categoryFilterValue) return false
+      if (!matchesAssetTypeFilter(row.modeFlags, assetTypeFilterValue))
+        return false
+      if (categoryFilterValue && row.categoryName !== categoryFilterValue)
+        return false
       if (search) {
         const matches =
           row.typeName.toLowerCase().includes(searchLower) ||
@@ -403,7 +470,11 @@ export function AssetsTab() {
           row.regionName.toLowerCase().includes(searchLower)
         if (!matches) return false
       }
-      if (!row.modeFlags.isOwnedStructure && !row.modeFlags.isMarketOrder && !row.modeFlags.isContract) {
+      if (
+        !row.modeFlags.isOwnedStructure &&
+        !row.modeFlags.isMarketOrder &&
+        !row.modeFlags.isContract
+      ) {
         totalValue += row.totalValue
       }
       return true
@@ -412,9 +483,18 @@ export function AssetsTab() {
     return {
       filteredData: filtered,
       filteredTotalValue: totalValue,
-      sourceCount: { showing: sourceShowing, total: selectedResolvedAssets.length },
+      sourceCount: {
+        showing: sourceShowing,
+        total: selectedResolvedAssets.length,
+      },
     }
-  }, [data, selectedResolvedAssets, assetTypeFilterValue, categoryFilterValue, search])
+  }, [
+    data,
+    selectedResolvedAssets,
+    assetTypeFilterValue,
+    categoryFilterValue,
+    search,
+  ])
 
   const table = useReactTable({
     data: filteredData,
@@ -432,7 +512,8 @@ export function AssetsTab() {
   })
 
   useEffect(() => {
-    const cols = table.getAllColumns()
+    const cols = table
+      .getAllColumns()
       .filter((col) => col.getCanHide() && TOGGLEABLE_COLUMNS.has(col.id))
       .map((col) => ({
         id: col.id,
@@ -483,16 +564,22 @@ export function AssetsTab() {
 
   const gridTemplateColumns = useMemo(() => {
     void columnVisibility
-    return table.getVisibleLeafColumns().map(col => {
-      const noFlex = (col.columnDef.meta as { noFlex?: boolean } | undefined)?.noFlex
-      return noFlex ? `${col.getSize()}px` : `minmax(${col.getSize()}px, 1fr)`
-    }).join(' ')
+    return table
+      .getVisibleLeafColumns()
+      .map((col) => {
+        const noFlex = (col.columnDef.meta as { noFlex?: boolean } | undefined)
+          ?.noFlex
+        return noFlex ? `${col.getSize()}px` : `minmax(${col.getSize()}px, 1fr)`
+      })
+      .join(' ')
   }, [table, columnVisibility])
 
   if (owners.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-content-secondary">No characters logged in. Add a character to view assets.</p>
+        <p className="text-content-secondary">
+          No characters logged in. Add a character to view assets.
+        </p>
       </div>
     )
   }
@@ -523,7 +610,10 @@ export function AssetsTab() {
             </>
           )}
           {!hasError && (
-            <p className="text-content-secondary">No asset data loaded. Click Update in the header to fetch from ESI.</p>
+            <p className="text-content-secondary">
+              No asset data loaded. Click Update in the header to fetch from
+              ESI.
+            </p>
           )}
         </div>
       </div>
@@ -540,34 +630,46 @@ export function AssetsTab() {
           <div className="contents">
             {table.getHeaderGroups().map((headerGroup) => (
               <Fragment key={headerGroup.id}>
-                {headerGroup.headers.filter(h => h.column.getIsVisible()).map((header) => (
-                  <div
-                    key={header.id}
-                    className={`sticky top-0 z-10 bg-surface-secondary py-3 text-left text-sm font-medium text-content-secondary border-b border-border ${header.column.id === 'ownerName' ? 'px-2' : 'px-4'}`}
-                  >
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                  </div>
-                ))}
+                {headerGroup.headers
+                  .filter((h) => h.column.getIsVisible())
+                  .map((header) => (
+                    <div
+                      key={header.id}
+                      className={`sticky top-0 z-10 bg-surface-secondary py-3 text-left text-sm font-medium text-content-secondary border-b border-border ${header.column.id === 'ownerName' ? 'px-2' : 'px-4'}`}
+                    >
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </div>
+                  ))}
               </Fragment>
             ))}
           </div>
           {rows.length ? (
             <>
               {rowVirtualizer.getVirtualItems().length > 0 && (
-                <div style={{ height: rowVirtualizer.getVirtualItems()[0]?.start ?? 0, gridColumn: `1 / -1` }} />
+                <div
+                  style={{
+                    height: rowVirtualizer.getVirtualItems()[0]?.start ?? 0,
+                    gridColumn: `1 / -1`,
+                  }}
+                />
               )}
               {rowVirtualizer.getVirtualItems().map((virtualRow) => {
                 const row = rows[virtualRow.index]
                 if (!row) return null
                 const modeFlags = row.original.modeFlags
-                const isAbyssalResolved = row.original.isAbyssal && hasAbyssal(row.original.itemId)
+                const isAbyssalResolved =
+                  row.original.isAbyssal && hasAbyssal(row.original.itemId)
                 const rowContent = (
-                  <div key={row.id} data-index={virtualRow.index} className="contents group">
+                  <div
+                    key={row.id}
+                    data-index={virtualRow.index}
+                    className="contents group"
+                  >
                     {row.getVisibleCells().map((cell) => (
                       <div
                         key={cell.id}
@@ -581,7 +683,10 @@ export function AssetsTab() {
                           modeFlags.isOwnedStructure && 'bg-row-structure'
                         )}
                       >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
                       </div>
                     ))}
                   </div>
@@ -589,10 +694,20 @@ export function AssetsTab() {
                 if (isAbyssalResolved) {
                   return (
                     <ContextMenu key={row.id}>
-                      <ContextMenuTrigger asChild>{rowContent}</ContextMenuTrigger>
+                      <ContextMenuTrigger asChild>
+                        {rowContent}
+                      </ContextMenuTrigger>
                       <ContextMenuContent>
                         <ContextMenuItem
-                          onClick={() => window.open(getMutamarketUrl(row.original.typeName, row.original.itemId), '_blank')}
+                          onClick={() =>
+                            window.open(
+                              getMutamarketUrl(
+                                row.original.typeName,
+                                row.original.itemId
+                              ),
+                              '_blank'
+                            )
+                          }
                         >
                           Open in Mutamarket
                         </ContextMenuItem>
@@ -605,14 +720,19 @@ export function AssetsTab() {
               {rowVirtualizer.getVirtualItems().length > 0 && (
                 <div
                   style={{
-                    height: rowVirtualizer.getTotalSize() - (rowVirtualizer.getVirtualItems().at(-1)?.end ?? 0),
+                    height:
+                      rowVirtualizer.getTotalSize() -
+                      (rowVirtualizer.getVirtualItems().at(-1)?.end ?? 0),
                     gridColumn: `1 / -1`,
                   }}
                 />
               )}
             </>
           ) : (
-            <div className="h-24 flex items-center justify-center text-content-secondary" style={{ gridColumn: `1 / -1` }}>
+            <div
+              className="h-24 flex items-center justify-center text-content-secondary"
+              style={{ gridColumn: `1 / -1` }}
+            >
               No assets found.
             </div>
           )}

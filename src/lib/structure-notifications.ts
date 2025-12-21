@@ -1,4 +1,7 @@
-import { type NotificationType, useNotificationStore } from '@/store/toast-store'
+import {
+  type NotificationType,
+  useNotificationStore,
+} from '@/store/toast-store'
 import type { ESICorporationStructure } from '@/store/structures-store'
 import type { ESIStarbase } from '@/store/starbases-store'
 import type { ESIStarbaseDetail } from '@/api/endpoints/starbases'
@@ -69,7 +72,11 @@ function detectUpwellChanges(
     const prev = prevMap.get(structure.structure_id)
     const name = structure.name ?? `Structure ${structure.structure_id}`
 
-    if (prev && !REINFORCED_STATES.has(prev.state) && REINFORCED_STATES.has(structure.state)) {
+    if (
+      prev &&
+      !REINFORCED_STATES.has(prev.state) &&
+      REINFORCED_STATES.has(structure.state)
+    ) {
       const eventKey = `reinforced:${structure.state_timer_end ?? 'unknown'}`
       const isArmor = structure.state === ARMOR_REINFORCED
       alerts.push({
@@ -101,7 +108,12 @@ function detectUpwellChanges(
     if (structure.fuel_expires) {
       const expiresAt = new Date(structure.fuel_expires).getTime()
       const remainingHours = (expiresAt - Date.now()) / (60 * 60 * 1000)
-      const fuelAlert = createLowFuelAlert(remainingHours, name, 'Low Fuel Warning', structure.structure_id)
+      const fuelAlert = createLowFuelAlert(
+        remainingHours,
+        name,
+        'Low Fuel Warning',
+        structure.structure_id
+      )
       if (fuelAlert) alerts.push(fuelAlert)
     }
 
@@ -130,7 +142,10 @@ function detectUpwellChanges(
     if (prev?.services && structure.services) {
       const prevServices = new Map(prev.services.map((s) => [s.name, s.state]))
       for (const service of structure.services) {
-        if (prevServices.get(service.name) === 'online' && service.state === 'offline') {
+        if (
+          prevServices.get(service.name) === 'online' &&
+          service.state === 'offline'
+        ) {
           const eventKey = `service-offline:${service.name}`
           alerts.push({
             type: 'structure-service-offline',
@@ -201,9 +216,18 @@ function detectStarbaseChanges(
     const detail = details.get(starbase.starbase_id)
     const meta = metadata.get(starbase.starbase_id)
     if (detail && meta) {
-      const fuelHours = calculateFuelHours(detail, meta.towerSize, meta.fuelTier)
+      const fuelHours = calculateFuelHours(
+        detail,
+        meta.towerSize,
+        meta.fuelTier
+      )
       if (fuelHours !== null) {
-        const fuelAlert = createLowFuelAlert(fuelHours, typeName, 'POS Low Fuel', starbase.starbase_id)
+        const fuelAlert = createLowFuelAlert(
+          fuelHours,
+          typeName,
+          'POS Low Fuel',
+          starbase.starbase_id
+        )
         if (fuelAlert) alerts.push(fuelAlert)
       }
     }
@@ -224,7 +248,13 @@ export function processUpwellNotifications(
   for (const alert of alerts) {
     if (hasBeenNotified(alert.entityId, alert.eventKey)) continue
 
-    store.addNotification(alert.type, alert.title, alert.message, alert.entityId, alert.eventKey)
+    store.addNotification(
+      alert.type,
+      alert.title,
+      alert.message,
+      alert.entityId,
+      alert.eventKey
+    )
     markNotified(alert.entityId, alert.eventKey)
 
     logger.info('Structure notification sent', {
@@ -249,7 +279,13 @@ export function processStarbaseNotifications(
   for (const alert of alerts) {
     if (hasBeenNotified(alert.entityId, alert.eventKey)) continue
 
-    store.addNotification(alert.type, alert.title, alert.message, alert.entityId, alert.eventKey)
+    store.addNotification(
+      alert.type,
+      alert.title,
+      alert.message,
+      alert.entityId,
+      alert.eventKey
+    )
     markNotified(alert.entityId, alert.eventKey)
 
     logger.info('Starbase notification sent', {

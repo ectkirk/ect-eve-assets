@@ -14,7 +14,10 @@ interface ESIPriceRecord {
 }
 
 interface ESIPricesState {
-  prices: Map<number, { averagePrice: number | null; adjustedPrice: number | null }>
+  prices: Map<
+    number,
+    { averagePrice: number | null; adjustedPrice: number | null }
+  >
   lastUpdateAt: number | null
   isUpdating: boolean
   initialized: boolean
@@ -39,7 +42,9 @@ async function openDB(): Promise<IDBDatabase> {
     const request = indexedDB.open(DB_NAME, DB_VERSION)
 
     request.onerror = () => {
-      logger.error('Failed to open ESI prices DB', request.error, { module: 'ESIPricesStore' })
+      logger.error('Failed to open ESI prices DB', request.error, {
+        module: 'ESIPricesStore',
+      })
       reject(request.error)
     }
 
@@ -60,7 +65,10 @@ async function openDB(): Promise<IDBDatabase> {
   })
 }
 
-async function loadFromDB(): Promise<{ prices: ESIPriceRecord[]; lastUpdateAt: number | null }> {
+async function loadFromDB(): Promise<{
+  prices: ESIPriceRecord[]
+  lastUpdateAt: number | null
+}> {
   const database = await openDB()
 
   return new Promise((resolve, reject) => {
@@ -93,7 +101,10 @@ async function loadFromDB(): Promise<{ prices: ESIPriceRecord[]; lastUpdateAt: n
 }
 
 async function saveToDB(
-  prices: Map<number, { averagePrice: number | null; adjustedPrice: number | null }>,
+  prices: Map<
+    number,
+    { averagePrice: number | null; adjustedPrice: number | null }
+  >,
   lastUpdateAt: number
 ): Promise<void> {
   const database = await openDB()
@@ -200,7 +211,10 @@ export const useESIPricesStore = create<ESIPricesStore>((set, get) => ({
     try {
       const { prices: records, lastUpdateAt } = await loadFromDB()
 
-      const prices = new Map<number, { averagePrice: number | null; adjustedPrice: number | null }>()
+      const prices = new Map<
+        number,
+        { averagePrice: number | null; adjustedPrice: number | null }
+      >()
       for (const record of records) {
         prices.set(record.typeId, {
           averagePrice: record.averagePrice,
@@ -213,7 +227,9 @@ export const useESIPricesStore = create<ESIPricesStore>((set, get) => ({
       logger.info('ESI prices store initialized', {
         module: 'ESIPricesStore',
         count: prices.size,
-        lastUpdateAt: lastUpdateAt ? new Date(lastUpdateAt).toISOString() : null,
+        lastUpdateAt: lastUpdateAt
+          ? new Date(lastUpdateAt).toISOString()
+          : null,
       })
 
       if (shouldUpdate(lastUpdateAt)) {
@@ -222,9 +238,13 @@ export const useESIPricesStore = create<ESIPricesStore>((set, get) => ({
 
       scheduleNextUpdate(get())
     } catch (err) {
-      logger.error('Failed to init ESI prices store', err instanceof Error ? err : undefined, {
-        module: 'ESIPricesStore',
-      })
+      logger.error(
+        'Failed to init ESI prices store',
+        err instanceof Error ? err : undefined,
+        {
+          module: 'ESIPricesStore',
+        }
+      )
       set({ initialized: true })
     }
   },
@@ -240,7 +260,10 @@ export const useESIPricesStore = create<ESIPricesStore>((set, get) => ({
       logger.info('Fetching ESI market prices', { module: 'ESIPricesStore' })
       const esiPrices = await getMarketPrices()
 
-      const prices = new Map<number, { averagePrice: number | null; adjustedPrice: number | null }>()
+      const prices = new Map<
+        number,
+        { averagePrice: number | null; adjustedPrice: number | null }
+      >()
       for (const item of esiPrices) {
         prices.set(item.type_id, {
           averagePrice: item.average_price ?? null,
@@ -258,9 +281,13 @@ export const useESIPricesStore = create<ESIPricesStore>((set, get) => ({
         count: prices.size,
       })
     } catch (err) {
-      logger.error('Failed to fetch ESI prices', err instanceof Error ? err : undefined, {
-        module: 'ESIPricesStore',
-      })
+      logger.error(
+        'Failed to fetch ESI prices',
+        err instanceof Error ? err : undefined,
+        {
+          module: 'ESIPricesStore',
+        }
+      )
       set({ isUpdating: false })
     }
   },
@@ -279,9 +306,13 @@ export const useESIPricesStore = create<ESIPricesStore>((set, get) => ({
       set({ prices: new Map(), lastUpdateAt: null })
       logger.info('ESI prices store cleared', { module: 'ESIPricesStore' })
     } catch (err) {
-      logger.error('Failed to clear ESI prices store', err instanceof Error ? err : undefined, {
-        module: 'ESIPricesStore',
-      })
+      logger.error(
+        'Failed to clear ESI prices store',
+        err instanceof Error ? err : undefined,
+        {
+          module: 'ESIPricesStore',
+        }
+      )
     }
   },
 }))

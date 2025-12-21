@@ -42,7 +42,9 @@ async function openDB(): Promise<IDBDatabase> {
     const request = indexedDB.open(DB_NAME, DB_VERSION)
 
     request.onerror = () => {
-      logger.error('Failed to open divisions DB', request.error, { module: 'DivisionsStore' })
+      logger.error('Failed to open divisions DB', request.error, {
+        module: 'DivisionsStore',
+      })
       reject(request.error)
     }
 
@@ -54,7 +56,9 @@ async function openDB(): Promise<IDBDatabase> {
     request.onupgradeneeded = (event) => {
       const database = (event.target as IDBOpenDBRequest).result
       if (!database.objectStoreNames.contains(STORE_DIVISIONS)) {
-        database.createObjectStore(STORE_DIVISIONS, { keyPath: 'corporationId' })
+        database.createObjectStore(STORE_DIVISIONS, {
+          keyPath: 'corporationId',
+        })
       }
     }
   })
@@ -119,9 +123,13 @@ export const useDivisionsStore = create<DivisionsStore>((set, get) => ({
         corps: divisionsByCorp.size,
       })
     } catch (err) {
-      logger.error('Failed to load divisions from DB', err instanceof Error ? err : undefined, {
-        module: 'DivisionsStore',
-      })
+      logger.error(
+        'Failed to load divisions from DB',
+        err instanceof Error ? err : undefined,
+        {
+          module: 'DivisionsStore',
+        }
+      )
       set({ initialized: true })
     }
   },
@@ -157,10 +165,14 @@ export const useDivisionsStore = create<DivisionsStore>((set, get) => ({
         corporationId: owner.id,
       })
     } catch (err) {
-      logger.error('Failed to fetch divisions', err instanceof Error ? err : undefined, {
-        module: 'DivisionsStore',
-        corporationId: owner.id,
-      })
+      logger.error(
+        'Failed to fetch divisions',
+        err instanceof Error ? err : undefined,
+        {
+          module: 'DivisionsStore',
+          corporationId: owner.id,
+        }
+      )
       set({ isLoading: false })
     }
   },
@@ -190,15 +202,22 @@ export const useDivisionsStore = create<DivisionsStore>((set, get) => ({
 }))
 
 export function useCorporationDivisions(owner: Owner | null) {
-  const { divisionsByCorp, fetchForOwner, initialized, init } = useDivisionsStore()
+  const { divisionsByCorp, fetchForOwner, initialized, init } =
+    useDivisionsStore()
 
   if (!initialized) {
     init()
   }
 
-  if (owner?.type === 'corporation' && initialized && !divisionsByCorp.has(owner.id)) {
+  if (
+    owner?.type === 'corporation' &&
+    initialized &&
+    !divisionsByCorp.has(owner.id)
+  ) {
     fetchForOwner(owner)
   }
 
-  return owner?.type === 'corporation' ? divisionsByCorp.get(owner.id) : undefined
+  return owner?.type === 'corporation'
+    ? divisionsByCorp.get(owner.id)
+    : undefined
 }

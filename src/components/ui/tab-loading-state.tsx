@@ -56,7 +56,9 @@ export function TabLoadingState({
           {updateError ? (
             <>
               <p className="text-semantic-danger">Failed to load {dataType}</p>
-              <p className="text-sm text-content-secondary mb-4">{updateError}</p>
+              <p className="text-sm text-content-secondary mb-4">
+                {updateError}
+              </p>
             </>
           ) : (
             <p className="text-content-secondary">No {dataType} found.</p>

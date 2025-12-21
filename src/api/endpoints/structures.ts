@@ -3,7 +3,9 @@ import { logger } from '@/lib/logger'
 import { ESICorporationStructureSchema } from '../schemas'
 import { z } from 'zod'
 
-export type ESICorporationStructure = z.infer<typeof ESICorporationStructureSchema>
+export type ESICorporationStructure = z.infer<
+  typeof ESICorporationStructureSchema
+>
 
 export async function getCorporationStructures(
   characterId: number,

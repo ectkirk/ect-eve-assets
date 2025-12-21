@@ -162,7 +162,14 @@ export const ESIIndustryJobSchema = z.object({
   runs: z.number(),
   start_date: z.string(),
   station_id: z.number().optional(),
-  status: z.enum(['active', 'cancelled', 'delivered', 'paused', 'ready', 'reverted']),
+  status: z.enum([
+    'active',
+    'cancelled',
+    'delivered',
+    'paused',
+    'ready',
+    'reverted',
+  ]),
   successful_runs: z.number().optional(),
 })
 
@@ -231,7 +238,9 @@ export const ESIStarbaseSchema = z.object({
   onlined_since: z.string().optional(),
   reinforced_until: z.string().optional(),
   starbase_id: z.number(),
-  state: z.enum(['offline', 'online', 'onlining', 'reinforced', 'unanchoring']).optional(),
+  state: z
+    .enum(['offline', 'online', 'onlining', 'reinforced', 'unanchoring'])
+    .optional(),
   system_id: z.number(),
   type_id: z.number(),
   unanchor_at: z.string().optional(),
@@ -352,20 +361,22 @@ export const ESIWalletJournalEntrySchema = z.object({
   first_party_id: z.number().optional(),
   second_party_id: z.number().optional(),
   context_id: z.number().optional(),
-  context_id_type: z.enum([
-    'structure_id',
-    'station_id',
-    'market_transaction_id',
-    'character_id',
-    'corporation_id',
-    'alliance_id',
-    'eve_system',
-    'industry_job_id',
-    'contract_id',
-    'planet_id',
-    'system_id',
-    'type_id',
-  ]).optional(),
+  context_id_type: z
+    .enum([
+      'structure_id',
+      'station_id',
+      'market_transaction_id',
+      'character_id',
+      'corporation_id',
+      'alliance_id',
+      'eve_system',
+      'industry_job_id',
+      'contract_id',
+      'planet_id',
+      'system_id',
+      'type_id',
+    ])
+    .optional(),
   reason: z.string().optional(),
   tax: z.number().optional(),
   tax_receiver_id: z.number().optional(),
@@ -554,7 +565,10 @@ export function safeValidate<T>(schema: z.ZodType<T>, data: unknown): T | null {
   return result.success ? result.data : null
 }
 
-export function safeValidateArray<T>(schema: z.ZodType<T>, data: unknown): T[] | null {
+export function safeValidateArray<T>(
+  schema: z.ZodType<T>,
+  data: unknown
+): T[] | null {
   const arraySchema = z.array(schema)
   const result = arraySchema.safeParse(data)
   return result.success ? result.data : null

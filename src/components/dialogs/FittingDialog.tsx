@@ -27,17 +27,26 @@ interface FittingDialogProps {
   shipNode: TreeNode | null
 }
 
-function ModuleList({ title, modules }: { title: string; modules: { type_id: number; type_name: string; quantity: number }[] }) {
+function ModuleList({
+  title,
+  modules,
+}: {
+  title: string
+  modules: { type_id: number; type_name: string; quantity: number }[]
+}) {
   const filtered = modules.filter((m) => m.type_id > 0)
   if (filtered.length === 0) return null
 
   return (
     <div>
-      <h4 className="text-sm font-medium text-content-secondary mb-1">{title}</h4>
+      <h4 className="text-sm font-medium text-content-secondary mb-1">
+        {title}
+      </h4>
       <ul className="text-sm text-content-secondary space-y-0.5">
         {filtered.map((m, i) => (
           <li key={i}>
-            {m.quantity > 1 ? `${m.quantity}x ` : ''}{m.type_name}
+            {m.quantity > 1 ? `${m.quantity}x ` : ''}
+            {m.type_name}
           </li>
         ))}
       </ul>
@@ -145,7 +154,11 @@ function useShipSlots(shipTypeId: number | null) {
   return { slots, loading }
 }
 
-export function FittingDialog({ open, onOpenChange, shipNode }: FittingDialogProps) {
+export function FittingDialog({
+  open,
+  onOpenChange,
+  shipNode,
+}: FittingDialogProps) {
   const [copied, setCopied] = useState(false)
 
   const fitting = useMemo(() => {
@@ -195,14 +208,21 @@ export function FittingDialog({ open, onOpenChange, shipNode }: FittingDialogPro
             onClick={copyFitting}
             className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded border border-border hover:bg-surface-secondary transition-colors mr-6"
           >
-            {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+            {copied ? (
+              <Check className="w-4 h-4" />
+            ) : (
+              <Copy className="w-4 h-4" />
+            )}
             {copied ? 'Copied!' : 'Copy Fitting'}
           </button>
         </DialogHeader>
 
         <div className="flex flex-col items-center">
           {loading ? (
-            <div className="flex items-center justify-center" style={{ width: 398, height: 398 }}>
+            <div
+              className="flex items-center justify-center"
+              style={{ width: 398, height: 398 }}
+            >
               <span className="text-content-secondary">Loading...</span>
             </div>
           ) : (
@@ -223,16 +243,25 @@ export function FittingDialog({ open, onOpenChange, shipNode }: FittingDialogPro
             <ModuleList title="Mid Slots" modules={fitting.midSlotModules} />
             <ModuleList title="Low Slots" modules={fitting.lowSlotModules} />
             <ModuleList title="Rigs" modules={fitting.rigModules} />
-            {fitting.subsystemModules.some(m => m.type_id > 0) && (
-              <ModuleList title="Subsystems" modules={fitting.subsystemModules} />
+            {fitting.subsystemModules.some((m) => m.type_id > 0) && (
+              <ModuleList
+                title="Subsystems"
+                modules={fitting.subsystemModules}
+              />
             )}
             <ModuleList title="Drones" modules={fitting.drones} />
             <ModuleList title="Fighter Tubes" modules={fitting.fighterTubes} />
             <ModuleList title="Fighter Bay" modules={fitting.fighterBay} />
-            {(Object.entries(fitting.holds) as [keyof ShipHolds, ModuleItem[]][]).map(
+            {(
+              Object.entries(fitting.holds) as [keyof ShipHolds, ModuleItem[]][]
+            ).map(
               ([key, items]) =>
                 items.length > 0 && (
-                  <ModuleList key={key} title={HOLD_LABELS[key]} modules={items} />
+                  <ModuleList
+                    key={key}
+                    title={HOLD_LABELS[key]}
+                    modules={items}
+                  />
                 )
             )}
           </div>

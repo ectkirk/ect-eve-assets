@@ -35,18 +35,20 @@ export function useColumnSettings(storageKey: string, columns: ColumnConfig[]) {
   }, [storageKey, visibility])
 
   const toggleVisibility = useCallback((columnId: string) => {
-    setVisibility(prev => ({
+    setVisibility((prev) => ({
       ...prev,
       [columnId]: !prev[columnId],
     }))
   }, [])
 
   const getVisibleColumns = useCallback(() => {
-    return columns.filter(col => visibility[col.id] !== false).map(col => col.id)
+    return columns
+      .filter((col) => visibility[col.id] !== false)
+      .map((col) => col.id)
   }, [columns, visibility])
 
   const getColumnsForDropdown = useCallback(() => {
-    return columns.map(col => ({
+    return columns.map((col) => ({
       id: col.id,
       label: col.label,
       visible: visibility[col.id] !== false,

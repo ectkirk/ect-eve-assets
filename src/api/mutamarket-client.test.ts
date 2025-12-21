@@ -24,7 +24,10 @@ vi.mock('@/lib/logger', () => ({
 
 const mockMutamarketModule = vi.fn()
 
-const item = (itemId: number, typeId = 47408): AbyssalItem => ({ itemId, typeId })
+const item = (itemId: number, typeId = 47408): AbyssalItem => ({
+  itemId,
+  typeId,
+})
 
 describe('mutamarket-client', () => {
   beforeEach(() => {
@@ -83,7 +86,8 @@ describe('mutamarket-client', () => {
 
   describe('fetchAbyssalPrices', () => {
     it('returns cached prices without fetching', async () => {
-      const { hasAbyssal, getAbyssalPrice } = await import('@/store/reference-cache')
+      const { hasAbyssal, getAbyssalPrice } =
+        await import('@/store/reference-cache')
       vi.mocked(hasAbyssal).mockReturnValue(true)
       vi.mocked(getAbyssalPrice).mockReturnValue(1000000)
 
@@ -95,7 +99,8 @@ describe('mutamarket-client', () => {
     })
 
     it('fetches uncached prices from Mutamarket API', async () => {
-      const { hasAbyssal, saveAbyssals } = await import('@/store/reference-cache')
+      const { hasAbyssal, saveAbyssals } =
+        await import('@/store/reference-cache')
       vi.mocked(hasAbyssal).mockReturnValue(false)
 
       mockMutamarketModule.mockResolvedValue({
@@ -113,7 +118,8 @@ describe('mutamarket-client', () => {
     })
 
     it('handles 404 responses by storing zero price', async () => {
-      const { hasAbyssal, saveAbyssals } = await import('@/store/reference-cache')
+      const { hasAbyssal, saveAbyssals } =
+        await import('@/store/reference-cache')
       vi.mocked(hasAbyssal).mockReturnValue(false)
 
       mockMutamarketModule.mockResolvedValue({ error: 'HTTP 404', status: 404 })
@@ -122,7 +128,9 @@ describe('mutamarket-client', () => {
 
       expect(result.has(99999)).toBe(false)
       expect(saveAbyssals).toHaveBeenCalledWith(
-        expect.arrayContaining([expect.objectContaining({ id: 99999, price: 0 })])
+        expect.arrayContaining([
+          expect.objectContaining({ id: 99999, price: 0 }),
+        ])
       )
     })
 
@@ -174,7 +182,8 @@ describe('mutamarket-client', () => {
     })
 
     it('skips zero-priced items in results but persists them', async () => {
-      const { hasAbyssal, getAbyssalPrice } = await import('@/store/reference-cache')
+      const { hasAbyssal, getAbyssalPrice } =
+        await import('@/store/reference-cache')
       vi.mocked(hasAbyssal).mockReturnValue(true)
       vi.mocked(getAbyssalPrice).mockReturnValue(0)
 
@@ -184,7 +193,8 @@ describe('mutamarket-client', () => {
     })
 
     it('handles missing estimated_value in response', async () => {
-      const { hasAbyssal, saveAbyssals } = await import('@/store/reference-cache')
+      const { hasAbyssal, saveAbyssals } =
+        await import('@/store/reference-cache')
       vi.mocked(hasAbyssal).mockReturnValue(false)
 
       mockMutamarketModule.mockResolvedValue({
@@ -197,7 +207,9 @@ describe('mutamarket-client', () => {
 
       expect(result.has(12345)).toBe(false)
       expect(saveAbyssals).toHaveBeenCalledWith(
-        expect.arrayContaining([expect.objectContaining({ id: 12345, price: 0 })])
+        expect.arrayContaining([
+          expect.objectContaining({ id: 12345, price: 0 }),
+        ])
       )
     })
   })

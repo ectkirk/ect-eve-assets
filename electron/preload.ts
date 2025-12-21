@@ -37,8 +37,22 @@ export interface RefTypesPageParams {
 }
 
 export interface RefTypesPageResult {
-  items?: Record<string, { id: number; name: string; groupId?: number | null; volume?: number | null; packagedVolume?: number | null }>
-  pagination?: { total: number; limit: number; nextCursor?: number; hasMore: boolean }
+  items?: Record<
+    string,
+    {
+      id: number
+      name: string
+      groupId?: number | null
+      volume?: number | null
+      packagedVolume?: number | null
+    }
+  >
+  pagination?: {
+    total: number
+    limit: number
+    nextCursor?: number
+    hasMore: boolean
+  }
   error?: string
 }
 
@@ -48,7 +62,15 @@ export interface RefRegionsResult {
 }
 
 export interface RefSystemsResult {
-  items?: Record<string, { id: number; name: string; regionId: number; securityStatus?: number | null }>
+  items?: Record<
+    string,
+    {
+      id: number
+      name: string
+      regionId: number
+      securityStatus?: number | null
+    }
+  >
   error?: string
 }
 
@@ -63,7 +85,12 @@ export interface RefStructuresPageParams {
 
 export interface RefStructuresPageResult {
   items?: Record<string, { id: string; name: string; systemId?: number | null }>
-  pagination?: { total: number; limit: number; nextCursor?: string | null; hasMore: boolean }
+  pagination?: {
+    total: number
+    limit: number
+    nextCursor?: string | null
+    hasMore: boolean
+  }
   error?: string
 }
 
@@ -79,21 +106,24 @@ export interface MutamarketResult {
 }
 
 export interface RefShipsResult {
-  ships?: Record<number, {
-    id: number
-    name: string
-    groupId: number
-    groupName: string
-    slots: {
-      high: number
-      mid: number
-      low: number
-      rig: number
-      subsystem: number
-      launcher: number
-      turret: number
+  ships?: Record<
+    number,
+    {
+      id: number
+      name: string
+      groupId: number
+      groupName: string
+      slots: {
+        high: number
+        mid: number
+        low: number
+        rig: number
+        subsystem: number
+        launcher: number
+        turret: number
+      }
     }
-  }>
+  >
   error?: string
 }
 
@@ -150,7 +180,9 @@ export interface BlueprintListItem {
   productName: string
 }
 
-export type BlueprintsResult = { items: Record<string, number> } | { error: string }
+export type BlueprintsResult =
+  | { items: Record<string, number> }
+  | { error: string }
 
 export interface BuybackConfig {
   buyRate: number
@@ -236,8 +268,18 @@ export interface BuybackCalculatorResult {
     assetSafety: number
   }
   capitalPricing?: {
-    standard: { totalValue: number; count: number; period: string; saleCount: number }
-    extended: { totalValue: number; count: number; period: string; saleCount: number }
+    standard: {
+      totalValue: number
+      count: number
+      period: string
+      saleCount: number
+    }
+    extended: {
+      totalValue: number
+      count: number
+      period: string
+      saleCount: number
+    }
   }
   error?: string
 }
@@ -278,7 +320,10 @@ export interface BuybackInfoResult {
   capitalShips?: { groupIds: number[] }
   excludedCategories?: Record<string, string>
   excludedGroups?: Record<string, string>
-  priceAdjustments?: Record<string, { name: string; adjustment: number; adjustmentPercent: number }>
+  priceAdjustments?: Record<
+    string,
+    { name: string; adjustment: number; adjustmentPercent: number }
+  >
   alwaysExcluded?: string[]
   highsecIslands?: Array<{ region: string; systems: string[] }>
   faq?: BuybackFAQItem[]
@@ -309,9 +354,18 @@ export interface ESIRateLimitInfo {
 
 export interface ESIAPI {
   fetch: <T>(endpoint: string, options?: ESIRequestOptions) => Promise<T>
-  fetchWithMeta: <T>(endpoint: string, options?: ESIRequestOptions) => Promise<ESIResponseMeta<T>>
-  fetchPaginated: <T>(endpoint: string, options?: ESIRequestOptions) => Promise<T[]>
-  fetchPaginatedWithMeta: <T>(endpoint: string, options?: ESIRequestOptions) => Promise<ESIResponseMeta<T[]>>
+  fetchWithMeta: <T>(
+    endpoint: string,
+    options?: ESIRequestOptions
+  ) => Promise<ESIResponseMeta<T>>
+  fetchPaginated: <T>(
+    endpoint: string,
+    options?: ESIRequestOptions
+  ) => Promise<T[]>
+  fetchPaginatedWithMeta: <T>(
+    endpoint: string,
+    options?: ESIRequestOptions
+  ) => Promise<ESIResponseMeta<T[]>>
   clearCache: () => Promise<void>
   clearCacheByPattern: (pattern: string) => Promise<number>
   getRateLimitInfo: () => Promise<ESIRateLimitInfo>
@@ -322,21 +376,33 @@ export interface ESIAPI {
 export interface ElectronAPI {
   startAuth: (includeCorporationScopes?: boolean) => Promise<AuthResult>
   cancelAuth: () => Promise<void>
-  refreshToken: (refreshToken: string, characterId: number) => Promise<AuthResult>
+  refreshToken: (
+    refreshToken: string,
+    characterId: number
+  ) => Promise<AuthResult>
   logout: (characterId?: number) => Promise<{ success: boolean }>
   storageGet: () => Promise<Record<string, unknown> | null>
   storageSet: (data: Record<string, unknown>) => Promise<boolean>
-  writeLog: (level: LogLevel, message: string, context?: LogContext) => Promise<void>
+  writeLog: (
+    level: LogLevel,
+    message: string,
+    context?: LogContext
+  ) => Promise<void>
   getLogDir: () => Promise<string>
   openLogsFolder: () => Promise<void>
-  submitBugReport: (characterName: string, description: string) => Promise<{ success: boolean; error?: string }>
+  submitBugReport: (
+    characterName: string,
+    description: string
+  ) => Promise<{ success: boolean; error?: string }>
   refTypesPage: (params?: RefTypesPageParams) => Promise<RefTypesPageResult>
   refCategories: () => Promise<RefApiResult>
   refGroups: () => Promise<RefApiResult>
   refUniverseRegions: () => Promise<RefRegionsResult>
   refUniverseSystems: () => Promise<RefSystemsResult>
   refUniverseStations: () => Promise<RefStationsResult>
-  refUniverseStructuresPage: (params?: RefStructuresPageParams) => Promise<RefStructuresPageResult>
+  refUniverseStructuresPage: (
+    params?: RefStructuresPageParams
+  ) => Promise<RefStructuresPageResult>
   refImplants: (ids: number[]) => Promise<RefApiResult>
   refMoons: (ids: number[]) => Promise<RefMoonsResult>
   refShipSlots: (ids: number[]) => Promise<RefShipsResult>
@@ -345,10 +411,16 @@ export interface ElectronAPI {
   refMarketPlex: () => Promise<RefMarketPlexResult>
   refMarketContracts: (typeIds: number[]) => Promise<RefMarketContractsResult>
   refBlueprints: () => Promise<BlueprintsResult>
-  refBuybackCalculate: (text: string, config: BuybackConfig) => Promise<BuybackResult>
+  refBuybackCalculate: (
+    text: string,
+    config: BuybackConfig
+  ) => Promise<BuybackResult>
   refBuybackCalculator: (text: string) => Promise<BuybackCalculatorResult>
   refBuybackInfo: () => Promise<BuybackInfoResult>
-  mutamarketModule: (itemId: number, typeId?: number) => Promise<MutamarketResult>
+  mutamarketModule: (
+    itemId: number,
+    typeId?: number
+  ) => Promise<MutamarketResult>
   onUpdateAvailable: (callback: (version: string) => void) => () => void
   onUpdateDownloadProgress: (callback: (percent: number) => void) => () => void
   onUpdateDownloaded: (callback: (version: string) => void) => () => void
@@ -358,9 +430,17 @@ export interface ElectronAPI {
   windowClose: () => Promise<void>
   windowIsMaximized: () => Promise<boolean>
   windowGetPlatform: () => Promise<string>
-  windowSetTitleBarOverlay: (options: { color?: string; symbolColor?: string; height?: number }) => Promise<void>
-  onWindowMaximizeChange: (callback: (isMaximized: boolean) => void) => () => void
-  onWindowMinimizeChange: (callback: (isMinimized: boolean) => void) => () => void
+  windowSetTitleBarOverlay: (options: {
+    color?: string
+    symbolColor?: string
+    height?: number
+  }) => Promise<void>
+  onWindowMaximizeChange: (
+    callback: (isMaximized: boolean) => void
+  ) => () => void
+  onWindowMinimizeChange: (
+    callback: (isMinimized: boolean) => void
+  ) => () => void
   esi: ESIAPI
 }
 
@@ -368,11 +448,17 @@ const esi: ESIAPI = {
   fetch: <T>(endpoint: string, options?: ESIRequestOptions) =>
     ipcRenderer.invoke('esi:fetch', endpoint, options) as Promise<T>,
   fetchWithMeta: <T>(endpoint: string, options?: ESIRequestOptions) =>
-    ipcRenderer.invoke('esi:fetchWithMeta', endpoint, options) as Promise<ESIResponseMeta<T>>,
+    ipcRenderer.invoke('esi:fetchWithMeta', endpoint, options) as Promise<
+      ESIResponseMeta<T>
+    >,
   fetchPaginated: <T>(endpoint: string, options?: ESIRequestOptions) =>
     ipcRenderer.invoke('esi:fetchPaginated', endpoint, options) as Promise<T[]>,
   fetchPaginatedWithMeta: <T>(endpoint: string, options?: ESIRequestOptions) =>
-    ipcRenderer.invoke('esi:fetchPaginatedWithMeta', endpoint, options) as Promise<ESIResponseMeta<T[]>>,
+    ipcRenderer.invoke(
+      'esi:fetchPaginatedWithMeta',
+      endpoint,
+      options
+    ) as Promise<ESIResponseMeta<T[]>>,
   clearCache: () => ipcRenderer.invoke('esi:clearCache'),
   clearCacheByPattern: (pattern: string) =>
     ipcRenderer.invoke('esi:clearCacheByPattern', pattern) as Promise<number>,
@@ -380,7 +466,8 @@ const esi: ESIAPI = {
   provideToken: (characterId: number, token: string | null) =>
     ipcRenderer.invoke('esi:provideToken', characterId, token),
   onRequestToken: (callback: (characterId: number) => void) => {
-    const handler = (_event: unknown, characterId: number) => callback(characterId)
+    const handler = (_event: unknown, characterId: number) =>
+      callback(characterId)
     ipcRenderer.on('esi:requestToken', handler)
     return () => ipcRenderer.removeListener('esi:requestToken', handler)
   },
@@ -392,16 +479,19 @@ const electronAPI: ElectronAPI = {
   cancelAuth: () => ipcRenderer.invoke('auth:cancel'),
   refreshToken: (refreshToken: string, characterId: number) =>
     ipcRenderer.invoke('auth:refresh', refreshToken, characterId),
-  logout: (characterId?: number) => ipcRenderer.invoke('auth:logout', characterId),
+  logout: (characterId?: number) =>
+    ipcRenderer.invoke('auth:logout', characterId),
   storageGet: () => ipcRenderer.invoke('storage:get'),
-  storageSet: (data: Record<string, unknown>) => ipcRenderer.invoke('storage:set', data),
+  storageSet: (data: Record<string, unknown>) =>
+    ipcRenderer.invoke('storage:set', data),
   writeLog: (level: LogLevel, message: string, context?: LogContext) =>
     ipcRenderer.invoke('log:write', level, message, context),
   getLogDir: () => ipcRenderer.invoke('log:getDir'),
   openLogsFolder: () => ipcRenderer.invoke('log:openFolder'),
   submitBugReport: (characterName: string, description: string) =>
     ipcRenderer.invoke('bug:report', characterName, description),
-  refTypesPage: (params?: RefTypesPageParams) => ipcRenderer.invoke('ref:types-page', params),
+  refTypesPage: (params?: RefTypesPageParams) =>
+    ipcRenderer.invoke('ref:types-page', params),
   refCategories: () => ipcRenderer.invoke('ref:categories'),
   refGroups: () => ipcRenderer.invoke('ref:groups'),
   refUniverseRegions: () => ipcRenderer.invoke('ref:universe-regions'),
@@ -412,14 +502,18 @@ const electronAPI: ElectronAPI = {
   refImplants: (ids: number[]) => ipcRenderer.invoke('ref:implants', ids),
   refMoons: (ids: number[]) => ipcRenderer.invoke('ref:moons', ids),
   refShipSlots: (ids: number[]) => ipcRenderer.invoke('ref:shipslots', ids),
-  refMarket: (params: RefMarketParams) => ipcRenderer.invoke('ref:market', params),
-  refMarketJita: (typeIds: number[]) => ipcRenderer.invoke('ref:marketJita', typeIds),
+  refMarket: (params: RefMarketParams) =>
+    ipcRenderer.invoke('ref:market', params),
+  refMarketJita: (typeIds: number[]) =>
+    ipcRenderer.invoke('ref:marketJita', typeIds),
   refMarketPlex: () => ipcRenderer.invoke('ref:marketPlex'),
-  refMarketContracts: (typeIds: number[]) => ipcRenderer.invoke('ref:marketContracts', typeIds),
+  refMarketContracts: (typeIds: number[]) =>
+    ipcRenderer.invoke('ref:marketContracts', typeIds),
   refBlueprints: () => ipcRenderer.invoke('ref:blueprints'),
   refBuybackCalculate: (text: string, config: BuybackConfig) =>
     ipcRenderer.invoke('ref:buybackCalculate', text, config),
-  refBuybackCalculator: (text: string) => ipcRenderer.invoke('ref:buybackCalculator', text),
+  refBuybackCalculator: (text: string) =>
+    ipcRenderer.invoke('ref:buybackCalculator', text),
   refBuybackInfo: () => ipcRenderer.invoke('ref:buybackInfo'),
   mutamarketModule: (itemId: number, typeId?: number) =>
     ipcRenderer.invoke('mutamarket:module', itemId, typeId),
@@ -431,12 +525,14 @@ const electronAPI: ElectronAPI = {
   onUpdateDownloadProgress: (callback: (percent: number) => void) => {
     const handler = (_event: unknown, percent: number) => callback(percent)
     ipcRenderer.on('updater:download-progress', handler)
-    return () => ipcRenderer.removeListener('updater:download-progress', handler)
+    return () =>
+      ipcRenderer.removeListener('updater:download-progress', handler)
   },
   onUpdateDownloaded: (callback: (version: string) => void) => {
     const handler = (_event: unknown, version: string) => callback(version)
     ipcRenderer.on('updater:update-downloaded', handler)
-    return () => ipcRenderer.removeListener('updater:update-downloaded', handler)
+    return () =>
+      ipcRenderer.removeListener('updater:update-downloaded', handler)
   },
   installUpdate: () => ipcRenderer.invoke('updater:install'),
   windowMinimize: () => ipcRenderer.invoke('window:minimize'),
@@ -444,15 +540,20 @@ const electronAPI: ElectronAPI = {
   windowClose: () => ipcRenderer.invoke('window:close'),
   windowIsMaximized: () => ipcRenderer.invoke('window:isMaximized'),
   windowGetPlatform: () => ipcRenderer.invoke('window:getPlatform'),
-  windowSetTitleBarOverlay: (options: { color?: string; symbolColor?: string; height?: number }) =>
-    ipcRenderer.invoke('window:setTitleBarOverlay', options),
+  windowSetTitleBarOverlay: (options: {
+    color?: string
+    symbolColor?: string
+    height?: number
+  }) => ipcRenderer.invoke('window:setTitleBarOverlay', options),
   onWindowMaximizeChange: (callback: (isMaximized: boolean) => void) => {
-    const handler = (_event: unknown, isMaximized: boolean) => callback(isMaximized)
+    const handler = (_event: unknown, isMaximized: boolean) =>
+      callback(isMaximized)
     ipcRenderer.on('window:maximizeChange', handler)
     return () => ipcRenderer.removeListener('window:maximizeChange', handler)
   },
   onWindowMinimizeChange: (callback: (isMinimized: boolean) => void) => {
-    const handler = (_event: unknown, isMinimized: boolean) => callback(isMinimized)
+    const handler = (_event: unknown, isMinimized: boolean) =>
+      callback(isMinimized)
     ipcRenderer.on('window:minimizeChange', handler)
     return () => ipcRenderer.removeListener('window:minimizeChange', handler)
   },

@@ -1,5 +1,10 @@
 import { create } from 'zustand'
-import { useAuthStore, type Owner, ownerKey, findOwnerByKey } from './auth-store'
+import {
+  useAuthStore,
+  type Owner,
+  ownerKey,
+  findOwnerByKey,
+} from './auth-store'
 import { useExpiryCacheStore } from './expiry-cache-store'
 import { esi } from '@/api/esi'
 import { ESIWalletJournalEntrySchema } from '@/api/schemas'
@@ -34,7 +39,10 @@ export interface OwnerJournal {
   entries: JournalEntry[]
 }
 
-function getExistingData(owner: Owner): { entries: JournalEntry[]; entryIds: Set<number> } {
+function getExistingData(owner: Owner): {
+  entries: JournalEntry[]
+  entryIds: Set<number>
+} {
   const state = useWalletJournalStore.getState()
   const key = ownerKey(owner.type, owner.id)
   const ownerData = state.journalByOwner.find(
@@ -103,10 +111,13 @@ async function fetchJournalIncremental(
     const pagedEndpoint = `${endpoint}?page=${page}`
 
     try {
-      const result = await esi.fetchWithMeta<ESIWalletJournalEntry[]>(pagedEndpoint, {
-        characterId,
-        schema: ESIWalletJournalEntrySchema.array(),
-      })
+      const result = await esi.fetchWithMeta<ESIWalletJournalEntry[]>(
+        pagedEndpoint,
+        {
+          characterId,
+          schema: ESIWalletJournalEntrySchema.array(),
+        }
+      )
 
       expiresAt = result.expiresAt
       etag = result.etag
@@ -117,17 +128,22 @@ async function fetchJournalIncremental(
           foundExisting = true
           break
         }
-        const journalEntry: JournalEntry = division !== undefined ? { ...entry, division } : entry
+        const journalEntry: JournalEntry =
+          division !== undefined ? { ...entry, division } : entry
         newEntries.push(journalEntry)
       }
 
       page++
     } catch (err) {
-      logger.error('Failed to fetch journal page', err instanceof Error ? err : undefined, {
-        module: 'WalletJournalStore',
-        endpoint,
-        page,
-      })
+      logger.error(
+        'Failed to fetch journal page',
+        err instanceof Error ? err : undefined,
+        {
+          module: 'WalletJournalStore',
+          endpoint,
+          page,
+        }
+      )
       throw err
     }
   }
@@ -140,7 +156,8 @@ async function fetchJournalForOwner(owner: Owner): Promise<{
   expiresAt: number
   etag?: string | null
 }> {
-  const { entries: existingEntries, entryIds: existingEntryIds } = getExistingData(owner)
+  const { entries: existingEntries, entryIds: existingEntryIds } =
+    getExistingData(owner)
 
   if (owner.type === 'corporation') {
     const newEntries: JournalEntry[] = []
@@ -148,7 +165,11 @@ async function fetchJournalForOwner(owner: Owner): Promise<{
     let latestEtag: string | null = null
     let anyStoppedEarly = false
 
-    for (let division = 1; division <= CORPORATION_WALLET_DIVISIONS; division++) {
+    for (
+      let division = 1;
+      division <= CORPORATION_WALLET_DIVISIONS;
+      division++
+    ) {
       try {
         const result = await fetchJournalIncremental(
           `/corporations/${owner.id}/wallets/${division}/journal/`,
@@ -171,8 +192,9 @@ async function fetchJournalForOwner(owner: Owner): Promise<{
       }
     }
 
-    const mergedEntries = [...newEntries, ...existingEntries]
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    const mergedEntries = [...newEntries, ...existingEntries].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    )
 
     logger.info('Corporation journal fetched', {
       module: 'WalletJournalStore',
@@ -192,8 +214,9 @@ async function fetchJournalForOwner(owner: Owner): Promise<{
     existingEntryIds
   )
 
-  const mergedEntries = [...result.entries, ...existingEntries]
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  const mergedEntries = [...result.entries, ...existingEntries].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  )
 
   logger.info('Character journal fetched', {
     module: 'WalletJournalStore',
@@ -204,7 +227,11 @@ async function fetchJournalForOwner(owner: Owner): Promise<{
     stoppedEarly: result.stoppedEarly,
   })
 
-  return { entries: mergedEntries, expiresAt: result.expiresAt, etag: result.etag }
+  return {
+    entries: mergedEntries,
+    expiresAt: result.expiresAt,
+    etag: result.etag,
+  }
 }
 
 export const useWalletJournalStore = create<JournalStore>((set, get) => ({
@@ -218,7 +245,10 @@ export const useWalletJournalStore = create<JournalStore>((set, get) => ({
 
     try {
       const loaded = await db.loadAll()
-      const journalByOwner = loaded.map((d) => ({ owner: d.owner, entries: d.data.entries }))
+      const journalByOwner = loaded.map((d) => ({
+        owner: d.owner,
+        entries: d.data.entries,
+      }))
       set({ journalByOwner, initialized: true })
       logger.info('Wallet journal store initialized', {
         module: 'WalletJournalStore',
@@ -226,9 +256,13 @@ export const useWalletJournalStore = create<JournalStore>((set, get) => ({
         entries: journalByOwner.reduce((sum, o) => sum + o.entries.length, 0),
       })
     } catch (err) {
-      logger.error('Failed to load journal from DB', err instanceof Error ? err : undefined, {
-        module: 'WalletJournalStore',
-      })
+      logger.error(
+        'Failed to load journal from DB',
+        err instanceof Error ? err : undefined,
+        {
+          module: 'WalletJournalStore',
+        }
+      )
       set({ initialized: true })
     }
   },
@@ -238,7 +272,9 @@ export const useWalletJournalStore = create<JournalStore>((set, get) => ({
     if (state.isUpdating) return
 
     const allOwners = Object.values(useAuthStore.getState().owners)
-    const validOwners = allOwners.filter((o): o is Owner => !!o && !o.authFailed)
+    const validOwners = allOwners.filter(
+      (o): o is Owner => !!o && !o.authFailed
+    )
 
     if (validOwners.length === 0) {
       set({ updateError: 'No owners logged in' })
@@ -255,7 +291,9 @@ export const useWalletJournalStore = create<JournalStore>((set, get) => ({
         })
 
     if (ownersToUpdate.length === 0) {
-      logger.debug('No owners need journal update', { module: 'WalletJournalStore' })
+      logger.debug('No owners need journal update', {
+        module: 'WalletJournalStore',
+      })
       return
     }
 
@@ -271,18 +309,27 @@ export const useWalletJournalStore = create<JournalStore>((set, get) => ({
         const endpoint = getJournalEndpoint(owner)
 
         try {
-          logger.info('Fetching wallet journal', { module: 'WalletJournalStore', owner: owner.name })
+          logger.info('Fetching wallet journal', {
+            module: 'WalletJournalStore',
+            owner: owner.name,
+          })
           const { entries, expiresAt, etag } = await fetchJournalForOwner(owner)
 
           await db.save(key, owner, { entries })
           existing.set(key, { owner, entries })
 
-          useExpiryCacheStore.getState().setExpiry(key, endpoint, expiresAt, etag, entries.length === 0)
+          useExpiryCacheStore
+            .getState()
+            .setExpiry(key, endpoint, expiresAt, etag, entries.length === 0)
         } catch (err) {
-          logger.error('Failed to fetch journal', err instanceof Error ? err : undefined, {
-            module: 'WalletJournalStore',
-            owner: owner.name,
-          })
+          logger.error(
+            'Failed to fetch journal',
+            err instanceof Error ? err : undefined,
+            {
+              module: 'WalletJournalStore',
+              owner: owner.name,
+            }
+          )
         }
       }
 
@@ -290,7 +337,8 @@ export const useWalletJournalStore = create<JournalStore>((set, get) => ({
       set({
         journalByOwner: results,
         isUpdating: false,
-        updateError: results.length === 0 ? 'Failed to fetch any journals' : null,
+        updateError:
+          results.length === 0 ? 'Failed to fetch any journals' : null,
       })
 
       logger.info('Wallet journal updated', {
@@ -301,9 +349,13 @@ export const useWalletJournalStore = create<JournalStore>((set, get) => ({
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error'
       set({ isUpdating: false, updateError: message })
-      logger.error('Journal update failed', err instanceof Error ? err : undefined, {
-        module: 'WalletJournalStore',
-      })
+      logger.error(
+        'Journal update failed',
+        err instanceof Error ? err : undefined,
+        {
+          module: 'WalletJournalStore',
+        }
+      )
     }
   },
 
@@ -312,11 +364,16 @@ export const useWalletJournalStore = create<JournalStore>((set, get) => ({
       const key = ownerKey(owner.type, owner.id)
       const endpoint = getJournalEndpoint(owner)
 
-      logger.info('Fetching journal for owner', { module: 'WalletJournalStore', owner: owner.name })
+      logger.info('Fetching journal for owner', {
+        module: 'WalletJournalStore',
+        owner: owner.name,
+      })
       const { entries, expiresAt, etag } = await fetchJournalForOwner(owner)
 
       await db.save(key, owner, { entries })
-      useExpiryCacheStore.getState().setExpiry(key, endpoint, expiresAt, etag, entries.length === 0)
+      useExpiryCacheStore
+        .getState()
+        .setExpiry(key, endpoint, expiresAt, etag, entries.length === 0)
 
       const updated = get().journalByOwner.filter(
         (j) => ownerKey(j.owner.type, j.owner.id) !== key
@@ -331,10 +388,14 @@ export const useWalletJournalStore = create<JournalStore>((set, get) => ({
         entries: entries.length,
       })
     } catch (err) {
-      logger.error('Failed to fetch journal for owner', err instanceof Error ? err : undefined, {
-        module: 'WalletJournalStore',
-        owner: owner.name,
-      })
+      logger.error(
+        'Failed to fetch journal for owner',
+        err instanceof Error ? err : undefined,
+        {
+          module: 'WalletJournalStore',
+          owner: owner.name,
+        }
+      )
     }
   },
 
@@ -351,7 +412,10 @@ export const useWalletJournalStore = create<JournalStore>((set, get) => ({
     set({ journalByOwner: updated })
 
     useExpiryCacheStore.getState().clearForOwner(key)
-    logger.info('Journal removed for owner', { module: 'WalletJournalStore', ownerKey: key })
+    logger.info('Journal removed for owner', {
+      module: 'WalletJournalStore',
+      ownerKey: key,
+    })
   },
 
   clear: async () => {
@@ -364,11 +428,16 @@ export const useWalletJournalStore = create<JournalStore>((set, get) => ({
   },
 }))
 
-useExpiryCacheStore.getState().registerRefreshCallback(ENDPOINT_PATTERN, async (ownerKeyStr) => {
-  const owner = findOwnerByKey(ownerKeyStr)
-  if (!owner) {
-    logger.warn('Owner not found for journal refresh', { module: 'WalletJournalStore', ownerKey: ownerKeyStr })
-    return
-  }
-  await useWalletJournalStore.getState().updateForOwner(owner)
-})
+useExpiryCacheStore
+  .getState()
+  .registerRefreshCallback(ENDPOINT_PATTERN, async (ownerKeyStr) => {
+    const owner = findOwnerByKey(ownerKeyStr)
+    if (!owner) {
+      logger.warn('Owner not found for journal refresh', {
+        module: 'WalletJournalStore',
+        ownerKey: ownerKeyStr,
+      })
+      return
+    }
+    await useWalletJournalStore.getState().updateForOwner(owner)
+  })

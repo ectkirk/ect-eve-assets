@@ -29,7 +29,7 @@ vi.mock('@/lib/data-resolver', () => ({
 vi.mock('./regional-market-store', () => ({
   useRegionalMarketStore: {
     getState: vi.fn(() => ({
-      getPrice: vi.fn((typeId: number) => typeId === 34 ? 10 : undefined),
+      getPrice: vi.fn((typeId: number) => (typeId === 34 ? 10 : undefined)),
       fetchPricesForTypes: vi.fn(),
       registerTypes: vi.fn(),
       registerStructures: vi.fn(),
@@ -74,15 +74,23 @@ describe('market-orders-store', () => {
 
       await useMarketOrdersStore.getState().update(true)
 
-      expect(useMarketOrdersStore.getState().updateError).toBe('No owners logged in')
+      expect(useMarketOrdersStore.getState().updateError).toBe(
+        'No owners logged in'
+      )
     })
 
     it('fetches orders when data is expired', async () => {
       const { useAuthStore, findOwnerByKey } = await import('./auth-store')
       const { esi } = await import('@/api/esi')
 
-      const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
-      vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
+      const mockOwner = createMockOwner({
+        id: 12345,
+        name: 'Test',
+        type: 'character',
+      })
+      vi.mocked(useAuthStore.getState).mockReturnValue(
+        createMockAuthState({ 'character-12345': mockOwner })
+      )
       vi.mocked(findOwnerByKey).mockReturnValue(mockOwner)
 
       const futureExpiry = Date.now() + 300000
@@ -111,7 +119,10 @@ describe('market-orders-store', () => {
 
       useExpiryCacheStore.setState({
         endpoints: new Map([
-          ['character-12345:/characters/12345/orders/', { expiresAt: Date.now() - 1000, etag: null }],
+          [
+            'character-12345:/characters/12345/orders/',
+            { expiresAt: Date.now() - 1000, etag: null },
+          ],
         ]),
         initialized: true,
       })
@@ -128,7 +139,9 @@ describe('market-orders-store', () => {
       expect(ordersByOwner).toHaveLength(1)
       expect(ordersByOwner[0]?.orders).toHaveLength(1)
 
-      const expiry = useExpiryCacheStore.getState().endpoints.get('character-12345:/characters/12345/orders/')
+      const expiry = useExpiryCacheStore
+        .getState()
+        .endpoints.get('character-12345:/characters/12345/orders/')
       expect(expiry?.expiresAt).toBeGreaterThanOrEqual(futureExpiry - 1000)
     })
 
@@ -136,12 +149,21 @@ describe('market-orders-store', () => {
       const { useAuthStore } = await import('./auth-store')
       const { esi } = await import('@/api/esi')
 
-      const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
-      vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
+      const mockOwner = createMockOwner({
+        id: 12345,
+        name: 'Test',
+        type: 'character',
+      })
+      vi.mocked(useAuthStore.getState).mockReturnValue(
+        createMockAuthState({ 'character-12345': mockOwner })
+      )
 
       useExpiryCacheStore.setState({
         endpoints: new Map([
-          ['character-12345:/characters/12345/orders/', { expiresAt: Date.now() + 60000, etag: null }],
+          [
+            'character-12345:/characters/12345/orders/',
+            { expiresAt: Date.now() + 60000, etag: null },
+          ],
         ]),
         initialized: true,
       })
@@ -155,8 +177,14 @@ describe('market-orders-store', () => {
       const { useAuthStore } = await import('./auth-store')
       const { esi } = await import('@/api/esi')
 
-      const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
-      vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
+      const mockOwner = createMockOwner({
+        id: 12345,
+        name: 'Test',
+        type: 'character',
+      })
+      vi.mocked(useAuthStore.getState).mockReturnValue(
+        createMockAuthState({ 'character-12345': mockOwner })
+      )
 
       vi.mocked(esi.fetchPaginatedWithMeta).mockResolvedValue({
         data: [],
@@ -167,7 +195,10 @@ describe('market-orders-store', () => {
 
       useExpiryCacheStore.setState({
         endpoints: new Map([
-          ['character-12345:/characters/12345/orders/', { expiresAt: Date.now() + 60000, etag: null }],
+          [
+            'character-12345:/characters/12345/orders/',
+            { expiresAt: Date.now() + 60000, etag: null },
+          ],
         ]),
         initialized: true,
       })
@@ -181,10 +212,18 @@ describe('market-orders-store', () => {
       const { useAuthStore } = await import('./auth-store')
       const { esi } = await import('@/api/esi')
 
-      const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
-      vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
+      const mockOwner = createMockOwner({
+        id: 12345,
+        name: 'Test',
+        type: 'character',
+      })
+      vi.mocked(useAuthStore.getState).mockReturnValue(
+        createMockAuthState({ 'character-12345': mockOwner })
+      )
 
-      vi.mocked(esi.fetchPaginatedWithMeta).mockRejectedValue(new Error('API Error'))
+      vi.mocked(esi.fetchPaginatedWithMeta).mockRejectedValue(
+        new Error('API Error')
+      )
 
       await useMarketOrdersStore.getState().update(true)
 
@@ -197,24 +236,31 @@ describe('market-orders-store', () => {
     it('calculates sell order total using prices', () => {
       useMarketOrdersStore.setState({
         itemsById: new Map([
-          [1, {
-            item: {
-              order_id: 1,
-              type_id: 34,
-              location_id: 60003760,
-              price: 5,
-              volume_remain: 100,
-              volume_total: 100,
-              is_buy_order: false,
-              duration: 90,
-              issued: '2024-01-01T00:00:00Z',
-              range: 'station',
-              region_id: 10000002,
-              min_volume: 1,
-              is_corporation: false,
+          [
+            1,
+            {
+              item: {
+                order_id: 1,
+                type_id: 34,
+                location_id: 60003760,
+                price: 5,
+                volume_remain: 100,
+                volume_total: 100,
+                is_buy_order: false,
+                duration: 90,
+                issued: '2024-01-01T00:00:00Z',
+                range: 'station',
+                region_id: 10000002,
+                min_volume: 1,
+                is_corporation: false,
+              },
+              sourceOwner: {
+                type: 'character' as const,
+                id: 12345,
+                characterId: 12345,
+              },
             },
-            sourceOwner: { type: 'character' as const, id: 12345, characterId: 12345 },
-          }],
+          ],
         ]),
         visibilityByOwner: new Map([['character-12345', new Set([1])]]),
         initialized: true,
@@ -227,25 +273,32 @@ describe('market-orders-store', () => {
     it('calculates buy order total using escrow', () => {
       useMarketOrdersStore.setState({
         itemsById: new Map([
-          [1, {
-            item: {
-              order_id: 1,
-              type_id: 34,
-              location_id: 60003760,
-              price: 5,
-              volume_remain: 100,
-              volume_total: 100,
-              is_buy_order: true,
-              escrow: 500,
-              duration: 90,
-              issued: '2024-01-01T00:00:00Z',
-              range: 'station',
-              region_id: 10000002,
-              min_volume: 1,
-              is_corporation: false,
+          [
+            1,
+            {
+              item: {
+                order_id: 1,
+                type_id: 34,
+                location_id: 60003760,
+                price: 5,
+                volume_remain: 100,
+                volume_total: 100,
+                is_buy_order: true,
+                escrow: 500,
+                duration: 90,
+                issued: '2024-01-01T00:00:00Z',
+                range: 'station',
+                region_id: 10000002,
+                min_volume: 1,
+                is_corporation: false,
+              },
+              sourceOwner: {
+                type: 'character' as const,
+                id: 12345,
+                characterId: 12345,
+              },
             },
-            sourceOwner: { type: 'character' as const, id: 12345, characterId: 12345 },
-          }],
+          ],
         ]),
         visibilityByOwner: new Map([['character-12345', new Set([1])]]),
         initialized: true,
@@ -258,42 +311,56 @@ describe('market-orders-store', () => {
     it('only includes orders for selected owners', () => {
       useMarketOrdersStore.setState({
         itemsById: new Map([
-          [1, {
-            item: {
-              order_id: 1,
-              type_id: 34,
-              location_id: 60003760,
-              price: 5,
-              volume_remain: 100,
-              volume_total: 100,
-              is_buy_order: false,
-              duration: 90,
-              issued: '2024-01-01T00:00:00Z',
-              range: 'station',
-              region_id: 10000002,
-              min_volume: 1,
-              is_corporation: false,
+          [
+            1,
+            {
+              item: {
+                order_id: 1,
+                type_id: 34,
+                location_id: 60003760,
+                price: 5,
+                volume_remain: 100,
+                volume_total: 100,
+                is_buy_order: false,
+                duration: 90,
+                issued: '2024-01-01T00:00:00Z',
+                range: 'station',
+                region_id: 10000002,
+                min_volume: 1,
+                is_corporation: false,
+              },
+              sourceOwner: {
+                type: 'character' as const,
+                id: 12345,
+                characterId: 12345,
+              },
             },
-            sourceOwner: { type: 'character' as const, id: 12345, characterId: 12345 },
-          }],
-          [2, {
-            item: {
-              order_id: 2,
-              type_id: 34,
-              location_id: 60003760,
-              price: 5,
-              volume_remain: 50,
-              volume_total: 50,
-              is_buy_order: false,
-              duration: 90,
-              issued: '2024-01-01T00:00:00Z',
-              range: 'station',
-              region_id: 10000002,
-              min_volume: 1,
-              is_corporation: false,
+          ],
+          [
+            2,
+            {
+              item: {
+                order_id: 2,
+                type_id: 34,
+                location_id: 60003760,
+                price: 5,
+                volume_remain: 50,
+                volume_total: 50,
+                is_buy_order: false,
+                duration: 90,
+                issued: '2024-01-01T00:00:00Z',
+                range: 'station',
+                region_id: 10000002,
+                min_volume: 1,
+                is_corporation: false,
+              },
+              sourceOwner: {
+                type: 'character' as const,
+                id: 67890,
+                characterId: 67890,
+              },
             },
-            sourceOwner: { type: 'character' as const, id: 67890, characterId: 67890 },
-          }],
+          ],
         ]),
         visibilityByOwner: new Map([
           ['character-12345', new Set([1])],
@@ -310,7 +377,9 @@ describe('market-orders-store', () => {
   describe('clear', () => {
     it('resets store state', async () => {
       useMarketOrdersStore.setState({
-        itemsById: new Map([[1, { item: {} as never, sourceOwner: {} as never }]]),
+        itemsById: new Map([
+          [1, { item: {} as never, sourceOwner: {} as never }],
+        ]),
         visibilityByOwner: new Map([['character-12345', new Set([1])]]),
         updateError: 'some error',
       })

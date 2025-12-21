@@ -84,10 +84,15 @@ export class RateLimitTracker {
     const errorReset = headers.get('X-ESI-Error-Limit-Reset')
     if (errorRemain !== null) {
       const remain = parseInt(errorRemain, 10)
-      const resetAt = errorReset ? now + parseInt(errorReset, 10) * 1000 : now + 60000
+      const resetAt = errorReset
+        ? now + parseInt(errorReset, 10) * 1000
+        : now + 60000
 
       if (remain <= ERROR_LIMIT_WARN_THRESHOLD) {
-        if (!this.errorLimit || this.errorLimit.remain > ERROR_LIMIT_WARN_THRESHOLD) {
+        if (
+          !this.errorLimit ||
+          this.errorLimit.remain > ERROR_LIMIT_WARN_THRESHOLD
+        ) {
           logger.warn('ESI error limit getting low', { module: 'ESI', remain })
         }
       }
@@ -108,7 +113,11 @@ export class RateLimitTracker {
         limit = parseInt(match[1], 10)
         const windowValue = parseInt(match[2], 10)
         windowMs =
-          match[3] === 'h' ? windowValue * 3600000 : match[3] === 'm' ? windowValue * 60000 : windowValue * 1000
+          match[3] === 'h'
+            ? windowValue * 3600000
+            : match[3] === 'm'
+              ? windowValue * 60000
+              : windowValue * 1000
       }
     }
 
@@ -131,7 +140,10 @@ export class RateLimitTracker {
 
   setGlobalRetryAfter(seconds: number): void {
     this.globalRetryAfter = Date.now() + seconds * 1000
-    logger.warn('ESI global rate limit hit', { module: 'ESI', retryAfterSeconds: seconds })
+    logger.warn('ESI global rate limit hit', {
+      module: 'ESI',
+      retryAfterSeconds: seconds,
+    })
   }
 
   getContractItemsDelay(characterId: number): number {
@@ -191,21 +203,36 @@ export class RateLimitTracker {
 }
 
 export function guessRateLimitGroup(endpoint: string): string {
-  if (endpoint.includes('/characters/') && endpoint.includes('/assets')) return 'char-asset'
-  if (endpoint.includes('/corporations/') && endpoint.includes('/assets')) return 'corp-asset'
-  if (endpoint.includes('/characters/') && endpoint.includes('/wallet')) return 'char-wallet'
-  if (endpoint.includes('/characters/') && endpoint.includes('/loyalty')) return 'char-wallet'
-  if (endpoint.includes('/corporations/') && endpoint.includes('/wallet')) return 'corp-wallet'
-  if (endpoint.includes('/characters/') && endpoint.includes('/industry')) return 'char-industry'
-  if (endpoint.includes('/corporations/') && endpoint.includes('/industry')) return 'corp-industry'
-  if (endpoint.includes('/characters/') && endpoint.includes('/contracts')) return 'char-contract'
-  if (endpoint.includes('/corporations/') && endpoint.includes('/contracts')) return 'corp-contract'
-  if (endpoint.includes('/characters/') && endpoint.includes('/clones')) return 'char-location'
-  if (endpoint.includes('/characters/') && endpoint.includes('/implants')) return 'char-detail'
-  if (endpoint.includes('/characters/') && endpoint.includes('/blueprints')) return 'char-industry'
-  if (endpoint.includes('/corporations/') && endpoint.includes('/blueprints')) return 'corp-industry'
-  if (endpoint.includes('/corporations/') && endpoint.includes('/starbases')) return 'corp-structure'
-  if (endpoint.includes('/corporations/') && endpoint.includes('/structures')) return 'corp-structure'
+  if (endpoint.includes('/characters/') && endpoint.includes('/assets'))
+    return 'char-asset'
+  if (endpoint.includes('/corporations/') && endpoint.includes('/assets'))
+    return 'corp-asset'
+  if (endpoint.includes('/characters/') && endpoint.includes('/wallet'))
+    return 'char-wallet'
+  if (endpoint.includes('/characters/') && endpoint.includes('/loyalty'))
+    return 'char-wallet'
+  if (endpoint.includes('/corporations/') && endpoint.includes('/wallet'))
+    return 'corp-wallet'
+  if (endpoint.includes('/characters/') && endpoint.includes('/industry'))
+    return 'char-industry'
+  if (endpoint.includes('/corporations/') && endpoint.includes('/industry'))
+    return 'corp-industry'
+  if (endpoint.includes('/characters/') && endpoint.includes('/contracts'))
+    return 'char-contract'
+  if (endpoint.includes('/corporations/') && endpoint.includes('/contracts'))
+    return 'corp-contract'
+  if (endpoint.includes('/characters/') && endpoint.includes('/clones'))
+    return 'char-location'
+  if (endpoint.includes('/characters/') && endpoint.includes('/implants'))
+    return 'char-detail'
+  if (endpoint.includes('/characters/') && endpoint.includes('/blueprints'))
+    return 'char-industry'
+  if (endpoint.includes('/corporations/') && endpoint.includes('/blueprints'))
+    return 'corp-industry'
+  if (endpoint.includes('/corporations/') && endpoint.includes('/starbases'))
+    return 'corp-structure'
+  if (endpoint.includes('/corporations/') && endpoint.includes('/structures'))
+    return 'corp-structure'
   if (endpoint.includes('/markets/')) return 'market'
   if (endpoint.includes('/universe/')) return 'universe'
   return 'default'

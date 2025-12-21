@@ -1,7 +1,11 @@
 import { useMemo } from 'react'
 import { useAssetData, type OwnerAssets } from './useAssetData'
 import { useAuthStore, ownerKey, findOwnerByKey } from '@/store/auth-store'
-import { resolveAllAssets, resolveMarketOrder, resolveContractItem } from '@/lib/asset-resolver'
+import {
+  resolveAllAssets,
+  resolveMarketOrder,
+  resolveContractItem,
+} from '@/lib/asset-resolver'
 import type { ResolvedAsset, ResolvedAssetsByOwner } from '@/lib/resolved-asset'
 import { useStarbasesStore } from '@/store/starbases-store'
 import { useStructuresStore } from '@/store/structures-store'
@@ -26,10 +30,14 @@ export function useResolvedAssets(): ResolvedAssetsResult {
   const starbasesByOwner = useStarbasesStore((s) => s.dataByOwner)
   const structuresByOwner = useStructuresStore((s) => s.dataByOwner)
   const ordersById = useMarketOrdersStore((s) => s.itemsById)
-  const ordersVisibilityByOwner = useMarketOrdersStore((s) => s.visibilityByOwner)
+  const ordersVisibilityByOwner = useMarketOrdersStore(
+    (s) => s.visibilityByOwner
+  )
   const ordersUpdateCounter = useMarketOrdersStore((s) => s.updateCounter)
   const contractsById = useContractsStore((s) => s.contractsById)
-  const contractsVisibilityByOwner = useContractsStore((s) => s.visibilityByOwner)
+  const contractsVisibilityByOwner = useContractsStore(
+    (s) => s.visibilityByOwner
+  )
   const contractsUpdateCounter = useContractsStore((s) => s.updateCounter)
 
   const { ownedStructureIds, starbaseMoonIds } = useMemo(() => {
@@ -99,7 +107,9 @@ export function useResolvedAssets(): ResolvedAssetsResult {
 
         for (const item of items) {
           if (item.is_included) {
-            assets.push(resolveContractItem(contract, item, owner, assetData.prices))
+            assets.push(
+              resolveContractItem(contract, item, owner, assetData.prices)
+            )
           }
         }
       }
@@ -144,7 +154,10 @@ export function useResolvedAssets(): ResolvedAssetsResult {
   }, [resolvedAssets])
 
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
-  const selectedSet = useMemo(() => new Set(selectedOwnerIds), [selectedOwnerIds])
+  const selectedSet = useMemo(
+    () => new Set(selectedOwnerIds),
+    [selectedOwnerIds]
+  )
 
   const selectedResolvedAssets = useMemo(() => {
     return resolvedAssets.filter((ra) => {

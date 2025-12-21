@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { buildTree, flattenTree, getAllNodeIds, filterTree } from './tree-builder'
+import {
+  buildTree,
+  flattenTree,
+  getAllNodeIds,
+  filterTree,
+} from './tree-builder'
 import { TreeMode } from './tree-types'
 import type { ESIAsset } from '@/api/endpoints/assets'
 import type { Owner } from '@/store/auth-store'
@@ -7,26 +12,118 @@ import type { ResolvedAsset, AssetModeFlags } from './resolved-asset'
 
 vi.mock('@/store/reference-cache', () => ({
   getType: vi.fn((id: number) => {
-    const types: Record<number, { id: number; name: string; categoryId: number; categoryName: string; groupId: number; groupName: string; volume: number; packagedVolume?: number }> = {
-      34: { id: 34, name: 'Tritanium', categoryId: 4, categoryName: 'Material', groupId: 18, groupName: 'Mineral', volume: 0.01 },
-      35: { id: 35, name: 'Pyerite', categoryId: 4, categoryName: 'Material', groupId: 18, groupName: 'Mineral', volume: 0.01 },
-      587: { id: 587, name: 'Rifter', categoryId: 6, categoryName: 'Ship', groupId: 25, groupName: 'Frigate', volume: 27289, packagedVolume: 2500 },
-      17366: { id: 17366, name: 'Station Container', categoryId: 2, categoryName: 'Celestial', groupId: 448, groupName: 'Audit Log Secure Container', volume: 10000 },
-      27: { id: 27, name: 'Office', categoryId: 2, categoryName: 'Celestial', groupId: 16, groupName: 'Station Services', volume: 0 },
-      35832: { id: 35832, name: 'Astrahus', categoryId: 65, categoryName: 'Structure', groupId: 1657, groupName: 'Citadel', volume: 8000 },
+    const types: Record<
+      number,
+      {
+        id: number
+        name: string
+        categoryId: number
+        categoryName: string
+        groupId: number
+        groupName: string
+        volume: number
+        packagedVolume?: number
+      }
+    > = {
+      34: {
+        id: 34,
+        name: 'Tritanium',
+        categoryId: 4,
+        categoryName: 'Material',
+        groupId: 18,
+        groupName: 'Mineral',
+        volume: 0.01,
+      },
+      35: {
+        id: 35,
+        name: 'Pyerite',
+        categoryId: 4,
+        categoryName: 'Material',
+        groupId: 18,
+        groupName: 'Mineral',
+        volume: 0.01,
+      },
+      587: {
+        id: 587,
+        name: 'Rifter',
+        categoryId: 6,
+        categoryName: 'Ship',
+        groupId: 25,
+        groupName: 'Frigate',
+        volume: 27289,
+        packagedVolume: 2500,
+      },
+      17366: {
+        id: 17366,
+        name: 'Station Container',
+        categoryId: 2,
+        categoryName: 'Celestial',
+        groupId: 448,
+        groupName: 'Audit Log Secure Container',
+        volume: 10000,
+      },
+      27: {
+        id: 27,
+        name: 'Office',
+        categoryId: 2,
+        categoryName: 'Celestial',
+        groupId: 16,
+        groupName: 'Station Services',
+        volume: 0,
+      },
+      35832: {
+        id: 35832,
+        name: 'Astrahus',
+        categoryId: 65,
+        categoryName: 'Structure',
+        groupId: 1657,
+        groupName: 'Citadel',
+        volume: 8000,
+      },
     }
     return types[id]
   }),
   getStructure: vi.fn((id: number) => {
     if (id === 1000000000001) {
-      return { id: 1000000000001, name: 'Test Citadel', solarSystemId: 30000142, typeId: 35832, ownerId: 123 }
+      return {
+        id: 1000000000001,
+        name: 'Test Citadel',
+        solarSystemId: 30000142,
+        typeId: 35832,
+        ownerId: 123,
+      }
     }
     return undefined
   }),
   getLocation: vi.fn((id: number) => {
-    const locations: Record<number, { id: number; name: string; type: string; solarSystemId?: number; solarSystemName?: string; regionId?: number; regionName?: string }> = {
-      60003760: { id: 60003760, name: 'Jita IV - Moon 4 - Caldari Navy Assembly Plant', type: 'station', solarSystemId: 30000142, solarSystemName: 'Jita', regionId: 10000002, regionName: 'The Forge' },
-      30000142: { id: 30000142, name: 'Jita', type: 'system', regionId: 10000002, regionName: 'The Forge' },
+    const locations: Record<
+      number,
+      {
+        id: number
+        name: string
+        type: string
+        solarSystemId?: number
+        solarSystemName?: string
+        regionId?: number
+        regionName?: string
+      }
+    > = {
+      60003760: {
+        id: 60003760,
+        name: 'Jita IV - Moon 4 - Caldari Navy Assembly Plant',
+        type: 'station',
+        solarSystemId: 30000142,
+        solarSystemName: 'Jita',
+        regionId: 10000002,
+        regionName: 'The Forge',
+      },
+      30000142: {
+        id: 30000142,
+        name: 'Jita',
+        type: 'system',
+        regionId: 10000002,
+        regionName: 'The Forge',
+      },
       10000002: { id: 10000002, name: 'The Forge', type: 'region' },
     }
     return locations[id]
@@ -87,7 +184,9 @@ function createAsset(overrides: Partial<ESIAsset> = {}): ESIAsset {
   }
 }
 
-function createModeFlags(overrides: Partial<AssetModeFlags> = {}): AssetModeFlags {
+function createModeFlags(
+  overrides: Partial<AssetModeFlags> = {}
+): AssetModeFlags {
   return {
     inHangar: false,
     inShipHangar: false,
@@ -110,7 +209,10 @@ function createResolvedAsset(
   overrides: Partial<Omit<ResolvedAsset, 'asset' | 'owner'>> = {},
   owner: Owner = testOwner
 ): ResolvedAsset {
-  const typeMap: Record<number, { categoryId: number; groupId: number; volume: number }> = {
+  const typeMap: Record<
+    number,
+    { categoryId: number; groupId: number; volume: number }
+  > = {
     34: { categoryId: 4, groupId: 18, volume: 0.01 },
     35: { categoryId: 4, groupId: 18, volume: 0.01 },
     587: { categoryId: 6, groupId: 25, volume: 2500 },
@@ -119,7 +221,11 @@ function createResolvedAsset(
     35832: { categoryId: 65, groupId: 1657, volume: 8000 },
   }
 
-  const typeInfo = typeMap[asset.type_id] ?? { categoryId: 0, groupId: 0, volume: 0 }
+  const typeInfo = typeMap[asset.type_id] ?? {
+    categoryId: 0,
+    groupId: 0,
+    volume: 0,
+  }
   const price = overrides.price ?? 0
 
   return {
@@ -138,7 +244,9 @@ function createResolvedAsset(
     price,
     totalValue: overrides.totalValue ?? price * asset.quantity,
     totalVolume: overrides.totalVolume ?? typeInfo.volume * asset.quantity,
-    modeFlags: overrides.modeFlags ?? createModeFlags({ inItemHangar: true, inHangar: true }),
+    modeFlags:
+      overrides.modeFlags ??
+      createModeFlags({ inItemHangar: true, inHangar: true }),
     customName: overrides.customName,
     isBlueprintCopy: overrides.isBlueprintCopy ?? false,
   }
@@ -180,9 +288,15 @@ describe('buildTree', () => {
 
   describe('TreeMode.ITEM_HANGAR', () => {
     it('includes non-ship items in Hangar flag', () => {
-      const asset = createAsset({ item_id: 1, type_id: 34, location_flag: 'Hangar' })
+      const asset = createAsset({
+        item_id: 1,
+        type_id: 34,
+        location_flag: 'Hangar',
+      })
       const assets: ResolvedAsset[] = [
-        createResolvedAsset(asset, { modeFlags: createModeFlags({ inItemHangar: true, inHangar: true }) }),
+        createResolvedAsset(asset, {
+          modeFlags: createModeFlags({ inItemHangar: true, inHangar: true }),
+        }),
       ]
 
       const tree = buildTree(assets, { mode: TreeMode.ITEM_HANGAR })
@@ -193,9 +307,15 @@ describe('buildTree', () => {
     })
 
     it('excludes ships from item hangar', () => {
-      const asset = createAsset({ item_id: 1, type_id: 587, location_flag: 'Hangar' })
+      const asset = createAsset({
+        item_id: 1,
+        type_id: 587,
+        location_flag: 'Hangar',
+      })
       const assets: ResolvedAsset[] = [
-        createResolvedAsset(asset, { modeFlags: createModeFlags({ inShipHangar: true, inHangar: true }) }),
+        createResolvedAsset(asset, {
+          modeFlags: createModeFlags({ inShipHangar: true, inHangar: true }),
+        }),
       ]
 
       const tree = buildTree(assets, { mode: TreeMode.ITEM_HANGAR })
@@ -206,9 +326,15 @@ describe('buildTree', () => {
 
   describe('TreeMode.SHIP_HANGAR', () => {
     it('includes ships in Hangar flag', () => {
-      const asset = createAsset({ item_id: 1, type_id: 587, location_flag: 'Hangar' })
+      const asset = createAsset({
+        item_id: 1,
+        type_id: 587,
+        location_flag: 'Hangar',
+      })
       const assets: ResolvedAsset[] = [
-        createResolvedAsset(asset, { modeFlags: createModeFlags({ inShipHangar: true, inHangar: true }) }),
+        createResolvedAsset(asset, {
+          modeFlags: createModeFlags({ inShipHangar: true, inHangar: true }),
+        }),
       ]
 
       const tree = buildTree(assets, { mode: TreeMode.SHIP_HANGAR })
@@ -220,9 +346,15 @@ describe('buildTree', () => {
     })
 
     it('excludes non-ships from ship hangar', () => {
-      const asset = createAsset({ item_id: 1, type_id: 34, location_flag: 'Hangar' })
+      const asset = createAsset({
+        item_id: 1,
+        type_id: 34,
+        location_flag: 'Hangar',
+      })
       const assets: ResolvedAsset[] = [
-        createResolvedAsset(asset, { modeFlags: createModeFlags({ inItemHangar: true, inHangar: true }) }),
+        createResolvedAsset(asset, {
+          modeFlags: createModeFlags({ inItemHangar: true, inHangar: true }),
+        }),
       ]
 
       const tree = buildTree(assets, { mode: TreeMode.SHIP_HANGAR })
@@ -233,9 +365,16 @@ describe('buildTree', () => {
 
   describe('TreeMode.DELIVERIES', () => {
     it('includes items with Deliveries flag', () => {
-      const asset = createAsset({ item_id: 1, type_id: 34, location_flag: 'Deliveries' })
+      const asset = createAsset({
+        item_id: 1,
+        type_id: 34,
+        location_flag: 'Deliveries',
+      })
       const assets: ResolvedAsset[] = [
-        createResolvedAsset(asset, { modeFlags: createModeFlags({ inDeliveries: true }), rootFlag: 'Deliveries' }),
+        createResolvedAsset(asset, {
+          modeFlags: createModeFlags({ inDeliveries: true }),
+          rootFlag: 'Deliveries',
+        }),
       ]
 
       const tree = buildTree(assets, { mode: TreeMode.DELIVERIES })
@@ -244,9 +383,15 @@ describe('buildTree', () => {
     })
 
     it('excludes non-delivery items', () => {
-      const asset = createAsset({ item_id: 1, type_id: 34, location_flag: 'Hangar' })
+      const asset = createAsset({
+        item_id: 1,
+        type_id: 34,
+        location_flag: 'Hangar',
+      })
       const assets: ResolvedAsset[] = [
-        createResolvedAsset(asset, { modeFlags: createModeFlags({ inItemHangar: true }) }),
+        createResolvedAsset(asset, {
+          modeFlags: createModeFlags({ inItemHangar: true }),
+        }),
       ]
 
       const tree = buildTree(assets, { mode: TreeMode.DELIVERIES })
@@ -257,9 +402,16 @@ describe('buildTree', () => {
 
   describe('TreeMode.ASSET_SAFETY', () => {
     it('includes items with AssetSafety flag', () => {
-      const asset = createAsset({ item_id: 1, type_id: 34, location_flag: 'AssetSafety' })
+      const asset = createAsset({
+        item_id: 1,
+        type_id: 34,
+        location_flag: 'AssetSafety',
+      })
       const assets: ResolvedAsset[] = [
-        createResolvedAsset(asset, { modeFlags: createModeFlags({ inAssetSafety: true }), rootFlag: 'AssetSafety' }),
+        createResolvedAsset(asset, {
+          modeFlags: createModeFlags({ inAssetSafety: true }),
+          rootFlag: 'AssetSafety',
+        }),
       ]
 
       const tree = buildTree(assets, { mode: TreeMode.ASSET_SAFETY })
@@ -270,11 +422,26 @@ describe('buildTree', () => {
 
   describe('TreeMode.OFFICE', () => {
     it('includes items in office', () => {
-      const officeAsset = createAsset({ item_id: 100, type_id: 27, location_flag: 'CorpSAG1' })
-      const itemAsset = createAsset({ item_id: 1, type_id: 34, location_flag: 'CorpSAG1', location_type: 'item', location_id: 100 })
+      const officeAsset = createAsset({
+        item_id: 100,
+        type_id: 27,
+        location_flag: 'CorpSAG1',
+      })
+      const itemAsset = createAsset({
+        item_id: 1,
+        type_id: 34,
+        location_flag: 'CorpSAG1',
+        location_type: 'item',
+        location_id: 100,
+      })
       const assets: ResolvedAsset[] = [
-        createResolvedAsset(officeAsset, { modeFlags: createModeFlags({ inOffice: true }) }),
-        createResolvedAsset(itemAsset, { modeFlags: createModeFlags({ inOffice: true }), parentChain: [officeAsset] }),
+        createResolvedAsset(officeAsset, {
+          modeFlags: createModeFlags({ inOffice: true }),
+        }),
+        createResolvedAsset(itemAsset, {
+          modeFlags: createModeFlags({ inOffice: true }),
+          parentChain: [officeAsset],
+        }),
       ]
 
       const tree = buildTree(assets, { mode: TreeMode.OFFICE })
@@ -285,13 +452,31 @@ describe('buildTree', () => {
 
   describe('TreeMode.ALL', () => {
     it('includes all items', () => {
-      const asset1 = createAsset({ item_id: 1, type_id: 34, location_flag: 'Hangar' })
-      const asset2 = createAsset({ item_id: 2, type_id: 587, location_flag: 'Hangar' })
-      const asset3 = createAsset({ item_id: 3, type_id: 34, location_flag: 'Deliveries' })
+      const asset1 = createAsset({
+        item_id: 1,
+        type_id: 34,
+        location_flag: 'Hangar',
+      })
+      const asset2 = createAsset({
+        item_id: 2,
+        type_id: 587,
+        location_flag: 'Hangar',
+      })
+      const asset3 = createAsset({
+        item_id: 3,
+        type_id: 34,
+        location_flag: 'Deliveries',
+      })
       const assets: ResolvedAsset[] = [
-        createResolvedAsset(asset1, { modeFlags: createModeFlags({ inItemHangar: true }) }),
-        createResolvedAsset(asset2, { modeFlags: createModeFlags({ inShipHangar: true }) }),
-        createResolvedAsset(asset3, { modeFlags: createModeFlags({ inDeliveries: true }) }),
+        createResolvedAsset(asset1, {
+          modeFlags: createModeFlags({ inItemHangar: true }),
+        }),
+        createResolvedAsset(asset2, {
+          modeFlags: createModeFlags({ inShipHangar: true }),
+        }),
+        createResolvedAsset(asset3, {
+          modeFlags: createModeFlags({ inDeliveries: true }),
+        }),
       ]
 
       const tree = buildTree(assets, { mode: TreeMode.ALL })
@@ -301,9 +486,15 @@ describe('buildTree', () => {
     })
 
     it('excludes contract items in non-ALL modes', () => {
-      const asset = createAsset({ item_id: 1, type_id: 34, location_flag: 'InContract' })
+      const asset = createAsset({
+        item_id: 1,
+        type_id: 34,
+        location_flag: 'InContract',
+      })
       const assets: ResolvedAsset[] = [
-        createResolvedAsset(asset, { modeFlags: createModeFlags({ isContract: true }) }),
+        createResolvedAsset(asset, {
+          modeFlags: createModeFlags({ isContract: true }),
+        }),
       ]
 
       const itemHangarTree = buildTree(assets, { mode: TreeMode.ITEM_HANGAR })
@@ -319,8 +510,12 @@ describe('buildTree', () => {
       const asset1 = createAsset({ item_id: 1, type_id: 34, quantity: 100 })
       const asset2 = createAsset({ item_id: 2, type_id: 34, quantity: 50 })
       const assets: ResolvedAsset[] = [
-        createResolvedAsset(asset1, { modeFlags: createModeFlags({ inItemHangar: true }) }),
-        createResolvedAsset(asset2, { modeFlags: createModeFlags({ inItemHangar: true }) }),
+        createResolvedAsset(asset1, {
+          modeFlags: createModeFlags({ inItemHangar: true }),
+        }),
+        createResolvedAsset(asset2, {
+          modeFlags: createModeFlags({ inItemHangar: true }),
+        }),
       ]
 
       const tree = buildTree(assets, { mode: TreeMode.ITEM_HANGAR })
@@ -331,12 +526,24 @@ describe('buildTree', () => {
     })
 
     it('does not stack items with different owners', () => {
-      const otherOwner: Owner = { ...testOwner, id: 99999, name: 'Other Character' }
+      const otherOwner: Owner = {
+        ...testOwner,
+        id: 99999,
+        name: 'Other Character',
+      }
       const asset1 = createAsset({ item_id: 1, type_id: 34, quantity: 100 })
       const asset2 = createAsset({ item_id: 2, type_id: 34, quantity: 50 })
       const assets: ResolvedAsset[] = [
-        createResolvedAsset(asset1, { modeFlags: createModeFlags({ inItemHangar: true }) }, testOwner),
-        createResolvedAsset(asset2, { modeFlags: createModeFlags({ inItemHangar: true }) }, otherOwner),
+        createResolvedAsset(
+          asset1,
+          { modeFlags: createModeFlags({ inItemHangar: true }) },
+          testOwner
+        ),
+        createResolvedAsset(
+          asset2,
+          { modeFlags: createModeFlags({ inItemHangar: true }) },
+          otherOwner
+        ),
       ]
 
       const tree = buildTree(assets, { mode: TreeMode.ITEM_HANGAR })
@@ -348,8 +555,12 @@ describe('buildTree', () => {
       const asset1 = createAsset({ item_id: 1, type_id: 34, quantity: 100 })
       const asset2 = createAsset({ item_id: 2, type_id: 35, quantity: 50 })
       const assets: ResolvedAsset[] = [
-        createResolvedAsset(asset1, { modeFlags: createModeFlags({ inItemHangar: true }) }),
-        createResolvedAsset(asset2, { modeFlags: createModeFlags({ inItemHangar: true }) }),
+        createResolvedAsset(asset1, {
+          modeFlags: createModeFlags({ inItemHangar: true }),
+        }),
+        createResolvedAsset(asset2, {
+          modeFlags: createModeFlags({ inItemHangar: true }),
+        }),
       ]
 
       const tree = buildTree(assets, { mode: TreeMode.ITEM_HANGAR })
@@ -360,11 +571,27 @@ describe('buildTree', () => {
 
   describe('nested structures', () => {
     it('creates hierarchy for items in ships', () => {
-      const shipAsset = createAsset({ item_id: 100, type_id: 587, location_flag: 'Hangar', is_singleton: true })
-      const cargoAsset = createAsset({ item_id: 1, type_id: 34, location_flag: 'Cargo', location_type: 'item', location_id: 100 })
+      const shipAsset = createAsset({
+        item_id: 100,
+        type_id: 587,
+        location_flag: 'Hangar',
+        is_singleton: true,
+      })
+      const cargoAsset = createAsset({
+        item_id: 1,
+        type_id: 34,
+        location_flag: 'Cargo',
+        location_type: 'item',
+        location_id: 100,
+      })
       const assets: ResolvedAsset[] = [
-        createResolvedAsset(shipAsset, { modeFlags: createModeFlags({ inShipHangar: true }) }),
-        createResolvedAsset(cargoAsset, { modeFlags: createModeFlags({ inShipHangar: true }), parentChain: [shipAsset] }),
+        createResolvedAsset(shipAsset, {
+          modeFlags: createModeFlags({ inShipHangar: true }),
+        }),
+        createResolvedAsset(cargoAsset, {
+          modeFlags: createModeFlags({ inShipHangar: true }),
+          parentChain: [shipAsset],
+        }),
       ]
 
       const tree = buildTree(assets, { mode: TreeMode.ALL })
@@ -379,11 +606,27 @@ describe('buildTree', () => {
     })
 
     it('creates hierarchy for items in containers', () => {
-      const containerAsset = createAsset({ item_id: 100, type_id: 17366, location_flag: 'Hangar', is_singleton: true })
-      const itemAsset = createAsset({ item_id: 1, type_id: 34, location_flag: 'Unlocked', location_type: 'item', location_id: 100 })
+      const containerAsset = createAsset({
+        item_id: 100,
+        type_id: 17366,
+        location_flag: 'Hangar',
+        is_singleton: true,
+      })
+      const itemAsset = createAsset({
+        item_id: 1,
+        type_id: 34,
+        location_flag: 'Unlocked',
+        location_type: 'item',
+        location_id: 100,
+      })
       const assets: ResolvedAsset[] = [
-        createResolvedAsset(containerAsset, { modeFlags: createModeFlags({ inItemHangar: true }) }),
-        createResolvedAsset(itemAsset, { modeFlags: createModeFlags({ inItemHangar: true }), parentChain: [containerAsset] }),
+        createResolvedAsset(containerAsset, {
+          modeFlags: createModeFlags({ inItemHangar: true }),
+        }),
+        createResolvedAsset(itemAsset, {
+          modeFlags: createModeFlags({ inItemHangar: true }),
+          parentChain: [containerAsset],
+        }),
       ]
 
       const tree = buildTree(assets, { mode: TreeMode.ALL })
@@ -400,7 +643,9 @@ describe('flattenTree', () => {
   it('returns all nodes when all are expanded', () => {
     const asset1 = createAsset({ item_id: 1, type_id: 34 })
     const assets: ResolvedAsset[] = [
-      createResolvedAsset(asset1, { modeFlags: createModeFlags({ inItemHangar: true }) }),
+      createResolvedAsset(asset1, {
+        modeFlags: createModeFlags({ inItemHangar: true }),
+      }),
     ]
     const tree = buildTree(assets, { mode: TreeMode.ITEM_HANGAR })
 
@@ -413,7 +658,9 @@ describe('flattenTree', () => {
   it('returns only root nodes when none are expanded', () => {
     const asset1 = createAsset({ item_id: 1, type_id: 34 })
     const assets: ResolvedAsset[] = [
-      createResolvedAsset(asset1, { modeFlags: createModeFlags({ inItemHangar: true }) }),
+      createResolvedAsset(asset1, {
+        modeFlags: createModeFlags({ inItemHangar: true }),
+      }),
     ]
     const tree = buildTree(assets, { mode: TreeMode.ITEM_HANGAR })
 
@@ -428,7 +675,9 @@ describe('getAllNodeIds', () => {
   it('returns IDs of nodes with children', () => {
     const asset1 = createAsset({ item_id: 1, type_id: 34 })
     const assets: ResolvedAsset[] = [
-      createResolvedAsset(asset1, { modeFlags: createModeFlags({ inItemHangar: true }) }),
+      createResolvedAsset(asset1, {
+        modeFlags: createModeFlags({ inItemHangar: true }),
+      }),
     ]
     const tree = buildTree(assets, { mode: TreeMode.ITEM_HANGAR })
 
@@ -443,8 +692,12 @@ describe('filterTree', () => {
     const asset1 = createAsset({ item_id: 1, type_id: 34 })
     const asset2 = createAsset({ item_id: 2, type_id: 587 })
     const assets: ResolvedAsset[] = [
-      createResolvedAsset(asset1, { modeFlags: createModeFlags({ inItemHangar: true }) }),
-      createResolvedAsset(asset2, { modeFlags: createModeFlags({ inShipHangar: true }) }),
+      createResolvedAsset(asset1, {
+        modeFlags: createModeFlags({ inItemHangar: true }),
+      }),
+      createResolvedAsset(asset2, {
+        modeFlags: createModeFlags({ inShipHangar: true }),
+      }),
     ]
     const tree = buildTree(assets, { mode: TreeMode.ALL })
 
@@ -459,8 +712,12 @@ describe('filterTree', () => {
     const asset1 = createAsset({ item_id: 1, type_id: 34 })
     const asset2 = createAsset({ item_id: 2, type_id: 587 })
     const assets: ResolvedAsset[] = [
-      createResolvedAsset(asset1, { modeFlags: createModeFlags({ inItemHangar: true }) }),
-      createResolvedAsset(asset2, { modeFlags: createModeFlags({ inShipHangar: true }) }),
+      createResolvedAsset(asset1, {
+        modeFlags: createModeFlags({ inItemHangar: true }),
+      }),
+      createResolvedAsset(asset2, {
+        modeFlags: createModeFlags({ inShipHangar: true }),
+      }),
     ]
     const tree = buildTree(assets, { mode: TreeMode.ALL })
 
@@ -474,7 +731,9 @@ describe('filterTree', () => {
   it('returns unfiltered tree when no search or category', () => {
     const asset1 = createAsset({ item_id: 1, type_id: 34 })
     const assets: ResolvedAsset[] = [
-      createResolvedAsset(asset1, { modeFlags: createModeFlags({ inItemHangar: true }) }),
+      createResolvedAsset(asset1, {
+        modeFlags: createModeFlags({ inItemHangar: true }),
+      }),
     ]
     const tree = buildTree(assets, { mode: TreeMode.ITEM_HANGAR })
 
@@ -487,8 +746,14 @@ describe('filterTree', () => {
     const asset1 = createAsset({ item_id: 1, type_id: 34, quantity: 100 })
     const asset2 = createAsset({ item_id: 2, type_id: 35, quantity: 50 })
     const assets: ResolvedAsset[] = [
-      createResolvedAsset(asset1, { modeFlags: createModeFlags({ inItemHangar: true }), price: 5 }),
-      createResolvedAsset(asset2, { modeFlags: createModeFlags({ inItemHangar: true }), price: 10 }),
+      createResolvedAsset(asset1, {
+        modeFlags: createModeFlags({ inItemHangar: true }),
+        price: 5,
+      }),
+      createResolvedAsset(asset2, {
+        modeFlags: createModeFlags({ inItemHangar: true }),
+        price: 10,
+      }),
     ]
     const tree = buildTree(assets, { mode: TreeMode.ITEM_HANGAR })
 

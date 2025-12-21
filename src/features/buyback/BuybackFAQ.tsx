@@ -10,7 +10,10 @@ function parseMarkdown(md: string): string {
 
   const processInline = (text: string): string => {
     return text
-      .replace(/\*\*([^*]+)\*\*/g, '<strong class="text-content font-semibold">$1</strong>')
+      .replace(
+        /\*\*([^*]+)\*\*/g,
+        '<strong class="text-content font-semibold">$1</strong>'
+      )
       .replace(
         /\[([^\]]+)\]\(([^)]+)\)/g,
         '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">$1</a>'
@@ -27,22 +30,28 @@ function parseMarkdown(md: string): string {
   const flushTable = () => {
     if (inTable && tableRows.length > 0) {
       const headerRow = tableRows[0] ?? []
-      const dataRows = tableRows.slice(1).filter(row => !row.every(cell => /^[-:]+$/.test(cell)))
+      const dataRows = tableRows
+        .slice(1)
+        .filter((row) => !row.every((cell) => /^[-:]+$/.test(cell)))
 
       result.push('<div class="overflow-x-auto my-3">')
       result.push('<table class="w-full text-sm border-collapse">')
       result.push('<thead>')
       result.push('<tr class="border-b border-border">')
-      headerRow.forEach(cell => {
-        result.push(`<th class="px-3 py-2 text-left font-semibold text-content">${processInline(cell)}</th>`)
+      headerRow.forEach((cell) => {
+        result.push(
+          `<th class="px-3 py-2 text-left font-semibold text-content">${processInline(cell)}</th>`
+        )
       })
       result.push('</tr>')
       result.push('</thead>')
       result.push('<tbody>')
-      dataRows.forEach(row => {
+      dataRows.forEach((row) => {
         result.push('<tr class="border-b border-border/50">')
-        row.forEach(cell => {
-          result.push(`<td class="px-3 py-2 text-content-secondary">${processInline(cell)}</td>`)
+        row.forEach((cell) => {
+          result.push(
+            `<td class="px-3 py-2 text-content-secondary">${processInline(cell)}</td>`
+          )
         })
         result.push('</tr>')
       })
@@ -59,7 +68,10 @@ function parseMarkdown(md: string): string {
     if (line.startsWith('|') && line.endsWith('|')) {
       flushList()
       if (!inTable) inTable = true
-      const cells = line.slice(1, -1).split('|').map(c => c.trim())
+      const cells = line
+        .slice(1, -1)
+        .split('|')
+        .map((c) => c.trim())
       tableRows.push(cells)
       continue
     } else if (inTable) {
@@ -68,7 +80,9 @@ function parseMarkdown(md: string): string {
 
     if (line.startsWith('- ')) {
       if (!inList) {
-        result.push('<ul class="list-disc list-inside space-y-1 my-2 text-content-secondary">')
+        result.push(
+          '<ul class="list-disc list-inside space-y-1 my-2 text-content-secondary">'
+        )
         inList = true
       }
       result.push(`<li>${processInline(line.slice(2))}</li>`)
@@ -81,7 +95,9 @@ function parseMarkdown(md: string): string {
       continue
     }
 
-    result.push(`<p class="my-2 text-content-secondary">${processInline(line)}</p>`)
+    result.push(
+      `<p class="my-2 text-content-secondary">${processInline(line)}</p>`
+    )
   }
 
   flushList()
@@ -106,7 +122,12 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
           viewBox="0 0 24 24"
           stroke="currentColor"
         >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M19 9l-7 7-7-7"
+          />
         </svg>
       </button>
       {isOpen && (
@@ -129,7 +150,9 @@ export function BuybackFAQ() {
 
   return (
     <div className="rounded-lg border border-border bg-surface-secondary/50 p-6">
-      <h2 className="mb-4 text-xl font-semibold text-content">Frequently Asked Questions</h2>
+      <h2 className="mb-4 text-xl font-semibold text-content">
+        Frequently Asked Questions
+      </h2>
       <div className="divide-y divide-border">
         {faq.map((item, index) => (
           <FAQItem key={index} question={item.question} answer={item.answer} />

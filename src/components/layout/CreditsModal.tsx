@@ -27,13 +27,24 @@ interface CreditRowProps {
   discordTitle?: string
 }
 
-function CreditRow({ name, nameHref, role, discordHref, discordTitle }: CreditRowProps) {
+function CreditRow({
+  name,
+  nameHref,
+  role,
+  discordHref,
+  discordTitle,
+}: CreditRowProps) {
   return (
     <div className="flex items-center justify-between py-2">
       <div className="flex items-center gap-3">
         <div className="w-32">
           {nameHref ? (
-            <a href={nameHref} target="_blank" rel="noopener noreferrer" className="font-medium text-accent hover:underline">
+            <a
+              href={nameHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-accent hover:underline"
+            >
               {name}
             </a>
           ) : (
@@ -98,8 +109,12 @@ export function CreditsModal({ open, onOpenChange }: CreditsModalProps) {
             </div>
 
             <div className="border-t border-border pt-4">
-              <h3 className="font-medium text-content mb-2">Special Mentions</h3>
-              <p className="text-content-muted mb-2">Community contributors that made this project possible:</p>
+              <h3 className="font-medium text-content mb-2">
+                Special Mentions
+              </h3>
+              <p className="text-content-muted mb-2">
+                Community contributors that made this project possible:
+              </p>
               <div className="divide-y divide-border">
                 <CreditRow
                   name="Squizz"
@@ -129,14 +144,42 @@ export function CreditsModal({ open, onOpenChange }: CreditsModalProps) {
               <h3 className="font-medium text-content mb-2">Data Sources</h3>
               <p className="text-content-muted">
                 Character and asset data from{' '}
-                <a href="https://developers.eveonline.com/api-explorer" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">ESI</a>
+                <a
+                  href="https://developers.eveonline.com/api-explorer"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-accent hover:underline"
+                >
+                  ESI
+                </a>
                 . Market prices and reference data from{' '}
-                <a href="https://edencom.net" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">edencom.net</a>
-                {' '}(ESI +{' '}
-                <a href="https://developers.eveonline.com/static-data" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">SDE</a>
+                <a
+                  href="https://edencom.net"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-accent hover:underline"
+                >
+                  edencom.net
+                </a>{' '}
+                (ESI +{' '}
+                <a
+                  href="https://developers.eveonline.com/static-data"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-accent hover:underline"
+                >
+                  SDE
+                </a>
                 ). Abyssal module data from{' '}
-                <a href="https://mutamarket.com" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">mutamarket.com</a>
-                {' '}(ESI). No other external sources.
+                <a
+                  href="https://mutamarket.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-accent hover:underline"
+                >
+                  mutamarket.com
+                </a>{' '}
+                (ESI). No other external sources.
               </p>
             </div>
 
@@ -144,16 +187,27 @@ export function CreditsModal({ open, onOpenChange }: CreditsModalProps) {
               <h3 className="font-medium text-content mb-2">Open Source</h3>
               <p className="text-content-muted">
                 This project is open source on{' '}
-                <a href="https://github.com/ectkirk/ect-eve-assets" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
+                <a
+                  href="https://github.com/ectkirk/ect-eve-assets"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-accent hover:underline"
+                >
                   GitHub
                 </a>
-                . Built with Electron, React, TypeScript, Vite, Tailwind CSS, shadcn/ui, Radix UI, Zustand, TanStack Table, TanStack Query.
+                . Built with Electron, React, TypeScript, Vite, Tailwind CSS,
+                shadcn/ui, Radix UI, Zustand, TanStack Table, TanStack Query.
               </p>
             </div>
 
             <p className="text-xs text-content-muted pt-2">
               EVE Online and the EVE logo are trademarks of{' '}
-              <a href="https://www.ccpgames.com/" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
+              <a
+                href="https://www.ccpgames.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-accent hover:underline"
+              >
                 CCP hf
               </a>
               . CCP does not endorse this project.

@@ -43,12 +43,14 @@ If you discover a security vulnerability, please:
 ## Scope
 
 In scope:
+
 - Token handling and storage
 - OAuth flow implementation
 - IPC security between main and renderer processes
 - Dependency vulnerabilities
 
 Out of scope:
+
 - EVE Online's ESI API security (report to CCP)
 - Social engineering attacks
 - Issues requiring physical access to the user's machine

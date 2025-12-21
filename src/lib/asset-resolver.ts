@@ -63,10 +63,7 @@ export function buildParentChain(
   return chain
 }
 
-export function getRootFlag(
-  asset: ESIAsset,
-  parentChain: ESIAsset[]
-): string {
+export function getRootFlag(asset: ESIAsset, parentChain: ESIAsset[]): string {
   if (parentChain.length === 0) {
     return asset.location_flag
   }
@@ -85,7 +82,8 @@ export function resolveRootLocation(
   parentChain: ESIAsset[],
   starbaseMoonIds: Map<number, number>
 ): RootLocationInfo {
-  const rootAsset = parentChain.length > 0 ? parentChain[parentChain.length - 1]! : asset
+  const rootAsset =
+    parentChain.length > 0 ? parentChain[parentChain.length - 1]! : asset
   const rootLocationId = rootAsset.location_id
   const rootLocationType = rootAsset.location_type
 
@@ -160,7 +158,7 @@ export function computeModeFlags(
   const isShip = type?.categoryId === CategoryIds.SHIP
   const inHangar = HANGAR_FLAGS.has(rootFlag)
 
-  const hasOfficeInChain = parentChain.some(p => p.type_id === OFFICE_TYPE_ID)
+  const hasOfficeInChain = parentChain.some((p) => p.type_id === OFFICE_TYPE_ID)
 
   let inStructure = false
   if (parentChain.length > 0) {
@@ -203,7 +201,12 @@ export function resolveAsset(
   const parentChain = buildParentChain(asset, itemIdToAsset)
   const rootFlag = getRootFlag(asset, parentChain)
   const rootLocation = resolveRootLocation(asset, parentChain, starbaseMoonIds)
-  const modeFlags = computeModeFlags(asset, parentChain, rootFlag, ownedStructureIds)
+  const modeFlags = computeModeFlags(
+    asset,
+    parentChain,
+    rootFlag,
+    ownedStructureIds
+  )
 
   const sdeType = getType(asset.type_id)
   const customName = assetNames.get(asset.item_id)
@@ -251,7 +254,10 @@ export function resolveAllAssets(
   for (const { owner, assets } of assetsByOwner) {
     for (const asset of assets) {
       const type = getType(asset.type_id)
-      if (type?.categoryId === CategoryIds.OWNER || type?.categoryId === CategoryIds.STATION) {
+      if (
+        type?.categoryId === CategoryIds.OWNER ||
+        type?.categoryId === CategoryIds.STATION
+      ) {
         continue
       }
       results.push(resolveAsset(asset, owner, lookupMap, context))

@@ -18,7 +18,8 @@ interface ThemeState {
 function applyThemeToDocument(theme: Theme): void {
   const root = document.documentElement
   const isDark = theme === 'dark' || theme === 'dark-colorblind'
-  const isColorblind = theme === 'dark-colorblind' || theme === 'light-colorblind'
+  const isColorblind =
+    theme === 'dark-colorblind' || theme === 'light-colorblind'
 
   root.classList.toggle('dark', isDark)
   root.classList.toggle('colorblind', isColorblind)

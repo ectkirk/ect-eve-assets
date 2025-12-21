@@ -66,15 +66,29 @@ describe('clones-store', () => {
       const { useAuthStore } = await import('./auth-store')
       const { esi } = await import('@/api/esi')
 
-      const charOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
-      const corpOwner = createMockOwner({ id: 98000001, characterId: 12345, name: 'Corp', type: 'corporation' })
-      vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({
-        'character-12345': charOwner,
-        'corporation-98000001': corpOwner,
-      }))
+      const charOwner = createMockOwner({
+        id: 12345,
+        name: 'Test',
+        type: 'character',
+      })
+      const corpOwner = createMockOwner({
+        id: 98000001,
+        characterId: 12345,
+        name: 'Corp',
+        type: 'corporation',
+      })
+      vi.mocked(useAuthStore.getState).mockReturnValue(
+        createMockAuthState({
+          'character-12345': charOwner,
+          'corporation-98000001': corpOwner,
+        })
+      )
 
       vi.mocked(esi.fetchWithMeta).mockResolvedValue({
-        data: { jump_clones: [], home_location: { location_id: 60003760, location_type: 'station' } },
+        data: {
+          jump_clones: [],
+          home_location: { location_id: 60003760, location_type: 'station' },
+        },
         expiresAt: Date.now() + 300000,
         etag: 'test-etag',
         notModified: false,
@@ -89,13 +103,26 @@ describe('clones-store', () => {
       const { useAuthStore } = await import('./auth-store')
       const { esi } = await import('@/api/esi')
 
-      const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
-      vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
+      const mockOwner = createMockOwner({
+        id: 12345,
+        name: 'Test',
+        type: 'character',
+      })
+      vi.mocked(useAuthStore.getState).mockReturnValue(
+        createMockAuthState({ 'character-12345': mockOwner })
+      )
 
       vi.mocked(esi.fetchWithMeta)
         .mockResolvedValueOnce({
           data: {
-            jump_clones: [{ jump_clone_id: 1, location_id: 60003760, location_type: 'station', implants: [22118] }],
+            jump_clones: [
+              {
+                jump_clone_id: 1,
+                location_id: 60003760,
+                location_type: 'station',
+                implants: [22118],
+              },
+            ],
             home_location: { location_id: 60003760, location_type: 'station' },
           },
           expiresAt: Date.now() + 300000,
@@ -112,15 +139,23 @@ describe('clones-store', () => {
       await useClonesStore.getState().update(true)
 
       expect(useClonesStore.getState().dataByOwner).toHaveLength(1)
-      expect(useClonesStore.getState().dataByOwner[0]?.activeImplants).toEqual([22118, 22119])
+      expect(useClonesStore.getState().dataByOwner[0]?.activeImplants).toEqual([
+        22118, 22119,
+      ])
     })
 
     it('handles fetch errors gracefully', async () => {
       const { useAuthStore } = await import('./auth-store')
       const { esi } = await import('@/api/esi')
 
-      const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
-      vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
+      const mockOwner = createMockOwner({
+        id: 12345,
+        name: 'Test',
+        type: 'character',
+      })
+      vi.mocked(useAuthStore.getState).mockReturnValue(
+        createMockAuthState({ 'character-12345': mockOwner })
+      )
 
       vi.mocked(esi.fetchWithMeta).mockRejectedValue(new Error('API Error'))
 
@@ -134,7 +169,9 @@ describe('clones-store', () => {
   describe('clear', () => {
     it('resets store state', async () => {
       useClonesStore.setState({
-        dataByOwner: [{ owner: {} as never, clones: {} as never, activeImplants: [] }],
+        dataByOwner: [
+          { owner: {} as never, clones: {} as never, activeImplants: [] },
+        ],
         updateError: 'error',
       })
 

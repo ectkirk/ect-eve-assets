@@ -9,10 +9,10 @@ export async function getCharacterAssets(
   characterId: number,
   authCharacterId?: number
 ): Promise<ESIAsset[]> {
-  return esi.fetchPaginated<ESIAsset>(
-    `/characters/${characterId}/assets/`,
-    { characterId: authCharacterId ?? characterId, schema: ESIAssetSchema }
-  )
+  return esi.fetchPaginated<ESIAsset>(`/characters/${characterId}/assets/`, {
+    characterId: authCharacterId ?? characterId,
+    schema: ESIAssetSchema,
+  })
 }
 
 export async function getCharacterAssetNames(

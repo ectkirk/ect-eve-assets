@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { RateLimitTracker, guessRateLimitGroup, isContractItemsEndpoint } from './rate-limit'
+import {
+  RateLimitTracker,
+  guessRateLimitGroup,
+  isContractItemsEndpoint,
+} from './rate-limit'
 
 function createHeaders(values: Record<string, string>): Headers {
   return new Headers(values)
@@ -208,8 +212,12 @@ describe('guessRateLimitGroup', () => {
 
 describe('isContractItemsEndpoint', () => {
   it('identifies contract items endpoints', () => {
-    expect(isContractItemsEndpoint('/characters/123/contracts/456/items/')).toBe(true)
-    expect(isContractItemsEndpoint('/corporations/123/contracts/456/items/')).toBe(true)
+    expect(
+      isContractItemsEndpoint('/characters/123/contracts/456/items/')
+    ).toBe(true)
+    expect(
+      isContractItemsEndpoint('/corporations/123/contracts/456/items/')
+    ).toBe(true)
   })
 
   it('returns false for non-contract-items endpoints', () => {

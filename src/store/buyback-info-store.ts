@@ -32,7 +32,10 @@ export const useBuybackInfoStore = create<BuybackInfoState>((set, get) => ({
       const result = await window.electronAPI!.refBuybackInfo()
 
       if (result.error) {
-        logger.error('Failed to fetch buyback info', undefined, { module: 'BuybackInfo', error: result.error })
+        logger.error('Failed to fetch buyback info', undefined, {
+          module: 'BuybackInfo',
+          error: result.error,
+        })
         set({ error: result.error, isLoading: false })
         return
       }
@@ -40,7 +43,9 @@ export const useBuybackInfoStore = create<BuybackInfoState>((set, get) => ({
       set({ info: result, isLoading: false, lastFetch: Date.now() })
       logger.info('Buyback info loaded', { module: 'BuybackInfo' })
     } catch (err) {
-      logger.error('Failed to fetch buyback info', err, { module: 'BuybackInfo' })
+      logger.error('Failed to fetch buyback info', err, {
+        module: 'BuybackInfo',
+      })
       set({ error: String(err), isLoading: false })
     }
   },

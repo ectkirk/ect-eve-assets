@@ -11,8 +11,36 @@ import { ClonesTab } from '@/features/clones'
 import { LoyaltyTab } from '@/features/loyalty'
 import { ContractsTab } from '@/features/contracts'
 import { WalletTab } from '@/features/wallet'
-import { BuybackTab, BUYBACK_TABS, getStyling, tabToKey, type BuybackTabType } from '@/features/buyback'
-import { Loader2, ChevronDown, Check, ChevronsUpDown, ChevronsDownUp, Search, X, AlertTriangle, Minus, Square, Copy, Settings, Info, Heart, Shield, FileText, History, Trash2, Sparkles, Bug, FolderOpen } from 'lucide-react'
+import {
+  BuybackTab,
+  BUYBACK_TABS,
+  getStyling,
+  tabToKey,
+  type BuybackTabType,
+} from '@/features/buyback'
+import {
+  Loader2,
+  ChevronDown,
+  Check,
+  ChevronsUpDown,
+  ChevronsDownUp,
+  Search,
+  X,
+  AlertTriangle,
+  Minus,
+  Square,
+  Copy,
+  Settings,
+  Info,
+  Heart,
+  Shield,
+  FileText,
+  History,
+  Trash2,
+  Sparkles,
+  Bug,
+  FolderOpen,
+} from 'lucide-react'
 import { useThemeStore, THEME_OPTIONS } from '@/store/theme-store'
 import eveSsoLoginWhite from '/eve-sso-login-white.png'
 import { OwnerIcon } from '@/components/ui/type-icon'
@@ -68,7 +96,13 @@ function AssetTabContent({ tab }: { tab: AssetTab }) {
   }
 }
 
-function ModeSwitcher({ mode, onModeChange }: { mode: AppMode; onModeChange: (mode: AppMode) => void }) {
+function ModeSwitcher({
+  mode,
+  onModeChange,
+}: {
+  mode: AppMode
+  onModeChange: (mode: AppMode) => void
+}) {
   return (
     <div className="flex rounded-md bg-surface-tertiary/50 p-0.5">
       <button
@@ -122,7 +156,8 @@ function OwnerButton() {
   const selectedOwnerIds = useAuthStore((state) => state.selectedOwnerIds)
 
   const selectedOwners = useMemo(
-    () => owners.filter((o) => selectedOwnerIds.includes(ownerKey(o.type, o.id))),
+    () =>
+      owners.filter((o) => selectedOwnerIds.includes(ownerKey(o.type, o.id))),
     [owners, selectedOwnerIds]
   )
 
@@ -165,7 +200,9 @@ function OwnerButton() {
         })
         setIsAddingOwner(false)
         setIsUpdatingData(true)
-        useExpiryCacheStore.getState().queueAllEndpointsForOwner(ownerKey('character', result.characterId))
+        useExpiryCacheStore
+          .getState()
+          .queueAllEndpointsForOwner(ownerKey('character', result.characterId))
         setIsUpdatingData(false)
       }
     } finally {
@@ -196,7 +233,11 @@ function OwnerButton() {
             Logging in...
           </div>
         ) : (
-          <img src={eveSsoLoginWhite} alt="Log in with EVE Online" className="h-8" />
+          <img
+            src={eveSsoLoginWhite}
+            alt="Log in with EVE Online"
+            className="h-8"
+          />
         )}
       </button>
     )
@@ -223,10 +264,18 @@ function OwnerButton() {
         ) : (
           <div className="flex items-center gap-3">
             {(() => {
-              const selectedCharacters = selectedOwners.filter((o) => o.type === 'character').slice(0, 5)
-              const selectedCorps = selectedOwners.filter((o) => o.type === 'corporation').slice(0, 5)
-              const totalCharacters = owners.filter((o) => o.type === 'character').length
-              const totalCorps = owners.filter((o) => o.type === 'corporation').length
+              const selectedCharacters = selectedOwners
+                .filter((o) => o.type === 'character')
+                .slice(0, 5)
+              const selectedCorps = selectedOwners
+                .filter((o) => o.type === 'corporation')
+                .slice(0, 5)
+              const totalCharacters = owners.filter(
+                (o) => o.type === 'character'
+              ).length
+              const totalCorps = owners.filter(
+                (o) => o.type === 'corporation'
+              ).length
               return (
                 <>
                   {totalCharacters > 0 && (
@@ -236,14 +285,26 @@ function OwnerButton() {
                           <div
                             key={ownerKey(owner.type, owner.id)}
                             className="relative rounded-full ring-2 ring-surface-secondary"
-                            style={{ marginLeft: i === 0 ? 0 : -8, zIndex: 5 - i }}
+                            style={{
+                              marginLeft: i === 0 ? 0 : -8,
+                              zIndex: 5 - i,
+                            }}
                           >
-                            <OwnerIcon ownerId={owner.id} ownerType={owner.type} size="lg" />
+                            <OwnerIcon
+                              ownerId={owner.id}
+                              ownerType={owner.type}
+                              size="lg"
+                            />
                           </div>
                         ))}
                       </div>
                       <span className="text-xs text-content-secondary">
-                        ({selectedOwners.filter((o) => o.type === 'character').length}/{totalCharacters})
+                        (
+                        {
+                          selectedOwners.filter((o) => o.type === 'character')
+                            .length
+                        }
+                        /{totalCharacters})
                       </span>
                     </div>
                   )}
@@ -254,14 +315,26 @@ function OwnerButton() {
                           <div
                             key={ownerKey(owner.type, owner.id)}
                             className="relative rounded-full ring-2 ring-surface-secondary"
-                            style={{ marginLeft: i === 0 ? 0 : -8, zIndex: 5 - i }}
+                            style={{
+                              marginLeft: i === 0 ? 0 : -8,
+                              zIndex: 5 - i,
+                            }}
                           >
-                            <OwnerIcon ownerId={owner.id} ownerType={owner.type} size="lg" />
+                            <OwnerIcon
+                              ownerId={owner.id}
+                              ownerType={owner.type}
+                              size="lg"
+                            />
                           </div>
                         ))}
                       </div>
                       <span className="text-xs text-content-secondary">
-                        ({selectedOwners.filter((o) => o.type === 'corporation').length}/{totalCorps})
+                        (
+                        {
+                          selectedOwners.filter((o) => o.type === 'corporation')
+                            .length
+                        }
+                        /{totalCorps})
                       </span>
                     </div>
                   )}
@@ -275,7 +348,6 @@ function OwnerButton() {
     </>
   )
 }
-
 
 function ExpandCollapseButton() {
   const { expandCollapse } = useTabControls()
@@ -311,7 +383,10 @@ function ColumnsDropdown() {
   useEffect(() => {
     if (!open) return
     const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node)
+      ) {
         setOpen(false)
       }
     }
@@ -366,7 +441,14 @@ const ASSET_TYPE_OPTIONS = [
 const SEARCH_DEBOUNCE_MS = 250
 
 function SearchBar() {
-  const { search, setSearch, categoryFilter, assetTypeFilter, resultCount, totalValue } = useTabControls()
+  const {
+    search,
+    setSearch,
+    categoryFilter,
+    assetTypeFilter,
+    resultCount,
+    totalValue,
+  } = useTabControls()
   const [inputValue, setInputValue] = useState(search)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const setSearchRef = useRef(setSearch)
@@ -423,7 +505,9 @@ function SearchBar() {
           className="w-36 rounded border border-border bg-surface-tertiary px-2 py-1.5 text-sm focus:border-accent focus:outline-hidden"
         >
           {ASSET_TYPE_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
           ))}
         </select>
       )}
@@ -436,27 +520,41 @@ function SearchBar() {
         >
           <option value="">All Categories</option>
           {categoryFilter.categories.map((cat) => (
-            <option key={cat} value={cat}>{cat}</option>
+            <option key={cat} value={cat}>
+              {cat}
+            </option>
           ))}
         </select>
       )}
 
       {totalValue !== null && (
         <span className="text-sm">
-          <span className="text-content-secondary">{totalValue.label ?? 'Value'}: </span>
-          <span className="text-semantic-positive">{formatNumber(totalValue.value)} ISK</span>
+          <span className="text-content-secondary">
+            {totalValue.label ?? 'Value'}:{' '}
+          </span>
+          <span className="text-semantic-positive">
+            {formatNumber(totalValue.value)} ISK
+          </span>
           {totalValue.secondaryValue !== undefined && (
             <>
               <span className="text-content-muted mx-2">|</span>
-              <span className="text-content-secondary">{totalValue.secondaryLabel ?? 'Secondary'}: </span>
-              <span className="text-semantic-warning">{formatNumber(totalValue.secondaryValue)} ISK</span>
+              <span className="text-content-secondary">
+                {totalValue.secondaryLabel ?? 'Secondary'}:{' '}
+              </span>
+              <span className="text-semantic-warning">
+                {formatNumber(totalValue.secondaryValue)} ISK
+              </span>
             </>
           )}
           {totalValue.tertiaryValue !== undefined && (
             <>
               <span className="text-content-muted mx-2">|</span>
-              <span className="text-content-secondary">{totalValue.tertiaryLabel ?? 'Tertiary'}: </span>
-              <span className="text-accent">{formatNumber(totalValue.tertiaryValue)} ISK</span>
+              <span className="text-content-secondary">
+                {totalValue.tertiaryLabel ?? 'Tertiary'}:{' '}
+              </span>
+              <span className="text-accent">
+                {formatNumber(totalValue.tertiaryValue)} ISK
+              </span>
             </>
           )}
         </span>
@@ -464,7 +562,8 @@ function SearchBar() {
 
       {resultCount && (
         <span className="text-sm text-content-secondary">
-          Showing {resultCount.showing.toLocaleString()} of {resultCount.total.toLocaleString()}
+          Showing {resultCount.showing.toLocaleString()} of{' '}
+          {resultCount.total.toLocaleString()}
         </span>
       )}
 
@@ -486,31 +585,45 @@ function HeaderControls() {
         <div className="flex items-center gap-4 text-sm">
           <div>
             <span className="text-content-secondary">Total: </span>
-            <span className="font-medium text-semantic-positive">{formatNumber(totals.total)} ISK</span>
+            <span className="font-medium text-semantic-positive">
+              {formatNumber(totals.total)} ISK
+            </span>
           </div>
           <div>
             <span className="text-content-secondary">Assets: </span>
-            <span className="font-medium text-accent">{formatNumber(totals.assetsTotal)}</span>
+            <span className="font-medium text-accent">
+              {formatNumber(totals.assetsTotal)}
+            </span>
           </div>
           <div>
             <span className="text-content-secondary">Market: </span>
-            <span className="font-medium text-status-info">{formatNumber(totals.marketTotal)}</span>
+            <span className="font-medium text-status-info">
+              {formatNumber(totals.marketTotal)}
+            </span>
           </div>
           <div>
             <span className="text-content-secondary">Industry: </span>
-            <span className="font-medium text-semantic-warning">{formatNumber(totals.industryTotal)}</span>
+            <span className="font-medium text-semantic-warning">
+              {formatNumber(totals.industryTotal)}
+            </span>
           </div>
           <div>
             <span className="text-content-secondary">Contracts: </span>
-            <span className="font-medium text-status-corp">{formatNumber(totals.contractsTotal)}</span>
+            <span className="font-medium text-status-corp">
+              {formatNumber(totals.contractsTotal)}
+            </span>
           </div>
           <div>
             <span className="text-content-secondary">Wallet: </span>
-            <span className="font-medium text-semantic-success">{formatNumber(totals.walletTotal)}</span>
+            <span className="font-medium text-semantic-success">
+              {formatNumber(totals.walletTotal)}
+            </span>
           </div>
           <div>
             <span className="text-content-secondary">Structures: </span>
-            <span className="font-medium text-status-special">{formatNumber(totals.structuresTotal)}</span>
+            <span className="font-medium text-status-special">
+              {formatNumber(totals.structuresTotal)}
+            </span>
           </div>
         </div>
       )}
@@ -540,7 +653,10 @@ function WindowControls() {
   useEffect(() => {
     if (!settingsOpen) return
     function handleClickOutside(e: MouseEvent) {
-      if (settingsPanelRef.current && !settingsPanelRef.current.contains(e.target as Node)) {
+      if (
+        settingsPanelRef.current &&
+        !settingsPanelRef.current.contains(e.target as Node)
+      ) {
         setSettingsOpen(false)
       }
     }
@@ -549,7 +665,10 @@ function WindowControls() {
   }, [settingsOpen])
 
   return (
-    <div className="flex items-center -mr-4" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+    <div
+      className="flex items-center -mr-4"
+      style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+    >
       <div ref={settingsPanelRef} className="relative">
         <button
           onClick={() => setSettingsOpen(!settingsOpen)}
@@ -561,11 +680,15 @@ function WindowControls() {
         {settingsOpen && (
           <div className="absolute right-0 top-full mt-1 w-64 rounded-lg border border-border bg-surface-secondary shadow-lg z-50">
             <div className="p-3 border-b border-border">
-              <span className="text-sm font-medium text-content-secondary">Settings</span>
+              <span className="text-sm font-medium text-content-secondary">
+                Settings
+              </span>
             </div>
             <div className="p-2">
               <div className="px-2 py-1.5">
-                <label className="text-xs text-content-muted mb-1 block">Theme</label>
+                <label className="text-xs text-content-muted mb-1 block">
+                  Theme
+                </label>
                 <select
                   value={theme}
                   onChange={(e) => setTheme(e.target.value as typeof theme)}
@@ -677,9 +800,18 @@ function WindowControls() {
       <ChangelogModal open={changelogOpen} onOpenChange={setChangelogOpen} />
       <CreditsModal open={creditsOpen} onOpenChange={setCreditsOpen} />
       <SupportModal open={supportOpen} onOpenChange={setSupportOpen} />
-      <ClearCacheModal open={showClearCacheModal} onOpenChange={setShowClearCacheModal} />
-      <AbyssalSyncModal open={showAbyssalModal} onOpenChange={setShowAbyssalModal} />
-      <BugReportModal open={showBugReportModal} onOpenChange={setShowBugReportModal} />
+      <ClearCacheModal
+        open={showClearCacheModal}
+        onOpenChange={setShowClearCacheModal}
+      />
+      <AbyssalSyncModal
+        open={showAbyssalModal}
+        onOpenChange={setShowAbyssalModal}
+      />
+      <BugReportModal
+        open={showBugReportModal}
+        onOpenChange={setShowBugReportModal}
+      />
       <button
         onClick={() => window.electronAPI?.windowMinimize()}
         className="flex h-10 w-12 items-center justify-center text-content-secondary hover:bg-surface-tertiary hover:text-content"
@@ -690,7 +822,11 @@ function WindowControls() {
         onClick={() => window.electronAPI?.windowMaximize()}
         className="flex h-10 w-12 items-center justify-center text-content-secondary hover:bg-surface-tertiary hover:text-content"
       >
-        {isMaximized ? <Copy className="h-3.5 w-3.5" /> : <Square className="h-3.5 w-3.5" />}
+        {isMaximized ? (
+          <Copy className="h-3.5 w-3.5" />
+        ) : (
+          <Square className="h-3.5 w-3.5" />
+        )}
       </button>
       <button
         onClick={() => window.electronAPI?.windowClose()}
@@ -705,7 +841,9 @@ function WindowControls() {
 function MainLayoutInner() {
   const [mode, setMode] = useState<AppMode>('assets')
   const [activeAssetTab, setActiveAssetTab] = useState<AssetTab>('Assets')
-  const [activeBuybackTab, setActiveBuybackTab] = useState<BuybackTabType>(BUYBACK_TABS[1])
+  const [activeBuybackTab, setActiveBuybackTab] = useState<BuybackTabType>(
+    BUYBACK_TABS[1]
+  )
 
   return (
     <div className="flex h-full flex-col">
@@ -716,7 +854,10 @@ function MainLayoutInner() {
         className="flex items-center border-b border-border bg-surface-secondary px-4 py-2"
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
       >
-        <div className="flex flex-col" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+        <div
+          className="flex flex-col"
+          style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+        >
           <span className="text-lg font-bold tracking-tight text-content">
             <span className="text-accent">ECT</span> EVE Assets
           </span>
@@ -724,7 +865,10 @@ function MainLayoutInner() {
             We Like The Data
           </span>
         </div>
-        <div className="mx-4" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+        <div
+          className="mx-4"
+          style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+        >
           <ModeSwitcher mode={mode} onModeChange={setMode} />
         </div>
         <a
@@ -735,7 +879,12 @@ function MainLayoutInner() {
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
           aria-label="Join our Discord server"
         >
-          <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <svg
+            className="h-5 w-5"
+            fill="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
             <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515a.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0a12.64 12.64 0 0 0-.617-1.25a.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057a19.9 19.9 0 0 0 5.993 3.03a.078.078 0 0 0 .084-.028a14.09 14.09 0 0 0 1.226-1.994a.076.076 0 0 0-.041-.106a13.107 13.107 0 0 1-1.872-.892a.077.077 0 0 1-.008-.128a10.2 10.2 0 0 0 .372-.292a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127a12.299 12.299 0 0 1-1.873.892a.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028a19.839 19.839 0 0 0 6.002-3.03a.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.956-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.955-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.946 2.418-2.157 2.418z" />
           </svg>
         </a>
@@ -743,7 +892,10 @@ function MainLayoutInner() {
           <RefreshStatus />
         </div>
         <div className="flex-1" />
-        <div className="flex items-center gap-4" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+        <div
+          className="flex items-center gap-4"
+          style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+        >
           <HeaderControls />
           <WindowControls />
         </div>
@@ -752,39 +904,37 @@ function MainLayoutInner() {
       {/* Tab Navigation */}
       <nav className="flex items-center border-b border-border bg-surface-secondary px-2">
         <div className="flex gap-1">
-          {mode === 'assets' ? (
-            ASSET_TABS.map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveAssetTab(tab)}
-                className={`px-3 py-2 text-sm transition-colors ${
-                  activeAssetTab === tab
-                    ? 'border-b-2 border-accent text-accent'
-                    : 'text-content-secondary hover:text-content'
-                }`}
-              >
-                {tab}
-              </button>
-            ))
-          ) : (
-            BUYBACK_TABS.map((tab) => {
-              const styling = getStyling(tabToKey(tab))
-              return (
+          {mode === 'assets'
+            ? ASSET_TABS.map((tab) => (
                 <button
                   key={tab}
-                  onClick={() => setActiveBuybackTab(tab)}
-                  className={`flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
-                    activeBuybackTab === tab
+                  onClick={() => setActiveAssetTab(tab)}
+                  className={`px-3 py-2 text-sm transition-colors ${
+                    activeAssetTab === tab
                       ? 'border-b-2 border-accent text-accent'
                       : 'text-content-secondary hover:text-content'
                   }`}
                 >
-                  <span className={`h-2 w-2 rounded-full ${styling.color}`} />
                   {tab}
                 </button>
-              )
-            })
-          )}
+              ))
+            : BUYBACK_TABS.map((tab) => {
+                const styling = getStyling(tabToKey(tab))
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveBuybackTab(tab)}
+                    className={`flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
+                      activeBuybackTab === tab
+                        ? 'border-b-2 border-accent text-accent'
+                        : 'text-content-secondary hover:text-content'
+                    }`}
+                  >
+                    <span className={`h-2 w-2 rounded-full ${styling.color}`} />
+                    {tab}
+                  </button>
+                )
+              })}
         </div>
         <div className="flex-1" />
         <OwnerButton />

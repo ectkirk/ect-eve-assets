@@ -27,7 +27,10 @@ export interface StructureValueResult {
 function isOwnedStructureOrStarbase(asset: ESIAsset): boolean {
   if (asset.location_type !== 'solar_system') return false
   const type = getType(asset.type_id)
-  return type?.categoryId === STRUCTURE_CATEGORY_ID || type?.categoryId === STARBASE_CATEGORY_ID
+  return (
+    type?.categoryId === STRUCTURE_CATEGORY_ID ||
+    type?.categoryId === STARBASE_CATEGORY_ID
+  )
 }
 
 export function calculateStructureValues(
@@ -40,11 +43,14 @@ export function calculateStructureValues(
   const ownedStructureIds = new Set<number>()
 
   for (const { owner, assets } of assetsByOwner) {
-    if (selectedSet && !selectedSet.has(ownerKey(owner.type, owner.id))) continue
+    if (selectedSet && !selectedSet.has(ownerKey(owner.type, owner.id)))
+      continue
     for (const asset of assets) {
       if (isOwnedStructureOrStarbase(asset)) {
         const children = assets.filter(
-          (a) => a.location_id === asset.item_id && isFittedOrContentFlag(a.location_flag)
+          (a) =>
+            a.location_id === asset.item_id &&
+            isFittedOrContentFlag(a.location_flag)
         )
         structureAssetMap.set(asset.item_id, { asset, children })
         ownedStructureIds.add(asset.item_id)
@@ -81,8 +87,14 @@ export const STATE_DISPLAY: Record<string, StateDisplay> = {
   unanchored: { label: 'Unanchored', color: 'text-content-secondary' },
   onlining_vulnerable: { label: 'Onlining', color: 'text-status-info' },
   online_deprecated: { label: 'Online', color: 'text-status-positive' },
-  anchor_vulnerable: { label: 'Anchor Vulnerable', color: 'text-status-highlight' },
-  deploy_vulnerable: { label: 'Deploy Vulnerable', color: 'text-status-highlight' },
+  anchor_vulnerable: {
+    label: 'Anchor Vulnerable',
+    color: 'text-status-highlight',
+  },
+  deploy_vulnerable: {
+    label: 'Deploy Vulnerable',
+    color: 'text-status-highlight',
+  },
   fitting_invulnerable: { label: 'Fitting', color: 'text-status-info' },
   offline: { label: 'Offline', color: 'text-content-secondary' },
   online: { label: 'Online', color: 'text-status-positive' },

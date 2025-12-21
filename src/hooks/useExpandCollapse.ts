@@ -19,7 +19,9 @@ export function useExpandCollapse<T>(
   setExpandCollapse?: ((control: ExpandCollapseControl | null) => void) | null,
   initialExpanded?: Set<T>
 ): UseExpandCollapseResult<T> {
-  const [expandedSet, setExpandedSet] = useState<Set<T>>(initialExpanded ?? new Set())
+  const [expandedSet, setExpandedSet] = useState<Set<T>>(
+    initialExpanded ?? new Set()
+  )
 
   const toggle = useCallback((id: T) => {
     setExpandedSet((prev) => {
@@ -64,5 +66,12 @@ export function useExpandCollapse<T>(
     return () => setExpandCollapse(null)
   }, [items.length, isAllExpanded, expandAll, collapseAll, setExpandCollapse])
 
-  return { expandedSet, isExpanded, toggle, expandAll, collapseAll, isAllExpanded }
+  return {
+    expandedSet,
+    isExpanded,
+    toggle,
+    expandAll,
+    collapseAll,
+    isAllExpanded,
+  }
 }

@@ -47,7 +47,15 @@ export function TypeIcon({
   const url = getTypeIconUrl(typeId, { categoryId, isBlueprintCopy })
 
   if (!url) {
-    return <div className={cn(sizeClass, 'rounded bg-surface-tertiary flex-shrink-0', className)} />
+    return (
+      <div
+        className={cn(
+          sizeClass,
+          'rounded bg-surface-tertiary flex-shrink-0',
+          className
+        )}
+      />
+    )
   }
 
   return (
@@ -112,7 +120,19 @@ export function OwnerIcon({
   className?: string
 }) {
   if (ownerType === 'corporation') {
-    return <CorporationLogo corporationId={ownerId} size={size} className={className} />
+    return (
+      <CorporationLogo
+        corporationId={ownerId}
+        size={size}
+        className={className}
+      />
+    )
   }
-  return <CharacterPortrait characterId={ownerId} size={size} className={className} />
+  return (
+    <CharacterPortrait
+      characterId={ownerId}
+      size={size}
+      className={className}
+    />
+  )
 }

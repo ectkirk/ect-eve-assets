@@ -41,7 +41,9 @@ export const useStarbasesStore = createOwnerStore<
   onBeforeOwnerUpdate: (owner, state: BaseState<OwnerStarbases>) => {
     const key = ownerKey(owner.type, owner.id)
     const previousStarbases =
-      state.dataByOwner.find((os) => ownerKey(os.owner.type, os.owner.id) === key)?.starbases ?? []
+      state.dataByOwner.find(
+        (os) => ownerKey(os.owner.type, os.owner.id) === key
+      )?.starbases ?? []
     return { previousData: previousStarbases }
   },
   onAfterOwnerUpdate: ({ newData, previousData }) => {

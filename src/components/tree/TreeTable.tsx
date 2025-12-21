@@ -86,7 +86,12 @@ function sortTreeNodes(
     return {
       ...node,
       regionName: nodeRegion,
-      children: sortTreeNodes(node.children, sortColumn, sortDirection, nodeRegion),
+      children: sortTreeNodes(
+        node.children,
+        sortColumn,
+        sortDirection,
+        nodeRegion
+      ),
     }
   })
 }
@@ -156,7 +161,12 @@ const TreeNodeIcon = memo(function TreeNodeIcon({
 }) {
   const Icon = NODE_TYPE_ICONS[nodeType]
   let colorClass = NODE_TYPE_COLORS[nodeType]
-  if (nodeType === 'division' && divisionNumber !== undefined && divisionNumber >= 1 && divisionNumber <= 7) {
+  if (
+    nodeType === 'division' &&
+    divisionNumber !== undefined &&
+    divisionNumber >= 1 &&
+    divisionNumber <= 7
+  ) {
     colorClass = DIVISION_COLORS[divisionNumber - 1]!
   }
   return <Icon className={cn('h-4 w-4 flex-shrink-0', colorClass)} />
@@ -164,7 +174,12 @@ const TreeNodeIcon = memo(function TreeNodeIcon({
 
 const ItemIcon = memo(function ItemIcon({ node }: { node: TreeNode }) {
   if (!node.typeId) {
-    return <TreeNodeIcon nodeType={node.nodeType} divisionNumber={node.divisionNumber} />
+    return (
+      <TreeNodeIcon
+        nodeType={node.nodeType}
+        divisionNumber={node.divisionNumber}
+      />
+    )
   }
 
   return (
@@ -201,15 +216,20 @@ const TreeRowContent = memo(function TreeRowContent({
   const indentPx = node.depth * 20
 
   const isAssetNode = node.nodeType === 'item' || node.nodeType === 'ship'
-  const isLocationNode = node.nodeType === 'region' || node.nodeType === 'system' ||
+  const isLocationNode =
+    node.nodeType === 'region' ||
+    node.nodeType === 'system' ||
     node.nodeType === 'station'
   const isOfficeNode = node.nodeType === 'office'
   const isDivisionNode = node.nodeType === 'division'
 
-  const handleToggleClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation()
-    onToggleExpand(node.id)
-  }, [onToggleExpand, node.id])
+  const handleToggleClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      onToggleExpand(node.id)
+    },
+    [onToggleExpand, node.id]
+  )
 
   return (
     <>
@@ -237,13 +257,20 @@ const TreeRowContent = memo(function TreeRowContent({
                 )}
 
                 {isAssetNode && node.ownerId && node.ownerType && (
-                  <OwnerIcon ownerId={node.ownerId} ownerType={node.ownerType} size="sm" />
+                  <OwnerIcon
+                    ownerId={node.ownerId}
+                    ownerType={node.ownerType}
+                    size="sm"
+                  />
                 )}
 
                 {isAssetNode ? (
                   <ItemIcon node={node} />
                 ) : (
-                  <TreeNodeIcon nodeType={node.nodeType} divisionNumber={node.divisionNumber} />
+                  <TreeNodeIcon
+                    nodeType={node.nodeType}
+                    divisionNumber={node.divisionNumber}
+                  />
                 )}
 
                 {(() => {
@@ -251,44 +278,81 @@ const TreeRowContent = memo(function TreeRowContent({
                     <span
                       className={cn(
                         'truncate min-w-0',
-                        isLocationNode && node.nodeType === 'region' && 'font-semibold text-accent',
-                        isLocationNode && node.nodeType === 'system' && 'font-medium text-status-highlight',
-                        isLocationNode && node.nodeType === 'station' && 'text-status-info',
+                        isLocationNode &&
+                          node.nodeType === 'region' &&
+                          'font-semibold text-accent',
+                        isLocationNode &&
+                          node.nodeType === 'system' &&
+                          'font-medium text-status-highlight',
+                        isLocationNode &&
+                          node.nodeType === 'station' &&
+                          'text-status-info',
                         isOfficeNode && 'font-medium',
-                        isDivisionNode && node.divisionNumber && DIVISION_COLORS[node.divisionNumber - 1],
+                        isDivisionNode &&
+                          node.divisionNumber &&
+                          DIVISION_COLORS[node.divisionNumber - 1],
                         node.isBlueprintCopy && 'text-status-special'
                       )}
                       title={node.name}
                     >
                       {isOfficeNode ? (
                         <>
-                          <span className="text-status-highlight">{node.name}</span>
-                          <span className="text-content-muted italic ml-1">Office</span>
+                          <span className="text-status-highlight">
+                            {node.name}
+                          </span>
+                          <span className="text-content-muted italic ml-1">
+                            Office
+                          </span>
                         </>
-                      ) : node.name}
+                      ) : (
+                        node.name
+                      )}
                     </span>
                   )
-                  if (node.typeId && node.asset?.item_id && isAbyssalTypeId(node.typeId) && hasAbyssal(node.asset.item_id)) {
-                    return <AbyssalPreview itemId={node.asset.item_id}>{nameSpan}</AbyssalPreview>
+                  if (
+                    node.typeId &&
+                    node.asset?.item_id &&
+                    isAbyssalTypeId(node.typeId) &&
+                    hasAbyssal(node.asset.item_id)
+                  ) {
+                    return (
+                      <AbyssalPreview itemId={node.asset.item_id}>
+                        {nameSpan}
+                      </AbyssalPreview>
+                    )
                   }
                   return nameSpan
                 })()}
-                {(node.isInContract || node.isInMarketOrder || node.isInIndustryJob || node.isOwnedStructure || node.isActiveShip) && (
+                {(node.isInContract ||
+                  node.isInMarketOrder ||
+                  node.isInIndustryJob ||
+                  node.isOwnedStructure ||
+                  node.isActiveShip) && (
                   <span className="shrink-0 inline-flex items-center gap-1 ml-2 whitespace-nowrap">
                     {node.isActiveShip && (
-                      <span className="text-xs text-status-time bg-status-time/20 px-1.5 py-0.5 rounded whitespace-nowrap">Active Ship</span>
+                      <span className="text-xs text-status-time bg-status-time/20 px-1.5 py-0.5 rounded whitespace-nowrap">
+                        Active Ship
+                      </span>
                     )}
                     {node.isInContract && (
-                      <span className="text-xs text-status-corp bg-semantic-warning/20 px-1.5 py-0.5 rounded whitespace-nowrap">In Contract</span>
+                      <span className="text-xs text-status-corp bg-semantic-warning/20 px-1.5 py-0.5 rounded whitespace-nowrap">
+                        In Contract
+                      </span>
                     )}
                     {node.isInMarketOrder && (
-                      <span className="text-xs text-status-info bg-accent/20 px-1.5 py-0.5 rounded whitespace-nowrap">Sell Order</span>
+                      <span className="text-xs text-status-info bg-accent/20 px-1.5 py-0.5 rounded whitespace-nowrap">
+                        Sell Order
+                      </span>
                     )}
                     {node.isInIndustryJob && (
-                      <span className="text-xs text-status-positive bg-status-positive/20 px-1.5 py-0.5 rounded whitespace-nowrap">In Job</span>
+                      <span className="text-xs text-status-positive bg-status-positive/20 px-1.5 py-0.5 rounded whitespace-nowrap">
+                        In Job
+                      </span>
                     )}
                     {node.isOwnedStructure && (
-                      <span className="text-xs text-status-special bg-status-special/20 px-1.5 py-0.5 rounded whitespace-nowrap">Structure</span>
+                      <span className="text-xs text-status-special bg-status-special/20 px-1.5 py-0.5 rounded whitespace-nowrap">
+                        Structure
+                      </span>
                     )}
                   </span>
                 )}
@@ -298,29 +362,47 @@ const TreeRowContent = memo(function TreeRowContent({
         }
         if (colId === 'region') {
           return (
-            <TableCell key={colId} className="py-1.5 text-content-secondary w-40">
-              {node.nodeType !== 'region' && node.regionName ? node.regionName : '-'}
+            <TableCell
+              key={colId}
+              className="py-1.5 text-content-secondary w-40"
+            >
+              {node.nodeType !== 'region' && node.regionName
+                ? node.regionName
+                : '-'}
             </TableCell>
           )
         }
         if (colId === 'quantity') {
           return (
-            <TableCell key={colId} className="py-1.5 text-right tabular-nums w-24">
+            <TableCell
+              key={colId}
+              className="py-1.5 text-right tabular-nums w-24"
+            >
               {node.totalCount > 0 ? node.totalCount.toLocaleString() : '-'}
             </TableCell>
           )
         }
         if (colId === 'value') {
           return (
-            <TableCell key={colId} className="py-1.5 text-right tabular-nums text-status-positive w-32">
-              {node.totalValue > 0 ? formatNumber(node.totalValue) + ' ISK' : '-'}
+            <TableCell
+              key={colId}
+              className="py-1.5 text-right tabular-nums text-status-positive w-32"
+            >
+              {node.totalValue > 0
+                ? formatNumber(node.totalValue) + ' ISK'
+                : '-'}
             </TableCell>
           )
         }
         if (colId === 'volume') {
           return (
-            <TableCell key={colId} className="py-1.5 text-right tabular-nums text-content-secondary w-32">
-              {node.nodeType !== 'region' && node.nodeType !== 'system' && node.totalVolume > 0
+            <TableCell
+              key={colId}
+              className="py-1.5 text-right tabular-nums text-content-secondary w-32"
+            >
+              {node.nodeType !== 'region' &&
+              node.nodeType !== 'system' &&
+              node.totalVolume > 0
                 ? formatVolume(node.totalVolume)
                 : '-'}
             </TableCell>
@@ -366,7 +448,11 @@ const TreeRow = memo(function TreeRow({
   }, [node.asset, node.typeName])
 
   const isShip = node.nodeType === 'ship'
-  const isAbyssalResolved = node.typeId && node.asset?.item_id && isAbyssalTypeId(node.typeId) && hasAbyssal(node.asset.item_id)
+  const isAbyssalResolved =
+    node.typeId &&
+    node.asset?.item_id &&
+    isAbyssalTypeId(node.typeId) &&
+    hasAbyssal(node.asset.item_id)
 
   const row = (
     <TableRow
@@ -395,9 +481,7 @@ const TreeRow = memo(function TreeRow({
   if (isShip || isAbyssalResolved) {
     return (
       <ContextMenu>
-        <ContextMenuTrigger asChild>
-          {row}
-        </ContextMenuTrigger>
+        <ContextMenuTrigger asChild>{row}</ContextMenuTrigger>
         <ContextMenuContent>
           {isShip && (
             <ContextMenuItem onClick={handleViewFittingClick}>
@@ -443,14 +527,17 @@ export function TreeTable({
 }: TreeTableProps) {
   const tableContainerRef = useRef<HTMLDivElement>(null)
 
-  const {
-    getVisibleColumns,
-    getColumnsForDropdown,
-  } = useColumnSettings(storageKey, TREE_COLUMNS)
+  const { getVisibleColumns, getColumnsForDropdown } = useColumnSettings(
+    storageKey,
+    TREE_COLUMNS
+  )
 
   const visibleColumns = getVisibleColumns()
 
-  const { sortColumn, sortDirection, handleSort } = useSortable<TreeSortColumn>('value', 'desc')
+  const { sortColumn, sortDirection, handleSort } = useSortable<TreeSortColumn>(
+    'value',
+    'desc'
+  )
 
   const sortedNodes = useMemo(
     () => sortTreeNodes(nodes, sortColumn, sortDirection),
@@ -471,7 +558,8 @@ export function TreeTable({
 
   const allNodeIds = useMemo(() => getAllNodeIds(sortedNodes), [sortedNodes])
   const hasExpandableNodes = allNodeIds.length > 0
-  const isAllExpanded = hasExpandableNodes && allNodeIds.every((id) => expandedNodes.has(id))
+  const isAllExpanded =
+    hasExpandableNodes && allNodeIds.every((id) => expandedNodes.has(id))
 
   const { setExpandCollapse, setColumns } = useTabControls()
 
@@ -498,10 +586,18 @@ export function TreeTable({
     })
 
     return () => setExpandCollapse(null)
-  }, [hasExpandableNodes, isAllExpanded, onExpandAll, onCollapseAll, setExpandCollapse])
+  }, [
+    hasExpandableNodes,
+    isAllExpanded,
+    onExpandAll,
+    onCollapseAll,
+    setExpandCollapse,
+  ])
 
   const [fittingDialogOpen, setFittingDialogOpen] = useState(false)
-  const [selectedShipNode, setSelectedShipNode] = useState<TreeNode | null>(null)
+  const [selectedShipNode, setSelectedShipNode] = useState<TreeNode | null>(
+    null
+  )
 
   const handleViewFitting = useCallback((node: TreeNode) => {
     setSelectedShipNode(node)
@@ -521,74 +617,79 @@ export function TreeTable({
       ref={tableContainerRef}
       className="h-full rounded-lg border border-border bg-surface-secondary/30 overflow-auto"
     >
-        <Table style={{ tableLayout: 'fixed', width: '100%' }}>
-          <TableHeader className="sticky top-0 z-10 bg-surface-secondary">
-            <TableRow className="bg-surface-secondary hover:bg-surface-secondary">
-              {visibleColumns.map((colId) => {
-                const col = TREE_COLUMNS.find(c => c.id === colId)
-                if (!col) return null
+      <Table style={{ tableLayout: 'fixed', width: '100%' }}>
+        <TableHeader className="sticky top-0 z-10 bg-surface-secondary">
+          <TableRow className="bg-surface-secondary hover:bg-surface-secondary">
+            {visibleColumns.map((colId) => {
+              const col = TREE_COLUMNS.find((c) => c.id === colId)
+              if (!col) return null
+              return (
+                <SortableHeader
+                  key={colId}
+                  column={colId as TreeSortColumn}
+                  label={col.label}
+                  sortColumn={sortColumn}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                  className={cn(COLUMN_WIDTHS[colId], COLUMN_ALIGN[colId])}
+                />
+              )
+            })}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {flatRows.length > 0 ? (
+            <>
+              {rowVirtualizer.getVirtualItems().length > 0 && (
+                <tr>
+                  <td
+                    colSpan={visibleColumns.length}
+                    style={{
+                      height: rowVirtualizer.getVirtualItems()[0]?.start ?? 0,
+                    }}
+                  />
+                </tr>
+              )}
+              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                const node = flatRows[virtualRow.index]
+                if (!node) return null
                 return (
-                  <SortableHeader
-                    key={colId}
-                    column={colId as TreeSortColumn}
-                    label={col.label}
-                    sortColumn={sortColumn}
-                    sortDirection={sortDirection}
-                    onSort={handleSort}
-                    className={cn(COLUMN_WIDTHS[colId], COLUMN_ALIGN[colId])}
+                  <TreeRow
+                    key={node.id}
+                    node={node}
+                    virtualIndex={virtualRow.index}
+                    isExpanded={expandedNodes.has(node.id)}
+                    onToggleExpand={onToggleExpand}
+                    onViewFitting={handleViewFitting}
+                    visibleColumns={visibleColumns}
                   />
                 )
               })}
+              {rowVirtualizer.getVirtualItems().length > 0 && (
+                <tr>
+                  <td
+                    colSpan={visibleColumns.length}
+                    style={{
+                      height:
+                        rowVirtualizer.getTotalSize() -
+                        (rowVirtualizer.getVirtualItems().at(-1)?.end ?? 0),
+                    }}
+                  />
+                </tr>
+              )}
+            </>
+          ) : (
+            <TableRow>
+              <TableCell
+                colSpan={visibleColumns.length}
+                className="h-24 text-center"
+              >
+                No items found.
+              </TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {flatRows.length > 0 ? (
-              <>
-                {rowVirtualizer.getVirtualItems().length > 0 && (
-                  <tr>
-                    <td
-                      colSpan={visibleColumns.length}
-                      style={{ height: rowVirtualizer.getVirtualItems()[0]?.start ?? 0 }}
-                    />
-                  </tr>
-                )}
-                {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                  const node = flatRows[virtualRow.index]
-                  if (!node) return null
-                  return (
-                    <TreeRow
-                      key={node.id}
-                      node={node}
-                      virtualIndex={virtualRow.index}
-                      isExpanded={expandedNodes.has(node.id)}
-                      onToggleExpand={onToggleExpand}
-                      onViewFitting={handleViewFitting}
-                      visibleColumns={visibleColumns}
-                    />
-                  )
-                })}
-                {rowVirtualizer.getVirtualItems().length > 0 && (
-                  <tr>
-                    <td
-                      colSpan={visibleColumns.length}
-                      style={{
-                        height:
-                          rowVirtualizer.getTotalSize() -
-                          (rowVirtualizer.getVirtualItems().at(-1)?.end ?? 0),
-                      }}
-                    />
-                  </tr>
-                )}
-              </>
-            ) : (
-              <TableRow>
-                <TableCell colSpan={visibleColumns.length} className="h-24 text-center">
-                  No items found.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+          )}
+        </TableBody>
+      </Table>
 
       <FittingDialog
         open={fittingDialogOpen}

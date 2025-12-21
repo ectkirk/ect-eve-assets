@@ -1,6 +1,12 @@
 import type { ESIAsset } from '@/api/endpoints/assets'
 import type { Owner } from '@/store/auth-store'
-import { getType, getLocation, getRegion, getLocationName, CategoryIds } from '@/store/reference-cache'
+import {
+  getType,
+  getLocation,
+  getRegion,
+  getLocationName,
+  CategoryIds,
+} from '@/store/reference-cache'
 import { formatBlueprintName } from '@/store/blueprints-store'
 import { isAbyssalTypeId } from '@/api/mutamarket-client'
 
@@ -75,7 +81,7 @@ export function getAssetDisplayNames(ra: ResolvedAsset): AssetDisplayNames {
     groupName: type?.groupName ?? '',
     locationName: getLocationName(ra.rootLocationId),
     systemName: systemLocation?.name ?? '',
-    regionName: ra.regionId ? getRegion(ra.regionId)?.name ?? '' : '',
+    regionName: ra.regionId ? (getRegion(ra.regionId)?.name ?? '') : '',
   }
 }
 
@@ -84,7 +90,10 @@ export interface ResolvedAssetsByOwner {
   assets: ResolvedAsset[]
 }
 
-export function matchesAssetTypeFilter(modeFlags: AssetModeFlags, filterValue: string): boolean {
+export function matchesAssetTypeFilter(
+  modeFlags: AssetModeFlags,
+  filterValue: string
+): boolean {
   if (!filterValue) return true
   switch (filterValue) {
     case 'ACTIVE_SHIP':

@@ -46,10 +46,9 @@ interface OwnerManagementModalProps {
 
 async function fetchCorpName(corpId: number): Promise<string> {
   try {
-    const data = await esi.fetch<{ name: string }>(
-      `/corporations/${corpId}/`,
-      { requiresAuth: false }
-    )
+    const data = await esi.fetch<{ name: string }>(`/corporations/${corpId}/`, {
+      requiresAuth: false,
+    })
     return data.name
   } catch {
     return `Corporation ${corpId}`
@@ -67,12 +66,17 @@ export function OwnerManagementModal({
   const [error, setError] = useState<string | null>(null)
   const [ownerToRemove, setOwnerToRemove] = useState<Owner | null>(null)
   const [showLogoutAllConfirm, setShowLogoutAllConfirm] = useState(false)
-  const [refreshingRolesOwner, setRefreshingRolesOwner] = useState<string | null>(null)
+  const [refreshingRolesOwner, setRefreshingRolesOwner] = useState<
+    string | null
+  >(null)
 
   const ownersRecord = useAuthStore((state) => state.owners)
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
   const selectedOwnerIds = useAuthStore((state) => state.selectedOwnerIds)
-  const selectedSet = useMemo(() => new Set(selectedOwnerIds), [selectedOwnerIds])
+  const selectedSet = useMemo(
+    () => new Set(selectedOwnerIds),
+    [selectedOwnerIds]
+  )
 
   const assetsUpdating = useAssetStore((s) => s.isUpdating)
   const blueprintsUpdating = useBlueprintsStore((s) => s.isUpdating)
@@ -163,7 +167,9 @@ export function OwnerManagementModal({
           owner: newOwner,
         })
         setIsAddingCharacter(false)
-        useExpiryCacheStore.getState().queueAllEndpointsForOwner(ownerKey(newOwner.type, newOwner.id))
+        useExpiryCacheStore
+          .getState()
+          .queueAllEndpointsForOwner(ownerKey(newOwner.type, newOwner.id))
       } else if (result.error && result.error !== 'Authentication cancelled') {
         setError(result.error)
       }
@@ -241,7 +247,11 @@ export function OwnerManagementModal({
           owner: newCorpOwner,
         })
         setIsAddingCorporation(false)
-        useExpiryCacheStore.getState().queueAllEndpointsForOwner(ownerKey(newCorpOwner.type, newCorpOwner.id))
+        useExpiryCacheStore
+          .getState()
+          .queueAllEndpointsForOwner(
+            ownerKey(newCorpOwner.type, newCorpOwner.id)
+          )
       } else if (result.error && result.error !== 'Authentication cancelled') {
         setError(result.error)
       }
@@ -303,8 +313,11 @@ export function OwnerManagementModal({
     e.stopPropagation()
     if (!window.electronAPI) return
 
-    const hadCorporationScopes = owner.scopes?.some((s) => s.includes('corporation'))
-    const needsCorporationScopes = owner.type === 'corporation' || hadCorporationScopes
+    const hadCorporationScopes = owner.scopes?.some((s) =>
+      s.includes('corporation')
+    )
+    const needsCorporationScopes =
+      owner.type === 'corporation' || hadCorporationScopes
     if (needsCorporationScopes) {
       setIsAddingCorporation(true)
     } else {
@@ -451,8 +464,12 @@ export function OwnerManagementModal({
                 <div className="space-y-1">
                   {filteredCharacters.map((character) => {
                     const charKey = ownerKey(character.type, character.id)
-                    const hasDirector = character.corporationRoles?.roles?.includes('Director') ?? false
-                    const characterCorps = getFilteredCorpsForCharacter(character.id)
+                    const hasDirector =
+                      character.corporationRoles?.roles?.includes('Director') ??
+                      false
+                    const characterCorps = getFilteredCorpsForCharacter(
+                      character.id
+                    )
                     const hasCorp = characterCorps.length > 0
 
                     return (
@@ -468,13 +485,17 @@ export function OwnerManagementModal({
                           onRemove={(e) => handleRemoveOwnerClick(character, e)}
                           onReauth={(e) => handleReauth(character, e)}
                           onRefreshRoles={() => handleRefreshRoles(character)}
-                          onAddCorporation={() => handleAddCorporation(character)}
+                          onAddCorporation={() =>
+                            handleAddCorporation(character)
+                          }
                         />
                         {characterCorps.map((corp) => (
                           <OwnerRow
                             key={ownerKey(corp.type, corp.id)}
                             owner={corp}
-                            isSelected={selectedSet.has(ownerKey(corp.type, corp.id))}
+                            isSelected={selectedSet.has(
+                              ownerKey(corp.type, corp.id)
+                            )}
                             disabled={isBusy}
                             indented
                             onToggle={() => handleToggleOwner(corp)}
@@ -586,7 +607,8 @@ function OwnerRow({
   const isCorp = owner.type === 'corporation'
   const needsAttention = owner.authFailed || owner.scopesOutdated
   const CheckIcon = isSelected ? CheckSquare : Square
-  const canAddCorporation = hasDirectorRole && !hasCorporation && onAddCorporation
+  const canAddCorporation =
+    hasDirectorRole && !hasCorporation && onAddCorporation
 
   const rowContent = (
     <div
@@ -596,7 +618,9 @@ function OwnerRow({
       } ${owner.authFailed ? 'ring-1 ring-semantic-danger/50' : ''} ${owner.scopesOutdated && !owner.authFailed ? 'ring-1 ring-semantic-warning/50' : ''} ${indented ? 'ml-6' : ''}`}
     >
       <div className="flex items-center gap-2">
-        <CheckIcon className={`h-4 w-4 ${isSelected ? 'text-accent' : 'text-content-muted'}`} />
+        <CheckIcon
+          className={`h-4 w-4 ${isSelected ? 'text-accent' : 'text-content-muted'}`}
+        />
         <OwnerIcon ownerId={owner.id} ownerType={owner.type} size="lg" />
         <span className={`text-sm ${isCorp ? 'text-status-corp' : ''}`}>
           {owner.name}
@@ -645,7 +669,10 @@ function OwnerRow({
       <ContextMenu>
         <ContextMenuTrigger asChild>{rowContent}</ContextMenuTrigger>
         <ContextMenuContent>
-          <ContextMenuItem onClick={onRefreshRoles} disabled={isRefreshingRoles}>
+          <ContextMenuItem
+            onClick={onRefreshRoles}
+            disabled={isRefreshingRoles}
+          >
             {isRefreshingRoles ? 'Refreshing...' : 'Refresh Corporation Roles'}
           </ContextMenuItem>
           {canAddCorporation && (

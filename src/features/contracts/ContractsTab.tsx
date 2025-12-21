@@ -11,11 +11,24 @@ import {
   Loader2,
 } from 'lucide-react'
 import { useTabControls } from '@/context'
-import { useColumnSettings, useCacheVersion, useSortable, SortableHeader, sortRows, type ColumnConfig } from '@/hooks'
+import {
+  useColumnSettings,
+  useCacheVersion,
+  useSortable,
+  SortableHeader,
+  sortRows,
+  type ColumnConfig,
+} from '@/hooks'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
-import { useContractsStore, type ContractWithItems } from '@/store/contracts-store'
+import {
+  useContractsStore,
+  type ContractWithItems,
+} from '@/store/contracts-store'
 import { useAssetData } from '@/hooks/useAssetData'
-import { type ESIContract, type ESIContractItem } from '@/api/endpoints/contracts'
+import {
+  type ESIContract,
+  type ESIContractItem,
+} from '@/api/endpoints/contracts'
 import { hasType, getType } from '@/store/reference-cache'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import { useAssetStore } from '@/store/asset-store'
@@ -33,7 +46,19 @@ import { getLocationName } from '@/lib/location-utils'
 import { TypeIcon as ItemTypeIcon } from '@/components/ui/type-icon'
 import { ContractItemsDialog } from '@/components/dialogs/ContractItemsDialog'
 
-type ContractSortColumn = 'type' | 'items' | 'location' | 'assigner' | 'assignee' | 'price' | 'value' | 'expires' | 'completed' | 'volume' | 'collateral' | 'days'
+type ContractSortColumn =
+  | 'type'
+  | 'items'
+  | 'location'
+  | 'assigner'
+  | 'assignee'
+  | 'price'
+  | 'value'
+  | 'expires'
+  | 'completed'
+  | 'volume'
+  | 'collateral'
+  | 'days'
 
 const CONTRACT_TYPE_NAMES: Record<ESIContract['type'], string> = {
   unknown: 'Unknown',
@@ -79,7 +104,10 @@ interface DirectionGroup {
   totalValue: number
 }
 
-function formatExpiry(dateExpired: string): { text: string; isExpired: boolean } {
+function formatExpiry(dateExpired: string): {
+  text: string
+  isExpired: boolean
+} {
   const expiry = new Date(dateExpired).getTime()
   const now = Date.now()
   const remaining = expiry - now
@@ -103,7 +131,10 @@ function getContractValue(contract: ESIContract): number {
 
 const PAGE_SIZE = 50
 
-function getDefaultSort(showCourierColumns: boolean, showCompletedDate: boolean): ContractSortColumn {
+function getDefaultSort(
+  showCourierColumns: boolean,
+  showCompletedDate: boolean
+): ContractSortColumn {
   if (showCompletedDate) return 'completed'
   if (showCourierColumns) return 'price'
   return 'value'
@@ -113,9 +144,14 @@ function getDaysLeft(contract: ESIContract): number {
   if (contract.status === 'outstanding') {
     const expiryTime = new Date(contract.date_expired).getTime()
     return Math.ceil((expiryTime - Date.now()) / (24 * 60 * 60 * 1000))
-  } else if (contract.status === 'in_progress' && contract.date_accepted && contract.days_to_complete) {
+  } else if (
+    contract.status === 'in_progress' &&
+    contract.date_accepted &&
+    contract.days_to_complete
+  ) {
     const acceptedDate = new Date(contract.date_accepted).getTime()
-    const deadline = acceptedDate + contract.days_to_complete * 24 * 60 * 60 * 1000
+    const deadline =
+      acceptedDate + contract.days_to_complete * 24 * 60 * 60 * 1000
     return Math.ceil((deadline - Date.now()) / (24 * 60 * 60 * 1000))
   }
   return 0
@@ -134,15 +170,20 @@ function buildContractRow(
   const direction: ContractDirection = isIssuer ? 'out' : 'in'
 
   const firstItem = items[0]
-  const firstItemType = firstItem && hasType(firstItem.type_id) ? getType(firstItem.type_id) : undefined
+  const firstItemType =
+    firstItem && hasType(firstItem.type_id)
+      ? getType(firstItem.type_id)
+      : undefined
 
-  const assignerName = getName(contract.issuer_id)?.name ?? `ID ${contract.issuer_id}`
+  const assignerName =
+    getName(contract.issuer_id)?.name ?? `ID ${contract.issuer_id}`
 
   let assigneeName: string
   if (contract.availability === 'public') {
     assigneeName = 'Public'
   } else if (contract.assignee_id) {
-    assigneeName = getName(contract.assignee_id)?.name ?? `ID ${contract.assignee_id}`
+    assigneeName =
+      getName(contract.assignee_id)?.name ?? `ID ${contract.assignee_id}`
   } else {
     assigneeName = '-'
   }
@@ -165,11 +206,15 @@ function buildContractRow(
     ownerType,
     ownerId,
     locationName: getLocationName(contract.start_location_id),
-    endLocationName: contract.end_location_id ? getLocationName(contract.end_location_id) : '',
+    endLocationName: contract.end_location_id
+      ? getLocationName(contract.end_location_id)
+      : '',
     firstItemTypeId: firstItem?.type_id,
     firstItemCategoryId: firstItemType?.categoryId,
     firstItemIsBlueprintCopy: firstItem?.is_blueprint_copy,
-    typeName: firstItemType?.name ?? (firstItem ? `Unknown Type ${firstItem.type_id}` : ''),
+    typeName:
+      firstItemType?.name ??
+      (firstItem ? `Unknown Type ${firstItem.type_id}` : ''),
     direction,
     assignerName,
     assigneeName,
@@ -191,8 +236,14 @@ function ContractsTable({
   prices: Map<number, number>
 }) {
   const [page, setPage] = useState(0)
-  const [selectedContract, setSelectedContract] = useState<ContractRow | null>(null)
-  const { sortColumn, sortDirection, handleSort } = useSortable<ContractSortColumn>(getDefaultSort(showCourierColumns, showCompletedDate), 'desc')
+  const [selectedContract, setSelectedContract] = useState<ContractRow | null>(
+    null
+  )
+  const { sortColumn, sortDirection, handleSort } =
+    useSortable<ContractSortColumn>(
+      getDefaultSort(showCourierColumns, showCompletedDate),
+      'desc'
+    )
 
   const sortedContracts = useMemo(() => {
     return sortRows(contracts, sortColumn, sortDirection, (row, column) => {
@@ -230,52 +281,139 @@ function ContractsTable({
 
   const totalPages = Math.max(1, Math.ceil(sortedContracts.length / PAGE_SIZE))
   const clampedPage = Math.min(page, totalPages - 1)
-  const paginatedContracts = sortedContracts.slice(clampedPage * PAGE_SIZE, (clampedPage + 1) * PAGE_SIZE)
+  const paginatedContracts = sortedContracts.slice(
+    clampedPage * PAGE_SIZE,
+    (clampedPage + 1) * PAGE_SIZE
+  )
 
   return (
-  <>
-    <Table>
-      <TableHeader>
-        <TableRow className="hover:bg-transparent">
-          <th className="w-8"></th>
-          <SortableHeader column="type" label="Type" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
-          {!showCourierColumns && <SortableHeader column="items" label="Items" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />}
-          <SortableHeader column="location" label="Location" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
-          <SortableHeader column="assigner" label="Assigner" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
-          <SortableHeader column="assignee" label="Assignee" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
-          <SortableHeader column="price" label="Price" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
-          {!showCourierColumns && !showCompletedDate && <SortableHeader column="value" label="Value" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />}
-          {showCourierColumns && (
-            <>
-              <SortableHeader column="volume" label="Volume" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
-              <SortableHeader column="collateral" label="Collateral" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
-              <SortableHeader column="days" label="Days Left" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
-            </>
-          )}
-          {showCompletedDate ? (
-            <SortableHeader column="completed" label="Completed" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
-          ) : !showCourierColumns ? (
-            <SortableHeader column="expires" label="Expires" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
-          ) : null}
-          <th className="text-right">Status</th>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {paginatedContracts.map((row) => {
-          const contract = row.contractWithItems.contract
-          const items = row.items
-          const TypeIcon = CONTRACT_TYPE_ICONS[contract.type]
-          const expiry = formatExpiry(contract.date_expired)
-          const value = getContractValue(contract)
-          const hasMultipleItems = items.length > 1
+    <>
+      <Table>
+        <TableHeader>
+          <TableRow className="hover:bg-transparent">
+            <th className="w-8"></th>
+            <SortableHeader
+              column="type"
+              label="Type"
+              sortColumn={sortColumn}
+              sortDirection={sortDirection}
+              onSort={handleSort}
+            />
+            {!showCourierColumns && (
+              <SortableHeader
+                column="items"
+                label="Items"
+                sortColumn={sortColumn}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+              />
+            )}
+            <SortableHeader
+              column="location"
+              label="Location"
+              sortColumn={sortColumn}
+              sortDirection={sortDirection}
+              onSort={handleSort}
+            />
+            <SortableHeader
+              column="assigner"
+              label="Assigner"
+              sortColumn={sortColumn}
+              sortDirection={sortDirection}
+              onSort={handleSort}
+            />
+            <SortableHeader
+              column="assignee"
+              label="Assignee"
+              sortColumn={sortColumn}
+              sortDirection={sortDirection}
+              onSort={handleSort}
+            />
+            <SortableHeader
+              column="price"
+              label="Price"
+              sortColumn={sortColumn}
+              sortDirection={sortDirection}
+              onSort={handleSort}
+              className="text-right"
+            />
+            {!showCourierColumns && !showCompletedDate && (
+              <SortableHeader
+                column="value"
+                label="Value"
+                sortColumn={sortColumn}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+                className="text-right"
+              />
+            )}
+            {showCourierColumns && (
+              <>
+                <SortableHeader
+                  column="volume"
+                  label="Volume"
+                  sortColumn={sortColumn}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                  className="text-right"
+                />
+                <SortableHeader
+                  column="collateral"
+                  label="Collateral"
+                  sortColumn={sortColumn}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                  className="text-right"
+                />
+                <SortableHeader
+                  column="days"
+                  label="Days Left"
+                  sortColumn={sortColumn}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                  className="text-right"
+                />
+              </>
+            )}
+            {showCompletedDate ? (
+              <SortableHeader
+                column="completed"
+                label="Completed"
+                sortColumn={sortColumn}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+                className="text-right"
+              />
+            ) : !showCourierColumns ? (
+              <SortableHeader
+                column="expires"
+                label="Expires"
+                sortColumn={sortColumn}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+                className="text-right"
+              />
+            ) : null}
+            <th className="text-right">Status</th>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {paginatedContracts.map((row) => {
+            const contract = row.contractWithItems.contract
+            const items = row.items
+            const TypeIcon = CONTRACT_TYPE_ICONS[contract.type]
+            const expiry = formatExpiry(contract.date_expired)
+            const value = getContractValue(contract)
+            const hasMultipleItems = items.length > 1
 
-          return (
-            <TableRow key={contract.contract_id}>
+            return (
+              <TableRow key={contract.contract_id}>
                 <TableCell className="py-1.5 w-8">
                   <img
-                    src={row.ownerType === 'corporation'
-                      ? `https://images.evetech.net/corporations/${row.ownerId}/logo?size=32`
-                      : `https://images.evetech.net/characters/${row.ownerId}/portrait?size=32`
+                    src={
+                      row.ownerType === 'corporation'
+                        ? `https://images.evetech.net/corporations/${row.ownerId}/logo?size=32`
+                        : `https://images.evetech.net/characters/${row.ownerId}/portrait?size=32`
                     }
                     alt=""
                     className="size-6 rounded object-cover"
@@ -307,7 +445,14 @@ function ContractsTable({
                               isBlueprintCopy={row.firstItemIsBlueprintCopy}
                             />
                           )}
-                          <span className={cn('truncate', row.firstItemIsBlueprintCopy && 'text-status-special')} title={row.typeName}>
+                          <span
+                            className={cn(
+                              'truncate',
+                              row.firstItemIsBlueprintCopy &&
+                                'text-status-special'
+                            )}
+                            title={row.typeName}
+                          >
                             {items.length === 0 ? '' : row.typeName}
                           </span>
                         </>
@@ -320,11 +465,18 @@ function ContractsTable({
                     {row.locationName}
                   </span>
                   {contract.type === 'courier' && row.endLocationName && (
-                    <span className="text-content-muted"> → {row.endLocationName}</span>
+                    <span className="text-content-muted">
+                      {' '}
+                      → {row.endLocationName}
+                    </span>
                   )}
                 </TableCell>
-                <TableCell className="py-1.5 text-content-secondary">{row.assignerName}</TableCell>
-                <TableCell className="py-1.5 text-content-secondary">{row.assigneeName}</TableCell>
+                <TableCell className="py-1.5 text-content-secondary">
+                  {row.assignerName}
+                </TableCell>
+                <TableCell className="py-1.5 text-content-secondary">
+                  {row.assigneeName}
+                </TableCell>
                 <TableCell className="py-1.5 text-right tabular-nums text-status-highlight">
                   {value > 0 ? formatNumber(value) : '-'}
                 </TableCell>
@@ -333,124 +485,186 @@ function ContractsTable({
                     {row.itemValue > 0 ? formatNumber(row.itemValue) : '-'}
                   </TableCell>
                 )}
-                {showCourierColumns && (() => {
-                  let daysDisplay = '-'
-                  let daysColor = 'text-content-secondary'
+                {showCourierColumns &&
+                  (() => {
+                    let daysDisplay = '-'
+                    let daysColor = 'text-content-secondary'
 
-                  if (contract.status === 'outstanding') {
-                    const expiryTime = new Date(contract.date_expired).getTime()
-                    const remaining = expiryTime - Date.now()
-                    const daysLeft = Math.ceil(remaining / (24 * 60 * 60 * 1000))
-                    if (daysLeft <= 0) {
-                      daysDisplay = 'Expired'
-                      daysColor = 'text-status-negative'
-                    } else {
-                      daysDisplay = `${daysLeft}d`
-                      daysColor = daysLeft <= 1 ? 'text-status-negative' : daysLeft <= 3 ? 'text-status-highlight' : 'text-content-secondary'
+                    if (contract.status === 'outstanding') {
+                      const expiryTime = new Date(
+                        contract.date_expired
+                      ).getTime()
+                      const remaining = expiryTime - Date.now()
+                      const daysLeft = Math.ceil(
+                        remaining / (24 * 60 * 60 * 1000)
+                      )
+                      if (daysLeft <= 0) {
+                        daysDisplay = 'Expired'
+                        daysColor = 'text-status-negative'
+                      } else {
+                        daysDisplay = `${daysLeft}d`
+                        daysColor =
+                          daysLeft <= 1
+                            ? 'text-status-negative'
+                            : daysLeft <= 3
+                              ? 'text-status-highlight'
+                              : 'text-content-secondary'
+                      }
+                    } else if (
+                      contract.status === 'in_progress' &&
+                      contract.date_accepted &&
+                      contract.days_to_complete
+                    ) {
+                      const acceptedDate = new Date(
+                        contract.date_accepted
+                      ).getTime()
+                      const deadline =
+                        acceptedDate +
+                        contract.days_to_complete * 24 * 60 * 60 * 1000
+                      const remaining = deadline - Date.now()
+                      const daysLeft = Math.ceil(
+                        remaining / (24 * 60 * 60 * 1000)
+                      )
+                      daysDisplay = daysLeft > 0 ? `${daysLeft}d` : 'Overdue'
+                      daysColor =
+                        daysLeft <= 1
+                          ? 'text-status-negative'
+                          : daysLeft <= 3
+                            ? 'text-status-highlight'
+                            : 'text-content-secondary'
                     }
-                  } else if (contract.status === 'in_progress' && contract.date_accepted && contract.days_to_complete) {
-                    const acceptedDate = new Date(contract.date_accepted).getTime()
-                    const deadline = acceptedDate + contract.days_to_complete * 24 * 60 * 60 * 1000
-                    const remaining = deadline - Date.now()
-                    const daysLeft = Math.ceil(remaining / (24 * 60 * 60 * 1000))
-                    daysDisplay = daysLeft > 0 ? `${daysLeft}d` : 'Overdue'
-                    daysColor = daysLeft <= 1 ? 'text-status-negative' : daysLeft <= 3 ? 'text-status-highlight' : 'text-content-secondary'
-                  }
 
-                  return (
-                    <>
-                      <TableCell className="py-1.5 text-right tabular-nums text-content-secondary">
-                        {contract.volume ? `${contract.volume.toLocaleString()} m³` : '-'}
-                      </TableCell>
-                      <TableCell className="py-1.5 text-right tabular-nums text-status-highlight">
-                        {contract.collateral ? formatNumber(contract.collateral) : '-'}
-                      </TableCell>
-                      <TableCell className={cn('py-1.5 text-right tabular-nums', daysColor)}>
-                        {daysDisplay}
-                      </TableCell>
-                    </>
-                  )
-                })()}
+                    return (
+                      <>
+                        <TableCell className="py-1.5 text-right tabular-nums text-content-secondary">
+                          {contract.volume
+                            ? `${contract.volume.toLocaleString()} m³`
+                            : '-'}
+                        </TableCell>
+                        <TableCell className="py-1.5 text-right tabular-nums text-status-highlight">
+                          {contract.collateral
+                            ? formatNumber(contract.collateral)
+                            : '-'}
+                        </TableCell>
+                        <TableCell
+                          className={cn(
+                            'py-1.5 text-right tabular-nums',
+                            daysColor
+                          )}
+                        >
+                          {daysDisplay}
+                        </TableCell>
+                      </>
+                    )
+                  })()}
                 {showCompletedDate ? (
                   <TableCell className="py-1.5 text-right tabular-nums text-content-secondary">
-                    {row.dateCompleted ? new Date(row.dateCompleted).toLocaleDateString() : '-'}
+                    {row.dateCompleted
+                      ? new Date(row.dateCompleted).toLocaleDateString()
+                      : '-'}
                   </TableCell>
                 ) : !showCourierColumns ? (
                   <TableCell
                     className={cn(
                       'py-1.5 text-right tabular-nums',
-                      expiry.isExpired ? 'text-status-negative' : 'text-content-secondary'
+                      expiry.isExpired
+                        ? 'text-status-negative'
+                        : 'text-content-secondary'
                     )}
                   >
                     {expiry.text}
                   </TableCell>
                 ) : null}
                 <TableCell className="py-1.5 text-right">
-                  {row.status === 'outstanding' && <span className="text-status-highlight">Outstanding</span>}
-                  {row.status === 'in_progress' && <span className="text-status-info">In Progress</span>}
-                  {(row.status === 'finished' || row.status === 'finished_issuer' || row.status === 'finished_contractor') && (
+                  {row.status === 'outstanding' && (
+                    <span className="text-status-highlight">Outstanding</span>
+                  )}
+                  {row.status === 'in_progress' && (
+                    <span className="text-status-info">In Progress</span>
+                  )}
+                  {(row.status === 'finished' ||
+                    row.status === 'finished_issuer' ||
+                    row.status === 'finished_contractor') && (
                     <span className="text-status-positive">Finished</span>
                   )}
-                  {row.status === 'cancelled' && <span className="text-content-secondary">Cancelled</span>}
-                  {row.status === 'rejected' && <span className="text-status-negative">Rejected</span>}
-                  {row.status === 'failed' && <span className="text-status-negative">Failed</span>}
-                  {row.status === 'deleted' && <span className="text-content-muted">Deleted</span>}
-                  {row.status === 'reversed' && <span className="text-status-warning">Reversed</span>}
+                  {row.status === 'cancelled' && (
+                    <span className="text-content-secondary">Cancelled</span>
+                  )}
+                  {row.status === 'rejected' && (
+                    <span className="text-status-negative">Rejected</span>
+                  )}
+                  {row.status === 'failed' && (
+                    <span className="text-status-negative">Failed</span>
+                  )}
+                  {row.status === 'deleted' && (
+                    <span className="text-content-muted">Deleted</span>
+                  )}
+                  {row.status === 'reversed' && (
+                    <span className="text-status-warning">Reversed</span>
+                  )}
                 </TableCell>
-            </TableRow>
-          )
-        })}
-      </TableBody>
-    </Table>
-    {totalPages > 1 && (
-      <div className="flex items-center justify-between px-2 py-2 text-sm">
-        <span className="text-content-secondary">
-          {clampedPage * PAGE_SIZE + 1}-{Math.min((clampedPage + 1) * PAGE_SIZE, sortedContracts.length)} of {sortedContracts.length}
-        </span>
-        <div className="flex gap-1">
-          <button
-            onClick={() => setPage(0)}
-            disabled={clampedPage === 0}
-            className="px-2 py-1 rounded hover:bg-surface-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            First
-          </button>
-          <button
-            onClick={() => setPage(clampedPage - 1)}
-            disabled={clampedPage === 0}
-            className="px-2 py-1 rounded hover:bg-surface-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Prev
-          </button>
-          <span className="px-2 py-1 text-content-secondary">
-            {clampedPage + 1} / {totalPages}
+              </TableRow>
+            )
+          })}
+        </TableBody>
+      </Table>
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-2 py-2 text-sm">
+          <span className="text-content-secondary">
+            {clampedPage * PAGE_SIZE + 1}-
+            {Math.min((clampedPage + 1) * PAGE_SIZE, sortedContracts.length)} of{' '}
+            {sortedContracts.length}
           </span>
-          <button
-            onClick={() => setPage(clampedPage + 1)}
-            disabled={clampedPage >= totalPages - 1}
-            className="px-2 py-1 rounded hover:bg-surface-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Next
-          </button>
-          <button
-            onClick={() => setPage(totalPages - 1)}
-            disabled={clampedPage >= totalPages - 1}
-            className="px-2 py-1 rounded hover:bg-surface-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Last
-          </button>
+          <div className="flex gap-1">
+            <button
+              onClick={() => setPage(0)}
+              disabled={clampedPage === 0}
+              className="px-2 py-1 rounded hover:bg-surface-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              First
+            </button>
+            <button
+              onClick={() => setPage(clampedPage - 1)}
+              disabled={clampedPage === 0}
+              className="px-2 py-1 rounded hover:bg-surface-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Prev
+            </button>
+            <span className="px-2 py-1 text-content-secondary">
+              {clampedPage + 1} / {totalPages}
+            </span>
+            <button
+              onClick={() => setPage(clampedPage + 1)}
+              disabled={clampedPage >= totalPages - 1}
+              className="px-2 py-1 rounded hover:bg-surface-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+            <button
+              onClick={() => setPage(totalPages - 1)}
+              disabled={clampedPage >= totalPages - 1}
+              className="px-2 py-1 rounded hover:bg-surface-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Last
+            </button>
+          </div>
         </div>
-      </div>
-    )}
+      )}
 
-    <ContractItemsDialog
-      open={selectedContract !== null}
-      onOpenChange={(open) => !open && setSelectedContract(null)}
-      items={selectedContract?.items ?? []}
-      contractType={selectedContract ? CONTRACT_TYPE_NAMES[selectedContract.contractWithItems.contract.type] : ''}
-      prices={prices}
-    />
-  </>
+      <ContractItemsDialog
+        open={selectedContract !== null}
+        onOpenChange={(open) => !open && setSelectedContract(null)}
+        items={selectedContract?.items ?? []}
+        contractType={
+          selectedContract
+            ? CONTRACT_TYPE_NAMES[
+                selectedContract.contractWithItems.contract.type
+              ]
+            : ''
+        }
+        prices={prices}
+      />
+    </>
   )
 }
 
@@ -465,7 +679,8 @@ function DirectionGroupRow({
   onToggle: () => void
   prices: Map<number, number>
 }) {
-  const colorClass = group.direction === 'in' ? 'text-status-positive' : 'text-status-warning'
+  const colorClass =
+    group.direction === 'in' ? 'text-status-positive' : 'text-status-warning'
 
   return (
     <div className="border-b border-border/50 last:border-b-0">
@@ -480,7 +695,8 @@ function DirectionGroupRow({
         )}
         <span className={cn('flex-1', colorClass)}>{group.displayName}</span>
         <span className="text-xs text-content-secondary">
-          {group.contracts.length} contract{group.contracts.length !== 1 ? 's' : ''}
+          {group.contracts.length} contract
+          {group.contracts.length !== 1 ? 's' : ''}
         </span>
         <span className="text-sm text-status-highlight tabular-nums">
           {group.totalValue > 0 && formatNumber(group.totalValue)}
@@ -502,20 +718,29 @@ export function ContractsTab() {
   const prices = useAssetStore((s) => s.prices)
   const getContractsByOwner = useContractsStore((s) => s.getContractsByOwner)
   const contractsUpdating = useContractsStore((s) => s.isUpdating)
-  const fetchItemsForContract = useContractsStore((s) => s.fetchItemsForContract)
+  const fetchItemsForContract = useContractsStore(
+    (s) => s.fetchItemsForContract
+  )
   const updateError = useContractsStore((s) => s.updateError)
   const init = useContractsStore((s) => s.init)
   const initialized = useContractsStore((s) => s.initialized)
   const updateCounter = useContractsStore((s) => s.updateCounter)
 
-  const contractsByOwner = useMemo(() => getContractsByOwner(), [getContractsByOwner, updateCounter])
+  const contractsByOwner = useMemo(
+    () => getContractsByOwner(),
+    [getContractsByOwner, updateCounter]
+  )
 
   const { isLoading: assetsUpdating } = useAssetData()
   const isUpdating = assetsUpdating || contractsUpdating
 
-  const [loadedItems, setLoadedItems] = useState<Map<number, ESIContractItem[]>>(new Map())
+  const [loadedItems, setLoadedItems] = useState<
+    Map<number, ESIContractItem[]>
+  >(new Map())
   const [isLoadingItems, setIsLoadingItems] = useState(false)
-  const [fetchedContractIds, setFetchedContractIds] = useState<Set<number>>(new Set())
+  const [fetchedContractIds, setFetchedContractIds] = useState<Set<number>>(
+    new Set()
+  )
 
   useEffect(() => {
     init()
@@ -535,7 +760,9 @@ export function ContractsTab() {
 
   const cacheVersion = useCacheVersion()
 
-  const [expandedDirections, setExpandedDirections] = useState<Set<string>>(new Set(['in', 'out']))
+  const [expandedDirections, setExpandedDirections] = useState<Set<string>>(
+    new Set(['in', 'out'])
+  )
   const [showCourier, setShowCourier] = useState(true)
   const [showCompleted, setShowCompleted] = useState(false)
 
@@ -543,7 +770,11 @@ export function ContractsTab() {
     if (!showCompleted) return
 
     const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
-    const FINISHED_STATUSES = new Set(['finished', 'finished_issuer', 'finished_contractor'])
+    const FINISHED_STATUSES = new Set([
+      'finished',
+      'finished_issuer',
+      'finished_contractor',
+    ])
 
     const fetchCompletedItems = async () => {
       const contractsToFetch = new Set<number>()
@@ -554,12 +785,17 @@ export function ContractsTab() {
           if (fetchedContractIds.has(contract.contract_id)) continue
           if (contractsToFetch.has(contract.contract_id)) continue
 
-          const isActive = contract.status === 'outstanding' || contract.status === 'in_progress'
+          const isActive =
+            contract.status === 'outstanding' ||
+            contract.status === 'in_progress'
           if (isActive) continue
 
-          const isItemContract = contract.type === 'item_exchange' || contract.type === 'auction'
+          const isItemContract =
+            contract.type === 'item_exchange' || contract.type === 'auction'
           const isFinished = FINISHED_STATUSES.has(contract.status)
-          const refTime = new Date(contract.date_completed ?? contract.date_expired).getTime()
+          const refTime = new Date(
+            contract.date_completed ?? contract.date_expired
+          ).getTime()
           const isWithin30Days = Date.now() - refTime < THIRTY_DAYS_MS
 
           if (isItemContract && isFinished && isWithin30Days) {
@@ -570,7 +806,7 @@ export function ContractsTab() {
 
       if (contractsToFetch.size === 0) return
 
-      setFetchedContractIds(prev => new Set([...prev, ...contractsToFetch]))
+      setFetchedContractIds((prev) => new Set([...prev, ...contractsToFetch]))
 
       setIsLoadingItems(true)
       try {
@@ -583,25 +819,46 @@ export function ContractsTab() {
     }
 
     fetchCompletedItems()
-  }, [showCompleted, contractsByOwner, fetchItemsForContract, fetchedContractIds, loadedItems])
+  }, [
+    showCompleted,
+    contractsByOwner,
+    fetchItemsForContract,
+    fetchedContractIds,
+    loadedItems,
+  ])
 
-  const { setExpandCollapse, search, setResultCount, setTotalValue, setColumns } = useTabControls()
+  const {
+    setExpandCollapse,
+    search,
+    setResultCount,
+    setTotalValue,
+    setColumns,
+  } = useTabControls()
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
-  const selectedSet = useMemo(() => new Set(selectedOwnerIds), [selectedOwnerIds])
+  const selectedSet = useMemo(
+    () => new Set(selectedOwnerIds),
+    [selectedOwnerIds]
+  )
 
-  const CONTRACT_COLUMNS: ColumnConfig[] = useMemo(() => [
-    { id: 'status', label: 'Status' },
-    { id: 'type', label: 'Type' },
-    { id: 'items', label: 'Items' },
-    { id: 'location', label: 'Location' },
-    { id: 'assignee', label: 'Assignee' },
-    { id: 'price', label: 'Price' },
-    { id: 'value', label: 'Value' },
-    { id: 'expires', label: 'Expires' },
-    { id: 'owner', label: 'Owner' },
-  ], [])
+  const CONTRACT_COLUMNS: ColumnConfig[] = useMemo(
+    () => [
+      { id: 'status', label: 'Status' },
+      { id: 'type', label: 'Type' },
+      { id: 'items', label: 'Items' },
+      { id: 'location', label: 'Location' },
+      { id: 'assignee', label: 'Assignee' },
+      { id: 'price', label: 'Price' },
+      { id: 'value', label: 'Value' },
+      { id: 'expires', label: 'Expires' },
+      { id: 'owner', label: 'Owner' },
+    ],
+    []
+  )
 
-  const { getColumnsForDropdown } = useColumnSettings('contracts', CONTRACT_COLUMNS)
+  const { getColumnsForDropdown } = useColumnSettings(
+    'contracts',
+    CONTRACT_COLUMNS
+  )
 
   const { directionGroups, courierGroup, completedContracts } = useMemo(() => {
     void cacheVersion
@@ -616,8 +873,18 @@ export function ContractsTab() {
     }
 
     const groups: Record<ContractDirection, DirectionGroup> = {
-      in: { direction: 'in', displayName: 'Contracts Received', contracts: [], totalValue: 0 },
-      out: { direction: 'out', displayName: 'Contracts Sent', contracts: [], totalValue: 0 },
+      in: {
+        direction: 'in',
+        displayName: 'Contracts Received',
+        contracts: [],
+        totalValue: 0,
+      },
+      out: {
+        direction: 'out',
+        displayName: 'Contracts Sent',
+        contracts: [],
+        totalValue: 0,
+      },
     }
 
     const courier: ContractRow[] = []
@@ -632,10 +899,18 @@ export function ContractsTab() {
         seenContracts.add(contract.contract_id)
 
         const isIssuer = ownerIds.has(contract.issuer_id)
-        const isActive = contract.status === 'outstanding' || contract.status === 'in_progress'
+        const isActive =
+          contract.status === 'outstanding' || contract.status === 'in_progress'
         const isCourier = contract.type === 'courier'
 
-        const row = buildContractRow(contractWithItems, owner.type, owner.id, isIssuer, loadedItems, prices)
+        const row = buildContractRow(
+          contractWithItems,
+          owner.type,
+          owner.id,
+          isIssuer,
+          loadedItems,
+          prices
+        )
 
         if (!isActive) {
           completed.push(row)
@@ -651,7 +926,10 @@ export function ContractsTab() {
       }
     }
 
-    const filterAndSort = (contracts: ContractRow[], sortByDate = false): { filtered: ContractRow[]; totalValue: number } => {
+    const filterAndSort = (
+      contracts: ContractRow[],
+      sortByDate = false
+    ): { filtered: ContractRow[]; totalValue: number } => {
       const searchLower = search.toLowerCase()
       let totalValue = 0
 
@@ -670,8 +948,12 @@ export function ContractsTab() {
 
       if (sortByDate) {
         filtered.sort((a, b) => {
-          const dateA = a.dateCompleted ? new Date(a.dateCompleted).getTime() : 0
-          const dateB = b.dateCompleted ? new Date(b.dateCompleted).getTime() : 0
+          const dateA = a.dateCompleted
+            ? new Date(a.dateCompleted).getTime()
+            : 0
+          const dateB = b.dateCompleted
+            ? new Date(b.dateCompleted).getTime()
+            : 0
           return dateB - dateA
         })
       } else {
@@ -688,15 +970,37 @@ export function ContractsTab() {
 
     return {
       directionGroups: [
-        { ...groups.in, contracts: inResult.filtered, totalValue: inResult.totalValue },
-        { ...groups.out, contracts: outResult.filtered, totalValue: outResult.totalValue },
+        {
+          ...groups.in,
+          contracts: inResult.filtered,
+          totalValue: inResult.totalValue,
+        },
+        {
+          ...groups.out,
+          contracts: outResult.filtered,
+          totalValue: outResult.totalValue,
+        },
       ].filter((g) => g.contracts.length > 0),
-      courierGroup: courierResult.filtered.length > 0
-        ? { direction: 'out' as ContractDirection, displayName: 'Active Couriers', contracts: courierResult.filtered, totalValue: courierResult.totalValue }
-        : null,
+      courierGroup:
+        courierResult.filtered.length > 0
+          ? {
+              direction: 'out' as ContractDirection,
+              displayName: 'Active Couriers',
+              contracts: courierResult.filtered,
+              totalValue: courierResult.totalValue,
+            }
+          : null,
       completedContracts: completedResult.filtered,
     }
-  }, [contractsByOwner, cacheVersion, owners, prices, search, selectedSet, loadedItems])
+  }, [
+    contractsByOwner,
+    cacheVersion,
+    owners,
+    prices,
+    search,
+    selectedSet,
+    loadedItems,
+  ])
 
   const toggleDirection = useCallback((direction: string) => {
     setExpandedDirections((prev) => {
@@ -716,7 +1020,9 @@ export function ContractsTab() {
   }, [])
 
   const expandableDirections = ['in', 'out'] as const
-  const isAllExpanded = expandableDirections.every((d) => expandedDirections.has(d))
+  const isAllExpanded = expandableDirections.every((d) =>
+    expandedDirections.has(d)
+  )
 
   useEffect(() => {
     setExpandCollapse({
@@ -747,7 +1053,9 @@ export function ContractsTab() {
         valueOut = group.totalValue
       }
       for (const row of group.contracts) {
-        contractPriceSum += (row.contractWithItems.contract.price ?? 0) + (row.contractWithItems.contract.reward ?? 0)
+        contractPriceSum +=
+          (row.contractWithItems.contract.price ?? 0) +
+          (row.contractWithItems.contract.reward ?? 0)
       }
     }
 
@@ -769,10 +1077,16 @@ export function ContractsTab() {
   }, [directionGroups, courierGroup, completedContracts])
 
   useEffect(() => {
-    const showingCount = totals.activeCount + totals.courierCount + totals.completedCount
+    const showingCount =
+      totals.activeCount + totals.courierCount + totals.completedCount
     setResultCount({ showing: showingCount, total: showingCount })
     return () => setResultCount(null)
-  }, [totals.activeCount, totals.courierCount, totals.completedCount, setResultCount])
+  }, [
+    totals.activeCount,
+    totals.courierCount,
+    totals.completedCount,
+    setResultCount,
+  ])
 
   useEffect(() => {
     setTotalValue({
@@ -784,7 +1098,13 @@ export function ContractsTab() {
       tertiaryLabel: 'Collateral',
     })
     return () => setTotalValue(null)
-  }, [totals.valueIn, totals.valueOut, contractPrice, totalCollateral, setTotalValue])
+  }, [
+    totals.valueIn,
+    totals.valueOut,
+    contractPrice,
+    totalCollateral,
+    setTotalValue,
+  ])
 
   useEffect(() => {
     setColumns(getColumnsForDropdown())
@@ -803,7 +1123,9 @@ export function ContractsTab() {
 
   return (
     <div className="h-full overflow-auto">
-      {directionGroups.length === 0 && !courierGroup && completedContracts.length === 0 ? (
+      {directionGroups.length === 0 &&
+      !courierGroup &&
+      completedContracts.length === 0 ? (
         <div className="flex items-center justify-center h-full">
           <p className="text-content-secondary">No contracts.</p>
         </div>
@@ -836,18 +1158,25 @@ export function ContractsTab() {
                     <ChevronRight className="h-4 w-4 text-content-secondary" />
                   )}
                   <Truck className="h-4 w-4 text-status-info" />
-                  <span className="text-status-info flex-1">{courierGroup.displayName}</span>
+                  <span className="text-status-info flex-1">
+                    {courierGroup.displayName}
+                  </span>
                   <span className="text-xs text-content-secondary">
                     {courierGroup.contracts.length} contract
                     {courierGroup.contracts.length !== 1 ? 's' : ''}
                   </span>
                   <span className="text-sm text-status-highlight tabular-nums">
-                    {courierGroup.totalValue > 0 && formatNumber(courierGroup.totalValue)}
+                    {courierGroup.totalValue > 0 &&
+                      formatNumber(courierGroup.totalValue)}
                   </span>
                 </button>
                 {showCourier && (
                   <div className="border-t border-border/50 bg-surface/30 px-4 pb-2">
-                    <ContractsTable contracts={courierGroup.contracts} showCourierColumns prices={prices} />
+                    <ContractsTable
+                      contracts={courierGroup.contracts}
+                      showCourierColumns
+                      prices={prices}
+                    />
                   </div>
                 )}
               </div>
@@ -855,7 +1184,9 @@ export function ContractsTab() {
           )}
           {completedContracts.length > 0 && (
             <>
-              {(directionGroups.length > 0 || courierGroup) && <div className="h-4" />}
+              {(directionGroups.length > 0 || courierGroup) && (
+                <div className="h-4" />
+              )}
               <div className="rounded-lg border border-border bg-surface-secondary/30">
                 <button
                   onClick={() => setShowCompleted(!showCompleted)}
@@ -867,7 +1198,9 @@ export function ContractsTab() {
                     <ChevronRight className="h-4 w-4 text-content-secondary" />
                   )}
                   <History className="h-4 w-4 text-content-secondary" />
-                  <span className="text-content-secondary flex-1">Completed Contracts</span>
+                  <span className="text-content-secondary flex-1">
+                    Completed Contracts
+                  </span>
                   {isLoadingItems && (
                     <Loader2 className="h-4 w-4 text-content-secondary animate-spin" />
                   )}
@@ -878,7 +1211,11 @@ export function ContractsTab() {
                 </button>
                 {showCompleted && (
                   <div className="border-t border-border/50 bg-surface/30 px-4 pb-2">
-                    <ContractsTable contracts={completedContracts} showCompletedDate prices={prices} />
+                    <ContractsTable
+                      contracts={completedContracts}
+                      showCompletedDate
+                      prices={prices}
+                    />
                   </div>
                 )}
               </div>

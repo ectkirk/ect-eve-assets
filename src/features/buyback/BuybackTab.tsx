@@ -38,7 +38,9 @@ function ToggleGroup<T extends string>({
 }: ToggleGroupProps<T>) {
   return (
     <div className={`flex items-center gap-4 ${disabled ? 'opacity-50' : ''}`}>
-      <span className="text-sm font-medium text-content-secondary">{label}</span>
+      <span className="text-sm font-medium text-content-secondary">
+        {label}
+      </span>
       <div className="flex rounded-lg border border-border bg-surface-tertiary p-0.5">
         {options.map((option) => (
           <button
@@ -65,13 +67,19 @@ interface BuybackTabProps {
 }
 
 export function BuybackTab({ activeTab }: BuybackTabProps) {
-  const { info, isLoading: isLoadingInfo, error: infoError, fetchInfo } = useBuybackInfoStore()
+  const {
+    info,
+    isLoading: isLoadingInfo,
+    error: infoError,
+    fetchInfo,
+  } = useBuybackInfoStore()
   const [result, setResult] = useState<BuybackResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const prevTabRef = useRef(activeTab)
 
-  const [assetSafetySecLevel, setAssetSafetySecLevel] = useState<AssetSafetySecurityLevel>('nullsec')
+  const [assetSafetySecLevel, setAssetSafetySecLevel] =
+    useState<AssetSafetySecurityLevel>('nullsec')
   const [npcStation, setNpcStation] = useState<NPCStationOption>('no')
 
   useEffect(() => {
@@ -97,8 +105,14 @@ export function BuybackTab({ activeTab }: BuybackTabProps) {
     }
 
     const assetSafetyRates = info.assetSafetyRates[assetSafetySecLevel]
-    const buyRate = npcStation === 'yes' ? assetSafetyRates.npcStation : assetSafetyRates.noNpcStation
-    const feeRate = npcStation === 'yes' ? info.assetSafetyRates.npcStationFeeRate : info.assetSafetyRates.feeRate
+    const buyRate =
+      npcStation === 'yes'
+        ? assetSafetyRates.npcStation
+        : assetSafetyRates.noNpcStation
+    const feeRate =
+      npcStation === 'yes'
+        ? info.assetSafetyRates.npcStationFeeRate
+        : info.assetSafetyRates.feeRate
 
     return {
       name: 'Asset Safety',
@@ -119,7 +133,10 @@ export function BuybackTab({ activeTab }: BuybackTabProps) {
     }
   }, [activeTab])
 
-  const prevAssetSafetyOptions = useRef({ secLevel: assetSafetySecLevel, npc: npcStation })
+  const prevAssetSafetyOptions = useRef({
+    secLevel: assetSafetySecLevel,
+    npc: npcStation,
+  })
   useEffect(() => {
     const prev = prevAssetSafetyOptions.current
     if (
@@ -129,7 +146,10 @@ export function BuybackTab({ activeTab }: BuybackTabProps) {
       setResult(null)
       setError(null)
     }
-    prevAssetSafetyOptions.current = { secLevel: assetSafetySecLevel, npc: npcStation }
+    prevAssetSafetyOptions.current = {
+      secLevel: assetSafetySecLevel,
+      npc: npcStation,
+    }
   }, [activeTab, assetSafetySecLevel, npcStation])
 
   const handleSubmit = async (text: string) => {
@@ -145,7 +165,10 @@ export function BuybackTab({ activeTab }: BuybackTabProps) {
         acceptCapitals: config.acceptCapitals,
         assetSafetyRate: config.assetSafetyRate,
       }
-      const res = await window.electronAPI!.refBuybackCalculate(text, buybackConfig)
+      const res = await window.electronAPI!.refBuybackCalculate(
+        text,
+        buybackConfig
+      )
       if (res.error) {
         setError(res.error)
         setResult(null)
@@ -184,7 +207,9 @@ export function BuybackTab({ activeTab }: BuybackTabProps) {
 
   const serviceName = info?.service?.name ?? 'Buyback'
   const feeRate = info?.assetSafetyRates
-    ? (npcStation === 'yes' ? info.assetSafetyRates.npcStationFeeRate : info.assetSafetyRates.feeRate)
+    ? npcStation === 'yes'
+      ? info.assetSafetyRates.npcStationFeeRate
+      : info.assetSafetyRates.feeRate
     : 0.15
 
   return (
@@ -249,7 +274,9 @@ export function BuybackTab({ activeTab }: BuybackTabProps) {
           </div>
         )}
 
-        {!error && result && config && <BuybackResults result={result} config={config} />}
+        {!error && result && config && (
+          <BuybackResults result={result} config={config} />
+        )}
 
         <BuybackFAQ />
       </div>

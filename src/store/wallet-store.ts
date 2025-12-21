@@ -1,10 +1,16 @@
 import { type Owner } from './auth-store'
-import { createOwnerStore, type BaseState, type BaseActions } from './create-owner-store'
+import {
+  createOwnerStore,
+  type BaseState,
+  type BaseActions,
+} from './create-owner-store'
 import { esi } from '@/api/esi'
 import { ESICorporationWalletDivisionSchema } from '@/api/schemas'
 import { z } from 'zod'
 
-export type ESICorporationWalletDivision = z.infer<typeof ESICorporationWalletDivisionSchema>
+export type ESICorporationWalletDivision = z.infer<
+  typeof ESICorporationWalletDivisionSchema
+>
 
 interface WalletData {
   balance?: number
@@ -23,7 +29,9 @@ export interface CorporationWallet {
 
 export type OwnerWallet = CharacterWallet | CorporationWallet
 
-export function isCorporationWallet(wallet: OwnerWallet): wallet is CorporationWallet {
+export function isCorporationWallet(
+  wallet: OwnerWallet
+): wallet is CorporationWallet {
   return wallet.owner.type === 'corporation'
 }
 
@@ -61,15 +69,26 @@ export const useWalletStore = createOwnerStore<
     if (owner.type === 'corporation') {
       const result = await esi.fetchWithMeta<ESICorporationWalletDivision[]>(
         `/corporations/${owner.id}/wallets/`,
-        { characterId: owner.characterId, schema: z.array(ESICorporationWalletDivisionSchema) }
+        {
+          characterId: owner.characterId,
+          schema: z.array(ESICorporationWalletDivisionSchema),
+        }
       )
-      return { data: { divisions: result.data }, expiresAt: result.expiresAt, etag: result.etag }
+      return {
+        data: { divisions: result.data },
+        expiresAt: result.expiresAt,
+        etag: result.etag,
+      }
     }
     const result = await esi.fetchWithMeta<number>(
       `/characters/${owner.characterId}/wallet/`,
       { characterId: owner.characterId, schema: z.number() }
     )
-    return { data: { balance: result.data }, expiresAt: result.expiresAt, etag: result.etag }
+    return {
+      data: { balance: result.data },
+      expiresAt: result.expiresAt,
+      etag: result.etag,
+    }
   },
   toOwnerData: (owner, data) => {
     if (data.divisions) {
@@ -79,7 +98,9 @@ export const useWalletStore = createOwnerStore<
   },
   extraActions: (_, get) => ({
     getTotalBalance: () => {
-      const state = get() as BaseState<OwnerWallet> & BaseActions & WalletExtraActions
+      const state = get() as BaseState<OwnerWallet> &
+        BaseActions &
+        WalletExtraActions
       let total = 0
       for (const wallet of state.dataByOwner) {
         if (isCorporationWallet(wallet)) {

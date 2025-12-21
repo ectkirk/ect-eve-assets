@@ -70,19 +70,32 @@ describe('contracts-store', () => {
 
       await useContractsStore.getState().update(true)
 
-      expect(useContractsStore.getState().updateError).toBe('No owners logged in')
+      expect(useContractsStore.getState().updateError).toBe(
+        'No owners logged in'
+      )
     })
 
     it('updates both character and corporation owners', async () => {
       const { useAuthStore, findOwnerByKey } = await import('./auth-store')
       const { esi } = await import('@/api/esi')
 
-      const charOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
-      const corpOwner = createMockOwner({ id: 98000001, characterId: 12345, name: 'Corp', type: 'corporation' })
-      vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({
-        'character-12345': charOwner,
-        'corporation-98000001': corpOwner,
-      }))
+      const charOwner = createMockOwner({
+        id: 12345,
+        name: 'Test',
+        type: 'character',
+      })
+      const corpOwner = createMockOwner({
+        id: 98000001,
+        characterId: 12345,
+        name: 'Corp',
+        type: 'corporation',
+      })
+      vi.mocked(useAuthStore.getState).mockReturnValue(
+        createMockAuthState({
+          'character-12345': charOwner,
+          'corporation-98000001': corpOwner,
+        })
+      )
       vi.mocked(findOwnerByKey).mockImplementation((key: string) => {
         if (key === 'character-12345') return charOwner
         if (key === 'corporation-98000001') return corpOwner
@@ -105,8 +118,14 @@ describe('contracts-store', () => {
       const { useAuthStore, findOwnerByKey } = await import('./auth-store')
       const { esi } = await import('@/api/esi')
 
-      const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
-      vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
+      const mockOwner = createMockOwner({
+        id: 12345,
+        name: 'Test',
+        type: 'character',
+      })
+      vi.mocked(useAuthStore.getState).mockReturnValue(
+        createMockAuthState({ 'character-12345': mockOwner })
+      )
       vi.mocked(findOwnerByKey).mockReturnValue(mockOwner)
 
       vi.mocked(esi.fetchPaginatedWithMeta).mockResolvedValue({
@@ -155,7 +174,9 @@ describe('contracts-store', () => {
         type: 'character',
         corporationId: 98000001,
       })
-      vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
+      vi.mocked(useAuthStore.getState).mockReturnValue(
+        createMockAuthState({ 'character-12345': mockOwner })
+      )
       vi.mocked(findOwnerByKey).mockReturnValue(mockOwner)
 
       const personalContract = {
@@ -195,10 +216,18 @@ describe('contracts-store', () => {
       const { useAuthStore } = await import('./auth-store')
       const { esi } = await import('@/api/esi')
 
-      const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
-      vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
+      const mockOwner = createMockOwner({
+        id: 12345,
+        name: 'Test',
+        type: 'character',
+      })
+      vi.mocked(useAuthStore.getState).mockReturnValue(
+        createMockAuthState({ 'character-12345': mockOwner })
+      )
 
-      vi.mocked(esi.fetchPaginatedWithMeta).mockRejectedValue(new Error('API Error'))
+      vi.mocked(esi.fetchPaginatedWithMeta).mockRejectedValue(
+        new Error('API Error')
+      )
 
       await useContractsStore.getState().update(true)
 
@@ -209,7 +238,9 @@ describe('contracts-store', () => {
   describe('clear', () => {
     it('resets store state', async () => {
       useContractsStore.setState({
-        contractsById: new Map([[1, { contract: {} as never, sourceOwner: {} as never }]]),
+        contractsById: new Map([
+          [1, { contract: {} as never, sourceOwner: {} as never }],
+        ]),
         visibilityByOwner: new Map([['test', new Set([1])]]),
         updateError: 'error',
       })
@@ -227,7 +258,11 @@ describe('contracts-store', () => {
     it('returns contracts grouped by owner', async () => {
       const { findOwnerByKey } = await import('./auth-store')
 
-      const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
+      const mockOwner = createMockOwner({
+        id: 12345,
+        name: 'Test',
+        type: 'character',
+      })
       vi.mocked(findOwnerByKey).mockReturnValue(mockOwner)
 
       const mockContract = {
@@ -245,11 +280,16 @@ describe('contracts-store', () => {
       }
 
       useContractsStore.setState({
-        contractsById: new Map([[1, {
-          contract: mockContract as never,
-          items: undefined,
-          sourceOwner: { type: 'character', id: 12345, characterId: 12345 },
-        }]]),
+        contractsById: new Map([
+          [
+            1,
+            {
+              contract: mockContract as never,
+              items: undefined,
+              sourceOwner: { type: 'character', id: 12345, characterId: 12345 },
+            },
+          ],
+        ]),
         visibilityByOwner: new Map([['character-12345', new Set([1])]]),
       })
 
@@ -288,11 +328,16 @@ describe('contracts-store', () => {
       }
 
       useContractsStore.setState({
-        contractsById: new Map([[1, {
-          contract: mockContract as never,
-          items: [mockItem as never],
-          sourceOwner: { type: 'character', id: 12345, characterId: 12345 },
-        }]]),
+        contractsById: new Map([
+          [
+            1,
+            {
+              contract: mockContract as never,
+              items: [mockItem as never],
+              sourceOwner: { type: 'character', id: 12345, characterId: 12345 },
+            },
+          ],
+        ]),
         visibilityByOwner: new Map([
           ['character-12345', new Set([1])],
           ['character-67890', new Set([1])],
@@ -300,7 +345,9 @@ describe('contracts-store', () => {
       })
 
       const prices = new Map([[34, 10]])
-      const total = useContractsStore.getState().getTotal(prices, ['character-12345', 'character-67890'])
+      const total = useContractsStore
+        .getState()
+        .getTotal(prices, ['character-12345', 'character-67890'])
 
       expect(total).toBe(1001000)
     })

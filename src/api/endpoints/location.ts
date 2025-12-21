@@ -8,10 +8,13 @@ export type ESICharacterShip = z.infer<typeof ESICharacterShipSchema>
 export async function getCharacterLocation(
   characterId: number
 ): Promise<ESICharacterLocation> {
-  return esi.fetch<ESICharacterLocation>(`/characters/${characterId}/location/`, {
-    characterId,
-    schema: ESICharacterLocationSchema,
-  })
+  return esi.fetch<ESICharacterLocation>(
+    `/characters/${characterId}/location/`,
+    {
+      characterId,
+      schema: ESICharacterLocationSchema,
+    }
+  )
 }
 
 export async function getCharacterShip(

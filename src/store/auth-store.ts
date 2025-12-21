@@ -1,5 +1,9 @@
 import { create } from 'zustand'
-import { persist, createJSONStorage, type StateStorage } from 'zustand/middleware'
+import {
+  persist,
+  createJSONStorage,
+  type StateStorage,
+} from 'zustand/middleware'
 
 // Custom storage adapter using Electron IPC for reliable file-based persistence
 const electronStorage: StateStorage = {
@@ -94,7 +98,12 @@ interface AuthState {
   isOwnerSelected: (ownerId: string) => boolean
   updateOwnerTokens: (
     ownerId: string,
-    tokens: { accessToken: string; refreshToken: string; expiresAt: number; scopes?: string[] }
+    tokens: {
+      accessToken: string
+      refreshToken: string
+      expiresAt: number
+      scopes?: string[]
+    }
   ) => void
   setOwnerAuthFailed: (ownerId: string, failed: boolean) => void
   setOwnerScopesOutdated: (ownerId: string, outdated: boolean) => void
@@ -140,7 +149,14 @@ export const useAuthStore = create<AuthState>()(
       selectedOwnerIds: [],
       isAuthenticated: false,
 
-      addOwner: ({ accessToken, refreshToken, expiresAt, scopes, corporationRoles, owner }) => {
+      addOwner: ({
+        accessToken,
+        refreshToken,
+        expiresAt,
+        scopes,
+        corporationRoles,
+        owner,
+      }) => {
         const key = ownerKey(owner.type, owner.id)
         set((state) => {
           const newOwners = {
@@ -174,7 +190,9 @@ export const useAuthStore = create<AuthState>()(
           const { [ownerId]: _removed, ...remaining } = state.owners
           return {
             owners: remaining,
-            selectedOwnerIds: state.selectedOwnerIds.filter((id) => id !== ownerId),
+            selectedOwnerIds: state.selectedOwnerIds.filter(
+              (id) => id !== ownerId
+            ),
             isAuthenticated: Object.keys(remaining).length > 0,
           }
         })
@@ -204,7 +222,10 @@ export const useAuthStore = create<AuthState>()(
         return get().selectedOwnerIds.includes(ownerId)
       },
 
-      updateOwnerTokens: (ownerId, { accessToken, refreshToken, expiresAt, scopes }) => {
+      updateOwnerTokens: (
+        ownerId,
+        { accessToken, refreshToken, expiresAt, scopes }
+      ) => {
         set((state) => {
           const owner = state.owners[ownerId]
           if (!owner) return state
@@ -315,7 +336,10 @@ export const useAuthStore = create<AuthState>()(
 
       getOwnerByCharacterId: (characterId) => {
         const { owners } = get()
-        return Object.values(owners).find((o) => o.characterId === characterId) ?? null
+        return (
+          Object.values(owners).find((o) => o.characterId === characterId) ??
+          null
+        )
       },
 
       getAllOwners: () => {
@@ -327,7 +351,9 @@ export const useAuthStore = create<AuthState>()(
       },
 
       getCorporationOwners: () => {
-        return Object.values(get().owners).filter((o) => o.type === 'corporation')
+        return Object.values(get().owners).filter(
+          (o) => o.type === 'corporation'
+        )
       },
 
       isOwnerTokenExpired: (ownerId) => {
@@ -420,12 +446,17 @@ export const useAuthStore = create<AuthState>()(
         if (state) {
           state.isAuthenticated = Object.keys(state.owners).length > 0
           // Migration: handle old activeOwnerId format
-          const rawState = state as AuthState & { activeOwnerId?: string | null }
+          const rawState = state as AuthState & {
+            activeOwnerId?: string | null
+          }
           if ('activeOwnerId' in rawState && !state.selectedOwnerIds?.length) {
             const ownerKeys = Object.keys(state.owners)
             if (rawState.activeOwnerId === null) {
               state.selectedOwnerIds = ownerKeys
-            } else if (rawState.activeOwnerId && ownerKeys.includes(rawState.activeOwnerId)) {
+            } else if (
+              rawState.activeOwnerId &&
+              ownerKeys.includes(rawState.activeOwnerId)
+            ) {
               state.selectedOwnerIds = [rawState.activeOwnerId]
             } else {
               state.selectedOwnerIds = ownerKeys

@@ -59,19 +59,34 @@ const CONTRACT_GROUPS = new Set([883, 547, 4594, 485, 1538, 659, 30])
 const CHUNK_CONCURRENCY = 3
 
 const CONTROL_TOWER_GROUP_ID = 365
-const TIER_2_TOWER_PREFIXES = ['Dark Blood', 'Dread Guristas', 'Shadow', 'Domination', 'True Sansha']
-const TIER_1_TOWER_PREFIXES = ['Angel', 'Blood', 'Guristas', 'Sansha', 'Serpentis']
+const TIER_2_TOWER_PREFIXES = [
+  'Dark Blood',
+  'Dread Guristas',
+  'Shadow',
+  'Domination',
+  'True Sansha',
+]
+const TIER_1_TOWER_PREFIXES = [
+  'Angel',
+  'Blood',
+  'Guristas',
+  'Sansha',
+  'Serpentis',
+]
 
-function getTowerInfo(groupId: number, name: string): { towerSize?: number; fuelTier?: number } {
+function getTowerInfo(
+  groupId: number,
+  name: string
+): { towerSize?: number; fuelTier?: number } {
   if (groupId !== CONTROL_TOWER_GROUP_ID) return {}
 
-  const towerSize = name.includes('Small') ? 1
-                  : name.includes('Medium') ? 2
-                  : 3
+  const towerSize = name.includes('Small') ? 1 : name.includes('Medium') ? 2 : 3
 
-  const fuelTier = TIER_2_TOWER_PREFIXES.some(p => name.startsWith(p)) ? 2
-                 : TIER_1_TOWER_PREFIXES.some(p => name.startsWith(p)) ? 1
-                 : 0
+  const fuelTier = TIER_2_TOWER_PREFIXES.some((p) => name.startsWith(p))
+    ? 2
+    : TIER_1_TOWER_PREFIXES.some((p) => name.startsWith(p))
+      ? 1
+      : 0
 
   return { towerSize, fuelTier }
 }
@@ -120,8 +135,11 @@ export function _resetForTests(): void {
   referenceDataPromise = null
 }
 
-export async function loadReferenceData(onProgress?: ReferenceDataProgress): Promise<void> {
-  if (isReferenceDataLoaded() && isAllTypesLoaded() && isBlueprintsLoaded()) return
+export async function loadReferenceData(
+  onProgress?: ReferenceDataProgress
+): Promise<void> {
+  if (isReferenceDataLoaded() && isAllTypesLoaded() && isBlueprintsLoaded())
+    return
 
   if (referenceDataPromise) {
     return referenceDataPromise
@@ -138,24 +156,37 @@ export async function loadReferenceData(onProgress?: ReferenceDataProgress): Pro
       ])
 
       if (categoriesRaw && 'error' in categoriesRaw) {
-        logger.error('Failed to load categories', undefined, { module: 'RefAPI', error: categoriesRaw.error })
+        logger.error('Failed to load categories', undefined, {
+          module: 'RefAPI',
+          error: categoriesRaw.error,
+        })
         return
       }
 
       if (groupsRaw && 'error' in groupsRaw) {
-        logger.error('Failed to load groups', undefined, { module: 'RefAPI', error: groupsRaw.error })
+        logger.error('Failed to load groups', undefined, {
+          module: 'RefAPI',
+          error: groupsRaw.error,
+        })
         return
       }
 
-      const categoriesResult = RefCategoriesResponseSchema.safeParse(categoriesRaw)
+      const categoriesResult =
+        RefCategoriesResponseSchema.safeParse(categoriesRaw)
       if (!categoriesResult.success) {
-        logger.error('Categories validation failed', undefined, { module: 'RefAPI', errors: categoriesResult.error.issues.slice(0, 3) })
+        logger.error('Categories validation failed', undefined, {
+          module: 'RefAPI',
+          errors: categoriesResult.error.issues.slice(0, 3),
+        })
         return
       }
 
       const groupsResult = RefGroupsResponseSchema.safeParse(groupsRaw)
       if (!groupsResult.success) {
-        logger.error('Groups validation failed', undefined, { module: 'RefAPI', errors: groupsResult.error.issues.slice(0, 3) })
+        logger.error('Groups validation failed', undefined, {
+          module: 'RefAPI',
+          errors: groupsResult.error.issues.slice(0, 3),
+        })
         return
       }
 
@@ -166,7 +197,12 @@ export async function loadReferenceData(onProgress?: ReferenceDataProgress): Pro
       await setGroups(groups)
 
       const catGroupDuration = Math.round(performance.now() - start)
-      logger.info('Categories and groups loaded', { module: 'RefAPI', categories: categories.length, groups: groups.length, duration: catGroupDuration })
+      logger.info('Categories and groups loaded', {
+        module: 'RefAPI',
+        categories: categories.length,
+        groups: groups.length,
+        duration: catGroupDuration,
+      })
     }
 
     await Promise.all([loadAllTypes(onProgress), loadBlueprints()])
@@ -221,12 +257,19 @@ async function loadAllTypes(onProgress?: ReferenceDataProgress): Promise<void> {
     const result = await window.electronAPI!.refTypesPage({ after: cursor })
 
     if (result.error) {
-      logger.error('Failed to load types page', undefined, { module: 'RefAPI', error: result.error, cursor })
+      logger.error('Failed to load types page', undefined, {
+        module: 'RefAPI',
+        error: result.error,
+        cursor,
+      })
       return
     }
 
     if (!result.items || !result.pagination) {
-      logger.error('Invalid types page response', undefined, { module: 'RefAPI', cursor })
+      logger.error('Invalid types page response', undefined, {
+        module: 'RefAPI',
+        cursor,
+      })
       return
     }
 
@@ -240,16 +283,25 @@ async function loadAllTypes(onProgress?: ReferenceDataProgress): Promise<void> {
       await saveTypes(enrichedTypes)
     }
 
-    onProgress?.(`Loading types (${loaded.toLocaleString()}/${total.toLocaleString()})...`)
+    onProgress?.(
+      `Loading types (${loaded.toLocaleString()}/${total.toLocaleString()})...`
+    )
 
-    cursor = result.pagination.hasMore ? result.pagination.nextCursor : undefined
+    cursor = result.pagination.hasMore
+      ? result.pagination.nextCursor
+      : undefined
   } while (cursor !== undefined)
 
   setAllTypesLoaded(true)
   notifyCacheListeners()
 
   const duration = Math.round(performance.now() - start)
-  logger.info('All types loaded', { module: 'RefAPI', total: loaded, pages: pageCount, duration })
+  logger.info('All types loaded', {
+    module: 'RefAPI',
+    total: loaded,
+    pages: pageCount,
+    duration,
+  })
 }
 
 async function loadBlueprints(): Promise<void> {
@@ -260,26 +312,37 @@ async function loadBlueprints(): Promise<void> {
   const result = await window.electronAPI!.refBlueprints()
 
   if ('error' in result) {
-    logger.error('Failed to load blueprints', undefined, { module: 'RefAPI', error: result.error })
+    logger.error('Failed to load blueprints', undefined, {
+      module: 'RefAPI',
+      error: result.error,
+    })
     return
   }
 
-  const blueprints: CachedBlueprint[] = Object.entries(result.items).map(([bpId, productId]) => ({
-    id: Number(bpId),
-    productId,
-  }))
+  const blueprints: CachedBlueprint[] = Object.entries(result.items).map(
+    ([bpId, productId]) => ({
+      id: Number(bpId),
+      productId,
+    })
+  )
 
   await setBlueprints(blueprints)
   setBlueprintsLoaded(true)
   notifyCacheListeners()
 
   const duration = Math.round(performance.now() - start)
-  logger.info('Blueprints loaded', { module: 'RefAPI', count: blueprints.length, duration })
+  logger.info('Blueprints loaded', {
+    module: 'RefAPI',
+    count: blueprints.length,
+    duration,
+  })
 }
 
 let universeDataPromise: Promise<void> | null = null
 
-export async function loadUniverseData(onProgress?: ReferenceDataProgress): Promise<void> {
+export async function loadUniverseData(
+  onProgress?: ReferenceDataProgress
+): Promise<void> {
   if (isUniverseDataLoaded()) return
 
   if (universeDataPromise) {
@@ -312,7 +375,10 @@ async function loadAllRegions(): Promise<void> {
   const result = await window.electronAPI!.refUniverseRegions()
 
   if (result.error) {
-    logger.error('Failed to load regions', undefined, { module: 'RefAPI', error: result.error })
+    logger.error('Failed to load regions', undefined, {
+      module: 'RefAPI',
+      error: result.error,
+    })
     return
   }
 
@@ -330,10 +396,12 @@ async function loadAllRegions(): Promise<void> {
     return
   }
 
-  const regions: CachedRegion[] = Object.values(parseResult.data.items).map(r => ({
-    id: r.id,
-    name: r.name,
-  }))
+  const regions: CachedRegion[] = Object.values(parseResult.data.items).map(
+    (r) => ({
+      id: r.id,
+      name: r.name,
+    })
+  )
 
   await setRegions(regions)
 }
@@ -343,7 +411,10 @@ async function loadAllSystems(): Promise<void> {
   const result = await window.electronAPI!.refUniverseSystems()
 
   if (result.error) {
-    logger.error('Failed to load systems', undefined, { module: 'RefAPI', error: result.error })
+    logger.error('Failed to load systems', undefined, {
+      module: 'RefAPI',
+      error: result.error,
+    })
     return
   }
 
@@ -361,17 +432,23 @@ async function loadAllSystems(): Promise<void> {
     return
   }
 
-  const systems: CachedSystem[] = Object.values(parseResult.data.items).map(s => ({
-    id: s.id,
-    name: s.name,
-    regionId: s.regionId,
-    securityStatus: s.securityStatus,
-  }))
+  const systems: CachedSystem[] = Object.values(parseResult.data.items).map(
+    (s) => ({
+      id: s.id,
+      name: s.name,
+      regionId: s.regionId,
+      securityStatus: s.securityStatus,
+    })
+  )
 
   await setSystems(systems)
 
   const duration = Math.round(performance.now() - start)
-  logger.info('Systems loaded', { module: 'RefAPI', count: systems.length, duration })
+  logger.info('Systems loaded', {
+    module: 'RefAPI',
+    count: systems.length,
+    duration,
+  })
 }
 
 async function loadAllStations(): Promise<void> {
@@ -379,7 +456,10 @@ async function loadAllStations(): Promise<void> {
   const result = await window.electronAPI!.refUniverseStations()
 
   if (result.error) {
-    logger.error('Failed to load stations', undefined, { module: 'RefAPI', error: result.error })
+    logger.error('Failed to load stations', undefined, {
+      module: 'RefAPI',
+      error: result.error,
+    })
     return
   }
 
@@ -397,21 +477,29 @@ async function loadAllStations(): Promise<void> {
     return
   }
 
-  const stations: CachedStation[] = Object.values(parseResult.data.items).map(s => ({
-    id: s.id,
-    name: s.name,
-    systemId: s.systemId,
-  }))
+  const stations: CachedStation[] = Object.values(parseResult.data.items).map(
+    (s) => ({
+      id: s.id,
+      name: s.name,
+      systemId: s.systemId,
+    })
+  )
 
   await setStations(stations)
 
   const duration = Math.round(performance.now() - start)
-  logger.info('Stations loaded', { module: 'RefAPI', count: stations.length, duration })
+  logger.info('Stations loaded', {
+    module: 'RefAPI',
+    count: stations.length,
+    duration,
+  })
 }
 
 let refStructuresPromise: Promise<void> | null = null
 
-export async function loadRefStructures(onProgress?: ReferenceDataProgress): Promise<void> {
+export async function loadRefStructures(
+  onProgress?: ReferenceDataProgress
+): Promise<void> {
   if (isRefStructuresLoaded()) return
 
   if (refStructuresPromise) {
@@ -428,10 +516,15 @@ export async function loadRefStructures(onProgress?: ReferenceDataProgress): Pro
     const allStructures: CachedRefStructure[] = []
 
     do {
-      const result = await window.electronAPI!.refUniverseStructuresPage({ after: cursor })
+      const result = await window.electronAPI!.refUniverseStructuresPage({
+        after: cursor,
+      })
 
       if (result.error) {
-        logger.error('Failed to load structures page', undefined, { module: 'RefAPI', error: result.error })
+        logger.error('Failed to load structures page', undefined, {
+          module: 'RefAPI',
+          error: result.error,
+        })
         return
       }
 
@@ -449,7 +542,9 @@ export async function loadRefStructures(onProgress?: ReferenceDataProgress): Pro
         return
       }
 
-      const structures: CachedRefStructure[] = Object.values(parseResult.data.items).map(s => ({
+      const structures: CachedRefStructure[] = Object.values(
+        parseResult.data.items
+      ).map((s) => ({
         id: parseInt(s.id, 10),
         name: s.name,
         systemId: s.systemId,
@@ -463,9 +558,13 @@ export async function loadRefStructures(onProgress?: ReferenceDataProgress): Pro
       loaded += structures.length
       pageCount++
 
-      onProgress?.(`Loading structures (${loaded.toLocaleString()}/${total.toLocaleString()})...`)
+      onProgress?.(
+        `Loading structures (${loaded.toLocaleString()}/${total.toLocaleString()})...`
+      )
 
-      cursor = result.pagination.hasMore ? (result.pagination.nextCursor ?? undefined) : undefined
+      cursor = result.pagination.hasMore
+        ? (result.pagination.nextCursor ?? undefined)
+        : undefined
     } while (cursor !== undefined)
 
     await setRefStructures(allStructures)
@@ -473,7 +572,12 @@ export async function loadRefStructures(onProgress?: ReferenceDataProgress): Pro
     notifyCacheListeners()
 
     const duration = Math.round(performance.now() - start)
-    logger.info('RefStructures loaded', { module: 'RefAPI', count: allStructures.length, pages: pageCount, duration })
+    logger.info('RefStructures loaded', {
+      module: 'RefAPI',
+      count: allStructures.length,
+      pages: pageCount,
+      duration,
+    })
   })().finally(() => {
     refStructuresPromise = null
   })
@@ -498,7 +602,12 @@ async function fetchMoons(ids: number[]): Promise<Map<number, MoonData>> {
     const duration = Math.round(performance.now() - start)
 
     if (rawData && 'error' in rawData && rawData.error) {
-      logger.warn('RefAPI /moons failed', { module: 'RefAPI', error: rawData.error, requested: ids.length, duration })
+      logger.warn('RefAPI /moons failed', {
+        module: 'RefAPI',
+        error: rawData.error,
+        requested: ids.length,
+        duration,
+      })
       return results
     }
 
@@ -515,7 +624,12 @@ async function fetchMoons(ids: number[]): Promise<Map<number, MoonData>> {
       results.set(Number(idStr), moon)
     }
 
-    logger.info('RefAPI /moons', { module: 'RefAPI', requested: ids.length, returned: results.size, duration })
+    logger.info('RefAPI /moons', {
+      module: 'RefAPI',
+      requested: ids.length,
+      returned: results.size,
+      duration,
+    })
   } catch (error) {
     logger.error('RefAPI /moons error', error, { module: 'RefAPI' })
   }
@@ -523,7 +637,9 @@ async function fetchMoons(ids: number[]): Promise<Map<number, MoonData>> {
   return results
 }
 
-export async function resolveTypes(typeIds: number[]): Promise<Map<number, CachedType>> {
+export async function resolveTypes(
+  typeIds: number[]
+): Promise<Map<number, CachedType>> {
   await loadReferenceData()
 
   const results = new Map<number, CachedType>()
@@ -550,7 +666,9 @@ function isCelestialIdRange(id: number): boolean {
   return id >= 40000000 && id < 50000000
 }
 
-export async function resolveLocations(locationIds: number[]): Promise<Map<number, CachedLocation>> {
+export async function resolveLocations(
+  locationIds: number[]
+): Promise<Map<number, CachedLocation>> {
   await loadUniverseData()
 
   const results = new Map<number, CachedLocation>()
@@ -594,7 +712,9 @@ export async function resolveLocations(locationIds: number[]): Promise<Map<numbe
         solarSystemId: moon.systemId,
         solarSystemName: system?.name,
         regionId: system?.regionId,
-        regionName: system?.regionId ? getRegion(system.regionId)?.name : undefined,
+        regionName: system?.regionId
+          ? getRegion(system.regionId)?.name
+          : undefined,
       }
       results.set(id, cached)
       toCache.push(cached)
@@ -638,7 +758,12 @@ function createMarketChunkFetcher(options: MarketBulkOptions) {
       const duration = Math.round(performance.now() - chunkStart)
 
       if (rawData && typeof rawData === 'object' && 'error' in rawData) {
-        logger.warn('RefAPI /market/bulk failed', { module: 'RefAPI', error: rawData.error, requested: chunk.length, duration })
+        logger.warn('RefAPI /market/bulk failed', {
+          module: 'RefAPI',
+          error: rawData.error,
+          requested: chunk.length,
+          duration,
+        })
         return results
       }
 
@@ -652,7 +777,12 @@ function createMarketChunkFetcher(options: MarketBulkOptions) {
       }
 
       const returned = Object.keys(parseResult.data.items).length
-      logger.info('RefAPI /market/bulk', { module: 'RefAPI', requested: chunk.length, returned, duration })
+      logger.info('RefAPI /market/bulk', {
+        module: 'RefAPI',
+        requested: chunk.length,
+        returned,
+        duration,
+      })
 
       for (const [idStr, item] of Object.entries(parseResult.data.items)) {
         results.set(Number(idStr), item)
@@ -677,19 +807,28 @@ async function fetchMarketFromAPI(
     typeIds,
     100,
     createMarketChunkFetcher(options),
-    (chunk, acc) => { for (const [k, v] of chunk) acc.set(k, v) },
+    (chunk, acc) => {
+      for (const [k, v] of chunk) acc.set(k, v)
+    },
     new Map<number, MarketBulkItem>()
   )
 
   if (typeIds.length > 100) {
     const totalDuration = Math.round(performance.now() - totalStart)
-    logger.info('RefAPI /market/bulk total', { module: 'RefAPI', requested: typeIds.length, returned: results.size, duration: totalDuration })
+    logger.info('RefAPI /market/bulk total', {
+      module: 'RefAPI',
+      requested: typeIds.length,
+      returned: results.size,
+      duration: totalDuration,
+    })
   }
 
   return results
 }
 
-async function fetchJitaPricesChunk(chunk: number[]): Promise<Map<number, number>> {
+async function fetchJitaPricesChunk(
+  chunk: number[]
+): Promise<Map<number, number>> {
   const results = new Map<number, number>()
   const chunkStart = performance.now()
 
@@ -698,7 +837,12 @@ async function fetchJitaPricesChunk(chunk: number[]): Promise<Map<number, number
     const duration = Math.round(performance.now() - chunkStart)
 
     if (rawData && typeof rawData === 'object' && 'error' in rawData) {
-      logger.warn('RefAPI /market/jita failed', { module: 'RefAPI', error: rawData.error, requested: chunk.length, duration })
+      logger.warn('RefAPI /market/jita failed', {
+        module: 'RefAPI',
+        error: rawData.error,
+        requested: chunk.length,
+        duration,
+      })
       return results
     }
 
@@ -718,7 +862,12 @@ async function fetchJitaPricesChunk(chunk: number[]): Promise<Map<number, number
         returned++
       }
     }
-    logger.info('RefAPI /market/jita', { module: 'RefAPI', requested: chunk.length, returned, duration })
+    logger.info('RefAPI /market/jita', {
+      module: 'RefAPI',
+      requested: chunk.length,
+      returned,
+      duration,
+    })
   } catch (error) {
     logger.error('RefAPI /market/jita error', error, { module: 'RefAPI' })
   }
@@ -726,7 +875,9 @@ async function fetchJitaPricesChunk(chunk: number[]): Promise<Map<number, number
   return results
 }
 
-async function fetchJitaPricesFromAPI(typeIds: number[]): Promise<Map<number, number>> {
+async function fetchJitaPricesFromAPI(
+  typeIds: number[]
+): Promise<Map<number, number>> {
   if (typeIds.length === 0) return new Map()
 
   const totalStart = performance.now()
@@ -735,13 +886,20 @@ async function fetchJitaPricesFromAPI(typeIds: number[]): Promise<Map<number, nu
     typeIds,
     1000,
     fetchJitaPricesChunk,
-    (chunk, acc) => { for (const [k, v] of chunk) acc.set(k, v) },
+    (chunk, acc) => {
+      for (const [k, v] of chunk) acc.set(k, v)
+    },
     new Map<number, number>()
   )
 
   if (typeIds.length > 1000) {
     const totalDuration = Math.round(performance.now() - totalStart)
-    logger.info('RefAPI /market/jita total', { module: 'RefAPI', requested: typeIds.length, returned: results.size, duration: totalDuration })
+    logger.info('RefAPI /market/jita total', {
+      module: 'RefAPI',
+      requested: typeIds.length,
+      returned: results.size,
+      duration: totalDuration,
+    })
   }
 
   return results
@@ -754,7 +912,11 @@ async function fetchPlexPriceFromAPI(): Promise<number | null> {
     const duration = Math.round(performance.now() - start)
 
     if (rawData && typeof rawData === 'object' && 'error' in rawData) {
-      logger.warn('RefAPI /market/plex failed', { module: 'RefAPI', error: rawData.error, duration })
+      logger.warn('RefAPI /market/plex failed', {
+        module: 'RefAPI',
+        error: rawData.error,
+        duration,
+      })
       return null
     }
 
@@ -775,7 +937,9 @@ async function fetchPlexPriceFromAPI(): Promise<number | null> {
   }
 }
 
-async function fetchContractPricesChunk(chunk: number[]): Promise<Map<number, number>> {
+async function fetchContractPricesChunk(
+  chunk: number[]
+): Promise<Map<number, number>> {
   const results = new Map<number, number>()
   const chunkStart = performance.now()
 
@@ -784,7 +948,12 @@ async function fetchContractPricesChunk(chunk: number[]): Promise<Map<number, nu
     const duration = Math.round(performance.now() - chunkStart)
 
     if (rawData && typeof rawData === 'object' && 'error' in rawData) {
-      logger.warn('RefAPI /market/contracts failed', { module: 'RefAPI', error: rawData.error, requested: chunk.length, duration })
+      logger.warn('RefAPI /market/contracts failed', {
+        module: 'RefAPI',
+        error: rawData.error,
+        requested: chunk.length,
+        duration,
+      })
       return results
     }
 
@@ -804,7 +973,12 @@ async function fetchContractPricesChunk(chunk: number[]): Promise<Map<number, nu
         returned++
       }
     }
-    logger.info('RefAPI /market/contracts', { module: 'RefAPI', requested: chunk.length, returned, duration })
+    logger.info('RefAPI /market/contracts', {
+      module: 'RefAPI',
+      requested: chunk.length,
+      returned,
+      duration,
+    })
   } catch (error) {
     logger.error('RefAPI /market/contracts error', error, { module: 'RefAPI' })
   }
@@ -812,7 +986,9 @@ async function fetchContractPricesChunk(chunk: number[]): Promise<Map<number, nu
   return results
 }
 
-async function fetchContractPricesFromAPI(typeIds: number[]): Promise<Map<number, number>> {
+async function fetchContractPricesFromAPI(
+  typeIds: number[]
+): Promise<Map<number, number>> {
   if (typeIds.length === 0) return new Map()
 
   const totalStart = performance.now()
@@ -821,13 +997,20 @@ async function fetchContractPricesFromAPI(typeIds: number[]): Promise<Map<number
     typeIds,
     100,
     fetchContractPricesChunk,
-    (chunk, acc) => { for (const [k, v] of chunk) acc.set(k, v) },
+    (chunk, acc) => {
+      for (const [k, v] of chunk) acc.set(k, v)
+    },
     new Map<number, number>()
   )
 
   if (typeIds.length > 100) {
     const totalDuration = Math.round(performance.now() - totalStart)
-    logger.info('RefAPI /market/contracts total', { module: 'RefAPI', requested: typeIds.length, returned: results.size, duration: totalDuration })
+    logger.info('RefAPI /market/contracts total', {
+      module: 'RefAPI',
+      requested: typeIds.length,
+      returned: results.size,
+      duration: totalDuration,
+    })
   }
 
   return results
@@ -858,7 +1041,9 @@ function categorizeTypeIdsByEndpoint(typeIds: number[]): {
   return { plexIds, contractIds, jitaIds }
 }
 
-async function fetchPricesRouted(typeIds: number[]): Promise<Map<number, number>> {
+async function fetchPricesRouted(
+  typeIds: number[]
+): Promise<Map<number, number>> {
   if (typeIds.length === 0) return new Map()
 
   await resolveTypes(typeIds)
@@ -911,7 +1096,9 @@ async function fetchPricesRouted(typeIds: number[]): Promise<Map<number, number>
   return results
 }
 
-export async function fetchPrices(typeIds: number[]): Promise<Map<number, number>> {
+export async function fetchPrices(
+  typeIds: number[]
+): Promise<Map<number, number>> {
   return fetchPricesRouted(typeIds)
 }
 
@@ -926,7 +1113,11 @@ export interface MarketComparisonPrices {
 export async function fetchMarketComparison(
   typeIds: number[]
 ): Promise<Map<number, MarketComparisonPrices>> {
-  const fetched = await fetchMarketFromAPI(typeIds, { avg: true, buy: true, jita: true })
+  const fetched = await fetchMarketFromAPI(typeIds, {
+    avg: true,
+    buy: true,
+    jita: true,
+  })
   const results = new Map<number, MarketComparisonPrices>()
 
   for (const [typeId, item] of fetched) {
@@ -940,7 +1131,9 @@ export async function fetchMarketComparison(
   return results
 }
 
-export async function fetchImplantSlots(typeIds: number[]): Promise<Map<number, number>> {
+export async function fetchImplantSlots(
+  typeIds: number[]
+): Promise<Map<number, number>> {
   if (typeIds.length === 0) return new Map()
 
   const start = performance.now()
@@ -951,7 +1144,11 @@ export async function fetchImplantSlots(typeIds: number[]): Promise<Map<number, 
     const duration = Math.round(performance.now() - start)
 
     if (rawData && typeof rawData === 'object' && 'error' in rawData) {
-      logger.warn('RefAPI /implants failed', { module: 'RefAPI', error: rawData.error, duration })
+      logger.warn('RefAPI /implants failed', {
+        module: 'RefAPI',
+        error: rawData.error,
+        duration,
+      })
       return results
     }
 
@@ -968,7 +1165,12 @@ export async function fetchImplantSlots(typeIds: number[]): Promise<Map<number, 
       results.set(Number(idStr), item.slot)
     }
 
-    logger.info('RefAPI /implants', { module: 'RefAPI', requested: typeIds.length, returned: results.size, duration })
+    logger.info('RefAPI /implants', {
+      module: 'RefAPI',
+      requested: typeIds.length,
+      returned: results.size,
+      duration,
+    })
   } catch (error) {
     logger.error('RefAPI /implants error', error, { module: 'RefAPI' })
   }

@@ -8,7 +8,9 @@ describe('cn', () => {
 
   it('handles conditional classes', () => {
     const condition = false
-    expect(cn('base', condition && 'excluded', 'included')).toBe('base included')
+    expect(cn('base', condition && 'excluded', 'included')).toBe(
+      'base included'
+    )
   })
 
   it('handles undefined and null', () => {

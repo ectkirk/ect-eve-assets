@@ -21,7 +21,13 @@ describe('getLocationName', () => {
   })
 
   it('returns structure name for structure IDs', () => {
-    mockGetStructure.mockReturnValue({ id: 1_000_000_000_001, name: 'Test Structure', solarSystemId: 30000142, typeId: 35832, ownerId: 98000001 })
+    mockGetStructure.mockReturnValue({
+      id: 1_000_000_000_001,
+      name: 'Test Structure',
+      solarSystemId: 30000142,
+      typeId: 35832,
+      ownerId: 98000001,
+    })
 
     expect(getLocationName(1_000_000_000_001)).toBe('Test Structure')
     expect(mockGetStructure).toHaveBeenCalledWith(1_000_000_000_001)
@@ -42,7 +48,9 @@ describe('getLocationName', () => {
       solarSystemName: 'Jita',
     })
 
-    expect(getLocationName(60003760)).toBe('Jita IV - Moon 4 - Caldari Navy Assembly Plant')
+    expect(getLocationName(60003760)).toBe(
+      'Jita IV - Moon 4 - Caldari Navy Assembly Plant'
+    )
     expect(mockGetLocation).toHaveBeenCalledWith(60003760)
   })
 
@@ -55,7 +63,13 @@ describe('getLocationName', () => {
 
 describe('getLocationInfo', () => {
   it('returns structure info for structure IDs', () => {
-    mockGetStructure.mockReturnValue({ id: 1_000_000_000_001, name: 'Test Structure', solarSystemId: 30000142, typeId: 35832, ownerId: 98000001 })
+    mockGetStructure.mockReturnValue({
+      id: 1_000_000_000_001,
+      name: 'Test Structure',
+      solarSystemId: 30000142,
+      typeId: 35832,
+      ownerId: 98000001,
+    })
 
     const info = getLocationInfo(1_000_000_000_001)
     expect(info.name).toBe('Test Structure')

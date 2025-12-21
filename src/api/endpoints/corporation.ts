@@ -8,7 +8,9 @@ import {
 import { z } from 'zod'
 
 export type ESICharacterRoles = z.infer<typeof ESICharacterRolesSchema>
-export type ESICorporationDivisions = z.infer<typeof ESICorporationDivisionsSchema>
+export type ESICorporationDivisions = z.infer<
+  typeof ESICorporationDivisionsSchema
+>
 
 const DIRECTOR_ROLE = 'Director'
 
@@ -25,10 +27,10 @@ export async function getCorporationAssets(
 export async function getCharacterRoles(
   characterId: number
 ): Promise<ESICharacterRoles> {
-  return esi.fetch<ESICharacterRoles>(
-    `/characters/${characterId}/roles/`,
-    { characterId, schema: ESICharacterRolesSchema }
-  )
+  return esi.fetch<ESICharacterRoles>(`/characters/${characterId}/roles/`, {
+    characterId,
+    schema: ESICharacterRolesSchema,
+  })
 }
 
 export function hasDirectorRole(roles: string[]): boolean {

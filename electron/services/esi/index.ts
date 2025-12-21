@@ -2,7 +2,11 @@ import { app } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
 import { ESICache } from './cache'
-import { RateLimitTracker, guessRateLimitGroup, isContractItemsEndpoint } from './rate-limit'
+import {
+  RateLimitTracker,
+  guessRateLimitGroup,
+  isContractItemsEndpoint,
+} from './rate-limit'
 import { logger } from '../logger.js'
 import {
   ESI_BASE_URL,
@@ -41,7 +45,10 @@ export class MainESIService {
     this.tokenProvider = provider
   }
 
-  async fetch<T>(endpoint: string, options: ESIRequestOptions = {}): Promise<T> {
+  async fetch<T>(
+    endpoint: string,
+    options: ESIRequestOptions = {}
+  ): Promise<T> {
     const result = await this.executeWithRateLimit(endpoint, options)
     if (!result.success) {
       throw new ESIError(result.error, result.status ?? 500, result.retryAfter)
@@ -49,7 +56,10 @@ export class MainESIService {
     return result.data as T
   }
 
-  async fetchWithMeta<T>(endpoint: string, options: ESIRequestOptions = {}): Promise<ESIResponseMeta<T>> {
+  async fetchWithMeta<T>(
+    endpoint: string,
+    options: ESIRequestOptions = {}
+  ): Promise<ESIResponseMeta<T>> {
     const cacheKey = this.cache.makeKey(options.characterId, endpoint)
     const cached = this.cache.get(cacheKey)
 
@@ -90,16 +100,24 @@ export class MainESIService {
     return response
   }
 
-  async fetchPaginated<T>(endpoint: string, options: ESIRequestOptions = {}): Promise<T[]> {
+  async fetchPaginated<T>(
+    endpoint: string,
+    options: ESIRequestOptions = {}
+  ): Promise<T[]> {
     const result = await this.fetchPaginatedWithMeta<T>(endpoint, options)
     return result.data
   }
 
-  async fetchPaginatedWithMeta<T>(endpoint: string, options: ESIRequestOptions = {}): Promise<ESIResponseMeta<T[]>> {
+  async fetchPaginatedWithMeta<T>(
+    endpoint: string,
+    options: ESIRequestOptions = {}
+  ): Promise<ESIResponseMeta<T[]>> {
     const results: T[] = []
     let page = 1
     let totalPages = 1
-    let lastMeta: { expiresAt: number; etag: string | null; notModified: boolean } | undefined
+    let lastMeta:
+      | { expiresAt: number; etag: string | null; notModified: boolean }
+      | undefined
 
     while (page <= totalPages) {
       const separator = endpoint.includes('?') ? '&' : '?'
@@ -108,7 +126,11 @@ export class MainESIService {
       const result = await this.executeWithRateLimit(pagedEndpoint, options)
 
       if (!result.success) {
-        throw new ESIError(result.error, result.status ?? 500, result.retryAfter)
+        throw new ESIError(
+          result.error,
+          result.status ?? 500,
+          result.retryAfter
+        )
       }
 
       const pageData = result.data as T[]
@@ -188,7 +210,11 @@ export class MainESIService {
         return { success: false, error: 'Token provider error', status: 401 }
       }
       if (!token) {
-        return { success: false, error: 'Failed to get access token', status: 401 }
+        return {
+          success: false,
+          error: 'Failed to get access token',
+          status: 401,
+        }
       }
       headers['Authorization'] = `Bearer ${token}`
     }
@@ -205,7 +231,10 @@ export class MainESIService {
         body: options.body,
       })
 
-      this.rateLimiter.updateFromHeaders(options.characterId ?? 0, response.headers)
+      this.rateLimiter.updateFromHeaders(
+        options.characterId ?? 0,
+        response.headers
+      )
       this.scheduleSaveState()
 
       if (response.status === 420 || response.status === 429) {
@@ -299,7 +328,10 @@ export class MainESIService {
     return this.cache.clearByPattern(pattern)
   }
 
-  getRateLimitInfo(): { globalRetryAfter: number | null; activeRequests: number } {
+  getRateLimitInfo(): {
+    globalRetryAfter: number | null
+    activeRequests: number
+  } {
     return {
       globalRetryAfter: this.rateLimiter.getGlobalRetryAfter(),
       activeRequests: this.activeRequests,

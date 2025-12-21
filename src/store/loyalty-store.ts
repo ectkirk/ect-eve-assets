@@ -11,7 +11,10 @@ export interface OwnerLoyalty {
   loyaltyPoints: ESILoyaltyPoints[]
 }
 
-export const useLoyaltyStore = createOwnerStore<ESILoyaltyPoints[], OwnerLoyalty>({
+export const useLoyaltyStore = createOwnerStore<
+  ESILoyaltyPoints[],
+  OwnerLoyalty
+>({
   name: 'loyalty points',
   moduleName: 'LoyaltyStore',
   endpointPattern: '/loyalty/points',

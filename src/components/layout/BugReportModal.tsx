@@ -27,7 +27,10 @@ export function BugReportModal({ open, onOpenChange }: BugReportModalProps) {
     setError(null)
 
     try {
-      const result = await window.electronAPI?.submitBugReport(characterName, description)
+      const result = await window.electronAPI?.submitBugReport(
+        characterName,
+        description
+      )
       if (!result?.success) {
         throw new Error(result?.error || 'Failed to submit report')
       }
@@ -35,7 +38,9 @@ export function BugReportModal({ open, onOpenChange }: BugReportModalProps) {
       setCharacterName('')
       setDescription('')
     } catch {
-      setError('Failed to submit bug report. Please try again or report on Discord directly.')
+      setError(
+        'Failed to submit bug report. Please try again or report on Discord directly.'
+      )
     } finally {
       setSubmitting(false)
     }
@@ -59,8 +64,12 @@ export function BugReportModal({ open, onOpenChange }: BugReportModalProps) {
         {submitted ? (
           <div className="space-y-4 text-sm">
             <div className="rounded-lg border border-status-positive/30 bg-status-positive/10 p-4 text-center">
-              <p className="text-status-positive font-medium">Bug report submitted!</p>
-              <p className="text-content-secondary mt-1">Thank you for helping improve ECT EVE Assets.</p>
+              <p className="text-status-positive font-medium">
+                Bug report submitted!
+              </p>
+              <p className="text-content-secondary mt-1">
+                Thank you for helping improve ECT EVE Assets.
+              </p>
             </div>
             <button
               onClick={() => handleClose(false)}
@@ -75,15 +84,24 @@ export function BugReportModal({ open, onOpenChange }: BugReportModalProps) {
               <div className="flex gap-2">
                 <AlertTriangle className="h-4 w-4 text-semantic-warning shrink-0 mt-0.5" />
                 <div className="text-content-secondary">
-                  <p className="font-medium text-content mb-1">Privacy Notice</p>
-                  <p>This report will be posted to our Discord server. Please avoid including personal information you don't want shared publicly.</p>
+                  <p className="font-medium text-content mb-1">
+                    Privacy Notice
+                  </p>
+                  <p>
+                    This report will be posted to our Discord server. Please
+                    avoid including personal information you don't want shared
+                    publicly.
+                  </p>
                 </div>
               </div>
             </div>
 
             <div>
               <label className="block text-content-secondary mb-1">
-                Character Name <span className="text-content-muted">(optional, for follow-up)</span>
+                Character Name{' '}
+                <span className="text-content-muted">
+                  (optional, for follow-up)
+                </span>
               </label>
               <input
                 type="text"

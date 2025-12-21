@@ -13,7 +13,11 @@ import { useExpiryCacheStore } from './store/expiry-cache-store'
 import { useNotificationStore } from './store/toast-store'
 import { MainLayout } from './components/layout/MainLayout'
 import { initCache } from './store/reference-cache'
-import { loadReferenceData, loadUniverseData, loadRefStructures } from './api/ref-client'
+import {
+  loadReferenceData,
+  loadUniverseData,
+  loadRefStructures,
+} from './api/ref-client'
 import { logger } from './lib/logger'
 import { setupESITokenProvider } from './api/esi'
 import { initTheme } from './store/theme-store'
@@ -23,7 +27,10 @@ let appInitComplete = false
 
 initTheme()
 
-class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null; errorInfo: React.ErrorInfo | null }> {
+class ErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean; error: Error | null; errorInfo: React.ErrorInfo | null }
+> {
   constructor(props: { children: ReactNode }) {
     super(props)
     this.state = { hasError: false, error: null, errorInfo: null }
@@ -46,7 +53,9 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
       return (
         <div className="flex h-screen items-center justify-center bg-surface text-content">
           <div className="text-center max-w-2xl p-4">
-            <p className="text-semantic-danger text-lg font-bold">Something went wrong</p>
+            <p className="text-semantic-danger text-lg font-bold">
+              Something went wrong
+            </p>
             <pre className="mt-4 text-left text-xs text-content-secondary bg-surface-secondary p-4 rounded overflow-auto max-h-48">
               {this.state.error?.message}
             </pre>
@@ -78,13 +87,15 @@ function App() {
   }, [])
 
   useEffect(() => {
-    const unsubscribe = window.electronAPI?.onWindowMinimizeChange?.((isMinimized) => {
-      if (isMinimized) {
-        useExpiryCacheStore.getState().pause()
-      } else {
-        useExpiryCacheStore.getState().resume()
+    const unsubscribe = window.electronAPI?.onWindowMinimizeChange?.(
+      (isMinimized) => {
+        if (isMinimized) {
+          useExpiryCacheStore.getState().pause()
+        } else {
+          useExpiryCacheStore.getState().resume()
+        }
       }
-    })
+    )
     return () => unsubscribe?.()
   }, [])
 

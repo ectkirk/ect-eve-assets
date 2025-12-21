@@ -3,7 +3,12 @@ import { Loader2 } from 'lucide-react'
 import { useResolvedAssets } from '@/hooks/useResolvedAssets'
 import { useDivisionsStore } from '@/store/divisions-store'
 import { TreeTable, useTreeState } from '@/components/tree'
-import { buildTree, filterTree, getTreeCategories, shouldIncludeByMode } from '@/lib/tree-builder'
+import {
+  buildTree,
+  filterTree,
+  getTreeCategories,
+  shouldIncludeByMode,
+} from '@/lib/tree-builder'
 import { TreeMode } from '@/lib/tree-types'
 import { useTabControls } from '@/context'
 import { matchesSearch, getAssetDisplayNames } from '@/lib/resolved-asset'
@@ -26,7 +31,13 @@ export function TreeTab({ mode }: TreeTabProps) {
 
   const [categoryFilter, setCategoryFilterValue] = useState('')
   const [assetTypeFilter, setAssetTypeFilterValue] = useState('')
-  const { search, setResultCount, setCategoryFilter, setAssetTypeFilter, setTotalValue } = useTabControls()
+  const {
+    search,
+    setResultCount,
+    setCategoryFilter,
+    setAssetTypeFilter,
+    setTotalValue,
+  } = useTabControls()
 
   const divisionsInit = useDivisionsStore((s) => s.init)
   const divisionsInitialized = useDivisionsStore((s) => s.initialized)
@@ -75,7 +86,10 @@ export function TreeTab({ mode }: TreeTabProps) {
     })
   }, [selectedResolvedAssets, cacheVersion, effectiveMode, hangarDivisionNames])
 
-  const categories = useMemo(() => getTreeCategories(unfilteredNodes), [unfilteredNodes])
+  const categories = useMemo(
+    () => getTreeCategories(unfilteredNodes),
+    [unfilteredNodes]
+  )
 
   const treeNodes = useMemo(() => {
     return filterTree(unfilteredNodes, search, categoryFilter || undefined)
@@ -104,7 +118,11 @@ export function TreeTab({ mode }: TreeTabProps) {
     let showing = 0
     let value = 0
     for (const ra of selectedResolvedAssets) {
-      if (!ra.modeFlags.isOwnedStructure && !ra.modeFlags.isMarketOrder && !ra.modeFlags.isContract) {
+      if (
+        !ra.modeFlags.isOwnedStructure &&
+        !ra.modeFlags.isMarketOrder &&
+        !ra.modeFlags.isContract
+      ) {
         value += ra.totalValue
       }
       if (!shouldIncludeByMode(ra, effectiveMode)) continue
@@ -129,12 +147,15 @@ export function TreeTab({ mode }: TreeTabProps) {
     return () => setTotalValue(null)
   }, [totalValue, setTotalValue])
 
-  const { expandedNodes, toggleExpand, expandAll, collapseAll } = useTreeState(treeNodes)
+  const { expandedNodes, toggleExpand, expandAll, collapseAll } =
+    useTreeState(treeNodes)
 
   if (owners.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-content-secondary">No characters logged in. Add a character to view assets.</p>
+        <p className="text-content-secondary">
+          No characters logged in. Add a character to view assets.
+        </p>
       </div>
     )
   }
@@ -161,7 +182,9 @@ export function TreeTab({ mode }: TreeTabProps) {
           {hasError && (
             <>
               <p className="text-semantic-negative">Failed to load assets</p>
-              <p className="text-sm text-content-secondary mb-4">{errorMessage}</p>
+              <p className="text-sm text-content-secondary mb-4">
+                {errorMessage}
+              </p>
             </>
           )}
           {!hasError && (

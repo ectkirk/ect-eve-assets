@@ -1,6 +1,12 @@
 import { create } from 'zustand'
-import { getStarbaseDetail, type ESIStarbaseDetail } from '@/api/endpoints/starbases'
-import { FUEL_BLOCK_TYPE_IDS, STRONTIUM_TYPE_ID } from '@/lib/structure-constants'
+import {
+  getStarbaseDetail,
+  type ESIStarbaseDetail,
+} from '@/api/endpoints/starbases'
+import {
+  FUEL_BLOCK_TYPE_IDS,
+  STRONTIUM_TYPE_ID,
+} from '@/lib/structure-constants'
 import { logger } from '@/lib/logger'
 
 const DB_NAME = 'ecteveassets-starbase-details'
@@ -31,7 +37,10 @@ interface StarbaseDetailsState {
 
 interface StarbaseDetailsActions {
   init: () => Promise<void>
-  fetchDetail: (key: StarbaseDetailKey, force?: boolean) => Promise<ESIStarbaseDetail | null>
+  fetchDetail: (
+    key: StarbaseDetailKey,
+    force?: boolean
+  ) => Promise<ESIStarbaseDetail | null>
   getDetail: (starbaseId: number) => ESIStarbaseDetail | undefined
   removeOrphans: (validStarbaseIds: Set<number>) => Promise<void>
   clear: () => Promise<void>
@@ -48,7 +57,9 @@ async function openDB(): Promise<IDBDatabase> {
     const request = indexedDB.open(DB_NAME, DB_VERSION)
 
     request.onerror = () => {
-      logger.error('Failed to open starbase details DB', request.error, { module: 'StarbaseDetailsStore' })
+      logger.error('Failed to open starbase details DB', request.error, {
+        module: 'StarbaseDetailsStore',
+      })
       reject(request.error)
     }
 
@@ -93,7 +104,10 @@ async function loadAllFromDB(): Promise<LoadedDetails> {
   })
 }
 
-async function saveToDB(starbaseId: number, detail: ESIStarbaseDetail): Promise<void> {
+async function saveToDB(
+  starbaseId: number,
+  detail: ESIStarbaseDetail
+): Promise<void> {
   const database = await openDB()
 
   return new Promise((resolve, reject) => {
@@ -127,137 +141,182 @@ async function clearDB(): Promise<void> {
   })
 }
 
-export const useStarbaseDetailsStore = create<StarbaseDetailsStore>((set, get) => ({
-  details: new Map(),
-  fetchedAt: new Map(),
-  loading: new Set(),
-  failed: new Set(),
-  initialized: false,
+export const useStarbaseDetailsStore = create<StarbaseDetailsStore>(
+  (set, get) => ({
+    details: new Map(),
+    fetchedAt: new Map(),
+    loading: new Set(),
+    failed: new Set(),
+    initialized: false,
 
-  init: async () => {
-    if (get().initialized) return
+    init: async () => {
+      if (get().initialized) return
 
-    try {
-      const { details, fetchedAt } = await loadAllFromDB()
-      set({ details, fetchedAt, initialized: true })
-      logger.info('Starbase details loaded from cache', {
-        module: 'StarbaseDetailsStore',
-        count: details.size,
-      })
-    } catch (err) {
-      logger.error('Failed to load starbase details from cache', err instanceof Error ? err : undefined, {
-        module: 'StarbaseDetailsStore',
-      })
-      set({ initialized: true })
-    }
-  },
+      try {
+        const { details, fetchedAt } = await loadAllFromDB()
+        set({ details, fetchedAt, initialized: true })
+        logger.info('Starbase details loaded from cache', {
+          module: 'StarbaseDetailsStore',
+          count: details.size,
+        })
+      } catch (err) {
+        logger.error(
+          'Failed to load starbase details from cache',
+          err instanceof Error ? err : undefined,
+          {
+            module: 'StarbaseDetailsStore',
+          }
+        )
+        set({ initialized: true })
+      }
+    },
 
-  fetchDetail: async ({ corporationId, starbaseId, systemId, characterId }, force = false) => {
-    const state = get()
+    fetchDetail: async (
+      { corporationId, starbaseId, systemId, characterId },
+      force = false
+    ) => {
+      const state = get()
 
-    if (state.loading.has(starbaseId)) {
-      return state.details.get(starbaseId) ?? null
-    }
+      if (state.loading.has(starbaseId)) {
+        return state.details.get(starbaseId) ?? null
+      }
 
-    const cachedAt = state.fetchedAt.get(starbaseId)
-    const isStale = !cachedAt || Date.now() - cachedAt > STALE_THRESHOLD_MS
+      const cachedAt = state.fetchedAt.get(starbaseId)
+      const isStale = !cachedAt || Date.now() - cachedAt > STALE_THRESHOLD_MS
 
-    if (state.details.has(starbaseId) && !isStale && !force) {
-      return state.details.get(starbaseId)!
-    }
+      if (state.details.has(starbaseId) && !isStale && !force) {
+        return state.details.get(starbaseId)!
+      }
 
-    set((s) => ({ loading: new Set(s.loading).add(starbaseId) }))
+      set((s) => ({ loading: new Set(s.loading).add(starbaseId) }))
 
-    try {
-      const detail = await getStarbaseDetail(characterId, corporationId, starbaseId, systemId)
-      const now = Date.now()
+      try {
+        const detail = await getStarbaseDetail(
+          characterId,
+          corporationId,
+          starbaseId,
+          systemId
+        )
+        const now = Date.now()
+        set((s) => {
+          const newDetails = new Map(s.details)
+          newDetails.set(starbaseId, detail)
+          const newFetchedAt = new Map(s.fetchedAt)
+          newFetchedAt.set(starbaseId, now)
+          const newLoading = new Set(s.loading)
+          newLoading.delete(starbaseId)
+          return {
+            details: newDetails,
+            fetchedAt: newFetchedAt,
+            loading: newLoading,
+          }
+        })
+
+        saveToDB(starbaseId, detail).catch((err) => {
+          logger.error(
+            'Failed to save starbase detail to cache',
+            err instanceof Error ? err : undefined,
+            {
+              module: 'StarbaseDetailsStore',
+              starbaseId,
+            }
+          )
+        })
+
+        return detail
+      } catch (err) {
+        logger.error(
+          'Failed to fetch starbase detail',
+          err instanceof Error ? err : undefined,
+          {
+            module: 'StarbaseDetailsStore',
+            starbaseId,
+          }
+        )
+        set((s) => {
+          const newLoading = new Set(s.loading)
+          newLoading.delete(starbaseId)
+          const newFailed = new Set(s.failed)
+          newFailed.add(starbaseId)
+          return { loading: newLoading, failed: newFailed }
+        })
+        return null
+      }
+    },
+
+    getDetail: (starbaseId) => get().details.get(starbaseId),
+
+    removeOrphans: async (validStarbaseIds) => {
+      const state = get()
+      const toRemove: number[] = []
+
+      for (const starbaseId of state.details.keys()) {
+        if (!validStarbaseIds.has(starbaseId)) {
+          toRemove.push(starbaseId)
+        }
+      }
+
+      if (toRemove.length === 0) return
+
       set((s) => {
         const newDetails = new Map(s.details)
-        newDetails.set(starbaseId, detail)
         const newFetchedAt = new Map(s.fetchedAt)
-        newFetchedAt.set(starbaseId, now)
-        const newLoading = new Set(s.loading)
-        newLoading.delete(starbaseId)
-        return { details: newDetails, fetchedAt: newFetchedAt, loading: newLoading }
-      })
-
-      saveToDB(starbaseId, detail).catch((err) => {
-        logger.error('Failed to save starbase detail to cache', err instanceof Error ? err : undefined, {
-          module: 'StarbaseDetailsStore',
-          starbaseId,
-        })
-      })
-
-      return detail
-    } catch (err) {
-      logger.error('Failed to fetch starbase detail', err instanceof Error ? err : undefined, {
-        module: 'StarbaseDetailsStore',
-        starbaseId,
-      })
-      set((s) => {
-        const newLoading = new Set(s.loading)
-        newLoading.delete(starbaseId)
         const newFailed = new Set(s.failed)
-        newFailed.add(starbaseId)
-        return { loading: newLoading, failed: newFailed }
+        for (const id of toRemove) {
+          newDetails.delete(id)
+          newFetchedAt.delete(id)
+          newFailed.delete(id)
+        }
+        return {
+          details: newDetails,
+          fetchedAt: newFetchedAt,
+          failed: newFailed,
+        }
       })
-      return null
-    }
-  },
 
-  getDetail: (starbaseId) => get().details.get(starbaseId),
-
-  removeOrphans: async (validStarbaseIds) => {
-    const state = get()
-    const toRemove: number[] = []
-
-    for (const starbaseId of state.details.keys()) {
-      if (!validStarbaseIds.has(starbaseId)) {
-        toRemove.push(starbaseId)
-      }
-    }
-
-    if (toRemove.length === 0) return
-
-    set((s) => {
-      const newDetails = new Map(s.details)
-      const newFetchedAt = new Map(s.fetchedAt)
-      const newFailed = new Set(s.failed)
       for (const id of toRemove) {
-        newDetails.delete(id)
-        newFetchedAt.delete(id)
-        newFailed.delete(id)
-      }
-      return { details: newDetails, fetchedAt: newFetchedAt, failed: newFailed }
-    })
-
-    for (const id of toRemove) {
-      deleteFromDB(id).catch((err) => {
-        logger.error('Failed to delete orphan starbase detail', err instanceof Error ? err : undefined, {
-          module: 'StarbaseDetailsStore',
-          starbaseId: id,
+        deleteFromDB(id).catch((err) => {
+          logger.error(
+            'Failed to delete orphan starbase detail',
+            err instanceof Error ? err : undefined,
+            {
+              module: 'StarbaseDetailsStore',
+              starbaseId: id,
+            }
+          )
         })
-      })
-    }
+      }
 
-    logger.info('Removed orphan starbase details', {
-      module: 'StarbaseDetailsStore',
-      count: toRemove.length,
-    })
-  },
-
-  clear: async () => {
-    set({ details: new Map(), fetchedAt: new Map(), loading: new Set(), failed: new Set() })
-    try {
-      await clearDB()
-      logger.info('Starbase details cache cleared', { module: 'StarbaseDetailsStore' })
-    } catch (err) {
-      logger.error('Failed to clear starbase details cache', err instanceof Error ? err : undefined, {
+      logger.info('Removed orphan starbase details', {
         module: 'StarbaseDetailsStore',
+        count: toRemove.length,
       })
-    }
-  },
-}))
+    },
+
+    clear: async () => {
+      set({
+        details: new Map(),
+        fetchedAt: new Map(),
+        loading: new Set(),
+        failed: new Set(),
+      })
+      try {
+        await clearDB()
+        logger.info('Starbase details cache cleared', {
+          module: 'StarbaseDetailsStore',
+        })
+      } catch (err) {
+        logger.error(
+          'Failed to clear starbase details cache',
+          err instanceof Error ? err : undefined,
+          {
+            module: 'StarbaseDetailsStore',
+          }
+        )
+      }
+    },
+  })
+)
 
 export function calculateFuelHours(
   detail: ESIStarbaseDetail | undefined,
@@ -266,7 +325,9 @@ export function calculateFuelHours(
 ): number | null {
   if (!detail?.fuels || towerSize === undefined) return null
 
-  const fuelBlocks = detail.fuels.find((f) => FUEL_BLOCK_TYPE_IDS.has(f.type_id))
+  const fuelBlocks = detail.fuels.find((f) =>
+    FUEL_BLOCK_TYPE_IDS.has(f.type_id)
+  )
   if (!fuelBlocks) return null
 
   const baseRate = towerSize * 10

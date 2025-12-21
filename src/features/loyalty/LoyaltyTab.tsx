@@ -47,7 +47,10 @@ export function LoyaltyTab() {
 
   const { search, setResultCount } = useTabControls()
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
-  const selectedSet = useMemo(() => new Set(selectedOwnerIds), [selectedOwnerIds])
+  const selectedSet = useMemo(
+    () => new Set(selectedOwnerIds),
+    [selectedOwnerIds]
+  )
 
   const [sortColumn, setSortColumn] = useState<SortColumn>('corporation')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
@@ -75,7 +78,9 @@ export function LoyaltyTab() {
       for (const lp of loyaltyPoints) {
         if (lp.loyalty_points <= 0) continue
 
-        const name = hasName(lp.corporation_id) ? getName(lp.corporation_id) : undefined
+        const name = hasName(lp.corporation_id)
+          ? getName(lp.corporation_id)
+          : undefined
         const corpName = name?.name ?? `Corporation ${lp.corporation_id}`
 
         result.push({
@@ -90,7 +95,10 @@ export function LoyaltyTab() {
         if (existing) {
           existing.total += lp.loyalty_points
         } else {
-          corpMap.set(lp.corporation_id, { name: corpName, total: lp.loyalty_points })
+          corpMap.set(lp.corporation_id, {
+            name: corpName,
+            total: lp.loyalty_points,
+          })
         }
       }
     }
@@ -99,9 +107,10 @@ export function LoyaltyTab() {
 
     if (search) {
       const searchLower = search.toLowerCase()
-      filtered = result.filter((row) =>
-        row.ownerName.toLowerCase().includes(searchLower) ||
-        row.corporationName.toLowerCase().includes(searchLower)
+      filtered = result.filter(
+        (row) =>
+          row.ownerName.toLowerCase().includes(searchLower) ||
+          row.corporationName.toLowerCase().includes(searchLower)
       )
     }
 
@@ -125,10 +134,22 @@ export function LoyaltyTab() {
       .sort((a, b) => b.total - a.total)
 
     return { rows: sortedRows, corpTotals }
-  }, [loyaltyByOwner, cacheVersion, search, selectedSet, sortColumn, sortDirection])
+  }, [
+    loyaltyByOwner,
+    cacheVersion,
+    search,
+    selectedSet,
+    sortColumn,
+    sortDirection,
+  ])
 
-  const totalRows = useMemo(() =>
-    loyaltyByOwner.reduce((sum, o) => sum + o.loyaltyPoints.filter(lp => lp.loyalty_points > 0).length, 0),
+  const totalRows = useMemo(
+    () =>
+      loyaltyByOwner.reduce(
+        (sum, o) =>
+          sum + o.loyaltyPoints.filter((lp) => lp.loyalty_points > 0).length,
+        0
+      ),
     [loyaltyByOwner]
   )
 
@@ -137,8 +158,8 @@ export function LoyaltyTab() {
     return () => setResultCount(null)
   }, [rows.length, totalRows, setResultCount])
 
-  const charactersNeedingReauth = useMemo(() =>
-    owners.filter((o) => o.type === 'character' && o.scopesOutdated),
+  const charactersNeedingReauth = useMemo(
+    () => owners.filter((o) => o.type === 'character' && o.scopesOutdated),
     [owners]
   )
 
@@ -175,7 +196,9 @@ export function LoyaltyTab() {
   if (rows.length === 0) {
     return (
       <div className="h-full rounded-lg border border-border bg-surface-secondary/30 flex items-center justify-center">
-        <p className="text-content-secondary">No loyalty points data available.</p>
+        <p className="text-content-secondary">
+          No loyalty points data available.
+        </p>
       </div>
     )
   }
@@ -185,81 +208,99 @@ export function LoyaltyTab() {
       <div className="flex items-center gap-4 px-4 py-2 border-b border-border/50 bg-surface-tertiary/30 overflow-x-auto">
         <div className="flex items-center gap-2 shrink-0">
           <span className="text-xs text-content-secondary">Total:</span>
-          <span className="text-sm font-medium tabular-nums text-semantic-positive">{formatNumber(totalLP)} LP</span>
+          <span className="text-sm font-medium tabular-nums text-semantic-positive">
+            {formatNumber(totalLP)} LP
+          </span>
         </div>
         <div className="h-4 w-px bg-border/50" />
         {corpTotals.slice(0, 6).map((corp) => (
           <div key={corp.id} className="flex items-center gap-2 shrink-0">
             <CorporationLogo corporationId={corp.id} size="sm" />
-            <span className="text-xs text-content-secondary truncate max-w-24" title={corp.name}>
+            <span
+              className="text-xs text-content-secondary truncate max-w-24"
+              title={corp.name}
+            >
               {corp.name}
             </span>
-            <span className="text-xs tabular-nums text-semantic-positive">{formatNumber(corp.total)}</span>
+            <span className="text-xs tabular-nums text-semantic-positive">
+              {formatNumber(corp.total)}
+            </span>
           </div>
         ))}
         {corpTotals.length > 6 && (
-          <span className="text-xs text-content-muted shrink-0">+{corpTotals.length - 6} more</span>
+          <span className="text-xs text-content-muted shrink-0">
+            +{corpTotals.length - 6} more
+          </span>
         )}
       </div>
       <div className="flex-1 overflow-auto">
-      <Table>
-        <TableHeader>
-          <TableRow className="hover:bg-transparent">
-            <TableHead
-              className="w-12 cursor-pointer select-none hover:text-content"
-              onClick={() => handleSort('character')}
-            >
-              <div className="flex items-center gap-1">
-                {sortColumn === 'character' && (
-                  sortDirection === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
-                )}
-              </div>
-            </TableHead>
-            <TableHead
-              className="cursor-pointer select-none hover:text-content"
-              onClick={() => handleSort('corporation')}
-            >
-              <div className="flex items-center gap-1">
-                Corporation
-                {sortColumn === 'corporation' && (
-                  sortDirection === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
-                )}
-              </div>
-            </TableHead>
-            <TableHead
-              className="text-right cursor-pointer select-none hover:text-content"
-              onClick={() => handleSort('lp')}
-            >
-              <div className="flex items-center justify-end gap-1">
-                LP
-                {sortColumn === 'lp' && (
-                  sortDirection === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
-                )}
-              </div>
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.map((row) => (
-            <TableRow key={`${row.ownerId}-${row.corporationId}`}>
-              <TableCell className="py-1.5 w-12">
-                <CharacterPortrait characterId={row.ownerId} size="lg" />
-              </TableCell>
-              <TableCell className="py-1.5">
-                <div className="flex items-center gap-2">
-                  <CorporationLogo corporationId={row.corporationId} />
-                  <span className="truncate" title={row.corporationName}>
-                    {row.corporationName}
-                  </span>
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead
+                className="w-12 cursor-pointer select-none hover:text-content"
+                onClick={() => handleSort('character')}
+              >
+                <div className="flex items-center gap-1">
+                  {sortColumn === 'character' &&
+                    (sortDirection === 'asc' ? (
+                      <ChevronUp className="h-3 w-3" />
+                    ) : (
+                      <ChevronDown className="h-3 w-3" />
+                    ))}
                 </div>
-              </TableCell>
-              <TableCell className="py-1.5 text-right tabular-nums text-semantic-positive">
-                {formatNumber(row.loyaltyPoints)}
-              </TableCell>
+              </TableHead>
+              <TableHead
+                className="cursor-pointer select-none hover:text-content"
+                onClick={() => handleSort('corporation')}
+              >
+                <div className="flex items-center gap-1">
+                  Corporation
+                  {sortColumn === 'corporation' &&
+                    (sortDirection === 'asc' ? (
+                      <ChevronUp className="h-3 w-3" />
+                    ) : (
+                      <ChevronDown className="h-3 w-3" />
+                    ))}
+                </div>
+              </TableHead>
+              <TableHead
+                className="text-right cursor-pointer select-none hover:text-content"
+                onClick={() => handleSort('lp')}
+              >
+                <div className="flex items-center justify-end gap-1">
+                  LP
+                  {sortColumn === 'lp' &&
+                    (sortDirection === 'asc' ? (
+                      <ChevronUp className="h-3 w-3" />
+                    ) : (
+                      <ChevronDown className="h-3 w-3" />
+                    ))}
+                </div>
+              </TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {rows.map((row) => (
+              <TableRow key={`${row.ownerId}-${row.corporationId}`}>
+                <TableCell className="py-1.5 w-12">
+                  <CharacterPortrait characterId={row.ownerId} size="lg" />
+                </TableCell>
+                <TableCell className="py-1.5">
+                  <div className="flex items-center gap-2">
+                    <CorporationLogo corporationId={row.corporationId} />
+                    <span className="truncate" title={row.corporationName}>
+                      {row.corporationName}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell className="py-1.5 text-right tabular-nums text-semantic-positive">
+                  {formatNumber(row.loyaltyPoints)}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </div>
     </div>
   )

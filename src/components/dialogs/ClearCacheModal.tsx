@@ -15,7 +15,11 @@ import {
   clearAbyssalsCache,
   clearUniverseCache,
 } from '@/store/reference-cache'
-import { loadReferenceData, loadUniverseData, loadRefStructures } from '@/api/ref-client'
+import {
+  loadReferenceData,
+  loadUniverseData,
+  loadRefStructures,
+} from '@/api/ref-client'
 import { useAssetStore } from '@/store/asset-store'
 import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { useRegionalMarketStore } from '@/store/regional-market-store'
@@ -247,7 +251,12 @@ const GROUP_LABELS: Record<CacheOption['group'], string> = {
   system: 'System Caches',
 }
 
-const GROUP_ORDER: CacheOption['group'][] = ['reference', 'data', 'structures', 'system']
+const GROUP_ORDER: CacheOption['group'][] = [
+  'reference',
+  'data',
+  'structures',
+  'system',
+]
 
 export function ClearCacheModal({ open, onOpenChange }: ClearCacheModalProps) {
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -291,14 +300,20 @@ export function ClearCacheModal({ open, onOpenChange }: ClearCacheModalProps) {
       await Promise.all(
         optionsToClear.map(async (option) => {
           if (option.endpointPattern) {
-            await useExpiryCacheStore.getState().clearByEndpoint(option.endpointPattern)
-            await window.electronAPI?.esi.clearCacheByPattern(option.endpointPattern)
+            await useExpiryCacheStore
+              .getState()
+              .clearByEndpoint(option.endpointPattern)
+            await window.electronAPI?.esi.clearCacheByPattern(
+              option.endpointPattern
+            )
           }
           await option.clear()
         })
       )
 
-      const clearsCharacterData = optionsToClear.some((o) => o.group === 'data' || o.group === 'structures')
+      const clearsCharacterData = optionsToClear.some(
+        (o) => o.group === 'data' || o.group === 'structures'
+      )
       if (clearsCharacterData) {
         await useDivisionsStore.getState().clear()
       }
@@ -318,9 +333,13 @@ export function ClearCacheModal({ open, onOpenChange }: ClearCacheModalProps) {
         setSelected(new Set())
       }
     } catch (err) {
-      logger.error('Failed to clear caches', err instanceof Error ? err : undefined, {
-        module: 'ClearCacheModal',
-      })
+      logger.error(
+        'Failed to clear caches',
+        err instanceof Error ? err : undefined,
+        {
+          module: 'ClearCacheModal',
+        }
+      )
     } finally {
       setIsClearing(false)
     }
@@ -363,7 +382,9 @@ export function ClearCacheModal({ open, onOpenChange }: ClearCacheModalProps) {
                           {option.label}
                         </span>
                         {option.requiresReload && (
-                          <span className="text-xs text-semantic-warning">reload</span>
+                          <span className="text-xs text-semantic-warning">
+                            reload
+                          </span>
                         )}
                       </label>
                     ))}
