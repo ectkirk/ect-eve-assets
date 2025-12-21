@@ -363,7 +363,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
 
       const typeIds = collectAllTypeIds(
         results,
-        useMarketOrdersStore.getState().getOrdersByOwner(),
+        useMarketOrdersStore.getOrdersByOwner(),
         useContractsStore.getState().getContractsByOwner(),
         useIndustryJobsStore.getState().getJobsByOwner(),
         useStructuresStore.getState().dataByOwner
@@ -524,7 +524,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
     const state = get()
     const typeIds = collectAllTypeIds(
       state.assetsByOwner,
-      useMarketOrdersStore.getState().getOrdersByOwner(),
+      useMarketOrdersStore.getOrdersByOwner(),
       useContractsStore.getState().getContractsByOwner(),
       useIndustryJobsStore.getState().getJobsByOwner(),
       useStructuresStore.getState().dataByOwner

@@ -31,6 +31,10 @@ vi.mock('./regional-market-store', () => ({
     getState: vi.fn(() => ({
       getPrice: vi.fn((typeId: number) => typeId === 34 ? 10 : undefined),
       fetchPricesForTypes: vi.fn(),
+      registerTypes: vi.fn(),
+      registerStructures: vi.fn(),
+      untrackTypes: vi.fn(),
+      untrackStructures: vi.fn(),
     })),
   },
 }))
@@ -39,7 +43,7 @@ describe('market-orders-store', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     useMarketOrdersStore.setState({
-      ordersById: new Map(),
+      itemsById: new Map(),
       visibilityByOwner: new Map(),
       isUpdating: false,
       updateError: null,
@@ -55,7 +59,7 @@ describe('market-orders-store', () => {
   describe('initial state', () => {
     it('has correct initial values', () => {
       const state = useMarketOrdersStore.getState()
-      expect(state.ordersById.size).toBe(0)
+      expect(state.itemsById.size).toBe(0)
       expect(state.visibilityByOwner.size).toBe(0)
       expect(state.isUpdating).toBe(false)
       expect(state.updateError).toBeNull()
@@ -117,10 +121,10 @@ describe('market-orders-store', () => {
       expect(esi.fetchPaginatedWithMeta).toHaveBeenCalled()
 
       const state = useMarketOrdersStore.getState()
-      expect(state.ordersById.size).toBe(1)
+      expect(state.itemsById.size).toBe(1)
       expect(state.visibilityByOwner.get('character-12345')?.size).toBe(1)
 
-      const ordersByOwner = state.getOrdersByOwner()
+      const ordersByOwner = useMarketOrdersStore.getOrdersByOwner()
       expect(ordersByOwner).toHaveLength(1)
       expect(ordersByOwner[0]?.orders).toHaveLength(1)
 
@@ -184,7 +188,7 @@ describe('market-orders-store', () => {
 
       await useMarketOrdersStore.getState().update(true)
 
-      expect(useMarketOrdersStore.getState().ordersById.size).toBe(0)
+      expect(useMarketOrdersStore.getState().itemsById.size).toBe(0)
       expect(useMarketOrdersStore.getState().isUpdating).toBe(false)
     })
   })
@@ -192,9 +196,9 @@ describe('market-orders-store', () => {
   describe('getTotal', () => {
     it('calculates sell order total using prices', () => {
       useMarketOrdersStore.setState({
-        ordersById: new Map([
+        itemsById: new Map([
           [1, {
-            order: {
+            item: {
               order_id: 1,
               type_id: 34,
               location_id: 60003760,
@@ -209,22 +213,22 @@ describe('market-orders-store', () => {
               min_volume: 1,
               is_corporation: false,
             },
-            sourceOwner: { type: 'character', id: 12345, characterId: 12345 },
+            sourceOwner: { type: 'character' as const, id: 12345, characterId: 12345 },
           }],
         ]),
         visibilityByOwner: new Map([['character-12345', new Set([1])]]),
         initialized: true,
       })
 
-      const total = useMarketOrdersStore.getState().getTotal(['character-12345'])
+      const total = useMarketOrdersStore.getTotal(['character-12345'])
       expect(total).toBe(1000) // 10 * 100
     })
 
     it('calculates buy order total using escrow', () => {
       useMarketOrdersStore.setState({
-        ordersById: new Map([
+        itemsById: new Map([
           [1, {
-            order: {
+            item: {
               order_id: 1,
               type_id: 34,
               location_id: 60003760,
@@ -240,22 +244,22 @@ describe('market-orders-store', () => {
               min_volume: 1,
               is_corporation: false,
             },
-            sourceOwner: { type: 'character', id: 12345, characterId: 12345 },
+            sourceOwner: { type: 'character' as const, id: 12345, characterId: 12345 },
           }],
         ]),
         visibilityByOwner: new Map([['character-12345', new Set([1])]]),
         initialized: true,
       })
 
-      const total = useMarketOrdersStore.getState().getTotal(['character-12345'])
+      const total = useMarketOrdersStore.getTotal(['character-12345'])
       expect(total).toBe(500)
     })
 
     it('only includes orders for selected owners', () => {
       useMarketOrdersStore.setState({
-        ordersById: new Map([
+        itemsById: new Map([
           [1, {
-            order: {
+            item: {
               order_id: 1,
               type_id: 34,
               location_id: 60003760,
@@ -270,10 +274,10 @@ describe('market-orders-store', () => {
               min_volume: 1,
               is_corporation: false,
             },
-            sourceOwner: { type: 'character', id: 12345, characterId: 12345 },
+            sourceOwner: { type: 'character' as const, id: 12345, characterId: 12345 },
           }],
           [2, {
-            order: {
+            item: {
               order_id: 2,
               type_id: 34,
               location_id: 60003760,
@@ -288,7 +292,7 @@ describe('market-orders-store', () => {
               min_volume: 1,
               is_corporation: false,
             },
-            sourceOwner: { type: 'character', id: 67890, characterId: 67890 },
+            sourceOwner: { type: 'character' as const, id: 67890, characterId: 67890 },
           }],
         ]),
         visibilityByOwner: new Map([
@@ -298,7 +302,7 @@ describe('market-orders-store', () => {
         initialized: true,
       })
 
-      const total = useMarketOrdersStore.getState().getTotal(['character-12345'])
+      const total = useMarketOrdersStore.getTotal(['character-12345'])
       expect(total).toBe(1000) // Only first owner's order
     })
   })
@@ -306,7 +310,7 @@ describe('market-orders-store', () => {
   describe('clear', () => {
     it('resets store state', async () => {
       useMarketOrdersStore.setState({
-        ordersById: new Map([[1, { order: {} as never, sourceOwner: {} as never }]]),
+        itemsById: new Map([[1, { item: {} as never, sourceOwner: {} as never }]]),
         visibilityByOwner: new Map([['character-12345', new Set([1])]]),
         updateError: 'some error',
       })
@@ -314,7 +318,7 @@ describe('market-orders-store', () => {
       await useMarketOrdersStore.getState().clear()
 
       const state = useMarketOrdersStore.getState()
-      expect(state.ordersById.size).toBe(0)
+      expect(state.itemsById.size).toBe(0)
       expect(state.visibilityByOwner.size).toBe(0)
       expect(state.updateError).toBeNull()
     })

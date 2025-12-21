@@ -51,6 +51,7 @@ interface ExpiryCacheActions {
 type ExpiryCacheStore = ExpiryCacheState & ExpiryCacheActions
 
 let db: IDBDatabase | null = null
+let sortedPatternsCache: string[] | null = null
 
 function makeKey(ownerKey: string, endpoint: string): string {
   return `${ownerKey}:${endpoint}`
@@ -160,12 +161,18 @@ async function clearDB(): Promise<void> {
   })
 }
 
+function getSortedPatterns(callbacks: Map<string, RefreshCallback>): string[] {
+  if (!sortedPatternsCache) {
+    sortedPatternsCache = [...callbacks.keys()].sort((a, b) => b.length - a.length)
+  }
+  return sortedPatternsCache
+}
+
 function findCallback(
   callbacks: Map<string, RefreshCallback>,
   endpoint: string
 ): RefreshCallback | undefined {
-  const sortedPatterns = [...callbacks.keys()].sort((a, b) => b.length - a.length)
-  for (const pattern of sortedPatterns) {
+  for (const pattern of getSortedPatterns(callbacks)) {
     if (endpoint.includes(pattern)) return callbacks.get(pattern)
   }
   return undefined
@@ -361,6 +368,7 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
     set((state) => {
       const callbacks = new Map(state.callbacks)
       callbacks.set(endpointPattern, callback)
+      sortedPatternsCache = null
       return { callbacks }
     })
     logger.debug('Registered refresh callback', { module: 'ExpiryCacheStore', pattern: endpointPattern })
@@ -369,6 +377,7 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
       set((state) => {
         const callbacks = new Map(state.callbacks)
         callbacks.delete(endpointPattern)
+        sortedPatternsCache = null
         return { callbacks }
       })
     }
@@ -404,18 +413,28 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
     const { endpoints, callbacks } = get()
     let queued = 0
 
+    const endpointsByOwner = new Map<string, Set<string>>()
+    for (const key of endpoints.keys()) {
+      const colonIdx = key.indexOf(':')
+      if (colonIdx === -1) continue
+      const ownerKey = key.slice(0, colonIdx)
+      if (!endpointsByOwner.has(ownerKey)) {
+        endpointsByOwner.set(ownerKey, new Set())
+      }
+      endpointsByOwner.get(ownerKey)!.add(key)
+    }
+
     for (const ownerKey of ownerKeys) {
-      const prefix = `${ownerKey}:`
+      const ownerEndpoints = endpointsByOwner.get(ownerKey)
       for (const pattern of callbacks.keys()) {
         if (!isPatternApplicable(pattern, ownerKey)) continue
-        let found = false
-        for (const key of endpoints.keys()) {
-          if (key.startsWith(prefix) && key.includes(pattern)) {
-            found = true
-            break
+        let hasPattern = false
+        if (ownerEndpoints) {
+          for (const k of ownerEndpoints) {
+            if (k.includes(pattern)) { hasPattern = true; break }
           }
         }
-        if (!found) {
+        if (!hasPattern) {
           get().queueRefresh(ownerKey, pattern)
           queued++
         }

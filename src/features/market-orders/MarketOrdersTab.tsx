@@ -342,7 +342,7 @@ export function MarketOrdersTab() {
   const initialized = useMarketOrdersStore((s) => s.initialized)
 
   const ordersByOwner = useMemo(
-    () => useMarketOrdersStore.getState().getOrdersByOwner(),
+    () => useMarketOrdersStore.getOrdersByOwner(),
     [updateCounter]
   )
 

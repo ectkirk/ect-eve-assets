@@ -25,7 +25,7 @@ export function useResolvedAssets(): ResolvedAssetsResult {
   const assetData = useAssetData()
   const starbasesByOwner = useStarbasesStore((s) => s.dataByOwner)
   const structuresByOwner = useStructuresStore((s) => s.dataByOwner)
-  const ordersById = useMarketOrdersStore((s) => s.ordersById)
+  const ordersById = useMarketOrdersStore((s) => s.itemsById)
   const ordersVisibilityByOwner = useMarketOrdersStore((s) => s.visibilityByOwner)
   const ordersUpdateCounter = useMarketOrdersStore((s) => s.updateCounter)
   const contractsById = useContractsStore((s) => s.contractsById)
@@ -71,8 +71,8 @@ export function useResolvedAssets(): ResolvedAssetsResult {
 
       for (const orderId of orderIds) {
         const stored = ordersById.get(orderId)
-        if (stored && !stored.order.is_buy_order) {
-          assets.push(resolveMarketOrder(stored.order, owner, assetData.prices))
+        if (stored && !stored.item.is_buy_order) {
+          assets.push(resolveMarketOrder(stored.item, owner, assetData.prices))
         }
       }
     }

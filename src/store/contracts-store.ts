@@ -8,7 +8,7 @@ import {
   type ESIContract,
   type ESIContractItem,
 } from '@/api/endpoints/contracts'
-import { esi, type ESIResponseMeta } from '@/api/esi'
+import { esi } from '@/api/esi'
 import { ESIContractSchema } from '@/api/schemas'
 import { logger } from '@/lib/logger'
 import { formatNumber } from '@/lib/utils'
@@ -16,7 +16,6 @@ import { triggerResolution } from '@/lib/data-resolver'
 
 const ENDPOINT_PATTERN = '/contracts/'
 const DB_NAME = 'ecteveassets-contracts-v2'
-const OLD_DB_NAME = 'ecteveassets-contracts'
 const DB_VERSION = 1
 const STORE_CONTRACTS = 'contracts'
 const STORE_VISIBILITY = 'visibility'
@@ -167,10 +166,7 @@ async function saveVisibilityToDB(ownerKeyStr: string, contractIds: Set<number>)
   return new Promise((resolve, reject) => {
     const tx = database.transaction([STORE_VISIBILITY], 'readwrite')
     const store = tx.objectStore(STORE_VISIBILITY)
-    store.put({
-      ownerKey: ownerKeyStr,
-      contractIds: [...contractIds],
-    } as VisibilityRecord)
+    store.put({ ownerKey: ownerKeyStr, contractIds: [...contractIds] } as VisibilityRecord)
     tx.oncomplete = () => resolve()
     tx.onerror = () => reject(tx.error)
   })
@@ -200,98 +196,17 @@ async function clearDB(): Promise<void> {
   })
 }
 
-async function migrateFromOldDB(): Promise<{
-  contracts: Map<number, StoredContract>
-  visibility: Map<string, Set<number>>
-} | null> {
-  return new Promise((resolve) => {
-    const request = indexedDB.open(OLD_DB_NAME)
-
-    request.onerror = () => {
-      resolve(null)
-    }
-
-    request.onsuccess = () => {
-      const oldDb = request.result
-      if (!oldDb.objectStoreNames.contains('contracts')) {
-        oldDb.close()
-        resolve(null)
-        return
-      }
-
-      const tx = oldDb.transaction(['contracts'], 'readonly')
-      const store = tx.objectStore('contracts')
-      const getAllRequest = store.getAll()
-
-      tx.oncomplete = async () => {
-        const oldData = getAllRequest.result as Array<{ key: string; owner: Owner; contracts: ContractWithItems[] }>
-
-        if (!oldData || oldData.length === 0) {
-          oldDb.close()
-          resolve(null)
-          return
-        }
-
-        const contracts = new Map<number, StoredContract>()
-        const visibility = new Map<string, Set<number>>()
-
-        for (const entry of oldData) {
-          const ownerKeyStr = ownerKey(entry.owner.type, entry.owner.id)
-          const ownerVisibility = new Set<number>()
-
-          for (const cwi of entry.contracts) {
-            ownerVisibility.add(cwi.contract.contract_id)
-
-            if (!contracts.has(cwi.contract.contract_id)) {
-              contracts.set(cwi.contract.contract_id, {
-                contract: cwi.contract,
-                items: cwi.items,
-                sourceOwner: {
-                  type: entry.owner.type,
-                  id: entry.owner.id,
-                  characterId: entry.owner.characterId,
-                },
-              })
-            } else if (cwi.items && !contracts.get(cwi.contract.contract_id)!.items) {
-              contracts.get(cwi.contract.contract_id)!.items = cwi.items
-            }
-          }
-
-          visibility.set(ownerKeyStr, ownerVisibility)
-        }
-
-        oldDb.close()
-
-        try {
-          indexedDB.deleteDatabase(OLD_DB_NAME)
-          logger.info('Migrated contracts from old DB format', {
-            module: 'ContractsStore',
-            contracts: contracts.size,
-            owners: visibility.size,
-          })
-        } catch {
-          logger.warn('Failed to delete old contracts DB', { module: 'ContractsStore' })
-        }
-
-        resolve({ contracts, visibility })
-      }
-
-      tx.onerror = () => {
-        oldDb.close()
-        resolve(null)
-      }
-    }
-  })
-}
-
 function getContractsEndpoint(owner: Owner): string {
-  if (owner.type === 'corporation') {
-    return `/corporations/${owner.id}/contracts/`
-  }
-  return `/characters/${owner.characterId}/contracts/`
+  return owner.type === 'corporation'
+    ? `/corporations/${owner.id}/contracts/`
+    : `/characters/${owner.characterId}/contracts/`
 }
 
-async function fetchOwnerContractsWithMeta(owner: Owner): Promise<ESIResponseMeta<ESIContract[]>> {
+async function fetchOwnerContracts(owner: Owner): Promise<{
+  data: ESIContract[]
+  expiresAt: number
+  etag: string | null
+}> {
   const endpoint = getContractsEndpoint(owner)
   const result = await esi.fetchPaginatedWithMeta<ESIContract>(endpoint, {
     characterId: owner.characterId,
@@ -310,9 +225,7 @@ const FINISHED_STATUSES = new Set(['finished', 'finished_issuer', 'finished_cont
 function canFetchItems(contract: ESIContract): boolean {
   if (contract.type !== 'item_exchange' && contract.type !== 'auction') return false
 
-  if (ACTIVE_STATUSES.has(contract.status)) {
-    return true
-  }
+  if (ACTIVE_STATUSES.has(contract.status)) return true
 
   if (FINISHED_STATUSES.has(contract.status)) {
     const refTime = new Date(contract.date_completed ?? contract.date_expired).getTime()
@@ -332,6 +245,37 @@ async function fetchItemsForContractFromAPI(
   return fetchContractItemsFromESI(sourceOwner.characterId, contractId)
 }
 
+async function fetchContractItemsBatch(
+  contracts: ESIContract[],
+  contractsById: Map<number, StoredContract>,
+  itemFetchesInProgress: Set<number>,
+  set: (partial: Partial<ContractsState>) => void
+): Promise<void> {
+  if (contracts.length === 0) return
+
+  for (const contract of contracts) {
+    itemFetchesInProgress.add(contract.contract_id)
+  }
+  set({ itemFetchesInProgress: new Set(itemFetchesInProgress) })
+
+  for (const contract of contracts) {
+    try {
+      const stored = contractsById.get(contract.contract_id)!
+      const items = await fetchItemsForContractFromAPI(stored.sourceOwner, contract.contract_id)
+      stored.items = items
+      await saveContractToDB(contract.contract_id, stored)
+    } catch (err) {
+      logger.error('Failed to fetch items for contract', err instanceof Error ? err : undefined, {
+        module: 'ContractsStore',
+        contractId: contract.contract_id,
+      })
+    } finally {
+      itemFetchesInProgress.delete(contract.contract_id)
+    }
+  }
+  set({ itemFetchesInProgress: new Set(itemFetchesInProgress) })
+}
+
 export const useContractsStore = create<ContractsStore>((set, get) => ({
   contractsById: new Map(),
   visibilityByOwner: new Map(),
@@ -345,22 +289,7 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
     if (get().initialized) return
 
     try {
-      let { contracts, visibility } = await loadFromDB()
-
-      if (contracts.size === 0) {
-        const migrated = await migrateFromOldDB()
-        if (migrated) {
-          contracts = migrated.contracts
-          visibility = migrated.visibility
-
-          for (const [contractId, stored] of contracts) {
-            await saveContractToDB(contractId, stored)
-          }
-          for (const [ownerKeyStr, contractIds] of visibility) {
-            await saveVisibilityToDB(ownerKeyStr, contractIds)
-          }
-        }
-      }
+      const { contracts, visibility } = await loadFromDB()
 
       set((s) => ({
         contractsById: contracts,
@@ -369,9 +298,7 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
         updateCounter: s.updateCounter + 1,
       }))
 
-      if (contracts.size > 0) {
-        triggerResolution()
-      }
+      if (contracts.size > 0) triggerResolution()
 
       logger.info('Contracts store initialized', {
         module: 'ContractsStore',
@@ -388,9 +315,7 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
 
   update: async (force = false) => {
     const state = get()
-    if (!state.initialized) {
-      await get().init()
-    }
+    if (!state.initialized) await get().init()
     if (get().isUpdating) return
 
     const allOwners = Object.values(useAuthStore.getState().owners)
@@ -400,14 +325,12 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
     }
 
     const expiryCacheStore = useExpiryCacheStore.getState()
-
     const ownersToUpdate = force
       ? allOwners.filter((o): o is Owner => o !== undefined && !o.authFailed)
       : allOwners.filter((owner): owner is Owner => {
           if (!owner || owner.authFailed) return false
           const key = `${owner.type}-${owner.id}`
-          const endpoint = getContractsEndpoint(owner)
-          return expiryCacheStore.isExpired(key, endpoint)
+          return expiryCacheStore.isExpired(key, getContractsEndpoint(owner))
         })
 
     if (ownersToUpdate.length === 0) return
@@ -425,8 +348,7 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
 
         try {
           logger.info('Fetching contracts', { module: 'ContractsStore', owner: owner.name })
-
-          const { data: contracts, expiresAt, etag } = await fetchOwnerContractsWithMeta(owner)
+          const { data: contracts, expiresAt, etag } = await fetchOwnerContracts(owner)
 
           const ownerVisibility = new Set<number>()
           const contractsToFetchItems: ESIContract[] = []
@@ -451,13 +373,8 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
             }
 
             const stored = contractsById.get(contract.contract_id)!
-            const isActive = contract.status === 'outstanding' || contract.status === 'in_progress'
-            if (
-              canFetchItems(contract) &&
-              isActive &&
-              !stored.items &&
-              !itemFetchesInProgress.has(contract.contract_id)
-            ) {
+            const isActive = ACTIVE_STATUSES.has(contract.status)
+            if (canFetchItems(contract) && isActive && !stored.items && !itemFetchesInProgress.has(contract.contract_id)) {
               contractsToFetchItems.push(contract)
             }
           }
@@ -471,28 +388,7 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
               owner: owner.name,
               toFetch: contractsToFetchItems.length,
             })
-
-            for (const contract of contractsToFetchItems) {
-              itemFetchesInProgress.add(contract.contract_id)
-            }
-            set({ itemFetchesInProgress: new Set(itemFetchesInProgress) })
-
-            for (const contract of contractsToFetchItems) {
-              try {
-                const stored = contractsById.get(contract.contract_id)!
-                const items = await fetchItemsForContractFromAPI(stored.sourceOwner, contract.contract_id)
-                stored.items = items
-                await saveContractToDB(contract.contract_id, stored)
-              } catch (err) {
-                logger.error('Failed to fetch items for contract', err instanceof Error ? err : undefined, {
-                  module: 'ContractsStore',
-                  contractId: contract.contract_id,
-                })
-              } finally {
-                itemFetchesInProgress.delete(contract.contract_id)
-              }
-            }
-            set({ itemFetchesInProgress: new Set(itemFetchesInProgress) })
+            await fetchContractItemsBatch(contractsToFetchItems, contractsById, itemFetchesInProgress, set)
           }
 
           useExpiryCacheStore.getState().setExpiry(currentOwnerKey, endpoint, expiresAt, etag, contracts.length === 0)
@@ -522,17 +418,13 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error'
       set({ isUpdating: false, updateError: message })
-      logger.error('Contracts update failed', err instanceof Error ? err : undefined, {
-        module: 'ContractsStore',
-      })
+      logger.error('Contracts update failed', err instanceof Error ? err : undefined, { module: 'ContractsStore' })
     }
   },
 
   updateForOwner: async (owner: Owner) => {
     const state = get()
-    if (!state.initialized) {
-      await get().init()
-    }
+    if (!state.initialized) await get().init()
 
     try {
       const currentOwnerKey = ownerKey(owner.type, owner.id)
@@ -542,14 +434,11 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
       const previousStatusMap = new Map<number, string>()
       for (const contractId of previousVisibility) {
         const stored = state.contractsById.get(contractId)
-        if (stored) {
-          previousStatusMap.set(contractId, stored.contract.status)
-        }
+        if (stored) previousStatusMap.set(contractId, stored.contract.status)
       }
 
       logger.info('Fetching contracts for owner', { module: 'ContractsStore', owner: owner.name })
-
-      const { data: contracts, expiresAt, etag } = await fetchOwnerContractsWithMeta(owner)
+      const { data: contracts, expiresAt, etag } = await fetchOwnerContracts(owner)
 
       const contractsById = new Map(state.contractsById)
       const visibilityByOwner = new Map(state.visibilityByOwner)
@@ -578,13 +467,8 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
         }
 
         const stored = contractsById.get(contract.contract_id)!
-        const isActive = contract.status === 'outstanding' || contract.status === 'in_progress'
-        if (
-          canFetchItems(contract) &&
-          isActive &&
-          !stored.items &&
-          !itemFetchesInProgress.has(contract.contract_id)
-        ) {
+        const isActive = ACTIVE_STATUSES.has(contract.status)
+        if (canFetchItems(contract) && isActive && !stored.items && !itemFetchesInProgress.has(contract.contract_id)) {
           contractsToFetchItems.push(contract)
         }
       }
@@ -639,27 +523,7 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
       }
 
       if (contractsToFetchItems.length > 0) {
-        for (const contract of contractsToFetchItems) {
-          itemFetchesInProgress.add(contract.contract_id)
-        }
-        set({ itemFetchesInProgress: new Set(itemFetchesInProgress) })
-
-        for (const contract of contractsToFetchItems) {
-          try {
-            const stored = contractsById.get(contract.contract_id)!
-            const items = await fetchItemsForContractFromAPI(stored.sourceOwner, contract.contract_id)
-            stored.items = items
-            await saveContractToDB(contract.contract_id, stored)
-          } catch (err) {
-            logger.error('Failed to fetch items for contract', err instanceof Error ? err : undefined, {
-              module: 'ContractsStore',
-              contractId: contract.contract_id,
-            })
-          } finally {
-            itemFetchesInProgress.delete(contract.contract_id)
-          }
-        }
-        set({ itemFetchesInProgress: new Set(itemFetchesInProgress) })
+        await fetchContractItemsBatch(contractsToFetchItems, contractsById, itemFetchesInProgress, set)
       }
 
       useExpiryCacheStore.getState().setExpiry(currentOwnerKey, endpoint, expiresAt, etag, contracts.length === 0)
@@ -760,16 +624,12 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
     const selectedSet = new Set(selectedOwnerIds)
     const allOwners = Object.values(useAuthStore.getState().owners).filter((o): o is Owner => !!o)
     const ownerCharIds = new Set(allOwners.map((o) => o.characterId))
-    const ownerCorpIds = new Set(
-      allOwners.filter((o) => o.corporationId).map((o) => o.corporationId)
-    )
+    const ownerCorpIds = new Set(allOwners.filter((o) => o.corporationId).map((o) => o.corporationId))
 
     const visibleContractIds = new Set<number>()
     for (const [key, contractIds] of state.visibilityByOwner) {
       if (selectedSet.has(key)) {
-        for (const id of contractIds) {
-          visibleContractIds.add(id)
-        }
+        for (const id of contractIds) visibleContractIds.add(id)
       }
     }
 
@@ -808,9 +668,7 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
       const contracts: ContractWithItems[] = []
       for (const contractId of contractIds) {
         const stored = state.contractsById.get(contractId)
-        if (stored) {
-          contracts.push({ contract: stored.contract, items: stored.items })
-        }
+        if (stored) contracts.push({ contract: stored.contract, items: stored.items })
       }
 
       result.push({ owner, contracts })
@@ -820,7 +678,6 @@ export const useContractsStore = create<ContractsStore>((set, get) => ({
   },
 }))
 
-// Backward compatibility: expose contractsByOwner as a selector
 Object.defineProperty(useContractsStore, 'contractsByOwner', {
   get: () => useContractsStore.getState().getContractsByOwner(),
 })

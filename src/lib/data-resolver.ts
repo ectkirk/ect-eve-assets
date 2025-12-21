@@ -353,7 +353,7 @@ async function runResolution(): Promise<void> {
   const ids = await collectResolutionIds(
     useAssetStore.getState().assetsByOwner,
     useContractsStore.getState().getContractsByOwner(),
-    useMarketOrdersStore.getState().getOrdersByOwner(),
+    useMarketOrdersStore.getOrdersByOwner(),
     useIndustryJobsStore.getState().getJobsByOwner(),
     useStructuresStore.getState().dataByOwner,
     useStarbasesStore.getState().dataByOwner,
