@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type ReactNode } from 'react'
 import {
   Minus,
   Square,
@@ -14,6 +14,7 @@ import {
   Sparkles,
   Bug,
   FolderOpen,
+  type LucideIcon,
 } from 'lucide-react'
 import { useThemeStore, THEME_OPTIONS } from '@/store/theme-store'
 import { CreditsModal } from './CreditsModal'
@@ -22,6 +23,49 @@ import { BugReportModal } from './BugReportModal'
 import { ChangelogModal } from './ChangelogModal'
 import { ClearCacheModal } from '@/components/dialogs/ClearCacheModal'
 import { AbyssalSyncModal } from '@/components/dialogs/AbyssalSyncModal'
+
+const menuItemClass =
+  'flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-content-secondary hover:bg-surface-tertiary'
+
+function MenuItem({
+  icon: Icon,
+  children,
+  onClick,
+  href,
+  variant,
+}: {
+  icon: LucideIcon
+  children: ReactNode
+  onClick?: () => void
+  href?: string
+  variant?: 'danger'
+}) {
+  const className =
+    variant === 'danger'
+      ? 'flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-semantic-danger hover:bg-semantic-danger/10'
+      : menuItemClass
+
+  if (href) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={className}
+      >
+        <Icon className="h-4 w-4" />
+        {children}
+      </a>
+    )
+  }
+
+  return (
+    <button onClick={onClick} className={className}>
+      <Icon className="h-4 w-4" />
+      {children}
+    </button>
+  )
+}
 
 export function WindowControls() {
   const [isMaximized, setIsMaximized] = useState(false)
@@ -94,97 +138,80 @@ export function WindowControls() {
                 </select>
               </div>
               <div className="my-2 border-t border-border" />
-              <button
+              <MenuItem
+                icon={Sparkles}
                 onClick={() => {
                   setShowAbyssalModal(true)
                   setSettingsOpen(false)
                 }}
-                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-content-secondary hover:bg-surface-tertiary"
               >
-                <Sparkles className="h-4 w-4" />
                 Abyssal Pricing
-              </button>
+              </MenuItem>
               <div className="my-2 border-t border-border" />
-              <button
+              <MenuItem
+                icon={History}
                 onClick={() => {
                   setChangelogOpen(true)
                   setSettingsOpen(false)
                 }}
-                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-content-secondary hover:bg-surface-tertiary"
               >
-                <History className="h-4 w-4" />
                 Changelog
-              </button>
-              <button
+              </MenuItem>
+              <MenuItem
+                icon={Info}
                 onClick={() => {
                   setCreditsOpen(true)
                   setSettingsOpen(false)
                 }}
-                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-content-secondary hover:bg-surface-tertiary"
               >
-                <Info className="h-4 w-4" />
                 Credits
-              </button>
-              <button
+              </MenuItem>
+              <MenuItem
+                icon={Heart}
                 onClick={() => {
                   setSupportOpen(true)
                   setSettingsOpen(false)
                 }}
-                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-content-secondary hover:bg-surface-tertiary"
               >
-                <Heart className="h-4 w-4" />
                 Support Us
-              </button>
+              </MenuItem>
               <div className="my-2 border-t border-border" />
-              <button
-                onClick={() => {
-                  window.electronAPI?.openLogsFolder()
-                }}
-                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-content-secondary hover:bg-surface-tertiary"
+              <MenuItem
+                icon={FolderOpen}
+                onClick={() => window.electronAPI?.openLogsFolder()}
               >
-                <FolderOpen className="h-4 w-4" />
                 Open Logs Folder
-              </button>
-              <button
+              </MenuItem>
+              <MenuItem
+                icon={Bug}
                 onClick={() => {
                   setShowBugReportModal(true)
                   setSettingsOpen(false)
                 }}
-                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-content-secondary hover:bg-surface-tertiary"
               >
-                <Bug className="h-4 w-4" />
                 Report A Bug
-              </button>
+              </MenuItem>
               <div className="my-2 border-t border-border" />
-              <a
-                href="https://edencom.net/privacy-policy"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-content-secondary hover:bg-surface-tertiary"
-              >
-                <Shield className="h-4 w-4" />
+              <MenuItem icon={Shield} href="https://edencom.net/privacy-policy">
                 Privacy Policy
-              </a>
-              <a
+              </MenuItem>
+              <MenuItem
+                icon={FileText}
                 href="https://edencom.net/terms-of-service"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-content-secondary hover:bg-surface-tertiary"
               >
-                <FileText className="h-4 w-4" />
                 Terms of Service
-              </a>
+              </MenuItem>
               <div className="my-2 border-t border-semantic-danger/30" />
-              <button
+              <MenuItem
+                icon={Trash2}
+                variant="danger"
                 onClick={() => {
                   setShowClearCacheModal(true)
                   setSettingsOpen(false)
                 }}
-                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-semantic-danger hover:bg-semantic-danger/10"
               >
-                <Trash2 className="h-4 w-4" />
                 Clear Cache...
-              </button>
+              </MenuItem>
             </div>
           </div>
         )}

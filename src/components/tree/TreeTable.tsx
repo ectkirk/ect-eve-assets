@@ -501,20 +501,12 @@ const TreeRow = memo(function TreeRow({
   return row
 })
 
-const COLUMN_WIDTHS: Record<string, string> = {
-  name: 'w-auto',
-  region: 'w-40',
-  quantity: 'w-24',
-  value: 'w-32',
-  volume: 'w-32',
-}
-
-const COLUMN_ALIGN: Record<string, string> = {
-  name: 'text-left',
-  region: 'text-left',
-  quantity: 'text-right',
-  value: 'text-right',
-  volume: 'text-right',
+const COLUMN_STYLES: Record<string, { width: string; align: string }> = {
+  name: { width: 'w-auto', align: 'text-left' },
+  region: { width: 'w-40', align: 'text-left' },
+  quantity: { width: 'w-24', align: 'text-right' },
+  value: { width: 'w-32', align: 'text-right' },
+  volume: { width: 'w-32', align: 'text-right' },
 }
 
 export function TreeTable({
@@ -631,7 +623,10 @@ export function TreeTable({
                   sortColumn={sortColumn}
                   sortDirection={sortDirection}
                   onSort={handleSort}
-                  className={cn(COLUMN_WIDTHS[colId], COLUMN_ALIGN[colId])}
+                  className={cn(
+                    COLUMN_STYLES[colId]?.width,
+                    COLUMN_STYLES[colId]?.align
+                  )}
                 />
               )
             })}

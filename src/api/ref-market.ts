@@ -13,6 +13,33 @@ import { resolveTypes } from './ref-universe-loader'
 
 export type MarketBulkItem = z.infer<typeof MarketBulkItemSchema>
 
+function validateRefResponse<T>(
+  rawData: unknown,
+  schema: z.ZodType<T>,
+  endpoint: string,
+  context?: Record<string, unknown>
+): T | null {
+  if (rawData && typeof rawData === 'object' && 'error' in rawData) {
+    logger.warn(`RefAPI ${endpoint} failed`, {
+      module: 'RefAPI',
+      error: (rawData as { error: string }).error,
+      ...context,
+    })
+    return null
+  }
+
+  const parseResult = schema.safeParse(rawData)
+  if (!parseResult.success) {
+    logger.error(`RefAPI ${endpoint} validation failed`, undefined, {
+      module: 'RefAPI',
+      errors: parseResult.error.issues.slice(0, 3),
+    })
+    return null
+  }
+
+  return parseResult.data
+}
+
 const PLEX_GROUP = 1875
 const CONTRACT_GROUPS = new Set([883, 547, 4594, 485, 1538, 659, 30])
 const CHUNK_CONCURRENCY = 3
@@ -73,26 +100,15 @@ function createMarketChunkFetcher(options: MarketBulkOptions) {
       })
       const duration = Math.round(performance.now() - chunkStart)
 
-      if (rawData && typeof rawData === 'object' && 'error' in rawData) {
-        logger.warn('RefAPI /market/bulk failed', {
-          module: 'RefAPI',
-          error: rawData.error,
-          requested: chunk.length,
-          duration,
-        })
-        return results
-      }
+      const data = validateRefResponse(
+        rawData,
+        MarketBulkResponseSchema,
+        '/market/bulk',
+        { requested: chunk.length, duration }
+      )
+      if (!data) return results
 
-      const parseResult = MarketBulkResponseSchema.safeParse(rawData)
-      if (!parseResult.success) {
-        logger.error('RefAPI /market/bulk validation failed', undefined, {
-          module: 'RefAPI',
-          errors: parseResult.error.issues.slice(0, 3),
-        })
-        return results
-      }
-
-      const returned = Object.keys(parseResult.data.items).length
+      const returned = Object.keys(data.items).length
       logger.info('RefAPI /market/bulk', {
         module: 'RefAPI',
         requested: chunk.length,
@@ -100,7 +116,7 @@ function createMarketChunkFetcher(options: MarketBulkOptions) {
         duration,
       })
 
-      for (const [idStr, item] of Object.entries(parseResult.data.items)) {
+      for (const [idStr, item] of Object.entries(data.items)) {
         results.set(Number(idStr), item)
       }
     } catch (error) {
@@ -152,27 +168,16 @@ async function fetchJitaPricesChunk(
     const rawData = await window.electronAPI!.refMarketJita(chunk)
     const duration = Math.round(performance.now() - chunkStart)
 
-    if (rawData && typeof rawData === 'object' && 'error' in rawData) {
-      logger.warn('RefAPI /market/jita failed', {
-        module: 'RefAPI',
-        error: rawData.error,
-        requested: chunk.length,
-        duration,
-      })
-      return results
-    }
-
-    const parseResult = MarketJitaResponseSchema.safeParse(rawData)
-    if (!parseResult.success) {
-      logger.error('RefAPI /market/jita validation failed', undefined, {
-        module: 'RefAPI',
-        errors: parseResult.error.issues.slice(0, 3),
-      })
-      return results
-    }
+    const data = validateRefResponse(
+      rawData,
+      MarketJitaResponseSchema,
+      '/market/jita',
+      { requested: chunk.length, duration }
+    )
+    if (!data) return results
 
     let returned = 0
-    for (const [idStr, price] of Object.entries(parseResult.data.items)) {
+    for (const [idStr, price] of Object.entries(data.items)) {
       if (price !== null && price > 0) {
         results.set(Number(idStr), price)
         returned++
@@ -227,26 +232,16 @@ async function fetchPlexPriceFromAPI(): Promise<number | null> {
     const rawData = await window.electronAPI!.refMarketPlex()
     const duration = Math.round(performance.now() - start)
 
-    if (rawData && typeof rawData === 'object' && 'error' in rawData) {
-      logger.warn('RefAPI /market/plex failed', {
-        module: 'RefAPI',
-        error: rawData.error,
-        duration,
-      })
-      return null
-    }
-
-    const parseResult = MarketPlexResponseSchema.safeParse(rawData)
-    if (!parseResult.success) {
-      logger.error('RefAPI /market/plex validation failed', undefined, {
-        module: 'RefAPI',
-        errors: parseResult.error.issues.slice(0, 3),
-      })
-      return null
-    }
+    const data = validateRefResponse(
+      rawData,
+      MarketPlexResponseSchema,
+      '/market/plex',
+      { duration }
+    )
+    if (!data) return null
 
     logger.info('RefAPI /market/plex', { module: 'RefAPI', duration })
-    return parseResult.data.lowestSell
+    return data.lowestSell
   } catch (error) {
     logger.error('RefAPI /market/plex error', error, { module: 'RefAPI' })
     return null
@@ -263,27 +258,16 @@ async function fetchContractPricesChunk(
     const rawData = await window.electronAPI!.refMarketContracts(chunk)
     const duration = Math.round(performance.now() - chunkStart)
 
-    if (rawData && typeof rawData === 'object' && 'error' in rawData) {
-      logger.warn('RefAPI /market/contracts failed', {
-        module: 'RefAPI',
-        error: rawData.error,
-        requested: chunk.length,
-        duration,
-      })
-      return results
-    }
-
-    const parseResult = MarketContractsResponseSchema.safeParse(rawData)
-    if (!parseResult.success) {
-      logger.error('RefAPI /market/contracts validation failed', undefined, {
-        module: 'RefAPI',
-        errors: parseResult.error.issues.slice(0, 3),
-      })
-      return results
-    }
+    const data = validateRefResponse(
+      rawData,
+      MarketContractsResponseSchema,
+      '/market/contracts',
+      { requested: chunk.length, duration }
+    )
+    if (!data) return results
 
     let returned = 0
-    for (const [idStr, item] of Object.entries(parseResult.data.items)) {
+    for (const [idStr, item] of Object.entries(data.items)) {
       if (item.price !== null && item.price > 0 && item.hasSufficientData) {
         results.set(Number(idStr), item.price)
         returned++
@@ -459,25 +443,15 @@ export async function fetchImplantSlots(
     const rawData = await window.electronAPI!.refImplants(typeIds)
     const duration = Math.round(performance.now() - start)
 
-    if (rawData && typeof rawData === 'object' && 'error' in rawData) {
-      logger.warn('RefAPI /implants failed', {
-        module: 'RefAPI',
-        error: rawData.error,
-        duration,
-      })
-      return results
-    }
+    const data = validateRefResponse(
+      rawData,
+      RefImplantsResponseSchema,
+      '/implants',
+      { duration }
+    )
+    if (!data) return results
 
-    const parseResult = RefImplantsResponseSchema.safeParse(rawData)
-    if (!parseResult.success) {
-      logger.error('RefAPI /implants validation failed', undefined, {
-        module: 'RefAPI',
-        errors: parseResult.error.issues.slice(0, 3),
-      })
-      return results
-    }
-
-    for (const [idStr, item] of Object.entries(parseResult.data.items)) {
+    for (const [idStr, item] of Object.entries(data.items)) {
       results.set(Number(idStr), item.slot)
     }
 

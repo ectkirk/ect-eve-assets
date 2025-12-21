@@ -5,6 +5,35 @@ import { z } from 'zod'
 export type ESIAsset = z.infer<typeof ESIAssetSchema>
 export type ESIAssetName = z.infer<typeof ESIAssetNameSchema>
 
+function chunkArray<T>(array: T[], size: number): T[][] {
+  const chunks: T[][] = []
+  for (let i = 0; i < array.length; i += size) {
+    chunks.push(array.slice(i, i + size))
+  }
+  return chunks
+}
+
+async function fetchAssetNames(
+  endpoint: string,
+  characterId: number,
+  itemIds: number[]
+): Promise<ESIAssetName[]> {
+  const chunks = chunkArray(itemIds, 1000)
+  const results: ESIAssetName[] = []
+
+  for (const chunk of chunks) {
+    const names = await esi.fetch<ESIAssetName[]>(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(chunk),
+      characterId,
+      schema: z.array(ESIAssetNameSchema),
+    })
+    results.push(...names)
+  }
+
+  return results
+}
+
 export async function getCharacterAssets(
   characterId: number,
   authCharacterId?: number
@@ -20,26 +49,11 @@ export async function getCharacterAssetNames(
   authCharacterId: number,
   itemIds: number[]
 ): Promise<ESIAssetName[]> {
-  const chunks: number[][] = []
-  for (let i = 0; i < itemIds.length; i += 1000) {
-    chunks.push(itemIds.slice(i, i + 1000))
-  }
-
-  const results: ESIAssetName[] = []
-  for (const chunk of chunks) {
-    const names = await esi.fetch<ESIAssetName[]>(
-      `/characters/${characterId}/assets/names/`,
-      {
-        method: 'POST',
-        body: JSON.stringify(chunk),
-        characterId: authCharacterId,
-        schema: z.array(ESIAssetNameSchema),
-      }
-    )
-    results.push(...names)
-  }
-
-  return results
+  return fetchAssetNames(
+    `/characters/${characterId}/assets/names/`,
+    authCharacterId,
+    itemIds
+  )
 }
 
 export async function getCorporationAssetNames(
@@ -47,24 +61,9 @@ export async function getCorporationAssetNames(
   characterId: number,
   itemIds: number[]
 ): Promise<ESIAssetName[]> {
-  const chunks: number[][] = []
-  for (let i = 0; i < itemIds.length; i += 1000) {
-    chunks.push(itemIds.slice(i, i + 1000))
-  }
-
-  const results: ESIAssetName[] = []
-  for (const chunk of chunks) {
-    const names = await esi.fetch<ESIAssetName[]>(
-      `/corporations/${corporationId}/assets/names/`,
-      {
-        method: 'POST',
-        body: JSON.stringify(chunk),
-        characterId,
-        schema: z.array(ESIAssetNameSchema),
-      }
-    )
-    results.push(...names)
-  }
-
-  return results
+  return fetchAssetNames(
+    `/corporations/${corporationId}/assets/names/`,
+    characterId,
+    itemIds
+  )
 }
