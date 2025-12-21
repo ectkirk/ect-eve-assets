@@ -220,13 +220,29 @@ async function fetchItemsForContracts(
 
     if (fetched.length > 0) {
       const currentItems = new Map(baseStore.getState().itemsByContractId)
+      const typeIds = new Set<number>()
       for (const { contractId, items } of fetched) {
         currentItems.set(contractId, items)
+        if (items) {
+          for (const item of items) {
+            typeIds.add(item.type_id)
+          }
+        }
       }
       baseStore.setState((s) => ({
         itemsByContractId: currentItems,
         updateCounter: s.updateCounter + 1,
       }))
+
+      if (typeIds.size > 0) {
+        const { fetchPrices } = await import('@/api/ref-client')
+        const { useAssetStore } = await import('./asset-store')
+        const prices = await fetchPrices(Array.from(typeIds))
+        if (prices.size > 0) {
+          await useAssetStore.getState().setPrices(prices)
+        }
+      }
+
       triggerResolution()
     }
   } finally {
@@ -272,7 +288,27 @@ const baseStore = createVisibilityStore<
   rebuildExtraState: undefined,
 
   onAfterInit: async () => {
-    baseStore.setState({ itemsByContractId: await loadAllItems() })
+    const loadedItems = await loadAllItems()
+    baseStore.setState({ itemsByContractId: loadedItems })
+
+    const typeIds = new Set<number>()
+    for (const items of loadedItems.values()) {
+      if (items) {
+        for (const item of items) {
+          typeIds.add(item.type_id)
+        }
+      }
+    }
+
+    if (typeIds.size > 0) {
+      const { fetchPrices } = await import('@/api/ref-client')
+      const { useAssetStore } = await import('./asset-store')
+      const prices = await fetchPrices(Array.from(typeIds))
+      if (prices.size > 0) {
+        await useAssetStore.getState().setPrices(prices)
+      }
+      triggerResolution()
+    }
   },
 
   onBeforeOwnerUpdate: (owner, previousVisibility, itemsById) => {
@@ -358,12 +394,18 @@ const baseStore = createVisibilityStore<
     try {
       const currentItems = new Map(baseStore.getState().itemsByContractId)
       let hasChanges = false
+      const typeIds = new Set<number>()
 
       if (toFetch.size > 0) {
         const fetched = await fetchAndSaveItems(toFetch)
         for (const { contractId, items } of fetched) {
           currentItems.set(contractId, items)
           hasChanges = true
+          if (items) {
+            for (const item of items) {
+              typeIds.add(item.type_id)
+            }
+          }
         }
       }
 
@@ -380,6 +422,16 @@ const baseStore = createVisibilityStore<
           itemsByContractId: currentItems,
           updateCounter: s.updateCounter + 1,
         }))
+
+        if (typeIds.size > 0) {
+          const { fetchPrices } = await import('@/api/ref-client')
+          const { useAssetStore } = await import('./asset-store')
+          const prices = await fetchPrices(Array.from(typeIds))
+          if (prices.size > 0) {
+            await useAssetStore.getState().setPrices(prices)
+          }
+        }
+
         triggerResolution()
       }
     } finally {
