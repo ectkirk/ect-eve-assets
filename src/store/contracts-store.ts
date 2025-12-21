@@ -149,10 +149,10 @@ async function clearItemsDb(): Promise<void> {
   })
 }
 
-// Module state for hook coordination (toast notifications)
+// Module state for hook coordination
 let previousContracts: Map<number, ESIContract> | undefined
+const pendingItemFetches = new Set<number>()
 
-// Shared function for fetching contract items (used by both hooks)
 async function fetchItemsForContracts(
   contractsById: Map<number, StoredContract>
 ): Promise<void> {
@@ -160,41 +160,52 @@ async function fetchItemsForContracts(
   const toFetch = new Map<number, SourceOwner>()
 
   for (const [contractId, stored] of contractsById) {
-    if (isActiveItemExchange(stored.item) && !itemsState.has(contractId)) {
+    if (
+      isActiveItemExchange(stored.item) &&
+      !itemsState.has(contractId) &&
+      !pendingItemFetches.has(contractId)
+    ) {
       toFetch.set(contractId, stored.sourceOwner)
+      pendingItemFetches.add(contractId)
     }
   }
 
   if (toFetch.size === 0) return
 
-  const results = await Promise.allSettled(
-    Array.from(toFetch.entries()).map(async ([contractId, sourceOwner]) => {
-      const items = await fetchItemsFromAPI(sourceOwner, contractId)
-      return { contractId, items }
-    })
-  )
-
-  const currentItems = new Map(itemsState)
-  const toSave: Array<{ contractId: number; items: ESIContractItem[] }> = []
-
-  for (const result of results) {
-    if (result.status === 'fulfilled') {
-      currentItems.set(result.value.contractId, result.value.items)
-      toSave.push(result.value)
-    } else {
-      logger.error('Failed to fetch contract items', result.reason, {
-        module: 'ContractsStore',
+  try {
+    const results = await Promise.allSettled(
+      Array.from(toFetch.entries()).map(async ([contractId, sourceOwner]) => {
+        const items = await fetchItemsFromAPI(sourceOwner, contractId)
+        return { contractId, items }
       })
-    }
-  }
+    )
 
-  if (toSave.length > 0) {
-    await saveItemsBatch(toSave)
-    baseStore.setState((s) => ({
-      itemsByContractId: currentItems,
-      updateCounter: s.updateCounter + 1,
-    }))
-    triggerResolution()
+    const currentItems = new Map(baseStore.getState().itemsByContractId)
+    const toSave: Array<{ contractId: number; items: ESIContractItem[] }> = []
+
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        currentItems.set(result.value.contractId, result.value.items)
+        toSave.push(result.value)
+      } else {
+        logger.error('Failed to fetch contract items', result.reason, {
+          module: 'ContractsStore',
+        })
+      }
+    }
+
+    if (toSave.length > 0) {
+      await saveItemsBatch(toSave)
+      baseStore.setState((s) => ({
+        itemsByContractId: currentItems,
+        updateCounter: s.updateCounter + 1,
+      }))
+      triggerResolution()
+    }
+  } finally {
+    for (const contractId of toFetch.keys()) {
+      pendingItemFetches.delete(contractId)
+    }
   }
 }
 
@@ -307,71 +318,74 @@ const baseStore = createVisibilityStore<
     const toFetch = new Map<number, SourceOwner>()
     const toDelete: number[] = []
 
-    // Collect contracts needing items
     for (const [contractId, stored] of updatedItemsById) {
-      if (isActiveItemExchange(stored.item) && !itemsState.has(contractId)) {
+      if (
+        isActiveItemExchange(stored.item) &&
+        !itemsState.has(contractId) &&
+        !pendingItemFetches.has(contractId)
+      ) {
         toFetch.set(contractId, stored.sourceOwner)
+        pendingItemFetches.add(contractId)
       }
     }
 
-    // Collect orphaned items to delete
     for (const contractId of itemsState.keys()) {
       if (!updatedItemsById.has(contractId)) {
         toDelete.push(contractId)
       }
     }
 
-    logger.debug('onAfterBatchUpdate', {
-      module: 'ContractsStore',
-      toFetchCount: toFetch.size,
-      toDeleteCount: toDelete.length,
-    })
-
     if (toFetch.size === 0 && toDelete.length === 0) return
 
-    const currentItems = new Map(itemsState)
-    let hasChanges = false
+    try {
+      let hasChanges = false
+      const currentItems = new Map(baseStore.getState().itemsByContractId)
 
-    if (toFetch.size > 0) {
-      const results = await Promise.allSettled(
-        Array.from(toFetch.entries()).map(async ([contractId, sourceOwner]) => {
-          const items = await fetchItemsFromAPI(sourceOwner, contractId)
-          return { contractId, items }
-        })
-      )
-
-      const toSave: Array<{ contractId: number; items: ESIContractItem[] }> = []
-      for (const result of results) {
-        if (result.status === 'fulfilled') {
-          currentItems.set(result.value.contractId, result.value.items)
-          toSave.push(result.value)
-          hasChanges = true
-        } else {
-          logger.error('Failed to fetch contract items', result.reason, {
-            module: 'ContractsStore',
+      if (toFetch.size > 0) {
+        const results = await Promise.allSettled(
+          Array.from(toFetch.entries()).map(async ([contractId, sourceOwner]) => {
+            const items = await fetchItemsFromAPI(sourceOwner, contractId)
+            return { contractId, items }
           })
+        )
+
+        const toSave: Array<{ contractId: number; items: ESIContractItem[] }> = []
+        for (const result of results) {
+          if (result.status === 'fulfilled') {
+            currentItems.set(result.value.contractId, result.value.items)
+            toSave.push(result.value)
+            hasChanges = true
+          } else {
+            logger.error('Failed to fetch contract items', result.reason, {
+              module: 'ContractsStore',
+            })
+          }
+        }
+
+        if (toSave.length > 0) {
+          await saveItemsBatch(toSave)
         }
       }
 
-      if (toSave.length > 0) {
-        await saveItemsBatch(toSave)
+      if (toDelete.length > 0) {
+        for (const id of toDelete) {
+          currentItems.delete(id)
+        }
+        await deleteItems(toDelete)
+        hasChanges = true
       }
-    }
 
-    if (toDelete.length > 0) {
-      for (const id of toDelete) {
-        currentItems.delete(id)
+      if (hasChanges) {
+        baseStore.setState((s) => ({
+          itemsByContractId: currentItems,
+          updateCounter: s.updateCounter + 1,
+        }))
+        triggerResolution()
       }
-      await deleteItems(toDelete)
-      hasChanges = true
-    }
-
-    if (hasChanges) {
-      baseStore.setState((s) => ({
-        itemsByContractId: currentItems,
-        updateCounter: s.updateCounter + 1,
-      }))
-      triggerResolution()
+    } finally {
+      for (const contractId of toFetch.keys()) {
+        pendingItemFetches.delete(contractId)
+      }
     }
   },
 })
