@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Copy, Check } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { Copy, Check, ArrowUp, ArrowDown } from 'lucide-react'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { useAssetData } from '@/hooks/useAssetData'
@@ -8,11 +9,13 @@ import { useColumnSettings, useCacheVersion, useSortable, SortableHeader, sortRo
 import { type MarketOrder } from '@/store/market-orders-store'
 import { hasType, getType } from '@/store/reference-cache'
 import { useRegionalMarketStore } from '@/store/regional-market-store'
+import { useESIPricesStore } from '@/store/esi-prices-store'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import {
   Table,
   TableBody,
   TableCell,
+  TableHead,
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
@@ -34,6 +37,7 @@ interface OrderRow {
   regionName: string
   systemName: string
   lowestSell: number | null
+  eveEstimated: number | null
   expiryTime: number
 }
 
@@ -50,18 +54,6 @@ function formatExpiry(issued: string, duration: number): string {
 
   const hours = Math.floor(remaining / (60 * 60 * 1000))
   return `${hours}h`
-}
-
-function DifferenceCell({ orderPrice, comparisonValue, isBuyOrder }: { orderPrice: number; comparisonValue: number | null; isBuyOrder: boolean }) {
-  if (comparisonValue === null) return <span className="text-content-muted">-</span>
-  const diff = orderPrice - comparisonValue
-  const isGood = isBuyOrder ? diff >= 0 : diff <= 0
-  const prefix = diff > 0 ? '+' : ''
-  return (
-    <span className={isGood ? 'text-status-positive' : 'text-status-negative'}>
-      {prefix}{diff.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-    </span>
-  )
 }
 
 function CopyButton({ text }: { text: string }) {
@@ -85,10 +77,117 @@ function CopyButton({ text }: { text: string }) {
   )
 }
 
-type SortColumn = 'item' | 'price' | 'comparison' | 'difference' | 'qty' | 'total' | 'expires' | 'location'
+function formatPrice(value: number): string {
+  const formatted = value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return formatted.endsWith('.00') ? formatted.slice(0, -3) : formatted
+}
 
-function SellOrdersTable({ orders }: { orders: OrderRow[] }) {
+function DiffCell({ price, lowestSell }: { price: number; lowestSell: number | null }) {
+  if (lowestSell === null) return <span className="text-content-muted">-</span>
+  const diff = price - lowestSell
+  if (diff === 0) {
+    return <span>0</span>
+  }
+  const isGood = diff < 0
+  const formattedDiff = formatPrice(Math.abs(diff))
+  const pct = lowestSell > 0 ? Math.abs((diff / lowestSell) * 100) : 0
+  const pctStr = pct.toFixed(1).replace(/\.0$/, '')
+  return (
+    <span>
+      {isGood ? '-' : '+'}{formattedDiff}{' '}
+      <span className={`text-xs ${isGood ? 'text-status-positive' : 'text-status-negative'}`}>({pctStr}%)</span>
+    </span>
+  )
+}
+
+function EVEEstCell({ price, eveEstimated }: { price: number; eveEstimated: number | null }) {
+  if (eveEstimated === null) return <span className="text-content-muted">-</span>
+  const isAbove = price > eveEstimated
+  return (
+    <span className={isAbove ? 'text-status-positive' : 'text-status-negative'}>
+      {formatPrice(eveEstimated)}
+    </span>
+  )
+}
+
+type SortColumn = 'item' | 'price' | 'lowest' | 'diff' | 'eveEstimated' | 'qty' | 'total' | 'expires' | 'location'
+type DiffSortMode = 'number' | 'percent'
+
+function DiffHeader({
+  sortColumn,
+  sortDirection,
+  onSort,
+  diffSortMode,
+  onDiffSortModeChange
+}: {
+  sortColumn: SortColumn
+  sortDirection: 'asc' | 'desc'
+  onSort: (column: SortColumn) => void
+  diffSortMode: DiffSortMode
+  onDiffSortModeChange: (mode: DiffSortMode) => void
+}) {
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [menuPos, setMenuPos] = useState({ x: 0, y: 0 })
+  const isActive = sortColumn === 'diff'
+
+  const handleClick = () => onSort('diff')
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault()
+    setMenuPos({ x: e.clientX, y: e.clientY })
+    setMenuOpen(true)
+  }
+
+  useEffect(() => {
+    if (menuOpen) {
+      const close = () => setMenuOpen(false)
+      window.addEventListener('click', close)
+      return () => window.removeEventListener('click', close)
+    }
+  }, [menuOpen])
+
+  return (
+    <TableHead
+      className="text-right cursor-pointer select-none hover:bg-surface-tertiary/50"
+      onClick={handleClick}
+      onContextMenu={handleContextMenu}
+    >
+      <div className="flex items-center gap-1 justify-end">
+        Diff {diffSortMode === 'percent' ? '(%)' : ''}
+        {isActive && (
+          sortDirection === 'asc'
+            ? <ArrowUp className="h-3 w-3" />
+            : <ArrowDown className="h-3 w-3" />
+        )}
+      </div>
+      {menuOpen && createPortal(
+        <div
+          className="fixed z-50 bg-surface border border-border rounded shadow-lg py-1 text-sm"
+          style={{ left: menuPos.x, top: menuPos.y }}
+        >
+          <button
+            className={`w-full px-3 py-1 text-left hover:bg-surface-secondary ${diffSortMode === 'number' ? 'text-accent' : ''}`}
+            onClick={() => { onDiffSortModeChange('number'); setMenuOpen(false) }}
+          >
+            Sort by ISK
+          </button>
+          <button
+            className={`w-full px-3 py-1 text-left hover:bg-surface-secondary ${diffSortMode === 'percent' ? 'text-accent' : ''}`}
+            onClick={() => { onDiffSortModeChange('percent'); setMenuOpen(false) }}
+          >
+            Sort by %
+          </button>
+        </div>,
+        document.body
+      )}
+    </TableHead>
+  )
+}
+
+function SellOrdersTable({ orders, visibleColumns }: { orders: OrderRow[]; visibleColumns: Set<string> }) {
   const { sortColumn, sortDirection, handleSort } = useSortable<SortColumn>('total', 'desc')
+  const [diffSortMode, setDiffSortMode] = useState<DiffSortMode>('number')
+  const show = (col: string) => visibleColumns.has(col)
 
   const sortedOrders = useMemo(() => {
     return sortRows(orders, sortColumn, sortDirection, (row, column) => {
@@ -97,10 +196,17 @@ function SellOrdersTable({ orders }: { orders: OrderRow[] }) {
           return row.typeName.toLowerCase()
         case 'price':
           return row.order.price
-        case 'comparison':
+        case 'lowest':
           return row.lowestSell ?? (sortDirection === 'asc' ? Infinity : -Infinity)
-        case 'difference':
-          return row.lowestSell !== null ? row.order.price - row.lowestSell : (sortDirection === 'asc' ? Infinity : -Infinity)
+        case 'diff':
+          if (row.lowestSell === null) return sortDirection === 'asc' ? Infinity : -Infinity
+          const diff = row.order.price - row.lowestSell
+          if (diffSortMode === 'percent') {
+            return row.lowestSell > 0 ? (diff / row.lowestSell) * 100 : (sortDirection === 'asc' ? Infinity : -Infinity)
+          }
+          return diff
+        case 'eveEstimated':
+          return row.eveEstimated ?? (sortDirection === 'asc' ? Infinity : -Infinity)
         case 'qty':
           return row.order.volume_remain
         case 'total':
@@ -113,20 +219,21 @@ function SellOrdersTable({ orders }: { orders: OrderRow[] }) {
           return 0
       }
     })
-  }, [orders, sortColumn, sortDirection])
+  }, [orders, sortColumn, sortDirection, diffSortMode])
 
   return (
-    <Table className="table-fixed">
+    <Table>
       <TableHeader>
         <TableRow className="hover:bg-transparent">
-          <SortableHeader column="item" label="Item" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="w-[25%]" />
-          <SortableHeader column="location" label="Location" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="w-[18%]" />
-          <SortableHeader column="price" label="Price" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="w-[12%] text-right" />
-          <SortableHeader column="comparison" label="Lowest" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="w-[12%] text-right" />
-          <SortableHeader column="difference" label="Diff" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="w-[10%] text-right" />
-          <SortableHeader column="qty" label="Qty" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="w-[8%] text-right" />
-          <SortableHeader column="total" label="Total" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="w-[10%] text-right" />
-          <SortableHeader column="expires" label="Exp" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="w-[5%] text-right" />
+          {show('item') && <SortableHeader column="item" label="Item" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />}
+          {show('location') && <SortableHeader column="location" label="Location" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />}
+          {show('price') && <SortableHeader column="price" label="Price" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />}
+          {show('lowest') && <SortableHeader column="lowest" label="Lowest" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />}
+          {show('diff') && <DiffHeader sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} diffSortMode={diffSortMode} onDiffSortModeChange={setDiffSortMode} />}
+          {show('eveEstimated') && <SortableHeader column="eveEstimated" label="EVE Est" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />}
+          {show('quantity') && <SortableHeader column="qty" label="Qty" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />}
+          {show('total') && <SortableHeader column="total" label="Total" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />}
+          {show('expires') && <SortableHeader column="expires" label="Exp" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -134,34 +241,53 @@ function SellOrdersTable({ orders }: { orders: OrderRow[] }) {
           const total = row.order.price * row.order.volume_remain
           return (
             <TableRow key={row.order.order_id}>
-              <TableCell className="py-1.5">
-                <div className="flex items-center gap-2 min-w-0">
-                  <OwnerIcon ownerId={row.ownerId} ownerType={row.ownerType} size="sm" />
-                  <TypeIcon typeId={row.typeId} categoryId={row.categoryId} />
-                  <span className="truncate" title={row.typeName}>{row.typeName}</span>
-                  <CopyButton text={row.typeName} />
-                </div>
-              </TableCell>
-              <TableCell className="py-1.5 text-content-secondary">
-                <div className="truncate" title={`${row.locationName} • ${row.systemName} • ${row.regionName}`}>
-                  {row.locationName}
-                </div>
-              </TableCell>
-              <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">{row.order.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-              <TableCell className="py-1.5 text-right tabular-nums text-content-secondary whitespace-nowrap">
-                {row.lowestSell !== null ? row.lowestSell.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : <span className="text-content-muted">-</span>}
-              </TableCell>
-              <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
-                <DifferenceCell orderPrice={row.order.price} comparisonValue={row.lowestSell} isBuyOrder={false} />
-              </TableCell>
-              <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
-                {row.order.volume_remain.toLocaleString()}
-                {row.order.volume_remain !== row.order.volume_total && (
-                  <span className="text-content-muted">/{row.order.volume_total.toLocaleString()}</span>
-                )}
-              </TableCell>
-              <TableCell className="py-1.5 text-right tabular-nums text-status-highlight whitespace-nowrap">{formatNumber(total)}</TableCell>
-              <TableCell className="py-1.5 text-right tabular-nums text-content-secondary whitespace-nowrap">{formatExpiry(row.order.issued, row.order.duration)}</TableCell>
+              {show('item') && (
+                <TableCell className="py-1.5">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <OwnerIcon ownerId={row.ownerId} ownerType={row.ownerType} size="sm" />
+                    <TypeIcon typeId={row.typeId} categoryId={row.categoryId} />
+                    <span className="truncate" title={row.typeName}>{row.typeName}</span>
+                    <CopyButton text={row.typeName} />
+                  </div>
+                </TableCell>
+              )}
+              {show('location') && (
+                <TableCell className="py-1.5 text-content-secondary">
+                  <div className="truncate" title={`${row.locationName} • ${row.systemName} • ${row.regionName}`}>
+                    {row.locationName}
+                  </div>
+                </TableCell>
+              )}
+              {show('price') && (
+                <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
+                  {formatPrice(row.order.price)}
+                </TableCell>
+              )}
+              {show('lowest') && (
+                <TableCell className="py-1.5 text-right tabular-nums text-content-secondary whitespace-nowrap">
+                  {row.lowestSell !== null ? formatPrice(row.lowestSell) : <span className="text-content-muted">-</span>}
+                </TableCell>
+              )}
+              {show('diff') && (
+                <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
+                  <DiffCell price={row.order.price} lowestSell={row.lowestSell} />
+                </TableCell>
+              )}
+              {show('eveEstimated') && (
+                <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
+                  <EVEEstCell price={row.order.price} eveEstimated={row.eveEstimated} />
+                </TableCell>
+              )}
+              {show('quantity') && (
+                <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
+                  {row.order.volume_remain.toLocaleString()}
+                  {row.order.volume_remain !== row.order.volume_total && (
+                    <span className="text-content-muted">/{row.order.volume_total.toLocaleString()}</span>
+                  )}
+                </TableCell>
+              )}
+              {show('total') && <TableCell className="py-1.5 text-right tabular-nums text-status-highlight whitespace-nowrap">{formatNumber(total)}</TableCell>}
+              {show('expires') && <TableCell className="py-1.5 text-right tabular-nums text-content-secondary whitespace-nowrap">{formatExpiry(row.order.issued, row.order.duration)}</TableCell>}
             </TableRow>
           )
         })}
@@ -170,10 +296,11 @@ function SellOrdersTable({ orders }: { orders: OrderRow[] }) {
   )
 }
 
-type BuySortColumn = 'item' | 'price' | 'qty' | 'total' | 'expires' | 'location'
+type BuySortColumn = 'item' | 'price' | 'eveEstimated' | 'qty' | 'total' | 'expires' | 'location'
 
-function BuyOrdersTable({ orders }: { orders: OrderRow[] }) {
+function BuyOrdersTable({ orders, visibleColumns }: { orders: OrderRow[]; visibleColumns: Set<string> }) {
   const { sortColumn, sortDirection, handleSort } = useSortable<BuySortColumn>('total', 'desc')
+  const show = (col: string) => visibleColumns.has(col)
 
   const sortedOrders = useMemo(() => {
     return sortRows(orders, sortColumn, sortDirection, (row, column) => {
@@ -182,6 +309,8 @@ function BuyOrdersTable({ orders }: { orders: OrderRow[] }) {
           return row.typeName.toLowerCase()
         case 'price':
           return row.order.price
+        case 'eveEstimated':
+          return row.eveEstimated ?? (sortDirection === 'asc' ? Infinity : -Infinity)
         case 'qty':
           return row.order.volume_remain
         case 'total':
@@ -197,15 +326,16 @@ function BuyOrdersTable({ orders }: { orders: OrderRow[] }) {
   }, [orders, sortColumn, sortDirection])
 
   return (
-    <Table className="table-fixed">
+    <Table>
       <TableHeader>
         <TableRow className="hover:bg-transparent">
-          <SortableHeader column="item" label="Item" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="w-[30%]" />
-          <SortableHeader column="location" label="Location" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="w-[25%]" />
-          <SortableHeader column="price" label="Price" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="w-[15%] text-right" />
-          <SortableHeader column="qty" label="Qty" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="w-[10%] text-right" />
-          <SortableHeader column="total" label="Total" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="w-[12%] text-right" />
-          <SortableHeader column="expires" label="Exp" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="w-[8%] text-right" />
+          {show('item') && <SortableHeader column="item" label="Item" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />}
+          {show('location') && <SortableHeader column="location" label="Location" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />}
+          {show('price') && <SortableHeader column="price" label="Price" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />}
+          {show('eveEstimated') && <SortableHeader column="eveEstimated" label="EVE Est" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />}
+          {show('quantity') && <SortableHeader column="qty" label="Qty" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />}
+          {show('total') && <SortableHeader column="total" label="Total" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />}
+          {show('expires') && <SortableHeader column="expires" label="Exp" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -213,28 +343,39 @@ function BuyOrdersTable({ orders }: { orders: OrderRow[] }) {
           const total = row.order.price * row.order.volume_remain
           return (
             <TableRow key={row.order.order_id}>
-              <TableCell className="py-1.5">
-                <div className="flex items-center gap-2 min-w-0">
-                  <OwnerIcon ownerId={row.ownerId} ownerType={row.ownerType} size="sm" />
-                  <TypeIcon typeId={row.typeId} categoryId={row.categoryId} />
-                  <span className="truncate" title={row.typeName}>{row.typeName}</span>
-                  <CopyButton text={row.typeName} />
-                </div>
-              </TableCell>
-              <TableCell className="py-1.5 text-content-secondary">
-                <div className="truncate" title={`${row.locationName} • ${row.systemName} • ${row.regionName}`}>
-                  {row.locationName}
-                </div>
-              </TableCell>
-              <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">{row.order.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-              <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
-                {row.order.volume_remain.toLocaleString()}
-                {row.order.volume_remain !== row.order.volume_total && (
-                  <span className="text-content-muted">/{row.order.volume_total.toLocaleString()}</span>
-                )}
-              </TableCell>
-              <TableCell className="py-1.5 text-right tabular-nums text-status-highlight whitespace-nowrap">{formatNumber(total)}</TableCell>
-              <TableCell className="py-1.5 text-right tabular-nums text-content-secondary whitespace-nowrap">{formatExpiry(row.order.issued, row.order.duration)}</TableCell>
+              {show('item') && (
+                <TableCell className="py-1.5">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <OwnerIcon ownerId={row.ownerId} ownerType={row.ownerType} size="sm" />
+                    <TypeIcon typeId={row.typeId} categoryId={row.categoryId} />
+                    <span className="truncate" title={row.typeName}>{row.typeName}</span>
+                    <CopyButton text={row.typeName} />
+                  </div>
+                </TableCell>
+              )}
+              {show('location') && (
+                <TableCell className="py-1.5 text-content-secondary">
+                  <div className="truncate" title={`${row.locationName} • ${row.systemName} • ${row.regionName}`}>
+                    {row.locationName}
+                  </div>
+                </TableCell>
+              )}
+              {show('price') && <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">{formatPrice(row.order.price)}</TableCell>}
+              {show('eveEstimated') && (
+                <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
+                  <EVEEstCell price={row.order.price} eveEstimated={row.eveEstimated} />
+                </TableCell>
+              )}
+              {show('quantity') && (
+                <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
+                  {row.order.volume_remain.toLocaleString()}
+                  {row.order.volume_remain !== row.order.volume_total && (
+                    <span className="text-content-muted">/{row.order.volume_total.toLocaleString()}</span>
+                  )}
+                </TableCell>
+              )}
+              {show('total') && <TableCell className="py-1.5 text-right tabular-nums text-status-highlight whitespace-nowrap">{formatNumber(total)}</TableCell>}
+              {show('expires') && <TableCell className="py-1.5 text-right tabular-nums text-content-secondary whitespace-nowrap">{formatExpiry(row.order.issued, row.order.duration)}</TableCell>}
             </TableRow>
           )
         })}
@@ -268,6 +409,7 @@ export function MarketOrdersTab() {
   const cacheVersion = useCacheVersion()
 
   const regionalMarketStore = useRegionalMarketStore()
+  const getAveragePrice = useESIPricesStore((s) => s.getAveragePrice)
 
   const { search, setResultCount, setTotalValue, setColumns } = useTabControls()
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
@@ -279,14 +421,16 @@ export function MarketOrdersTab() {
     { id: 'item', label: 'Item' },
     { id: 'location', label: 'Location' },
     { id: 'price', label: 'Price' },
-    { id: 'comparison', label: 'Comparison' },
-    { id: 'difference', label: 'Difference' },
+    { id: 'lowest', label: 'Lowest Sell' },
+    { id: 'diff', label: 'Difference' },
+    { id: 'eveEstimated', label: 'EVE Estimated' },
     { id: 'quantity', label: 'Quantity' },
     { id: 'total', label: 'Total' },
     { id: 'expires', label: 'Expires' },
   ], [])
 
-  const { getColumnsForDropdown } = useColumnSettings('market-orders', ORDER_COLUMNS)
+  const { getColumnsForDropdown, getVisibleColumns } = useColumnSettings('market-orders', ORDER_COLUMNS)
+  const visibleColumns = useMemo(() => new Set(getVisibleColumns()), [getVisibleColumns])
 
   const allOrders = useMemo(() => {
     void cacheVersion
@@ -302,6 +446,7 @@ export function MarketOrdersTab() {
         const type = hasType(order.type_id) ? getType(order.type_id) : undefined
         const locationInfo = getLocationInfo(order.location_id)
         const lowestSell = regionalMarketStore.getPriceAtLocation(order.type_id, order.location_id) ?? null
+        const eveEstimated = getAveragePrice(order.type_id)
         const expiryTime = new Date(order.issued).getTime() + order.duration * 24 * 60 * 60 * 1000
 
         orders.push({
@@ -317,13 +462,14 @@ export function MarketOrdersTab() {
           regionName: locationInfo.regionName,
           systemName: locationInfo.systemName,
           lowestSell,
+          eveEstimated,
           expiryTime,
         })
       }
     }
 
     return orders
-  }, [ordersByOwner, cacheVersion, selectedSet, regionalMarketStore])
+  }, [ordersByOwner, cacheVersion, selectedSet, regionalMarketStore, getAveragePrice])
 
   const availableLocations = useMemo(() => {
     const locationMap = new Map<number, string>()
@@ -455,7 +601,7 @@ export function MarketOrdersTab() {
               <span className="text-status-highlight tabular-nums">{formatNumber(totals.sellValue)}</span>
             </div>
           </div>
-          <SellOrdersTable orders={sellOrders} />
+          <SellOrdersTable orders={sellOrders} visibleColumns={visibleColumns} />
         </div>
       )}
 
@@ -472,7 +618,7 @@ export function MarketOrdersTab() {
               <span className="text-status-highlight tabular-nums">{formatNumber(totals.buyValue)}</span>
             </div>
           </div>
-          <BuyOrdersTable orders={buyOrders} />
+          <BuyOrdersTable orders={buyOrders} visibleColumns={visibleColumns} />
         </div>
       )}
     </div>
