@@ -149,10 +149,8 @@ async function clearItemsDb(): Promise<void> {
   })
 }
 
-// Module state for hook coordination
+// Module state for hook coordination (toast notifications)
 let previousContracts: Map<number, ESIContract> | undefined
-let pendingItemFetches = new Map<number, SourceOwner>()
-let pendingItemDeletes = new Set<number>()
 
 const baseStore = createVisibilityStore<
   ESIContract,
@@ -203,7 +201,7 @@ const baseStore = createVisibilityStore<
     }
   },
 
-  onAfterOwnerUpdate: ({ owner, newItems, previousVisibility, itemsById }) => {
+  onAfterOwnerUpdate: ({ owner, newItems }) => {
     const prev = previousContracts ?? new Map()
     previousContracts = undefined
 
@@ -217,25 +215,11 @@ const baseStore = createVisibilityStore<
     )
 
     const toastStore = useToastStore.getState()
-    const currentItems = baseStore.getState().itemsByContractId
 
     for (const contract of newItems) {
       const prevContract = prev.get(contract.contract_id)
 
-      // Fetch items for any active item_exchange missing items
-      if (
-        isActiveItemExchange(contract) &&
-        !currentItems.has(contract.contract_id) &&
-        !pendingItemFetches.has(contract.contract_id)
-      ) {
-        const stored = itemsById.get(contract.contract_id)
-        if (stored) {
-          pendingItemFetches.set(contract.contract_id, stored.sourceOwner)
-        }
-      }
-
       if (!prevContract) {
-        // Toast for new contract assigned to us
         if (
           contract.assignee_id === ownerId &&
           !allOwnerIds.has(contract.issuer_id) &&
@@ -267,25 +251,36 @@ const baseStore = createVisibilityStore<
         )
       }
     }
-
-    // Collect contract IDs that this owner lost visibility to
-    const currentIds = new Set(newItems.map((c) => c.contract_id))
-    for (const id of previousVisibility) {
-      if (!currentIds.has(id)) {
-        pendingItemDeletes.add(id)
-      }
-    }
   },
 
   onAfterBatchUpdate: async (updatedItemsById) => {
-    const toFetch = pendingItemFetches
-    const toDelete = pendingItemDeletes
-    pendingItemFetches = new Map<number, SourceOwner>()
-    pendingItemDeletes = new Set<number>()
+    const itemsState = baseStore.getState().itemsByContractId
+    const toFetch = new Map<number, SourceOwner>()
+    const toDelete: number[] = []
 
-    if (toFetch.size === 0 && toDelete.size === 0) return
+    // Collect contracts needing items
+    for (const [contractId, stored] of updatedItemsById) {
+      if (isActiveItemExchange(stored.item) && !itemsState.has(contractId)) {
+        toFetch.set(contractId, stored.sourceOwner)
+      }
+    }
 
-    const currentItems = new Map(baseStore.getState().itemsByContractId)
+    // Collect orphaned items to delete
+    for (const contractId of itemsState.keys()) {
+      if (!updatedItemsById.has(contractId)) {
+        toDelete.push(contractId)
+      }
+    }
+
+    logger.debug('onAfterBatchUpdate', {
+      module: 'ContractsStore',
+      toFetchCount: toFetch.size,
+      toDeleteCount: toDelete.length,
+    })
+
+    if (toFetch.size === 0 && toDelete.length === 0) return
+
+    const currentItems = new Map(itemsState)
     let hasChanges = false
 
     if (toFetch.size > 0) {
@@ -314,18 +309,12 @@ const baseStore = createVisibilityStore<
       }
     }
 
-    if (toDelete.size > 0) {
-      const actualDeletes: number[] = []
+    if (toDelete.length > 0) {
       for (const id of toDelete) {
-        if (!updatedItemsById.has(id) && currentItems.has(id)) {
-          currentItems.delete(id)
-          actualDeletes.push(id)
-          hasChanges = true
-        }
+        currentItems.delete(id)
       }
-      if (actualDeletes.length > 0) {
-        await deleteItems(actualDeletes)
-      }
+      await deleteItems(toDelete)
+      hasChanges = true
     }
 
     if (hasChanges) {
@@ -343,8 +332,6 @@ baseStore.setState({
   clear: async () => {
     await originalClear()
     await clearItemsDb()
-    pendingItemFetches = new Map<number, SourceOwner>()
-    pendingItemDeletes = new Set<number>()
   },
 })
 
