@@ -39,7 +39,15 @@ interface ContractsExtraState {
 }
 
 interface ContractsExtras {
-  getTotal: (prices: Map<number, number>, selectedOwnerIds: string[]) => number
+  getTotal: (
+    prices: Map<number, number>,
+    selectedOwnerIds: string[],
+    state?: {
+      itemsById: Map<number, StoredContract>
+      visibilityByOwner: Map<string, Set<number>>
+      itemsByContractId: Map<number, ESIContractItem[]>
+    }
+  ) => number
   getContractsByOwner: () => OwnerContracts[]
 }
 
@@ -446,8 +454,17 @@ baseStore.setState({
 })
 
 export const useContractsStore: ContractsStore = Object.assign(baseStore, {
-  getTotal(prices: Map<number, number>, selectedOwnerIds: string[]): number {
-    const state = baseStore.getState()
+  getTotal(
+    prices: Map<number, number>,
+    selectedOwnerIds: string[],
+    stateOverride?: {
+      itemsById: Map<number, StoredContract>
+      visibilityByOwner: Map<string, Set<number>>
+      itemsByContractId: Map<number, ESIContractItem[]>
+    }
+  ): number {
+    const { itemsById, visibilityByOwner, itemsByContractId } =
+      stateOverride ?? baseStore.getState()
     const selectedSet = new Set(selectedOwnerIds)
     const allOwners = Object.values(useAuthStore.getState().owners).filter(
       (o): o is Owner => !!o
@@ -458,7 +475,7 @@ export const useContractsStore: ContractsStore = Object.assign(baseStore, {
     )
 
     const visibleIds = new Set<number>()
-    for (const [key, ids] of state.visibilityByOwner) {
+    for (const [key, ids] of visibilityByOwner) {
       if (selectedSet.has(key)) {
         for (const id of ids) visibleIds.add(id)
       }
@@ -466,12 +483,12 @@ export const useContractsStore: ContractsStore = Object.assign(baseStore, {
 
     let total = 0
     for (const contractId of visibleIds) {
-      const stored = state.itemsById.get(contractId)
+      const stored = itemsById.get(contractId)
       if (!stored || !ACTIVE_STATUSES.has(stored.item.status)) continue
 
       total += stored.item.collateral ?? 0
 
-      const items = state.itemsByContractId.get(contractId)
+      const items = itemsByContractId.get(contractId)
       if (stored.item.status === 'outstanding' && items) {
         const isIssuer =
           ownerCharIds.has(stored.item.issuer_id) ||

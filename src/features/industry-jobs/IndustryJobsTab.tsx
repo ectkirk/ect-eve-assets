@@ -361,7 +361,7 @@ export function IndustryJobsTab() {
   const initialized = useIndustryJobsStore((s) => s.initialized)
 
   const jobsByOwner = useMemo(
-    () => useIndustryJobsStore.getJobsByOwner(),
+    () => useIndustryJobsStore.getJobsByOwner({ itemsById, visibilityByOwner }),
     [itemsById, visibilityByOwner]
   )
 

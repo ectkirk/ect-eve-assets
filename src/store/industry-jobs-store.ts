@@ -26,8 +26,18 @@ export interface OwnerJobs {
 }
 
 interface IndustryJobsExtras {
-  getTotal: (prices: Map<number, number>, selectedOwnerIds: string[]) => number
-  getJobsByOwner: () => OwnerJobs[]
+  getTotal: (
+    prices: Map<number, number>,
+    selectedOwnerIds: string[],
+    state?: {
+      itemsById: Map<number, StoredJob>
+      visibilityByOwner: Map<string, Set<number>>
+    }
+  ) => number
+  getJobsByOwner: (state?: {
+    itemsById: Map<number, StoredJob>
+    visibilityByOwner: Map<string, Set<number>>
+  }) => OwnerJobs[]
 }
 
 export type IndustryJobsStore = UseBoundStore<
@@ -117,12 +127,20 @@ const baseStore = createVisibilityStore<ESIIndustryJob, StoredJob>({
 export const useIndustryJobsStore: IndustryJobsStore = Object.assign(
   baseStore,
   {
-    getTotal(prices: Map<number, number>, selectedOwnerIds: string[]): number {
-      const state = baseStore.getState()
+    getTotal(
+      prices: Map<number, number>,
+      selectedOwnerIds: string[],
+      stateOverride?: {
+        itemsById: Map<number, StoredJob>
+        visibilityByOwner: Map<string, Set<number>>
+      }
+    ): number {
+      const { itemsById, visibilityByOwner } =
+        stateOverride ?? baseStore.getState()
       const selectedSet = new Set(selectedOwnerIds)
 
       const visibleJobIds = new Set<number>()
-      for (const [key, jobIds] of state.visibilityByOwner) {
+      for (const [key, jobIds] of visibilityByOwner) {
         if (selectedSet.has(key)) {
           for (const id of jobIds) visibleJobIds.add(id)
         }
@@ -130,7 +148,7 @@ export const useIndustryJobsStore: IndustryJobsStore = Object.assign(
 
       let total = 0
       for (const jobId of visibleJobIds) {
-        const stored = state.itemsById.get(jobId)
+        const stored = itemsById.get(jobId)
         if (!stored) continue
 
         const { item: job } = stored
@@ -142,17 +160,21 @@ export const useIndustryJobsStore: IndustryJobsStore = Object.assign(
       return total
     },
 
-    getJobsByOwner(): OwnerJobs[] {
-      const state = baseStore.getState()
+    getJobsByOwner(stateOverride?: {
+      itemsById: Map<number, StoredJob>
+      visibilityByOwner: Map<string, Set<number>>
+    }): OwnerJobs[] {
+      const { itemsById, visibilityByOwner } =
+        stateOverride ?? baseStore.getState()
       const result: OwnerJobs[] = []
 
-      for (const [ownerKeyStr, jobIds] of state.visibilityByOwner) {
+      for (const [ownerKeyStr, jobIds] of visibilityByOwner) {
         const owner = findOwnerByKey(ownerKeyStr)
         if (!owner) continue
 
         const jobs: ESIIndustryJob[] = []
         for (const jobId of jobIds) {
-          const stored = state.itemsById.get(jobId)
+          const stored = itemsById.get(jobId)
           if (stored) jobs.push(stored.item)
         }
 

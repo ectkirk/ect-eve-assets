@@ -530,7 +530,8 @@ export function MarketOrdersTab() {
   const initialized = useMarketOrdersStore((s) => s.initialized)
 
   const ordersByOwner = useMemo(
-    () => useMarketOrdersStore.getOrdersByOwner(),
+    () =>
+      useMarketOrdersStore.getOrdersByOwner({ itemsById, visibilityByOwner }),
     [itemsById, visibilityByOwner]
   )
 

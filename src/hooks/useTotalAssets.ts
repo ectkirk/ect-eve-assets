@@ -26,8 +26,12 @@ export function useTotalAssets(): AssetTotals {
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
 
   const ordersById = useMarketOrdersStore((s) => s.itemsById)
+  const ordersVisibility = useMarketOrdersStore((s) => s.visibilityByOwner)
   const contractsById = useContractsStore((s) => s.itemsById)
+  const contractsVisibility = useContractsStore((s) => s.visibilityByOwner)
+  const itemsByContractId = useContractsStore((s) => s.itemsByContractId)
   const jobsById = useIndustryJobsStore((s) => s.itemsById)
+  const jobsVisibility = useIndustryJobsStore((s) => s.visibilityByOwner)
   const walletsByOwner = useWalletStore((s) => s.dataByOwner)
 
   return useMemo(() => {
@@ -64,11 +68,26 @@ export function useTotalAssets(): AssetTotals {
       }
     }
 
-    const marketTotal = useMarketOrdersStore.getTotal(selectedOwnerIds)
-    const contractsTotal = useContractsStore.getTotal(prices, selectedOwnerIds)
+    const marketTotal = useMarketOrdersStore.getTotal(selectedOwnerIds, {
+      itemsById: ordersById,
+      visibilityByOwner: ordersVisibility,
+    })
+    const contractsTotal = useContractsStore.getTotal(
+      prices,
+      selectedOwnerIds,
+      {
+        itemsById: contractsById,
+        visibilityByOwner: contractsVisibility,
+        itemsByContractId,
+      }
+    )
     const industryTotal = useIndustryJobsStore.getTotal(
       prices,
-      selectedOwnerIds
+      selectedOwnerIds,
+      {
+        itemsById: jobsById,
+        visibilityByOwner: jobsVisibility,
+      }
     )
 
     let walletTotal = 0
@@ -105,8 +124,12 @@ export function useTotalAssets(): AssetTotals {
     prices,
     selectedOwnerIds,
     ordersById,
+    ordersVisibility,
     contractsById,
+    contractsVisibility,
+    itemsByContractId,
     jobsById,
+    jobsVisibility,
     walletsByOwner,
   ])
 }

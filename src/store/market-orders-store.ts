@@ -34,8 +34,17 @@ export interface OwnerOrders {
 }
 
 interface MarketOrdersExtras {
-  getTotal: (selectedOwnerIds: string[]) => number
-  getOrdersByOwner: () => OwnerOrders[]
+  getTotal: (
+    selectedOwnerIds: string[],
+    state?: {
+      itemsById: Map<number, StoredOrder>
+      visibilityByOwner: Map<string, Set<number>>
+    }
+  ) => number
+  getOrdersByOwner: (state?: {
+    itemsById: Map<number, StoredOrder>
+    visibilityByOwner: Map<string, Set<number>>
+  }) => OwnerOrders[]
 }
 
 export type MarketOrdersStore = UseBoundStore<
@@ -206,13 +215,20 @@ const baseStore = createVisibilityStore<MarketOrder, StoredOrder>({
 export const useMarketOrdersStore: MarketOrdersStore = Object.assign(
   baseStore,
   {
-    getTotal(selectedOwnerIds: string[]): number {
-      const state = baseStore.getState()
+    getTotal(
+      selectedOwnerIds: string[],
+      stateOverride?: {
+        itemsById: Map<number, StoredOrder>
+        visibilityByOwner: Map<string, Set<number>>
+      }
+    ): number {
+      const { itemsById, visibilityByOwner } =
+        stateOverride ?? baseStore.getState()
       const selectedSet = new Set(selectedOwnerIds)
       const regionalStore = useRegionalMarketStore.getState()
 
       const visibleOrderIds = new Set<number>()
-      for (const [key, orderIds] of state.visibilityByOwner) {
+      for (const [key, orderIds] of visibilityByOwner) {
         if (selectedSet.has(key)) {
           for (const id of orderIds) visibleOrderIds.add(id)
         }
@@ -220,7 +236,7 @@ export const useMarketOrdersStore: MarketOrdersStore = Object.assign(
 
       let total = 0
       for (const orderId of visibleOrderIds) {
-        const stored = state.itemsById.get(orderId)
+        const stored = itemsById.get(orderId)
         if (!stored) continue
 
         const { item: order } = stored
@@ -234,17 +250,21 @@ export const useMarketOrdersStore: MarketOrdersStore = Object.assign(
       return total
     },
 
-    getOrdersByOwner(): OwnerOrders[] {
-      const state = baseStore.getState()
+    getOrdersByOwner(stateOverride?: {
+      itemsById: Map<number, StoredOrder>
+      visibilityByOwner: Map<string, Set<number>>
+    }): OwnerOrders[] {
+      const { itemsById, visibilityByOwner } =
+        stateOverride ?? baseStore.getState()
       const result: OwnerOrders[] = []
 
-      for (const [ownerKeyStr, orderIds] of state.visibilityByOwner) {
+      for (const [ownerKeyStr, orderIds] of visibilityByOwner) {
         const owner = findOwnerByKey(ownerKeyStr)
         if (!owner) continue
 
         const orders: MarketOrder[] = []
         for (const orderId of orderIds) {
-          const stored = state.itemsById.get(orderId)
+          const stored = itemsById.get(orderId)
           if (stored) orders.push(stored.item)
         }
 
