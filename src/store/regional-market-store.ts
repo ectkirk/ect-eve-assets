@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { getRegionalSellOrders, getStructureOrders, DEFAULT_REGION_ID } from '@/api/endpoints/market'
+import { getRegionalOrders, getStructureOrders, DEFAULT_REGION_ID } from '@/api/endpoints/market'
 import { useExpiryCacheStore } from '@/store/expiry-cache-store'
 import { logger } from '@/lib/logger'
 
@@ -16,7 +16,9 @@ const STORE_STRUCTURES = 'structures'
 interface PriceRecord {
   typeId: number
   lowestPrice: number | null
+  highestBuyPrice: number | null
   locationPrices: Record<number, number>
+  buyLocationPrices: Record<number, number>
   lastFetchAt: number
 }
 
@@ -36,6 +38,8 @@ interface TrackedStructureRecord {
 interface RegionalMarketState {
   pricesByType: Map<number, number>
   pricesByLocation: Map<number, Map<number, number>>
+  buyPricesByType: Map<number, number>
+  buyPricesByLocation: Map<number, Map<number, number>>
   lastFetchAt: Map<string, number>
   trackedTypes: Map<string, { typeId: number; regionId: number }>
   trackedStructures: Map<number, { characterId: number; typeIds: Set<number>; lastFetchAt: number }>
@@ -53,6 +57,7 @@ interface RegionalMarketActions {
   untrackStructures: (structureIds: number[]) => Promise<void>
   getPrice: (typeId: number) => number | undefined
   getPriceAtLocation: (typeId: number, locationId: number) => number | undefined
+  getHighestBuyAtLocation: (typeId: number, locationId: number) => number | undefined
   clear: () => Promise<void>
 }
 
@@ -72,15 +77,26 @@ function deepClonePricesByLocation(
   return clone
 }
 
+interface PriceUpdateContext {
+  sellPricesByLocation: Map<number, Map<number, number>>
+  sellPricesByType: Map<number, number>
+  buyPricesByLocation: Map<number, Map<number, number>>
+  buyPricesByType: Map<number, number>
+  priceUpdates: Map<number, PriceRecord>
+}
+
 function updateLocationPrice(
-  pricesByLocation: Map<number, Map<number, number>>,
-  pricesByType: Map<number, number>,
-  priceUpdates: Map<number, PriceRecord>,
+  ctx: PriceUpdateContext,
   typeId: number,
   locationId: number,
   price: number,
+  isBuyOrder: boolean,
   fetchTime: number
 ): void {
+  const pricesByLocation = isBuyOrder ? ctx.buyPricesByLocation : ctx.sellPricesByLocation
+  const pricesByType = isBuyOrder ? ctx.buyPricesByType : ctx.sellPricesByType
+  const aggregateFn = isBuyOrder ? Math.max : Math.min
+
   let typeLocationMap = pricesByLocation.get(typeId)
   if (!typeLocationMap) {
     typeLocationMap = new Map()
@@ -89,20 +105,31 @@ function updateLocationPrice(
   typeLocationMap.set(locationId, price)
 
   if (typeLocationMap.size > 0) {
-    pricesByType.set(typeId, Math.min(...typeLocationMap.values()))
+    pricesByType.set(typeId, aggregateFn(...typeLocationMap.values()))
   } else {
     pricesByType.delete(typeId)
   }
 
-  const locationPricesObj: Record<number, number> = {}
-  for (const [locId, p] of typeLocationMap) {
-    locationPricesObj[locId] = p
+  const existing = ctx.priceUpdates.get(typeId)
+  const sellLocationMap = ctx.sellPricesByLocation.get(typeId)
+  const buyLocationMap = ctx.buyPricesByLocation.get(typeId)
+
+  const locationPricesObj: Record<number, number> = existing?.locationPrices ?? {}
+  const buyLocationPricesObj: Record<number, number> = existing?.buyLocationPrices ?? {}
+
+  if (sellLocationMap) {
+    for (const [locId, p] of sellLocationMap) locationPricesObj[locId] = p
+  }
+  if (buyLocationMap) {
+    for (const [locId, p] of buyLocationMap) buyLocationPricesObj[locId] = p
   }
 
-  priceUpdates.set(typeId, {
+  ctx.priceUpdates.set(typeId, {
     typeId,
-    lowestPrice: pricesByType.get(typeId) ?? null,
+    lowestPrice: ctx.sellPricesByType.get(typeId) ?? null,
+    highestBuyPrice: ctx.buyPricesByType.get(typeId) ?? null,
     locationPrices: locationPricesObj,
+    buyLocationPrices: buyLocationPricesObj,
     lastFetchAt: fetchTime,
   })
 }
@@ -287,6 +314,8 @@ async function clearDB(): Promise<void> {
 export const useRegionalMarketStore = create<RegionalMarketStore>((set, get) => ({
   pricesByType: new Map(),
   pricesByLocation: new Map(),
+  buyPricesByType: new Map(),
+  buyPricesByLocation: new Map(),
   lastFetchAt: new Map(),
   trackedTypes: new Map(),
   trackedStructures: new Map(),
@@ -302,6 +331,8 @@ export const useRegionalMarketStore = create<RegionalMarketStore>((set, get) => 
 
       const pricesByType = new Map<number, number>()
       const pricesByLocation = new Map<number, Map<number, number>>()
+      const buyPricesByType = new Map<number, number>()
+      const buyPricesByLocation = new Map<number, Map<number, number>>()
       const lastFetchAt = new Map<string, number>()
       const trackedTypes = new Map<string, { typeId: number; regionId: number }>()
       const trackedStructures = new Map<number, { characterId: number; typeIds: Set<number>; lastFetchAt: number }>()
@@ -312,6 +343,9 @@ export const useRegionalMarketStore = create<RegionalMarketStore>((set, get) => 
         if (record.lowestPrice !== null) {
           pricesByType.set(record.typeId, record.lowestPrice)
         }
+        if (record.highestBuyPrice !== null) {
+          buyPricesByType.set(record.typeId, record.highestBuyPrice)
+        }
 
         if (Object.keys(record.locationPrices).length > 0) {
           const locationMap = new Map<number, number>()
@@ -319,6 +353,15 @@ export const useRegionalMarketStore = create<RegionalMarketStore>((set, get) => 
             locationMap.set(Number(locId), price)
           }
           pricesByLocation.set(record.typeId, locationMap)
+        }
+
+        const buyLocPrices = record.buyLocationPrices ?? {}
+        if (Object.keys(buyLocPrices).length > 0) {
+          const locationMap = new Map<number, number>()
+          for (const [locId, price] of Object.entries(buyLocPrices)) {
+            locationMap.set(Number(locId), price)
+          }
+          buyPricesByLocation.set(record.typeId, locationMap)
         }
 
         lastFetchByType.set(record.typeId, record.lastFetchAt)
@@ -343,6 +386,8 @@ export const useRegionalMarketStore = create<RegionalMarketStore>((set, get) => 
       set({
         pricesByType,
         pricesByLocation,
+        buyPricesByType,
+        buyPricesByLocation,
         lastFetchAt,
         trackedTypes,
         trackedStructures,
@@ -411,33 +456,57 @@ export const useRegionalMarketStore = create<RegionalMarketStore>((set, get) => 
 
     set({ isUpdating: true, updateError: null })
 
-    const pricesByType = new Map(state.pricesByType)
-    const pricesByLocation = deepClonePricesByLocation(state.pricesByLocation)
+    const sellPricesByType = new Map(state.pricesByType)
+    const sellPricesByLocation = deepClonePricesByLocation(state.pricesByLocation)
+    const buyPricesByType = new Map(state.buyPricesByType)
+    const buyPricesByLocation = deepClonePricesByLocation(state.buyPricesByLocation)
     const lastFetchAt = new Map(state.lastFetchAt)
     const trackedStructures = new Map(state.trackedStructures)
 
     const priceUpdates = new Map<number, PriceRecord>()
     const structureUpdates: TrackedStructureRecord[] = []
 
+    const ctx: PriceUpdateContext = {
+      sellPricesByLocation,
+      sellPricesByType,
+      buyPricesByLocation,
+      buyPricesByType,
+      priceUpdates,
+    }
+
     const processRegionalBatch = async (batch: typeof regionalTasks) => {
       await Promise.all(
         batch.map(async ({ regionId, typeId }) => {
           try {
-            const orders = await getRegionalSellOrders(regionId, typeId)
+            const [sellOrders, buyOrders] = await Promise.all([
+              getRegionalOrders(regionId, typeId, 'sell'),
+              getRegionalOrders(regionId, typeId, 'buy'),
+            ])
             const key = cacheKey(regionId, typeId)
             const fetchTime = Date.now()
             lastFetchAt.set(key, fetchTime)
 
             const lowestByLocation = new Map<number, number>()
-            for (const order of orders) {
+            for (const order of sellOrders) {
               const current = lowestByLocation.get(order.location_id)
               if (!current || order.price < current) {
                 lowestByLocation.set(order.location_id, order.price)
               }
             }
 
+            const highestByLocation = new Map<number, number>()
+            for (const order of buyOrders) {
+              const current = highestByLocation.get(order.location_id)
+              if (!current || order.price > current) {
+                highestByLocation.set(order.location_id, order.price)
+              }
+            }
+
             for (const [locationId, price] of lowestByLocation) {
-              updateLocationPrice(pricesByLocation, pricesByType, priceUpdates, typeId, locationId, price, fetchTime)
+              updateLocationPrice(ctx, typeId, locationId, price, false, fetchTime)
+            }
+            for (const [locationId, price] of highestByLocation) {
+              updateLocationPrice(ctx, typeId, locationId, price, true, fetchTime)
             }
           } catch (err) {
             logger.warn('Failed to fetch regional orders', {
@@ -457,18 +526,28 @@ export const useRegionalMarketStore = create<RegionalMarketStore>((set, get) => 
         const fetchTime = Date.now()
 
         const lowestByType = new Map<number, number>()
+        const highestByType = new Map<number, number>()
         for (const order of orders) {
-          if (order.is_buy_order) continue
           if (!typeIds.has(order.type_id)) continue
 
-          const current = lowestByType.get(order.type_id)
-          if (!current || order.price < current) {
-            lowestByType.set(order.type_id, order.price)
+          if (order.is_buy_order) {
+            const current = highestByType.get(order.type_id)
+            if (!current || order.price > current) {
+              highestByType.set(order.type_id, order.price)
+            }
+          } else {
+            const current = lowestByType.get(order.type_id)
+            if (!current || order.price < current) {
+              lowestByType.set(order.type_id, order.price)
+            }
           }
         }
 
         for (const [typeId, price] of lowestByType) {
-          updateLocationPrice(pricesByLocation, pricesByType, priceUpdates, typeId, structureId, price, fetchTime)
+          updateLocationPrice(ctx, typeId, structureId, price, false, fetchTime)
+        }
+        for (const [typeId, price] of highestByType) {
+          updateLocationPrice(ctx, typeId, structureId, price, true, fetchTime)
         }
 
         const existing = trackedStructures.get(structureId)
@@ -485,7 +564,8 @@ export const useRegionalMarketStore = create<RegionalMarketStore>((set, get) => 
         logger.debug('Fetched structure market', {
           module: 'RegionalMarketStore',
           structureId,
-          types: lowestByType.size,
+          sellTypes: lowestByType.size,
+          buyTypes: highestByType.size,
         })
       } catch (err) {
         logger.warn('Failed to fetch structure orders', {
@@ -513,8 +593,10 @@ export const useRegionalMarketStore = create<RegionalMarketStore>((set, get) => 
       await saveStructuresToDB(structureUpdates)
 
       set({
-        pricesByType,
-        pricesByLocation,
+        pricesByType: sellPricesByType,
+        pricesByLocation: sellPricesByLocation,
+        buyPricesByType,
+        buyPricesByLocation,
         lastFetchAt,
         trackedStructures,
         isUpdating: false,
@@ -584,6 +666,8 @@ export const useRegionalMarketStore = create<RegionalMarketStore>((set, get) => 
     const trackedTypes = new Map(state.trackedTypes)
     const pricesByType = new Map(state.pricesByType)
     const pricesByLocation = new Map(state.pricesByLocation)
+    const buyPricesByType = new Map(state.buyPricesByType)
+    const buyPricesByLocation = new Map(state.buyPricesByLocation)
     const lastFetchAt = new Map(state.lastFetchAt)
 
     for (const [key, { typeId }] of state.trackedTypes) {
@@ -597,10 +681,12 @@ export const useRegionalMarketStore = create<RegionalMarketStore>((set, get) => 
     for (const typeId of typeIds) {
       pricesByType.delete(typeId)
       pricesByLocation.delete(typeId)
+      buyPricesByType.delete(typeId)
+      buyPricesByLocation.delete(typeId)
     }
 
     if (keysToDelete.length > 0) {
-      set({ trackedTypes, pricesByType, pricesByLocation, lastFetchAt })
+      set({ trackedTypes, pricesByType, pricesByLocation, buyPricesByType, buyPricesByLocation, lastFetchAt })
 
       try {
         await deleteTrackedFromDB(keysToDelete)
@@ -682,6 +768,8 @@ export const useRegionalMarketStore = create<RegionalMarketStore>((set, get) => 
     const trackedStructures = new Map(state.trackedStructures)
     const pricesByLocation = deepClonePricesByLocation(state.pricesByLocation)
     const pricesByType = new Map(state.pricesByType)
+    const buyPricesByLocation = deepClonePricesByLocation(state.buyPricesByLocation)
+    const buyPricesByType = new Map(state.buyPricesByType)
     const toDelete: number[] = []
 
     for (const structureId of structureIds) {
@@ -691,25 +779,33 @@ export const useRegionalMarketStore = create<RegionalMarketStore>((set, get) => 
       }
     }
 
-    const emptyTypeIds: number[] = []
-    for (const [typeId, locationMap] of pricesByLocation) {
-      for (const structureId of structureIdSet) {
-        locationMap.delete(structureId)
+    const cleanupPrices = (
+      locationMap: Map<number, Map<number, number>>,
+      typeMap: Map<number, number>,
+      aggregateFn: (...values: number[]) => number
+    ) => {
+      const emptyTypeIds: number[] = []
+      for (const [typeId, locMap] of locationMap) {
+        for (const structureId of structureIdSet) {
+          locMap.delete(structureId)
+        }
+        if (locMap.size > 0) {
+          typeMap.set(typeId, aggregateFn(...locMap.values()))
+        } else {
+          typeMap.delete(typeId)
+          emptyTypeIds.push(typeId)
+        }
       }
-      if (locationMap.size > 0) {
-        pricesByType.set(typeId, Math.min(...locationMap.values()))
-      } else {
-        pricesByType.delete(typeId)
-        emptyTypeIds.push(typeId)
+      for (const typeId of emptyTypeIds) {
+        locationMap.delete(typeId)
       }
     }
 
-    for (const typeId of emptyTypeIds) {
-      pricesByLocation.delete(typeId)
-    }
+    cleanupPrices(pricesByLocation, pricesByType, Math.min)
+    cleanupPrices(buyPricesByLocation, buyPricesByType, Math.max)
 
     if (toDelete.length > 0) {
-      set({ trackedStructures, pricesByLocation, pricesByType })
+      set({ trackedStructures, pricesByLocation, pricesByType, buyPricesByLocation, buyPricesByType })
 
       try {
         await deleteStructuresFromDB(toDelete)
@@ -734,12 +830,19 @@ export const useRegionalMarketStore = create<RegionalMarketStore>((set, get) => 
     return typeMap?.get(locationId)
   },
 
+  getHighestBuyAtLocation: (typeId: number, locationId: number) => {
+    const typeMap = get().buyPricesByLocation.get(typeId)
+    return typeMap?.get(locationId)
+  },
+
   clear: async () => {
     await clearDB()
     useExpiryCacheStore.getState().clearForOwner(OWNER_KEY)
     set({
       pricesByType: new Map(),
       pricesByLocation: new Map(),
+      buyPricesByType: new Map(),
+      buyPricesByLocation: new Map(),
       lastFetchAt: new Map(),
       trackedTypes: new Map(),
       trackedStructures: new Map(),

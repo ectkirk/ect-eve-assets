@@ -24,6 +24,25 @@ import { MultiSelectDropdown } from '@/components/ui/multi-select-dropdown'
 import { formatNumber } from '@/lib/utils'
 import { getLocationInfo } from '@/lib/location-utils'
 
+const ORDER_TYPE_OPTIONS = [
+  { value: 'all', label: 'All Orders' },
+  { value: 'sell', label: 'Sell Orders' },
+  { value: 'buy', label: 'Buy Orders' },
+] as const
+
+const ORDER_COLUMNS: ColumnConfig[] = [
+  { id: 'item', label: 'Item' },
+  { id: 'type', label: 'Type' },
+  { id: 'location', label: 'Location' },
+  { id: 'price', label: 'Price' },
+  { id: 'lowest', label: 'Best Order' },
+  { id: 'diff', label: 'Difference' },
+  { id: 'eveEstimated', label: 'EVE Estimated' },
+  { id: 'quantity', label: 'Quantity' },
+  { id: 'total', label: 'Total' },
+  { id: 'expires', label: 'Expires' },
+]
+
 interface OrderRow {
   order: MarketOrder
   ownerId: number
@@ -37,6 +56,7 @@ interface OrderRow {
   regionName: string
   systemName: string
   lowestSell: number | null
+  highestBuy: number | null
   eveEstimated: number | null
   expiryTime: number
 }
@@ -82,19 +102,19 @@ function formatPrice(value: number): string {
   return formatted.endsWith('.00') ? formatted.slice(0, -3) : formatted
 }
 
-function DiffCell({ price, lowestSell }: { price: number; lowestSell: number | null }) {
-  if (lowestSell === null) return <span className="text-content-muted">-</span>
-  const diff = price - lowestSell
+function DiffCell({ price, comparisonPrice, isBuyOrder }: { price: number; comparisonPrice: number | null; isBuyOrder: boolean }) {
+  if (comparisonPrice === null) return <span className="text-content-muted">-</span>
+  const diff = price - comparisonPrice
   if (diff === 0) {
     return <span>0</span>
   }
-  const isGood = diff < 0
+  const isGood = isBuyOrder ? diff > 0 : diff < 0
   const formattedDiff = formatPrice(Math.abs(diff))
-  const pct = lowestSell > 0 ? Math.abs((diff / lowestSell) * 100) : 0
+  const pct = comparisonPrice > 0 ? Math.abs((diff / comparisonPrice) * 100) : 0
   const pctStr = pct.toFixed(1).replace(/\.0$/, '')
   return (
     <span>
-      {isGood ? '-' : '+'}{formattedDiff}{' '}
+      {diff < 0 ? '-' : '+'}{formattedDiff}{' '}
       <span className={`text-xs ${isGood ? 'text-status-positive' : 'text-status-negative'}`}>({pctStr}%)</span>
     </span>
   )
@@ -110,7 +130,7 @@ function EVEEstCell({ price, eveEstimated }: { price: number; eveEstimated: numb
   )
 }
 
-type SortColumn = 'item' | 'price' | 'lowest' | 'diff' | 'eveEstimated' | 'qty' | 'total' | 'expires' | 'location'
+type SortColumn = 'item' | 'type' | 'price' | 'comparison' | 'diff' | 'eveEstimated' | 'qty' | 'total' | 'expires' | 'location'
 type DiffSortMode = 'number' | 'percent'
 
 function DiffHeader({
@@ -184,27 +204,34 @@ function DiffHeader({
   )
 }
 
-function SellOrdersTable({ orders, visibleColumns }: { orders: OrderRow[]; visibleColumns: Set<string> }) {
+function OrdersTable({ orders, visibleColumns }: { orders: OrderRow[]; visibleColumns: Set<string> }) {
   const { sortColumn, sortDirection, handleSort } = useSortable<SortColumn>('total', 'desc')
   const [diffSortMode, setDiffSortMode] = useState<DiffSortMode>('number')
   const show = (col: string) => visibleColumns.has(col)
 
   const sortedOrders = useMemo(() => {
     return sortRows(orders, sortColumn, sortDirection, (row, column) => {
+      const isBuy = row.order.is_buy_order
       switch (column) {
         case 'item':
           return row.typeName.toLowerCase()
+        case 'type':
+          return isBuy ? 1 : 0
         case 'price':
           return row.order.price
-        case 'lowest':
-          return row.lowestSell ?? (sortDirection === 'asc' ? Infinity : -Infinity)
-        case 'diff':
-          if (row.lowestSell === null) return sortDirection === 'asc' ? Infinity : -Infinity
-          const diff = row.order.price - row.lowestSell
+        case 'comparison': {
+          const compPrice = isBuy ? row.highestBuy : row.lowestSell
+          return compPrice ?? (sortDirection === 'asc' ? Infinity : -Infinity)
+        }
+        case 'diff': {
+          const compPrice = isBuy ? row.highestBuy : row.lowestSell
+          if (compPrice === null) return sortDirection === 'asc' ? Infinity : -Infinity
+          const diff = row.order.price - compPrice
           if (diffSortMode === 'percent') {
-            return row.lowestSell > 0 ? (diff / row.lowestSell) * 100 : (sortDirection === 'asc' ? Infinity : -Infinity)
+            return compPrice > 0 ? (diff / compPrice) * 100 : (sortDirection === 'asc' ? Infinity : -Infinity)
           }
           return diff
+        }
         case 'eveEstimated':
           return row.eveEstimated ?? (sortDirection === 'asc' ? Infinity : -Infinity)
         case 'qty':
@@ -226,9 +253,10 @@ function SellOrdersTable({ orders, visibleColumns }: { orders: OrderRow[]; visib
       <TableHeader>
         <TableRow className="hover:bg-transparent">
           {show('item') && <SortableHeader column="item" label="Item" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />}
+          {show('type') && <SortableHeader column="type" label="Type" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />}
           {show('location') && <SortableHeader column="location" label="Location" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />}
           {show('price') && <SortableHeader column="price" label="Price" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />}
-          {show('lowest') && <SortableHeader column="lowest" label="Lowest" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />}
+          {show('lowest') && <SortableHeader column="comparison" label="Best" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />}
           {show('diff') && <DiffHeader sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} diffSortMode={diffSortMode} onDiffSortModeChange={setDiffSortMode} />}
           {show('eveEstimated') && <SortableHeader column="eveEstimated" label="EVE Est" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />}
           {show('quantity') && <SortableHeader column="qty" label="Qty" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />}
@@ -238,7 +266,9 @@ function SellOrdersTable({ orders, visibleColumns }: { orders: OrderRow[]; visib
       </TableHeader>
       <TableBody>
         {sortedOrders.map((row) => {
+          const isBuy = row.order.is_buy_order
           const total = row.order.price * row.order.volume_remain
+          const compPrice = isBuy ? row.highestBuy : row.lowestSell
           return (
             <TableRow key={row.order.order_id}>
               {show('item') && (
@@ -249,6 +279,11 @@ function SellOrdersTable({ orders, visibleColumns }: { orders: OrderRow[]; visib
                     <span className="truncate" title={row.typeName}>{row.typeName}</span>
                     <CopyButton text={row.typeName} />
                   </div>
+                </TableCell>
+              )}
+              {show('type') && (
+                <TableCell className="py-1.5">
+                  {isBuy ? 'Buy' : 'Sell'}
                 </TableCell>
               )}
               {show('location') && (
@@ -265,102 +300,14 @@ function SellOrdersTable({ orders, visibleColumns }: { orders: OrderRow[]; visib
               )}
               {show('lowest') && (
                 <TableCell className="py-1.5 text-right tabular-nums text-content-secondary whitespace-nowrap">
-                  {row.lowestSell !== null ? formatPrice(row.lowestSell) : <span className="text-content-muted">-</span>}
+                  {compPrice !== null ? formatPrice(compPrice) : <span className="text-content-muted">-</span>}
                 </TableCell>
               )}
               {show('diff') && (
                 <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
-                  <DiffCell price={row.order.price} lowestSell={row.lowestSell} />
+                  <DiffCell price={row.order.price} comparisonPrice={compPrice} isBuyOrder={isBuy} />
                 </TableCell>
               )}
-              {show('eveEstimated') && (
-                <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
-                  <EVEEstCell price={row.order.price} eveEstimated={row.eveEstimated} />
-                </TableCell>
-              )}
-              {show('quantity') && (
-                <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
-                  {row.order.volume_remain.toLocaleString()}
-                  {row.order.volume_remain !== row.order.volume_total && (
-                    <span className="text-content-muted">/{row.order.volume_total.toLocaleString()}</span>
-                  )}
-                </TableCell>
-              )}
-              {show('total') && <TableCell className="py-1.5 text-right tabular-nums text-status-highlight whitespace-nowrap">{formatNumber(total)}</TableCell>}
-              {show('expires') && <TableCell className="py-1.5 text-right tabular-nums text-content-secondary whitespace-nowrap">{formatExpiry(row.order.issued, row.order.duration)}</TableCell>}
-            </TableRow>
-          )
-        })}
-      </TableBody>
-    </Table>
-  )
-}
-
-type BuySortColumn = 'item' | 'price' | 'eveEstimated' | 'qty' | 'total' | 'expires' | 'location'
-
-function BuyOrdersTable({ orders, visibleColumns }: { orders: OrderRow[]; visibleColumns: Set<string> }) {
-  const { sortColumn, sortDirection, handleSort } = useSortable<BuySortColumn>('total', 'desc')
-  const show = (col: string) => visibleColumns.has(col)
-
-  const sortedOrders = useMemo(() => {
-    return sortRows(orders, sortColumn, sortDirection, (row, column) => {
-      switch (column) {
-        case 'item':
-          return row.typeName.toLowerCase()
-        case 'price':
-          return row.order.price
-        case 'eveEstimated':
-          return row.eveEstimated ?? (sortDirection === 'asc' ? Infinity : -Infinity)
-        case 'qty':
-          return row.order.volume_remain
-        case 'total':
-          return row.order.price * row.order.volume_remain
-        case 'expires':
-          return row.expiryTime
-        case 'location':
-          return row.locationName.toLowerCase()
-        default:
-          return 0
-      }
-    })
-  }, [orders, sortColumn, sortDirection])
-
-  return (
-    <Table>
-      <TableHeader>
-        <TableRow className="hover:bg-transparent">
-          {show('item') && <SortableHeader column="item" label="Item" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />}
-          {show('location') && <SortableHeader column="location" label="Location" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />}
-          {show('price') && <SortableHeader column="price" label="Price" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />}
-          {show('eveEstimated') && <SortableHeader column="eveEstimated" label="EVE Est" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />}
-          {show('quantity') && <SortableHeader column="qty" label="Qty" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />}
-          {show('total') && <SortableHeader column="total" label="Total" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />}
-          {show('expires') && <SortableHeader column="expires" label="Exp" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />}
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {sortedOrders.map((row) => {
-          const total = row.order.price * row.order.volume_remain
-          return (
-            <TableRow key={row.order.order_id}>
-              {show('item') && (
-                <TableCell className="py-1.5">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <OwnerIcon ownerId={row.ownerId} ownerType={row.ownerType} size="sm" />
-                    <TypeIcon typeId={row.typeId} categoryId={row.categoryId} />
-                    <span className="truncate" title={row.typeName}>{row.typeName}</span>
-                    <CopyButton text={row.typeName} />
-                  </div>
-                </TableCell>
-              )}
-              {show('location') && (
-                <TableCell className="py-1.5 text-content-secondary">
-                  <div className="truncate" title={`${row.locationName} • ${row.systemName} • ${row.regionName}`}>
-                    {row.locationName}
-                  </div>
-                </TableCell>
-              )}
-              {show('price') && <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">{formatPrice(row.order.price)}</TableCell>}
               {show('eveEstimated') && (
                 <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
                   <EVEEstCell price={row.order.price} eveEstimated={row.eveEstimated} />
@@ -416,18 +363,7 @@ export function MarketOrdersTab() {
   const selectedSet = useMemo(() => new Set(selectedOwnerIds), [selectedOwnerIds])
 
   const [locationFilter, setLocationFilter] = useState<Set<string>>(new Set())
-
-  const ORDER_COLUMNS: ColumnConfig[] = useMemo(() => [
-    { id: 'item', label: 'Item' },
-    { id: 'location', label: 'Location' },
-    { id: 'price', label: 'Price' },
-    { id: 'lowest', label: 'Lowest Sell' },
-    { id: 'diff', label: 'Difference' },
-    { id: 'eveEstimated', label: 'EVE Estimated' },
-    { id: 'quantity', label: 'Quantity' },
-    { id: 'total', label: 'Total' },
-    { id: 'expires', label: 'Expires' },
-  ], [])
+  const [orderTypeFilter, setOrderTypeFilter] = useState<'all' | 'sell' | 'buy'>('all')
 
   const { getColumnsForDropdown, getVisibleColumns } = useColumnSettings('market-orders', ORDER_COLUMNS)
   const visibleColumns = useMemo(() => new Set(getVisibleColumns()), [getVisibleColumns])
@@ -446,7 +382,8 @@ export function MarketOrdersTab() {
         const type = hasType(order.type_id) ? getType(order.type_id) : undefined
         const locationInfo = getLocationInfo(order.location_id)
         const lowestSell = regionalMarketStore.getPriceAtLocation(order.type_id, order.location_id) ?? null
-        const eveEstimated = getAveragePrice(order.type_id)
+        const highestBuy = regionalMarketStore.getHighestBuyAtLocation(order.type_id, order.location_id) ?? null
+        const eveEstimated = getAveragePrice(order.type_id) ?? null
         const expiryTime = new Date(order.issued).getTime() + order.duration * 24 * 60 * 60 * 1000
 
         orders.push({
@@ -462,6 +399,7 @@ export function MarketOrdersTab() {
           regionName: locationInfo.regionName,
           systemName: locationInfo.systemName,
           lowestSell,
+          highestBuy,
           eveEstimated,
           expiryTime,
         })
@@ -493,7 +431,7 @@ export function MarketOrdersTab() {
     }
   }, [availableLocations, locationFilter])
 
-  const { sellOrders, buyOrders } = useMemo(() => {
+  const filteredOrders = useMemo(() => {
     let filtered = allOrders
 
     if (search) {
@@ -511,25 +449,26 @@ export function MarketOrdersTab() {
       filtered = filtered.filter((o) => locationFilter.has(String(o.locationId)))
     }
 
-    return {
-      sellOrders: filtered.filter((o) => !o.order.is_buy_order),
-      buyOrders: filtered.filter((o) => o.order.is_buy_order),
-    }
-  }, [allOrders, search, locationFilter])
+    if (orderTypeFilter === 'sell') return filtered.filter((o) => !o.order.is_buy_order)
+    if (orderTypeFilter === 'buy') return filtered.filter((o) => o.order.is_buy_order)
+    return filtered
+  }, [allOrders, search, locationFilter, orderTypeFilter])
 
   const totals = useMemo(() => {
     let sellValue = 0
     let buyValue = 0
 
-    for (const row of sellOrders) {
-      sellValue += row.order.price * row.order.volume_remain
-    }
-    for (const row of buyOrders) {
-      buyValue += row.order.price * row.order.volume_remain
+    for (const row of filteredOrders) {
+      if (row.order.is_buy_order) {
+        buyValue += row.order.price * row.order.volume_remain
+      } else {
+        const price = row.lowestSell ?? row.order.price
+        sellValue += price * row.order.volume_remain
+      }
     }
 
-    return { sellValue, buyValue, sellCount: sellOrders.length, buyCount: buyOrders.length }
-  }, [sellOrders, buyOrders])
+    return { sellValue, buyValue, totalCount: filteredOrders.length }
+  }, [filteredOrders])
 
   const totalOrderCount = useMemo(() => {
     let count = 0
@@ -540,9 +479,9 @@ export function MarketOrdersTab() {
   }, [ordersByOwner])
 
   useEffect(() => {
-    setResultCount({ showing: totals.sellCount + totals.buyCount, total: totalOrderCount })
+    setResultCount({ showing: totals.totalCount, total: totalOrderCount })
     return () => setResultCount(null)
-  }, [totals.sellCount, totals.buyCount, totalOrderCount, setResultCount])
+  }, [totals.totalCount, totalOrderCount, setResultCount])
 
   useEffect(() => {
     setTotalValue({
@@ -569,7 +508,7 @@ export function MarketOrdersTab() {
   })
   if (loadingState) return loadingState
 
-  if (sellOrders.length === 0 && buyOrders.length === 0) {
+  if (filteredOrders.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
         <p className="text-content-secondary">No market orders.</p>
@@ -577,50 +516,44 @@ export function MarketOrdersTab() {
     )
   }
 
+  const headerLabel = orderTypeFilter === 'sell' ? 'Sell Orders'
+    : orderTypeFilter === 'buy' ? 'Buy Orders'
+    : 'Market Orders'
+
   return (
     <div className="h-full overflow-auto">
-      {availableLocations.length > 1 && (
-        <div className="flex items-center gap-2 mb-3">
+      <div className="flex items-center gap-2 mb-3">
+        <select
+          value={orderTypeFilter}
+          onChange={(e) => setOrderTypeFilter(e.target.value as 'all' | 'sell' | 'buy')}
+          className="px-2 py-1 text-sm rounded border border-border bg-surface hover:bg-surface-secondary transition-colors"
+        >
+          {ORDER_TYPE_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+        {availableLocations.length > 1 && (
           <MultiSelectDropdown
             options={availableLocations}
             selected={locationFilter}
             onChange={setLocationFilter}
             placeholder="All Locations"
           />
-        </div>
-      )}
+        )}
+      </div>
 
-      {sellOrders.length > 0 && (
-        <div className="rounded-lg border border-border bg-surface-secondary/30">
-          <div className="px-4 py-2 border-b border-border bg-surface-secondary/50 flex items-center justify-between">
-            <span className="text-xs font-medium uppercase tracking-wider text-content-secondary">
-              Sell Orders
-            </span>
-            <div className="flex items-center gap-3 text-xs">
-              <span className="text-content-muted">{sellOrders.length} order{sellOrders.length !== 1 ? 's' : ''}</span>
-              <span className="text-status-highlight tabular-nums">{formatNumber(totals.sellValue)}</span>
-            </div>
+      <div className="rounded-lg border border-border bg-surface-secondary/30">
+        <div className="px-4 py-2 border-b border-border bg-surface-secondary/50 flex items-center justify-between">
+          <span className="text-xs font-medium uppercase tracking-wider text-content-secondary">
+            {headerLabel}
+          </span>
+          <div className="flex items-center gap-3 text-xs">
+            <span className="text-content-muted">{filteredOrders.length} order{filteredOrders.length !== 1 ? 's' : ''}</span>
+            <span className="text-status-highlight tabular-nums">{formatNumber(totals.sellValue + totals.buyValue)}</span>
           </div>
-          <SellOrdersTable orders={sellOrders} visibleColumns={visibleColumns} />
         </div>
-      )}
-
-      {sellOrders.length > 0 && buyOrders.length > 0 && <div className="h-4" />}
-
-      {buyOrders.length > 0 && (
-        <div className="rounded-lg border border-border bg-surface-secondary/30">
-          <div className="px-4 py-2 border-b border-border bg-surface-secondary/50 flex items-center justify-between">
-            <span className="text-xs font-medium uppercase tracking-wider text-content-secondary">
-              Buy Orders
-            </span>
-            <div className="flex items-center gap-3 text-xs">
-              <span className="text-content-muted">{buyOrders.length} order{buyOrders.length !== 1 ? 's' : ''}</span>
-              <span className="text-status-highlight tabular-nums">{formatNumber(totals.buyValue)}</span>
-            </div>
-          </div>
-          <BuyOrdersTable orders={buyOrders} visibleColumns={visibleColumns} />
-        </div>
-      )}
+        <OrdersTable orders={filteredOrders} visibleColumns={visibleColumns} />
+      </div>
     </div>
   )
 }

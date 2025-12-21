@@ -189,12 +189,13 @@ export async function getRegionalMarketPrices(
   return prices
 }
 
-export async function getRegionalSellOrders(
+export async function getRegionalOrders(
   regionId: number,
-  typeId: number
+  typeId: number,
+  orderType: 'sell' | 'buy'
 ): Promise<ESIRegionOrder[]> {
   return esi.fetchPaginated<ESIRegionOrder>(
-    `/markets/${regionId}/orders/?order_type=sell&type_id=${typeId}`,
+    `/markets/${regionId}/orders/?order_type=${orderType}&type_id=${typeId}`,
     { requiresAuth: false, schema: ESIRegionOrderSchema }
   )
 }
