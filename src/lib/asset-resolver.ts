@@ -201,10 +201,10 @@ export function computeModeFlags(
   }
 
   const isActiveShip = rootFlag === 'ActiveShip'
-  const immediateParent = parentChain[0]
-  const parentIsOwnedStructure = immediateParent != null && ownedStructureIds.has(immediateParent.item_id)
-  const isOwnedStructure = ownedStructureIds.has(asset.item_id) ||
-    (parentIsOwnedStructure && isFittedOrContentFlag(asset.location_flag))
+  const isDirectlyInOwnedStructure = ownedStructureIds.has(asset.location_id)
+  const isOwnedStructure =
+    ownedStructureIds.has(asset.item_id) ||
+    (isDirectlyInOwnedStructure && isFittedOrContentFlag(asset.location_flag))
 
   return {
     inHangar,
