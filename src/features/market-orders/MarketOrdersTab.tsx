@@ -731,14 +731,6 @@ export function MarketOrdersTab() {
   })
   if (loadingState) return loadingState
 
-  if (filteredOrders.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-content-secondary">No market orders.</p>
-      </div>
-    )
-  }
-
   const headerLabel =
     orderTypeFilter === 'sell'
       ? 'Sell Orders'
@@ -772,23 +764,34 @@ export function MarketOrdersTab() {
         )}
       </div>
 
-      <div className="rounded-lg border border-border bg-surface-secondary/30">
-        <div className="px-4 py-2 border-b border-border bg-surface-secondary/50 flex items-center justify-between">
-          <span className="text-xs font-medium uppercase tracking-wider text-content-secondary">
-            {headerLabel}
-          </span>
-          <div className="flex items-center gap-3 text-xs">
-            <span className="text-content-muted">
-              {filteredOrders.length} order
-              {filteredOrders.length !== 1 ? 's' : ''}
-            </span>
-            <span className="text-status-highlight tabular-nums">
-              {formatNumber(totals.sellValue + totals.buyValue)}
-            </span>
-          </div>
+      {filteredOrders.length === 0 ? (
+        <div className="flex items-center justify-center h-64">
+          <p className="text-content-secondary">
+            No {headerLabel.toLowerCase()}.
+          </p>
         </div>
-        <OrdersTable orders={filteredOrders} visibleColumns={visibleColumns} />
-      </div>
+      ) : (
+        <div className="rounded-lg border border-border bg-surface-secondary/30">
+          <div className="px-4 py-2 border-b border-border bg-surface-secondary/50 flex items-center justify-between">
+            <span className="text-xs font-medium uppercase tracking-wider text-content-secondary">
+              {headerLabel}
+            </span>
+            <div className="flex items-center gap-3 text-xs">
+              <span className="text-content-muted">
+                {filteredOrders.length} order
+                {filteredOrders.length !== 1 ? 's' : ''}
+              </span>
+              <span className="text-status-highlight tabular-nums">
+                {formatNumber(totals.sellValue + totals.buyValue)}
+              </span>
+            </div>
+          </div>
+          <OrdersTable
+            orders={filteredOrders}
+            visibleColumns={visibleColumns}
+          />
+        </div>
+      )}
     </div>
   )
 }
