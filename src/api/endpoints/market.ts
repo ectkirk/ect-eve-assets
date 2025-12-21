@@ -4,6 +4,7 @@ import {
   ESIMarketOrderSchema,
   ESICorporationMarketOrderSchema,
   ESIRegionOrderSchema,
+  ESIStructureOrderSchema,
   ESIMarketPriceSchema,
 } from '../schemas'
 import { z } from 'zod'
@@ -11,6 +12,7 @@ import { z } from 'zod'
 export type ESIMarketOrder = z.infer<typeof ESIMarketOrderSchema>
 export type ESICorporationMarketOrder = z.infer<typeof ESICorporationMarketOrderSchema>
 export type ESIRegionOrder = z.infer<typeof ESIRegionOrderSchema>
+export type ESIStructureOrder = z.infer<typeof ESIStructureOrderSchema>
 export type ESIMarketPrice = z.infer<typeof ESIMarketPriceSchema>
 
 export interface PriceData {
@@ -194,5 +196,15 @@ export async function getRegionalSellOrders(
   return esi.fetchPaginated<ESIRegionOrder>(
     `/markets/${regionId}/orders/?order_type=sell&type_id=${typeId}`,
     { requiresAuth: false, schema: ESIRegionOrderSchema }
+  )
+}
+
+export async function getStructureOrders(
+  structureId: number,
+  characterId: number
+): Promise<ESIStructureOrder[]> {
+  return esi.fetchPaginated<ESIStructureOrder>(
+    `/markets/structures/${structureId}/`,
+    { characterId, schema: ESIStructureOrderSchema }
   )
 }

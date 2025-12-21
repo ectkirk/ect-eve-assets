@@ -127,6 +127,20 @@ export const ESIRegionOrderSchema = z.object({
   volume_total: z.number(),
 })
 
+export const ESIStructureOrderSchema = z.object({
+  duration: z.number(),
+  is_buy_order: z.boolean(),
+  issued: z.string(),
+  location_id: z.number(),
+  min_volume: z.number(),
+  order_id: z.number(),
+  price: z.number(),
+  range: z.string(),
+  type_id: z.number(),
+  volume_remain: z.number(),
+  volume_total: z.number(),
+})
+
 export const ESIMarketPriceSchema = z.object({
   adjusted_price: z.number().optional(),
   average_price: z.number().optional(),

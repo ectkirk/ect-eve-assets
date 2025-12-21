@@ -7,6 +7,7 @@ import { useWalletStore } from './store/wallet-store'
 import { useBlueprintsStore } from './store/blueprints-store'
 import { useStructuresStore } from './store/structures-store'
 import { useIndustryJobsStore } from './store/industry-jobs-store'
+import { useRegionalMarketStore } from './store/regional-market-store'
 import { useExpiryCacheStore } from './store/expiry-cache-store'
 import { useNotificationStore } from './store/toast-store'
 import { MainLayout } from './components/layout/MainLayout'
@@ -108,6 +109,7 @@ function App() {
         logger.info('Asset store initialized', { module: 'App' })
         return Promise.all([
           useMarketOrdersStore.getState().init(),
+          useRegionalMarketStore.getState().init(),
           useContractsStore.getState().init(),
           useWalletStore.getState().init(),
           useBlueprintsStore.getState().init(),

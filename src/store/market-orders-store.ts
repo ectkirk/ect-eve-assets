@@ -58,6 +58,39 @@ interface MarketOrdersActions {
 
 type MarketOrdersStore = MarketOrdersState & MarketOrdersActions
 
+function registerPricesFromOrders(ordersById: Map<number, StoredOrder>): void {
+  const typeIds = new Set<number>()
+  const regionIds = new Set<number>()
+  const structuresByCharacter = new Map<number, { structureIds: Set<number>; typeIds: Set<number> }>()
+
+  for (const { order, sourceOwner } of ordersById.values()) {
+    typeIds.add(order.type_id)
+    regionIds.add(order.region_id)
+
+    if (!order.is_buy_order && order.location_id >= 1000000000000) {
+      let entry = structuresByCharacter.get(sourceOwner.characterId)
+      if (!entry) {
+        entry = { structureIds: new Set(), typeIds: new Set() }
+        structuresByCharacter.set(sourceOwner.characterId, entry)
+      }
+      entry.structureIds.add(order.location_id)
+      entry.typeIds.add(order.type_id)
+    }
+  }
+
+  if (typeIds.size > 0) {
+    useRegionalMarketStore.getState().registerTypes(Array.from(typeIds), Array.from(regionIds))
+  }
+
+  for (const [characterId, { structureIds, typeIds: structureTypeIds }] of structuresByCharacter) {
+    useRegionalMarketStore.getState().registerStructures(
+      Array.from(structureIds),
+      Array.from(structureTypeIds),
+      characterId
+    )
+  }
+}
+
 let db: IDBDatabase | null = null
 
 async function openDB(): Promise<IDBDatabase> {
@@ -440,19 +473,7 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
       }))
 
       triggerResolution()
-
-      const typeIds = new Set<number>()
-      const regionIds = new Set<number>()
-      for (const { order } of ordersById.values()) {
-        typeIds.add(order.type_id)
-        regionIds.add(order.region_id)
-      }
-      if (typeIds.size > 0) {
-        useRegionalMarketStore.getState().fetchPricesForTypes(
-          Array.from(typeIds),
-          Array.from(regionIds)
-        )
-      }
+      registerPricesFromOrders(ordersById)
 
       logger.info('Market orders updated', {
         module: 'MarketOrdersStore',
@@ -533,6 +554,32 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
           owner: owner.name,
           count: completedOrders.length,
         })
+
+        const remainingTypeIds = new Set<number>()
+        const remainingStructureIds = new Set<number>()
+        for (const { order } of ordersById.values()) {
+          remainingTypeIds.add(order.type_id)
+          if (!order.is_buy_order && order.location_id >= 1000000000000) {
+            remainingStructureIds.add(order.location_id)
+          }
+        }
+
+        const typesToUntrack = completedOrders
+          .map((o) => o.type_id)
+          .filter((typeId) => !remainingTypeIds.has(typeId))
+
+        if (typesToUntrack.length > 0) {
+          useRegionalMarketStore.getState().untrackTypes(typesToUntrack)
+        }
+
+        const structuresToUntrack = completedOrders
+          .filter((o) => !o.is_buy_order && o.location_id >= 1000000000000)
+          .map((o) => o.location_id)
+          .filter((locId) => !remainingStructureIds.has(locId))
+
+        if (structuresToUntrack.length > 0) {
+          useRegionalMarketStore.getState().untrackStructures(structuresToUntrack)
+        }
       }
 
       useExpiryCacheStore.getState().setExpiry(currentOwnerKey, endpoint, expiresAt, etag, orders.length === 0)
@@ -544,19 +591,7 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
       }))
 
       triggerResolution()
-
-      const typeIds = new Set<number>()
-      const regionIds = new Set<number>()
-      for (const { order } of ordersById.values()) {
-        typeIds.add(order.type_id)
-        regionIds.add(order.region_id)
-      }
-      if (typeIds.size > 0) {
-        useRegionalMarketStore.getState().fetchPricesForTypes(
-          Array.from(typeIds),
-          Array.from(regionIds)
-        )
-      }
+      registerPricesFromOrders(ordersById)
 
       logger.info('Market orders updated for owner', {
         module: 'MarketOrdersStore',
