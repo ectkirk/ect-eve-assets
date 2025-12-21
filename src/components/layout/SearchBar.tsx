@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import {
   ChevronDown,
   Check,
@@ -9,6 +9,10 @@ import {
 } from 'lucide-react'
 import { useTabControls } from '@/context'
 import { formatNumber } from '@/lib/utils'
+import {
+  useAssetSettings,
+  ASSET_SETTINGS_CONFIG,
+} from '@/store/asset-settings-store'
 
 const ASSET_TYPE_OPTIONS = [
   { value: '', label: 'All Types' },
@@ -23,6 +27,10 @@ const ASSET_TYPE_OPTIONS = [
   { value: 'SHIP_HANGAR', label: 'Ship Hangar' },
   { value: 'STRUCTURES', label: 'Structures' },
 ]
+
+const EXCLUDED_FILTER_VALUES = new Set(
+  ASSET_SETTINGS_CONFIG.map((c) => c.filterValue)
+)
 
 const SEARCH_DEBOUNCE_MS = 250
 
@@ -111,6 +119,17 @@ export function SearchBar() {
     totalValue,
   } = useTabControls()
   const [inputValue, setInputValue] = useState(search)
+  const settings = useAssetSettings()
+
+  const filteredTypeOptions = useMemo(() => {
+    return ASSET_TYPE_OPTIONS.filter((opt) => {
+      if (!EXCLUDED_FILTER_VALUES.has(opt.value)) return true
+      const config = ASSET_SETTINGS_CONFIG.find(
+        (c) => c.filterValue === opt.value
+      )
+      return config ? settings[config.key] : true
+    })
+  }, [settings])
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const setSearchRef = useRef(setSearch)
 
@@ -165,7 +184,7 @@ export function SearchBar() {
           onChange={(e) => assetTypeFilter.onChange(e.target.value)}
           className="w-36 rounded border border-border bg-surface-tertiary px-2 py-1.5 text-sm focus:border-accent focus:outline-hidden"
         >
-          {ASSET_TYPE_OPTIONS.map((opt) => (
+          {filteredTypeOptions.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {opt.label}
             </option>

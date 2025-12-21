@@ -14,6 +14,7 @@ import {
   Sparkles,
   Bug,
   FolderOpen,
+  Package,
   type LucideIcon,
 } from 'lucide-react'
 import { useThemeStore, THEME_OPTIONS } from '@/store/theme-store'
@@ -23,6 +24,7 @@ import { BugReportModal } from './BugReportModal'
 import { ChangelogModal } from './ChangelogModal'
 import { ClearCacheModal } from '@/components/dialogs/ClearCacheModal'
 import { AbyssalSyncModal } from '@/components/dialogs/AbyssalSyncModal'
+import { AssetSettingsModal } from '@/components/dialogs/AssetSettingsModal'
 
 const menuItemClass =
   'flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-content-secondary hover:bg-surface-tertiary'
@@ -76,6 +78,7 @@ export function WindowControls() {
   const [showClearCacheModal, setShowClearCacheModal] = useState(false)
   const [showAbyssalModal, setShowAbyssalModal] = useState(false)
   const [showBugReportModal, setShowBugReportModal] = useState(false)
+  const [showAssetSettingsModal, setShowAssetSettingsModal] = useState(false)
   const settingsPanelRef = useRef<HTMLDivElement>(null)
   const theme = useThemeStore((s) => s.theme)
   const setTheme = useThemeStore((s) => s.setTheme)
@@ -138,6 +141,15 @@ export function WindowControls() {
                 </select>
               </div>
               <div className="my-2 border-t border-border" />
+              <MenuItem
+                icon={Package}
+                onClick={() => {
+                  setShowAssetSettingsModal(true)
+                  setSettingsOpen(false)
+                }}
+              >
+                Asset View
+              </MenuItem>
               <MenuItem
                 icon={Sparkles}
                 onClick={() => {
@@ -230,6 +242,10 @@ export function WindowControls() {
       <BugReportModal
         open={showBugReportModal}
         onOpenChange={setShowBugReportModal}
+      />
+      <AssetSettingsModal
+        open={showAssetSettingsModal}
+        onOpenChange={setShowAssetSettingsModal}
       />
       <button
         onClick={() => window.electronAPI?.windowMinimize()}
