@@ -343,11 +343,16 @@ export function createVisibilityStore<
     sourceOwner: stored.sourceOwner,
   })
 
-  const fromRecord = (record: Record<string, unknown>): TStoredItem =>
-    ({
-      item: record.item as TItem,
+  const fromRecord = (record: Record<string, unknown>): TStoredItem => {
+    const item =
+      (record.item as TItem) ??
+      (record.job as TItem) ??
+      (record.order as TItem)
+    return {
+      item,
       sourceOwner: record.sourceOwner as SourceOwner,
-    }) as TStoredItem
+    } as TStoredItem
+  }
 
   type FullStore = VisibilityStore<TStoredItem, TExtraState, TExtraActions>
   type FullState = VisibilityState<TStoredItem> & TExtraState
