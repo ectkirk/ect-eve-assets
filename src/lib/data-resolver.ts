@@ -12,9 +12,12 @@ import {
   hasType,
   getType,
   hasLocation,
+  getLocation,
   hasStructure,
   getStructure,
+  saveStructures,
   notifyCacheListeners,
+  type CachedStructure,
 } from '@/store/reference-cache'
 import { resolveTypes, resolveLocations } from '@/api/ref-client'
 import { resolveStructures, resolveNames } from '@/api/endpoints/universe'
@@ -301,10 +304,37 @@ export async function resolveAllReferenceData(
 
   if (!hasWork) return
 
+  const { useStarbasesStore } = await import('@/store/starbases-store')
+  const starbasesByOwner = useStarbasesStore.getState().dataByOwner
+
+  const starbaseIds = new Set<number>()
+  const starbaseData = new Map<
+    number,
+    { moonId: number | undefined; systemId: number; typeId: number }
+  >()
+  for (const { starbases } of starbasesByOwner) {
+    for (const starbase of starbases) {
+      starbaseIds.add(starbase.starbase_id)
+      starbaseData.set(starbase.starbase_id, {
+        moonId: starbase.moon_id,
+        systemId: starbase.system_id,
+        typeId: starbase.type_id,
+      })
+    }
+  }
+
+  const upwellStructures = new Map<number, number>()
+  for (const [structureId, characterId] of ids.structureToCharacter) {
+    if (!starbaseIds.has(structureId)) {
+      upwellStructures.set(structureId, characterId)
+    }
+  }
+
   logger.info('Resolving reference data', {
     module: 'DataResolver',
     types: ids.typeIds.size,
-    structures: ids.structureToCharacter.size,
+    structures: upwellStructures.size,
+    starbases: starbaseIds.size,
     locations: ids.locationIds.size,
     entities: ids.entityIds.size,
   })
@@ -319,10 +349,10 @@ export async function resolveAllReferenceData(
       ? resolveNames(Array.from(ids.entityIds)).catch(() => {})
       : Promise.resolve()
 
-  if (ids.structureToCharacter.size > 0) {
-    await resolveStructures(ids.structureToCharacter).catch(() => {})
+  if (upwellStructures.size > 0) {
+    await resolveStructures(upwellStructures).catch(() => {})
 
-    for (const [structureId] of ids.structureToCharacter) {
+    for (const [structureId] of upwellStructures) {
       const structure = getStructure(structureId)
       if (structure?.solarSystemId && !hasLocation(structure.solarSystemId)) {
         ids.locationIds.add(structure.solarSystemId)
@@ -336,6 +366,44 @@ export async function resolveAllReferenceData(
       : Promise.resolve()
 
   await Promise.all([typesPromise, entitiesPromise, locationsPromise])
+
+  if (starbaseData.size > 0) {
+    const starbaseStructures: CachedStructure[] = []
+    for (const [starbaseId, data] of starbaseData) {
+      if (hasStructure(starbaseId)) continue
+
+      let name: string
+      let solarSystemId: number
+
+      if (data.moonId) {
+        const moon = getLocation(data.moonId)
+        name = moon?.name ?? `Moon ${data.moonId}`
+        solarSystemId = moon?.solarSystemId ?? data.systemId
+      } else {
+        const system = getLocation(data.systemId)
+        const type = getType(data.typeId)
+        name = type?.name
+          ? `${type.name} (${system?.name ?? `System ${data.systemId}`})`
+          : `Starbase ${starbaseId}`
+        solarSystemId = data.systemId
+      }
+
+      starbaseStructures.push({
+        id: starbaseId,
+        name,
+        solarSystemId,
+        typeId: data.typeId,
+        ownerId: 0,
+      })
+    }
+    if (starbaseStructures.length > 0) {
+      await saveStructures(starbaseStructures)
+      logger.info('Cached starbase locations', {
+        module: 'DataResolver',
+        count: starbaseStructures.length,
+      })
+    }
+  }
 
   if (ids.typeIds.size > 0) {
     const { fetchPrices } = await import('@/api/ref-client')
