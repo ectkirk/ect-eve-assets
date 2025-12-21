@@ -104,7 +104,9 @@ export function TreeTab({ mode }: TreeTabProps) {
     let showing = 0
     let value = 0
     for (const ra of selectedResolvedAssets) {
-      value += ra.totalValue
+      if (!ra.modeFlags.isOwnedStructure) {
+        value += ra.totalValue
+      }
       if (!shouldIncludeByMode(ra, effectiveMode)) continue
       if (categoryFilter && ra.categoryName !== categoryFilter) continue
       if (!matchesSearch(ra, search)) continue
