@@ -233,13 +233,21 @@ export function OwnerManagementModal({
     setOwnerToRemove(null)
     setIsUpdatingData(true)
     try {
-      const key = ownerKey(owner.type, owner.id)
-      if (window.electronAPI && owner.type === 'character') {
-        await window.electronAPI.logout(owner.id)
+      const ownersToRemove: Owner[] = [owner]
+      if (owner.type === 'character') {
+        const linkedCorps = corpsByCharacterId.get(owner.id) ?? []
+        ownersToRemove.push(...linkedCorps)
       }
-      useAuthStore.getState().removeOwner(key)
-      useExpiryCacheStore.getState().clearForOwner(key)
-      await useStoreRegistry.getState().removeForOwnerAll(owner.type, owner.id)
+
+      for (const o of ownersToRemove) {
+        const key = ownerKey(o.type, o.id)
+        if (window.electronAPI && o.type === 'character') {
+          await window.electronAPI.logout(o.id)
+        }
+        await useStoreRegistry.getState().removeForOwnerAll(o.type, o.id)
+        useExpiryCacheStore.getState().clearForOwner(key)
+        useAuthStore.getState().removeOwner(key)
+      }
     } finally {
       setIsUpdatingData(false)
     }
