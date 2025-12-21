@@ -29,29 +29,43 @@ export function shouldIncludeByMode(
 ): boolean {
   const mf = ra.modeFlags
 
-  if (mf.isContract || mf.isMarketOrder || mf.isIndustryJob) {
-    return mode === TreeMode.ALL
-  }
-
-  if (mf.isOwnedStructure) {
-    return mode === TreeMode.ALL || mode === TreeMode.STRUCTURES
-  }
-
   switch (mode) {
     case TreeMode.ALL:
       return true
+    case TreeMode.ACTIVE_SHIP:
+      return mf.isActiveShip
     case TreeMode.ITEM_HANGAR:
-      return mf.inItemHangar
+      return (
+        mf.inItemHangar &&
+        !mf.isContract &&
+        !mf.isMarketOrder &&
+        !mf.isIndustryJob
+      )
     case TreeMode.SHIP_HANGAR:
-      return mf.inShipHangar
+      return (
+        mf.inShipHangar &&
+        !mf.isContract &&
+        !mf.isMarketOrder &&
+        !mf.isIndustryJob
+      )
     case TreeMode.DELIVERIES:
       return mf.inDeliveries
     case TreeMode.ASSET_SAFETY:
       return mf.inAssetSafety
     case TreeMode.OFFICE:
-      return mf.inOffice
+      return (
+        mf.inOffice && !mf.isContract && !mf.isMarketOrder && !mf.isIndustryJob
+      )
     case TreeMode.STRUCTURES:
       return mf.isOwnedStructure
+    case TreeMode.CONTRACTS:
+      return mf.isContract
+    case TreeMode.MARKET_ORDERS:
+      return mf.isMarketOrder
+    case TreeMode.INDUSTRY_JOBS:
+      return mf.isIndustryJob
+    case TreeMode.CLONES:
+      return false
     default:
       return true
   }

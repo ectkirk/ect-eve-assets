@@ -1,5 +1,6 @@
 import type { ESIAsset } from '@/api/endpoints/assets'
 import type { ESIContract, ESIContractItem } from '@/api/endpoints/contracts'
+import type { ESIIndustryJob } from '@/api/endpoints/industry'
 import type { MarketOrder } from '@/store/market-orders-store'
 import type { Owner } from '@/store/auth-store'
 import type { ResolvedAsset, AssetModeFlags } from './resolved-asset'
@@ -429,5 +430,88 @@ export function resolveContractItem(
 
     customName: undefined,
     isBlueprintCopy: isBpc,
+  }
+}
+
+export function resolveIndustryJob(
+  job: ESIIndustryJob,
+  owner: Owner,
+  prices: Map<number, number>
+): ResolvedAsset {
+  const locationId = job.location_id ?? job.facility_id
+  const isStructure = locationId > 1_000_000_000_000
+
+  const productTypeId = job.product_type_id ?? job.blueprint_type_id
+
+  const syntheticAsset: ESIAsset = {
+    item_id: job.job_id,
+    type_id: productTypeId,
+    location_id: locationId,
+    location_type: isStructure ? 'other' : 'station',
+    location_flag: 'IndustryJob',
+    quantity: job.runs,
+    is_singleton: false,
+  }
+
+  let systemId: number | undefined
+  let regionId: number | undefined
+
+  if (isStructure) {
+    const structure = getStructure(locationId)
+    if (structure?.solarSystemId) {
+      const system = getLocation(structure.solarSystemId)
+      systemId = structure.solarSystemId
+      regionId = system?.regionId
+    }
+  } else if (locationId) {
+    const location = getLocation(locationId)
+    systemId = location?.solarSystemId
+    regionId = location?.regionId
+  }
+
+  const sdeType = getType(productTypeId)
+  const volume = sdeType?.packagedVolume ?? sdeType?.volume ?? 0
+  const price = prices.get(productTypeId) ?? 0
+
+  const modeFlags: AssetModeFlags = {
+    inHangar: false,
+    inShipHangar: false,
+    inItemHangar: false,
+    inDeliveries: false,
+    inAssetSafety: false,
+    inOffice: false,
+    inStructure: isStructure,
+    isContract: false,
+    isMarketOrder: false,
+    isIndustryJob: true,
+    isOwnedStructure: false,
+    isActiveShip: false,
+  }
+
+  return {
+    asset: syntheticAsset,
+    owner,
+
+    rootLocationId: locationId,
+    rootLocationType: isStructure ? 'structure' : 'station',
+    parentChain: [],
+    rootFlag: 'IndustryJob',
+
+    systemId,
+    regionId,
+
+    typeId: productTypeId,
+    categoryId: sdeType?.categoryId ?? 0,
+    groupId: sdeType?.groupId ?? 0,
+    volume,
+
+    price,
+    totalValue: price * job.runs,
+    totalVolume: volume * job.runs,
+
+    modeFlags,
+
+    customName: undefined,
+    isBlueprintCopy: false,
   }
 }

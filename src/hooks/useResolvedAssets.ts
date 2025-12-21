@@ -5,12 +5,14 @@ import {
   resolveAllAssets,
   resolveMarketOrder,
   resolveContractItem,
+  resolveIndustryJob,
 } from '@/lib/asset-resolver'
 import type { ResolvedAsset, ResolvedAssetsByOwner } from '@/lib/resolved-asset'
 import { useStarbasesStore } from '@/store/starbases-store'
 import { useStructuresStore } from '@/store/structures-store'
 import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { useContractsStore } from '@/store/contracts-store'
+import { useIndustryJobsStore } from '@/store/industry-jobs-store'
 
 export interface ResolvedAssetsResult {
   resolvedAssets: ResolvedAsset[]
@@ -38,6 +40,8 @@ export function useResolvedAssets(): ResolvedAssetsResult {
   const contractsVisibilityByOwner = useContractsStore(
     (s) => s.visibilityByOwner
   )
+  const jobsById = useIndustryJobsStore((s) => s.itemsById)
+  const jobsVisibilityByOwner = useIndustryJobsStore((s) => s.visibilityByOwner)
 
   const { ownedStructureIds, starbaseMoonIds } = useMemo(() => {
     const ids = new Set<number>()
@@ -112,6 +116,21 @@ export function useResolvedAssets(): ResolvedAssetsResult {
       }
     }
 
+    for (const [ownerKeyStr, jobIds] of jobsVisibilityByOwner) {
+      const owner = findOwnerByKey(ownerKeyStr)
+      if (!owner) continue
+
+      for (const jobId of jobIds) {
+        const stored = jobsById.get(jobId)
+        if (!stored) continue
+
+        const job = stored.item
+        if (job.status !== 'active' && job.status !== 'ready') continue
+
+        assets.push(resolveIndustryJob(job, owner, assetData.prices))
+      }
+    }
+
     return assets
   }, [
     assetData.assetsByOwner,
@@ -124,6 +143,8 @@ export function useResolvedAssets(): ResolvedAssetsResult {
     contractsById,
     contractItemsById,
     contractsVisibilityByOwner,
+    jobsById,
+    jobsVisibilityByOwner,
   ])
 
   const resolvedByOwner = useMemo(() => {
