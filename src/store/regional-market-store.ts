@@ -241,6 +241,21 @@ async function saveStructureToDB(record: TrackedStructureRecord): Promise<void> 
   })
 }
 
+async function saveStructuresToDB(records: TrackedStructureRecord[]): Promise<void> {
+  if (records.length === 0) return
+  const database = await openDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction([STORE_STRUCTURES], 'readwrite')
+    const store = tx.objectStore(STORE_STRUCTURES)
+    for (const record of records) {
+      store.put(record)
+    }
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
 async function deleteStructuresFromDB(structureIds: number[]): Promise<void> {
   if (structureIds.length === 0) return
   const database = await openDB()
@@ -487,14 +502,15 @@ export const useRegionalMarketStore = create<RegionalMarketStore>((set, get) => 
         await processRegionalBatch(batch)
       }
 
-      for (const { structureId, characterId, typeIds } of structureTasks) {
-        await processStructure(structureId, characterId, typeIds)
+      for (let i = 0; i < structureTasks.length; i += PARALLEL_LIMIT) {
+        const batch = structureTasks.slice(i, i + PARALLEL_LIMIT)
+        await Promise.all(batch.map(({ structureId, characterId, typeIds }) =>
+          processStructure(structureId, characterId, typeIds)
+        ))
       }
 
       await savePricesToDB(Array.from(priceUpdates.values()))
-      for (const record of structureUpdates) {
-        await saveStructureToDB(record)
-      }
+      await saveStructuresToDB(structureUpdates)
 
       set({
         pricesByType,
@@ -664,7 +680,7 @@ export const useRegionalMarketStore = create<RegionalMarketStore>((set, get) => 
     const state = get()
     const structureIdSet = new Set(structureIds)
     const trackedStructures = new Map(state.trackedStructures)
-    const pricesByLocation = new Map(state.pricesByLocation)
+    const pricesByLocation = deepClonePricesByLocation(state.pricesByLocation)
     const pricesByType = new Map(state.pricesByType)
     const toDelete: number[] = []
 
@@ -675,6 +691,7 @@ export const useRegionalMarketStore = create<RegionalMarketStore>((set, get) => 
       }
     }
 
+    const emptyTypeIds: number[] = []
     for (const [typeId, locationMap] of pricesByLocation) {
       for (const structureId of structureIdSet) {
         locationMap.delete(structureId)
@@ -683,8 +700,12 @@ export const useRegionalMarketStore = create<RegionalMarketStore>((set, get) => 
         pricesByType.set(typeId, Math.min(...locationMap.values()))
       } else {
         pricesByType.delete(typeId)
-        pricesByLocation.delete(typeId)
+        emptyTypeIds.push(typeId)
       }
+    }
+
+    for (const typeId of emptyTypeIds) {
+      pricesByLocation.delete(typeId)
     }
 
     if (toDelete.length > 0) {

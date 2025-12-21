@@ -167,22 +167,6 @@ async function loadFromDB(): Promise<{
   })
 }
 
-async function saveOrderToDB(orderId: number, stored: StoredOrder): Promise<void> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_ORDERS], 'readwrite')
-    const store = tx.objectStore(STORE_ORDERS)
-    store.put({
-      orderId,
-      order: stored.order,
-      sourceOwner: stored.sourceOwner,
-    } as StoredOrderRecord)
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
 async function saveVisibilityToDB(ownerKeyStr: string, orderIds: Set<number>): Promise<void> {
   const database = await openDB()
 
@@ -205,6 +189,40 @@ async function deleteVisibilityFromDB(ownerKeyStr: string): Promise<void> {
     const tx = database.transaction([STORE_VISIBILITY], 'readwrite')
     const store = tx.objectStore(STORE_VISIBILITY)
     store.delete(ownerKeyStr)
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
+async function deleteOrdersFromDB(orderIds: number[]): Promise<void> {
+  if (orderIds.length === 0) return
+  const database = await openDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction([STORE_ORDERS], 'readwrite')
+    const store = tx.objectStore(STORE_ORDERS)
+    for (const id of orderIds) {
+      store.delete(id)
+    }
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
+async function saveOrdersToDB(orders: Array<{ orderId: number; stored: StoredOrder }>): Promise<void> {
+  if (orders.length === 0) return
+  const database = await openDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction([STORE_ORDERS], 'readwrite')
+    const store = tx.objectStore(STORE_ORDERS)
+    for (const { orderId, stored } of orders) {
+      store.put({
+        orderId,
+        order: stored.order,
+        sourceOwner: stored.sourceOwner,
+      } as StoredOrderRecord)
+    }
     tx.oncomplete = () => resolve()
     tx.onerror = () => reject(tx.error)
   })
@@ -357,9 +375,8 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
           orders = migrated.orders
           visibility = migrated.visibility
 
-          for (const [orderId, stored] of orders) {
-            await saveOrderToDB(orderId, stored)
-          }
+          const orderBatch = Array.from(orders.entries()).map(([orderId, stored]) => ({ orderId, stored }))
+          await saveOrdersToDB(orderBatch)
           for (const [ownerKeyStr, orderIds] of visibility) {
             await saveVisibilityToDB(ownerKeyStr, orderIds)
           }
@@ -423,6 +440,7 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
     try {
       const ordersById = new Map(get().ordersById)
       const visibilityByOwner = new Map(get().visibilityByOwner)
+      const orderBatch: Array<{ orderId: number; stored: StoredOrder }> = []
 
       for (const owner of ownersToUpdate) {
         const currentOwnerKey = ownerKey(owner.type, owner.id)
@@ -438,18 +456,12 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
           for (const order of orders) {
             ownerVisibility.add(order.order_id)
 
-            if (!ordersById.has(order.order_id)) {
-              const stored: StoredOrder = {
-                order,
-                sourceOwner: { type: owner.type, id: owner.id, characterId: owner.characterId },
-              }
-              ordersById.set(order.order_id, stored)
-              await saveOrderToDB(order.order_id, stored)
-            } else {
-              const existing = ordersById.get(order.order_id)!
-              existing.order = order
-              await saveOrderToDB(order.order_id, existing)
+            const stored: StoredOrder = {
+              order,
+              sourceOwner: { type: owner.type, id: owner.id, characterId: owner.characterId },
             }
+            ordersById.set(order.order_id, stored)
+            orderBatch.push({ orderId: order.order_id, stored })
           }
 
           visibilityByOwner.set(currentOwnerKey, ownerVisibility)
@@ -462,6 +474,28 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
             owner: owner.name,
           })
         }
+      }
+
+      await saveOrdersToDB(orderBatch)
+
+      const visibleOrderIds = new Set<number>()
+      for (const orderIds of visibilityByOwner.values()) {
+        for (const id of orderIds) {
+          visibleOrderIds.add(id)
+        }
+      }
+
+      const staleOrderIds: number[] = []
+      for (const orderId of ordersById.keys()) {
+        if (!visibleOrderIds.has(orderId)) {
+          staleOrderIds.push(orderId)
+          ordersById.delete(orderId)
+        }
+      }
+
+      if (staleOrderIds.length > 0) {
+        await deleteOrdersFromDB(staleOrderIds)
+        logger.info('Cleaned up stale orders', { module: 'MarketOrdersStore', count: staleOrderIds.length })
       }
 
       set((s) => ({
@@ -512,25 +546,22 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
 
       const ordersById = new Map(state.ordersById)
       const visibilityByOwner = new Map(state.visibilityByOwner)
+      const orderBatch: Array<{ orderId: number; stored: StoredOrder }> = []
 
       const ownerVisibility = new Set<number>()
 
       for (const order of orders) {
         ownerVisibility.add(order.order_id)
 
-        if (!ordersById.has(order.order_id)) {
-          const stored: StoredOrder = {
-            order,
-            sourceOwner: { type: owner.type, id: owner.id, characterId: owner.characterId },
-          }
-          ordersById.set(order.order_id, stored)
-          await saveOrderToDB(order.order_id, stored)
-        } else {
-          const existing = ordersById.get(order.order_id)!
-          existing.order = order
-          await saveOrderToDB(order.order_id, existing)
+        const stored: StoredOrder = {
+          order,
+          sourceOwner: { type: owner.type, id: owner.id, characterId: owner.characterId },
         }
+        ordersById.set(order.order_id, stored)
+        orderBatch.push({ orderId: order.order_id, stored })
       }
+
+      await saveOrdersToDB(orderBatch)
 
       visibilityByOwner.set(currentOwnerKey, ownerVisibility)
       await saveVisibilityToDB(currentOwnerKey, ownerVisibility)
@@ -554,6 +585,25 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
           owner: owner.name,
           count: completedOrders.length,
         })
+      }
+
+      const visibleOrderIds = new Set<number>()
+      for (const orderIds of visibilityByOwner.values()) {
+        for (const id of orderIds) {
+          visibleOrderIds.add(id)
+        }
+      }
+
+      const staleOrderIds: number[] = []
+      for (const orderId of ordersById.keys()) {
+        if (!visibleOrderIds.has(orderId)) {
+          staleOrderIds.push(orderId)
+          ordersById.delete(orderId)
+        }
+      }
+
+      if (staleOrderIds.length > 0) {
+        await deleteOrdersFromDB(staleOrderIds)
 
         const remainingTypeIds = new Set<number>()
         const remainingStructureIds = new Set<number>()
@@ -580,6 +630,8 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
         if (structuresToUntrack.length > 0) {
           useRegionalMarketStore.getState().untrackStructures(structuresToUntrack)
         }
+
+        logger.info('Cleaned up stale orders', { module: 'MarketOrdersStore', count: staleOrderIds.length })
       }
 
       useExpiryCacheStore.getState().setExpiry(currentOwnerKey, endpoint, expiresAt, etag, orders.length === 0)
@@ -617,11 +669,35 @@ export const useMarketOrdersStore = create<MarketOrdersStore>((set, get) => ({
 
     await deleteVisibilityFromDB(currentOwnerKey)
 
-    set({ visibilityByOwner })
+    const visibleOrderIds = new Set<number>()
+    for (const orderIds of visibilityByOwner.values()) {
+      for (const id of orderIds) {
+        visibleOrderIds.add(id)
+      }
+    }
+
+    const ordersById = new Map(state.ordersById)
+    const staleOrderIds: number[] = []
+    for (const orderId of ordersById.keys()) {
+      if (!visibleOrderIds.has(orderId)) {
+        staleOrderIds.push(orderId)
+        ordersById.delete(orderId)
+      }
+    }
+
+    if (staleOrderIds.length > 0) {
+      await deleteOrdersFromDB(staleOrderIds)
+    }
+
+    set({ ordersById, visibilityByOwner })
 
     useExpiryCacheStore.getState().clearForOwner(currentOwnerKey)
 
-    logger.info('Market orders removed for owner', { module: 'MarketOrdersStore', ownerKey: currentOwnerKey })
+    logger.info('Market orders removed for owner', {
+      module: 'MarketOrdersStore',
+      ownerKey: currentOwnerKey,
+      staleOrdersRemoved: staleOrderIds.length,
+    })
   },
 
   clear: async () => {

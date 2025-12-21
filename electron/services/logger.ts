@@ -26,6 +26,7 @@ let currentLogLevel: LogLevel = 'DEBUG'
 
 function ensureLogDir(): void {
   if (!logDir) {
+    if (!app?.getPath) return
     logDir = path.join(app.getPath('userData'), 'logs')
   }
   if (!fs.existsSync(logDir)) {
@@ -33,16 +34,17 @@ function ensureLogDir(): void {
   }
 }
 
-function getLogFilePath(): string {
+function getLogFilePath(): string | null {
   ensureLogDir()
+  if (!logDir) return null
   const date = new Date().toISOString().split('T')[0]
   return path.join(logDir, `app-${date}.log`)
 }
 
 function rotateLogsIfNeeded(): void {
   ensureLogDir()
+  if (!logDir) return
 
-  // Check current log file size
   if (logFile && fs.existsSync(logFile)) {
     const stats = fs.statSync(logFile)
     const sizeMB = stats.size / (1024 * 1024)
@@ -106,6 +108,7 @@ function formatMessage(level: LogLevel, message: string, context?: LogContext): 
 function writeToFile(formatted: string): void {
   try {
     const currentPath = getLogFilePath()
+    if (!currentPath) return
     if (currentPath !== logFile) {
       logFile = currentPath
       rotateLogsIfNeeded()
