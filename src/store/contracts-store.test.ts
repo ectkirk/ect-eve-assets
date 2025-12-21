@@ -42,9 +42,9 @@ describe('contracts-store', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     useContractsStore.setState({
-      contractsById: new Map(),
+      itemsById: new Map(),
       visibilityByOwner: new Map(),
-      itemFetchesInProgress: new Set(),
+      itemsByContractId: new Map(),
       isUpdating: false,
       updateError: null,
       initialized: false,
@@ -55,7 +55,7 @@ describe('contracts-store', () => {
   describe('initial state', () => {
     it('has correct initial values', () => {
       const state = useContractsStore.getState()
-      expect(state.contractsById.size).toBe(0)
+      expect(state.itemsById.size).toBe(0)
       expect(state.visibilityByOwner.size).toBe(0)
       expect(state.isUpdating).toBe(false)
       expect(state.updateError).toBeNull()
@@ -160,7 +160,7 @@ describe('contracts-store', () => {
       await useContractsStore.getState().update(true)
 
       const state = useContractsStore.getState()
-      expect(state.contractsById.size).toBe(1)
+      expect(state.itemsById.size).toBe(1)
       expect(state.visibilityByOwner.get('character-12345')?.size).toBe(1)
     })
 
@@ -208,8 +208,8 @@ describe('contracts-store', () => {
       await useContractsStore.getState().update(true)
 
       const state = useContractsStore.getState()
-      expect(state.contractsById.size).toBe(1)
-      expect(state.contractsById.get(1)?.contract.for_corporation).toBe(false)
+      expect(state.itemsById.size).toBe(1)
+      expect(state.itemsById.get(1)?.item.for_corporation).toBe(false)
     })
 
     it('handles fetch errors gracefully', async () => {
@@ -238,8 +238,8 @@ describe('contracts-store', () => {
   describe('clear', () => {
     it('resets store state', async () => {
       useContractsStore.setState({
-        contractsById: new Map([
-          [1, { contract: {} as never, sourceOwner: {} as never }],
+        itemsById: new Map([
+          [1, { item: {} as never, sourceOwner: {} as never }],
         ]),
         visibilityByOwner: new Map([['test', new Set([1])]]),
         updateError: 'error',
@@ -248,7 +248,7 @@ describe('contracts-store', () => {
       await useContractsStore.getState().clear()
 
       const state = useContractsStore.getState()
-      expect(state.contractsById.size).toBe(0)
+      expect(state.itemsById.size).toBe(0)
       expect(state.visibilityByOwner.size).toBe(0)
       expect(state.updateError).toBeNull()
     })
@@ -280,12 +280,11 @@ describe('contracts-store', () => {
       }
 
       useContractsStore.setState({
-        contractsById: new Map([
+        itemsById: new Map([
           [
             1,
             {
-              contract: mockContract as never,
-              items: undefined,
+              item: mockContract as never,
               sourceOwner: { type: 'character', id: 12345, characterId: 12345 },
             },
           ],
@@ -293,7 +292,7 @@ describe('contracts-store', () => {
         visibilityByOwner: new Map([['character-12345', new Set([1])]]),
       })
 
-      const result = useContractsStore.getState().getContractsByOwner()
+      const result = useContractsStore.getContractsByOwner()
 
       expect(result).toHaveLength(1)
       expect(result[0]?.owner).toEqual(mockOwner)
@@ -328,16 +327,16 @@ describe('contracts-store', () => {
       }
 
       useContractsStore.setState({
-        contractsById: new Map([
+        itemsById: new Map([
           [
             1,
             {
-              contract: mockContract as never,
-              items: [mockItem as never],
+              item: mockContract as never,
               sourceOwner: { type: 'character', id: 12345, characterId: 12345 },
             },
           ],
         ]),
+        itemsByContractId: new Map([[1, [mockItem as never]]]),
         visibilityByOwner: new Map([
           ['character-12345', new Set([1])],
           ['character-67890', new Set([1])],
@@ -345,9 +344,10 @@ describe('contracts-store', () => {
       })
 
       const prices = new Map([[34, 10]])
-      const total = useContractsStore
-        .getState()
-        .getTotal(prices, ['character-12345', 'character-67890'])
+      const total = useContractsStore.getTotal(prices, [
+        'character-12345',
+        'character-67890',
+      ])
 
       expect(total).toBe(1001000)
     })

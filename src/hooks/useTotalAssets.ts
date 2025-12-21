@@ -65,9 +65,7 @@ export function useTotalAssets(): AssetTotals {
     }
 
     const marketTotal = useMarketOrdersStore.getTotal(selectedOwnerIds)
-    const contractsTotal = useContractsStore
-      .getState()
-      .getTotal(prices, selectedOwnerIds)
+    const contractsTotal = useContractsStore.getTotal(prices, selectedOwnerIds)
     const industryTotal = useIndustryJobsStore.getTotal(
       prices,
       selectedOwnerIds

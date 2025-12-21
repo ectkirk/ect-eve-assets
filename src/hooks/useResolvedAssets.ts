@@ -34,7 +34,8 @@ export function useResolvedAssets(): ResolvedAssetsResult {
     (s) => s.visibilityByOwner
   )
   const ordersUpdateCounter = useMarketOrdersStore((s) => s.updateCounter)
-  const contractsById = useContractsStore((s) => s.contractsById)
+  const contractsById = useContractsStore((s) => s.itemsById)
+  const contractItemsById = useContractsStore((s) => s.itemsByContractId)
   const contractsVisibilityByOwner = useContractsStore(
     (s) => s.visibilityByOwner
   )
@@ -96,7 +97,8 @@ export function useResolvedAssets(): ResolvedAssetsResult {
         const stored = contractsById.get(contractId)
         if (!stored) continue
 
-        const { contract, items } = stored
+        const contract = stored.item
+        const items = contractItemsById.get(contractId)
         if (contract.status !== 'outstanding' || !items) continue
 
         const isIssuer = isCharOwner
@@ -126,6 +128,7 @@ export function useResolvedAssets(): ResolvedAssetsResult {
     ordersVisibilityByOwner,
     ordersUpdateCounter,
     contractsById,
+    contractItemsById,
     contractsVisibilityByOwner,
     contractsUpdateCounter,
   ])

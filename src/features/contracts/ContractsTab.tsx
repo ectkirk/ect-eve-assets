@@ -3,7 +3,7 @@ import { ChevronRight, ChevronDown, Truck } from 'lucide-react'
 import { useTabControls } from '@/context'
 import { useColumnSettings, useCacheVersion, type ColumnConfig } from '@/hooks'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
-import { useContractsStore } from '@/store/contracts-store'
+import { useContractsStore, type OwnerContracts } from '@/store/contracts-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import type { ESIContractItem } from '@/api/endpoints/contracts'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
@@ -66,16 +66,16 @@ export function ContractsTab() {
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
 
   const prices = useAssetStore((s) => s.prices)
-  const getContractsByOwner = useContractsStore((s) => s.getContractsByOwner)
   const contractsUpdating = useContractsStore((s) => s.isUpdating)
   const updateError = useContractsStore((s) => s.updateError)
   const init = useContractsStore((s) => s.init)
   const initialized = useContractsStore((s) => s.initialized)
   const updateCounter = useContractsStore((s) => s.updateCounter)
 
-  const contractsByOwner = useMemo(
-    () => getContractsByOwner(),
-    [getContractsByOwner, updateCounter]
+  const contractsByOwner = useMemo<OwnerContracts[]>(
+    () => useContractsStore.getContractsByOwner(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [updateCounter]
   )
 
   const { isLoading: assetsUpdating } = useAssetData()
