@@ -222,19 +222,19 @@ const baseStore = createVisibilityStore<
     for (const contract of newItems) {
       const prevContract = prev.get(contract.contract_id)
 
-      if (!prevContract) {
-        // New contract - check if needs item fetch
-        if (
-          isActiveItemExchange(contract) &&
-          !currentItems.has(contract.contract_id) &&
-          !pendingItemFetches.has(contract.contract_id)
-        ) {
-          const stored = itemsById.get(contract.contract_id)
-          if (stored) {
-            pendingItemFetches.set(contract.contract_id, stored.sourceOwner)
-          }
+      // Fetch items for any active item_exchange missing items
+      if (
+        isActiveItemExchange(contract) &&
+        !currentItems.has(contract.contract_id) &&
+        !pendingItemFetches.has(contract.contract_id)
+      ) {
+        const stored = itemsById.get(contract.contract_id)
+        if (stored) {
+          pendingItemFetches.set(contract.contract_id, stored.sourceOwner)
         }
+      }
 
+      if (!prevContract) {
         // Toast for new contract assigned to us
         if (
           contract.assignee_id === ownerId &&
