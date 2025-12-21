@@ -17,6 +17,12 @@ interface ErrorLimitState {
   resetAt: number
 }
 
+export interface RateLimitExportedState {
+  groups: Record<string, RateLimitState>
+  errorLimit: ErrorLimitState | null
+  globalRetryAfter: number | null
+}
+
 export class RateLimitTracker {
   private groups = new Map<string, RateLimitState>()
   private errorLimit: ErrorLimitState | null = null
@@ -184,19 +190,41 @@ export class RateLimitTracker {
     this.contractItemsTimestamps.clear()
   }
 
-  exportState(): Record<string, RateLimitState> {
-    const result: Record<string, RateLimitState> = {}
+  exportState(): RateLimitExportedState {
+    const groups: Record<string, RateLimitState> = {}
     for (const [key, state] of this.groups) {
-      result[key] = state
+      groups[key] = state
     }
-    return result
+    return {
+      groups,
+      errorLimit: this.errorLimit,
+      globalRetryAfter: this.globalRetryAfter,
+    }
   }
 
-  loadState(states: Record<string, RateLimitState>): void {
+  loadState(
+    state: RateLimitExportedState | Record<string, RateLimitState>
+  ): void {
     const now = Date.now()
-    for (const [key, state] of Object.entries(states)) {
-      if (now - state.windowStart < state.windowMs) {
-        this.groups.set(key, state)
+
+    const isNewFormat = 'groups' in state && typeof state.groups === 'object'
+    const groups = isNewFormat
+      ? (state as RateLimitExportedState).groups
+      : (state as Record<string, RateLimitState>)
+
+    for (const [key, s] of Object.entries(groups)) {
+      if (now - s.windowStart < s.windowMs) {
+        this.groups.set(key, s)
+      }
+    }
+
+    if (isNewFormat) {
+      const fullState = state as RateLimitExportedState
+      if (fullState.errorLimit && now < fullState.errorLimit.resetAt) {
+        this.errorLimit = fullState.errorLimit
+      }
+      if (fullState.globalRetryAfter && now < fullState.globalRetryAfter) {
+        this.globalRetryAfter = fullState.globalRetryAfter
       }
     }
   }

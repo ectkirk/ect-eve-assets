@@ -1,5 +1,6 @@
-import { useState, useMemo, Fragment } from 'react'
+import { useMemo, Fragment, useReducer } from 'react'
 import { useAuthStore, type Owner, ownerKey } from '@/store/auth-store'
+import { ownerModalReducer, initialOwnerModalState } from './owner-modal-state'
 import { useExpiryCacheStore } from '@/store/expiry-cache-store'
 import { useStoreRegistry } from '@/store/store-registry'
 import { esi } from '@/api/esi'
@@ -36,16 +37,19 @@ export function OwnerManagementModal({
   open,
   onOpenChange,
 }: OwnerManagementModalProps) {
-  const [isAddingCharacter, setIsAddingCharacter] = useState(false)
-  const [isAddingCorporation, setIsAddingCorporation] = useState(false)
-  const [isUpdatingData, setIsUpdatingData] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [ownerToRemove, setOwnerToRemove] = useState<Owner | null>(null)
-  const [showLogoutAllConfirm, setShowLogoutAllConfirm] = useState(false)
-  const [refreshingRolesOwner, setRefreshingRolesOwner] = useState<
-    string | null
-  >(null)
+  const [state, dispatch] = useReducer(
+    ownerModalReducer,
+    initialOwnerModalState
+  )
+  const {
+    authFlow,
+    isUpdatingData,
+    searchQuery,
+    error,
+    ownerToRemove,
+    showLogoutAllConfirm,
+    refreshingRolesOwner,
+  } = state
 
   const ownersRecord = useAuthStore((state) => state.owners)
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
@@ -97,8 +101,7 @@ export function OwnerManagementModal({
   const handleAddCharacter = async () => {
     if (!window.electronAPI) return
 
-    setIsAddingCharacter(true)
-    setError(null)
+    dispatch({ type: 'START_AUTH', flow: 'character' })
     try {
       const result = await window.electronAPI.startAuth(false)
       if (
@@ -124,23 +127,22 @@ export function OwnerManagementModal({
           corporationRoles: result.corporationRoles,
           owner: newOwner,
         })
-        setIsAddingCharacter(false)
+        dispatch({ type: 'END_AUTH' })
         useExpiryCacheStore
           .getState()
           .queueAllEndpointsForOwner(ownerKey(newOwner.type, newOwner.id))
       } else if (result.error && result.error !== 'Authentication cancelled') {
-        setError(result.error)
+        dispatch({ type: 'SET_ERROR', error: result.error })
       }
     } finally {
-      setIsAddingCharacter(false)
+      dispatch({ type: 'END_AUTH' })
     }
   }
 
   const handleAddCorporation = async (forCharacter?: Owner) => {
     if (!window.electronAPI) return
 
-    setIsAddingCorporation(true)
-    setError(null)
+    dispatch({ type: 'START_AUTH', flow: 'corporation' })
     try {
       const result = await window.electronAPI.startAuth(true)
       if (
@@ -152,9 +154,10 @@ export function OwnerManagementModal({
         result.corporationId
       ) {
         if (forCharacter && result.characterId !== forCharacter.characterId) {
-          setError(
-            `Please authenticate with ${forCharacter.name} to add their corporation.`
-          )
+          dispatch({
+            type: 'SET_ERROR',
+            error: `Please authenticate with ${forCharacter.name} to add their corporation.`,
+          })
           return
         }
 
@@ -204,17 +207,17 @@ export function OwnerManagementModal({
           corporationRoles: result.corporationRoles,
           owner: newCorpOwner,
         })
-        setIsAddingCorporation(false)
+        dispatch({ type: 'END_AUTH' })
         useExpiryCacheStore
           .getState()
           .queueAllEndpointsForOwner(
             ownerKey(newCorpOwner.type, newCorpOwner.id)
           )
       } else if (result.error && result.error !== 'Authentication cancelled') {
-        setError(result.error)
+        dispatch({ type: 'SET_ERROR', error: result.error })
       }
     } finally {
-      setIsAddingCorporation(false)
+      dispatch({ type: 'END_AUTH' })
     }
   }
 
@@ -224,14 +227,14 @@ export function OwnerManagementModal({
 
   const handleRemoveOwnerClick = (owner: Owner, e: React.MouseEvent) => {
     e.stopPropagation()
-    setOwnerToRemove(owner)
+    dispatch({ type: 'CONFIRM_REMOVE', owner })
   }
 
   const handleRemoveOwnerConfirm = async () => {
     if (!ownerToRemove) return
     const owner = ownerToRemove
-    setOwnerToRemove(null)
-    setIsUpdatingData(true)
+    dispatch({ type: 'CANCEL_REMOVE' })
+    dispatch({ type: 'SET_UPDATING', value: true })
     try {
       const ownersToRemove: Owner[] = [owner]
       if (owner.type === 'character') {
@@ -249,7 +252,7 @@ export function OwnerManagementModal({
         useAuthStore.getState().removeOwner(key)
       }
     } finally {
-      setIsUpdatingData(false)
+      dispatch({ type: 'SET_UPDATING', value: false })
     }
   }
 
@@ -274,12 +277,10 @@ export function OwnerManagementModal({
     )
     const needsCorporationScopes =
       owner.type === 'corporation' || hadCorporationScopes
-    if (needsCorporationScopes) {
-      setIsAddingCorporation(true)
-    } else {
-      setIsAddingCharacter(true)
-    }
-    setError(null)
+    dispatch({
+      type: 'START_AUTH',
+      flow: needsCorporationScopes ? 'corporation' : 'character',
+    })
 
     try {
       const result = await window.electronAPI.startAuth(needsCorporationScopes)
@@ -290,9 +291,10 @@ export function OwnerManagementModal({
         result.characterId
       ) {
         if (result.characterId !== owner.characterId) {
-          setError(
-            `Wrong character authenticated. Expected ${owner.name}, got a different character. Please try again.`
-          )
+          dispatch({
+            type: 'SET_ERROR',
+            error: `Wrong character authenticated. Expected ${owner.name}, got a different character. Please try again.`,
+          })
           return
         }
         const key = ownerKey(owner.type, owner.id)
@@ -303,21 +305,20 @@ export function OwnerManagementModal({
           scopes: result.scopes,
         })
       } else if (result.error && result.error !== 'Authentication cancelled') {
-        setError(result.error)
+        dispatch({ type: 'SET_ERROR', error: result.error })
       }
     } finally {
-      setIsAddingCharacter(false)
-      setIsAddingCorporation(false)
+      dispatch({ type: 'END_AUTH' })
     }
   }
 
   const handleLogoutAllClick = () => {
-    setShowLogoutAllConfirm(true)
+    dispatch({ type: 'SHOW_LOGOUT_ALL' })
   }
 
   const handleLogoutAllConfirm = async () => {
-    setShowLogoutAllConfirm(false)
-    setIsUpdatingData(true)
+    dispatch({ type: 'HIDE_LOGOUT_ALL' })
+    dispatch({ type: 'SET_UPDATING', value: true })
     try {
       if (window.electronAPI) {
         for (const owner of characterOwners) {
@@ -329,20 +330,23 @@ export function OwnerManagementModal({
       await useExpiryCacheStore.getState().clear()
       onOpenChange(false)
     } finally {
-      setIsUpdatingData(false)
+      dispatch({ type: 'SET_UPDATING', value: false })
     }
   }
 
   const handleRefreshRoles = async (owner: Owner) => {
     const key = ownerKey(owner.type, owner.id)
-    setRefreshingRolesOwner(key)
+    dispatch({ type: 'SET_REFRESHING_ROLES', ownerKey: key })
     try {
       const roles = await getCharacterRoles(owner.characterId)
       useAuthStore.getState().updateOwnerRoles(key, roles)
     } catch {
-      setError('Failed to refresh corporation roles')
+      dispatch({
+        type: 'SET_ERROR',
+        error: 'Failed to refresh corporation roles',
+      })
     } finally {
-      setRefreshingRolesOwner(null)
+      dispatch({ type: 'SET_REFRESHING_ROLES', ownerKey: null })
     }
   }
 
@@ -369,7 +373,9 @@ export function OwnerManagementModal({
               type="text"
               placeholder="Search accounts..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) =>
+                dispatch({ type: 'SET_SEARCH', query: e.target.value })
+              }
               className="w-full rounded-md border border-border bg-surface-secondary py-2 pl-10 pr-4 text-sm text-content placeholder:text-content-muted focus:border-accent focus:outline-hidden focus:ring-1 focus:ring-accent"
             />
           </div>
@@ -460,7 +466,7 @@ export function OwnerManagementModal({
 
         {/* Actions */}
         <div className="flex flex-col gap-2 border-t border-border pt-4">
-          {isAddingCharacter || isAddingCorporation ? (
+          {authFlow !== 'idle' ? (
             <div className="flex flex-col items-center gap-3 py-2">
               <div className="flex items-center gap-2 text-content-secondary">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -487,7 +493,7 @@ export function OwnerManagementModal({
               Add Character
             </button>
           )}
-          {owners.length > 0 && !isBusy && (
+          {owners.length > 0 && !isBusy && authFlow === 'idle' && (
             <button
               onClick={handleLogoutAllClick}
               className="w-full rounded-md border border-semantic-danger/50 px-4 py-2 text-sm font-medium text-semantic-danger hover:bg-semantic-danger/10"
@@ -499,7 +505,7 @@ export function OwnerManagementModal({
 
         <ConfirmDialog
           open={ownerToRemove !== null}
-          onOpenChange={(open) => !open && setOwnerToRemove(null)}
+          onOpenChange={(open) => !open && dispatch({ type: 'CANCEL_REMOVE' })}
           title={`Remove ${ownerToRemove?.type === 'corporation' ? 'Corporation' : 'Character'}?`}
           description={`Are you sure you want to remove ${ownerToRemove?.name}? All cached data for this account will be deleted.`}
           confirmLabel="Remove"
@@ -509,7 +515,9 @@ export function OwnerManagementModal({
 
         <ConfirmDialog
           open={showLogoutAllConfirm}
-          onOpenChange={setShowLogoutAllConfirm}
+          onOpenChange={(open) =>
+            dispatch({ type: open ? 'SHOW_LOGOUT_ALL' : 'HIDE_LOGOUT_ALL' })
+          }
           title="Logout All Accounts?"
           description="Are you sure you want to logout all accounts? All cached data will be deleted and you will need to re-authenticate each account."
           confirmLabel="Logout All"

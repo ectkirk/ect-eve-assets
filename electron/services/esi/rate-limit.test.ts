@@ -27,7 +27,7 @@ describe('RateLimitTracker', () => {
       tracker.updateFromHeaders(12345, headers)
 
       const exported = tracker.exportState()
-      const state = exported['12345:char-asset']
+      const state = exported.groups['12345:char-asset']
       expect(state).toBeDefined()
       expect(state!.remaining).toBe(1750)
       expect(state!.limit).toBe(1800)
@@ -37,13 +37,13 @@ describe('RateLimitTracker', () => {
     it('ignores if no group header', () => {
       const headers = createHeaders({ 'X-Ratelimit-Remaining': '100' })
       tracker.updateFromHeaders(12345, headers)
-      expect(Object.keys(tracker.exportState()).length).toBe(0)
+      expect(Object.keys(tracker.exportState().groups).length).toBe(0)
     })
 
     it('ignores if no remaining header', () => {
       const headers = createHeaders({ 'X-Ratelimit-Group': 'char-asset' })
       tracker.updateFromHeaders(12345, headers)
-      expect(Object.keys(tracker.exportState()).length).toBe(0)
+      expect(Object.keys(tracker.exportState().groups).length).toBe(0)
     })
 
     it('handles different time units', () => {
@@ -53,7 +53,7 @@ describe('RateLimitTracker', () => {
         'X-Ratelimit-Limit': '200/1h',
       })
       tracker.updateFromHeaders(1, headers1h)
-      expect(tracker.exportState()['1:test-h']!.windowMs).toBe(3600000)
+      expect(tracker.exportState().groups['1:test-h']!.windowMs).toBe(3600000)
 
       const headers30s = createHeaders({
         'X-Ratelimit-Group': 'test-s',
@@ -61,7 +61,7 @@ describe('RateLimitTracker', () => {
         'X-Ratelimit-Limit': '100/30s',
       })
       tracker.updateFromHeaders(2, headers30s)
-      expect(tracker.exportState()['2:test-s']!.windowMs).toBe(30000)
+      expect(tracker.exportState().groups['2:test-s']!.windowMs).toBe(30000)
     })
   })
 
@@ -115,11 +115,11 @@ describe('RateLimitTracker', () => {
       tracker.updateFromHeaders(12345, headers)
 
       const exported = tracker.exportState()
-      expect(exported['12345:char-asset']).toBeDefined()
+      expect(exported.groups['12345:char-asset']).toBeDefined()
 
       const newTracker = new RateLimitTracker()
       newTracker.loadState(exported)
-      expect(newTracker.exportState()['12345:char-asset']).toBeDefined()
+      expect(newTracker.exportState().groups['12345:char-asset']).toBeDefined()
     })
 
     it('skips expired states on load', () => {
@@ -132,7 +132,34 @@ describe('RateLimitTracker', () => {
         },
       }
       tracker.loadState(oldState)
-      expect(tracker.exportState()['12345:old-group']).toBeUndefined()
+      expect(tracker.exportState().groups['12345:old-group']).toBeUndefined()
+    })
+
+    it('exports and loads error limit state', () => {
+      const headers = createHeaders({
+        'X-Esi-Error-Limit-Remain': '50',
+        'X-Esi-Error-Limit-Reset': '30',
+      })
+      tracker.updateFromHeaders(12345, headers)
+
+      const exported = tracker.exportState()
+      expect(exported.errorLimit).toBeDefined()
+      expect(exported.errorLimit!.remain).toBe(50)
+
+      const newTracker = new RateLimitTracker()
+      newTracker.loadState(exported)
+      expect(newTracker.exportState().errorLimit).toBeDefined()
+    })
+
+    it('exports and loads global retry after', () => {
+      tracker.setGlobalRetryAfter(60)
+
+      const exported = tracker.exportState()
+      expect(exported.globalRetryAfter).toBeGreaterThan(Date.now())
+
+      const newTracker = new RateLimitTracker()
+      newTracker.loadState(exported)
+      expect(newTracker.getGlobalRetryAfter()).toBeGreaterThan(0)
     })
   })
 
@@ -143,13 +170,18 @@ describe('RateLimitTracker', () => {
         'X-Ratelimit-Group': 'test',
         'X-Ratelimit-Remaining': '50',
         'X-Ratelimit-Limit': '100/15m',
+        'X-Esi-Error-Limit-Remain': '50',
+        'X-Esi-Error-Limit-Reset': '30',
       })
       tracker.updateFromHeaders(1, headers)
 
       tracker.clear()
 
       expect(tracker.getGlobalRetryAfter()).toBeNull()
-      expect(Object.keys(tracker.exportState()).length).toBe(0)
+      const exported = tracker.exportState()
+      expect(Object.keys(exported.groups).length).toBe(0)
+      expect(exported.errorLimit).toBeNull()
+      expect(exported.globalRetryAfter).toBeNull()
     })
   })
 

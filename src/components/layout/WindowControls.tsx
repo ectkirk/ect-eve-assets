@@ -18,6 +18,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useThemeStore, THEME_OPTIONS } from '@/store/theme-store'
+import { useModalManager } from '@/hooks/use-modal-manager'
 import { CreditsModal } from './CreditsModal'
 import { SupportModal } from './SupportModal'
 import { BugReportModal } from './BugReportModal'
@@ -25,6 +26,15 @@ import { ChangelogModal } from './ChangelogModal'
 import { ClearCacheModal } from '@/components/dialogs/ClearCacheModal'
 import { AbyssalSyncModal } from '@/components/dialogs/AbyssalSyncModal'
 import { AssetSettingsModal } from '@/components/dialogs/AssetSettingsModal'
+
+type SettingsModal =
+  | 'credits'
+  | 'support'
+  | 'changelog'
+  | 'clearCache'
+  | 'abyssal'
+  | 'bugReport'
+  | 'assetSettings'
 
 const menuItemClass =
   'flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-content-secondary hover:bg-surface-tertiary'
@@ -72,16 +82,15 @@ function MenuItem({
 export function WindowControls() {
   const [isMaximized, setIsMaximized] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [creditsOpen, setCreditsOpen] = useState(false)
-  const [supportOpen, setSupportOpen] = useState(false)
-  const [changelogOpen, setChangelogOpen] = useState(false)
-  const [showClearCacheModal, setShowClearCacheModal] = useState(false)
-  const [showAbyssalModal, setShowAbyssalModal] = useState(false)
-  const [showBugReportModal, setShowBugReportModal] = useState(false)
-  const [showAssetSettingsModal, setShowAssetSettingsModal] = useState(false)
+  const modals = useModalManager<SettingsModal>()
   const settingsPanelRef = useRef<HTMLDivElement>(null)
   const theme = useThemeStore((s) => s.theme)
   const setTheme = useThemeStore((s) => s.setTheme)
+
+  const openModal = (modal: SettingsModal) => {
+    setSettingsOpen(false)
+    modals.open(modal)
+  }
 
   useEffect(() => {
     if (!window.electronAPI) return
@@ -143,48 +152,21 @@ export function WindowControls() {
               <div className="my-2 border-t border-border" />
               <MenuItem
                 icon={Package}
-                onClick={() => {
-                  setShowAssetSettingsModal(true)
-                  setSettingsOpen(false)
-                }}
+                onClick={() => openModal('assetSettings')}
               >
                 Asset View
               </MenuItem>
-              <MenuItem
-                icon={Sparkles}
-                onClick={() => {
-                  setShowAbyssalModal(true)
-                  setSettingsOpen(false)
-                }}
-              >
+              <MenuItem icon={Sparkles} onClick={() => openModal('abyssal')}>
                 Abyssal Pricing
               </MenuItem>
               <div className="my-2 border-t border-border" />
-              <MenuItem
-                icon={History}
-                onClick={() => {
-                  setChangelogOpen(true)
-                  setSettingsOpen(false)
-                }}
-              >
+              <MenuItem icon={History} onClick={() => openModal('changelog')}>
                 Changelog
               </MenuItem>
-              <MenuItem
-                icon={Info}
-                onClick={() => {
-                  setCreditsOpen(true)
-                  setSettingsOpen(false)
-                }}
-              >
+              <MenuItem icon={Info} onClick={() => openModal('credits')}>
                 Credits
               </MenuItem>
-              <MenuItem
-                icon={Heart}
-                onClick={() => {
-                  setSupportOpen(true)
-                  setSettingsOpen(false)
-                }}
-              >
+              <MenuItem icon={Heart} onClick={() => openModal('support')}>
                 Support Us
               </MenuItem>
               <div className="my-2 border-t border-border" />
@@ -194,13 +176,7 @@ export function WindowControls() {
               >
                 Open Logs Folder
               </MenuItem>
-              <MenuItem
-                icon={Bug}
-                onClick={() => {
-                  setShowBugReportModal(true)
-                  setSettingsOpen(false)
-                }}
-              >
+              <MenuItem icon={Bug} onClick={() => openModal('bugReport')}>
                 Report A Bug
               </MenuItem>
               <div className="my-2 border-t border-border" />
@@ -217,10 +193,7 @@ export function WindowControls() {
               <MenuItem
                 icon={Trash2}
                 variant="danger"
-                onClick={() => {
-                  setShowClearCacheModal(true)
-                  setSettingsOpen(false)
-                }}
+                onClick={() => openModal('clearCache')}
               >
                 Clear Cache...
               </MenuItem>
@@ -228,24 +201,33 @@ export function WindowControls() {
           </div>
         )}
       </div>
-      <ChangelogModal open={changelogOpen} onOpenChange={setChangelogOpen} />
-      <CreditsModal open={creditsOpen} onOpenChange={setCreditsOpen} />
-      <SupportModal open={supportOpen} onOpenChange={setSupportOpen} />
+      <ChangelogModal
+        open={modals.isOpen('changelog')}
+        onOpenChange={(open) => modals.setOpen('changelog', open)}
+      />
+      <CreditsModal
+        open={modals.isOpen('credits')}
+        onOpenChange={(open) => modals.setOpen('credits', open)}
+      />
+      <SupportModal
+        open={modals.isOpen('support')}
+        onOpenChange={(open) => modals.setOpen('support', open)}
+      />
       <ClearCacheModal
-        open={showClearCacheModal}
-        onOpenChange={setShowClearCacheModal}
+        open={modals.isOpen('clearCache')}
+        onOpenChange={(open) => modals.setOpen('clearCache', open)}
       />
       <AbyssalSyncModal
-        open={showAbyssalModal}
-        onOpenChange={setShowAbyssalModal}
+        open={modals.isOpen('abyssal')}
+        onOpenChange={(open) => modals.setOpen('abyssal', open)}
       />
       <BugReportModal
-        open={showBugReportModal}
-        onOpenChange={setShowBugReportModal}
+        open={modals.isOpen('bugReport')}
+        onOpenChange={(open) => modals.setOpen('bugReport', open)}
       />
       <AssetSettingsModal
-        open={showAssetSettingsModal}
-        onOpenChange={setShowAssetSettingsModal}
+        open={modals.isOpen('assetSettings')}
+        onOpenChange={(open) => modals.setOpen('assetSettings', open)}
       />
       <button
         onClick={() => window.electronAPI?.windowMinimize()}

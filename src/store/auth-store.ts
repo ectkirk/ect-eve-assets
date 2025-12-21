@@ -4,6 +4,9 @@ import {
   createJSONStorage,
   type StateStorage,
 } from 'zustand/middleware'
+import { logger } from '@/lib/logger'
+
+const TOKEN_EXPIRY_BUFFER_MS = 60_000
 
 // Custom storage adapter using Electron IPC for reliable file-based persistence
 const electronStorage: StateStorage = {
@@ -358,7 +361,16 @@ export const useAuthStore = create<AuthState>()(
       isOwnerTokenExpired: (ownerId) => {
         const owner = get().owners[ownerId]
         if (!owner?.expiresAt) return true
-        return Date.now() >= owner.expiresAt - 60000
+        const isExpired = Date.now() >= owner.expiresAt - TOKEN_EXPIRY_BUFFER_MS
+        if (isExpired) {
+          logger.debug('Token expired or expiring soon', {
+            module: 'auth',
+            ownerId,
+            expiresAt: owner.expiresAt,
+            now: Date.now(),
+          })
+        }
+        return isExpired
       },
 
       // Legacy compatibility - computed getters
