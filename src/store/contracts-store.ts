@@ -326,8 +326,7 @@ const baseStore = createVisibilityStore<
     const prev = previousContractsByOwner.get(ownerKey) ?? new Map()
     previousContractsByOwner.delete(ownerKey)
 
-    const ownerId =
-      owner.type === 'corporation' ? owner.id : owner.characterId
+    const ownerId = owner.type === 'corporation' ? owner.id : owner.characterId
     const allOwners = Object.values(useAuthStore.getState().owners).filter(
       (o): o is Owner => !!o
     )

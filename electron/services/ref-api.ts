@@ -142,10 +142,7 @@ async function refPost<T>(
   }
 }
 
-function validateIds(
-  ids: unknown,
-  maxLength: number
-): ids is number[] {
+function validateIds(ids: unknown, maxLength: number): ids is number[] {
   return (
     Array.isArray(ids) &&
     ids.length > 0 &&
@@ -158,9 +155,7 @@ export function registerRefAPIHandlers(): void {
   ipcMain.handle('ref:categories', () =>
     refGet('/reference/categories', 'ref:categories')
   )
-  ipcMain.handle('ref:groups', () =>
-    refGet('/reference/groups', 'ref:groups')
-  )
+  ipcMain.handle('ref:groups', () => refGet('/reference/groups', 'ref:groups'))
   ipcMain.handle('ref:blueprints', () =>
     refGet('/reference/blueprints', 'ref:blueprints')
   )
@@ -201,7 +196,9 @@ export function registerRefAPIHandlers(): void {
         ? `${REF_API_BASE}/reference/types?after=${after}`
         : `${REF_API_BASE}/reference/types`
 
-      const response = await fetchRefWithRetry(url, { headers: getRefHeaders() })
+      const response = await fetchRefWithRetry(url, {
+        headers: getRefHeaders(),
+      })
 
       if (!response.ok) {
         return { error: `HTTP ${response.status}` }
@@ -215,37 +212,42 @@ export function registerRefAPIHandlers(): void {
     }
   })
 
-  ipcMain.handle('ref:universe-structures-page', async (_event, args: unknown) => {
-    const { after } = (args ?? {}) as { after?: string }
+  ipcMain.handle(
+    'ref:universe-structures-page',
+    async (_event, args: unknown) => {
+      const { after } = (args ?? {}) as { after?: string }
 
-    if (
-      after !== undefined &&
-      (typeof after !== 'string' || after.length === 0)
-    ) {
-      return { error: 'Invalid after cursor' }
-    }
-
-    await waitForRefRateLimit()
-    try {
-      const url = after
-        ? `${REF_API_BASE}/reference/structures?after=${after}`
-        : `${REF_API_BASE}/reference/structures`
-
-      const response = await fetchRefWithRetry(url, { headers: getRefHeaders() })
-
-      if (!response.ok) {
-        return { error: `HTTP ${response.status}` }
+      if (
+        after !== undefined &&
+        (typeof after !== 'string' || after.length === 0)
+      ) {
+        return { error: 'Invalid after cursor' }
       }
 
-      const data = await response.json()
-      return { items: data.items, pagination: data.pagination }
-    } catch (err) {
-      logger.error('ref:universe-structures-page fetch failed', err, {
-        module: 'RefAPI',
-      })
-      return { error: String(err) }
+      await waitForRefRateLimit()
+      try {
+        const url = after
+          ? `${REF_API_BASE}/reference/structures?after=${after}`
+          : `${REF_API_BASE}/reference/structures`
+
+        const response = await fetchRefWithRetry(url, {
+          headers: getRefHeaders(),
+        })
+
+        if (!response.ok) {
+          return { error: `HTTP ${response.status}` }
+        }
+
+        const data = await response.json()
+        return { items: data.items, pagination: data.pagination }
+      } catch (err) {
+        logger.error('ref:universe-structures-page fetch failed', err, {
+          module: 'RefAPI',
+        })
+        return { error: String(err) }
+      }
     }
-  })
+  )
 
   const idsEndpoints = [
     { channel: 'ref:implants', endpoint: '/reference/implants', max: 1000 },
@@ -329,7 +331,9 @@ export function registerRefAPIHandlers(): void {
         }
         return await response.json()
       } catch (err) {
-        logger.error('ref:buybackCalculate fetch failed', err, { module: 'RefAPI' })
+        logger.error('ref:buybackCalculate fetch failed', err, {
+          module: 'RefAPI',
+        })
         return { error: String(err) }
       }
     }
@@ -356,7 +360,9 @@ export function registerRefAPIHandlers(): void {
       }
       return await response.json()
     } catch (err) {
-      logger.error('ref:buybackCalculator fetch failed', err, { module: 'RefAPI' })
+      logger.error('ref:buybackCalculator fetch failed', err, {
+        module: 'RefAPI',
+      })
       return { error: String(err) }
     }
   })

@@ -1,10 +1,6 @@
 import { useMemo, useState, useEffect } from 'react'
 import { Package } from 'lucide-react'
-import {
-  useSortable,
-  SortableHeader,
-  sortRows,
-} from '@/hooks'
+import { useSortable, SortableHeader, sortRows } from '@/hooks'
 import {
   Table,
   TableBody,
@@ -41,11 +37,11 @@ export function ContractsTable({
   prices: Map<number, number>
 }) {
   const [page, setPage] = useState(0)
-  const [selectedContract, setSelectedContract] = useState<ContractRow | null>(null)
-  const { sortColumn, sortDirection, handleSort } = useSortable<ContractSortColumn>(
-    getDefaultSort(showCourierColumns),
-    'desc'
+  const [selectedContract, setSelectedContract] = useState<ContractRow | null>(
+    null
   )
+  const { sortColumn, sortDirection, handleSort } =
+    useSortable<ContractSortColumn>(getDefaultSort(showCourierColumns), 'desc')
 
   const sortedContracts = useMemo(() => {
     return sortRows(contracts, sortColumn, sortDirection, (row, column) => {
@@ -214,7 +210,9 @@ export function ContractsTable({
         items={selectedContract?.items ?? []}
         contractType={
           selectedContract
-            ? CONTRACT_TYPE_NAMES[selectedContract.contractWithItems.contract.type]
+            ? CONTRACT_TYPE_NAMES[
+                selectedContract.contractWithItems.contract.type
+              ]
             : ''
         }
         prices={prices}
@@ -332,7 +330,9 @@ function ContractTableRow({
   )
 }
 
-function computeDaysDisplay(contract: ContractRow['contractWithItems']['contract']): { display: string; color: string } {
+function computeDaysDisplay(
+  contract: ContractRow['contractWithItems']['contract']
+): { display: string; color: string } {
   const now = Date.now()
   let display = '-'
   let color = 'text-content-secondary'
@@ -359,7 +359,8 @@ function computeDaysDisplay(contract: ContractRow['contractWithItems']['contract
     contract.days_to_complete
   ) {
     const acceptedDate = new Date(contract.date_accepted).getTime()
-    const deadline = acceptedDate + contract.days_to_complete * 24 * 60 * 60 * 1000
+    const deadline =
+      acceptedDate + contract.days_to_complete * 24 * 60 * 60 * 1000
     const remaining = deadline - now
     const daysLeft = Math.ceil(remaining / (24 * 60 * 60 * 1000))
     display = daysLeft > 0 ? `${daysLeft}d` : 'Overdue'
@@ -374,7 +375,11 @@ function computeDaysDisplay(contract: ContractRow['contractWithItems']['contract
   return { display, color }
 }
 
-function CourierColumns({ contract }: { contract: ContractRow['contractWithItems']['contract'] }) {
+function CourierColumns({
+  contract,
+}: {
+  contract: ContractRow['contractWithItems']['contract']
+}) {
   const [daysInfo, setDaysInfo] = useState(() => computeDaysDisplay(contract))
 
   useEffect(() => {
@@ -439,7 +444,8 @@ function Pagination({
   return (
     <div className="flex items-center justify-between px-2 py-2 text-sm">
       <span className="text-content-secondary">
-        {page * pageSize + 1}-{Math.min((page + 1) * pageSize, totalItems)} of {totalItems}
+        {page * pageSize + 1}-{Math.min((page + 1) * pageSize, totalItems)} of{' '}
+        {totalItems}
       </span>
       <div className="flex gap-1">
         <button

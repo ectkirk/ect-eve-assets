@@ -1,12 +1,6 @@
 import path from 'node:path'
 import fs from 'node:fs'
-import {
-  app,
-  BrowserWindow,
-  shell,
-  safeStorage,
-  screen,
-} from 'electron'
+import { app, BrowserWindow, shell, safeStorage, screen } from 'electron'
 import { logger } from './logger.js'
 import { getESIService } from './esi/index.js'
 
@@ -65,12 +59,16 @@ export function readStorage(): Record<string, unknown> | null {
         const decrypted = safeStorage.decryptString(fileData)
         return JSON.parse(decrypted)
       } catch {
-        logger.warn('Failed to decrypt storage, deleting corrupted file', { module: 'Storage' })
+        logger.warn('Failed to decrypt storage, deleting corrupted file', {
+          module: 'Storage',
+        })
         fs.unlinkSync(storageFile)
         return null
       }
     } else {
-      logger.warn('Encryption not available, using plaintext', { module: 'Storage' })
+      logger.warn('Encryption not available, using plaintext', {
+        module: 'Storage',
+      })
       return JSON.parse(fileData.toString('utf-8'))
     }
   } catch (err) {
@@ -87,7 +85,9 @@ export function writeStorage(data: Record<string, unknown>): void {
       const encrypted = safeStorage.encryptString(JSON.stringify(data))
       fs.writeFileSync(storageFile, encrypted, { mode: 0o600 })
     } else {
-      logger.warn('Encryption not available, using plaintext', { module: 'Storage' })
+      logger.warn('Encryption not available, using plaintext', {
+        module: 'Storage',
+      })
       fs.writeFileSync(storageFile, JSON.stringify(data, null, 2), {
         mode: 0o600,
         encoding: 'utf-8',
@@ -192,10 +192,12 @@ export function createWindow(
     saveCurrentState()
   })
   manager.mainWindow.on('resize', () => {
-    if (!manager.manualMaximized && !manager.mainWindow?.isMaximized()) debouncedSave()
+    if (!manager.manualMaximized && !manager.mainWindow?.isMaximized())
+      debouncedSave()
   })
   manager.mainWindow.on('move', () => {
-    if (!manager.manualMaximized && !manager.mainWindow?.isMaximized()) debouncedSave()
+    if (!manager.manualMaximized && !manager.mainWindow?.isMaximized())
+      debouncedSave()
   })
 
   manager.mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -289,11 +291,16 @@ function setupKeyboardShortcuts(mainWindow: BrowserWindow): void {
       '3': 'ERROR',
     }
     const levelName = levelMap[String(event.level)] || 'LOG'
-    logger.debug(`[Renderer:${levelName}] ${event.message}`, { module: 'Renderer' })
+    logger.debug(`[Renderer:${levelName}] ${event.message}`, {
+      module: 'Renderer',
+    })
   })
 
   mainWindow.webContents.on('render-process-gone', (_event, details) => {
-    logger.error('Renderer process gone', undefined, { module: 'Window', reason: details.reason })
+    logger.error('Renderer process gone', undefined, {
+      module: 'Window',
+      reason: details.reason,
+    })
   })
 }
 
@@ -317,13 +324,17 @@ function setupWindowEvents(manager: WindowManager): void {
   })
 
   manager.mainWindow.on('minimize', () => {
-    logger.info('Window minimized, pausing API operations', { module: 'Window' })
+    logger.info('Window minimized, pausing API operations', {
+      module: 'Window',
+    })
     getESIService().pause()
     manager.mainWindow?.webContents.send('window:minimizeChange', true)
   })
 
   manager.mainWindow.on('restore', () => {
-    logger.info('Window restored, resuming API operations', { module: 'Window' })
+    logger.info('Window restored, resuming API operations', {
+      module: 'Window',
+    })
     getESIService().resume()
     manager.mainWindow?.webContents.send('window:minimizeChange', false)
   })

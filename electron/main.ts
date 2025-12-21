@@ -22,7 +22,10 @@ import {
 } from './services/ipc-handlers.js'
 import { registerRefAPIHandlers } from './services/ref-api.js'
 import { registerMutamarketHandlers } from './services/mutamarket.js'
-import { setupESIService, registerESIHandlers } from './services/esi-handlers.js'
+import {
+  setupESIService,
+  registerESIHandlers,
+} from './services/esi-handlers.js'
 
 const APP_ROOT = path.join(__dirname, '..')
 export const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']

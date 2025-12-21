@@ -15,10 +15,7 @@ import {
   type CachedType,
   type CachedBlueprint,
 } from '@/store/reference-cache'
-import {
-  RefCategoriesResponseSchema,
-  RefGroupsResponseSchema,
-} from './schemas'
+import { RefCategoriesResponseSchema, RefGroupsResponseSchema } from './schemas'
 
 export type ReferenceDataProgress = (status: string) => void
 

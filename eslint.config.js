@@ -2,6 +2,8 @@ import js from '@eslint/js'
 import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
 import tseslint from 'typescript-eslint'
+import prettier from 'eslint-plugin-prettier'
+import prettierConfig from 'eslint-config-prettier'
 
 export default tseslint.config(
   { ignores: ['dist', 'dist-electron', 'release', 'node_modules', 'coverage'] },
@@ -17,9 +19,12 @@ export default tseslint.config(
     },
     plugins: {
       'react-hooks': reactHooks,
+      prettier,
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      ...prettierConfig.rules,
+      'prettier/prettier': 'warn',
       '@typescript-eslint/no-unused-vars': [
         'error',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },

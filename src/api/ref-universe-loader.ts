@@ -28,7 +28,10 @@ import {
   RefStructuresPageResponseSchema,
   RefMoonsResponseSchema,
 } from './schemas'
-import { loadReferenceData, type ReferenceDataProgress } from './ref-data-loader'
+import {
+  loadReferenceData,
+  type ReferenceDataProgress,
+} from './ref-data-loader'
 
 let universeDataPromise: Promise<void> | null = null
 

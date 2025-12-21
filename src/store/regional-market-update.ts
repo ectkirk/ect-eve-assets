@@ -1,7 +1,4 @@
-import {
-  getRegionalOrders,
-  getStructureOrders,
-} from '@/api/endpoints/market'
+import { getRegionalOrders, getStructureOrders } from '@/api/endpoints/market'
 import { logger } from '@/lib/logger'
 import {
   savePricesToDB,
@@ -32,7 +29,9 @@ function updateLocationPrice(
   isBuyOrder: boolean,
   fetchTime: number
 ): void {
-  const pricesByLocation = isBuyOrder ? ctx.buyPricesByLocation : ctx.sellPricesByLocation
+  const pricesByLocation = isBuyOrder
+    ? ctx.buyPricesByLocation
+    : ctx.sellPricesByLocation
   const pricesByType = isBuyOrder ? ctx.buyPricesByType : ctx.sellPricesByType
   const aggregateFn = isBuyOrder ? Math.max : Math.min
 
@@ -48,8 +47,10 @@ function updateLocationPrice(
   const sellLocationMap = ctx.sellPricesByLocation.get(typeId)
   const buyLocationMap = ctx.buyPricesByLocation.get(typeId)
 
-  const locationPricesObj: Record<number, number> = existing?.locationPrices ?? {}
-  const buyLocationPricesObj: Record<number, number> = existing?.buyLocationPrices ?? {}
+  const locationPricesObj: Record<number, number> =
+    existing?.locationPrices ?? {}
+  const buyLocationPricesObj: Record<number, number> =
+    existing?.buyLocationPrices ?? {}
 
   if (sellLocationMap) {
     for (const [locId, p] of sellLocationMap) locationPricesObj[locId] = p
@@ -85,7 +86,10 @@ export interface UpdateResult {
   buyPricesByType: Map<number, number>
   buyPricesByLocation: Map<number, Map<number, number>>
   lastFetchAt: Map<string, number>
-  trackedStructures: Map<number, { characterId: number; typeIds: Set<number>; lastFetchAt: number }>
+  trackedStructures: Map<
+    number,
+    { characterId: number; typeIds: Set<number>; lastFetchAt: number }
+  >
 }
 
 interface UpdateInput {
@@ -97,7 +101,10 @@ interface UpdateInput {
     buyPricesByType: Map<number, number>
     buyPricesByLocation: Map<number, Map<number, number>>
     lastFetchAt: Map<string, number>
-    trackedStructures: Map<number, { characterId: number; typeIds: Set<number>; lastFetchAt: number }>
+    trackedStructures: Map<
+      number,
+      { characterId: number; typeIds: Set<number>; lastFetchAt: number }
+    >
   }
 }
 
@@ -164,7 +171,10 @@ async function processRegionalBatch(
 async function processStructure(
   task: StructureTask,
   ctx: PriceUpdateContext,
-  trackedStructures: Map<number, { characterId: number; typeIds: Set<number>; lastFetchAt: number }>,
+  trackedStructures: Map<
+    number,
+    { characterId: number; typeIds: Set<number>; lastFetchAt: number }
+  >,
   structureUpdates: TrackedStructureRecord[]
 ): Promise<void> {
   const { structureId, characterId, typeIds } = task
@@ -199,7 +209,10 @@ async function processStructure(
 
     const existing = trackedStructures.get(structureId)
     if (existing) {
-      trackedStructures.set(structureId, { ...existing, lastFetchAt: fetchTime })
+      trackedStructures.set(structureId, {
+        ...existing,
+        lastFetchAt: fetchTime,
+      })
       structureUpdates.push({
         structureId,
         characterId,
@@ -227,9 +240,13 @@ export async function executeUpdate(input: UpdateInput): Promise<UpdateResult> {
   const { regionalTasks, structureTasks, currentState } = input
 
   const sellPricesByType = new Map(currentState.pricesByType)
-  const sellPricesByLocation = deepClonePricesByLocation(currentState.pricesByLocation)
+  const sellPricesByLocation = deepClonePricesByLocation(
+    currentState.pricesByLocation
+  )
   const buyPricesByType = new Map(currentState.buyPricesByType)
-  const buyPricesByLocation = deepClonePricesByLocation(currentState.buyPricesByLocation)
+  const buyPricesByLocation = deepClonePricesByLocation(
+    currentState.buyPricesByLocation
+  )
   const lastFetchAt = new Map(currentState.lastFetchAt)
   const trackedStructures = new Map(currentState.trackedStructures)
 
@@ -252,7 +269,9 @@ export async function executeUpdate(input: UpdateInput): Promise<UpdateResult> {
   for (let i = 0; i < structureTasks.length; i += PARALLEL_LIMIT) {
     const batch = structureTasks.slice(i, i + PARALLEL_LIMIT)
     await Promise.all(
-      batch.map((task) => processStructure(task, ctx, trackedStructures, structureUpdates))
+      batch.map((task) =>
+        processStructure(task, ctx, trackedStructures, structureUpdates)
+      )
     )
   }
 

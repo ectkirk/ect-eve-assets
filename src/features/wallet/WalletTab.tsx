@@ -7,7 +7,11 @@ import { useAssetData } from '@/hooks/useAssetData'
 import { OwnerIcon } from '@/components/ui/type-icon'
 import { cn, formatISK } from '@/lib/utils'
 import { useTabControls } from '@/context'
-import { useColumnSettings, useExpandCollapse, type ColumnConfig } from '@/hooks'
+import {
+  useColumnSettings,
+  useExpandCollapse,
+  type ColumnConfig,
+} from '@/hooks'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
 
 const DEFAULT_WALLET_NAMES = [
@@ -52,8 +56,13 @@ export function WalletTab() {
     }
   }, [divisionsInitialized, owners, fetchDivisionsForOwner])
 
-  const { setExpandCollapse, search, setResultCount, setTotalValue, setColumns } =
-    useTabControls()
+  const {
+    setExpandCollapse,
+    search,
+    setResultCount,
+    setTotalValue,
+    setColumns,
+  } = useTabControls()
 
   const WALLET_COLUMNS: ColumnConfig[] = useMemo(
     () => [
@@ -73,7 +82,10 @@ export function WalletTab() {
     [walletsByOwner]
   )
 
-  const { isExpanded, toggle } = useExpandCollapse(expandableKeys, setExpandCollapse)
+  const { isExpanded, toggle } = useExpandCollapse(
+    expandableKeys,
+    setExpandCollapse
+  )
 
   const totalBalance = useMemo(() => {
     let total = 0
@@ -90,7 +102,10 @@ export function WalletTab() {
   }, [walletsByOwner])
 
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
-  const selectedSet = useMemo(() => new Set(selectedOwnerIds), [selectedOwnerIds])
+  const selectedSet = useMemo(
+    () => new Set(selectedOwnerIds),
+    [selectedOwnerIds]
+  )
 
   const { characterWallets, corporationWallets } = useMemo(() => {
     let filtered = walletsByOwner.filter((w) =>
@@ -104,7 +119,10 @@ export function WalletTab() {
       )
     }
 
-    const sortByBalance = (a: (typeof filtered)[0], b: (typeof filtered)[0]) => {
+    const sortByBalance = (
+      a: (typeof filtered)[0],
+      b: (typeof filtered)[0]
+    ) => {
       const aBalance =
         'divisions' in a
           ? a.divisions.reduce((sum, d) => sum + d.balance, 0)
@@ -218,7 +236,8 @@ export function WalletTab() {
               .map((div) => {
                 const customName = getWalletName(wallet.owner.id, div.division)
                 const defaultName =
-                  DEFAULT_WALLET_NAMES[div.division - 1] ?? `Division ${div.division}`
+                  DEFAULT_WALLET_NAMES[div.division - 1] ??
+                  `Division ${div.division}`
                 const displayName = customName || defaultName
 
                 return (
@@ -227,7 +246,9 @@ export function WalletTab() {
                     className="flex items-center gap-3 py-1.5 pl-12 pr-4 text-sm"
                   >
                     <Building2 className="h-3.5 w-3.5 text-content-muted" />
-                    <span className="text-content-secondary flex-1">{displayName}</span>
+                    <span className="text-content-secondary flex-1">
+                      {displayName}
+                    </span>
                     <span
                       className={cn(
                         'tabular-nums',

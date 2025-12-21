@@ -139,7 +139,10 @@ export function ContractsTab() {
     []
   )
 
-  const { getColumnsForDropdown } = useColumnSettings('contracts', CONTRACT_COLUMNS)
+  const { getColumnsForDropdown } = useColumnSettings(
+    'contracts',
+    CONTRACT_COLUMNS
+  )
 
   const { directionGroups, courierGroup } = useMemo(() => {
     void cacheVersion
@@ -272,7 +275,9 @@ export function ContractsTab() {
   }, [])
 
   const expandableDirections = ['in', 'out'] as const
-  const isAllExpanded = expandableDirections.every((d) => expandedDirections.has(d))
+  const isAllExpanded = expandableDirections.every((d) =>
+    expandedDirections.has(d)
+  )
 
   useEffect(() => {
     setExpandCollapse({
@@ -337,7 +342,13 @@ export function ContractsTab() {
       tertiaryLabel: 'Collateral',
     })
     return () => setTotalValue(null)
-  }, [totals.valueIn, totals.valueOut, contractPrice, totalCollateral, setTotalValue])
+  }, [
+    totals.valueIn,
+    totals.valueOut,
+    contractPrice,
+    totalCollateral,
+    setTotalValue,
+  ])
 
   useEffect(() => {
     setColumns(getColumnsForDropdown())

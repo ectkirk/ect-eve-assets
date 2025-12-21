@@ -1,9 +1,4 @@
-import {
-  ArrowRightLeft,
-  Gavel,
-  Truck,
-  HelpCircle,
-} from 'lucide-react'
+import { ArrowRightLeft, Gavel, Truck, HelpCircle } from 'lucide-react'
 import type { ESIContract, ESIContractItem } from '@/api/endpoints/contracts'
 import type { ContractWithItems } from '@/store/contracts-store'
 import { hasType, getType } from '@/store/reference-cache'
@@ -32,7 +27,10 @@ export const CONTRACT_TYPE_NAMES: Record<ESIContract['type'], string> = {
   loan: 'Loan',
 }
 
-export const CONTRACT_TYPE_ICONS: Record<ESIContract['type'], React.ElementType> = {
+export const CONTRACT_TYPE_ICONS: Record<
+  ESIContract['type'],
+  React.ElementType
+> = {
   unknown: HelpCircle,
   item_exchange: ArrowRightLeft,
   auction: Gavel,

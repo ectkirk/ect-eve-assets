@@ -9,7 +9,9 @@ interface PendingTokenRequest {
 
 const pendingTokenRequests = new Map<number, PendingTokenRequest[]>()
 
-export function setupESIService(getMainWindow: () => BrowserWindow | null): void {
+export function setupESIService(
+  getMainWindow: () => BrowserWindow | null
+): void {
   const esiService = getESIService()
 
   esiService.setTokenProvider(async (characterId: number) => {

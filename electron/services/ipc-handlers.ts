@@ -102,17 +102,23 @@ export function registerStorageHandlers(ctx: WindowContext): void {
 
   ipcMain.handle('storage:set', (_event, data: unknown) => {
     if (typeof data !== 'object' || data === null || Array.isArray(data)) {
-      logger.error('Invalid storage data type', undefined, { module: 'Storage' })
+      logger.error('Invalid storage data type', undefined, {
+        module: 'Storage',
+      })
       return false
     }
     try {
       const json = JSON.stringify(data)
       if (json.length > MAX_STORAGE_SIZE) {
-        logger.error('Storage data exceeds size limit', undefined, { module: 'Storage' })
+        logger.error('Storage data exceeds size limit', undefined, {
+          module: 'Storage',
+        })
         return false
       }
     } catch {
-      logger.error('Storage data not serializable', undefined, { module: 'Storage' })
+      logger.error('Storage data not serializable', undefined, {
+        module: 'Storage',
+      })
       return false
     }
     ctx.writeStorage(data as Record<string, unknown>)
@@ -230,7 +236,9 @@ export function registerBugReportHandler(): void {
 
         return { success: true }
       } catch (err) {
-        logger.error('Bug report submission failed', err, { module: 'BugReport' })
+        logger.error('Bug report submission failed', err, {
+          module: 'BugReport',
+        })
         return { success: false, error: 'Failed to submit report' }
       }
     }
