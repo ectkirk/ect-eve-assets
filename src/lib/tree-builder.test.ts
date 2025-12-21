@@ -235,6 +235,7 @@ function createResolvedAsset(
     rootLocationType: overrides.rootLocationType ?? 'station',
     parentChain: overrides.parentChain ?? [],
     rootFlag: overrides.rootFlag ?? asset.location_flag,
+    hasOrphanedParent: overrides.hasOrphanedParent ?? false,
     systemId: overrides.systemId ?? 30000142,
     regionId: overrides.regionId ?? 10000002,
     typeId: asset.type_id,

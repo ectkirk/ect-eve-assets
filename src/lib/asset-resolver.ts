@@ -201,6 +201,15 @@ export function resolveAsset(
 
   const parentChain = buildParentChain(asset, itemIdToAsset)
   const rootFlag = getRootFlag(asset, parentChain)
+  const parentStructure = getStructure(asset.location_id)
+  const parentIsUnresolvable =
+    !parentStructure || parentStructure.inaccessible === true
+  const hasOrphanedParent =
+    asset.location_type === 'item' &&
+    parentChain.length === 0 &&
+    !itemIdToAsset.has(asset.location_id) &&
+    parentIsUnresolvable &&
+    !getLocation(asset.location_id)
   const rootLocation = resolveRootLocation(asset, parentChain, starbaseMoonIds)
   const modeFlags = computeModeFlags(
     asset,
@@ -225,6 +234,7 @@ export function resolveAsset(
     rootLocationType: rootLocation.rootLocationType,
     parentChain,
     rootFlag,
+    hasOrphanedParent,
 
     systemId: rootLocation.systemId,
     regionId: rootLocation.regionId,
@@ -328,6 +338,7 @@ export function resolveMarketOrder(
     rootLocationType: isStructure ? 'structure' : 'station',
     parentChain: [],
     rootFlag: 'SellOrder',
+    hasOrphanedParent: false,
 
     systemId,
     regionId,
@@ -413,6 +424,7 @@ export function resolveContractItem(
     rootLocationType: isStructure ? 'structure' : 'station',
     parentChain: [],
     rootFlag: 'InContract',
+    hasOrphanedParent: false,
 
     systemId,
     regionId,
@@ -496,6 +508,7 @@ export function resolveIndustryJob(
     rootLocationType: isStructure ? 'structure' : 'station',
     parentChain: [],
     rootFlag: 'IndustryJob',
+    hasOrphanedParent: false,
 
     systemId,
     regionId,

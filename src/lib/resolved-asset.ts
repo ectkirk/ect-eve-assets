@@ -33,6 +33,7 @@ export interface ResolvedAsset {
   rootLocationType: 'station' | 'structure' | 'solar_system'
   parentChain: ESIAsset[]
   rootFlag: string
+  hasOrphanedParent: boolean
 
   systemId: number | undefined
   regionId: number | undefined
@@ -79,7 +80,9 @@ export function getAssetDisplayNames(ra: ResolvedAsset): AssetDisplayNames {
     typeName,
     categoryName: isAbyssal ? 'Abyssals' : (type?.categoryName ?? ''),
     groupName: type?.groupName ?? '',
-    locationName: getLocationName(ra.rootLocationId),
+    locationName: ra.hasOrphanedParent
+      ? 'Unknown Parent'
+      : getLocationName(ra.rootLocationId),
     systemName: systemLocation?.name ?? '',
     regionName: ra.regionId ? (getRegion(ra.regionId)?.name ?? '') : '',
   }
