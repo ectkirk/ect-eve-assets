@@ -33,13 +33,11 @@ export function useResolvedAssets(): ResolvedAssetsResult {
   const ordersVisibilityByOwner = useMarketOrdersStore(
     (s) => s.visibilityByOwner
   )
-  const ordersUpdateCounter = useMarketOrdersStore((s) => s.updateCounter)
   const contractsById = useContractsStore((s) => s.itemsById)
   const contractItemsById = useContractsStore((s) => s.itemsByContractId)
   const contractsVisibilityByOwner = useContractsStore(
     (s) => s.visibilityByOwner
   )
-  const contractsUpdateCounter = useContractsStore((s) => s.updateCounter)
 
   const { ownedStructureIds, starbaseMoonIds } = useMemo(() => {
     const ids = new Set<number>()
@@ -61,9 +59,6 @@ export function useResolvedAssets(): ResolvedAssetsResult {
   }, [starbasesByOwner, structuresByOwner])
 
   const resolvedAssets = useMemo(() => {
-    void ordersUpdateCounter
-    void contractsUpdateCounter
-
     const assets =
       assetData.assetsByOwner.length > 0
         ? resolveAllAssets(assetData.assetsByOwner, {
@@ -126,11 +121,9 @@ export function useResolvedAssets(): ResolvedAssetsResult {
     starbaseMoonIds,
     ordersById,
     ordersVisibilityByOwner,
-    ordersUpdateCounter,
     contractsById,
     contractItemsById,
     contractsVisibilityByOwner,
-    contractsUpdateCounter,
   ])
 
   const resolvedByOwner = useMemo(() => {

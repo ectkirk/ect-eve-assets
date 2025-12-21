@@ -70,7 +70,6 @@ export interface VisibilityState<TStoredItem> {
   isUpdating: boolean
   updateError: string | null
   initialized: boolean
-  updateCounter: number
 }
 
 export interface VisibilityActions {
@@ -169,7 +168,6 @@ export function createVisibilityStore<
       isUpdating: false,
       updateError: null,
       initialized: false,
-      updateCounter: 0,
       ...(extraState ?? ({} as TExtraState)),
       ...extras,
 
@@ -184,7 +182,6 @@ export function createVisibilityStore<
             itemsById: items,
             visibilityByOwner: visibility,
             initialized: true,
-            updateCounter: get().updateCounter + 1,
             ...extra,
           } as Partial<FullStore>)
 
@@ -307,7 +304,6 @@ export function createVisibilityStore<
             isUpdating: false,
             updateError:
               itemsById.size === 0 ? `Failed to fetch any ${name}` : null,
-            updateCounter: get().updateCounter + 1,
             ...extra,
           } as Partial<FullStore>)
 
@@ -393,7 +389,6 @@ export function createVisibilityStore<
           set({
             itemsById,
             visibilityByOwner,
-            updateCounter: get().updateCounter + 1,
             ...extra,
           } as Partial<FullStore>)
 

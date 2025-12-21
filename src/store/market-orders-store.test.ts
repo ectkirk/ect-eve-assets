@@ -48,7 +48,6 @@ describe('market-orders-store', () => {
       isUpdating: false,
       updateError: null,
       initialized: true,
-      updateCounter: 0,
     })
     useExpiryCacheStore.setState({
       endpoints: new Map(),

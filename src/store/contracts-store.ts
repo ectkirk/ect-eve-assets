@@ -229,10 +229,9 @@ async function fetchItemsForContracts(
           }
         }
       }
-      baseStore.setState((s) => ({
+      baseStore.setState({
         itemsByContractId: currentItems,
-        updateCounter: s.updateCounter + 1,
-      }))
+      })
 
       if (typeIds.size > 0) {
         const { fetchPrices } = await import('@/api/ref-client')
@@ -418,10 +417,9 @@ const baseStore = createVisibilityStore<
       }
 
       if (hasChanges) {
-        baseStore.setState((s) => ({
+        baseStore.setState({
           itemsByContractId: currentItems,
-          updateCounter: s.updateCounter + 1,
-        }))
+        })
 
         if (typeIds.size > 0) {
           const { fetchPrices } = await import('@/api/ref-client')

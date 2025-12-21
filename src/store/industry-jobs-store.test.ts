@@ -60,7 +60,6 @@ describe('industry-jobs-store', () => {
       isUpdating: false,
       updateError: null,
       initialized: false,
-      updateCounter: 0,
     })
   })
 

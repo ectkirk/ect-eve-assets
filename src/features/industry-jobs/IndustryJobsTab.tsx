@@ -352,8 +352,9 @@ export function IndustryJobsTab() {
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
 
   const prices = useAssetStore((s) => s.prices)
-  const updateCounter = useIndustryJobsStore((s) => s.updateCounter)
-  const jobsCount = useIndustryJobsStore((s) => s.itemsById.size)
+  const itemsById = useIndustryJobsStore((s) => s.itemsById)
+  const visibilityByOwner = useIndustryJobsStore((s) => s.visibilityByOwner)
+  const jobsCount = itemsById.size
   const jobsUpdating = useIndustryJobsStore((s) => s.isUpdating)
   const updateError = useIndustryJobsStore((s) => s.updateError)
   const update = useIndustryJobsStore((s) => s.update)
@@ -361,7 +362,7 @@ export function IndustryJobsTab() {
 
   const jobsByOwner = useMemo(
     () => useIndustryJobsStore.getJobsByOwner(),
-    [updateCounter]
+    [itemsById, visibilityByOwner]
   )
 
   const { isLoading: assetsUpdating } = useAssetData()

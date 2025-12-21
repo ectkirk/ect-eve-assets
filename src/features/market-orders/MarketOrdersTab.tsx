@@ -522,7 +522,8 @@ export function MarketOrdersTab() {
   const ownersRecord = useAuthStore((s) => s.owners)
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
 
-  const updateCounter = useMarketOrdersStore((s) => s.updateCounter)
+  const itemsById = useMarketOrdersStore((s) => s.itemsById)
+  const visibilityByOwner = useMarketOrdersStore((s) => s.visibilityByOwner)
   const ordersUpdating = useMarketOrdersStore((s) => s.isUpdating)
   const updateError = useMarketOrdersStore((s) => s.updateError)
   const init = useMarketOrdersStore((s) => s.init)
@@ -530,7 +531,7 @@ export function MarketOrdersTab() {
 
   const ordersByOwner = useMemo(
     () => useMarketOrdersStore.getOrdersByOwner(),
-    [updateCounter]
+    [itemsById, visibilityByOwner]
   )
 
   const { isLoading: assetsUpdating } = useAssetData()

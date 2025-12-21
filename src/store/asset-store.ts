@@ -7,10 +7,6 @@ import {
   type ESIAsset,
   type ESIAssetName,
 } from '@/api/endpoints/assets'
-import {
-  getCharacterShip,
-  getCharacterLocation,
-} from '@/api/endpoints/location'
 import { esi, type ESIResponseMeta } from '@/api/esi'
 import { ESIAssetSchema } from '@/api/schemas'
 import { fetchPrices, queuePriceRefresh, resolveTypes } from '@/api/ref-client'
@@ -19,118 +15,16 @@ import { createOwnerDB } from '@/lib/owner-indexed-db'
 import { logger } from '@/lib/logger'
 import { triggerResolution } from '@/lib/data-resolver'
 import { useStoreRegistry } from './store-registry'
-import { useContractsStore, type OwnerContracts } from './contracts-store'
-import { useMarketOrdersStore, type OwnerOrders } from './market-orders-store'
-import { useIndustryJobsStore, type OwnerJobs } from './industry-jobs-store'
-import { useStructuresStore, type OwnerStructures } from './structures-store'
+import { useContractsStore } from './contracts-store'
+import { useMarketOrdersStore } from './market-orders-store'
+import { useIndustryJobsStore } from './industry-jobs-store'
+import { useStructuresStore } from './structures-store'
+import { detectAndInjectActiveShip } from './active-ship-detection'
+import { collectAllTypeIds } from './type-id-collector'
 
 const NAMEABLE_CATEGORIES = new Set([6, 22, 65])
 const NAMEABLE_GROUPS = new Set([12, 14, 340, 448, 649])
 const ENDPOINT_PATTERN = '/assets/'
-const LOCATION_SCOPES = [
-  'esi-location.read_location.v1',
-  'esi-location.read_ship_type.v1',
-]
-
-interface ActiveShipResult {
-  syntheticShip: ESIAsset | null
-  shipName: string | null
-  shipItemId: number | null
-}
-
-async function detectAndInjectActiveShip(
-  owner: Owner,
-  assets: ESIAsset[],
-  ownerKey: string
-): Promise<ActiveShipResult> {
-  const nullResult: ActiveShipResult = {
-    syntheticShip: null,
-    shipName: null,
-    shipItemId: null,
-  }
-
-  if (owner.type !== 'character') return nullResult
-
-  const allItemIds = new Set(assets.map((a) => a.item_id))
-  const missingParentIds = new Set<number>()
-  for (const asset of assets) {
-    if (asset.location_type === 'item' && !allItemIds.has(asset.location_id)) {
-      missingParentIds.add(asset.location_id)
-    }
-  }
-
-  if (missingParentIds.size === 0) return nullResult
-
-  const hasLocationScopes = LOCATION_SCOPES.every((scope) =>
-    useAuthStore.getState().ownerHasScope(ownerKey, scope)
-  )
-
-  if (!hasLocationScopes) {
-    useAuthStore.getState().setOwnerScopesOutdated(ownerKey, true)
-    logger.info('Missing location scopes for active ship detection', {
-      module: 'AssetStore',
-      owner: owner.name,
-      missingParentCount: missingParentIds.size,
-    })
-    return nullResult
-  }
-
-  try {
-    const [shipInfo, locationInfo] = await Promise.all([
-      getCharacterShip(owner.characterId),
-      getCharacterLocation(owner.characterId),
-    ])
-
-    if (!missingParentIds.has(shipInfo.ship_item_id)) {
-      logger.debug('Active ship not in missing parents', {
-        module: 'AssetStore',
-        owner: owner.name,
-        shipItemId: shipInfo.ship_item_id,
-        missingParentIds: Array.from(missingParentIds),
-      })
-      return nullResult
-    }
-
-    const syntheticShip: ESIAsset = {
-      item_id: shipInfo.ship_item_id,
-      type_id: shipInfo.ship_type_id,
-      location_id:
-        locationInfo.structure_id ??
-        locationInfo.station_id ??
-        locationInfo.solar_system_id,
-      location_type: locationInfo.structure_id
-        ? 'other'
-        : locationInfo.station_id
-          ? 'station'
-          : 'solar_system',
-      location_flag: 'ActiveShip',
-      quantity: 1,
-      is_singleton: true,
-    }
-
-    logger.info('Injected active ship as synthetic asset', {
-      module: 'AssetStore',
-      owner: owner.name,
-      shipItemId: shipInfo.ship_item_id,
-      shipTypeId: shipInfo.ship_type_id,
-      shipName: shipInfo.ship_name,
-      locationId: syntheticShip.location_id,
-      locationType: syntheticShip.location_type,
-    })
-
-    return {
-      syntheticShip,
-      shipName: shipInfo.ship_name,
-      shipItemId: shipInfo.ship_item_id,
-    }
-  } catch {
-    logger.warn('Failed to fetch active ship info', {
-      module: 'AssetStore',
-      owner: owner.name,
-    })
-    return nullResult
-  }
-}
 
 export interface OwnerAssets {
   owner: Owner
@@ -242,54 +136,6 @@ async function fetchOwnerAssetNames(
     }
   }
   return getCharacterAssetNames(owner.id, owner.characterId, nameableIds)
-}
-
-function collectAllTypeIds(
-  assetsByOwner: OwnerAssets[],
-  ordersByOwner: OwnerOrders[],
-  contractsByOwner: OwnerContracts[],
-  jobsByOwner: OwnerJobs[],
-  structuresByOwner: OwnerStructures[]
-): Set<number> {
-  const typeIds = new Set<number>()
-
-  for (const { assets } of assetsByOwner) {
-    for (const asset of assets) {
-      typeIds.add(asset.type_id)
-    }
-  }
-
-  for (const { orders } of ordersByOwner) {
-    for (const order of orders) {
-      typeIds.add(order.type_id)
-    }
-  }
-
-  for (const { contracts } of contractsByOwner) {
-    for (const { items } of contracts) {
-      if (items) {
-        for (const item of items) {
-          typeIds.add(item.type_id)
-        }
-      }
-    }
-  }
-
-  for (const { jobs } of jobsByOwner) {
-    for (const job of jobs) {
-      if (job.product_type_id) {
-        typeIds.add(job.product_type_id)
-      }
-    }
-  }
-
-  for (const { structures } of structuresByOwner) {
-    for (const structure of structures) {
-      typeIds.add(structure.type_id)
-    }
-  }
-
-  return typeIds
 }
 
 const PRICE_REFRESH_INTERVAL_MS = 60 * 60 * 1000

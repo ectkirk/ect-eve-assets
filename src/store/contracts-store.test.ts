@@ -48,7 +48,6 @@ describe('contracts-store', () => {
       isUpdating: false,
       updateError: null,
       initialized: false,
-      updateCounter: 0,
     })
   })
 
