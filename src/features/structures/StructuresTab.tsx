@@ -94,7 +94,7 @@ export function StructuresTab() {
   const updateError = structureError || starbaseError
   const initialized = structuresInitialized && starbasesInitialized
 
-  const { assetsByOwner, assetNames } = useAssetData()
+  const { assetsByOwner, assetNames, prices } = useAssetData()
 
   useEffect(() => {
     initStructures()
@@ -172,7 +172,7 @@ export function StructuresTab() {
     setStructureInfoDialogOpen(true)
   }, [])
 
-  const { search, setResultCount } = useTabControls()
+  const { search, setResultCount, setTotalValue } = useTabControls()
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
   const selectedSet = useMemo(() => new Set(selectedOwnerIds), [selectedOwnerIds])
 
@@ -273,10 +273,36 @@ export function StructuresTab() {
 
   const showingCount = upwellRows.length + starbaseRows.length
 
+  const structureTotalValue = useMemo(() => {
+    void cacheVersion
+    let total = 0
+
+    for (const { asset, children } of structureAssetMap.values()) {
+      const structurePrice = prices.get(asset.type_id) ?? 0
+      const structureValue = structurePrice * asset.quantity
+      total += structureValue
+
+      let childrenValue = 0
+      for (const child of children) {
+        const childPrice = prices.get(child.type_id) ?? 0
+        childrenValue += childPrice * child.quantity
+      }
+      total += childrenValue
+
+    }
+
+    return total
+  }, [structureAssetMap, prices, cacheVersion])
+
   useEffect(() => {
     setResultCount({ showing: showingCount, total: totalCount })
     return () => setResultCount(null)
   }, [showingCount, totalCount, setResultCount])
+
+  useEffect(() => {
+    setTotalValue({ value: structureTotalValue })
+    return () => setTotalValue(null)
+  }, [structureTotalValue, setTotalValue])
 
   const corpOwners = useMemo(() => owners.filter((o) => o.type === 'corporation'), [owners])
 

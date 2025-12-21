@@ -389,7 +389,9 @@ export function AssetsTab() {
           row.regionName.toLowerCase().includes(searchLower)
         if (!matches) return false
       }
-      totalValue += row.totalValue
+      if (!row.modeFlags.isOwnedStructure) {
+        totalValue += row.totalValue
+      }
       return true
     })
 
