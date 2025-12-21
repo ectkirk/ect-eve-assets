@@ -1,4 +1,11 @@
 declare global {
+  interface CorporationRolesResult {
+    roles: string[]
+    roles_at_hq?: string[]
+    roles_at_base?: string[]
+    roles_at_other?: string[]
+  }
+
   interface AuthResult {
     success: boolean
     accessToken?: string
@@ -8,6 +15,7 @@ declare global {
     characterName?: string
     corporationId?: number
     scopes?: string[]
+    corporationRoles?: CorporationRolesResult | null
     error?: string
   }
 

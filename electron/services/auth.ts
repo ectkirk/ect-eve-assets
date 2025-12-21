@@ -9,6 +9,7 @@ const CHARACTER_SCOPES = [
   'publicData',
   'esi-assets.read_assets.v1',
   'esi-characters.read_blueprints.v1',
+  'esi-characters.read_corporation_roles.v1',
   'esi-characters.read_loyalty.v1',
   'esi-markets.read_character_orders.v1',
   'esi-industry.read_character_jobs.v1',
@@ -89,6 +90,7 @@ interface AuthResult {
   characterName?: string
   corporationId?: number
   scopes?: string[]
+  corporationRoles?: CorporationRoles | null
   error?: string
 }
 
@@ -103,6 +105,28 @@ async function fetchCharacterInfo(characterId: number): Promise<ESICharacterInfo
     throw new Error('Failed to fetch character info')
   }
   return response.json() as Promise<ESICharacterInfo>
+}
+
+export interface CorporationRoles {
+  roles: string[]
+  roles_at_hq?: string[]
+  roles_at_base?: string[]
+  roles_at_other?: string[]
+}
+
+async function fetchCharacterRoles(
+  characterId: number,
+  accessToken: string
+): Promise<CorporationRoles | null> {
+  try {
+    const response = await fetch(`https://esi.evetech.net/characters/${characterId}/roles/`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+    if (!response.ok) return null
+    return (await response.json()) as CorporationRoles
+  } catch {
+    return null
+  }
 }
 
 interface TokenResponse {
@@ -300,12 +324,14 @@ async function handleCallbackRequest(req: IncomingMessage, res: ServerResponse):
     const expiresAt = Date.now() + tokens.expires_in * 1000
     const characterId = extractCharacterId(jwt.sub)
     const charInfo = await fetchCharacterInfo(characterId)
+    const corporationRoles = await fetchCharacterRoles(characterId, tokens.access_token)
 
     logger.info('Authentication successful', {
       module: 'Auth',
       characterId,
       characterName: jwt.name,
       corporationId: charInfo.corporation_id,
+      hasDirectorRole: corporationRoles?.roles?.includes('Director') ?? false,
     })
 
     sendHtmlResponse(res, 200, SUCCESS_HTML)
@@ -318,6 +344,7 @@ async function handleCallbackRequest(req: IncomingMessage, res: ServerResponse):
       characterName: jwt.name,
       corporationId: charInfo.corporation_id,
       scopes: extractScopes(jwt.scp),
+      corporationRoles,
     })
   } catch (err) {
     logger.error('Token exchange failed', err, { module: 'Auth' })

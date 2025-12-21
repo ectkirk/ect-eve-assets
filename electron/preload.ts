@@ -1,5 +1,12 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
+export interface CorporationRoles {
+  roles: string[]
+  roles_at_hq?: string[]
+  roles_at_base?: string[]
+  roles_at_other?: string[]
+}
+
 export interface AuthResult {
   success: boolean
   accessToken?: string
@@ -9,6 +16,7 @@ export interface AuthResult {
   characterName?: string
   corporationId?: number
   scopes?: string[]
+  corporationRoles?: CorporationRoles | null
   error?: string
 }
 
