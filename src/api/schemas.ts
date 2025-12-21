@@ -86,10 +86,6 @@ export const ESIMarketOrderSchema = z.object({
   volume_total: z.number(),
 })
 
-export const ESIMarketOrderHistorySchema = ESIMarketOrderSchema.extend({
-  state: z.enum(['cancelled', 'expired', 'completed']),
-})
-
 export const ESICorporationMarketOrderSchema = z.object({
   duration: z.number(),
   escrow: z.number().optional(),
@@ -106,10 +102,6 @@ export const ESICorporationMarketOrderSchema = z.object({
   volume_remain: z.number(),
   volume_total: z.number(),
   wallet_division: z.number(),
-})
-
-export const ESICorporationMarketOrderHistorySchema = ESICorporationMarketOrderSchema.extend({
-  state: z.enum(['cancelled', 'expired', 'completed']),
 })
 
 export const ESIRegionOrderSchema = z.object({

@@ -18,7 +18,6 @@ import {
 import { loadReferenceData, loadUniverseData, loadRefStructures } from '@/api/ref-client'
 import { useAssetStore } from '@/store/asset-store'
 import { useMarketOrdersStore } from '@/store/market-orders-store'
-import { useMarketOrderHistoryStore } from '@/store/market-order-history-store'
 import { useRegionalMarketStore } from '@/store/regional-market-store'
 import { useIndustryJobsStore } from '@/store/industry-jobs-store'
 import { useContractsStore } from '@/store/contracts-store'
@@ -110,14 +109,11 @@ const CACHE_OPTIONS: CacheOption[] = [
     endpointPattern: '/orders/',
     clear: async () => {
       await useMarketOrdersStore.getState().clear()
-      await useMarketOrderHistoryStore.getState().clear()
       await useRegionalMarketStore.getState().clear()
     },
     refetch: async () => {
       await useMarketOrdersStore.getState().init()
       await useMarketOrdersStore.getState().update(true)
-      await useMarketOrderHistoryStore.getState().init()
-      await useMarketOrderHistoryStore.getState().update(true)
       await useRegionalMarketStore.getState().init()
     },
   },
