@@ -108,12 +108,26 @@ export async function loadReferenceData(
         window.electronAPI!.refGroups(),
       ])
 
+      let categoriesOk = false
+      let groupsOk = false
+
       if (categoriesRaw && 'error' in categoriesRaw) {
         logger.error('Failed to load categories', undefined, {
           module: 'RefAPI',
           error: categoriesRaw.error,
         })
-        return
+      } else {
+        const categoriesResult =
+          RefCategoriesResponseSchema.safeParse(categoriesRaw)
+        if (!categoriesResult.success) {
+          logger.error('Categories validation failed', undefined, {
+            module: 'RefAPI',
+            errors: categoriesResult.error.issues.slice(0, 3),
+          })
+        } else {
+          await setCategories(Object.values(categoriesResult.data.items))
+          categoriesOk = true
+        }
       }
 
       if (groupsRaw && 'error' in groupsRaw) {
@@ -121,44 +135,29 @@ export async function loadReferenceData(
           module: 'RefAPI',
           error: groupsRaw.error,
         })
-        return
+      } else {
+        const groupsResult = RefGroupsResponseSchema.safeParse(groupsRaw)
+        if (!groupsResult.success) {
+          logger.error('Groups validation failed', undefined, {
+            module: 'RefAPI',
+            errors: groupsResult.error.issues.slice(0, 3),
+          })
+        } else {
+          await setGroups(Object.values(groupsResult.data.items))
+          groupsOk = true
+        }
       }
 
-      const categoriesResult =
-        RefCategoriesResponseSchema.safeParse(categoriesRaw)
-      if (!categoriesResult.success) {
-        logger.error('Categories validation failed', undefined, {
+      if (categoriesOk && groupsOk) {
+        const catGroupDuration = Math.round(performance.now() - start)
+        logger.info('Categories and groups loaded', {
           module: 'RefAPI',
-          errors: categoriesResult.error.issues.slice(0, 3),
+          duration: catGroupDuration,
         })
-        return
       }
-
-      const groupsResult = RefGroupsResponseSchema.safeParse(groupsRaw)
-      if (!groupsResult.success) {
-        logger.error('Groups validation failed', undefined, {
-          module: 'RefAPI',
-          errors: groupsResult.error.issues.slice(0, 3),
-        })
-        return
-      }
-
-      const categories = Object.values(categoriesResult.data.items)
-      const groups = Object.values(groupsResult.data.items)
-
-      await setCategories(categories)
-      await setGroups(groups)
-
-      const catGroupDuration = Math.round(performance.now() - start)
-      logger.info('Categories and groups loaded', {
-        module: 'RefAPI',
-        categories: categories.length,
-        groups: groups.length,
-        duration: catGroupDuration,
-      })
     }
 
-    await Promise.all([loadAllTypes(onProgress), loadBlueprints()])
+    await Promise.allSettled([loadAllTypes(onProgress), loadBlueprints()])
 
     const duration = Math.round(performance.now() - start)
     logger.info('Reference data loaded', { module: 'RefAPI', duration })

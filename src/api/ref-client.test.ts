@@ -417,7 +417,7 @@ describe('ref-client', () => {
       expect(setAllTypesLoaded).toHaveBeenCalledWith(true)
     })
 
-    it('handles categories API error gracefully', async () => {
+    it('handles categories API error gracefully and continues loading', async () => {
       vi.mocked(isReferenceDataLoaded).mockReturnValue(false)
       vi.mocked(isAllTypesLoaded).mockReturnValue(false)
 
@@ -426,8 +426,8 @@ describe('ref-client', () => {
       await loadReferenceData()
 
       expect(setCategories).not.toHaveBeenCalled()
-      expect(setGroups).not.toHaveBeenCalled()
-      expect(mockRefTypesPage).not.toHaveBeenCalled()
+      expect(setGroups).toHaveBeenCalled()
+      expect(mockRefTypesPage).toHaveBeenCalled()
     })
 
     it('handles types page API error gracefully', async () => {
