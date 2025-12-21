@@ -3,12 +3,12 @@ import { useAssetStore } from '@/store/asset-store'
 import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { useContractsStore } from '@/store/contracts-store'
 import { useIndustryJobsStore } from '@/store/industry-jobs-store'
-import { useStructuresStore } from '@/store/structures-store'
 import { useWalletStore } from '@/store/wallet-store'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { isAbyssalTypeId, getCachedAbyssalPrice } from '@/api/mutamarket-client'
 import { getType } from '@/store/reference-cache'
 import { CategoryIds } from '@/lib/tree-types'
+import { calculateStructureValues } from '@/lib/structure-constants'
 
 export interface AssetTotals {
   total: number
@@ -28,7 +28,6 @@ export function useTotalAssets(): AssetTotals {
   const ordersUpdateCounter = useMarketOrdersStore((s) => s.updateCounter)
   const contractsUpdateCounter = useContractsStore((s) => s.updateCounter)
   const jobsUpdateCounter = useIndustryJobsStore((s) => s.updateCounter)
-  const structuresByOwner = useStructuresStore((s) => s.dataByOwner)
   const walletsByOwner = useWalletStore((s) => s.dataByOwner)
 
   return useMemo(() => {
@@ -36,10 +35,18 @@ export function useTotalAssets(): AssetTotals {
     const matchesOwner = (type: 'character' | 'corporation', id: number) =>
       selectedSet.has(ownerKey(type, id))
 
+    const { structureRelatedIds, structuresTotal } = calculateStructureValues(
+      assetsByOwner,
+      prices,
+      selectedOwnerIds
+    )
+
     let assetsTotal = 0
     for (const { owner, assets } of assetsByOwner) {
       if (!matchesOwner(owner.type, owner.id)) continue
       for (const asset of assets) {
+        if (structureRelatedIds.has(asset.item_id)) continue
+
         const type = getType(asset.type_id)
         if (type?.categoryId === CategoryIds.OWNER || type?.categoryId === CategoryIds.STATION) continue
         if (asset.is_blueprint_copy) continue
@@ -55,7 +62,6 @@ export function useTotalAssets(): AssetTotals {
     const marketTotal = useMarketOrdersStore.getState().getTotal(selectedOwnerIds)
     const contractsTotal = useContractsStore.getState().getTotal(prices, selectedOwnerIds)
     const industryTotal = useIndustryJobsStore.getState().getTotal(prices, selectedOwnerIds)
-    const structuresTotal = useStructuresStore.getState().getTotal(prices, selectedOwnerIds)
 
     let walletTotal = 0
     for (const wallet of walletsByOwner) {
@@ -80,5 +86,5 @@ export function useTotalAssets(): AssetTotals {
       walletTotal,
       structuresTotal,
     }
-  }, [assetsByOwner, prices, selectedOwnerIds, ordersUpdateCounter, contractsUpdateCounter, jobsUpdateCounter, structuresByOwner, walletsByOwner])
+  }, [assetsByOwner, prices, selectedOwnerIds, ordersUpdateCounter, contractsUpdateCounter, jobsUpdateCounter, walletsByOwner])
 }

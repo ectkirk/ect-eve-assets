@@ -9,7 +9,7 @@ import { useCacheVersion } from '@/hooks'
 import { hasType, getType, getLocation } from '@/store/reference-cache'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import { formatFuelExpiry } from '@/lib/timer-utils'
-import { STRUCTURE_CATEGORY_ID } from '@/lib/structure-constants'
+import { calculateStructureValues } from '@/lib/structure-constants'
 import { FittingDialog } from '@/components/dialogs/FittingDialog'
 import { POSInfoDialog } from '@/components/dialogs/POSInfoDialog'
 import { StructureInfoDialog } from '@/components/dialogs/StructureInfoDialog'
@@ -132,23 +132,14 @@ export function StructuresTab() {
   }, [starbasesByOwner, removeOrphanDetails])
 
   const cacheVersion = useCacheVersion()
+  const { search, setResultCount, setTotalValue } = useTabControls()
+  const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
+  const selectedSet = useMemo(() => new Set(selectedOwnerIds), [selectedOwnerIds])
 
-  const structureAssetMap = useMemo(() => {
+  const { structureAssetMap, structuresTotal: structureTotalValue } = useMemo(() => {
     void cacheVersion
-    const map = new Map<number, { asset: ESIAsset; children: ESIAsset[] }>()
-
-    for (const { assets } of assetsByOwner) {
-      for (const asset of assets) {
-        const type = getType(asset.type_id)
-        if (type?.categoryId === STRUCTURE_CATEGORY_ID && asset.location_type === 'solar_system') {
-          const children = assets.filter((a) => a.location_id === asset.item_id)
-          map.set(asset.item_id, { asset, children })
-        }
-      }
-    }
-
-    return map
-  }, [assetsByOwner, cacheVersion])
+    return calculateStructureValues(assetsByOwner, prices, selectedOwnerIds)
+  }, [assetsByOwner, prices, selectedOwnerIds, cacheVersion])
 
   const [fittingDialogOpen, setFittingDialogOpen] = useState(false)
   const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null)
@@ -171,10 +162,6 @@ export function StructuresTab() {
     setSelectedStructure({ structure, ownerName })
     setStructureInfoDialogOpen(true)
   }, [])
-
-  const { search, setResultCount, setTotalValue } = useTabControls()
-  const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
-  const selectedSet = useMemo(() => new Set(selectedOwnerIds), [selectedOwnerIds])
 
   const upwellRows = useMemo(() => {
     void cacheVersion
@@ -272,27 +259,6 @@ export function StructuresTab() {
   }, [structuresByOwner, starbasesByOwner])
 
   const showingCount = upwellRows.length + starbaseRows.length
-
-  const structureTotalValue = useMemo(() => {
-    void cacheVersion
-    let total = 0
-
-    for (const { asset, children } of structureAssetMap.values()) {
-      const structurePrice = prices.get(asset.type_id) ?? 0
-      const structureValue = structurePrice * asset.quantity
-      total += structureValue
-
-      let childrenValue = 0
-      for (const child of children) {
-        const childPrice = prices.get(child.type_id) ?? 0
-        childrenValue += childPrice * child.quantity
-      }
-      total += childrenValue
-
-    }
-
-    return total
-  }, [structureAssetMap, prices, cacheVersion])
 
   useEffect(() => {
     setResultCount({ showing: showingCount, total: totalCount })

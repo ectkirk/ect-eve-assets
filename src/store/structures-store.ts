@@ -12,16 +12,7 @@ export interface OwnerStructures {
   structures: ESICorporationStructure[]
 }
 
-interface StructuresExtraActions {
-  getTotal: (prices: Map<number, number>, selectedOwnerIds: string[]) => number
-}
-
-export const useStructuresStore = createOwnerStore<
-  ESICorporationStructure[],
-  OwnerStructures,
-  object,
-  StructuresExtraActions
->({
+export const useStructuresStore = createOwnerStore<ESICorporationStructure[], OwnerStructures>({
   name: 'structures',
   moduleName: 'StructuresStore',
   endpointPattern: '/structures',
@@ -51,18 +42,5 @@ export const useStructuresStore = createOwnerStore<
     if (!previousData || previousData.length === 0) return
     processUpwellNotifications(previousData, newData)
   },
-  extraActions: (_set, get) => ({
-    getTotal: (prices, selectedOwnerIds) => {
-      const selectedSet = new Set(selectedOwnerIds)
-      let total = 0
-      for (const { owner, structures } of get().dataByOwner) {
-        if (!selectedSet.has(ownerKey(owner.type, owner.id))) continue
-        for (const structure of structures) {
-          total += prices.get(structure.type_id) ?? 0
-        }
-      }
-      return total
-    },
-  }),
 })
 
