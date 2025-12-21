@@ -52,6 +52,7 @@ interface ExpiryCacheActions {
   queueMissingEndpoints: (ownerKeys: string[]) => void
   clearForOwner: (ownerKey: string) => void
   clearByEndpoint: (pattern: string) => Promise<void>
+  pruneOrphaned: () => Promise<number>
   clear: () => Promise<void>
   pause: () => void
   resume: () => void
@@ -555,6 +556,54 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
         pattern,
       })
     }
+  },
+
+  pruneOrphaned: async () => {
+    const validOwnerKeys = new Set(Object.keys(useAuthStore.getState().owners))
+    const orphanedKeys: string[] = []
+
+    const { endpoints } = get()
+    for (const key of endpoints.keys()) {
+      const parsed = parseKey(key)
+      if (parsed && !validOwnerKeys.has(parsed.ownerKey)) {
+        orphanedKeys.push(key)
+      }
+    }
+
+    if (orphanedKeys.length === 0) return 0
+
+    set((state) => {
+      const newEndpoints = new Map(state.endpoints)
+      const ownerKeysToRemove = new Set(
+        orphanedKeys.map((k) => parseKey(k)!.ownerKey)
+      )
+      for (const key of orphanedKeys) {
+        newEndpoints.delete(key)
+      }
+      const refreshQueue = state.refreshQueue.filter(
+        (q) => !ownerKeysToRemove.has(q.ownerKey)
+      )
+      return { endpoints: newEndpoints, refreshQueue }
+    })
+
+    try {
+      const ownerPrefixes = [
+        ...new Set(orphanedKeys.map((k) => parseKey(k)!.ownerKey + ':')),
+      ]
+      await deleteFromDBWhere((key) =>
+        ownerPrefixes.some((prefix) => key.startsWith(prefix))
+      )
+      logger.info('Pruned orphaned expiry entries', {
+        module: 'ExpiryCacheStore',
+        count: orphanedKeys.length,
+      })
+    } catch (error) {
+      logger.error('Failed to prune orphaned entries', error, {
+        module: 'ExpiryCacheStore',
+      })
+    }
+
+    return orphanedKeys.length
   },
 
   clear: async () => {

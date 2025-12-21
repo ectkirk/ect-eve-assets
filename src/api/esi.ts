@@ -2,6 +2,7 @@ import type { z } from 'zod'
 import type { ESIResponseMeta, ESIRequestOptions } from 'electron/preload'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { logger } from '@/lib/logger'
+import { ValidationError, ConfigurationError } from '@/lib/errors'
 
 export type { ESIResponseMeta, ESIRequestOptions }
 
@@ -20,8 +21,10 @@ export class ESIError extends Error {
 function validate<T>(data: unknown, schema: z.ZodType<T>, endpoint: string): T {
   const result = schema.safeParse(data)
   if (!result.success) {
-    throw new Error(
-      `ESI validation failed for ${endpoint}: ${result.error.issues[0]?.message}`
+    throw new ValidationError(
+      `ESI validation failed for ${endpoint}: ${result.error.issues[0]?.message}`,
+      endpoint,
+      data
     )
   }
   return result.data
@@ -29,7 +32,7 @@ function validate<T>(data: unknown, schema: z.ZodType<T>, endpoint: string): T {
 
 function getESI() {
   if (!window.electronAPI) {
-    throw new Error('ESI requests require Electron environment')
+    throw new ConfigurationError('ESI requests require Electron environment')
   }
   return window.electronAPI.esi
 }

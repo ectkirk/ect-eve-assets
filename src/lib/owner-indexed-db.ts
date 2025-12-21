@@ -1,4 +1,5 @@
 import { logger } from '@/lib/logger'
+import { ConfigurationError } from '@/lib/errors'
 import type { Owner } from '@/store/auth-store'
 
 export interface OwnerData<T> {
@@ -39,12 +40,12 @@ export function createOwnerDB<T>(config: OwnerDBConfig<T>): OwnerDB<T> {
   } = config
 
   if (!dataKey && !deserialize) {
-    throw new Error(
+    throw new ConfigurationError(
       `OwnerDB ${storeName}: either dataKey or deserialize must be provided`
     )
   }
   if (!dataKey && !serialize) {
-    throw new Error(
+    throw new ConfigurationError(
       `OwnerDB ${storeName}: either dataKey or serialize must be provided`
     )
   }
