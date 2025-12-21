@@ -218,6 +218,30 @@ async function loadStore<T>(storeName: string): Promise<Map<number, T>> {
   })
 }
 
+async function writeBatch<T extends { id: number }>(
+  storeName: string,
+  items: T[],
+  onComplete: () => void
+): Promise<void> {
+  if (items.length === 0) return
+
+  const database = await openDB()
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction(storeName, 'readwrite')
+    const store = tx.objectStore(storeName)
+
+    tx.onerror = () => reject(tx.error)
+    tx.oncomplete = () => {
+      onComplete()
+      resolve()
+    }
+
+    for (const item of items) {
+      store.put(item)
+    }
+  })
+}
+
 export async function initCache(): Promise<void> {
   if (initialized) return
 
@@ -397,150 +421,52 @@ export function hasStation(id: number): boolean {
 }
 
 export async function setRegions(regions: CachedRegion[]): Promise<void> {
-  if (regions.length === 0) return
-
-  const database = await openDB()
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction('regions', 'readwrite')
-    const store = tx.objectStore('regions')
-
-    tx.onerror = () => reject(tx.error)
-    tx.oncomplete = () => {
-      regionsCache = new Map(regions.map(r => [r.id, r]))
-      logger.info('Regions saved', { module: 'ReferenceCache', count: regions.length })
-      resolve()
-    }
-
-    for (const region of regions) {
-      store.put(region)
-    }
+  await writeBatch('regions', regions, () => {
+    regionsCache = new Map(regions.map(r => [r.id, r]))
+    logger.info('Regions saved', { module: 'ReferenceCache', count: regions.length })
   })
 }
 
 export async function setSystems(systems: CachedSystem[]): Promise<void> {
-  if (systems.length === 0) return
-
-  const database = await openDB()
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction('systems', 'readwrite')
-    const store = tx.objectStore('systems')
-
-    tx.onerror = () => reject(tx.error)
-    tx.oncomplete = () => {
-      systemsCache = new Map(systems.map(s => [s.id, s]))
-      logger.info('Systems saved', { module: 'ReferenceCache', count: systems.length })
-      resolve()
-    }
-
-    for (const system of systems) {
-      store.put(system)
-    }
+  await writeBatch('systems', systems, () => {
+    systemsCache = new Map(systems.map(s => [s.id, s]))
+    logger.info('Systems saved', { module: 'ReferenceCache', count: systems.length })
   })
 }
 
 export async function setStations(stations: CachedStation[]): Promise<void> {
-  if (stations.length === 0) return
-
-  const database = await openDB()
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction('stations', 'readwrite')
-    const store = tx.objectStore('stations')
-
-    tx.onerror = () => reject(tx.error)
-    tx.oncomplete = () => {
-      stationsCache = new Map(stations.map(s => [s.id, s]))
-      logger.info('Stations saved', { module: 'ReferenceCache', count: stations.length })
-      resolve()
-    }
-
-    for (const station of stations) {
-      store.put(station)
-    }
+  await writeBatch('stations', stations, () => {
+    stationsCache = new Map(stations.map(s => [s.id, s]))
+    logger.info('Stations saved', { module: 'ReferenceCache', count: stations.length })
   })
 }
 
 export async function setRefStructures(structures: CachedRefStructure[]): Promise<void> {
-  if (structures.length === 0) return
-
-  const database = await openDB()
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction('refStructures', 'readwrite')
-    const store = tx.objectStore('refStructures')
-
-    tx.onerror = () => reject(tx.error)
-    tx.oncomplete = () => {
-      refStructuresCache = new Map(structures.map(s => [s.id, s]))
-      logger.info('RefStructures saved', { module: 'ReferenceCache', count: structures.length })
-      resolve()
-    }
-
-    for (const structure of structures) {
-      store.put(structure)
-    }
+  await writeBatch('refStructures', structures, () => {
+    refStructuresCache = new Map(structures.map(s => [s.id, s]))
+    logger.info('RefStructures saved', { module: 'ReferenceCache', count: structures.length })
   })
 }
 
 export async function setCategories(categories: CachedCategory[]): Promise<void> {
-  if (categories.length === 0) return
-
-  const database = await openDB()
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction('categories', 'readwrite')
-    const store = tx.objectStore('categories')
-
-    tx.onerror = () => reject(tx.error)
-    tx.oncomplete = () => {
-      categoriesCache = new Map(categories.map(c => [c.id, c]))
-      logger.info('Categories saved', { module: 'ReferenceCache', count: categories.length })
-      resolve()
-    }
-
-    for (const category of categories) {
-      store.put(category)
-    }
+  await writeBatch('categories', categories, () => {
+    categoriesCache = new Map(categories.map(c => [c.id, c]))
+    logger.info('Categories saved', { module: 'ReferenceCache', count: categories.length })
   })
 }
 
 export async function setGroups(groups: CachedGroup[]): Promise<void> {
-  if (groups.length === 0) return
-
-  const database = await openDB()
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction('groups', 'readwrite')
-    const store = tx.objectStore('groups')
-
-    tx.onerror = () => reject(tx.error)
-    tx.oncomplete = () => {
-      groupsCache = new Map(groups.map(g => [g.id, g]))
-      referenceDataLoaded = true
-      logger.info('Groups saved', { module: 'ReferenceCache', count: groups.length })
-      resolve()
-    }
-
-    for (const group of groups) {
-      store.put(group)
-    }
+  await writeBatch('groups', groups, () => {
+    groupsCache = new Map(groups.map(g => [g.id, g]))
+    referenceDataLoaded = true
+    logger.info('Groups saved', { module: 'ReferenceCache', count: groups.length })
   })
 }
 
 export async function setBlueprints(blueprints: CachedBlueprint[]): Promise<void> {
-  if (blueprints.length === 0) return
-
-  const database = await openDB()
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction('blueprints', 'readwrite')
-    const store = tx.objectStore('blueprints')
-
-    tx.onerror = () => reject(tx.error)
-    tx.oncomplete = () => {
-      blueprintsCache = new Map(blueprints.map(b => [b.id, b]))
-      logger.info('Blueprints saved', { module: 'ReferenceCache', count: blueprints.length })
-      resolve()
-    }
-
-    for (const blueprint of blueprints) {
-      store.put(blueprint)
-    }
+  await writeBatch('blueprints', blueprints, () => {
+    blueprintsCache = new Map(blueprints.map(b => [b.id, b]))
+    logger.info('Blueprints saved', { module: 'ReferenceCache', count: blueprints.length })
   })
 }
 
@@ -677,118 +603,37 @@ export function hasName(id: number): boolean {
 }
 
 export async function saveNames(names: CachedName[]): Promise<void> {
-  if (names.length === 0) return
-
-  const database = await openDB()
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction('names', 'readwrite')
-    const store = tx.objectStore('names')
-
-    tx.onerror = () => reject(tx.error)
-    tx.oncomplete = () => {
-      for (const name of names) {
-        namesCache.set(name.id, name)
-      }
-      notifyListeners()
-      resolve()
-    }
-
-    for (const name of names) {
-      store.put(name)
-    }
+  await writeBatch('names', names, () => {
+    for (const name of names) namesCache.set(name.id, name)
+    notifyListeners()
   })
 }
 
-
 export async function saveTypes(types: CachedType[]): Promise<void> {
-  if (types.length === 0) return
-
-  const database = await openDB()
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction('types', 'readwrite')
-    const store = tx.objectStore('types')
-
-    tx.onerror = () => reject(tx.error)
-    tx.oncomplete = () => {
-      for (const type of types) {
-        typesCache.set(type.id, type)
-      }
-      notifyListeners()
-      resolve()
-    }
-
-    for (const type of types) {
-      store.put(type)
-    }
+  await writeBatch('types', types, () => {
+    for (const type of types) typesCache.set(type.id, type)
+    notifyListeners()
   })
 }
 
 export async function saveStructures(structures: CachedStructure[]): Promise<void> {
-  if (structures.length === 0) return
-
-  const database = await openDB()
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction('structures', 'readwrite')
-    const store = tx.objectStore('structures')
-
-    tx.onerror = () => reject(tx.error)
-    tx.oncomplete = () => {
-      for (const structure of structures) {
-        structuresCache.set(structure.id, structure)
-      }
-      notifyListeners()
-      resolve()
-    }
-
-    for (const structure of structures) {
-      store.put(structure)
-    }
+  await writeBatch('structures', structures, () => {
+    for (const structure of structures) structuresCache.set(structure.id, structure)
+    notifyListeners()
   })
 }
 
 export async function saveLocations(locations: CachedLocation[]): Promise<void> {
-  if (locations.length === 0) return
-
-  const database = await openDB()
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction('locations', 'readwrite')
-    const store = tx.objectStore('locations')
-
-    tx.onerror = () => reject(tx.error)
-    tx.oncomplete = () => {
-      for (const location of locations) {
-        locationsCache.set(location.id, location)
-      }
-      notifyListeners()
-      resolve()
-    }
-
-    for (const location of locations) {
-      store.put(location)
-    }
+  await writeBatch('locations', locations, () => {
+    for (const location of locations) locationsCache.set(location.id, location)
+    notifyListeners()
   })
 }
 
 export async function saveAbyssals(abyssals: CachedAbyssal[]): Promise<void> {
-  if (abyssals.length === 0) return
-
-  const database = await openDB()
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction('abyssals', 'readwrite')
-    const store = tx.objectStore('abyssals')
-
-    tx.onerror = () => reject(tx.error)
-    tx.oncomplete = () => {
-      for (const abyssal of abyssals) {
-        abyssalsCache.set(abyssal.id, abyssal)
-      }
-      notifyListeners()
-      resolve()
-    }
-
-    for (const abyssal of abyssals) {
-      store.put(abyssal)
-    }
+  await writeBatch('abyssals', abyssals, () => {
+    for (const abyssal of abyssals) abyssalsCache.set(abyssal.id, abyssal)
+    notifyListeners()
   })
 }
 

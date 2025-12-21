@@ -169,8 +169,7 @@ export async function loadReferenceData(onProgress?: ReferenceDataProgress): Pro
       logger.info('Categories and groups loaded', { module: 'RefAPI', categories: categories.length, groups: groups.length, duration: catGroupDuration })
     }
 
-    await loadAllTypes(onProgress)
-    await loadBlueprints(onProgress)
+    await Promise.all([loadAllTypes(onProgress), loadBlueprints()])
 
     const duration = Math.round(performance.now() - start)
     logger.info('Reference data loaded', { module: 'RefAPI', duration })
@@ -253,10 +252,9 @@ async function loadAllTypes(onProgress?: ReferenceDataProgress): Promise<void> {
   logger.info('All types loaded', { module: 'RefAPI', total: loaded, pages: pageCount, duration })
 }
 
-async function loadBlueprints(onProgress?: ReferenceDataProgress): Promise<void> {
+async function loadBlueprints(): Promise<void> {
   if (isBlueprintsLoaded()) return
 
-  onProgress?.('Loading blueprints...')
   const start = performance.now()
 
   const result = await window.electronAPI!.refBlueprints()
@@ -292,14 +290,8 @@ export async function loadUniverseData(onProgress?: ReferenceDataProgress): Prom
     const start = performance.now()
 
     try {
-      onProgress?.('Loading regions...')
-      await loadAllRegions()
-
-      onProgress?.('Loading systems...')
-      await loadAllSystems()
-
-      onProgress?.('Loading stations...')
-      await loadAllStations()
+      onProgress?.('Loading universe data...')
+      await Promise.all([loadAllRegions(), loadAllSystems(), loadAllStations()])
 
       setUniverseDataLoaded(true)
       notifyCacheListeners()
