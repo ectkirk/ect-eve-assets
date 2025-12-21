@@ -24,6 +24,9 @@ export default defineConfig({
             'process.env.REF_API_KEY': JSON.stringify(
               process.env.REF_API_KEY || ''
             ),
+            'process.env.DISCORD_BUG_WEBHOOK': JSON.stringify(
+              process.env.DISCORD_BUG_WEBHOOK || ''
+            ),
           },
           build: {
             outDir: 'dist-electron',

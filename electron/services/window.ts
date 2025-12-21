@@ -65,11 +65,9 @@ export function readStorage(): Record<string, unknown> | null {
         const decrypted = safeStorage.decryptString(fileData)
         return JSON.parse(decrypted)
       } catch {
-        const text = fileData.toString('utf-8')
-        if (text.startsWith('{')) {
-          return JSON.parse(text)
-        }
-        throw new Error('Cannot decrypt storage')
+        logger.warn('Failed to decrypt storage, deleting corrupted file', { module: 'Storage' })
+        fs.unlinkSync(storageFile)
+        return null
       }
     } else {
       logger.warn('Encryption not available, using plaintext', { module: 'Storage' })

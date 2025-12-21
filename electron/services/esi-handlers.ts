@@ -70,7 +70,7 @@ export function registerESIHandlers(): void {
         !Number.isInteger(characterId) ||
         characterId <= 0
       ) {
-        return
+        return { success: false, error: 'Invalid character ID' }
       }
       const pending = pendingTokenRequests.get(characterId)
       if (pending) {
@@ -81,6 +81,7 @@ export function registerESIHandlers(): void {
         }
         pendingTokenRequests.delete(characterId)
       }
+      return { success: true }
     }
   )
 

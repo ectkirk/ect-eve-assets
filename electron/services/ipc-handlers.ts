@@ -8,8 +8,7 @@ import {
 import { logger, type LogLevel, type LogContext } from './logger.js'
 import { installUpdate } from './updater.js'
 
-const BUG_REPORT_WEBHOOK =
-  'https://discord.com/api/webhooks/1451197565927424001/diQ7bJRG4X526UM3pOmvx2nJ-ZyjzxgvDdXn5lwOgYsMZtnFr_NVqjaiJhRudnTxoGAP'
+const BUG_REPORT_WEBHOOK = process.env.DISCORD_BUG_WEBHOOK || ''
 
 const VALID_LOG_LEVELS = ['DEBUG', 'INFO', 'WARN', 'ERROR'] as const
 const MAX_LOG_MESSAGE_LENGTH = 10000
@@ -129,10 +128,10 @@ export function registerLoggingHandlers(): void {
         typeof level !== 'string' ||
         !VALID_LOG_LEVELS.includes(level as LogLevel)
       ) {
-        return
+        return { success: false, error: 'Invalid log level' }
       }
       if (typeof message !== 'string') {
-        return
+        return { success: false, error: 'Invalid message' }
       }
       const truncatedMessage = message.slice(0, MAX_LOG_MESSAGE_LENGTH)
 
@@ -143,16 +142,16 @@ export function registerLoggingHandlers(): void {
           context === null ||
           Array.isArray(context)
         ) {
-          return
+          return { success: false, error: 'Invalid context' }
         }
         try {
           const contextJson = JSON.stringify(context)
           if (contextJson.length > MAX_LOG_CONTEXT_SIZE) {
-            return
+            return { success: false, error: 'Context too large' }
           }
           validContext = context as LogContext
         } catch {
-          return
+          return { success: false, error: 'Context not serializable' }
         }
       }
 
@@ -171,6 +170,7 @@ export function registerLoggingHandlers(): void {
           logger.error(truncatedMessage, undefined, logContext)
           break
       }
+      return { success: true }
     }
   )
 
@@ -188,6 +188,9 @@ export function registerBugReportHandler(): void {
   ipcMain.handle(
     'bug:report',
     async (_event, characterName: unknown, description: unknown) => {
+      if (!BUG_REPORT_WEBHOOK) {
+        return { success: false, error: 'Bug reporting not configured' }
+      }
       if (typeof description !== 'string' || !description.trim()) {
         return { success: false, error: 'Description is required' }
       }

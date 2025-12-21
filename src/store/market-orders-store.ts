@@ -92,6 +92,8 @@ function getEndpoint(owner: Owner): string {
     : `/characters/${owner.characterId}/orders/`
 }
 
+const previousOrdersByOwner = new Map<string, Map<number, MarketOrder>>()
+
 async function fetchOrdersForOwner(owner: Owner): Promise<{
   data: MarketOrder[]
   expiresAt: number
@@ -133,22 +135,19 @@ const baseStore = createVisibilityStore<MarketOrder, StoredOrder>({
     },
   }),
   onAfterInit: registerPricesFromOrders,
-  onBeforeOwnerUpdate: (_owner, previousVisibility, itemsById) => {
-    const store = useMarketOrdersStore as unknown as {
-      _previousOrders: Map<number, MarketOrder>
-    }
-    store._previousOrders = new Map()
+  onBeforeOwnerUpdate: (owner, previousVisibility, itemsById) => {
+    const ownerKey = `${owner.type}:${owner.id}`
+    const previousOrders = new Map<number, MarketOrder>()
     for (const orderId of previousVisibility) {
       const stored = itemsById.get(orderId)
-      if (stored) store._previousOrders.set(orderId, stored.item)
+      if (stored) previousOrders.set(orderId, stored.item)
     }
+    previousOrdersByOwner.set(ownerKey, previousOrders)
   },
   onAfterOwnerUpdate: ({ owner, newItems, itemsById }) => {
-    const store = useMarketOrdersStore as unknown as {
-      _previousOrders?: Map<number, MarketOrder>
-    }
-    const previousOrders = store._previousOrders ?? new Map()
-    delete store._previousOrders
+    const ownerKey = `${owner.type}:${owner.id}`
+    const previousOrders = previousOrdersByOwner.get(ownerKey) ?? new Map()
+    previousOrdersByOwner.delete(ownerKey)
 
     const newOrderIds = new Set(newItems.map((o) => o.order_id))
     const completedOrders = [...previousOrders.values()].filter(

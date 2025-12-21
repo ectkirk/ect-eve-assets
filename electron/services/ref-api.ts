@@ -155,7 +155,6 @@ function validateIds(
 }
 
 export function registerRefAPIHandlers(): void {
-  // Simple GET endpoints returning full response
   ipcMain.handle('ref:categories', () =>
     refGet('/reference/categories', 'ref:categories')
   )
@@ -172,7 +171,6 @@ export function registerRefAPIHandlers(): void {
     refGet('/buyback/info', 'ref:buybackInfo')
   )
 
-  // Universe endpoints returning { items: ... }
   const universeEndpoints = [
     { channel: 'ref:universe-regions', endpoint: '/reference/regions' },
     { channel: 'ref:universe-systems', endpoint: '/reference/systems' },
@@ -187,7 +185,6 @@ export function registerRefAPIHandlers(): void {
     })
   }
 
-  // Paginated types endpoint
   ipcMain.handle('ref:types-page', async (_event, args: unknown) => {
     const { after } = (args ?? {}) as { after?: number }
 
@@ -218,7 +215,6 @@ export function registerRefAPIHandlers(): void {
     }
   })
 
-  // Paginated structures endpoint
   ipcMain.handle('ref:universe-structures-page', async (_event, args: unknown) => {
     const { after } = (args ?? {}) as { after?: string }
 
@@ -251,7 +247,6 @@ export function registerRefAPIHandlers(): void {
     }
   })
 
-  // POST endpoints with ids array
   const idsEndpoints = [
     { channel: 'ref:implants', endpoint: '/reference/implants', max: 1000 },
     { channel: 'ref:moons', endpoint: '/reference/moons', max: 1000 },
@@ -267,7 +262,6 @@ export function registerRefAPIHandlers(): void {
     })
   }
 
-  // Market Jita endpoint
   ipcMain.handle('ref:marketJita', async (_event, typeIds: unknown) => {
     if (!validateIds(typeIds, 1000)) {
       return { error: 'Invalid typeIds array (max 1000)' }
@@ -275,7 +269,6 @@ export function registerRefAPIHandlers(): void {
     return refPost('/market/jita', { typeIds }, 'ref:marketJita')
   })
 
-  // Market contracts endpoint
   ipcMain.handle('ref:marketContracts', async (_event, typeIds: unknown) => {
     if (!validateIds(typeIds, 100)) {
       return { error: 'Invalid typeIds array (max 100)' }
@@ -283,7 +276,6 @@ export function registerRefAPIHandlers(): void {
     return refPost('/market/contracts', { typeIds }, 'ref:marketContracts')
   })
 
-  // Market bulk endpoint
   ipcMain.handle('ref:market', async (_event, params: unknown) => {
     if (typeof params !== 'object' || params === null) {
       return { error: 'Invalid params' }
@@ -311,7 +303,6 @@ export function registerRefAPIHandlers(): void {
     return refPost('/market/bulk', body, 'ref:market')
   })
 
-  // Buyback calculate endpoint
   ipcMain.handle(
     'ref:buybackCalculate',
     async (_event, text: unknown, config: unknown) => {
@@ -344,7 +335,6 @@ export function registerRefAPIHandlers(): void {
     }
   )
 
-  // Buyback calculator endpoint (different API path)
   ipcMain.handle('ref:buybackCalculator', async (_event, text: unknown) => {
     if (typeof text !== 'string' || !text.trim()) {
       return { error: 'Text is required' }

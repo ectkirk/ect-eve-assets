@@ -6,10 +6,13 @@ import {
 } from '@/api/endpoints/corporation'
 import { logger } from '@/lib/logger'
 import { useStoreRegistry } from './store-registry'
-
-const DB_NAME = 'ecteveassets-divisions'
-const DB_VERSION = 1
-const STORE_DIVISIONS = 'divisions'
+import {
+  openDatabase,
+  idbGetAll,
+  idbPut,
+  idbDelete,
+  idbClear,
+} from '@/lib/idb-utils'
 
 export interface CorporationDivisions {
   corporationId: number
@@ -35,89 +38,15 @@ interface DivisionsActions {
 
 type DivisionsStore = DivisionsState & DivisionsActions
 
-let db: IDBDatabase | null = null
-
-async function openDB(): Promise<IDBDatabase> {
-  if (db) return db
-
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION)
-
-    request.onerror = () => {
-      logger.error('Failed to open divisions DB', request.error, {
-        module: 'DivisionsStore',
-      })
-      reject(request.error)
-    }
-
-    request.onsuccess = () => {
-      db = request.result
-      resolve(db)
-    }
-
-    request.onupgradeneeded = (event) => {
-      const database = (event.target as IDBOpenDBRequest).result
-      if (!database.objectStoreNames.contains(STORE_DIVISIONS)) {
-        database.createObjectStore(STORE_DIVISIONS, {
-          keyPath: 'corporationId',
-        })
-      }
-    }
-  })
+const DB_CONFIG = {
+  dbName: 'ecteveassets-divisions',
+  version: 1,
+  stores: [{ name: 'divisions', keyPath: 'corporationId' }],
+  module: 'DivisionsStore',
 }
 
-async function loadFromDB(): Promise<Map<number, CorporationDivisions>> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_DIVISIONS], 'readonly')
-    const store = tx.objectStore(STORE_DIVISIONS)
-    const request = store.getAll()
-
-    tx.oncomplete = () => {
-      const map = new Map<number, CorporationDivisions>()
-      for (const item of request.result as CorporationDivisions[]) {
-        map.set(item.corporationId, item)
-      }
-      resolve(map)
-    }
-
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
-async function saveToDB(divisions: CorporationDivisions): Promise<void> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_DIVISIONS], 'readwrite')
-    const store = tx.objectStore(STORE_DIVISIONS)
-    store.put(divisions)
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
-async function deleteFromDB(corporationId: number): Promise<void> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_DIVISIONS], 'readwrite')
-    tx.objectStore(STORE_DIVISIONS).delete(corporationId)
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
-async function clearDB(): Promise<void> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_DIVISIONS], 'readwrite')
-    tx.objectStore(STORE_DIVISIONS).clear()
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
+async function getDB() {
+  return openDatabase(DB_CONFIG)
 }
 
 export const useDivisionsStore = create<DivisionsStore>((set, get) => ({
@@ -129,7 +58,12 @@ export const useDivisionsStore = create<DivisionsStore>((set, get) => ({
     if (get().initialized) return
 
     try {
-      const divisionsByCorp = await loadFromDB()
+      const db = await getDB()
+      const items = await idbGetAll<CorporationDivisions>(db, 'divisions')
+      const divisionsByCorp = new Map<number, CorporationDivisions>()
+      for (const item of items) {
+        divisionsByCorp.set(item.corporationId, item)
+      }
       set({ divisionsByCorp, initialized: true })
       logger.info('Divisions store initialized', {
         module: 'DivisionsStore',
@@ -139,9 +73,7 @@ export const useDivisionsStore = create<DivisionsStore>((set, get) => ({
       logger.error(
         'Failed to load divisions from DB',
         err instanceof Error ? err : undefined,
-        {
-          module: 'DivisionsStore',
-        }
+        { module: 'DivisionsStore' }
       )
       set({ initialized: true })
     }
@@ -167,7 +99,8 @@ export const useDivisionsStore = create<DivisionsStore>((set, get) => ({
         wallet: response.wallet ?? [],
       }
 
-      await saveToDB(divisions)
+      const db = await getDB()
+      await idbPut(db, 'divisions', divisions)
 
       const updated = new Map(state.divisionsByCorp)
       updated.set(owner.id, divisions)
@@ -213,14 +146,16 @@ export const useDivisionsStore = create<DivisionsStore>((set, get) => ({
     const state = get()
     if (!state.divisionsByCorp.has(ownerId)) return
 
-    await deleteFromDB(ownerId)
+    const db = await getDB()
+    await idbDelete(db, 'divisions', ownerId)
     const updated = new Map(state.divisionsByCorp)
     updated.delete(ownerId)
     set({ divisionsByCorp: updated })
   },
 
   clear: async () => {
-    await clearDB()
+    const db = await getDB()
+    await idbClear(db, 'divisions')
     set({ divisionsByCorp: new Map() })
   },
 }))

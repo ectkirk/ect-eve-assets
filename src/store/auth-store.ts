@@ -63,7 +63,6 @@ export interface Owner {
   scopesOutdated?: boolean
 }
 
-// Helper to create owner key
 export function ownerKey(type: OwnerType, id: number): string {
   return `${type}-${id}`
 }

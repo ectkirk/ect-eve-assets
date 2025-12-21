@@ -9,7 +9,6 @@ import eveSsoLoginWhite from '/eve-sso-login-white.png'
 export function OwnerButton() {
   const [modalOpen, setModalOpen] = useState(false)
   const [isAddingOwner, setIsAddingOwner] = useState(false)
-  const [isUpdatingData, setIsUpdatingData] = useState(false)
 
   const ownersRecord = useAuthStore((state) => state.owners)
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
@@ -58,26 +57,13 @@ export function OwnerButton() {
             corporationId: result.corporationId,
           },
         })
-        setIsAddingOwner(false)
-        setIsUpdatingData(true)
         useExpiryCacheStore
           .getState()
           .queueAllEndpointsForOwner(ownerKey('character', result.characterId))
-        setIsUpdatingData(false)
       }
     } finally {
       setIsAddingOwner(false)
-      setIsUpdatingData(false)
     }
-  }
-
-  if (isUpdatingData) {
-    return (
-      <div className="flex items-center gap-2 text-sm text-content-secondary">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        Updating data...
-      </div>
-    )
   }
 
   if (owners.length === 0) {

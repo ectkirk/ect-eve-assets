@@ -1,11 +1,12 @@
 import { create } from 'zustand'
 import { getMarketPrices } from '@/api/endpoints/market'
 import { logger } from '@/lib/logger'
-
-const DB_NAME = 'ecteveassets-esi-prices'
-const DB_VERSION = 1
-const STORE_PRICES = 'prices'
-const STORE_META = 'meta'
+import {
+  openDatabase,
+  idbGetAll,
+  idbGet,
+  idbClearMultiple,
+} from '@/lib/idb-utils'
 
 interface ESIPriceRecord {
   typeId: number
@@ -33,71 +34,32 @@ interface ESIPricesActions {
 
 type ESIPricesStore = ESIPricesState & ESIPricesActions
 
-let db: IDBDatabase | null = null
+const DB_CONFIG = {
+  dbName: 'ecteveassets-esi-prices',
+  version: 1,
+  stores: [
+    { name: 'prices', keyPath: 'typeId' },
+    { name: 'meta', keyPath: 'key' },
+  ],
+  module: 'ESIPricesStore',
+}
 
-async function openDB(): Promise<IDBDatabase> {
-  if (db) return db
-
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION)
-
-    request.onerror = () => {
-      logger.error('Failed to open ESI prices DB', request.error, {
-        module: 'ESIPricesStore',
-      })
-      reject(request.error)
-    }
-
-    request.onsuccess = () => {
-      db = request.result
-      resolve(db)
-    }
-
-    request.onupgradeneeded = (event) => {
-      const database = (event.target as IDBOpenDBRequest).result
-      if (!database.objectStoreNames.contains(STORE_PRICES)) {
-        database.createObjectStore(STORE_PRICES, { keyPath: 'typeId' })
-      }
-      if (!database.objectStoreNames.contains(STORE_META)) {
-        database.createObjectStore(STORE_META, { keyPath: 'key' })
-      }
-    }
-  })
+async function getDB() {
+  return openDatabase(DB_CONFIG)
 }
 
 async function loadFromDB(): Promise<{
   prices: ESIPriceRecord[]
   lastUpdateAt: number | null
 }> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_PRICES, STORE_META], 'readonly')
-    const pricesStore = tx.objectStore(STORE_PRICES)
-    const metaStore = tx.objectStore(STORE_META)
-
-    const prices: ESIPriceRecord[] = []
-    let lastUpdateAt: number | null = null
-
-    const pricesReq = pricesStore.openCursor()
-    pricesReq.onsuccess = () => {
-      const cursor = pricesReq.result
-      if (cursor) {
-        prices.push(cursor.value as ESIPriceRecord)
-        cursor.continue()
-      }
-    }
-
-    const metaReq = metaStore.get('lastUpdateAt')
-    metaReq.onsuccess = () => {
-      if (metaReq.result) {
-        lastUpdateAt = metaReq.result.value
-      }
-    }
-
-    tx.oncomplete = () => resolve({ prices, lastUpdateAt })
-    tx.onerror = () => reject(tx.error)
-  })
+  const db = await getDB()
+  const prices = await idbGetAll<ESIPriceRecord>(db, 'prices')
+  const meta = await idbGet<{ key: string; value: number }>(
+    db,
+    'meta',
+    'lastUpdateAt'
+  )
+  return { prices, lastUpdateAt: meta?.value ?? null }
 }
 
 async function saveToDB(
@@ -107,12 +69,12 @@ async function saveToDB(
   >,
   lastUpdateAt: number
 ): Promise<void> {
-  const database = await openDB()
+  const db = await getDB()
 
   return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_PRICES, STORE_META], 'readwrite')
-    const pricesStore = tx.objectStore(STORE_PRICES)
-    const metaStore = tx.objectStore(STORE_META)
+    const tx = db.transaction(['prices', 'meta'], 'readwrite')
+    const pricesStore = tx.objectStore('prices')
+    const metaStore = tx.objectStore('meta')
 
     pricesStore.clear()
 
@@ -132,15 +94,8 @@ async function saveToDB(
 }
 
 async function clearDB(): Promise<void> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_PRICES, STORE_META], 'readwrite')
-    tx.objectStore(STORE_PRICES).clear()
-    tx.objectStore(STORE_META).clear()
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
+  const db = await getDB()
+  await idbClearMultiple(db, ['prices', 'meta'])
 }
 
 function getNextWednesdayNoonGMT(): Date {

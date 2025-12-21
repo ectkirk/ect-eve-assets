@@ -1,10 +1,3 @@
-export type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR'
-
-export interface LogContext {
-  module?: string
-  [key: string]: unknown
-}
-
 function formatForConsole(
   level: LogLevel,
   message: string,

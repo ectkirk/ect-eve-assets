@@ -521,24 +521,3 @@ export const MutamarketModuleSchema = z.object({
     .nullable()
     .optional(),
 })
-
-// Helper to validate arrays
-export function validateArray<T>(schema: z.ZodType<T>, data: unknown): T[] {
-  const arraySchema = z.array(schema)
-  return arraySchema.parse(data)
-}
-
-// Helper to validate with safe parsing (returns null on error)
-export function safeValidate<T>(schema: z.ZodType<T>, data: unknown): T | null {
-  const result = schema.safeParse(data)
-  return result.success ? result.data : null
-}
-
-export function safeValidateArray<T>(
-  schema: z.ZodType<T>,
-  data: unknown
-): T[] | null {
-  const arraySchema = z.array(schema)
-  const result = arraySchema.safeParse(data)
-  return result.success ? result.data : null
-}
