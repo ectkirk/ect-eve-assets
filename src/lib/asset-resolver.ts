@@ -1,4 +1,5 @@
 import type { ESIAsset } from '@/api/endpoints/assets'
+import type { MarketOrder } from '@/store/market-orders-store'
 import type { Owner } from '@/store/auth-store'
 import type { ResolvedAsset, AssetModeFlags } from './resolved-asset'
 import {
@@ -303,4 +304,105 @@ export function resolveAllAssets(
   }
 
   return results
+}
+
+export function resolveMarketOrder(
+  order: MarketOrder,
+  owner: Owner,
+  prices: Map<number, number>
+): ResolvedAsset {
+  const isStructure = order.location_id > 1_000_000_000_000
+
+  const syntheticAsset: ESIAsset = {
+    item_id: order.order_id,
+    type_id: order.type_id,
+    location_id: order.location_id,
+    location_type: isStructure ? 'other' : 'station',
+    location_flag: 'SellOrder',
+    quantity: order.volume_remain,
+    is_singleton: false,
+  }
+
+  let locationName: string
+  let systemId: number | undefined
+  let systemName = ''
+  let regionId: number | undefined
+  let regionName = ''
+
+  if (isStructure) {
+    const structure = getStructure(order.location_id)
+    locationName = structure?.name ?? `Structure ${order.location_id}`
+    if (structure?.solarSystemId) {
+      const system = getLocation(structure.solarSystemId)
+      systemId = structure.solarSystemId
+      systemName = system?.name ?? `System ${structure.solarSystemId}`
+      regionId = system?.regionId
+      regionName = system?.regionName ?? ''
+    }
+  } else {
+    const location = getLocation(order.location_id)
+    locationName = location?.name ?? `Location ${order.location_id}`
+    systemId = location?.solarSystemId
+    systemName = location?.solarSystemName ?? ''
+    regionId = location?.regionId
+    regionName = location?.regionName ?? ''
+  }
+
+  if (!regionName) regionName = 'Unknown Region'
+
+  const sdeType = getType(order.type_id)
+  const typeName = getTypeName(order.type_id)
+  const volume = sdeType?.packagedVolume ?? sdeType?.volume ?? 0
+  const price = prices.get(order.type_id) ?? 0
+
+  const isAbyssal = isAbyssalTypeId(order.type_id)
+  const categoryName = isAbyssal ? 'Abyssals' : (sdeType?.categoryName ?? '')
+
+  const modeFlags: AssetModeFlags = {
+    inHangar: false,
+    inShipHangar: false,
+    inItemHangar: false,
+    inDeliveries: false,
+    inAssetSafety: false,
+    inOffice: false,
+    inStructure: isStructure,
+    isContract: false,
+    isMarketOrder: true,
+    isIndustryJob: false,
+    isOwnedStructure: false,
+    isActiveShip: false,
+  }
+
+  return {
+    asset: syntheticAsset,
+    owner,
+
+    rootLocationId: order.location_id,
+    rootLocationType: isStructure ? 'structure' : 'station',
+    parentChain: [],
+    rootFlag: 'SellOrder',
+
+    locationName,
+    systemId,
+    systemName,
+    regionId,
+    regionName,
+
+    typeId: order.type_id,
+    typeName,
+    categoryId: sdeType?.categoryId ?? 0,
+    categoryName,
+    groupId: sdeType?.groupId ?? 0,
+    groupName: sdeType?.groupName ?? '',
+    volume,
+
+    price,
+    totalValue: price * order.volume_remain,
+    totalVolume: volume * order.volume_remain,
+
+    modeFlags,
+
+    customName: undefined,
+    isBlueprintCopy: false,
+  }
 }

@@ -1,10 +1,11 @@
 import { useMemo } from 'react'
 import { useAssetData, type OwnerAssets } from './useAssetData'
-import { useAuthStore, ownerKey } from '@/store/auth-store'
-import { resolveAllAssets } from '@/lib/asset-resolver'
+import { useAuthStore, ownerKey, findOwnerByKey } from '@/store/auth-store'
+import { resolveAllAssets, resolveMarketOrder } from '@/lib/asset-resolver'
 import type { ResolvedAsset, ResolvedAssetsByOwner } from '@/lib/resolved-asset'
 import { useStarbasesStore } from '@/store/starbases-store'
 import { useStructuresStore } from '@/store/structures-store'
+import { useMarketOrdersStore } from '@/store/market-orders-store'
 
 export interface ResolvedAssetsResult {
   resolvedAssets: ResolvedAsset[]
@@ -23,6 +24,9 @@ export function useResolvedAssets(): ResolvedAssetsResult {
   const assetData = useAssetData()
   const starbasesByOwner = useStarbasesStore((s) => s.dataByOwner)
   const structuresByOwner = useStructuresStore((s) => s.dataByOwner)
+  const ordersById = useMarketOrdersStore((s) => s.ordersById)
+  const visibilityByOwner = useMarketOrdersStore((s) => s.visibilityByOwner)
+  const ordersUpdateCounter = useMarketOrdersStore((s) => s.updateCounter)
 
   const { ownedStructureIds, starbaseMoonIds } = useMemo(() => {
     const ids = new Set<number>()
@@ -45,15 +49,31 @@ export function useResolvedAssets(): ResolvedAssetsResult {
 
   const resolvedAssets = useMemo(() => {
     void assetData.cacheVersion
+    void ordersUpdateCounter
 
-    if (assetData.assetsByOwner.length === 0) return []
+    const assets =
+      assetData.assetsByOwner.length > 0
+        ? resolveAllAssets(assetData.assetsByOwner, {
+            prices: assetData.prices,
+            assetNames: assetData.assetNames,
+            ownedStructureIds,
+            starbaseMoonIds,
+          })
+        : []
 
-    return resolveAllAssets(assetData.assetsByOwner, {
-      prices: assetData.prices,
-      assetNames: assetData.assetNames,
-      ownedStructureIds,
-      starbaseMoonIds,
-    })
+    for (const [ownerKeyStr, orderIds] of visibilityByOwner) {
+      const owner = findOwnerByKey(ownerKeyStr)
+      if (!owner) continue
+
+      for (const orderId of orderIds) {
+        const stored = ordersById.get(orderId)
+        if (stored && !stored.order.is_buy_order) {
+          assets.push(resolveMarketOrder(stored.order, owner, assetData.prices))
+        }
+      }
+    }
+
+    return assets
   }, [
     assetData.assetsByOwner,
     assetData.prices,
@@ -61,6 +81,9 @@ export function useResolvedAssets(): ResolvedAssetsResult {
     assetData.cacheVersion,
     ownedStructureIds,
     starbaseMoonIds,
+    ordersById,
+    visibilityByOwner,
+    ordersUpdateCounter,
   ])
 
   const resolvedByOwner = useMemo(() => {
