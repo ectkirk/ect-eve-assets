@@ -300,14 +300,6 @@ export async function collectResolutionIds(
 export async function resolveAllReferenceData(
   ids: ResolutionIds
 ): Promise<void> {
-  const hasWork =
-    ids.typeIds.size > 0 ||
-    ids.structureToCharacter.size > 0 ||
-    ids.locationIds.size > 0 ||
-    ids.entityIds.size > 0
-
-  if (!hasWork) return
-
   const { useStarbasesStore } = await import('@/store/starbases-store')
   const starbasesByOwner = useStarbasesStore.getState().dataByOwner
 
@@ -334,11 +326,24 @@ export async function resolveAllReferenceData(
     }
   }
 
+  const uncachedStarbases = Array.from(starbaseIds).filter(
+    (id) => !hasStructure(id)
+  )
+
+  const hasWork =
+    ids.typeIds.size > 0 ||
+    upwellStructures.size > 0 ||
+    ids.locationIds.size > 0 ||
+    ids.entityIds.size > 0 ||
+    uncachedStarbases.length > 0
+
+  if (!hasWork) return
+
   logger.info('Resolving reference data', {
     module: 'DataResolver',
     types: ids.typeIds.size,
     structures: upwellStructures.size,
-    starbases: starbaseIds.size,
+    starbases: uncachedStarbases.length,
     locations: ids.locationIds.size,
     entities: ids.entityIds.size,
   })

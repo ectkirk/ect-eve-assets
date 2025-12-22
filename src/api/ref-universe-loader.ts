@@ -368,6 +368,7 @@ export async function resolveLocations(
 
   const results = new Map<number, CachedLocation>()
   const moonIds: number[] = []
+  const fallbacks: CachedLocation[] = []
 
   for (const id of locationIds) {
     if (id > 1_000_000_000_000) continue
@@ -381,12 +382,18 @@ export async function resolveLocations(
     if (isCelestialIdRange(id)) {
       moonIds.push(id)
     } else {
-      results.set(id, {
+      const fallback: CachedLocation = {
         id,
         name: getLocationFallbackName(id),
         type: 'station',
-      })
+      }
+      results.set(id, fallback)
+      fallbacks.push(fallback)
     }
+  }
+
+  if (fallbacks.length > 0) {
+    await saveLocations(fallbacks)
   }
 
   if (moonIds.length === 0) return results
