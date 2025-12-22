@@ -20,7 +20,7 @@ import {
   type CachedStructure,
 } from '@/store/reference-cache'
 import { resolveTypes, resolveLocations } from '@/api/ref-client'
-import { resolveStructures, resolveNames } from '@/api/endpoints/universe'
+import { resolveStructures, resolveNames, hasName } from '@/api/endpoints/universe'
 import { logger } from './logger'
 
 export interface ResolutionIds {
@@ -119,8 +119,10 @@ function collectFromContracts(
       checkLocation(contract.start_location_id, owner.characterId)
       checkLocation(contract.end_location_id, owner.characterId)
 
-      ids.entityIds.add(contract.issuer_id)
-      if (contract.assignee_id) {
+      if (!hasName(contract.issuer_id)) {
+        ids.entityIds.add(contract.issuer_id)
+      }
+      if (contract.assignee_id && !hasName(contract.assignee_id)) {
         ids.entityIds.add(contract.assignee_id)
       }
 
@@ -259,7 +261,9 @@ function collectFromLoyalty(
 ): void {
   for (const { loyaltyPoints } of loyaltyByOwner) {
     for (const lp of loyaltyPoints) {
-      ids.entityIds.add(lp.corporation_id)
+      if (!hasName(lp.corporation_id)) {
+        ids.entityIds.add(lp.corporation_id)
+      }
     }
   }
 }
