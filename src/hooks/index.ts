@@ -14,3 +14,4 @@ export {
   type SortDirection,
   type SortState,
 } from './useSortable'
+export { useRowSelection, type CopyData } from './useRowSelection'
