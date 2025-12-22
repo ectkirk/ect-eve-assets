@@ -126,7 +126,6 @@ function App() {
       })
       .then(async () => {
         logger.info('All stores initialized', { module: 'App' })
-        useAssetStore.getState().refreshPrices()
         const ownerKeys = Object.keys(useAuthStore.getState().owners)
         useExpiryCacheStore.getState().queueMissingEndpoints(ownerKeys)
         appInitComplete = true

@@ -628,9 +628,24 @@ function startPriceRefreshTimer() {
   if (priceRefreshInterval) return
   priceRefreshInterval = setInterval(async () => {
     const state = useAssetStore.getState()
-    if (!state.initialized || state.isUpdating) return
-
-    if (useExpiryCacheStore.getState().isPaused) return
+    if (!state.initialized) {
+      logger.debug('Price refresh skipped: store not initialized', {
+        module: 'AssetStore',
+      })
+      return
+    }
+    if (state.isUpdating) {
+      logger.debug('Price refresh skipped: update in progress', {
+        module: 'AssetStore',
+      })
+      return
+    }
+    if (useExpiryCacheStore.getState().isPaused) {
+      logger.debug('Price refresh skipped: app paused', {
+        module: 'AssetStore',
+      })
+      return
+    }
 
     logger.info('Hourly price refresh triggered', { module: 'AssetStore' })
     await state.refreshPrices()

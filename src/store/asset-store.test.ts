@@ -293,4 +293,58 @@ describe('asset-store', () => {
       expect(state.updateError).toBeNull()
     })
   })
+
+  describe('refreshPrices', () => {
+    it('does NOT fetch if no type IDs in assets', async () => {
+      const { fetchPrices } = await import('@/api/ref-client')
+      vi.mocked(fetchPrices).mockClear()
+
+      useAssetStore.setState({
+        assetsByOwner: [],
+        assetNames: new Map(),
+        prices: new Map(),
+        lastPriceRefreshAt: null,
+        initialized: true,
+      })
+
+      await useAssetStore.getState().refreshPrices()
+
+      expect(fetchPrices).not.toHaveBeenCalled()
+    })
+
+    it('fetches prices for all type IDs in assets', async () => {
+      const { fetchPrices } = await import('@/api/ref-client')
+      vi.mocked(fetchPrices).mockClear()
+      vi.mocked(fetchPrices).mockResolvedValue(new Map([[34, 10]]))
+
+      useAssetStore.setState({
+        assetsByOwner: [
+          {
+            owner: createMockOwner({ id: 1, name: 'Test', type: 'character' }),
+            assets: [
+              {
+                item_id: 1,
+                type_id: 34,
+                location_id: 60003760,
+                location_type: 'station',
+                location_flag: 'Hangar',
+                quantity: 100,
+                is_singleton: false,
+              },
+            ],
+          },
+        ],
+        assetNames: new Map(),
+        prices: new Map(),
+        lastPriceRefreshAt: null,
+        initialized: true,
+      })
+
+      await useAssetStore.getState().refreshPrices()
+
+      expect(fetchPrices).toHaveBeenCalledWith([34])
+      expect(useAssetStore.getState().prices.get(34)).toBe(10)
+      expect(useAssetStore.getState().lastPriceRefreshAt).not.toBeNull()
+    })
+  })
 })
