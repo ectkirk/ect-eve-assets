@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Loader2 } from 'lucide-react'
 import { useAuthStore } from '@/store/auth-store'
 import { useAssetStore } from '@/store/asset-store'
@@ -19,6 +19,7 @@ import {
   tabToKey,
   type BuybackTabType,
 } from '@/features/buyback'
+import { useBuybackActionStore } from '@/store/buyback-action-store'
 import { useTotalAssets } from '@/hooks'
 import { formatNumber } from '@/lib/utils'
 import { TabControlsProvider } from '@/context'
@@ -177,6 +178,20 @@ function MainLayoutInner() {
   const [activeBuybackTab, setActiveBuybackTab] = useState<BuybackTabType>(
     BUYBACK_TABS[1]
   )
+  const [buybackPrefill, setBuybackPrefill] = useState<string | null>(null)
+
+  useEffect(() => {
+    return useBuybackActionStore.subscribe((state, prevState) => {
+      if (state.pendingAction && !prevState.pendingAction) {
+        setMode('buyback')
+        setActiveBuybackTab(state.pendingAction.securityTab)
+        setBuybackPrefill(state.pendingAction.text)
+        queueMicrotask(() => {
+          useBuybackActionStore.getState().clearAction()
+        })
+      }
+    })
+  }, [])
 
   return (
     <div className="flex h-full flex-col">
@@ -278,7 +293,11 @@ function MainLayoutInner() {
         {mode === 'assets' ? (
           <AssetTabContent tab={activeAssetTab} />
         ) : (
-          <BuybackTab activeTab={activeBuybackTab} />
+          <BuybackTab
+            activeTab={activeBuybackTab}
+            prefillText={buybackPrefill}
+            onPrefillConsumed={() => setBuybackPrefill(null)}
+          />
         )}
       </main>
     </div>

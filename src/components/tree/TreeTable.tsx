@@ -7,7 +7,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { useSortable, SortableHeader, useRowSelection } from '@/hooks'
+import {
+  useSortable,
+  SortableHeader,
+  useRowSelection,
+  useBuybackSelection,
+} from '@/hooks'
 import { useColumnSettings } from '@/hooks'
 import type { TreeNode } from '@/lib/tree-types'
 import { flattenTree, getAllNodeIds } from '@/lib/tree-builder'
@@ -85,6 +90,28 @@ export function TreeTable({
     getId: getNodeId,
     getCopyData,
     containerRef: tableContainerRef,
+  })
+
+  const buybackItems = useMemo(
+    () =>
+      flatRows
+        .filter((node) => node.nodeType === 'item' || node.nodeType === 'ship')
+        .map((node) => ({
+          id: node.id,
+          name: node.typeId
+            ? (getType(node.typeId)?.name ?? node.name)
+            : node.name,
+          quantity: node.quantity ?? node.totalCount,
+          locationId: node.locationId,
+          systemId: node.systemId,
+          regionId: node.regionId,
+        })),
+    [flatRows]
+  )
+
+  const { canSellToBuyback, handleSellToBuyback } = useBuybackSelection({
+    selectedIds,
+    items: buybackItems,
   })
 
   const rowVirtualizer = useVirtualizer({
@@ -208,9 +235,11 @@ export function TreeTable({
                       virtualIndex={virtualRow.index}
                       isExpanded={expandedNodes.has(node.id)}
                       isSelected={selectedIds.has(node.id)}
+                      showBuybackOption={canSellToBuyback}
                       onToggleExpand={onToggleExpand}
                       onRowClick={handleRowClick}
                       onViewFitting={handleViewFitting}
+                      onSellToBuyback={handleSellToBuyback}
                       visibleColumns={visibleColumns}
                     />
                   )

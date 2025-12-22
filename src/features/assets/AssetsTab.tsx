@@ -20,7 +20,7 @@ import { Loader2 } from 'lucide-react'
 import { isAbyssalTypeId, getMutamarketUrl } from '@/api/mutamarket-client'
 import { CategoryIds, hasAbyssal, getType } from '@/store/reference-cache'
 import { useResolvedAssets } from '@/hooks/useResolvedAssets'
-import { useRowSelection } from '@/hooks'
+import { useRowSelection, useBuybackSelection } from '@/hooks'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -266,6 +266,24 @@ export function AssetsTab() {
     containerRef: tableContainerRef,
   })
 
+  const buybackItems = useMemo(
+    () =>
+      sortedData.map((row) => ({
+        id: getRowId(row),
+        name: getType(row.typeId)?.name ?? row.typeName,
+        quantity: row.quantity,
+        locationId: row.resolvedLocationId,
+        systemId: row.systemId,
+        regionId: row.regionId,
+      })),
+    [sortedData, getRowId]
+  )
+
+  const { canSellToBuyback, handleSellToBuyback } = useBuybackSelection({
+    selectedIds,
+    items: buybackItems,
+  })
+
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => tableContainerRef.current,
@@ -422,26 +440,34 @@ export function AssetsTab() {
                     ))}
                   </div>
                 )
-                if (isAbyssalResolved) {
+                const showBuybackOption = isRowSelected && canSellToBuyback
+                if (isAbyssalResolved || showBuybackOption) {
                   return (
                     <ContextMenu key={row.id}>
                       <ContextMenuTrigger asChild>
                         {rowContent}
                       </ContextMenuTrigger>
                       <ContextMenuContent>
-                        <ContextMenuItem
-                          onClick={() =>
-                            window.open(
-                              getMutamarketUrl(
-                                row.original.typeName,
-                                row.original.itemId
-                              ),
-                              '_blank'
-                            )
-                          }
-                        >
-                          Open in Mutamarket
-                        </ContextMenuItem>
+                        {showBuybackOption && (
+                          <ContextMenuItem onClick={handleSellToBuyback}>
+                            Sell to buyback
+                          </ContextMenuItem>
+                        )}
+                        {isAbyssalResolved && (
+                          <ContextMenuItem
+                            onClick={() =>
+                              window.open(
+                                getMutamarketUrl(
+                                  row.original.typeName,
+                                  row.original.itemId
+                                ),
+                                '_blank'
+                              )
+                            }
+                          >
+                            Open in Mutamarket
+                          </ContextMenuItem>
+                        )}
                       </ContextMenuContent>
                     </ContextMenu>
                   )
