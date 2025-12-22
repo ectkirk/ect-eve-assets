@@ -16,8 +16,10 @@ import {
   hasStructure,
   getStructure,
   saveStructures,
+  saveTypes,
   notifyCacheListeners,
   type CachedStructure,
+  type CachedType,
 } from '@/store/reference-cache'
 import { resolveTypes, resolveLocations } from '@/api/ref-client'
 import { resolveStructures, resolveNames, hasName } from '@/api/endpoints/universe'
@@ -28,6 +30,7 @@ export interface ResolutionIds {
   locationIds: Set<number>
   structureToCharacter: Map<number, number>
   entityIds: Set<number>
+  implantIds: Set<number>
 }
 
 function needsTypeResolution(typeId: number): boolean {
@@ -214,6 +217,11 @@ function collectFromStarbases(
   }
 }
 
+function needsImplantSlot(typeId: number): boolean {
+  const type = getType(typeId)
+  return !type?.implantSlot
+}
+
 function collectFromClones(
   clonesByOwner: CharacterCloneData[],
   ids: ResolutionIds
@@ -222,6 +230,9 @@ function collectFromClones(
     for (const implantId of activeImplants) {
       if (needsTypeResolution(implantId)) {
         ids.typeIds.add(implantId)
+      }
+      if (needsImplantSlot(implantId)) {
+        ids.implantIds.add(implantId)
       }
     }
 
@@ -249,6 +260,9 @@ function collectFromClones(
       for (const implantId of jumpClone.implants) {
         if (needsTypeResolution(implantId)) {
           ids.typeIds.add(implantId)
+        }
+        if (needsImplantSlot(implantId)) {
+          ids.implantIds.add(implantId)
         }
       }
     }
@@ -283,6 +297,7 @@ export async function collectResolutionIds(
     locationIds: new Set(),
     structureToCharacter: new Map(),
     entityIds: new Set(),
+    implantIds: new Set(),
   }
 
   collectFromAssets(assetsByOwner, ids)
@@ -335,6 +350,7 @@ export async function resolveAllReferenceData(
     upwellStructures.size > 0 ||
     ids.locationIds.size > 0 ||
     ids.entityIds.size > 0 ||
+    ids.implantIds.size > 0 ||
     uncachedStarbases.length > 0
 
   if (!hasWork) return
@@ -346,6 +362,7 @@ export async function resolveAllReferenceData(
     starbases: uncachedStarbases.length,
     locations: ids.locationIds.size,
     entities: ids.entityIds.size,
+    implants: ids.implantIds.size,
   })
 
   const typesPromise =
@@ -420,6 +437,23 @@ export async function resolveAllReferenceData(
     const prices = await fetchPrices(Array.from(ids.typeIds))
     if (prices.size > 0) {
       await useAssetStore.getState().setPrices(prices)
+    }
+  }
+
+  if (ids.implantIds.size > 0) {
+    const { fetchImplantSlots } = await import('@/api/ref-client')
+    const slots = await fetchImplantSlots(Array.from(ids.implantIds))
+    if (slots.size > 0) {
+      const typesToUpdate: CachedType[] = []
+      for (const [typeId, slot] of slots) {
+        const existing = getType(typeId)
+        if (existing && existing.implantSlot !== slot) {
+          typesToUpdate.push({ ...existing, implantSlot: slot })
+        }
+      }
+      if (typesToUpdate.length > 0) {
+        await saveTypes(typesToUpdate)
+      }
     }
   }
 
