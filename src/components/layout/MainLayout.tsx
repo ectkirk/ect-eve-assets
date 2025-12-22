@@ -194,9 +194,6 @@ function MainLayoutInner() {
           <span className="text-lg font-bold tracking-tight text-content">
             <span className="text-accent">ECT</span> EVE Assets
           </span>
-          <span className="text-[10px] tracking-[0.2em] text-content-secondary">
-            We Like The Data
-          </span>
         </div>
         <div
           className="mx-4"

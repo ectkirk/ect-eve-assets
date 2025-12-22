@@ -208,7 +208,7 @@ const SUCCESS_HTML = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Authentication Successful</title>
+  <title>ECT EVE Assets - Login Successful</title>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -217,23 +217,49 @@ const SUCCESS_HTML = `<!DOCTYPE html>
       align-items: center;
       height: 100vh;
       margin: 0;
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-      color: #e0e0e0;
+      background: #0f172a;
+      color: #f8fafc;
     }
     .container {
       text-align: center;
-      padding: 40px;
-      background: rgba(255,255,255,0.05);
-      border-radius: 12px;
-      border: 1px solid rgba(255,255,255,0.1);
+      padding: 48px 64px;
+      background: #1e293b;
+      border-radius: 8px;
+      border: 1px solid #334155;
     }
-    h1 { color: #4ade80; margin-bottom: 16px; }
-    p { color: #a0a0a0; }
+    .brand {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 24px;
+    }
+    .brand .accent { color: #3b82f6; }
+    .status {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: #10b981;
+      font-size: 18px;
+      margin-bottom: 12px;
+    }
+    .check {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #10b981;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #0f172a;
+      font-weight: bold;
+    }
+    p { color: #94a3b8; font-size: 14px; margin: 0; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>✓ Authentication Successful</h1>
+    <div class="brand"><span class="accent">ECT</span> EVE Assets</div>
+    <div class="status"><span class="check">✓</span> Login Successful</div>
     <p>You can close this tab and return to the application.</p>
   </div>
   <script>window.close();</script>
@@ -255,7 +281,7 @@ const ERROR_HTML = (error: string) => `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Authentication Failed</title>
+  <title>ECT EVE Assets - Login Failed</title>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -264,24 +290,50 @@ const ERROR_HTML = (error: string) => `<!DOCTYPE html>
       align-items: center;
       height: 100vh;
       margin: 0;
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-      color: #e0e0e0;
+      background: #0f172a;
+      color: #f8fafc;
     }
     .container {
       text-align: center;
-      padding: 40px;
-      background: rgba(255,255,255,0.05);
-      border-radius: 12px;
-      border: 1px solid rgba(255,255,255,0.1);
+      padding: 48px 64px;
+      background: #1e293b;
+      border-radius: 8px;
+      border: 1px solid #334155;
     }
-    h1 { color: #f87171; margin-bottom: 16px; }
-    p { color: #a0a0a0; }
-    .error { color: #fca5a5; font-size: 14px; margin-top: 12px; }
+    .brand {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 24px;
+    }
+    .brand .accent { color: #3b82f6; }
+    .status {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: #f87171;
+      font-size: 18px;
+      margin-bottom: 12px;
+    }
+    .x-mark {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #f87171;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #0f172a;
+      font-weight: bold;
+    }
+    p { color: #94a3b8; font-size: 14px; margin: 0; }
+    .error { color: #fca5a5; font-size: 12px; margin-top: 16px; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>✗ Authentication Failed</h1>
+    <div class="brand"><span class="accent">ECT</span> EVE Assets</div>
+    <div class="status"><span class="x-mark">✗</span> Login Failed</div>
     <p>Please close this tab and try again.</p>
     <p class="error">${escapeHtml(error)}</p>
   </div>

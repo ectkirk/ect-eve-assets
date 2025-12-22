@@ -38,7 +38,6 @@ test.describe('Application Launch', () => {
 
   test('shows login screen when not authenticated', async () => {
     await expect(page.getByText('ECT EVE Assets')).toBeVisible()
-    await expect(page.getByText('We Like The Data')).toBeVisible()
   })
 
   test('has EVE SSO login button', async () => {
