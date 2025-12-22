@@ -375,13 +375,6 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
     let effectiveExpiry = expiresAt
     if (isEmpty && cacheTime < EMPTY_RESULT_CACHE_MS) {
       effectiveExpiry = now + EMPTY_RESULT_CACHE_MS
-      logger.debug('Extended cache for empty result', {
-        module: 'ExpiryCacheStore',
-        ownerKey,
-        endpoint,
-        originalCacheMinutes: Math.round(cacheTime / 60000),
-        extendedCacheMinutes: 60,
-      })
     }
 
     const expiry: EndpointExpiry = {
@@ -419,10 +412,6 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
       callbacks.set(endpointPattern, callback)
       sortedPatternsCache = null
       return { callbacks }
-    })
-    logger.debug('Registered refresh callback', {
-      module: 'ExpiryCacheStore',
-      pattern: endpointPattern,
     })
 
     return () => {
@@ -525,11 +514,6 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
         ownerKey,
       })
     })
-
-    logger.debug('Cleared expiry for owner', {
-      module: 'ExpiryCacheStore',
-      ownerKey,
-    })
   },
 
   clearByEndpoint: async (pattern) => {
@@ -546,10 +530,6 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
 
     try {
       await deleteFromDBWhere((key) => key.includes(pattern))
-      logger.debug('Cleared expiry by endpoint', {
-        module: 'ExpiryCacheStore',
-        pattern,
-      })
     } catch (error) {
       logger.error('Failed to clear expiry by endpoint', error, {
         module: 'ExpiryCacheStore',
@@ -625,12 +605,10 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
 
   pause: () => {
     set({ isPaused: true })
-    logger.debug('Expiry cache polling paused', { module: 'ExpiryCacheStore' })
   },
 
   resume: () => {
     set({ isPaused: false })
-    logger.debug('Expiry cache polling resumed', { module: 'ExpiryCacheStore' })
     processQueue()
   },
 }))

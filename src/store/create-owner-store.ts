@@ -204,10 +204,6 @@ export function createOwnerStore<
             set({ updateError: 'No owners logged in' } as Partial<
               OwnerStore<TOwnerData, TExtraState, TExtraActions>
             >)
-          } else {
-            logger.debug(`No ${ownerFilter} owners for ${name} update`, {
-              module: moduleName,
-            })
           }
           return
         }
@@ -222,7 +218,6 @@ export function createOwnerStore<
             })
 
         if (ownersToUpdate.length === 0) {
-          logger.debug(`No owners need ${name} update`, { module: moduleName })
           return
         }
 
@@ -240,13 +235,6 @@ export function createOwnerStore<
 
           for (const owner of ownersToUpdate) {
             if (!ownerHasRequiredScope(owner)) {
-              logger.debug(
-                `Skipping ${name} for ${owner.name} - missing required scope`,
-                {
-                  module: moduleName,
-                  requiredScope,
-                }
-              )
               const ownerId = makeOwnerKey(owner.type, owner.id)
               useAuthStore.getState().setOwnerScopesOutdated(ownerId, true)
               continue
@@ -332,13 +320,6 @@ export function createOwnerStore<
         if (ownerFilter === 'corporation' && owner.type !== 'corporation')
           return
         if (!ownerHasRequiredScope(owner)) {
-          logger.debug(
-            `Skipping ${name} for ${owner.name} - missing required scope`,
-            {
-              module: moduleName,
-              requiredScope,
-            }
-          )
           const ownerId = makeOwnerKey(owner.type, owner.id)
           useAuthStore.getState().setOwnerScopesOutdated(ownerId, true)
           return
@@ -346,12 +327,6 @@ export function createOwnerStore<
 
         const ownerKey = `${owner.type}-${owner.id}`
         if (updatingOwners.has(ownerKey)) {
-          logger.debug(
-            `Skipping ${name} update for ${owner.name} - already in progress`,
-            {
-              module: moduleName,
-            }
-          )
           return
         }
         updatingOwners.add(ownerKey)

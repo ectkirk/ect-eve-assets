@@ -1,5 +1,4 @@
 import { esi } from '../esi'
-import { logger } from '@/lib/logger'
 import { ESICorporationStructureSchema } from '../schemas'
 import { z } from 'zod'
 
@@ -12,19 +11,8 @@ export async function getCorporationStructures(
   corporationId: number
 ): Promise<ESICorporationStructure[]> {
   const endpoint = `/corporations/${corporationId}/structures`
-  logger.debug('Fetching corporation structures', {
-    module: 'Structures',
-    corporationId,
-    endpoint,
-  })
-  const result = await esi.fetchPaginated<ESICorporationStructure>(endpoint, {
+  return esi.fetchPaginated<ESICorporationStructure>(endpoint, {
     characterId,
     schema: ESICorporationStructureSchema,
   })
-  logger.debug('Corporation structures result', {
-    module: 'Structures',
-    corporationId,
-    count: result.length,
-  })
-  return result
 }

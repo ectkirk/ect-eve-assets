@@ -79,8 +79,6 @@ export { notifyListeners as notifyCacheListeners }
 export async function initCache(): Promise<void> {
   if (initialized) return
 
-  logger.debug('Initializing reference cache', { module: 'ReferenceCache' })
-
   try {
     const [
       types,

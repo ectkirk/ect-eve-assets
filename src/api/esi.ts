@@ -133,8 +133,6 @@ export function setupESITokenProvider(): () => void {
 
   const cleanup = window.electronAPI.esi.onRequestToken(
     async (characterId: number) => {
-      logger.debug('Token requested', { module: 'ESI', characterId })
-
       const store = useAuthStore.getState()
       const charOwnerKey = ownerKey('character', characterId)
       let owner = store.getOwner(charOwnerKey)
@@ -155,26 +153,15 @@ export function setupESITokenProvider(): () => void {
       const ownerId = ownerKey(owner.type, owner.id)
 
       if (owner.authFailed) {
-        logger.debug('Owner auth already failed, skipping', {
-          module: 'ESI',
-          ownerId,
-        })
         window.electronAPI!.esi.provideToken(characterId, null)
         return
       }
 
       const needsRefresh =
         !owner.accessToken || store.isOwnerTokenExpired(ownerId)
-      logger.debug('Token status', {
-        module: 'ESI',
-        ownerId,
-        needsRefresh,
-        hasAccessToken: !!owner.accessToken,
-      })
 
       if (needsRefresh && owner.refreshToken) {
         try {
-          logger.debug('Refreshing token', { module: 'ESI', ownerId })
           const result = await window.electronAPI!.refreshToken(
             owner.refreshToken,
             owner.characterId
@@ -185,10 +172,6 @@ export function setupESITokenProvider(): () => void {
               refreshToken: result.refreshToken,
               expiresAt: result.expiresAt ?? Date.now() + 1200000,
               scopes: result.scopes,
-            })
-            logger.debug('Token refreshed successfully', {
-              module: 'ESI',
-              ownerId,
             })
             window.electronAPI!.esi.provideToken(
               characterId,

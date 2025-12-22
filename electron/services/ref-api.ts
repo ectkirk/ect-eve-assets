@@ -40,7 +40,6 @@ async function waitForRefRateLimit(): Promise<void> {
 
   if (refGlobalRetryAfter > now) {
     const waitMs = refGlobalRetryAfter - now
-    logger.debug('Waiting for global backoff', { module: 'RefAPI', waitMs })
     await new Promise((r) => setTimeout(r, waitMs))
   }
 

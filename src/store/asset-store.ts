@@ -107,12 +107,6 @@ async function fetchOwnerAssetNames(
   const nameableIds = assets
     .filter((a) => a.is_singleton && isNameable(a.type_id))
     .map((a) => a.item_id)
-  logger.debug('Nameable items', {
-    module: 'AssetStore',
-    owner: owner.name,
-    count: nameableIds.length,
-    total: assets.length,
-  })
   if (nameableIds.length === 0) return []
   if (owner.type === 'corporation') {
     try {
@@ -121,10 +115,6 @@ async function fetchOwnerAssetNames(
         owner.characterId,
         nameableIds
       )
-      logger.debug('Corp asset names returned', {
-        module: 'AssetStore',
-        count: names.length,
-      })
       return names
     } catch (err) {
       logger.error(
@@ -223,7 +213,6 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         })
 
     if (ownersToUpdate.length === 0) {
-      logger.debug('No owners need asset update', { module: 'AssetStore' })
       return
     }
 

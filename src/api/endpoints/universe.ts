@@ -123,7 +123,6 @@ export async function resolveStructures(
         }
         results.set(structureId, placeholder)
         toCache.push(placeholder)
-        logger.debug('Structure inaccessible', { module: 'ESI', structureId })
       }
     }
   }

@@ -356,7 +356,6 @@ async function handleCallbackRequest(
   }
 
   try {
-    logger.debug('Exchanging auth code for tokens', { module: 'Auth' })
     const tokens = await exchangeCodeForTokens(code, codeVerifier)
     const jwt = await verifyToken(tokens.access_token)
     const expiresAt = Date.now() + tokens.expires_in * 1000
@@ -420,10 +419,6 @@ function startCallbackServer(): Promise<void> {
     })
 
     callbackServer.listen(CALLBACK_PORT, '127.0.0.1', () => {
-      logger.debug('Callback server started', {
-        module: 'Auth',
-        port: CALLBACK_PORT,
-      })
       resolve()
     })
   })
@@ -433,7 +428,6 @@ function stopCallbackServer(): void {
   if (callbackServer) {
     callbackServer.close()
     callbackServer = null
-    logger.debug('Callback server stopped', { module: 'Auth' })
   }
 }
 
@@ -519,8 +513,6 @@ export async function startAuth(
 export async function refreshAccessToken(
   refreshToken: string
 ): Promise<AuthResult> {
-  logger.debug('Refreshing access token', { module: 'Auth' })
-
   try {
     const response = await fetch(EVE_SSO.tokenUrl, {
       method: 'POST',
@@ -576,8 +568,6 @@ export async function refreshAccessToken(
 }
 
 export async function revokeToken(refreshToken: string): Promise<boolean> {
-  logger.debug('Revoking token', { module: 'Auth' })
-
   try {
     const response = await fetch(EVE_SSO.revokeUrl, {
       method: 'POST',

@@ -283,19 +283,6 @@ function setupKeyboardShortcuts(mainWindow: BrowserWindow): void {
     }
   })
 
-  mainWindow.webContents.on('console-message', (event) => {
-    const levelMap: Record<string, string> = {
-      '0': 'LOG',
-      '1': 'INFO',
-      '2': 'WARN',
-      '3': 'ERROR',
-    }
-    const levelName = levelMap[String(event.level)] || 'LOG'
-    logger.debug(`[Renderer:${levelName}] ${event.message}`, {
-      module: 'Renderer',
-    })
-  })
-
   mainWindow.webContents.on('render-process-gone', (_event, details) => {
     logger.error('Renderer process gone', undefined, {
       module: 'Window',

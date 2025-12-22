@@ -61,12 +61,6 @@ export async function detectAndInjectActiveShip(
     ])
 
     if (!missingParentIds.has(shipInfo.ship_item_id)) {
-      logger.debug('Active ship not in missing parents', {
-        module: 'AssetStore',
-        owner: owner.name,
-        shipItemId: shipInfo.ship_item_id,
-        missingParentIds: Array.from(missingParentIds),
-      })
       return nullResult
     }
 

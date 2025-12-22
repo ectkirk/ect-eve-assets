@@ -27,9 +27,6 @@ export function initUpdater(mainWindow: BrowserWindow): void {
   })
 
   autoUpdater.on('download-progress', (progress) => {
-    logger.debug(`Download progress: ${progress.percent.toFixed(1)}%`, {
-      module: 'Updater',
-    })
     if (!mainWindow.isDestroyed()) {
       mainWindow.webContents.send('updater:download-progress', progress.percent)
     }

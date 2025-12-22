@@ -1,5 +1,4 @@
 import { esi } from '../esi'
-import { logger } from '@/lib/logger'
 import {
   ESIMarketOrderSchema,
   ESICorporationMarketOrderSchema,
@@ -165,8 +164,6 @@ function calculatePriceData(orders: ESIRegionOrder[]): PriceData {
 async function fetchAllRegionOrders(
   regionId: number
 ): Promise<ESIRegionOrder[]> {
-  logger.debug('Fetching regional market orders', { module: 'ESI', regionId })
-
   return esi.fetchPaginated<ESIRegionOrder>(
     `/markets/${regionId}/orders/?order_type=all`,
     { requiresAuth: false, schema: ESIRegionOrderSchema }
@@ -192,11 +189,6 @@ export async function getRegionalMarketPrices(
   for (const [typeId, orders] of ordersByType) {
     prices.set(typeId, calculatePriceData(orders))
   }
-
-  logger.debug('Calculated regional prices', {
-    module: 'ESI',
-    types: prices.size,
-  })
 
   return prices
 }

@@ -220,13 +220,6 @@ async function processStructure(
         lastFetchAt: fetchTime,
       })
     }
-
-    logger.debug('Fetched structure market', {
-      module: 'RegionalMarketStore',
-      structureId,
-      sellTypes: lowestByType.size,
-      buyTypes: highestByType.size,
-    })
   } catch (err) {
     logger.warn('Failed to fetch structure orders', {
       module: 'RegionalMarketStore',

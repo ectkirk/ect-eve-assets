@@ -1,5 +1,4 @@
 import { esi } from '../esi'
-import { logger } from '@/lib/logger'
 import { ESIIndustryJobSchema } from '../schemas'
 import { z } from 'zod'
 
@@ -9,21 +8,10 @@ export async function getCharacterIndustryJobs(
   characterId: number
 ): Promise<ESIIndustryJob[]> {
   const endpoint = `/characters/${characterId}/industry/jobs`
-  logger.debug('Fetching character industry jobs', {
-    module: 'Industry',
-    characterId,
-    endpoint,
-  })
-  const result = await esi.fetch<ESIIndustryJob[]>(endpoint, {
+  return esi.fetch<ESIIndustryJob[]>(endpoint, {
     characterId,
     schema: z.array(ESIIndustryJobSchema),
   })
-  logger.debug('Character industry jobs result', {
-    module: 'Industry',
-    characterId,
-    count: result.length,
-  })
-  return result
 }
 
 export async function getCorporationIndustryJobs(

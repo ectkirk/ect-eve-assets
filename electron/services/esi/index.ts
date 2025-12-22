@@ -253,16 +253,6 @@ export class MainESIService {
       const expiresAt = expiresHeader ? new Date(expiresHeader).getTime() : null
       const etag = response.headers.get('ETag')
 
-      if (expiresAt) {
-        logger.debug('ESI response headers', {
-          module: 'ESI',
-          url,
-          status: response.status,
-          expiresHeader,
-          expiresAt,
-          expiresIn: Math.round((expiresAt - Date.now()) / 1000),
-        })
-      }
       const xPages = response.headers.get('X-Pages')
 
       if (response.status === 304) {
@@ -340,12 +330,10 @@ export class MainESIService {
 
   pause(): void {
     this.paused = true
-    logger.debug('ESI requests paused', { module: 'ESI' })
   }
 
   resume(): void {
     this.paused = false
-    logger.debug('ESI requests resumed', { module: 'ESI' })
   }
 
   private loadState(): void {
