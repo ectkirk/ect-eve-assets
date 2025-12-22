@@ -17,6 +17,7 @@ import {
   getStructure,
   getLocation,
   getAbyssalPrice,
+  getBlueprint,
 } from '@/store/reference-cache'
 
 export interface AssetLookupMap {
@@ -221,10 +222,15 @@ export function resolveAsset(
   const sdeType = getType(asset.type_id)
   const customName = assetNames.get(asset.item_id)
   const isBpc = asset.is_blueprint_copy ?? false
+  const blueprint = getBlueprint(asset.type_id)
 
   const volume = sdeType?.packagedVolume ?? sdeType?.volume ?? 0
   const abyssalPrice = getAbyssalPrice(asset.item_id)
-  const price = isBpc ? 0 : (abyssalPrice ?? prices.get(asset.type_id) ?? 0)
+  const price = isBpc
+    ? 0
+    : blueprint
+      ? (blueprint.basePrice ?? 0)
+      : (abyssalPrice ?? prices.get(asset.type_id) ?? 0)
 
   return {
     asset,
@@ -397,9 +403,14 @@ export function resolveContractItem(
 
   const sdeType = getType(item.type_id)
   const isBpc = item.is_blueprint_copy ?? false
+  const blueprint = getBlueprint(item.type_id)
 
   const volume = sdeType?.packagedVolume ?? sdeType?.volume ?? 0
-  const price = isBpc ? 0 : (prices.get(item.type_id) ?? 0)
+  const price = isBpc
+    ? 0
+    : blueprint
+      ? (blueprint.basePrice ?? 0)
+      : (prices.get(item.type_id) ?? 0)
 
   const modeFlags: AssetModeFlags = {
     inHangar: false,

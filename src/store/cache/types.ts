@@ -38,6 +38,7 @@ export interface CachedGroup {
 export interface CachedBlueprint {
   id: number
   productId: number
+  basePrice?: number
 }
 
 export interface CachedType {
@@ -133,6 +134,7 @@ const CachedGroupSchema = z.object({
 const CachedBlueprintSchema = z.object({
   id: z.number(),
   productId: z.number(),
+  basePrice: z.number().optional(),
 })
 
 const CachedTypeSchema = z.object({

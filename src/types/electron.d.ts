@@ -182,7 +182,9 @@ declare global {
     productName: string
   }
 
-  type BlueprintsResult = { items: Record<string, number> } | { error: string }
+  type BlueprintsResult =
+    | { items: Record<string, [number, number | null]> }
+    | { error: string }
 
   interface BuybackConfig {
     buyRate: number

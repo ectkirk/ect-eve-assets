@@ -181,7 +181,7 @@ export interface BlueprintListItem {
 }
 
 export type BlueprintsResult =
-  | { items: Record<string, number> }
+  | { items: Record<string, [number, number | null]> }
   | { error: string }
 
 export interface BuybackConfig {

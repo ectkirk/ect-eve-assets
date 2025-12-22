@@ -242,9 +242,10 @@ async function loadBlueprints(): Promise<void> {
   }
 
   const blueprints: CachedBlueprint[] = Object.entries(result.items).map(
-    ([bpId, productId]) => ({
+    ([bpId, [productId, basePrice]]) => ({
       id: Number(bpId),
       productId,
+      basePrice: basePrice ?? undefined,
     })
   )
 
