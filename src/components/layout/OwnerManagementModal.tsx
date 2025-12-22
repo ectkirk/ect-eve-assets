@@ -81,6 +81,11 @@ export function OwnerManagementModal({
     return map
   }, [corpOwners])
 
+  const addedCorpIds = useMemo(
+    () => new Set(corpOwners.map((c) => c.id)),
+    [corpOwners]
+  )
+
   const filteredCharacters = useMemo(() => {
     if (!searchQuery) return characterOwners
     const query = searchQuery.toLowerCase()
@@ -422,7 +427,9 @@ export function OwnerManagementModal({
                     const characterCorps = getFilteredCorpsForCharacter(
                       character.id
                     )
-                    const hasCorp = characterCorps.length > 0
+                    const corpAlreadyAdded = addedCorpIds.has(
+                      character.corporationId
+                    )
 
                     return (
                       <Fragment key={charKey}>
@@ -432,7 +439,7 @@ export function OwnerManagementModal({
                           disabled={isBusy}
                           isRefreshingRoles={refreshingRolesOwner === charKey}
                           hasDirectorRole={hasDirector}
-                          hasCorporation={hasCorp}
+                          hasCorporation={corpAlreadyAdded}
                           onToggle={() => handleToggleOwner(character)}
                           onRemove={(e) => handleRemoveOwnerClick(character, e)}
                           onReauth={(e) => handleReauth(character, e)}

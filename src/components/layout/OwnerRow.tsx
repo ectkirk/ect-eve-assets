@@ -12,6 +12,7 @@ import {
   CheckSquare,
   AlertCircle,
   RefreshCw,
+  Building2,
 } from 'lucide-react'
 import { OwnerIcon } from '@/components/ui/type-icon'
 
@@ -79,6 +80,19 @@ export function OwnerRow({
             <AlertCircle className="h-3 w-3" />
             Upgrade scopes
           </span>
+        )}
+        {canAddCorporation && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onAddCorporation?.()
+            }}
+            className="flex items-center gap-1 rounded bg-accent/10 px-1.5 py-0.5 text-xs text-accent hover:bg-accent/20"
+            title="You're a director — click to add your corporation"
+          >
+            <Building2 className="h-3 w-3" />
+            Add Corp
+          </button>
         )}
       </div>
       <div className="flex items-center gap-1">
