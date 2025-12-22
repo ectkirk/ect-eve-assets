@@ -14,8 +14,27 @@ import {
   useBuybackSelection,
 } from '@/hooks'
 import { useColumnSettings } from '@/hooks'
-import type { TreeNode } from '@/lib/tree-types'
+import type { TreeNode, TreeNodeType } from '@/lib/tree-types'
 import { flattenTree, getAllNodeIds } from '@/lib/tree-builder'
+
+const LOCATION_NODE_TYPES: Set<TreeNodeType> = new Set([
+  'station',
+  'office',
+  'division',
+])
+
+function collectDescendantItems(node: TreeNode): TreeNode[] {
+  const items: TreeNode[] = []
+  const stack = [...node.children]
+  while (stack.length > 0) {
+    const current = stack.pop()!
+    if (current.nodeType === 'item' || current.nodeType === 'ship') {
+      items.push(current)
+    }
+    stack.push(...current.children)
+  }
+  return items
+}
 import { getType } from '@/store/reference-cache'
 import { cn } from '@/lib/utils'
 import { useTabControls } from '@/context'
@@ -92,10 +111,36 @@ export function TreeTable({
     containerRef: tableContainerRef,
   })
 
-  const buybackItems = useMemo(
-    () =>
-      flatRows
-        .filter((node) => node.nodeType === 'item' || node.nodeType === 'ship')
+  const { buybackItems, expandedBuybackIds, hasLocationSelected } =
+    useMemo(() => {
+      const itemNodes: TreeNode[] = []
+      const expandedIds = new Set(selectedIds)
+      let hasLocation = false
+
+      for (const node of flatRows) {
+        if (node.nodeType === 'item' || node.nodeType === 'ship') {
+          itemNodes.push(node)
+        }
+        if (
+          selectedIds.has(node.id) &&
+          LOCATION_NODE_TYPES.has(node.nodeType)
+        ) {
+          hasLocation = true
+          const descendants = collectDescendantItems(node)
+          for (const desc of descendants) {
+            expandedIds.add(desc.id)
+            itemNodes.push(desc)
+          }
+        }
+      }
+
+      const seenIds = new Set<string>()
+      const items = itemNodes
+        .filter((node) => {
+          if (seenIds.has(node.id)) return false
+          seenIds.add(node.id)
+          return true
+        })
         .map((node) => ({
           id: node.id,
           name: node.typeId
@@ -105,13 +150,19 @@ export function TreeTable({
           locationId: node.locationId,
           systemId: node.systemId,
           regionId: node.regionId,
-        })),
-    [flatRows]
-  )
+        }))
+
+      return {
+        buybackItems: items,
+        expandedBuybackIds: expandedIds,
+        hasLocationSelected: hasLocation,
+      }
+    }, [selectedIds, flatRows])
 
   const { canSellToBuyback, handleSellToBuyback } = useBuybackSelection({
-    selectedIds,
+    selectedIds: expandedBuybackIds,
     items: buybackItems,
+    minItems: hasLocationSelected ? 1 : 2,
   })
 
   const rowVirtualizer = useVirtualizer({
