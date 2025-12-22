@@ -1,6 +1,6 @@
 import { useEffect, useState, Component, type ReactNode } from 'react'
 import { useAuthStore } from './store/auth-store'
-import { useAssetStore } from './store/asset-store'
+import { useAssetStore, stopPriceRefreshTimer } from './store/asset-store'
 import { useStoreRegistry } from './store/store-registry'
 import { useRegionalMarketStore } from './store/regional-market-store'
 import { useESIPricesStore } from './store/esi-prices-store'
@@ -78,7 +78,10 @@ function App() {
 
   useEffect(() => {
     const cleanupTokenProvider = setupESITokenProvider()
-    return cleanupTokenProvider
+    return () => {
+      cleanupTokenProvider()
+      stopPriceRefreshTimer()
+    }
   }, [])
 
   useEffect(() => {

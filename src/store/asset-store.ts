@@ -49,6 +49,7 @@ interface AssetActions {
   removeForOwner: (ownerType: string, ownerId: number) => Promise<void>
   setPrices: (newPrices: Map<number, number>) => Promise<void>
   refreshPrices: () => Promise<void>
+  pruneStaleMetadata: () => Promise<void>
   clear: () => Promise<void>
 }
 
@@ -473,6 +474,8 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
     useExpiryCacheStore.getState().clearForOwner(ownerKey)
 
     logger.info('Assets removed for owner', { module: 'AssetStore', ownerKey })
+
+    get().pruneStaleMetadata()
   },
 
   setPrices: async (newPrices: Map<number, number>) => {
@@ -531,6 +534,54 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         err instanceof Error ? err : undefined,
         { module: 'AssetStore' }
       )
+    }
+  },
+
+  pruneStaleMetadata: async () => {
+    const state = get()
+    const currentItemIds = new Set<number>()
+    for (const { assets } of state.assetsByOwner) {
+      for (const asset of assets) {
+        currentItemIds.add(asset.item_id)
+      }
+    }
+
+    const currentTypeIds = collectAllTypeIds(
+      state.assetsByOwner,
+      useMarketOrdersStore.getOrdersByOwner(),
+      useContractsStore.getContractsByOwner(),
+      useIndustryJobsStore.getJobsByOwner(),
+      useStructuresStore.getState().dataByOwner
+    )
+
+    const prunedNames = new Map<number, string>()
+    let namesRemoved = 0
+    for (const [itemId, name] of state.assetNames) {
+      if (currentItemIds.has(itemId)) {
+        prunedNames.set(itemId, name)
+      } else {
+        namesRemoved++
+      }
+    }
+
+    const prunedPrices = new Map<number, number>()
+    let pricesRemoved = 0
+    for (const [typeId, price] of state.prices) {
+      if (currentTypeIds.has(typeId)) {
+        prunedPrices.set(typeId, price)
+      } else {
+        pricesRemoved++
+      }
+    }
+
+    if (namesRemoved > 0 || pricesRemoved > 0) {
+      await saveMetaToDB(prunedNames, prunedPrices, state.lastPriceRefreshAt)
+      set({ assetNames: prunedNames, prices: prunedPrices })
+      logger.info('Pruned stale metadata', {
+        module: 'AssetStore',
+        namesRemoved,
+        pricesRemoved,
+      })
     }
   },
 

@@ -22,7 +22,11 @@ import {
   type CachedType,
 } from '@/store/reference-cache'
 import { resolveTypes, resolveLocations } from '@/api/ref-client'
-import { resolveStructures, resolveNames, hasName } from '@/api/endpoints/universe'
+import {
+  resolveStructures,
+  resolveNames,
+  hasName,
+} from '@/api/endpoints/universe'
 import { logger } from './logger'
 
 export interface ResolutionIds {

@@ -343,8 +343,11 @@ export class MainESIService {
         const states = JSON.parse(data)
         this.rateLimiter.loadState(states)
       }
-    } catch {
-      // Ignore load errors
+    } catch (err) {
+      logger.debug('Failed to load rate limit state', {
+        module: 'ESI',
+        error: err instanceof Error ? err.message : String(err),
+      })
     }
     this.cache.load()
   }
@@ -361,8 +364,11 @@ export class MainESIService {
     try {
       const states = this.rateLimiter.exportState()
       fs.writeFileSync(this.rateLimitFilePath, JSON.stringify(states, null, 2))
-    } catch {
-      // Ignore save errors
+    } catch (err) {
+      logger.debug('Failed to save rate limit state', {
+        module: 'ESI',
+        error: err instanceof Error ? err.message : String(err),
+      })
     }
   }
 

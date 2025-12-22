@@ -3,20 +3,10 @@ import type { ESIResponseMeta, ESIRequestOptions } from 'electron/preload'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { logger } from '@/lib/logger'
 import { ValidationError, ConfigurationError } from '@/lib/errors'
+import { ESIError } from '../../shared/esi-types'
 
 export type { ESIResponseMeta, ESIRequestOptions }
-
-export class ESIError extends Error {
-  status: number
-  retryAfter?: number
-
-  constructor(message: string, status: number, retryAfter?: number) {
-    super(message)
-    this.name = 'ESIError'
-    this.status = status
-    this.retryAfter = retryAfter
-  }
-}
+export { ESIError }
 
 function validate<T>(data: unknown, schema: z.ZodType<T>, endpoint: string): T {
   const result = schema.safeParse(data)

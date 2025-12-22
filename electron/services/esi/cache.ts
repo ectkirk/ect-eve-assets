@@ -1,5 +1,8 @@
 import * as fs from 'fs'
 import type { CacheEntry } from './types'
+import { logger } from '../logger.js'
+
+const MAX_ENTRIES = 2000
 
 interface SerializedCache {
   version: 1
@@ -27,8 +30,11 @@ export class ESICache {
           }
         }
       }
-    } catch {
-      // Ignore load errors
+    } catch (err) {
+      logger.debug('Failed to load ESI cache', {
+        module: 'ESICache',
+        error: err instanceof Error ? err.message : String(err),
+      })
     }
   }
 
@@ -52,8 +58,11 @@ export class ESICache {
       }
       const serialized: SerializedCache = { version: 1, entries }
       fs.writeFileSync(this.filePath, JSON.stringify(serialized))
-    } catch {
-      // Ignore save errors
+    } catch (err) {
+      logger.debug('Failed to save ESI cache', {
+        module: 'ESICache',
+        error: err instanceof Error ? err.message : String(err),
+      })
     }
   }
 
@@ -84,7 +93,25 @@ export class ESICache {
 
   set(key: string, data: unknown, etag: string, expires: number): void {
     this.cache.set(key, { data, etag, expires })
+    if (this.cache.size > MAX_ENTRIES) {
+      this.evictOldest()
+    }
     this.scheduleSave()
+  }
+
+  private evictOldest(): void {
+    const now = Date.now()
+    const entries = Array.from(this.cache.entries())
+      .map(([k, v]) => ({ key: k, expires: v.expires }))
+      .sort((a, b) => a.expires - b.expires)
+
+    const toRemove = Math.max(1, Math.floor(entries.length * 0.1))
+    for (let i = 0; i < toRemove && i < entries.length; i++) {
+      const entry = entries[i]
+      if (entry && (entry.expires < now || this.cache.size > MAX_ENTRIES)) {
+        this.cache.delete(entry.key)
+      }
+    }
   }
 
   updateExpires(key: string, expires: number): void {
