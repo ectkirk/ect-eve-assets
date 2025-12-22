@@ -1,6 +1,6 @@
 {
   "name": "ecteveassets",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "type": "module",
   "description": "EVE Online Asset Management Desktop Application",
   "main": "dist-electron/main.js",
@@ -110,6 +110,8 @@
     "electron": "39.2.7",
     "electron-builder": "^26.0.12",
     "eslint": "9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
     "eslint-plugin-react-hooks": "7.0.1",
     "fake-indexeddb": "^6.2.5",
     "globals": "16.5.0",

@@ -76,7 +76,9 @@ describe('asset-store', () => {
 
       await useAssetStore.getState().update(true)
 
-      expect(useAssetStore.getState().updateError).toBe('No characters logged in')
+      expect(useAssetStore.getState().updateError).toBe(
+        'No characters logged in'
+      )
     })
 
     it('skips update when already updating', async () => {
@@ -85,19 +87,30 @@ describe('asset-store', () => {
 
       await useAssetStore.getState().update(true)
 
-      expect(useAssetStore.getState().assetsByOwner).toBe(initialState.assetsByOwner)
+      expect(useAssetStore.getState().assetsByOwner).toBe(
+        initialState.assetsByOwner
+      )
     })
 
     it('skips owners whose data is not expired when not forced', async () => {
       const { useAuthStore } = await import('./auth-store')
       const { esi } = await import('@/api/esi')
 
-      const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
-      vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
+      const mockOwner = createMockOwner({
+        id: 12345,
+        name: 'Test',
+        type: 'character',
+      })
+      vi.mocked(useAuthStore.getState).mockReturnValue(
+        createMockAuthState({ 'character-12345': mockOwner })
+      )
 
       useExpiryCacheStore.setState({
         endpoints: new Map([
-          ['character-12345:/characters/12345/assets/', { expiresAt: Date.now() + 60000, etag: null }],
+          [
+            'character-12345:/characters/12345/assets/',
+            { expiresAt: Date.now() + 60000, etag: null },
+          ],
         ]),
         initialized: true,
       })
@@ -113,12 +126,28 @@ describe('asset-store', () => {
       const { getCharacterAssetNames } = await import('@/api/endpoints/assets')
       const { fetchPrices, resolveTypes } = await import('@/api/ref-client')
 
-      const mockOwner = createMockOwner({ id: 12345, name: 'Test Character', type: 'character' })
-      vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
+      const mockOwner = createMockOwner({
+        id: 12345,
+        name: 'Test Character',
+        type: 'character',
+      })
+      vi.mocked(useAuthStore.getState).mockReturnValue(
+        createMockAuthState({ 'character-12345': mockOwner })
+      )
 
       const futureExpiry = Date.now() + 3600000
       vi.mocked(esi.fetchPaginatedWithMeta).mockResolvedValue({
-        data: [{ item_id: 1, type_id: 34, location_id: 60003760, location_type: 'station', location_flag: 'Hangar', quantity: 100, is_singleton: false }],
+        data: [
+          {
+            item_id: 1,
+            type_id: 34,
+            location_id: 60003760,
+            location_type: 'station',
+            location_flag: 'Hangar',
+            quantity: 100,
+            is_singleton: false,
+          },
+        ],
         expiresAt: futureExpiry,
         etag: '"abc123"',
         notModified: false,
@@ -129,7 +158,10 @@ describe('asset-store', () => {
 
       useExpiryCacheStore.setState({
         endpoints: new Map([
-          ['character-12345:/characters/12345/assets/', { expiresAt: Date.now() - 1000, etag: null }],
+          [
+            'character-12345:/characters/12345/assets/',
+            { expiresAt: Date.now() - 1000, etag: null },
+          ],
         ]),
         initialized: true,
       })
@@ -140,7 +172,9 @@ describe('asset-store', () => {
       expect(useAssetStore.getState().assetsByOwner).toHaveLength(1)
       expect(useAssetStore.getState().isUpdating).toBe(false)
 
-      const expiry = useExpiryCacheStore.getState().endpoints.get('character-12345:/characters/12345/assets/')
+      const expiry = useExpiryCacheStore
+        .getState()
+        .endpoints.get('character-12345:/characters/12345/assets/')
       expect(expiry?.expiresAt).toBe(futureExpiry)
       expect(expiry?.etag).toBe('"abc123"')
     })
@@ -151,8 +185,14 @@ describe('asset-store', () => {
       const { getCharacterAssetNames } = await import('@/api/endpoints/assets')
       const { fetchPrices, resolveTypes } = await import('@/api/ref-client')
 
-      const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
-      vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
+      const mockOwner = createMockOwner({
+        id: 12345,
+        name: 'Test',
+        type: 'character',
+      })
+      vi.mocked(useAuthStore.getState).mockReturnValue(
+        createMockAuthState({ 'character-12345': mockOwner })
+      )
 
       vi.mocked(esi.fetchPaginatedWithMeta).mockResolvedValue({
         data: [],
@@ -166,7 +206,10 @@ describe('asset-store', () => {
 
       useExpiryCacheStore.setState({
         endpoints: new Map([
-          ['character-12345:/characters/12345/assets/', { expiresAt: Date.now() + 60000, etag: null }],
+          [
+            'character-12345:/characters/12345/assets/',
+            { expiresAt: Date.now() + 60000, etag: null },
+          ],
         ]),
         initialized: true,
       })
@@ -180,10 +223,18 @@ describe('asset-store', () => {
       const { useAuthStore } = await import('./auth-store')
       const { esi } = await import('@/api/esi')
 
-      const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
-      vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
+      const mockOwner = createMockOwner({
+        id: 12345,
+        name: 'Test',
+        type: 'character',
+      })
+      vi.mocked(useAuthStore.getState).mockReturnValue(
+        createMockAuthState({ 'character-12345': mockOwner })
+      )
 
-      vi.mocked(esi.fetchPaginatedWithMeta).mockRejectedValue(new Error('API Error'))
+      vi.mocked(esi.fetchPaginatedWithMeta).mockRejectedValue(
+        new Error('API Error')
+      )
 
       await useAssetStore.getState().update(true)
 
@@ -194,14 +245,21 @@ describe('asset-store', () => {
 
   describe('removeForOwner', () => {
     it('clears expiry cache for removed owner', async () => {
-      const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
+      const mockOwner = createMockOwner({
+        id: 12345,
+        name: 'Test',
+        type: 'character',
+      })
       useAssetStore.setState({
         assetsByOwner: [{ owner: mockOwner, assets: [] }],
       })
 
       useExpiryCacheStore.setState({
         endpoints: new Map([
-          ['character-12345:/characters/12345/assets/', { expiresAt: Date.now() + 60000, etag: null }],
+          [
+            'character-12345:/characters/12345/assets/',
+            { expiresAt: Date.now() + 60000, etag: null },
+          ],
         ]),
         initialized: true,
       })
@@ -209,7 +267,11 @@ describe('asset-store', () => {
       await useAssetStore.getState().removeForOwner('character', 12345)
 
       expect(useAssetStore.getState().assetsByOwner).toHaveLength(0)
-      expect(useExpiryCacheStore.getState().endpoints.has('character-12345:/characters/12345/assets/')).toBe(false)
+      expect(
+        useExpiryCacheStore
+          .getState()
+          .endpoints.has('character-12345:/characters/12345/assets/')
+      ).toBe(false)
     })
   })
 

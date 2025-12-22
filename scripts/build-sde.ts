@@ -65,7 +65,7 @@ async function readJsonl<T>(filename: string): Promise<T[]> {
   const fileStream = fs.createReadStream(filepath)
   const rl = readline.createInterface({
     input: fileStream,
-    crlfDelay: Infinity
+    crlfDelay: Infinity,
   })
 
   for await (const line of rl) {
@@ -88,8 +88,8 @@ async function buildTypes(): Promise<void> {
 
   const rawTypes = await readJsonl<RawType>('types.jsonl')
   const types = rawTypes
-    .filter(t => t.published !== false && t.name?.en)
-    .map(t => ({
+    .filter((t) => t.published !== false && t.name?.en)
+    .map((t) => ({
       typeId: t._key,
       name: t.name.en,
       groupId: t.groupID,
@@ -97,13 +97,10 @@ async function buildTypes(): Promise<void> {
       volume: t.volume ?? 0,
       packagedVolume: t.packagedVolume,
       marketGroupId: t.marketGroupID,
-      published: t.published ?? true
+      published: t.published ?? true,
     }))
 
-  fs.writeFileSync(
-    path.join(OUTPUT_PATH, 'types.json'),
-    JSON.stringify(types)
-  )
+  fs.writeFileSync(path.join(OUTPUT_PATH, 'types.json'), JSON.stringify(types))
   console.log(`  Wrote ${types.length} types`)
 }
 
@@ -116,7 +113,9 @@ async function buildStations(): Promise<void> {
     corpNames.set(corp._key, corp.name?.en ?? `Corp ${corp._key}`)
   }
 
-  const operations = await readJsonl<RawStationOperation>('stationOperations.jsonl')
+  const operations = await readJsonl<RawStationOperation>(
+    'stationOperations.jsonl'
+  )
   const operationNames = new Map<number, string>()
   for (const op of operations) {
     operationNames.set(op._key, op.operationName?.en ?? '')
@@ -131,15 +130,36 @@ async function buildStations(): Promise<void> {
   }
 
   const rawStations = await readJsonl<RawStation>('npcStations.jsonl')
-  const stations = rawStations.map(s => {
+  const stations = rawStations.map((s) => {
     const systemName = systemNames.get(s.solarSystemID) ?? 'Unknown'
     const corpName = corpNames.get(s.ownerID) ?? 'Unknown'
     const opName = s.operationID ? operationNames.get(s.operationID) : undefined
 
     let orbitName = systemName
     if (s.celestialIndex !== undefined) {
-      const romanNumerals = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X',
-        'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX']
+      const romanNumerals = [
+        '',
+        'I',
+        'II',
+        'III',
+        'IV',
+        'V',
+        'VI',
+        'VII',
+        'VIII',
+        'IX',
+        'X',
+        'XI',
+        'XII',
+        'XIII',
+        'XIV',
+        'XV',
+        'XVI',
+        'XVII',
+        'XVIII',
+        'XIX',
+        'XX',
+      ]
       orbitName = `${systemName} ${romanNumerals[s.celestialIndex] ?? s.celestialIndex}`
       if (s.orbitIndex !== undefined) {
         orbitName += ` - Moon ${s.orbitIndex}`
@@ -158,7 +178,7 @@ async function buildStations(): Promise<void> {
       name,
       solarSystemId: s.solarSystemID,
       regionId: systemRegions.get(s.solarSystemID) ?? 0,
-      typeId: s.typeID
+      typeId: s.typeID,
     }
   })
 
@@ -174,13 +194,13 @@ async function buildSolarSystems(): Promise<void> {
 
   const rawSystems = await readJsonl<RawSolarSystem>('mapSolarSystems.jsonl')
   const systems = rawSystems
-    .filter(s => s.name?.en)
-    .map(s => ({
+    .filter((s) => s.name?.en)
+    .map((s) => ({
       solarSystemId: s._key,
       name: s.name.en,
       constellationId: s.constellationID,
       regionId: s.regionID,
-      security: Math.round(s.securityStatus * 10) / 10
+      security: Math.round(s.securityStatus * 10) / 10,
     }))
 
   fs.writeFileSync(
@@ -195,10 +215,10 @@ async function buildRegions(): Promise<void> {
 
   const rawRegions = await readJsonl<RawRegion>('mapRegions.jsonl')
   const regions = rawRegions
-    .filter(r => r.name?.en)
-    .map(r => ({
+    .filter((r) => r.name?.en)
+    .map((r) => ({
       regionId: r._key,
-      name: r.name.en
+      name: r.name.en,
     }))
 
   fs.writeFileSync(

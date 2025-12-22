@@ -9,10 +9,13 @@ export async function getCorporationStarbases(
   characterId: number,
   corporationId: number
 ): Promise<ESIStarbase[]> {
-  return esi.fetchPaginated<ESIStarbase>(`/corporations/${corporationId}/starbases`, {
-    characterId,
-    schema: ESIStarbaseSchema,
-  })
+  return esi.fetchPaginated<ESIStarbase>(
+    `/corporations/${corporationId}/starbases`,
+    {
+      characterId,
+      schema: ESIStarbaseSchema,
+    }
+  )
 }
 
 export async function getStarbaseDetail(

@@ -207,7 +207,10 @@ export const HOLD_LABELS: Record<keyof ShipHolds, string> = {
   expeditionBay: 'Expedition Hold',
 }
 
-function extractItemsByFlag(children: TreeNode[], targetFlag: string): ModuleItem[] {
+function extractItemsByFlag(
+  children: TreeNode[],
+  targetFlag: string
+): ModuleItem[] {
   const items: ModuleItem[] = []
 
   for (const child of children) {
@@ -274,11 +277,23 @@ export function extractFitting(shipNode: TreeNode): ExtractedFitting {
     shipTypeName,
     shipName: fittingName,
     shipGroupId: shipType?.groupId,
-    highSlotModules: extractModulesFromChildren(children, SLOT_FLAG_PATTERNS.high),
-    midSlotModules: extractModulesFromChildren(children, SLOT_FLAG_PATTERNS.mid),
-    lowSlotModules: extractModulesFromChildren(children, SLOT_FLAG_PATTERNS.low),
+    highSlotModules: extractModulesFromChildren(
+      children,
+      SLOT_FLAG_PATTERNS.high
+    ),
+    midSlotModules: extractModulesFromChildren(
+      children,
+      SLOT_FLAG_PATTERNS.mid
+    ),
+    lowSlotModules: extractModulesFromChildren(
+      children,
+      SLOT_FLAG_PATTERNS.low
+    ),
     rigModules: extractModulesFromChildren(children, SLOT_FLAG_PATTERNS.rig),
-    subsystemModules: extractModulesFromChildren(children, SLOT_FLAG_PATTERNS.subsystem),
+    subsystemModules: extractModulesFromChildren(
+      children,
+      SLOT_FLAG_PATTERNS.subsystem
+    ),
     drones: extractDrones(children),
     fighterTubes: extractFighterTubes(children),
     fighterBay: extractItemsByFlag(children, 'FighterBay'),
@@ -286,7 +301,9 @@ export function extractFitting(shipNode: TreeNode): ExtractedFitting {
   }
 }
 
-export async function fetchShipSlots(shipTypeId: number): Promise<ShipSlots | null> {
+export async function fetchShipSlots(
+  shipTypeId: number
+): Promise<ShipSlots | null> {
   try {
     const result = await window.electronAPI?.refShipSlots([shipTypeId])
     if (!result || 'error' in result) return null

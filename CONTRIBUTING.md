@@ -21,6 +21,7 @@ The app uses the edencom.net Ref API to resolve item types, prices, and location
 - **User-Agent**: Must identify your application (handled automatically)
 
 **To request an API key**, email key@edencom.net with:
+
 - Your application name
 - Brief description of your use case
 

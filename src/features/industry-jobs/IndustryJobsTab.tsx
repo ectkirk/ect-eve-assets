@@ -16,7 +16,15 @@ import { useAssetStore } from '@/store/asset-store'
 import { useIndustryJobsStore } from '@/store/industry-jobs-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useTabControls } from '@/context'
-import { useColumnSettings, useCacheVersion, useExpandCollapse, useSortable, SortableHeader, sortRows, type ColumnConfig } from '@/hooks'
+import {
+  useColumnSettings,
+  useCacheVersion,
+  useExpandCollapse,
+  useSortable,
+  SortableHeader,
+  sortRows,
+  type ColumnConfig,
+} from '@/hooks'
 import { type ESIIndustryJob } from '@/api/endpoints/industry'
 import { hasType, getType } from '@/store/reference-cache'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
@@ -31,7 +39,15 @@ import { cn, formatNumber } from '@/lib/utils'
 import { getLocationName } from '@/lib/location-utils'
 import { TypeIcon } from '@/components/ui/type-icon'
 
-type JobSortColumn = 'activity' | 'blueprint' | 'product' | 'runs' | 'value' | 'cost' | 'time' | 'owner'
+type JobSortColumn =
+  | 'activity'
+  | 'blueprint'
+  | 'product'
+  | 'runs'
+  | 'value'
+  | 'cost'
+  | 'time'
+  | 'owner'
 
 const BLUEPRINT_CATEGORY_ID = 9
 
@@ -77,7 +93,11 @@ interface LocationGroup {
   totalValue: number
 }
 
-function formatDuration(endDate: string): { text: string; isComplete: boolean; isPast: boolean } {
+function formatDuration(endDate: string): {
+  text: string
+  isComplete: boolean
+  isPast: boolean
+} {
   const end = new Date(endDate).getTime()
   const now = Date.now()
   const remaining = end - now
@@ -121,7 +141,10 @@ function getEndTime(endDate: string): number {
 }
 
 function JobsTable({ jobs }: { jobs: JobRow[] }) {
-  const { sortColumn, sortDirection, handleSort } = useSortable<JobSortColumn>('value', 'desc')
+  const { sortColumn, sortDirection, handleSort } = useSortable<JobSortColumn>(
+    'value',
+    'desc'
+  )
 
   const sortedJobs = useMemo(() => {
     return sortRows(jobs, sortColumn, sortDirection, (row, column) => {
@@ -153,14 +176,67 @@ function JobsTable({ jobs }: { jobs: JobRow[] }) {
       <TableHeader>
         <TableRow className="hover:bg-transparent">
           <th className="w-8"></th>
-          <SortableHeader column="activity" label="Activity" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
-          <SortableHeader column="blueprint" label="Blueprint" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
-          <SortableHeader column="product" label="Product" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
-          <SortableHeader column="runs" label="Runs" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
-          <SortableHeader column="value" label="Value" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
-          <SortableHeader column="cost" label="Cost" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
-          <SortableHeader column="time" label="Time" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
-          <SortableHeader column="owner" label="Owner" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="text-right" />
+          <SortableHeader
+            column="activity"
+            label="Activity"
+            sortColumn={sortColumn}
+            sortDirection={sortDirection}
+            onSort={handleSort}
+          />
+          <SortableHeader
+            column="blueprint"
+            label="Blueprint"
+            sortColumn={sortColumn}
+            sortDirection={sortDirection}
+            onSort={handleSort}
+          />
+          <SortableHeader
+            column="product"
+            label="Product"
+            sortColumn={sortColumn}
+            sortDirection={sortDirection}
+            onSort={handleSort}
+          />
+          <SortableHeader
+            column="runs"
+            label="Runs"
+            sortColumn={sortColumn}
+            sortDirection={sortDirection}
+            onSort={handleSort}
+            className="text-right"
+          />
+          <SortableHeader
+            column="value"
+            label="Value"
+            sortColumn={sortColumn}
+            sortDirection={sortDirection}
+            onSort={handleSort}
+            className="text-right"
+          />
+          <SortableHeader
+            column="cost"
+            label="Cost"
+            sortColumn={sortColumn}
+            sortDirection={sortDirection}
+            onSort={handleSort}
+            className="text-right"
+          />
+          <SortableHeader
+            column="time"
+            label="Time"
+            sortColumn={sortColumn}
+            sortDirection={sortDirection}
+            onSort={handleSort}
+            className="text-right"
+          />
+          <SortableHeader
+            column="owner"
+            label="Owner"
+            sortColumn={sortColumn}
+            sortDirection={sortDirection}
+            onSort={handleSort}
+            className="text-right"
+          />
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -223,7 +299,9 @@ function JobsTable({ jobs }: { jobs: JobRow[] }) {
               >
                 {duration.text}
               </TableCell>
-              <TableCell className="py-1.5 text-right text-content-secondary">{row.ownerName}</TableCell>
+              <TableCell className="py-1.5 text-right text-content-secondary">
+                {row.ownerName}
+              </TableCell>
             </TableRow>
           )
         })}
@@ -274,11 +352,18 @@ export function IndustryJobsTab() {
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
 
   const prices = useAssetStore((s) => s.prices)
-  const jobsByOwner = useIndustryJobsStore((s) => s.dataByOwner)
+  const itemsById = useIndustryJobsStore((s) => s.itemsById)
+  const visibilityByOwner = useIndustryJobsStore((s) => s.visibilityByOwner)
+  const jobsCount = itemsById.size
   const jobsUpdating = useIndustryJobsStore((s) => s.isUpdating)
   const updateError = useIndustryJobsStore((s) => s.updateError)
   const update = useIndustryJobsStore((s) => s.update)
   const initialized = useIndustryJobsStore((s) => s.initialized)
+
+  const jobsByOwner = useMemo(
+    () => useIndustryJobsStore.getJobsByOwner({ itemsById, visibilityByOwner }),
+    [itemsById, visibilityByOwner]
+  )
 
   const { isLoading: assetsUpdating } = useAssetData()
   const isUpdating = assetsUpdating || jobsUpdating
@@ -291,23 +376,38 @@ export function IndustryJobsTab() {
 
   const cacheVersion = useCacheVersion()
 
-  const { setExpandCollapse, search, setResultCount, setTotalValue, setColumns } = useTabControls()
+  const {
+    setExpandCollapse,
+    search,
+    setResultCount,
+    setTotalValue,
+    setColumns,
+  } = useTabControls()
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
-  const selectedSet = useMemo(() => new Set(selectedOwnerIds), [selectedOwnerIds])
+  const selectedSet = useMemo(
+    () => new Set(selectedOwnerIds),
+    [selectedOwnerIds]
+  )
 
-  const JOB_COLUMNS: ColumnConfig[] = useMemo(() => [
-    { id: 'status', label: 'Status' },
-    { id: 'activity', label: 'Activity' },
-    { id: 'blueprint', label: 'Blueprint' },
-    { id: 'product', label: 'Product' },
-    { id: 'runs', label: 'Runs' },
-    { id: 'value', label: 'Value' },
-    { id: 'cost', label: 'Cost' },
-    { id: 'time', label: 'Time' },
-    { id: 'owner', label: 'Owner' },
-  ], [])
+  const JOB_COLUMNS: ColumnConfig[] = useMemo(
+    () => [
+      { id: 'status', label: 'Status' },
+      { id: 'activity', label: 'Activity' },
+      { id: 'blueprint', label: 'Blueprint' },
+      { id: 'product', label: 'Product' },
+      { id: 'runs', label: 'Runs' },
+      { id: 'value', label: 'Value' },
+      { id: 'cost', label: 'Cost' },
+      { id: 'time', label: 'Time' },
+      { id: 'owner', label: 'Owner' },
+    ],
+    []
+  )
 
-  const { getColumnsForDropdown } = useColumnSettings('industry-jobs', JOB_COLUMNS)
+  const { getColumnsForDropdown } = useColumnSettings(
+    'industry-jobs',
+    JOB_COLUMNS
+  )
 
   const locationGroups = useMemo(() => {
     void cacheVersion
@@ -320,13 +420,17 @@ export function IndustryJobsTab() {
 
     for (const { owner, jobs } of filteredJobsByOwner) {
       for (const job of jobs) {
-        const bpType = hasType(job.blueprint_type_id) ? getType(job.blueprint_type_id) : undefined
+        const bpType = hasType(job.blueprint_type_id)
+          ? getType(job.blueprint_type_id)
+          : undefined
         const productType =
           job.product_type_id && hasType(job.product_type_id)
             ? getType(job.product_type_id)
             : undefined
 
-        const productPrice = job.product_type_id ? (prices.get(job.product_type_id) ?? 0) : 0
+        const productPrice = job.product_type_id
+          ? (prices.get(job.product_type_id) ?? 0)
+          : 0
         const productValue = productPrice * job.runs
 
         const locationId = job.location_id ?? job.facility_id
@@ -334,11 +438,15 @@ export function IndustryJobsTab() {
         const row: JobRow = {
           job,
           ownerName: owner.name,
-          blueprintName: bpType?.name ?? `Unknown Type ${job.blueprint_type_id}`,
-          productName: productType?.name ?? (job.product_type_id ? `Unknown Type ${job.product_type_id}` : ''),
+          blueprintName:
+            bpType?.name ?? `Unknown Type ${job.blueprint_type_id}`,
+          productName:
+            productType?.name ??
+            (job.product_type_id ? `Unknown Type ${job.product_type_id}` : ''),
           productCategoryId: productType?.categoryId,
           locationName: getLocationName(locationId),
-          activityName: ACTIVITY_NAMES[job.activity_id] ?? `Activity ${job.activity_id}`,
+          activityName:
+            ACTIVITY_NAMES[job.activity_id] ?? `Activity ${job.activity_id}`,
           productValue,
         }
 
@@ -365,7 +473,9 @@ export function IndustryJobsTab() {
       }
     }
 
-    let sorted = Array.from(groups.values()).sort((a, b) => b.totalValue - a.totalValue)
+    let sorted = Array.from(groups.values()).sort(
+      (a, b) => b.totalValue - a.totalValue
+    )
 
     for (const group of sorted) {
       group.jobs.sort((a, b) => b.productValue - a.productValue)
@@ -373,28 +483,41 @@ export function IndustryJobsTab() {
 
     if (search) {
       const searchLower = search.toLowerCase()
-      sorted = sorted.map((group) => {
-        const filteredJobs = group.jobs.filter((j) =>
-          j.blueprintName.toLowerCase().includes(searchLower) ||
-          j.productName.toLowerCase().includes(searchLower) ||
-          j.ownerName.toLowerCase().includes(searchLower) ||
-          j.locationName.toLowerCase().includes(searchLower) ||
-          j.activityName.toLowerCase().includes(searchLower)
-        )
-        return {
-          ...group,
-          jobs: filteredJobs,
-          activeCount: filteredJobs.filter((j) => j.job.status === 'active' || j.job.status === 'paused').length,
-          completedCount: filteredJobs.filter((j) => j.job.status !== 'active' && j.job.status !== 'paused').length,
-        }
-      }).filter((g) => g.jobs.length > 0)
+      sorted = sorted
+        .map((group) => {
+          const filteredJobs = group.jobs.filter(
+            (j) =>
+              j.blueprintName.toLowerCase().includes(searchLower) ||
+              j.productName.toLowerCase().includes(searchLower) ||
+              j.ownerName.toLowerCase().includes(searchLower) ||
+              j.locationName.toLowerCase().includes(searchLower) ||
+              j.activityName.toLowerCase().includes(searchLower)
+          )
+          return {
+            ...group,
+            jobs: filteredJobs,
+            activeCount: filteredJobs.filter(
+              (j) => j.job.status === 'active' || j.job.status === 'paused'
+            ).length,
+            completedCount: filteredJobs.filter(
+              (j) => j.job.status !== 'active' && j.job.status !== 'paused'
+            ).length,
+          }
+        })
+        .filter((g) => g.jobs.length > 0)
     }
 
     return sorted
   }, [jobsByOwner, cacheVersion, prices, search, selectedSet])
 
-  const expandableIds = useMemo(() => locationGroups.map((g) => g.locationId), [locationGroups])
-  const { isExpanded, toggle } = useExpandCollapse(expandableIds, setExpandCollapse)
+  const expandableIds = useMemo(
+    () => locationGroups.map((g) => g.locationId),
+    [locationGroups]
+  )
+  const { isExpanded, toggle } = useExpandCollapse(
+    expandableIds,
+    setExpandCollapse
+  )
 
   const totals = useMemo(() => {
     let activeCount = 0
@@ -421,7 +544,10 @@ export function IndustryJobsTab() {
   }, [jobsByOwner])
 
   useEffect(() => {
-    setResultCount({ showing: totals.activeCount + totals.completedCount, total: totalJobCount })
+    setResultCount({
+      showing: totals.activeCount + totals.completedCount,
+      total: totalJobCount,
+    })
     return () => setResultCount(null)
   }, [totals.activeCount, totals.completedCount, totalJobCount, setResultCount])
 
@@ -439,7 +565,7 @@ export function IndustryJobsTab() {
     dataType: 'industry jobs',
     initialized,
     isUpdating,
-    hasData: jobsByOwner.length > 0,
+    hasData: jobsCount > 0,
     hasOwners: owners.length > 0,
     updateError,
   })

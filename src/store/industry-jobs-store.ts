@@ -1,18 +1,49 @@
-import { type Owner } from './auth-store'
-import { createOwnerStore } from './create-owner-store'
+import type { StoreApi, UseBoundStore } from 'zustand'
+import { type Owner, findOwnerByKey } from './auth-store'
 import { useAssetStore } from './asset-store'
 import { esi } from '@/api/esi'
 import { ESIIndustryJobSchema } from '@/api/schemas'
 import { queuePriceRefresh } from '@/api/ref-client'
 import { logger } from '@/lib/logger'
+import {
+  createVisibilityStore,
+  type StoredItem,
+  type SourceOwner,
+  type VisibilityStore,
+} from './create-visibility-store'
 import { z } from 'zod'
 
 export type ESIIndustryJob = z.infer<typeof ESIIndustryJobSchema>
+
+export interface StoredJob extends StoredItem<ESIIndustryJob> {
+  item: ESIIndustryJob
+  sourceOwner: SourceOwner
+}
 
 export interface OwnerJobs {
   owner: Owner
   jobs: ESIIndustryJob[]
 }
+
+interface IndustryJobsExtras {
+  getTotal: (
+    prices: Map<number, number>,
+    selectedOwnerIds: string[],
+    state?: {
+      itemsById: Map<number, StoredJob>
+      visibilityByOwner: Map<string, Set<number>>
+    }
+  ) => number
+  getJobsByOwner: (state?: {
+    itemsById: Map<number, StoredJob>
+    visibilityByOwner: Map<string, Set<number>>
+  }) => OwnerJobs[]
+}
+
+export type IndustryJobsStore = UseBoundStore<
+  StoreApi<VisibilityStore<StoredJob>>
+> &
+  IndustryJobsExtras
 
 function getEndpoint(owner: Owner): string {
   return owner.type === 'corporation'
@@ -20,7 +51,11 @@ function getEndpoint(owner: Owner): string {
     : `/characters/${owner.characterId}/industry/jobs/`
 }
 
-async function fetchJobsForOwner(owner: Owner) {
+async function fetchJobsForOwner(owner: Owner): Promise<{
+  data: ESIIndustryJob[]
+  expiresAt: number
+  etag: string | null
+}> {
   const endpoint = getEndpoint(owner)
 
   if (owner.type === 'corporation') {
@@ -36,11 +71,13 @@ async function fetchJobsForOwner(owner: Owner) {
   })
 }
 
-async function fetchProductPrices(jobs: ESIIndustryJob[]) {
+async function fetchProductPrices(
+  jobsById: Map<number, StoredJob>
+): Promise<void> {
   const existingPrices = useAssetStore.getState().prices
   const deltaTypeIds: number[] = []
 
-  for (const job of jobs) {
+  for (const { item: job } of jobsById.values()) {
     if (job.product_type_id && !existingPrices.has(job.product_type_id)) {
       deltaTypeIds.push(job.product_type_id)
     }
@@ -54,29 +91,97 @@ async function fetchProductPrices(jobs: ESIIndustryJob[]) {
       await useAssetStore.getState().setPrices(prices)
     }
   } catch (err) {
-    logger.error('Failed to fetch industry job prices', err instanceof Error ? err : undefined, {
-      module: 'IndustryJobsStore',
-    })
+    logger.error(
+      'Failed to fetch industry job prices',
+      err instanceof Error ? err : undefined,
+      {
+        module: 'IndustryJobsStore',
+      }
+    )
   }
 }
 
-export const useIndustryJobsStore = createOwnerStore<ESIIndustryJob[], OwnerJobs>({
+const baseStore = createVisibilityStore<ESIIndustryJob, StoredJob>({
   name: 'industry jobs',
   moduleName: 'IndustryJobsStore',
   endpointPattern: '/industry/jobs/',
-  dbConfig: {
-    dbName: 'ecteveassets-industry-jobs',
-    storeName: 'jobs',
-    dataKey: 'jobs',
-    metaStoreName: 'meta',
-  },
-  disableAutoRefresh: true,
+  dbName: 'ecteveassets-industry-jobs-v2',
+  itemStoreName: 'jobs',
+  itemKeyName: 'jobId',
   getEndpoint,
-  fetchData: async (owner) => {
-    const result = await fetchJobsForOwner(owner)
-    await fetchProductPrices(result.data)
-    return { data: result.data, expiresAt: result.expiresAt, etag: result.etag }
-  },
-  toOwnerData: (owner, data) => ({ owner, jobs: data }),
-  isEmpty: (data) => data.length === 0,
+  getItemId: (job) => job.job_id,
+  fetchData: fetchJobsForOwner,
+  toStoredItem: (owner, job) => ({
+    item: job,
+    sourceOwner: {
+      type: owner.type,
+      id: owner.id,
+      characterId: owner.characterId,
+    },
+  }),
+  shouldUpdateExisting: true,
+  onAfterInit: fetchProductPrices,
+  onAfterBatchUpdate: fetchProductPrices,
 })
+
+export const useIndustryJobsStore: IndustryJobsStore = Object.assign(
+  baseStore,
+  {
+    getTotal(
+      prices: Map<number, number>,
+      selectedOwnerIds: string[],
+      stateOverride?: {
+        itemsById: Map<number, StoredJob>
+        visibilityByOwner: Map<string, Set<number>>
+      }
+    ): number {
+      const { itemsById, visibilityByOwner } =
+        stateOverride ?? baseStore.getState()
+      const selectedSet = new Set(selectedOwnerIds)
+
+      const visibleJobIds = new Set<number>()
+      for (const [key, jobIds] of visibilityByOwner) {
+        if (selectedSet.has(key)) {
+          for (const id of jobIds) visibleJobIds.add(id)
+        }
+      }
+
+      let total = 0
+      for (const jobId of visibleJobIds) {
+        const stored = itemsById.get(jobId)
+        if (!stored) continue
+
+        const { item: job } = stored
+        if (job.status !== 'active' && job.status !== 'ready') continue
+
+        const productTypeId = job.product_type_id ?? job.blueprint_type_id
+        total += (prices.get(productTypeId) ?? 0) * job.runs
+      }
+      return total
+    },
+
+    getJobsByOwner(stateOverride?: {
+      itemsById: Map<number, StoredJob>
+      visibilityByOwner: Map<string, Set<number>>
+    }): OwnerJobs[] {
+      const { itemsById, visibilityByOwner } =
+        stateOverride ?? baseStore.getState()
+      const result: OwnerJobs[] = []
+
+      for (const [ownerKeyStr, jobIds] of visibilityByOwner) {
+        const owner = findOwnerByKey(ownerKeyStr)
+        if (!owner) continue
+
+        const jobs: ESIIndustryJob[] = []
+        for (const jobId of jobIds) {
+          const stored = itemsById.get(jobId)
+          if (stored) jobs.push(stored.item)
+        }
+
+        result.push({ owner, jobs })
+      }
+
+      return result
+    },
+  }
+)

@@ -40,7 +40,10 @@ export function BuybackForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label htmlFor="items-input" className="mb-2 block text-sm font-medium text-content-secondary">
+        <label
+          htmlFor="items-input"
+          className="mb-2 block text-sm font-medium text-content-secondary"
+        >
           Item list
         </label>
         <textarea
@@ -57,7 +60,9 @@ export function BuybackForm({
           disabled={isLoading || hasQuote}
         />
         <div className="mt-2 text-sm text-content-secondary">
-          {lineCount > 0 ? `${lineCount} line${lineCount !== 1 ? 's' : ''}` : 'No items'}
+          {lineCount > 0
+            ? `${lineCount} line${lineCount !== 1 ? 's' : ''}`
+            : 'No items'}
         </div>
       </div>
 

@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
-import { useStructuresStore, type ESICorporationStructure } from '@/store/structures-store'
+import {
+  useStructuresStore,
+  type ESICorporationStructure,
+} from '@/store/structures-store'
 import { useStarbasesStore, type ESIStarbase } from '@/store/starbases-store'
 import { useStarbaseDetailsStore } from '@/store/starbase-details-store'
 import { useAssetData } from '@/hooks/useAssetData'
@@ -9,7 +12,7 @@ import { useCacheVersion } from '@/hooks'
 import { hasType, getType, getLocation } from '@/store/reference-cache'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import { formatFuelExpiry } from '@/lib/timer-utils'
-import { STRUCTURE_CATEGORY_ID } from '@/lib/structure-constants'
+import { calculateStructureValues } from '@/lib/structure-constants'
 import { FittingDialog } from '@/components/dialogs/FittingDialog'
 import { POSInfoDialog } from '@/components/dialogs/POSInfoDialog'
 import { StructureInfoDialog } from '@/components/dialogs/StructureInfoDialog'
@@ -94,7 +97,7 @@ export function StructuresTab() {
   const updateError = structureError || starbaseError
   const initialized = structuresInitialized && starbasesInitialized
 
-  const { assetsByOwner, assetNames } = useAssetData()
+  const { assetsByOwner, assetNames, prices } = useAssetData()
 
   useEffect(() => {
     initStructures()
@@ -132,49 +135,52 @@ export function StructuresTab() {
   }, [starbasesByOwner, removeOrphanDetails])
 
   const cacheVersion = useCacheVersion()
+  const { search, setResultCount, setTotalValue } = useTabControls()
+  const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
+  const selectedSet = useMemo(
+    () => new Set(selectedOwnerIds),
+    [selectedOwnerIds]
+  )
 
-  const structureAssetMap = useMemo(() => {
-    void cacheVersion
-    const map = new Map<number, { asset: ESIAsset; children: ESIAsset[] }>()
-
-    for (const { assets } of assetsByOwner) {
-      for (const asset of assets) {
-        const type = getType(asset.type_id)
-        if (type?.categoryId === STRUCTURE_CATEGORY_ID && asset.location_type === 'solar_system') {
-          const children = assets.filter((a) => a.location_id === asset.item_id)
-          map.set(asset.item_id, { asset, children })
-        }
-      }
-    }
-
-    return map
-  }, [assetsByOwner, cacheVersion])
+  const { structureAssetMap, structuresTotal: structureTotalValue } =
+    useMemo(() => {
+      void cacheVersion
+      return calculateStructureValues(assetsByOwner, prices, selectedOwnerIds)
+    }, [assetsByOwner, prices, selectedOwnerIds, cacheVersion])
 
   const [fittingDialogOpen, setFittingDialogOpen] = useState(false)
   const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null)
   const [posInfoDialogOpen, setPosInfoDialogOpen] = useState(false)
-  const [selectedStarbase, setSelectedStarbase] = useState<{ starbase: ESIStarbase; ownerName: string } | null>(null)
+  const [selectedStarbase, setSelectedStarbase] = useState<{
+    starbase: ESIStarbase
+    ownerName: string
+  } | null>(null)
   const [structureInfoDialogOpen, setStructureInfoDialogOpen] = useState(false)
-  const [selectedStructure, setSelectedStructure] = useState<{ structure: ESICorporationStructure; ownerName: string } | null>(null)
+  const [selectedStructure, setSelectedStructure] = useState<{
+    structure: ESICorporationStructure
+    ownerName: string
+  } | null>(null)
 
   const handleViewFitting = useCallback((node: TreeNode) => {
     setSelectedNode(node)
     setFittingDialogOpen(true)
   }, [])
 
-  const handleViewPosInfo = useCallback((starbase: ESIStarbase, ownerName: string) => {
-    setSelectedStarbase({ starbase, ownerName })
-    setPosInfoDialogOpen(true)
-  }, [])
+  const handleViewPosInfo = useCallback(
+    (starbase: ESIStarbase, ownerName: string) => {
+      setSelectedStarbase({ starbase, ownerName })
+      setPosInfoDialogOpen(true)
+    },
+    []
+  )
 
-  const handleViewStructureInfo = useCallback((structure: ESICorporationStructure, ownerName: string) => {
-    setSelectedStructure({ structure, ownerName })
-    setStructureInfoDialogOpen(true)
-  }, [])
-
-  const { search, setResultCount } = useTabControls()
-  const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
-  const selectedSet = useMemo(() => new Set(selectedOwnerIds), [selectedOwnerIds])
+  const handleViewStructureInfo = useCallback(
+    (structure: ESICorporationStructure, ownerName: string) => {
+      setSelectedStructure({ structure, ownerName })
+      setStructureInfoDialogOpen(true)
+    },
+    []
+  )
 
   const upwellRows = useMemo(() => {
     void cacheVersion
@@ -187,12 +193,18 @@ export function StructuresTab() {
 
     for (const { owner, structures } of filteredStructures) {
       for (const structure of structures) {
-        const type = hasType(structure.type_id) ? getType(structure.type_id) : undefined
+        const type = hasType(structure.type_id)
+          ? getType(structure.type_id)
+          : undefined
         const location = getLocation(structure.system_id)
 
         const assetData = structureAssetMap.get(structure.structure_id)
         const treeNode = assetData
-          ? buildStructureTreeNode(assetData.asset, assetData.children, assetNames)
+          ? buildStructureTreeNode(
+              assetData.asset,
+              assetData.children,
+              assetNames
+            )
           : null
 
         rows.push({
@@ -210,13 +222,21 @@ export function StructuresTab() {
     if (!search) return rows
 
     const searchLower = search.toLowerCase()
-    return rows.filter((row) =>
-      row.structure.name?.toLowerCase().includes(searchLower) ||
-      row.typeName.toLowerCase().includes(searchLower) ||
-      row.owner.name.toLowerCase().includes(searchLower) ||
-      row.regionName.toLowerCase().includes(searchLower)
+    return rows.filter(
+      (row) =>
+        row.structure.name?.toLowerCase().includes(searchLower) ||
+        row.typeName.toLowerCase().includes(searchLower) ||
+        row.owner.name.toLowerCase().includes(searchLower) ||
+        row.regionName.toLowerCase().includes(searchLower)
     )
-  }, [structuresByOwner, cacheVersion, search, selectedSet, structureAssetMap, assetNames])
+  }, [
+    structuresByOwner,
+    cacheVersion,
+    search,
+    selectedSet,
+    structureAssetMap,
+    assetNames,
+  ])
 
   const starbaseRows = useMemo(() => {
     void cacheVersion
@@ -229,9 +249,13 @@ export function StructuresTab() {
 
     for (const { owner, starbases } of filteredStarbases) {
       for (const starbase of starbases) {
-        const type = hasType(starbase.type_id) ? getType(starbase.type_id) : undefined
+        const type = hasType(starbase.type_id)
+          ? getType(starbase.type_id)
+          : undefined
         const location = getLocation(starbase.system_id)
-        const moon = starbase.moon_id ? getLocation(starbase.moon_id) : undefined
+        const moon = starbase.moon_id
+          ? getLocation(starbase.moon_id)
+          : undefined
 
         rows.push({
           kind: 'pos',
@@ -251,12 +275,13 @@ export function StructuresTab() {
     if (!search) return rows
 
     const searchLower = search.toLowerCase()
-    return rows.filter((row) =>
-      row.typeName.toLowerCase().includes(searchLower) ||
-      row.ownerName.toLowerCase().includes(searchLower) ||
-      row.systemName.toLowerCase().includes(searchLower) ||
-      row.regionName.toLowerCase().includes(searchLower) ||
-      row.moonName?.toLowerCase().includes(searchLower)
+    return rows.filter(
+      (row) =>
+        row.typeName.toLowerCase().includes(searchLower) ||
+        row.ownerName.toLowerCase().includes(searchLower) ||
+        row.systemName.toLowerCase().includes(searchLower) ||
+        row.regionName.toLowerCase().includes(searchLower) ||
+        row.moonName?.toLowerCase().includes(searchLower)
     )
   }, [starbasesByOwner, cacheVersion, search, selectedSet])
 
@@ -278,7 +303,15 @@ export function StructuresTab() {
     return () => setResultCount(null)
   }, [showingCount, totalCount, setResultCount])
 
-  const corpOwners = useMemo(() => owners.filter((o) => o.type === 'corporation'), [owners])
+  useEffect(() => {
+    setTotalValue({ value: structureTotalValue })
+    return () => setTotalValue(null)
+  }, [structureTotalValue, setTotalValue])
+
+  const corpOwners = useMemo(
+    () => owners.filter((o) => o.type === 'corporation'),
+    [owners]
+  )
 
   const loadingState = TabLoadingState({
     dataType: 'structures',
@@ -289,7 +322,8 @@ export function StructuresTab() {
     updateError,
     customEmptyCheck: {
       condition: corpOwners.length === 0,
-      message: 'No corporation owners. Add a corporation to view structure data.',
+      message:
+        'No corporation owners. Add a corporation to view structure data.',
     },
   })
   if (loadingState) return loadingState
@@ -332,7 +366,11 @@ export function StructuresTab() {
         open={posInfoDialogOpen}
         onOpenChange={setPosInfoDialogOpen}
         starbase={selectedStarbase?.starbase ?? null}
-        detail={selectedStarbase ? starbaseDetails.get(selectedStarbase.starbase.starbase_id) : undefined}
+        detail={
+          selectedStarbase
+            ? starbaseDetails.get(selectedStarbase.starbase.starbase_id)
+            : undefined
+        }
         ownerName={selectedStarbase?.ownerName ?? ''}
       />
       <StructureInfoDialog

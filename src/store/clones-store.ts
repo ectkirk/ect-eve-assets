@@ -25,7 +25,10 @@ export const useClonesStore = createOwnerStore<CloneData, CharacterCloneData>({
     dbName: 'ecteveassets-clones',
     storeName: 'clones',
     metaStoreName: 'meta',
-    serialize: (data) => ({ clones: data.clones, activeImplants: data.activeImplants }),
+    serialize: (data) => ({
+      clones: data.clones,
+      activeImplants: data.activeImplants,
+    }),
     deserialize: (stored) => ({
       clones: stored.clones as ESIClone,
       activeImplants: stored.activeImplants as number[],
@@ -40,10 +43,13 @@ export const useClonesStore = createOwnerStore<CloneData, CharacterCloneData>({
         characterId: owner.characterId,
         schema: ESICloneSchema,
       }),
-      esi.fetchWithMeta<number[]>(`/characters/${owner.characterId}/implants/`, {
-        characterId: owner.characterId,
-        schema: z.array(z.number()),
-      }),
+      esi.fetchWithMeta<number[]>(
+        `/characters/${owner.characterId}/implants/`,
+        {
+          characterId: owner.characterId,
+          schema: z.array(z.number()),
+        }
+      ),
     ])
     return {
       data: { clones: clonesResult.data, activeImplants: implantsResult.data },

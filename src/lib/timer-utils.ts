@@ -19,7 +19,12 @@ export function formatFuelExpiry(fuelExpires: string | undefined): FuelInfo {
   const days = Math.floor(hours / 24)
 
   if (days >= 7) return { text: `${days}d`, days, isLow: false }
-  if (days >= 1) return { text: `${days}d ${hours % 24}h`, days, isLow: days <= LOW_FUEL_THRESHOLD_DAYS }
+  if (days >= 1)
+    return {
+      text: `${days}d ${hours % 24}h`,
+      days,
+      isLow: days <= LOW_FUEL_THRESHOLD_DAYS,
+    }
   return { text: `${hours}h`, days: 0, isLow: true }
 }
 
@@ -31,7 +36,12 @@ export function formatFuelHours(hours: number | null): FuelInfo {
   const remainingHours = Math.floor(hours % 24)
 
   if (days >= 7) return { text: `${days}d`, days, isLow: false }
-  if (days >= 1) return { text: `${days}d ${remainingHours}h`, days, isLow: days <= LOW_FUEL_THRESHOLD_DAYS }
+  if (days >= 1)
+    return {
+      text: `${days}d ${remainingHours}h`,
+      days,
+      isLow: days <= LOW_FUEL_THRESHOLD_DAYS,
+    }
   return { text: `${Math.floor(hours)}h`, days: 0, isLow: true }
 }
 
@@ -66,7 +76,14 @@ export function formatElapsed(dateStr: string | undefined): string | null {
   return '<1d'
 }
 
-export type TimerType = 'reinforced' | 'reinforcing' | 'unanchoring' | 'onlining' | 'anchoring' | 'vulnerable' | 'none'
+export type TimerType =
+  | 'reinforced'
+  | 'reinforcing'
+  | 'unanchoring'
+  | 'onlining'
+  | 'anchoring'
+  | 'vulnerable'
+  | 'none'
 
 export interface TimerInfo {
   type: TimerType
@@ -134,7 +151,12 @@ export function getStarbaseTimer(starbase: StarbaseTimerInput): TimerInfo {
   }
 
   if (starbase.state === 'onlining') {
-    return { type: 'onlining', text: 'Onlining', timestamp: null, isUrgent: false }
+    return {
+      type: 'onlining',
+      text: 'Onlining',
+      timestamp: null,
+      isUrgent: false,
+    }
   }
 
   return { type: 'none', text: '-', timestamp: null, isUrgent: false }
@@ -151,7 +173,8 @@ export function getStructureTimer(structure: StructureTimerInput): TimerInfo {
 
   if (
     structure.state_timer_end &&
-    (structure.state === 'armor_reinforce' || structure.state === 'hull_reinforce')
+    (structure.state === 'armor_reinforce' ||
+      structure.state === 'hull_reinforce')
   ) {
     const until = new Date(structure.state_timer_end).getTime()
     const remaining = until - now
@@ -195,14 +218,20 @@ export function getStructureTimer(structure: StructureTimerInput): TimerInfo {
 
   if (
     structure.state_timer_end &&
-    (structure.state === 'armor_vulnerable' || structure.state === 'hull_vulnerable')
+    (structure.state === 'armor_vulnerable' ||
+      structure.state === 'hull_vulnerable')
   ) {
     const until = new Date(structure.state_timer_end).getTime()
     const remaining = until - now
     if (remaining > 0) {
       const hours = Math.floor(remaining / (60 * 60 * 1000))
       const text = hours >= 1 ? `${hours}h` : '<1h'
-      return { type: 'vulnerable', text: `Vuln: ${text}`, timestamp: until, isUrgent: true }
+      return {
+        type: 'vulnerable',
+        text: `Vuln: ${text}`,
+        timestamp: until,
+        isUrgent: true,
+      }
     }
   }
 

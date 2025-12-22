@@ -1,20 +1,28 @@
-import { useEffect, useMemo, useState } from 'react'
-import { ChevronRight, ChevronDown, Wallet, Building2, ScrollText, ArrowUpRight, ArrowDownLeft } from 'lucide-react'
+import { useEffect, useMemo } from 'react'
+import { ChevronRight, ChevronDown, Wallet, Building2 } from 'lucide-react'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useWalletStore, isCorporationWallet } from '@/store/wallet-store'
-import {
-  useWalletJournalStore,
-  DEFAULT_WALLET_NAMES,
-} from '@/store/wallet-journal-store'
 import { useDivisionsStore } from '@/store/divisions-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { OwnerIcon } from '@/components/ui/type-icon'
 import { cn, formatISK } from '@/lib/utils'
 import { useTabControls } from '@/context'
-import { useColumnSettings, useExpandCollapse, type ColumnConfig } from '@/hooks'
+import {
+  useColumnSettings,
+  useExpandCollapse,
+  type ColumnConfig,
+} from '@/hooks'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
-import { JournalTable, type JournalEntryWithOwner } from './JournalTable'
-import { MultiSelectDropdown } from '@/components/ui/multi-select-dropdown'
+
+const DEFAULT_WALLET_NAMES = [
+  'Master Wallet',
+  'Wallet 2',
+  'Wallet 3',
+  'Wallet 4',
+  'Wallet 5',
+  'Wallet 6',
+  'Wallet 7',
+]
 
 export function WalletTab() {
   const ownersRecord = useAuthStore((s) => s.owners)
@@ -31,28 +39,13 @@ export function WalletTab() {
   const getWalletName = useDivisionsStore((s) => s.getWalletName)
   const fetchDivisionsForOwner = useDivisionsStore((s) => s.fetchForOwner)
 
-  const journalByOwner = useWalletJournalStore((s) => s.journalByOwner)
-  const journalInit = useWalletJournalStore((s) => s.init)
-  const journalUpdate = useWalletJournalStore((s) => s.update)
-  const journalInitialized = useWalletJournalStore((s) => s.initialized)
-
-  const [showJournal, setShowJournal] = useState(false)
-  const [refTypeFilters, setRefTypeFilters] = useState<Set<string>>(new Set())
-
   const { isLoading: assetsUpdating } = useAssetData()
   const isUpdating = assetsUpdating || walletUpdating
 
   useEffect(() => {
     init()
     divisionsInit()
-    journalInit()
-  }, [init, divisionsInit, journalInit])
-
-  useEffect(() => {
-    if (journalInitialized && showJournal) {
-      journalUpdate()
-    }
-  }, [journalInitialized, showJournal, journalUpdate])
+  }, [init, divisionsInit])
 
   useEffect(() => {
     if (!divisionsInitialized) return
@@ -63,21 +56,36 @@ export function WalletTab() {
     }
   }, [divisionsInitialized, owners, fetchDivisionsForOwner])
 
-  const { setExpandCollapse, search, setResultCount, setTotalValue, setColumns } = useTabControls()
+  const {
+    setExpandCollapse,
+    search,
+    setResultCount,
+    setTotalValue,
+    setColumns,
+  } = useTabControls()
 
-  const WALLET_COLUMNS: ColumnConfig[] = useMemo(() => [
-    { id: 'owner', label: 'Owner' },
-    { id: 'balance', label: 'Balance' },
-  ], [])
+  const WALLET_COLUMNS: ColumnConfig[] = useMemo(
+    () => [
+      { id: 'owner', label: 'Owner' },
+      { id: 'balance', label: 'Balance' },
+    ],
+    []
+  )
 
   const { getColumnsForDropdown } = useColumnSettings('wallet', WALLET_COLUMNS)
 
   const expandableKeys = useMemo(
-    () => walletsByOwner.filter((w) => isCorporationWallet(w)).map((w) => `${w.owner.type}-${w.owner.id}`),
+    () =>
+      walletsByOwner
+        .filter((w) => isCorporationWallet(w))
+        .map((w) => `${w.owner.type}-${w.owner.id}`),
     [walletsByOwner]
   )
 
-  const { isExpanded, toggle } = useExpandCollapse(expandableKeys, setExpandCollapse)
+  const { isExpanded, toggle } = useExpandCollapse(
+    expandableKeys,
+    setExpandCollapse
+  )
 
   const totalBalance = useMemo(() => {
     let total = 0
@@ -94,28 +102,44 @@ export function WalletTab() {
   }, [walletsByOwner])
 
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
-  const selectedSet = useMemo(() => new Set(selectedOwnerIds), [selectedOwnerIds])
+  const selectedSet = useMemo(
+    () => new Set(selectedOwnerIds),
+    [selectedOwnerIds]
+  )
 
   const { characterWallets, corporationWallets } = useMemo(() => {
-    let filtered = walletsByOwner.filter((w) => selectedSet.has(ownerKey(w.owner.type, w.owner.id)))
+    let filtered = walletsByOwner.filter((w) =>
+      selectedSet.has(ownerKey(w.owner.type, w.owner.id))
+    )
 
     if (search) {
       const searchLower = search.toLowerCase()
-      filtered = filtered.filter((wallet) => wallet.owner.name.toLowerCase().includes(searchLower))
+      filtered = filtered.filter((wallet) =>
+        wallet.owner.name.toLowerCase().includes(searchLower)
+      )
     }
 
-    const sortByBalance = (a: typeof filtered[0], b: typeof filtered[0]) => {
-      const aBalance = 'divisions' in a
-        ? a.divisions.reduce((sum, d) => sum + d.balance, 0)
-        : a.balance
-      const bBalance = 'divisions' in b
-        ? b.divisions.reduce((sum, d) => sum + d.balance, 0)
-        : b.balance
+    const sortByBalance = (
+      a: (typeof filtered)[0],
+      b: (typeof filtered)[0]
+    ) => {
+      const aBalance =
+        'divisions' in a
+          ? a.divisions.reduce((sum, d) => sum + d.balance, 0)
+          : a.balance
+      const bBalance =
+        'divisions' in b
+          ? b.divisions.reduce((sum, d) => sum + d.balance, 0)
+          : b.balance
       return bBalance - aBalance
     }
 
-    const characters = filtered.filter((w) => w.owner.type === 'character').sort(sortByBalance)
-    const corporations = filtered.filter((w) => w.owner.type === 'corporation').sort(sortByBalance)
+    const characters = filtered
+      .filter((w) => w.owner.type === 'character')
+      .sort(sortByBalance)
+    const corporations = filtered
+      .filter((w) => w.owner.type === 'corporation')
+      .sort(sortByBalance)
 
     return { characterWallets: characters, corporationWallets: corporations }
   }, [walletsByOwner, search, selectedSet])
@@ -125,64 +149,11 @@ export function WalletTab() {
     [characterWallets, corporationWallets]
   )
 
-  const { filteredJournalEntries, availableRefTypes, selectedOwnerJournal, hasCorporationEntries, journalTotals } = useMemo(() => {
-    const journals = journalByOwner.filter((j) => selectedSet.has(ownerKey(j.owner.type, j.owner.id)))
-
-    const allEntries: JournalEntryWithOwner[] = journals
-      .flatMap((j) => j.entries.map((e) => ({ ...e, owner: j.owner })))
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-
-    const refTypes = [...new Set(allEntries.map((e) => e.ref_type))].sort()
-    const hasCorpEntries = allEntries.some((e) => e.division !== undefined)
-
-    let filtered = allEntries
-    if (search) {
-      const searchLower = search.toLowerCase()
-      filtered = filtered.filter(
-        (e) =>
-          e.description.toLowerCase().includes(searchLower) ||
-          e.ref_type.toLowerCase().includes(searchLower)
-      )
-    }
-    if (refTypeFilters.size > 0) {
-      filtered = filtered.filter((e) => refTypeFilters.has(e.ref_type))
-    }
-
-    let income = 0
-    let expenses = 0
-    for (const entry of filtered) {
-      const amount = entry.amount ?? 0
-      if (amount >= 0) {
-        income += amount
-      } else {
-        expenses += amount
-      }
-    }
-
-    const selectedOwner = journals.length === 1 ? journals[0] : null
-
-    return {
-      filteredJournalEntries: filtered,
-      availableRefTypes: refTypes,
-      selectedOwnerJournal: selectedOwner,
-      hasCorporationEntries: hasCorpEntries,
-      journalTotals: { income, expenses, net: income + expenses },
-    }
-  }, [journalByOwner, selectedSet, search, refTypeFilters])
-
-  const showDivisionColumn = hasCorporationEntries
-
   useEffect(() => {
-    if (refTypeFilters.size > 0) {
-      const validFilters = new Set([...refTypeFilters].filter((f) => availableRefTypes.includes(f)))
-      if (validFilters.size !== refTypeFilters.size) {
-        setRefTypeFilters(validFilters)
-      }
-    }
-  }, [availableRefTypes, refTypeFilters])
-
-  useEffect(() => {
-    setResultCount({ showing: sortedWallets.length, total: walletsByOwner.length })
+    setResultCount({
+      showing: sortedWallets.length,
+      total: walletsByOwner.length,
+    })
     return () => setResultCount(null)
   }, [sortedWallets.length, walletsByOwner.length, setResultCount])
 
@@ -206,7 +177,7 @@ export function WalletTab() {
   })
   if (loadingState) return loadingState
 
-  const renderWalletRow = (wallet: typeof sortedWallets[0]) => {
+  const renderWalletRow = (wallet: (typeof sortedWallets)[0]) => {
     const key = `${wallet.owner.type}-${wallet.owner.id}`
     const isCorp = isCorporationWallet(wallet)
     const expanded = isExpanded(key)
@@ -226,7 +197,9 @@ export function WalletTab() {
           onClick={() => isCorp && toggle(key)}
           className={cn(
             'w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm',
-            isCorp ? 'hover:bg-surface-secondary/50 cursor-pointer' : 'cursor-default'
+            isCorp
+              ? 'hover:bg-surface-secondary/50 cursor-pointer'
+              : 'cursor-default'
           )}
         >
           <div className="w-4 flex justify-center">
@@ -262,7 +235,9 @@ export function WalletTab() {
               .sort((a, b) => a.division - b.division)
               .map((div) => {
                 const customName = getWalletName(wallet.owner.id, div.division)
-                const defaultName = DEFAULT_WALLET_NAMES[div.division - 1] ?? `Division ${div.division}`
+                const defaultName =
+                  DEFAULT_WALLET_NAMES[div.division - 1] ??
+                  `Division ${div.division}`
                 const displayName = customName || defaultName
 
                 return (
@@ -277,7 +252,9 @@ export function WalletTab() {
                     <span
                       className={cn(
                         'tabular-nums',
-                        div.balance >= 0 ? 'text-status-positive/80' : 'text-status-negative/80'
+                        div.balance >= 0
+                          ? 'text-status-positive/80'
+                          : 'text-status-negative/80'
                       )}
                     >
                       {formatISK(div.balance)}
@@ -318,71 +295,6 @@ export function WalletTab() {
           {corporationWallets.map(renderWalletRow)}
         </div>
       )}
-
-      <div className="h-4" />
-
-      <div className="rounded-lg border border-border bg-surface-secondary/30">
-        <button
-          onClick={() => setShowJournal(!showJournal)}
-          className="w-full px-4 py-2 flex items-center gap-2 border-b border-border bg-surface-secondary/50 hover:bg-surface-secondary/70"
-        >
-          {showJournal ? (
-            <ChevronDown className="h-4 w-4 text-content-secondary" />
-          ) : (
-            <ChevronRight className="h-4 w-4 text-content-secondary" />
-          )}
-          <ScrollText className="h-4 w-4 text-content-secondary" />
-          <span className="text-xs font-medium uppercase tracking-wider text-content-secondary">
-            Journal
-          </span>
-          {journalByOwner.length > 0 && (
-            <span className="ml-auto text-xs text-content-muted">
-              {filteredJournalEntries.length} entries
-            </span>
-          )}
-        </button>
-
-        {showJournal && (
-          <div>
-            <div className="flex items-center gap-2 px-4 py-2 border-b border-border/50">
-              {availableRefTypes.length > 0 && (
-                <MultiSelectDropdown
-                  options={availableRefTypes.map((type) => ({
-                    value: type,
-                    label: type.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
-                  }))}
-                  selected={refTypeFilters}
-                  onChange={setRefTypeFilters}
-                  placeholder="All Types"
-                />
-              )}
-              <div className="flex items-center gap-3 ml-auto text-xs">
-                <div className="flex items-center gap-1">
-                  <ArrowDownLeft className="h-3 w-3 text-status-positive" />
-                  <span className="tabular-nums text-status-positive">{formatISK(journalTotals.income)}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <ArrowUpRight className="h-3 w-3 text-status-negative" />
-                  <span className="tabular-nums text-status-negative">{formatISK(journalTotals.expenses)}</span>
-                </div>
-                <div className="flex items-center gap-1 pl-2 border-l border-border">
-                  <span className="text-content-secondary">Net:</span>
-                  <span className={cn('tabular-nums font-medium', journalTotals.net >= 0 ? 'text-status-positive' : 'text-status-negative')}>
-                    {formatISK(journalTotals.net)}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <JournalTable
-              entries={filteredJournalEntries}
-              showOwner={!selectedOwnerJournal}
-              showDivision={showDivisionColumn}
-              getWalletName={getWalletName}
-              corporationId={selectedOwnerJournal?.owner.id}
-            />
-          </div>
-        )}
-      </div>
     </div>
   )
 }

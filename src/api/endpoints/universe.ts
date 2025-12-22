@@ -58,7 +58,9 @@ export async function resolveStructures(
   const toCache: CachedStructure[] = []
 
   // NPC stations via ref API
-  const npcIds = Array.from(uncached.keys()).filter((id) => id < 1_000_000_000_000)
+  const npcIds = Array.from(uncached.keys()).filter(
+    (id) => id < 1_000_000_000_000
+  )
   if (npcIds.length > 0) {
     const resolved = await resolveLocations(npcIds)
     for (const [id, loc] of resolved) {
@@ -91,7 +93,9 @@ export async function resolveStructures(
     for (const [structureId, characterId] of playerStructures) {
       const rateLimitInfo = await esi.getRateLimitInfo()
       if (rateLimitInfo.globalRetryAfter !== null) {
-        logger.warn('Stopping structure resolution due to rate limit', { module: 'ESI' })
+        logger.warn('Stopping structure resolution due to rate limit', {
+          module: 'ESI',
+        })
         break
       }
 
@@ -119,7 +123,6 @@ export async function resolveStructures(
         }
         results.set(structureId, placeholder)
         toCache.push(placeholder)
-        logger.debug('Structure inaccessible', { module: 'ESI', structureId })
       }
     }
   }
@@ -145,7 +148,9 @@ export function hasName(id: number): boolean {
   return namesCache.has(id)
 }
 
-export async function resolveNames(ids: number[]): Promise<Map<number, ESIName>> {
+export async function resolveNames(
+  ids: number[]
+): Promise<Map<number, ESIName>> {
   if (ids.length === 0) return new Map()
 
   const results = new Map<number, ESIName>()
@@ -178,7 +183,10 @@ export async function resolveNames(ids: number[]): Promise<Map<number, ESIName>>
         toSave.push(item as CachedName)
       }
     } catch {
-      logger.warn('Failed to resolve names', { module: 'ESI', count: chunk.length })
+      logger.warn('Failed to resolve names', {
+        module: 'ESI',
+        count: chunk.length,
+      })
     }
   }
 

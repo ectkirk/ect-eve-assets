@@ -1,7 +1,13 @@
 import { useState, useMemo } from 'react'
 import { formatNumber } from '@/lib/utils'
 
-type SortField = 'itemName' | 'quantity' | 'totalVolume' | 'groupName' | 'totalJitaBuy' | 'totalJitaSell'
+type SortField =
+  | 'itemName'
+  | 'quantity'
+  | 'totalVolume'
+  | 'groupName'
+  | 'totalJitaBuy'
+  | 'totalJitaSell'
 type SortDirection = 'asc' | 'desc'
 
 interface CalculatorProps {
@@ -23,11 +29,23 @@ function getItemImageUrl(typeId: number, itemName: string): string {
   return `https://images.evetech.net/types/${typeId}/${variation}?size=32`
 }
 
-function SortIcon({ field, sortField, sortDirection }: { field: SortField; sortField: SortField; sortDirection: SortDirection }) {
+function SortIcon({
+  field,
+  sortField,
+  sortDirection,
+}: {
+  field: SortField
+  sortField: SortField
+  sortDirection: SortDirection
+}) {
   if (sortField !== field) {
     return <span className="ml-1 text-content-muted">↕</span>
   }
-  return <span className="ml-1 text-status-info">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+  return (
+    <span className="ml-1 text-status-info">
+      {sortDirection === 'asc' ? '↑' : '↓'}
+    </span>
+  )
 }
 
 export function Calculator({ result }: CalculatorProps) {
@@ -39,7 +57,9 @@ export function Calculator({ result }: CalculatorProps) {
       const aVal = a[sortField]
       const bVal = b[sortField]
       if (typeof aVal === 'string' && typeof bVal === 'string') {
-        return sortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal)
+        return sortDirection === 'asc'
+          ? aVal.localeCompare(bVal)
+          : bVal.localeCompare(aVal)
       }
       return sortDirection === 'asc'
         ? (aVal as number) - (bVal as number)
@@ -88,7 +108,9 @@ export function Calculator({ result }: CalculatorProps) {
           </div>
           <div className="rounded-lg bg-surface-tertiary/50 p-4">
             <div className="text-xs text-content-secondary">Items</div>
-            <div className="text-lg font-semibold text-content">{result.totals.itemCount}</div>
+            <div className="text-lg font-semibold text-content">
+              {result.totals.itemCount}
+            </div>
           </div>
         </div>
       </div>
@@ -127,7 +149,9 @@ export function Calculator({ result }: CalculatorProps) {
 
       <div className="rounded-lg border border-border bg-surface-secondary/50 p-6">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-content">Items ({result.items.length})</h2>
+          <h2 className="text-lg font-semibold text-content">
+            Items ({result.items.length})
+          </h2>
           <div className="flex items-center gap-4 text-xs">
             <div className="flex items-center gap-1.5">
               <span className="h-3 w-3 rounded bg-row-warning"></span>
@@ -149,42 +173,66 @@ export function Calculator({ result }: CalculatorProps) {
                   onClick={() => handleSort('itemName')}
                 >
                   Item
-                  <SortIcon field="itemName" sortField={sortField} sortDirection={sortDirection} />
+                  <SortIcon
+                    field="itemName"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                  />
                 </th>
                 <th
                   className="cursor-pointer pb-3 pr-4 text-right hover:text-content"
                   onClick={() => handleSort('quantity')}
                 >
                   Qty
-                  <SortIcon field="quantity" sortField={sortField} sortDirection={sortDirection} />
+                  <SortIcon
+                    field="quantity"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                  />
                 </th>
                 <th
                   className="cursor-pointer pb-3 pr-4 text-right hover:text-content"
                   onClick={() => handleSort('totalVolume')}
                 >
                   m³
-                  <SortIcon field="totalVolume" sortField={sortField} sortDirection={sortDirection} />
+                  <SortIcon
+                    field="totalVolume"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                  />
                 </th>
                 <th
                   className="cursor-pointer pb-3 pr-4 hover:text-content"
                   onClick={() => handleSort('groupName')}
                 >
                   Group
-                  <SortIcon field="groupName" sortField={sortField} sortDirection={sortDirection} />
+                  <SortIcon
+                    field="groupName"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                  />
                 </th>
                 <th
                   className="cursor-pointer pb-3 pr-4 text-right hover:text-content"
                   onClick={() => handleSort('totalJitaBuy')}
                 >
                   Jita Buy
-                  <SortIcon field="totalJitaBuy" sortField={sortField} sortDirection={sortDirection} />
+                  <SortIcon
+                    field="totalJitaBuy"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                  />
                 </th>
                 <th
                   className="cursor-pointer pb-3 text-right hover:text-content"
                   onClick={() => handleSort('totalJitaSell')}
                 >
                   Jita Sell
-                  <SortIcon field="totalJitaSell" sortField={sortField} sortDirection={sortDirection} />
+                  <SortIcon
+                    field="totalJitaSell"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                  />
                 </th>
               </tr>
             </thead>
@@ -209,7 +257,9 @@ function ItemRow({ item }: { item: BuybackCalculatorItem }) {
         : ''
 
   return (
-    <tr className={`border-b border-border/50 hover:bg-surface-tertiary/30 ${rowClass}`}>
+    <tr
+      className={`border-b border-border/50 hover:bg-surface-tertiary/30 ${rowClass}`}
+    >
       <td className="py-3 pr-4">
         <div className="flex items-center gap-3">
           <img
@@ -231,7 +281,8 @@ function ItemRow({ item }: { item: BuybackCalculatorItem }) {
               </a>
               {item.capitalSellPricing && (
                 <span className="rounded bg-status-time/20 px-1.5 py-0.5 text-xs text-status-time">
-                  {item.capitalSellPricing.period} · {item.capitalSellPricing.saleCount} sales
+                  {item.capitalSellPricing.period} ·{' '}
+                  {item.capitalSellPricing.saleCount} sales
                 </span>
               )}
             </div>
@@ -246,12 +297,20 @@ function ItemRow({ item }: { item: BuybackCalculatorItem }) {
       </td>
       <td className="py-3 pr-4 text-content-secondary">{item.groupName}</td>
       <td className="py-3 pr-4 text-right">
-        <div className="font-mono text-status-info">{formatISKFull(item.totalJitaBuy)}</div>
-        <div className="text-xs text-content-muted">@{formatISKFull(item.jitaBuyPrice)}/u</div>
+        <div className="font-mono text-status-info">
+          {formatISKFull(item.totalJitaBuy)}
+        </div>
+        <div className="text-xs text-content-muted">
+          @{formatISKFull(item.jitaBuyPrice)}/u
+        </div>
       </td>
       <td className="py-3 text-right">
-        <div className="font-mono text-status-positive">{formatISKFull(item.totalJitaSell)}</div>
-        <div className="text-xs text-content-muted">@{formatISKFull(item.jitaSellPrice)}/u</div>
+        <div className="font-mono text-status-positive">
+          {formatISKFull(item.totalJitaSell)}
+        </div>
+        <div className="text-xs text-content-muted">
+          @{formatISKFull(item.jitaSellPrice)}/u
+        </div>
       </td>
     </tr>
   )

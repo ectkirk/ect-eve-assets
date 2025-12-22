@@ -22,7 +22,9 @@ interface BlueprintsExtraState {
   blueprintsByItemId: Map<number, BlueprintInfo>
 }
 
-function buildBlueprintMap(blueprintsByOwner: OwnerBlueprints[]): Map<number, BlueprintInfo> {
+function buildBlueprintMap(
+  blueprintsByOwner: OwnerBlueprints[]
+): Map<number, BlueprintInfo> {
   const map = new Map<number, BlueprintInfo>()
   for (const { blueprints } of blueprintsByOwner) {
     for (const bp of blueprints) {
@@ -68,7 +70,9 @@ export const useBlueprintsStore = createOwnerStore<
   },
   toOwnerData: (owner, data) => ({ owner, blueprints: data }),
   extraState: { blueprintsByItemId: new Map() },
-  rebuildExtraState: (dataByOwner) => ({ blueprintsByItemId: buildBlueprintMap(dataByOwner) }),
+  rebuildExtraState: (dataByOwner) => ({
+    blueprintsByItemId: buildBlueprintMap(dataByOwner),
+  }),
 })
 
 export function getBlueprintInfo(itemId: number): BlueprintInfo | undefined {

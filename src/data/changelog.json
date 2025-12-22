@@ -1,18 +1,85 @@
 {
-  "version": "1.8.0",
-  "date": "2025-12-20",
+  "version": "1.9.0",
+  "date": "2025-12-21",
   "changes": [
-    { "type": "feat", "scope": "esi", "description": "Add per-group rate limiting and error handling" },
-    { "type": "feat", "scope": "ref-api", "description": "Preload blueprints, structures, and all types on startup" },
-    { "type": "feat", "scope": "ref-api", "description": "Add dedicated moon endpoint for starbase locations" },
-    { "type": "feat", "scope": "pricing", "description": "Add Jita market endpoint for improved price accuracy" },
-    { "type": "feat", "description": "Pause ESI and API operations when window is minimized" },
-    { "type": "perf", "scope": "tabs", "description": "Optimize assets and contracts tab performance" },
-    { "type": "fix", "scope": "assets", "description": "Force re-render when contracts or market orders update" },
-    { "type": "fix", "scope": "contracts", "description": "Prevent duplicate API calls and fix race conditions" },
-    { "type": "fix", "scope": "cache", "description": "Ensure reference data reloads after cache clear" },
-    { "type": "fix", "scope": "pricing", "description": "Resolve race conditions in price fetching and type resolution" },
-    { "type": "refactor", "scope": "tree", "description": "Simplify tree building and fix location resolution" },
-    { "type": "refactor", "scope": "buyback", "description": "Fetch config dynamically from API" }
+    {
+      "type": "feat",
+      "scope": "pricing",
+      "description": "Use base_price for blueprint originals for accurate valuation"
+    },
+    {
+      "type": "feat",
+      "scope": "ui",
+      "description": "Add visible button for directors to add corporation"
+    },
+    {
+      "type": "feat",
+      "scope": "settings",
+      "description": "Add asset view settings modal for customization"
+    },
+    {
+      "type": "feat",
+      "scope": "assets",
+      "description": "Display contract items and sell orders in assets tree"
+    },
+    {
+      "type": "feat",
+      "scope": "structures",
+      "description": "Add structure value calculation with fitted items"
+    },
+    {
+      "type": "feat",
+      "scope": "auth",
+      "description": "Add corporation roles tracking and dynamic corp management"
+    },
+    {
+      "type": "feat",
+      "scope": "market-orders",
+      "description": "Add EVE Est column and regional pricing comparison"
+    },
+    {
+      "type": "fix",
+      "scope": "clones",
+      "description": "Fetch implant slots from ref API for accurate clone data"
+    },
+    {
+      "type": "fix",
+      "scope": "assets",
+      "description": "Show Unknown Parent for items with missing parent containers"
+    },
+    {
+      "type": "fix",
+      "scope": "assets",
+      "description": "Resolve starbase locations using moon names instead of ESI"
+    },
+    {
+      "type": "fix",
+      "scope": "market-orders",
+      "description": "Keep dropdown visible when no orders match filter"
+    },
+    {
+      "type": "fix",
+      "scope": "owners",
+      "description": "Fix asset list not refreshing on owner removal"
+    },
+    {
+      "type": "perf",
+      "scope": "init",
+      "description": "Parallelize reference data loading for faster startup"
+    },
+    {
+      "type": "perf",
+      "scope": "assets",
+      "description": "Defer display name resolution to render time"
+    },
+    {
+      "type": "refactor",
+      "scope": "stores",
+      "description": "Add centralized store registry for owner lifecycle management"
+    },
+    {
+      "type": "refactor",
+      "description": "Production readiness improvements with cache limits and cleanup"
+    }
   ]
 }

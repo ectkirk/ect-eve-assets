@@ -39,7 +39,12 @@ const SECURITY_STYLING: Record<SecurityKey, SecurityStyling> = {
   },
 }
 
-export const BUYBACK_TABS = ['High Sec', 'Low Sec', 'Null Sec', 'Asset Safety'] as const
+export const BUYBACK_TABS = [
+  'High Sec',
+  'Low Sec',
+  'Null Sec',
+  'Asset Safety',
+] as const
 
 export type BuybackTabType = (typeof BUYBACK_TABS)[number]
 

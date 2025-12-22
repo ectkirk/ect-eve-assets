@@ -2,8 +2,11 @@ import { app } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
 import { ESICache } from './cache'
-import { RateLimitTracker } from './rate-limit'
-import { RequestQueue } from './queue'
+import {
+  RateLimitTracker,
+  guessRateLimitGroup,
+  isContractItemsEndpoint,
+} from './rate-limit'
 import { logger } from '../logger.js'
 import {
   ESI_BASE_URL,
@@ -23,17 +26,17 @@ type TokenProvider = (characterId: number) => Promise<string | null>
 export class MainESIService {
   private cache = new ESICache()
   private rateLimiter = new RateLimitTracker()
-  private queue: RequestQueue
   private tokenProvider: TokenProvider | null = null
   private rateLimitFilePath: string
   private userAgent: string
   private saveStateTimeout: NodeJS.Timeout | null = null
+  private paused = false
+  private activeRequests = 0
 
   constructor() {
     const userData = app.getPath('userData')
     this.rateLimitFilePath = path.join(userData, RATE_LIMIT_FILE)
     this.cache.setFilePath(path.join(userData, CACHE_FILE))
-    this.queue = new RequestQueue(this.rateLimiter, this.executeRequest.bind(this))
     this.userAgent = makeUserAgent(app.getVersion())
     this.loadState()
   }
@@ -42,15 +45,21 @@ export class MainESIService {
     this.tokenProvider = provider
   }
 
-  async fetch<T>(endpoint: string, options: ESIRequestOptions = {}): Promise<T> {
-    const result = await this.queue.enqueue(endpoint, options)
+  async fetch<T>(
+    endpoint: string,
+    options: ESIRequestOptions = {}
+  ): Promise<T> {
+    const result = await this.executeWithRateLimit(endpoint, options)
     if (!result.success) {
       throw new ESIError(result.error, result.status ?? 500, result.retryAfter)
     }
     return result.data as T
   }
 
-  async fetchWithMeta<T>(endpoint: string, options: ESIRequestOptions = {}): Promise<ESIResponseMeta<T>> {
+  async fetchWithMeta<T>(
+    endpoint: string,
+    options: ESIRequestOptions = {}
+  ): Promise<ESIResponseMeta<T>> {
     const cacheKey = this.cache.makeKey(options.characterId, endpoint)
     const cached = this.cache.get(cacheKey)
 
@@ -63,7 +72,7 @@ export class MainESIService {
       }
     }
 
-    const result = await this.queue.enqueue(endpoint, {
+    const result = await this.executeWithRateLimit(endpoint, {
       ...options,
       etag: options.etag ?? this.cache.getEtag(cacheKey),
     })
@@ -91,25 +100,37 @@ export class MainESIService {
     return response
   }
 
-  async fetchPaginated<T>(endpoint: string, options: ESIRequestOptions = {}): Promise<T[]> {
+  async fetchPaginated<T>(
+    endpoint: string,
+    options: ESIRequestOptions = {}
+  ): Promise<T[]> {
     const result = await this.fetchPaginatedWithMeta<T>(endpoint, options)
     return result.data
   }
 
-  async fetchPaginatedWithMeta<T>(endpoint: string, options: ESIRequestOptions = {}): Promise<ESIResponseMeta<T[]>> {
+  async fetchPaginatedWithMeta<T>(
+    endpoint: string,
+    options: ESIRequestOptions = {}
+  ): Promise<ESIResponseMeta<T[]>> {
     const results: T[] = []
     let page = 1
     let totalPages = 1
-    let lastMeta: { expiresAt: number; etag: string | null; notModified: boolean } | undefined
+    let lastMeta:
+      | { expiresAt: number; etag: string | null; notModified: boolean }
+      | undefined
 
     while (page <= totalPages) {
       const separator = endpoint.includes('?') ? '&' : '?'
       const pagedEndpoint = `${endpoint}${separator}page=${page}`
 
-      const result = await this.queue.enqueue(pagedEndpoint, options)
+      const result = await this.executeWithRateLimit(pagedEndpoint, options)
 
       if (!result.success) {
-        throw new ESIError(result.error, result.status ?? 500, result.retryAfter)
+        throw new ESIError(
+          result.error,
+          result.status ?? 500,
+          result.retryAfter
+        )
       }
 
       const pageData = result.data as T[]
@@ -138,6 +159,33 @@ export class MainESIService {
     }
   }
 
+  private async executeWithRateLimit(
+    endpoint: string,
+    options: ESIRequestOptions
+  ): Promise<ESIResponse<unknown>> {
+    while (this.paused) {
+      await this.delay(100)
+    }
+
+    const characterId = options.characterId ?? 0
+
+    if (isContractItemsEndpoint(endpoint)) {
+      const contractDelay = this.rateLimiter.getContractItemsDelay(characterId)
+      if (contractDelay > 0) {
+        await this.delay(contractDelay)
+      }
+      this.rateLimiter.recordContractItemsRequest(characterId)
+    }
+
+    const group = guessRateLimitGroup(endpoint)
+    const delay = this.rateLimiter.getDelayMs(characterId, group)
+    if (delay > 0) {
+      await this.delay(delay)
+    }
+
+    return this.executeRequest(endpoint, options)
+  }
+
   private async executeRequest(
     endpoint: string,
     options: ESIRequestOptions
@@ -162,7 +210,11 @@ export class MainESIService {
         return { success: false, error: 'Token provider error', status: 401 }
       }
       if (!token) {
-        return { success: false, error: 'Failed to get access token', status: 401 }
+        return {
+          success: false,
+          error: 'Failed to get access token',
+          status: 401,
+        }
       }
       headers['Authorization'] = `Bearer ${token}`
     }
@@ -171,6 +223,7 @@ export class MainESIService {
       headers['If-None-Match'] = options.etag
     }
 
+    this.activeRequests++
     try {
       const response = await fetch(url, {
         method: options.method ?? 'GET',
@@ -178,7 +231,10 @@ export class MainESIService {
         body: options.body,
       })
 
-      this.rateLimiter.updateFromHeaders(options.characterId ?? 0, response.headers)
+      this.rateLimiter.updateFromHeaders(
+        options.characterId ?? 0,
+        response.headers
+      )
       this.scheduleSaveState()
 
       if (response.status === 420 || response.status === 429) {
@@ -197,16 +253,6 @@ export class MainESIService {
       const expiresAt = expiresHeader ? new Date(expiresHeader).getTime() : null
       const etag = response.headers.get('ETag')
 
-      if (expiresAt) {
-        logger.debug('ESI response headers', {
-          module: 'ESI',
-          url,
-          status: response.status,
-          expiresHeader,
-          expiresAt,
-          expiresIn: Math.round((expiresAt - Date.now()) / 1000),
-        })
-      }
       const xPages = response.headers.get('X-Pages')
 
       if (response.status === 304) {
@@ -222,8 +268,6 @@ export class MainESIService {
       }
 
       if (!response.ok) {
-        const group = this.queue.guessRateLimitGroup(endpoint)
-        this.rateLimiter.recordGroupError(group)
         let errorMessage = `ESI error: ${response.status}`
         try {
           const errorBody = (await response.json()) as { error?: string }
@@ -257,7 +301,13 @@ export class MainESIService {
         success: false,
         error: error instanceof Error ? error.message : 'Network error',
       }
+    } finally {
+      this.activeRequests--
     }
+  }
+
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms))
   }
 
   clearCache(): void {
@@ -268,21 +318,22 @@ export class MainESIService {
     return this.cache.clearByPattern(pattern)
   }
 
-  getRateLimitInfo(): { globalRetryAfter: number | null; queueLength: number } {
+  getRateLimitInfo(): {
+    globalRetryAfter: number | null
+    activeRequests: number
+  } {
     return {
       globalRetryAfter: this.rateLimiter.getGlobalRetryAfter(),
-      queueLength: this.queue.length,
+      activeRequests: this.activeRequests,
     }
   }
 
   pause(): void {
-    this.queue.pause()
-    logger.debug('ESI queue paused', { module: 'ESI' })
+    this.paused = true
   }
 
   resume(): void {
-    this.queue.resume()
-    logger.debug('ESI queue resumed', { module: 'ESI' })
+    this.paused = false
   }
 
   private loadState(): void {
@@ -290,10 +341,13 @@ export class MainESIService {
       if (fs.existsSync(this.rateLimitFilePath)) {
         const data = fs.readFileSync(this.rateLimitFilePath, 'utf-8')
         const states = JSON.parse(data)
-        this.rateLimiter.loadStates(states)
+        this.rateLimiter.loadState(states)
       }
-    } catch {
-      // Ignore load errors
+    } catch (err) {
+      logger.debug('Failed to load rate limit state', {
+        module: 'ESI',
+        error: err instanceof Error ? err.message : String(err),
+      })
     }
     this.cache.load()
   }
@@ -308,11 +362,23 @@ export class MainESIService {
 
   private saveState(): void {
     try {
-      const states = this.rateLimiter.exportStates()
+      const states = this.rateLimiter.exportState()
       fs.writeFileSync(this.rateLimitFilePath, JSON.stringify(states, null, 2))
-    } catch {
-      // Ignore save errors
+    } catch (err) {
+      logger.debug('Failed to save rate limit state', {
+        module: 'ESI',
+        error: err instanceof Error ? err.message : String(err),
+      })
     }
+  }
+
+  saveImmediately(): void {
+    if (this.saveStateTimeout) {
+      clearTimeout(this.saveStateTimeout)
+      this.saveStateTimeout = null
+    }
+    this.saveState()
+    this.cache.saveImmediately()
   }
 }
 

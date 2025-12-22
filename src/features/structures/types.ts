@@ -26,5 +26,17 @@ export interface StarbaseRow {
   fuelTier: number | undefined
 }
 
-export type UpwellSortColumn = 'name' | 'type' | 'region' | 'state' | 'fuel' | 'details'
-export type StarbaseSortColumn = 'name' | 'type' | 'region' | 'state' | 'fuel' | 'details'
+export type UpwellSortColumn =
+  | 'name'
+  | 'type'
+  | 'region'
+  | 'state'
+  | 'fuel'
+  | 'details'
+export type StarbaseSortColumn =
+  | 'name'
+  | 'type'
+  | 'region'
+  | 'state'
+  | 'fuel'
+  | 'details'

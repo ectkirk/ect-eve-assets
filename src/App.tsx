@@ -1,17 +1,18 @@
 import { useEffect, useState, Component, type ReactNode } from 'react'
 import { useAuthStore } from './store/auth-store'
-import { useAssetStore, setupSyntheticAssetSubscriptions } from './store/asset-store'
-import { useMarketOrdersStore } from './store/market-orders-store'
-import { useContractsStore } from './store/contracts-store'
-import { useWalletStore } from './store/wallet-store'
-import { useBlueprintsStore } from './store/blueprints-store'
-import { useStructuresStore } from './store/structures-store'
-import { useIndustryJobsStore } from './store/industry-jobs-store'
+import { useAssetStore, stopPriceRefreshTimer } from './store/asset-store'
+import { useStoreRegistry } from './store/store-registry'
+import { useRegionalMarketStore } from './store/regional-market-store'
+import { useESIPricesStore } from './store/esi-prices-store'
 import { useExpiryCacheStore } from './store/expiry-cache-store'
 import { useNotificationStore } from './store/toast-store'
 import { MainLayout } from './components/layout/MainLayout'
 import { initCache } from './store/reference-cache'
-import { loadReferenceData, loadUniverseData, loadRefStructures } from './api/ref-client'
+import {
+  loadReferenceData,
+  loadUniverseData,
+  loadRefStructures,
+} from './api/ref-client'
 import { logger } from './lib/logger'
 import { setupESITokenProvider } from './api/esi'
 import { initTheme } from './store/theme-store'
@@ -21,7 +22,10 @@ let appInitComplete = false
 
 initTheme()
 
-class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null; errorInfo: React.ErrorInfo | null }> {
+class ErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean; error: Error | null; errorInfo: React.ErrorInfo | null }
+> {
   constructor(props: { children: ReactNode }) {
     super(props)
     this.state = { hasError: false, error: null, errorInfo: null }
@@ -44,7 +48,9 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
       return (
         <div className="flex h-screen items-center justify-center bg-surface text-content">
           <div className="text-center max-w-2xl p-4">
-            <p className="text-semantic-danger text-lg font-bold">Something went wrong</p>
+            <p className="text-semantic-danger text-lg font-bold">
+              Something went wrong
+            </p>
             <pre className="mt-4 text-left text-xs text-content-secondary bg-surface-secondary p-4 rounded overflow-auto max-h-48">
               {this.state.error?.message}
             </pre>
@@ -72,17 +78,22 @@ function App() {
 
   useEffect(() => {
     const cleanupTokenProvider = setupESITokenProvider()
-    return cleanupTokenProvider
+    return () => {
+      cleanupTokenProvider()
+      stopPriceRefreshTimer()
+    }
   }, [])
 
   useEffect(() => {
-    const unsubscribe = window.electronAPI?.onWindowMinimizeChange?.((isMinimized) => {
-      if (isMinimized) {
-        useExpiryCacheStore.getState().pause()
-      } else {
-        useExpiryCacheStore.getState().resume()
+    const unsubscribe = window.electronAPI?.onWindowMinimizeChange?.(
+      (isMinimized) => {
+        if (isMinimized) {
+          useExpiryCacheStore.getState().pause()
+        } else {
+          useExpiryCacheStore.getState().resume()
+        }
       }
-    })
+    )
     return () => unsubscribe?.()
   }, [])
 
@@ -107,19 +118,14 @@ function App() {
       .then(() => {
         logger.info('Asset store initialized', { module: 'App' })
         return Promise.all([
-          useMarketOrdersStore.getState().init(),
-          useContractsStore.getState().init(),
-          useWalletStore.getState().init(),
-          useBlueprintsStore.getState().init(),
-          useStructuresStore.getState().init(),
-          useIndustryJobsStore.getState().init(),
+          useStoreRegistry.getState().initAll(['assets']),
+          useRegionalMarketStore.getState().init(),
+          useESIPricesStore.getState().init(),
           useNotificationStore.getState().init(),
         ])
       })
       .then(async () => {
         logger.info('All stores initialized', { module: 'App' })
-        setupSyntheticAssetSubscriptions()
-        useAssetStore.getState().rebuildSyntheticAssets()
         useAssetStore.getState().refreshPrices()
         const ownerKeys = Object.keys(useAuthStore.getState().owners)
         useExpiryCacheStore.getState().queueMissingEndpoints(ownerKeys)

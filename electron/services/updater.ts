@@ -8,6 +8,8 @@ autoUpdater.allowPrerelease = true
 
 const CHECK_INTERVAL_MS = 30 * 60 * 1000
 
+let updateCheckInterval: ReturnType<typeof setInterval> | null = null
+
 export function initUpdater(mainWindow: BrowserWindow): void {
   autoUpdater.on('checking-for-update', () => {
     logger.info('Checking for updates...', { module: 'Updater' })
@@ -25,7 +27,6 @@ export function initUpdater(mainWindow: BrowserWindow): void {
   })
 
   autoUpdater.on('download-progress', (progress) => {
-    logger.debug(`Download progress: ${progress.percent.toFixed(1)}%`, { module: 'Updater' })
     if (!mainWindow.isDestroyed()) {
       mainWindow.webContents.send('updater:download-progress', progress.percent)
     }
@@ -49,7 +50,16 @@ export function initUpdater(mainWindow: BrowserWindow): void {
   }
 
   checkForUpdates()
-  setInterval(checkForUpdates, CHECK_INTERVAL_MS)
+  if (!updateCheckInterval) {
+    updateCheckInterval = setInterval(checkForUpdates, CHECK_INTERVAL_MS)
+  }
+}
+
+export function stopUpdater(): void {
+  if (updateCheckInterval) {
+    clearInterval(updateCheckInterval)
+    updateCheckInterval = null
+  }
 }
 
 export function installUpdate(): void {

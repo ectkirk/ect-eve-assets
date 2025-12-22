@@ -1,10 +1,19 @@
 import { useMemo } from 'react'
 import { useAssetData, type OwnerAssets } from './useAssetData'
-import { useAuthStore, ownerKey } from '@/store/auth-store'
-import { resolveAllAssets } from '@/lib/asset-resolver'
+import { useAuthStore, ownerKey, findOwnerByKey } from '@/store/auth-store'
+import {
+  resolveAllAssets,
+  resolveMarketOrder,
+  resolveContractItem,
+  resolveIndustryJob,
+} from '@/lib/asset-resolver'
 import type { ResolvedAsset, ResolvedAssetsByOwner } from '@/lib/resolved-asset'
 import { useStarbasesStore } from '@/store/starbases-store'
 import { useStructuresStore } from '@/store/structures-store'
+import { useMarketOrdersStore } from '@/store/market-orders-store'
+import { useContractsStore } from '@/store/contracts-store'
+import { useIndustryJobsStore } from '@/store/industry-jobs-store'
+import { useAssetSettings } from '@/store/asset-settings-store'
 
 export interface ResolvedAssetsResult {
   resolvedAssets: ResolvedAsset[]
@@ -23,6 +32,24 @@ export function useResolvedAssets(): ResolvedAssetsResult {
   const assetData = useAssetData()
   const starbasesByOwner = useStarbasesStore((s) => s.dataByOwner)
   const structuresByOwner = useStructuresStore((s) => s.dataByOwner)
+  const ordersById = useMarketOrdersStore((s) => s.itemsById)
+  const ordersVisibilityByOwner = useMarketOrdersStore(
+    (s) => s.visibilityByOwner
+  )
+  const contractsById = useContractsStore((s) => s.itemsById)
+  const contractItemsById = useContractsStore((s) => s.itemsByContractId)
+  const contractsVisibilityByOwner = useContractsStore(
+    (s) => s.visibilityByOwner
+  )
+  const jobsById = useIndustryJobsStore((s) => s.itemsById)
+  const jobsVisibilityByOwner = useIndustryJobsStore((s) => s.visibilityByOwner)
+  const {
+    includeMarketOrders,
+    includeContracts,
+    includeIndustryJobs,
+    includeActiveShip,
+    includeStructures,
+  } = useAssetSettings()
 
   const { ownedStructureIds, starbaseMoonIds } = useMemo(() => {
     const ids = new Set<number>()
@@ -44,23 +71,109 @@ export function useResolvedAssets(): ResolvedAssetsResult {
   }, [starbasesByOwner, structuresByOwner])
 
   const resolvedAssets = useMemo(() => {
-    void assetData.cacheVersion
+    let assets =
+      assetData.assetsByOwner.length > 0
+        ? resolveAllAssets(assetData.assetsByOwner, {
+            prices: assetData.prices,
+            assetNames: assetData.assetNames,
+            ownedStructureIds,
+            starbaseMoonIds,
+          })
+        : []
 
-    if (assetData.unifiedAssetsByOwner.length === 0) return []
+    if (!includeActiveShip || !includeStructures) {
+      assets = assets.filter(
+        (a) =>
+          (includeActiveShip || !a.modeFlags.isActiveShip) &&
+          (includeStructures || !a.modeFlags.isOwnedStructure)
+      )
+    }
 
-    return resolveAllAssets(assetData.unifiedAssetsByOwner, {
-      prices: assetData.prices,
-      assetNames: assetData.assetNames,
-      ownedStructureIds,
-      starbaseMoonIds,
-    })
+    if (includeMarketOrders) {
+      for (const [ownerKeyStr, orderIds] of ordersVisibilityByOwner) {
+        const owner = findOwnerByKey(ownerKeyStr)
+        if (!owner) continue
+
+        for (const orderId of orderIds) {
+          const stored = ordersById.get(orderId)
+          if (stored && !stored.item.is_buy_order) {
+            assets.push(
+              resolveMarketOrder(stored.item, owner, assetData.prices)
+            )
+          }
+        }
+      }
+    }
+
+    if (includeContracts) {
+      for (const [ownerKeyStr, contractIds] of contractsVisibilityByOwner) {
+        const owner = findOwnerByKey(ownerKeyStr)
+        if (!owner) continue
+
+        const isCharOwner = owner.type === 'character'
+        const ownerId = isCharOwner ? owner.characterId : owner.id
+
+        for (const contractId of contractIds) {
+          const stored = contractsById.get(contractId)
+          if (!stored) continue
+
+          const contract = stored.item
+          const items = contractItemsById.get(contractId)
+          if (contract.status !== 'outstanding' || !items) continue
+
+          const isIssuer = isCharOwner
+            ? contract.issuer_id === ownerId
+            : contract.issuer_corporation_id === ownerId
+
+          if (!isIssuer) continue
+
+          for (const item of items) {
+            if (item.is_included) {
+              assets.push(
+                resolveContractItem(contract, item, owner, assetData.prices)
+              )
+            }
+          }
+        }
+      }
+    }
+
+    if (includeIndustryJobs) {
+      for (const [ownerKeyStr, jobIds] of jobsVisibilityByOwner) {
+        const owner = findOwnerByKey(ownerKeyStr)
+        if (!owner) continue
+
+        for (const jobId of jobIds) {
+          const stored = jobsById.get(jobId)
+          if (!stored) continue
+
+          const job = stored.item
+          if (job.status !== 'active' && job.status !== 'ready') continue
+
+          assets.push(resolveIndustryJob(job, owner, assetData.prices))
+        }
+      }
+    }
+
+    return assets
   }, [
-    assetData.unifiedAssetsByOwner,
+    assetData.assetsByOwner,
     assetData.prices,
     assetData.assetNames,
-    assetData.cacheVersion,
     ownedStructureIds,
     starbaseMoonIds,
+    ordersById,
+    ordersVisibilityByOwner,
+    contractsById,
+    contractItemsById,
+    contractsVisibilityByOwner,
+    jobsById,
+    jobsVisibilityByOwner,
+    includeMarketOrders,
+    includeContracts,
+    includeIndustryJobs,
+    includeActiveShip,
+    includeStructures,
   ])
 
   const resolvedByOwner = useMemo(() => {
@@ -87,7 +200,10 @@ export function useResolvedAssets(): ResolvedAssetsResult {
   }, [resolvedAssets])
 
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
-  const selectedSet = useMemo(() => new Set(selectedOwnerIds), [selectedOwnerIds])
+  const selectedSet = useMemo(
+    () => new Set(selectedOwnerIds),
+    [selectedOwnerIds]
+  )
 
   const selectedResolvedAssets = useMemo(() => {
     return resolvedAssets.filter((ra) => {

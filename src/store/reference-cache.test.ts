@@ -164,7 +164,9 @@ describe('Reference Cache', () => {
     })
 
     it('returns location name for low IDs', () => {
-      expect(getLocationName(60003760)).toBe('Jita IV - Moon 4 - Caldari Navy Assembly Plant')
+      expect(getLocationName(60003760)).toBe(
+        'Jita IV - Moon 4 - Caldari Navy Assembly Plant'
+      )
     })
 
     it('returns fallback for unknown location', () => {
@@ -209,15 +211,17 @@ describe('Reference Cache', () => {
       const listener = vi.fn()
       const unsubscribe = subscribe(listener)
 
-      await saveTypes([{
-        id: 35,
-        name: 'Pyerite',
-        groupId: 18,
-        groupName: 'Mineral',
-        categoryId: 4,
-        categoryName: 'Material',
-        volume: 0.01,
-      }])
+      await saveTypes([
+        {
+          id: 35,
+          name: 'Pyerite',
+          groupId: 18,
+          groupName: 'Mineral',
+          categoryId: 4,
+          categoryName: 'Material',
+          volume: 0.01,
+        },
+      ])
 
       expect(listener).toHaveBeenCalled()
       unsubscribe()
@@ -228,15 +232,17 @@ describe('Reference Cache', () => {
       const unsubscribe = subscribe(listener)
       unsubscribe()
 
-      await saveTypes([{
-        id: 36,
-        name: 'Mexallon',
-        groupId: 18,
-        groupName: 'Mineral',
-        categoryId: 4,
-        categoryName: 'Material',
-        volume: 0.01,
-      }])
+      await saveTypes([
+        {
+          id: 36,
+          name: 'Mexallon',
+          groupId: 18,
+          groupName: 'Mineral',
+          categoryId: 4,
+          categoryName: 'Material',
+          volume: 0.01,
+        },
+      ])
 
       expect(listener).not.toHaveBeenCalled()
     })

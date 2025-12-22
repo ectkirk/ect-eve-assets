@@ -1,0 +1,173 @@
+import { ArrowRightLeft, Gavel, Truck, HelpCircle } from 'lucide-react'
+import type { ESIContract, ESIContractItem } from '@/api/endpoints/contracts'
+import type { ContractWithItems } from '@/store/contracts-store'
+import { hasType, getType } from '@/store/reference-cache'
+import { getName } from '@/api/endpoints/universe'
+import { isAbyssalTypeId, getCachedAbyssalPrice } from '@/api/mutamarket-client'
+import { getLocationName } from '@/lib/location-utils'
+
+export type ContractSortColumn =
+  | 'type'
+  | 'items'
+  | 'location'
+  | 'assigner'
+  | 'assignee'
+  | 'price'
+  | 'value'
+  | 'expires'
+  | 'volume'
+  | 'collateral'
+  | 'days'
+
+export const CONTRACT_TYPE_NAMES: Record<ESIContract['type'], string> = {
+  unknown: 'Unknown',
+  item_exchange: 'Item Exchange',
+  auction: 'Auction',
+  courier: 'Courier',
+  loan: 'Loan',
+}
+
+export const CONTRACT_TYPE_ICONS: Record<
+  ESIContract['type'],
+  React.ElementType
+> = {
+  unknown: HelpCircle,
+  item_exchange: ArrowRightLeft,
+  auction: Gavel,
+  courier: Truck,
+  loan: ArrowRightLeft,
+}
+
+export type ContractDirection = 'out' | 'in'
+
+export interface ContractRow {
+  contractWithItems: ContractWithItems
+  items: ESIContractItem[]
+  ownerType: 'character' | 'corporation'
+  ownerId: number
+  locationName: string
+  endLocationName: string
+  firstItemTypeId?: number
+  firstItemCategoryId?: number
+  firstItemIsBlueprintCopy?: boolean
+  typeName: string
+  direction: ContractDirection
+  assignerName: string
+  assigneeName: string
+  itemValue: number
+  status: ESIContract['status']
+}
+
+export interface DirectionGroup {
+  direction: ContractDirection
+  displayName: string
+  contracts: ContractRow[]
+  totalValue: number
+}
+
+export function formatExpiry(dateExpired: string): {
+  text: string
+  isExpired: boolean
+} {
+  const expiry = new Date(dateExpired).getTime()
+  const now = Date.now()
+  const remaining = expiry - now
+
+  if (remaining <= 0) {
+    return { text: 'Expired', isExpired: true }
+  }
+
+  const hours = Math.floor(remaining / (60 * 60 * 1000))
+  if (hours >= 24) {
+    const days = Math.floor(hours / 24)
+    return { text: `${days}d`, isExpired: false }
+  }
+
+  return { text: `${hours}h`, isExpired: false }
+}
+
+export function getContractValue(contract: ESIContract): number {
+  return (contract.price ?? 0) + (contract.reward ?? 0)
+}
+
+export function getDaysLeft(contract: ESIContract): number {
+  if (contract.status === 'outstanding') {
+    const expiryTime = new Date(contract.date_expired).getTime()
+    return Math.ceil((expiryTime - Date.now()) / (24 * 60 * 60 * 1000))
+  } else if (
+    contract.status === 'in_progress' &&
+    contract.date_accepted &&
+    contract.days_to_complete
+  ) {
+    const acceptedDate = new Date(contract.date_accepted).getTime()
+    const deadline =
+      acceptedDate + contract.days_to_complete * 24 * 60 * 60 * 1000
+    return Math.ceil((deadline - Date.now()) / (24 * 60 * 60 * 1000))
+  }
+  return 0
+}
+
+export function buildContractRow(
+  contractWithItems: ContractWithItems,
+  ownerType: 'character' | 'corporation',
+  ownerId: number,
+  isIssuer: boolean,
+  prices: Map<number, number>
+): ContractRow {
+  const contract = contractWithItems.contract
+  const items = contractWithItems.items ?? []
+  const direction: ContractDirection = isIssuer ? 'out' : 'in'
+
+  const firstItem = items[0]
+  const firstItemType =
+    firstItem && hasType(firstItem.type_id)
+      ? getType(firstItem.type_id)
+      : undefined
+
+  const assignerName =
+    getName(contract.issuer_id)?.name ?? `ID ${contract.issuer_id}`
+
+  let assigneeName: string
+  if (contract.availability === 'public') {
+    assigneeName = 'Public'
+  } else if (contract.assignee_id) {
+    assigneeName =
+      getName(contract.assignee_id)?.name ?? `ID ${contract.assignee_id}`
+  } else {
+    assigneeName = '-'
+  }
+
+  let itemValue = 0
+  for (const item of items) {
+    if (item.is_blueprint_copy) continue
+    let price: number
+    if (isAbyssalTypeId(item.type_id) && item.item_id) {
+      price = getCachedAbyssalPrice(item.item_id) ?? 0
+    } else {
+      price = prices.get(item.type_id) ?? 0
+    }
+    itemValue += price * item.quantity
+  }
+
+  return {
+    contractWithItems,
+    items,
+    ownerType,
+    ownerId,
+    locationName: getLocationName(contract.start_location_id),
+    endLocationName: contract.end_location_id
+      ? getLocationName(contract.end_location_id)
+      : '',
+    firstItemTypeId: firstItem?.type_id,
+    firstItemCategoryId: firstItemType?.categoryId,
+    firstItemIsBlueprintCopy: firstItem?.is_blueprint_copy,
+    typeName:
+      firstItemType?.name ??
+      (firstItem ? `Unknown Type ${firstItem.type_id}` : ''),
+    direction,
+    assignerName,
+    assigneeName,
+    itemValue,
+    status: contract.status,
+  }
+}

@@ -51,10 +51,14 @@ export function ContractItemsDialog({
         <div className="overflow-y-auto max-h-[60vh] -mx-6 px-6">
           <div className="space-y-1">
             {items.map((item, idx) => {
-              const type = hasType(item.type_id) ? getType(item.type_id) : undefined
+              const type = hasType(item.type_id)
+                ? getType(item.type_id)
+                : undefined
               const typeName = type?.name ?? `Unknown Type ${item.type_id}`
               const price = prices.get(item.type_id) ?? 0
-              const itemValue = item.is_blueprint_copy ? 0 : price * item.quantity
+              const itemValue = item.is_blueprint_copy
+                ? 0
+                : price * item.quantity
 
               return (
                 <div
@@ -67,7 +71,11 @@ export function ContractItemsDialog({
                     isBlueprintCopy={item.is_blueprint_copy}
                   />
                   <div className="flex-1 min-w-0">
-                    <span className={item.is_blueprint_copy ? 'text-status-special' : ''}>
+                    <span
+                      className={
+                        item.is_blueprint_copy ? 'text-status-special' : ''
+                      }
+                    >
                       {typeName}
                     </span>
                   </div>

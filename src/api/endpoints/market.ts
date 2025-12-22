@@ -1,16 +1,19 @@
 import { esi } from '../esi'
-import { logger } from '@/lib/logger'
 import {
   ESIMarketOrderSchema,
   ESICorporationMarketOrderSchema,
   ESIRegionOrderSchema,
+  ESIStructureOrderSchema,
   ESIMarketPriceSchema,
 } from '../schemas'
 import { z } from 'zod'
 
 export type ESIMarketOrder = z.infer<typeof ESIMarketOrderSchema>
-export type ESICorporationMarketOrder = z.infer<typeof ESICorporationMarketOrderSchema>
+export type ESICorporationMarketOrder = z.infer<
+  typeof ESICorporationMarketOrderSchema
+>
 export type ESIRegionOrder = z.infer<typeof ESIRegionOrderSchema>
+export type ESIStructureOrder = z.infer<typeof ESIStructureOrderSchema>
 export type ESIMarketPrice = z.infer<typeof ESIMarketPriceSchema>
 
 export interface PriceData {
@@ -47,11 +50,16 @@ export const CAPITAL_GROUP_IDS = new Set([
   883, // Capital Industrial Ship (Rorqual)
 ])
 
-export async function getCharacterOrders(characterId: number): Promise<ESIMarketOrder[]> {
-  return esi.fetchPaginated<ESIMarketOrder>(`/characters/${characterId}/orders/`, {
-    characterId,
-    schema: ESIMarketOrderSchema,
-  })
+export async function getCharacterOrders(
+  characterId: number
+): Promise<ESIMarketOrder[]> {
+  return esi.fetchPaginated<ESIMarketOrder>(
+    `/characters/${characterId}/orders/`,
+    {
+      characterId,
+      schema: ESIMarketOrderSchema,
+    }
+  )
 }
 
 export async function getCorporationOrders(
@@ -153,9 +161,9 @@ function calculatePriceData(orders: ESIRegionOrder[]): PriceData {
   return data
 }
 
-async function fetchAllRegionOrders(regionId: number): Promise<ESIRegionOrder[]> {
-  logger.debug('Fetching regional market orders', { module: 'ESI', regionId })
-
+async function fetchAllRegionOrders(
+  regionId: number
+): Promise<ESIRegionOrder[]> {
   return esi.fetchPaginated<ESIRegionOrder>(
     `/markets/${regionId}/orders/?order_type=all`,
     { requiresAuth: false, schema: ESIRegionOrderSchema }
@@ -182,7 +190,26 @@ export async function getRegionalMarketPrices(
     prices.set(typeId, calculatePriceData(orders))
   }
 
-  logger.debug('Calculated regional prices', { module: 'ESI', types: prices.size })
-
   return prices
+}
+
+export async function getRegionalOrders(
+  regionId: number,
+  typeId: number,
+  orderType: 'sell' | 'buy'
+): Promise<ESIRegionOrder[]> {
+  return esi.fetchPaginated<ESIRegionOrder>(
+    `/markets/${regionId}/orders/?order_type=${orderType}&type_id=${typeId}`,
+    { requiresAuth: false, schema: ESIRegionOrderSchema }
+  )
+}
+
+export async function getStructureOrders(
+  structureId: number,
+  characterId: number
+): Promise<ESIStructureOrder[]> {
+  return esi.fetchPaginated<ESIStructureOrder>(
+    `/markets/structures/${structureId}/`,
+    { characterId, schema: ESIStructureOrderSchema }
+  )
 }

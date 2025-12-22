@@ -148,7 +148,10 @@ describe('ESICache', () => {
       const savedData = JSON.stringify({
         version: 1,
         entries: [
-          { key: 'expired:key', entry: { data: 'old', etag: 'xyz', expires: pastTime } },
+          {
+            key: 'expired:key',
+            entry: { data: 'old', etag: 'xyz', expires: pastTime },
+          },
         ],
       })
       fs.writeFileSync(testFilePath, savedData)

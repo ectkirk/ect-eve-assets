@@ -16,6 +16,8 @@ import {
 
 describe('TreeMode', () => {
   it('has all expected modes', () => {
+    expect(TreeMode.ALL).toBe('ALL')
+    expect(TreeMode.ACTIVE_SHIP).toBe('ACTIVE_SHIP')
     expect(TreeMode.ITEM_HANGAR).toBe('ITEM_HANGAR')
     expect(TreeMode.SHIP_HANGAR).toBe('SHIP_HANGAR')
     expect(TreeMode.DELIVERIES).toBe('DELIVERIES')
@@ -79,7 +81,8 @@ describe('LocationFlagToNumber', () => {
 
   it('has consistent values where keys overlap with LocationFlagNumbers', () => {
     for (const [key, value] of Object.entries(LocationFlagToNumber)) {
-      const flagNumber = LocationFlagNumbers[key as keyof typeof LocationFlagNumbers]
+      const flagNumber =
+        LocationFlagNumbers[key as keyof typeof LocationFlagNumbers]
       if (flagNumber !== undefined) {
         expect(value).toBe(flagNumber)
       }

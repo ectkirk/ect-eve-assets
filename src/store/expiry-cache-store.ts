@@ -34,15 +34,25 @@ interface ExpiryCacheState {
 
 interface ExpiryCacheActions {
   init: () => Promise<void>
-  setExpiry: (ownerKey: string, endpoint: string, expiresAt: number, etag?: string | null, isEmpty?: boolean) => void
+  setExpiry: (
+    ownerKey: string,
+    endpoint: string,
+    expiresAt: number,
+    etag?: string | null,
+    isEmpty?: boolean
+  ) => void
   getExpiry: (ownerKey: string, endpoint: string) => EndpointExpiry | undefined
   isExpired: (ownerKey: string, endpoint: string) => boolean
-  registerRefreshCallback: (endpointPattern: string, callback: RefreshCallback) => () => void
+  registerRefreshCallback: (
+    endpointPattern: string,
+    callback: RefreshCallback
+  ) => () => void
   queueRefresh: (ownerKey: string, endpoint: string) => void
   queueAllEndpointsForOwner: (ownerKey: string) => void
   queueMissingEndpoints: (ownerKeys: string[]) => void
   clearForOwner: (ownerKey: string) => void
   clearByEndpoint: (pattern: string) => Promise<void>
+  pruneOrphaned: () => Promise<number>
   clear: () => Promise<void>
   pause: () => void
   resume: () => void
@@ -51,6 +61,7 @@ interface ExpiryCacheActions {
 type ExpiryCacheStore = ExpiryCacheState & ExpiryCacheActions
 
 let db: IDBDatabase | null = null
+let sortedPatternsCache: string[] | null = null
 
 function makeKey(ownerKey: string, endpoint: string): string {
   return `${ownerKey}:${endpoint}`
@@ -76,7 +87,9 @@ async function openDB(): Promise<IDBDatabase> {
     const request = indexedDB.open(DB_NAME, DB_VERSION)
 
     request.onerror = () => {
-      logger.error('Failed to open expiry cache DB', request.error, { module: 'ExpiryCacheStore' })
+      logger.error('Failed to open expiry cache DB', request.error, {
+        module: 'ExpiryCacheStore',
+      })
       reject(request.error)
     }
 
@@ -105,7 +118,10 @@ async function loadFromDB(): Promise<Map<string, EndpointExpiry>> {
     tx.oncomplete = () => {
       const endpoints = new Map<string, EndpointExpiry>()
       for (const stored of request.result as StoredExpiry[]) {
-        endpoints.set(stored.key, { expiresAt: stored.expiresAt, etag: stored.etag })
+        endpoints.set(stored.key, {
+          expiresAt: stored.expiresAt,
+          etag: stored.etag,
+        })
       }
       resolve(endpoints)
     }
@@ -120,13 +136,19 @@ async function saveToDB(key: string, expiry: EndpointExpiry): Promise<void> {
   return new Promise((resolve, reject) => {
     const tx = database.transaction([STORE_EXPIRY], 'readwrite')
     const store = tx.objectStore(STORE_EXPIRY)
-    store.put({ key, expiresAt: expiry.expiresAt, etag: expiry.etag } as StoredExpiry)
+    store.put({
+      key,
+      expiresAt: expiry.expiresAt,
+      etag: expiry.etag,
+    } as StoredExpiry)
     tx.oncomplete = () => resolve()
     tx.onerror = () => reject(tx.error)
   })
 }
 
-async function deleteFromDBWhere(predicate: (key: string) => boolean): Promise<void> {
+async function deleteFromDBWhere(
+  predicate: (key: string) => boolean
+): Promise<void> {
   const database = await openDB()
 
   return new Promise((resolve, reject) => {
@@ -160,12 +182,20 @@ async function clearDB(): Promise<void> {
   })
 }
 
+function getSortedPatterns(callbacks: Map<string, RefreshCallback>): string[] {
+  if (!sortedPatternsCache) {
+    sortedPatternsCache = [...callbacks.keys()].sort(
+      (a, b) => b.length - a.length
+    )
+  }
+  return sortedPatternsCache
+}
+
 function findCallback(
   callbacks: Map<string, RefreshCallback>,
   endpoint: string
 ): RefreshCallback | undefined {
-  const sortedPatterns = [...callbacks.keys()].sort((a, b) => b.length - a.length)
-  for (const pattern of sortedPatterns) {
+  for (const pattern of getSortedPatterns(callbacks)) {
     if (endpoint.includes(pattern)) return callbacks.get(pattern)
   }
   return undefined
@@ -189,7 +219,8 @@ function schedulePoll(generation: number) {
         const parsed = parseKey(key)
         if (parsed) {
           const alreadyQueued = state.refreshQueue.some(
-            (q) => q.ownerKey === parsed.ownerKey && q.endpoint === parsed.endpoint
+            (q) =>
+              q.ownerKey === parsed.ownerKey && q.endpoint === parsed.endpoint
           )
           if (!alreadyQueued) {
             toQueue.push(parsed)
@@ -200,7 +231,9 @@ function schedulePoll(generation: number) {
 
     if (toQueue.length > 0) {
       for (const item of toQueue) {
-        useExpiryCacheStore.getState().queueRefresh(item.ownerKey, item.endpoint)
+        useExpiryCacheStore
+          .getState()
+          .queueRefresh(item.ownerKey, item.endpoint)
       }
     }
 
@@ -210,7 +243,12 @@ function schedulePoll(generation: number) {
 
 function processQueue() {
   const state = useExpiryCacheStore.getState()
-  if (state.isProcessingQueue || state.refreshQueue.length === 0 || state.isPaused) return
+  if (
+    state.isProcessingQueue ||
+    state.refreshQueue.length === 0 ||
+    state.isPaused
+  )
+    return
 
   useExpiryCacheStore.setState({ isProcessingQueue: true })
 
@@ -219,13 +257,19 @@ function processQueue() {
   const processNext = async () => {
     const currentState = useExpiryCacheStore.getState()
     if (currentState.isPaused) {
-      useExpiryCacheStore.setState({ isProcessingQueue: false, currentlyRefreshing: null })
+      useExpiryCacheStore.setState({
+        isProcessingQueue: false,
+        currentlyRefreshing: null,
+      })
       return
     }
 
     const { refreshQueue, callbacks } = currentState
     if (refreshQueue.length === 0) {
-      useExpiryCacheStore.setState({ isProcessingQueue: false, currentlyRefreshing: null })
+      useExpiryCacheStore.setState({
+        isProcessingQueue: false,
+        currentlyRefreshing: null,
+      })
       return
     }
 
@@ -254,11 +298,15 @@ function processQueue() {
       try {
         await callback(item.ownerKey, item.endpoint)
       } catch (err) {
-        logger.error('Refresh callback failed', err instanceof Error ? err : undefined, {
-          module: 'ExpiryCacheStore',
-          ownerKey: item.ownerKey,
-          endpoint: item.endpoint,
-        })
+        logger.error(
+          'Refresh callback failed',
+          err instanceof Error ? err : undefined,
+          {
+            module: 'ExpiryCacheStore',
+            ownerKey: item.ownerKey,
+            endpoint: item.endpoint,
+          }
+        )
       } finally {
         useExpiryCacheStore.setState({ currentlyRefreshing: null })
       }
@@ -311,7 +359,9 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
 
       schedulePoll(newGen)
     } catch (error) {
-      logger.error('Failed to initialize expiry cache', error, { module: 'ExpiryCacheStore' })
+      logger.error('Failed to initialize expiry cache', error, {
+        module: 'ExpiryCacheStore',
+      })
       set({ initialized: true })
       schedulePoll(newGen)
     }
@@ -325,16 +375,12 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
     let effectiveExpiry = expiresAt
     if (isEmpty && cacheTime < EMPTY_RESULT_CACHE_MS) {
       effectiveExpiry = now + EMPTY_RESULT_CACHE_MS
-      logger.debug('Extended cache for empty result', {
-        module: 'ExpiryCacheStore',
-        ownerKey,
-        endpoint,
-        originalCacheMinutes: Math.round(cacheTime / 60000),
-        extendedCacheMinutes: 60,
-      })
     }
 
-    const expiry: EndpointExpiry = { expiresAt: effectiveExpiry, etag: etag ?? null }
+    const expiry: EndpointExpiry = {
+      expiresAt: effectiveExpiry,
+      etag: etag ?? null,
+    }
 
     set((state) => {
       const endpoints = new Map(state.endpoints)
@@ -343,7 +389,10 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
     })
 
     saveToDB(key, expiry).catch((error) => {
-      logger.error('Failed to save expiry to DB', error, { module: 'ExpiryCacheStore', key })
+      logger.error('Failed to save expiry to DB', error, {
+        module: 'ExpiryCacheStore',
+        key,
+      })
     })
   },
 
@@ -361,14 +410,15 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
     set((state) => {
       const callbacks = new Map(state.callbacks)
       callbacks.set(endpointPattern, callback)
+      sortedPatternsCache = null
       return { callbacks }
     })
-    logger.debug('Registered refresh callback', { module: 'ExpiryCacheStore', pattern: endpointPattern })
 
     return () => {
       set((state) => {
         const callbacks = new Map(state.callbacks)
         callbacks.delete(endpointPattern)
+        sortedPatternsCache = null
         return { callbacks }
       })
     }
@@ -404,18 +454,31 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
     const { endpoints, callbacks } = get()
     let queued = 0
 
+    const endpointsByOwner = new Map<string, Set<string>>()
+    for (const key of endpoints.keys()) {
+      const colonIdx = key.indexOf(':')
+      if (colonIdx === -1) continue
+      const ownerKey = key.slice(0, colonIdx)
+      if (!endpointsByOwner.has(ownerKey)) {
+        endpointsByOwner.set(ownerKey, new Set())
+      }
+      endpointsByOwner.get(ownerKey)!.add(key)
+    }
+
     for (const ownerKey of ownerKeys) {
-      const prefix = `${ownerKey}:`
+      const ownerEndpoints = endpointsByOwner.get(ownerKey)
       for (const pattern of callbacks.keys()) {
         if (!isPatternApplicable(pattern, ownerKey)) continue
-        let found = false
-        for (const key of endpoints.keys()) {
-          if (key.startsWith(prefix) && key.includes(pattern)) {
-            found = true
-            break
+        let hasPattern = false
+        if (ownerEndpoints) {
+          for (const k of ownerEndpoints) {
+            if (k.includes(pattern)) {
+              hasPattern = true
+              break
+            }
           }
         }
-        if (!found) {
+        if (!hasPattern) {
           get().queueRefresh(ownerKey, pattern)
           queued++
         }
@@ -439,21 +502,26 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
       for (const key of endpoints.keys()) {
         if (key.startsWith(prefix)) endpoints.delete(key)
       }
-      const refreshQueue = state.refreshQueue.filter((q) => q.ownerKey !== ownerKey)
+      const refreshQueue = state.refreshQueue.filter(
+        (q) => q.ownerKey !== ownerKey
+      )
       return { endpoints, refreshQueue }
     })
 
     deleteFromDBWhere((key) => key.startsWith(prefix)).catch((error) => {
-      logger.error('Failed to clear expiry for owner', error, { module: 'ExpiryCacheStore', ownerKey })
+      logger.error('Failed to clear expiry for owner', error, {
+        module: 'ExpiryCacheStore',
+        ownerKey,
+      })
     })
-
-    logger.debug('Cleared expiry for owner', { module: 'ExpiryCacheStore', ownerKey })
   },
 
   clearByEndpoint: async (pattern) => {
     set((state) => {
       const endpoints = new Map(state.endpoints)
-      const refreshQueue = state.refreshQueue.filter((q) => !q.endpoint.includes(pattern))
+      const refreshQueue = state.refreshQueue.filter(
+        (q) => !q.endpoint.includes(pattern)
+      )
       for (const key of endpoints.keys()) {
         if (key.includes(pattern)) endpoints.delete(key)
       }
@@ -462,10 +530,60 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
 
     try {
       await deleteFromDBWhere((key) => key.includes(pattern))
-      logger.debug('Cleared expiry by endpoint', { module: 'ExpiryCacheStore', pattern })
     } catch (error) {
-      logger.error('Failed to clear expiry by endpoint', error, { module: 'ExpiryCacheStore', pattern })
+      logger.error('Failed to clear expiry by endpoint', error, {
+        module: 'ExpiryCacheStore',
+        pattern,
+      })
     }
+  },
+
+  pruneOrphaned: async () => {
+    const validOwnerKeys = new Set(Object.keys(useAuthStore.getState().owners))
+    const orphanedKeys: string[] = []
+
+    const { endpoints } = get()
+    for (const key of endpoints.keys()) {
+      const parsed = parseKey(key)
+      if (parsed && !validOwnerKeys.has(parsed.ownerKey)) {
+        orphanedKeys.push(key)
+      }
+    }
+
+    if (orphanedKeys.length === 0) return 0
+
+    set((state) => {
+      const newEndpoints = new Map(state.endpoints)
+      const ownerKeysToRemove = new Set(
+        orphanedKeys.map((k) => parseKey(k)!.ownerKey)
+      )
+      for (const key of orphanedKeys) {
+        newEndpoints.delete(key)
+      }
+      const refreshQueue = state.refreshQueue.filter(
+        (q) => !ownerKeysToRemove.has(q.ownerKey)
+      )
+      return { endpoints: newEndpoints, refreshQueue }
+    })
+
+    try {
+      const ownerPrefixes = [
+        ...new Set(orphanedKeys.map((k) => parseKey(k)!.ownerKey + ':')),
+      ]
+      await deleteFromDBWhere((key) =>
+        ownerPrefixes.some((prefix) => key.startsWith(prefix))
+      )
+      logger.info('Pruned orphaned expiry entries', {
+        module: 'ExpiryCacheStore',
+        count: orphanedKeys.length,
+      })
+    } catch (error) {
+      logger.error('Failed to prune orphaned entries', error, {
+        module: 'ExpiryCacheStore',
+      })
+    }
+
+    return orphanedKeys.length
   },
 
   clear: async () => {
@@ -479,18 +597,18 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
       await clearDB()
       logger.info('Expiry cache cleared', { module: 'ExpiryCacheStore' })
     } catch (error) {
-      logger.error('Failed to clear expiry cache', error, { module: 'ExpiryCacheStore' })
+      logger.error('Failed to clear expiry cache', error, {
+        module: 'ExpiryCacheStore',
+      })
     }
   },
 
   pause: () => {
     set({ isPaused: true })
-    logger.debug('Expiry cache polling paused', { module: 'ExpiryCacheStore' })
   },
 
   resume: () => {
     set({ isPaused: false })
-    logger.debug('Expiry cache polling resumed', { module: 'ExpiryCacheStore' })
     processQueue()
   },
 }))

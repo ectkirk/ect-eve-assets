@@ -1,0 +1,279 @@
+import { useMemo, useState } from 'react'
+import { useSortable, SortableHeader, sortRows } from '@/hooks'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { TypeIcon, OwnerIcon } from '@/components/ui/type-icon'
+import { formatNumber } from '@/lib/utils'
+import type { OrderRow, SortColumn, DiffSortMode } from './types'
+import {
+  formatExpiry,
+  formatPrice,
+  CopyButton,
+  DiffCell,
+  EVEEstCell,
+  DiffHeader,
+} from './components'
+
+export function OrdersTable({
+  orders,
+  visibleColumns,
+}: {
+  orders: OrderRow[]
+  visibleColumns: Set<string>
+}) {
+  const { sortColumn, sortDirection, handleSort } = useSortable<SortColumn>(
+    'total',
+    'desc'
+  )
+  const [diffSortMode, setDiffSortMode] = useState<DiffSortMode>('number')
+  const show = (col: string) => visibleColumns.has(col)
+
+  const sortedOrders = useMemo(() => {
+    return sortRows(orders, sortColumn, sortDirection, (row, column) => {
+      const isBuy = row.order.is_buy_order
+      switch (column) {
+        case 'item':
+          return row.typeName.toLowerCase()
+        case 'type':
+          return isBuy ? 1 : 0
+        case 'price':
+          return row.order.price
+        case 'comparison': {
+          const compPrice = isBuy ? row.highestBuy : row.lowestSell
+          return compPrice ?? (sortDirection === 'asc' ? Infinity : -Infinity)
+        }
+        case 'diff': {
+          const compPrice = isBuy ? row.highestBuy : row.lowestSell
+          if (compPrice === null)
+            return sortDirection === 'asc' ? Infinity : -Infinity
+          const diff = row.order.price - compPrice
+          if (diffSortMode === 'percent') {
+            return compPrice > 0
+              ? (diff / compPrice) * 100
+              : sortDirection === 'asc'
+                ? Infinity
+                : -Infinity
+          }
+          return diff
+        }
+        case 'eveEstimated':
+          return (
+            row.eveEstimated ?? (sortDirection === 'asc' ? Infinity : -Infinity)
+          )
+        case 'qty':
+          return row.order.volume_remain
+        case 'total':
+          return row.order.price * row.order.volume_remain
+        case 'expires':
+          return row.expiryTime
+        case 'location':
+          return row.locationName.toLowerCase()
+        default:
+          return 0
+      }
+    })
+  }, [orders, sortColumn, sortDirection, diffSortMode])
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow className="hover:bg-transparent">
+          {show('item') && (
+            <SortableHeader
+              column="item"
+              label="Item"
+              sortColumn={sortColumn}
+              sortDirection={sortDirection}
+              onSort={handleSort}
+            />
+          )}
+          {show('type') && (
+            <SortableHeader
+              column="type"
+              label="Type"
+              sortColumn={sortColumn}
+              sortDirection={sortDirection}
+              onSort={handleSort}
+            />
+          )}
+          {show('location') && (
+            <SortableHeader
+              column="location"
+              label="Location"
+              sortColumn={sortColumn}
+              sortDirection={sortDirection}
+              onSort={handleSort}
+            />
+          )}
+          {show('price') && (
+            <SortableHeader
+              column="price"
+              label="Price"
+              sortColumn={sortColumn}
+              sortDirection={sortDirection}
+              onSort={handleSort}
+              className="text-right"
+            />
+          )}
+          {show('lowest') && (
+            <SortableHeader
+              column="comparison"
+              label="Best"
+              sortColumn={sortColumn}
+              sortDirection={sortDirection}
+              onSort={handleSort}
+              className="text-right"
+            />
+          )}
+          {show('diff') && (
+            <DiffHeader
+              sortColumn={sortColumn}
+              sortDirection={sortDirection}
+              onSort={handleSort}
+              diffSortMode={diffSortMode}
+              onDiffSortModeChange={setDiffSortMode}
+            />
+          )}
+          {show('eveEstimated') && (
+            <SortableHeader
+              column="eveEstimated"
+              label="EVE Est"
+              sortColumn={sortColumn}
+              sortDirection={sortDirection}
+              onSort={handleSort}
+              className="text-right"
+            />
+          )}
+          {show('quantity') && (
+            <SortableHeader
+              column="qty"
+              label="Qty"
+              sortColumn={sortColumn}
+              sortDirection={sortDirection}
+              onSort={handleSort}
+              className="text-right"
+            />
+          )}
+          {show('total') && (
+            <SortableHeader
+              column="total"
+              label="Total"
+              sortColumn={sortColumn}
+              sortDirection={sortDirection}
+              onSort={handleSort}
+              className="text-right"
+            />
+          )}
+          {show('expires') && (
+            <SortableHeader
+              column="expires"
+              label="Exp"
+              sortColumn={sortColumn}
+              sortDirection={sortDirection}
+              onSort={handleSort}
+              className="text-right"
+            />
+          )}
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {sortedOrders.map((row) => {
+          const isBuy = row.order.is_buy_order
+          const total = row.order.price * row.order.volume_remain
+          const compPrice = isBuy ? row.highestBuy : row.lowestSell
+          return (
+            <TableRow key={row.order.order_id}>
+              {show('item') && (
+                <TableCell className="py-1.5">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <OwnerIcon
+                      ownerId={row.ownerId}
+                      ownerType={row.ownerType}
+                      size="sm"
+                    />
+                    <TypeIcon typeId={row.typeId} categoryId={row.categoryId} />
+                    <span className="truncate" title={row.typeName}>
+                      {row.typeName}
+                    </span>
+                    <CopyButton text={row.typeName} />
+                  </div>
+                </TableCell>
+              )}
+              {show('type') && (
+                <TableCell className="py-1.5">
+                  {isBuy ? 'Buy' : 'Sell'}
+                </TableCell>
+              )}
+              {show('location') && (
+                <TableCell className="py-1.5 text-content-secondary">
+                  <div
+                    className="truncate"
+                    title={`${row.locationName} • ${row.systemName} • ${row.regionName}`}
+                  >
+                    {row.locationName}
+                  </div>
+                </TableCell>
+              )}
+              {show('price') && (
+                <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
+                  {formatPrice(row.order.price)}
+                </TableCell>
+              )}
+              {show('lowest') && (
+                <TableCell className="py-1.5 text-right tabular-nums text-content-secondary whitespace-nowrap">
+                  {compPrice !== null ? (
+                    formatPrice(compPrice)
+                  ) : (
+                    <span className="text-content-muted">-</span>
+                  )}
+                </TableCell>
+              )}
+              {show('diff') && (
+                <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
+                  <DiffCell
+                    price={row.order.price}
+                    comparisonPrice={compPrice}
+                    isBuyOrder={isBuy}
+                  />
+                </TableCell>
+              )}
+              {show('eveEstimated') && (
+                <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
+                  <EVEEstCell
+                    price={row.order.price}
+                    eveEstimated={row.eveEstimated}
+                  />
+                </TableCell>
+              )}
+              {show('quantity') && (
+                <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
+                  {row.order.volume_remain.toLocaleString()}
+                  {row.order.volume_remain !== row.order.volume_total && (
+                    <span className="text-content-muted">
+                      /{row.order.volume_total.toLocaleString()}
+                    </span>
+                  )}
+                </TableCell>
+              )}
+              {show('total') && (
+                <TableCell className="py-1.5 text-right tabular-nums text-status-highlight whitespace-nowrap">
+                  {formatNumber(total)}
+                </TableCell>
+              )}
+              {show('expires') && (
+                <TableCell className="py-1.5 text-right tabular-nums text-content-secondary whitespace-nowrap">
+                  {formatExpiry(row.order.issued, row.order.duration)}
+                </TableCell>
+              )}
+            </TableRow>
+          )
+        })}
+      </TableBody>
+    </Table>
+  )
+}

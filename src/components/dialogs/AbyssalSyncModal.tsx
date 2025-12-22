@@ -9,7 +9,11 @@ import {
 } from '@/components/ui/dialog'
 import { useAssetStore } from '@/store/asset-store'
 import { hasAbyssal } from '@/store/reference-cache'
-import { isAbyssalTypeId, fetchAbyssalPrices, type AbyssalItem } from '@/api/mutamarket-client'
+import {
+  isAbyssalTypeId,
+  fetchAbyssalPrices,
+  type AbyssalItem,
+} from '@/api/mutamarket-client'
 import { AlertTriangle, ExternalLink } from 'lucide-react'
 
 interface AbyssalSyncModalProps {
@@ -32,11 +36,20 @@ function collectUnpricedAbyssalItems(): AbyssalItem[] {
   return unpricedItems
 }
 
-export function AbyssalSyncModal({ open, onOpenChange }: AbyssalSyncModalProps) {
+export function AbyssalSyncModal({
+  open,
+  onOpenChange,
+}: AbyssalSyncModalProps) {
   const [unpricedCount, setUnpricedCount] = useState(0)
   const [isSyncing, setIsSyncing] = useState(false)
-  const [progress, setProgress] = useState<{ fetched: number; total: number } | null>(null)
-  const [syncResult, setSyncResult] = useState<{ success: number; failed: number } | null>(null)
+  const [progress, setProgress] = useState<{
+    fetched: number
+    total: number
+  } | null>(null)
+  const [syncResult, setSyncResult] = useState<{
+    success: number
+    failed: number
+  } | null>(null)
 
   const refreshCount = useCallback(() => {
     const items = collectUnpricedAbyssalItems()
@@ -91,7 +104,8 @@ export function AbyssalSyncModal({ open, onOpenChange }: AbyssalSyncModalProps) 
               <div className="space-y-2 text-sm">
                 <p className="font-medium text-content">Privacy Notice</p>
                 <p className="text-content-secondary">
-                  By syncing your abyssal modules, you are sending your unique item IDs to{' '}
+                  By syncing your abyssal modules, you are sending your unique
+                  item IDs to{' '}
                   <a
                     href="https://mutamarket.com"
                     target="_blank"
@@ -104,8 +118,9 @@ export function AbyssalSyncModal({ open, onOpenChange }: AbyssalSyncModalProps) 
                   for appraisal.
                 </p>
                 <p className="text-content-secondary">
-                  This will make your abyssal modules <strong>publicly searchable</strong> on
-                  Mutamarket. Other players will be able to see these modules exist and their
+                  This will make your abyssal modules{' '}
+                  <strong>publicly searchable</strong> on Mutamarket. Other
+                  players will be able to see these modules exist and their
                   stats.
                 </p>
               </div>
@@ -115,11 +130,17 @@ export function AbyssalSyncModal({ open, onOpenChange }: AbyssalSyncModalProps) 
           <div className="rounded-lg border border-border bg-surface-tertiary/50 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm text-content-secondary">Unpriced Abyssal Modules</div>
-                <div className="text-2xl font-semibold text-content">{unpricedCount}</div>
+                <div className="text-sm text-content-secondary">
+                  Unpriced Abyssal Modules
+                </div>
+                <div className="text-2xl font-semibold text-content">
+                  {unpricedCount}
+                </div>
               </div>
               {unpricedCount === 0 && (
-                <div className="text-sm text-semantic-positive">All modules priced</div>
+                <div className="text-sm text-semantic-positive">
+                  All modules priced
+                </div>
               )}
             </div>
           </div>
@@ -135,7 +156,9 @@ export function AbyssalSyncModal({ open, onOpenChange }: AbyssalSyncModalProps) 
               <div className="h-2 overflow-hidden rounded-full bg-surface-tertiary">
                 <div
                   className="h-full bg-accent transition-all duration-300"
-                  style={{ width: `${(progress.fetched / progress.total) * 100}%` }}
+                  style={{
+                    width: `${(progress.fetched / progress.total) * 100}%`,
+                  }}
                 />
               </div>
             </div>
@@ -143,7 +166,9 @@ export function AbyssalSyncModal({ open, onOpenChange }: AbyssalSyncModalProps) 
 
           {syncResult && (
             <div className="rounded-lg border border-border bg-surface-tertiary/50 p-3 text-sm">
-              <span className="text-semantic-positive">{syncResult.success} priced</span>
+              <span className="text-semantic-positive">
+                {syncResult.success} priced
+              </span>
               {syncResult.failed > 0 && (
                 <>
                   <span className="text-content-muted"> · </span>

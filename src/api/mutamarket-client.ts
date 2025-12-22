@@ -65,7 +65,9 @@ async function processQueue(): Promise<void> {
     const now = Date.now()
     const timeSinceLastRequest = now - lastRequestTime
     if (timeSinceLastRequest < REQUEST_DELAY_MS) {
-      await new Promise((r) => setTimeout(r, REQUEST_DELAY_MS - timeSinceLastRequest))
+      await new Promise((r) =>
+        setTimeout(r, REQUEST_DELAY_MS - timeSinceLastRequest)
+      )
     }
     lastRequestTime = Date.now()
 
@@ -79,7 +81,9 @@ async function processQueue(): Promise<void> {
   queueProcessing = false
 }
 
-function queueAbyssalRequest(item: AbyssalItem): Promise<{ price: number; persist: boolean } | null> {
+function queueAbyssalRequest(
+  item: AbyssalItem
+): Promise<{ price: number; persist: boolean } | null> {
   return new Promise((resolve) => {
     requestQueue.push({ item, resolve })
     processQueue()
@@ -103,7 +107,11 @@ async function fetchSingleAbyssalPriceInternal(
         await new Promise((resolve) => setTimeout(resolve, delay))
         return fetchSingleAbyssalPriceInternal(item, retryCount + 1)
       }
-      logger.warn('Mutamarket API failed', { module: 'Mutamarket', error: rawData.error, itemId })
+      logger.warn('Mutamarket API failed', {
+        module: 'Mutamarket',
+        error: rawData.error,
+        itemId,
+      })
       return null
     }
 
@@ -125,7 +133,6 @@ async function fetchSingleAbyssalPriceInternal(
       await new Promise((resolve) => setTimeout(resolve, delay))
       return fetchSingleAbyssalPriceInternal(item, retryCount + 1)
     }
-    logger.debug('Mutamarket API error after retries', { module: 'Mutamarket', itemId })
     return null
   }
 }
@@ -152,8 +159,6 @@ export async function fetchAbyssalPrices(
     return results
   }
 
-  logger.debug(`Fetching ${uncachedItems.length} abyssal prices from Mutamarket`, { module: 'Mutamarket' })
-
   let fetched = 0
   const toSave: CachedAbyssal[] = []
 
@@ -177,9 +182,7 @@ export async function fetchAbyssalPrices(
 
   if (toSave.length > 0) {
     await saveAbyssals(toSave)
-    logger.debug(`Cached ${toSave.length} abyssal prices`, { module: 'Mutamarket' })
   }
 
-  logger.debug(`Fetched ${results.size} abyssal prices`, { module: 'Mutamarket' })
   return results
 }

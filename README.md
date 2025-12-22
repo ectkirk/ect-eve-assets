@@ -4,20 +4,20 @@ Electron desktop app for EVE Online asset management.
 
 ## Features
 
-| Tab | Description |
-|-----|-------------|
-| Assets | Flat table with filtering, sorting, and value calculations |
-| Item Hangar | Tree view of non-ship items in hangars |
-| Ship Hangar | Tree view of ships in hangars |
-| Deliveries | Pending deliveries |
-| Asset Safety | Items from destroyed/abandoned structures |
-| Market Orders | Active buy/sell orders |
-| Industry Jobs | Manufacturing and reaction jobs |
-| Clones | Jump clones with implants |
-| Office | Corporation office contents |
-| Structures | Deployed structures |
-| Contracts | Items in contracts |
-| Wallet | Character and corp balances |
+| Tab           | Description                                                |
+| ------------- | ---------------------------------------------------------- |
+| Assets        | Flat table with filtering, sorting, and value calculations |
+| Item Hangar   | Tree view of non-ship items in hangars                     |
+| Ship Hangar   | Tree view of ships in hangars                              |
+| Deliveries    | Pending deliveries                                         |
+| Asset Safety  | Items from destroyed/abandoned structures                  |
+| Market Orders | Active buy/sell orders                                     |
+| Industry Jobs | Manufacturing and reaction jobs                            |
+| Clones        | Jump clones with implants                                  |
+| Office        | Corporation office contents                                |
+| Structures    | Deployed structures                                        |
+| Contracts     | Items in contracts                                         |
+| Wallet        | Character and corp balances                                |
 
 - Tree navigation: Region → System → Station → Container
 - Market prices from edencom.net and Mutamarket

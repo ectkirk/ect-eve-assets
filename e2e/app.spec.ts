@@ -1,4 +1,10 @@
-import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
+import {
+  test,
+  expect,
+  _electron as electron,
+  type ElectronApplication,
+  type Page,
+} from '@playwright/test'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
@@ -32,22 +38,27 @@ test.describe('Application Launch', () => {
 
   test('shows login screen when not authenticated', async () => {
     await expect(page.getByText('ECT EVE Assets')).toBeVisible()
-    await expect(page.getByText('We Like The Data')).toBeVisible()
   })
 
   test('has EVE SSO login button', async () => {
-    const loginButton = page.getByRole('button').filter({ has: page.getByAltText('Log in with EVE Online') })
+    const loginButton = page
+      .getByRole('button')
+      .filter({ has: page.getByAltText('Log in with EVE Online') })
     await expect(loginButton).toBeVisible()
   })
 
   test('shows info text about SSO requirement', async () => {
-    await expect(page.getByText(/requires EVE SSO authentication/)).toBeVisible()
+    await expect(
+      page.getByText(/requires EVE SSO authentication/)
+    ).toBeVisible()
   })
 })
 
 test.describe('Login Screen UI', () => {
   test('login button is enabled initially', async () => {
-    const loginButton = page.getByRole('button').filter({ has: page.getByAltText('Log in with EVE Online') })
+    const loginButton = page
+      .getByRole('button')
+      .filter({ has: page.getByAltText('Log in with EVE Online') })
     await expect(loginButton).toBeEnabled()
   })
 

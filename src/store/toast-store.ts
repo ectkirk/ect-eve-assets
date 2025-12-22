@@ -1,5 +1,12 @@
 import { create } from 'zustand'
 import { logger } from '@/lib/logger'
+import {
+  openDatabase,
+  idbGetAll,
+  idbPut,
+  idbDelete,
+  idbClear,
+} from '@/lib/idb-utils'
 
 export type NotificationType =
   | 'order-filled'
@@ -47,87 +54,15 @@ interface NotificationActions {
 
 type NotificationStore = NotificationState & NotificationActions
 
-const DB_NAME = 'ecteveassets-notifications'
-const DB_VERSION = 1
-const STORE_NAME = 'notifications'
-
-let db: IDBDatabase | null = null
-
-async function openDB(): Promise<IDBDatabase> {
-  if (db) return db
-
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION)
-
-    request.onerror = () => {
-      logger.error('Failed to open notifications DB', request.error, { module: 'NotificationStore' })
-      reject(request.error)
-    }
-
-    request.onsuccess = () => {
-      db = request.result
-      resolve(db)
-    }
-
-    request.onupgradeneeded = (event) => {
-      const database = (event.target as IDBOpenDBRequest).result
-      if (!database.objectStoreNames.contains(STORE_NAME)) {
-        database.createObjectStore(STORE_NAME, { keyPath: 'id' })
-      }
-    }
-  })
+const DB_CONFIG = {
+  dbName: 'ecteveassets-notifications',
+  version: 1,
+  stores: [{ name: 'notifications', keyPath: 'id' }],
+  module: 'NotificationStore',
 }
 
-async function loadAllFromDB(): Promise<Notification[]> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_NAME], 'readonly')
-    const store = tx.objectStore(STORE_NAME)
-    const request = store.getAll()
-
-    tx.oncomplete = () => {
-      const notifications = (request.result as Notification[]).sort((a, b) => a.timestamp - b.timestamp)
-      resolve(notifications)
-    }
-
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
-async function saveToDB(notification: Notification): Promise<void> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_NAME], 'readwrite')
-    const store = tx.objectStore(STORE_NAME)
-    store.put(notification)
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
-async function deleteFromDB(id: string): Promise<void> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_NAME], 'readwrite')
-    const store = tx.objectStore(STORE_NAME)
-    store.delete(id)
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
-async function clearDB(): Promise<void> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_NAME], 'readwrite')
-    tx.objectStore(STORE_NAME).clear()
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
+async function getDB() {
+  return openDatabase(DB_CONFIG)
 }
 
 export const useNotificationStore = create<NotificationStore>((set, get) => ({
@@ -140,7 +75,9 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
     if (get().initialized) return
 
     try {
-      const notifications = await loadAllFromDB()
+      const db = await getDB()
+      const loaded = await idbGetAll<Notification>(db, 'notifications')
+      const notifications = loaded.sort((a, b) => a.timestamp - b.timestamp)
       const unseenCount = notifications.filter((n) => !n.seen).length
       set({ notifications, initialized: true, unseenCount })
       logger.info('Notifications loaded from cache', {
@@ -149,9 +86,13 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
         unseen: unseenCount,
       })
     } catch (err) {
-      logger.error('Failed to load notifications from cache', err instanceof Error ? err : undefined, {
-        module: 'NotificationStore',
-      })
+      logger.error(
+        'Failed to load notifications from cache',
+        err instanceof Error ? err : undefined,
+        {
+          module: 'NotificationStore',
+        }
+      )
       set({ initialized: true })
     }
   },
@@ -168,14 +109,20 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
     }
     set((state) => ({
       notifications: [...state.notifications, notification],
-      unseenCount: state.isPanelOpen ? state.unseenCount : state.unseenCount + 1,
+      unseenCount: state.isPanelOpen
+        ? state.unseenCount
+        : state.unseenCount + 1,
     }))
 
-    saveToDB(notification).catch((err) => {
-      logger.error('Failed to save notification to cache', err instanceof Error ? err : undefined, {
-        module: 'NotificationStore',
+    getDB()
+      .then((db) => idbPut(db, 'notifications', notification))
+      .catch((err) => {
+        logger.error(
+          'Failed to save notification to cache',
+          err instanceof Error ? err : undefined,
+          { module: 'NotificationStore' }
+        )
       })
-    })
   },
 
   dismissNotification: (id) => {
@@ -183,21 +130,29 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
       notifications: state.notifications.filter((n) => n.id !== id),
     }))
 
-    deleteFromDB(id).catch((err) => {
-      logger.error('Failed to delete notification from cache', err instanceof Error ? err : undefined, {
-        module: 'NotificationStore',
+    getDB()
+      .then((db) => idbDelete(db, 'notifications', id))
+      .catch((err) => {
+        logger.error(
+          'Failed to delete notification from cache',
+          err instanceof Error ? err : undefined,
+          { module: 'NotificationStore' }
+        )
       })
-    })
   },
 
   clearAll: () => {
     set({ notifications: [], unseenCount: 0 })
 
-    clearDB().catch((err) => {
-      logger.error('Failed to clear notifications cache', err instanceof Error ? err : undefined, {
-        module: 'NotificationStore',
+    getDB()
+      .then((db) => idbClear(db, 'notifications'))
+      .catch((err) => {
+        logger.error(
+          'Failed to clear notifications cache',
+          err instanceof Error ? err : undefined,
+          { module: 'NotificationStore' }
+        )
       })
-    })
   },
 
   openPanel: () => {
@@ -211,13 +166,19 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
     })
     set({ isPanelOpen: true, unseenCount: 0, notifications: updated })
 
-    for (const notification of toUpdate) {
-      saveToDB(notification).catch((err) => {
-        logger.error('Failed to update notification seen state', err instanceof Error ? err : undefined, {
-          module: 'NotificationStore',
-        })
+    getDB()
+      .then(async (db) => {
+        for (const notification of toUpdate) {
+          await idbPut(db, 'notifications', notification)
+        }
       })
-    }
+      .catch((err) => {
+        logger.error(
+          'Failed to update notification seen state',
+          err instanceof Error ? err : undefined,
+          { module: 'NotificationStore' }
+        )
+      })
   },
 
   closePanel: () => {

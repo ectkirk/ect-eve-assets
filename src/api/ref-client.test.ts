@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { resolveTypes, resolveLocations, fetchPrices, loadReferenceData, loadUniverseData, _resetForTests } from './ref-client'
+import {
+  resolveTypes,
+  resolveLocations,
+  fetchPrices,
+  loadReferenceData,
+  loadUniverseData,
+  _resetForTests,
+} from './ref-client'
 
 vi.mock('@/store/reference-cache', () => ({
   getType: vi.fn(),
@@ -80,13 +87,40 @@ describe('ref-client', () => {
       return undefined
     })
 
-    mockRefCategories.mockResolvedValue({ items: { '4': { id: 4, name: 'Material' } } })
-    mockRefGroups.mockResolvedValue({ items: { '18': { id: 18, name: 'Mineral', categoryId: 4 } } })
-    mockRefTypesPage.mockResolvedValue({ items: {}, pagination: { total: 0, limit: 5000, hasMore: false }, etag: 'test-etag' })
+    mockRefCategories.mockResolvedValue({
+      items: { '4': { id: 4, name: 'Material' } },
+    })
+    mockRefGroups.mockResolvedValue({
+      items: { '18': { id: 18, name: 'Mineral', categoryId: 4 } },
+    })
+    mockRefTypesPage.mockResolvedValue({
+      items: {},
+      pagination: { total: 0, limit: 5000, hasMore: false },
+      etag: 'test-etag',
+    })
 
-    mockRefUniverseRegions.mockResolvedValue({ items: { '10000002': { id: 10000002, name: 'The Forge' } } })
-    mockRefUniverseSystems.mockResolvedValue({ items: { '30000142': { id: 30000142, name: 'Jita', regionId: 10000002, securityStatus: 0.9 } } })
-    mockRefUniverseStations.mockResolvedValue({ items: { '60003760': { id: 60003760, name: 'Jita IV - Moon 4 - Caldari Navy Assembly Plant', systemId: 30000142 } } })
+    mockRefUniverseRegions.mockResolvedValue({
+      items: { '10000002': { id: 10000002, name: 'The Forge' } },
+    })
+    mockRefUniverseSystems.mockResolvedValue({
+      items: {
+        '30000142': {
+          id: 30000142,
+          name: 'Jita',
+          regionId: 10000002,
+          securityStatus: 0.9,
+        },
+      },
+    })
+    mockRefUniverseStations.mockResolvedValue({
+      items: {
+        '60003760': {
+          id: 60003760,
+          name: 'Jita IV - Moon 4 - Caldari Navy Assembly Plant',
+          systemId: 30000142,
+        },
+      },
+    })
 
     window.electronAPI = {
       refTypesPage: mockRefTypesPage,
@@ -193,12 +227,21 @@ describe('ref-client', () => {
 
     it('fetches uncached moons from API', async () => {
       vi.mocked(getLocation).mockReturnValue(undefined)
-      vi.mocked(getSystem).mockReturnValue({ id: 30000142, name: 'Jita', regionId: 10000002, securityStatus: 0.9 })
+      vi.mocked(getSystem).mockReturnValue({
+        id: 30000142,
+        name: 'Jita',
+        regionId: 10000002,
+        securityStatus: 0.9,
+      })
       vi.mocked(getRegion).mockReturnValue({ id: 10000002, name: 'The Forge' })
 
       mockRefMoons.mockResolvedValueOnce({
         items: {
-          '40009082': { id: 40009082, name: 'Jita IV - Moon 4', systemId: 30000142 },
+          '40009082': {
+            id: 40009082,
+            name: 'Jita IV - Moon 4',
+            systemId: 30000142,
+          },
         },
       })
 
@@ -224,12 +267,21 @@ describe('ref-client', () => {
 
     it('caches placeholder for moons not returned by API', async () => {
       vi.mocked(getLocation).mockReturnValue(undefined)
-      vi.mocked(getSystem).mockReturnValue({ id: 30000142, name: 'Jita', regionId: 10000002, securityStatus: 0.9 })
+      vi.mocked(getSystem).mockReturnValue({
+        id: 30000142,
+        name: 'Jita',
+        regionId: 10000002,
+        securityStatus: 0.9,
+      })
       vi.mocked(getRegion).mockReturnValue({ id: 10000002, name: 'The Forge' })
 
       mockRefMoons.mockResolvedValueOnce({
         items: {
-          '40009082': { id: 40009082, name: 'Jita IV - Moon 4', systemId: 30000142 },
+          '40009082': {
+            id: 40009082,
+            name: 'Jita IV - Moon 4',
+            systemId: 30000142,
+          },
         },
       })
 
@@ -242,7 +294,11 @@ describe('ref-client', () => {
       expect(saveLocations).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({ id: 40009082, name: 'Jita IV - Moon 4' }),
-          expect.objectContaining({ id: 40099999, name: 'Celestial 40099999', type: 'celestial' }),
+          expect.objectContaining({
+            id: 40099999,
+            name: 'Celestial 40099999',
+            type: 'celestial',
+          }),
         ])
       )
     })
@@ -329,7 +385,9 @@ describe('ref-client', () => {
       expect(mockRefCategories).toHaveBeenCalled()
       expect(mockRefGroups).toHaveBeenCalled()
       expect(setCategories).toHaveBeenCalledWith([{ id: 4, name: 'Material' }])
-      expect(setGroups).toHaveBeenCalledWith([{ id: 18, name: 'Mineral', categoryId: 4 }])
+      expect(setGroups).toHaveBeenCalledWith([
+        { id: 18, name: 'Mineral', categoryId: 4 },
+      ])
     })
 
     it('loads all types with cursor pagination', async () => {
@@ -338,11 +396,15 @@ describe('ref-client', () => {
 
       mockRefTypesPage
         .mockResolvedValueOnce({
-          items: { '34': { id: 34, name: 'Tritanium', groupId: 18, volume: 0.01 } },
+          items: {
+            '34': { id: 34, name: 'Tritanium', groupId: 18, volume: 0.01 },
+          },
           pagination: { total: 2, limit: 1, hasMore: true, nextCursor: 34 },
         })
         .mockResolvedValueOnce({
-          items: { '35': { id: 35, name: 'Pyerite', groupId: 18, volume: 0.01 } },
+          items: {
+            '35': { id: 35, name: 'Pyerite', groupId: 18, volume: 0.01 },
+          },
           pagination: { total: 2, limit: 1, hasMore: false },
         })
 
@@ -355,7 +417,7 @@ describe('ref-client', () => {
       expect(setAllTypesLoaded).toHaveBeenCalledWith(true)
     })
 
-    it('handles categories API error gracefully', async () => {
+    it('handles categories API error gracefully and continues loading', async () => {
       vi.mocked(isReferenceDataLoaded).mockReturnValue(false)
       vi.mocked(isAllTypesLoaded).mockReturnValue(false)
 
@@ -364,8 +426,8 @@ describe('ref-client', () => {
       await loadReferenceData()
 
       expect(setCategories).not.toHaveBeenCalled()
-      expect(setGroups).not.toHaveBeenCalled()
-      expect(mockRefTypesPage).not.toHaveBeenCalled()
+      expect(setGroups).toHaveBeenCalled()
+      expect(mockRefTypesPage).toHaveBeenCalled()
     })
 
     it('handles types page API error gracefully', async () => {
@@ -396,7 +458,9 @@ describe('ref-client', () => {
       vi.mocked(isAllTypesLoaded).mockReturnValue(false)
 
       mockRefTypesPage.mockResolvedValueOnce({
-        items: { '34': { id: 34, name: 'Tritanium', groupId: 18, volume: 0.01 } },
+        items: {
+          '34': { id: 34, name: 'Tritanium', groupId: 18, volume: 0.01 },
+        },
         pagination: { total: 1, limit: 5000, hasMore: false },
         etag: 'test-etag',
       })
@@ -421,7 +485,14 @@ describe('ref-client', () => {
       vi.mocked(isAllTypesLoaded).mockReturnValue(false)
 
       mockRefTypesPage.mockResolvedValueOnce({
-        items: { '99999': { id: 99999, name: 'Unknown Item', groupId: null, volume: null } },
+        items: {
+          '99999': {
+            id: 99999,
+            name: 'Unknown Item',
+            groupId: null,
+            volume: null,
+          },
+        },
         pagination: { total: 1, limit: 5000, hasMore: false },
         etag: 'test-etag',
       })
@@ -461,9 +532,19 @@ describe('ref-client', () => {
       expect(mockRefUniverseRegions).toHaveBeenCalled()
       expect(mockRefUniverseSystems).toHaveBeenCalled()
       expect(mockRefUniverseStations).toHaveBeenCalled()
-      expect(setRegions).toHaveBeenCalledWith([{ id: 10000002, name: 'The Forge' }])
-      expect(setSystems).toHaveBeenCalledWith([{ id: 30000142, name: 'Jita', regionId: 10000002, securityStatus: 0.9 }])
-      expect(setStations).toHaveBeenCalledWith([{ id: 60003760, name: 'Jita IV - Moon 4 - Caldari Navy Assembly Plant', systemId: 30000142 }])
+      expect(setRegions).toHaveBeenCalledWith([
+        { id: 10000002, name: 'The Forge' },
+      ])
+      expect(setSystems).toHaveBeenCalledWith([
+        { id: 30000142, name: 'Jita', regionId: 10000002, securityStatus: 0.9 },
+      ])
+      expect(setStations).toHaveBeenCalledWith([
+        {
+          id: 60003760,
+          name: 'Jita IV - Moon 4 - Caldari Navy Assembly Plant',
+          systemId: 30000142,
+        },
+      ])
       expect(setUniverseDataLoaded).toHaveBeenCalledWith(true)
     })
 

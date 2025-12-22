@@ -1,11 +1,8 @@
-export type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR'
-
-export interface LogContext {
-  module?: string
-  [key: string]: unknown
-}
-
-function formatForConsole(level: LogLevel, message: string, context?: LogContext): string {
+function formatForConsole(
+  level: LogLevel,
+  message: string,
+  context?: LogContext
+): string {
   const timestamp = new Date().toISOString()
   const module = context?.module ? `[${context.module}]` : ''
   return `[${timestamp}] [${level}]${module} ${message}`
@@ -21,7 +18,11 @@ function extractError(error: unknown): { message: string; stack?: string } {
   return { message: String(error) }
 }
 
-async function writeLog(level: LogLevel, message: string, context?: LogContext): Promise<void> {
+async function writeLog(
+  level: LogLevel,
+  message: string,
+  context?: LogContext
+): Promise<void> {
   const formatted = formatForConsole(level, message, context)
 
   // Always log to console

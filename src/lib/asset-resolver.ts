@@ -1,4 +1,7 @@
 import type { ESIAsset } from '@/api/endpoints/assets'
+import type { ESIContract, ESIContractItem } from '@/api/endpoints/contracts'
+import type { ESIIndustryJob } from '@/api/endpoints/industry'
+import type { MarketOrder } from '@/store/market-orders-store'
 import type { Owner } from '@/store/auth-store'
 import type { ResolvedAsset, AssetModeFlags } from './resolved-asset'
 import {
@@ -11,14 +14,11 @@ import {
 } from './tree-types'
 import {
   getType,
-  getTypeName,
   getStructure,
   getLocation,
   getAbyssalPrice,
-  CategoryIds as RefCategoryIds,
+  getBlueprint,
 } from '@/store/reference-cache'
-import { formatBlueprintName } from '@/store/blueprints-store'
-import { isAbyssalTypeId } from '@/api/mutamarket-client'
 
 export interface AssetLookupMap {
   itemIdToAsset: Map<number, ESIAsset>
@@ -65,10 +65,7 @@ export function buildParentChain(
   return chain
 }
 
-export function getRootFlag(
-  asset: ESIAsset,
-  parentChain: ESIAsset[]
-): string {
+export function getRootFlag(asset: ESIAsset, parentChain: ESIAsset[]): string {
   if (parentChain.length === 0) {
     return asset.location_flag
   }
@@ -78,11 +75,8 @@ export function getRootFlag(
 interface RootLocationInfo {
   rootLocationId: number
   rootLocationType: 'station' | 'structure' | 'solar_system'
-  locationName: string
   systemId: number | undefined
-  systemName: string
   regionId: number | undefined
-  regionName: string
 }
 
 export function resolveRootLocation(
@@ -90,29 +84,24 @@ export function resolveRootLocation(
   parentChain: ESIAsset[],
   starbaseMoonIds: Map<number, number>
 ): RootLocationInfo {
-  const rootAsset = parentChain.length > 0 ? parentChain[parentChain.length - 1]! : asset
+  const rootAsset =
+    parentChain.length > 0 ? parentChain[parentChain.length - 1]! : asset
   const rootLocationId = rootAsset.location_id
   const rootLocationType = rootAsset.location_type
 
   let locationId: number
   let locationType: 'station' | 'structure' | 'solar_system'
-  let locationName: string
   let systemId: number | undefined
-  let systemName = ''
   let regionId: number | undefined
-  let regionName = ''
 
   if (rootLocationId > 1_000_000_000_000) {
     locationId = rootLocationId
     locationType = 'structure'
     const structure = getStructure(rootLocationId)
-    locationName = structure?.name ?? `Structure ${rootLocationId}`
     if (structure?.solarSystemId) {
       const system = getLocation(structure.solarSystemId)
       systemId = structure.solarSystemId
-      systemName = system?.name ?? `System ${structure.solarSystemId}`
       regionId = system?.regionId
-      regionName = system?.regionName ?? ''
     }
   } else if (rootLocationType === 'solar_system') {
     const rootType = getType(rootAsset.type_id)
@@ -120,13 +109,10 @@ export function resolveRootLocation(
       locationId = rootAsset.item_id
       locationType = 'structure'
       const structure = getStructure(rootAsset.item_id)
-      locationName = structure?.name ?? `Structure ${rootAsset.item_id}`
       if (structure?.solarSystemId) {
         const system = getLocation(structure.solarSystemId)
         systemId = structure.solarSystemId
-        systemName = system?.name ?? `System ${structure.solarSystemId}`
         regionId = system?.regionId
-        regionName = system?.regionName ?? ''
       }
     } else if (rootType?.categoryId === CategoryIds.STARBASE) {
       locationId = rootAsset.item_id
@@ -134,50 +120,33 @@ export function resolveRootLocation(
       const moonId = starbaseMoonIds.get(rootAsset.item_id)
       if (moonId) {
         const moon = getLocation(moonId)
-        locationName = moon?.name ?? `Moon ${moonId}`
         systemId = moon?.solarSystemId
-        systemName = moon?.solarSystemName ?? ''
         regionId = moon?.regionId
-        regionName = moon?.regionName ?? ''
       } else {
         const system = getLocation(rootLocationId)
-        locationName = system?.name ?? `System ${rootLocationId}`
         systemId = rootLocationId
-        systemName = system?.name ?? ''
         regionId = system?.regionId
-        regionName = system?.regionName ?? ''
       }
     } else {
       locationId = rootLocationId
       locationType = 'solar_system'
       const system = getLocation(rootLocationId)
-      locationName = system?.name ?? `System ${rootLocationId}`
       systemId = rootLocationId
-      systemName = system?.name ?? ''
       regionId = system?.regionId
-      regionName = system?.regionName ?? ''
     }
   } else {
     locationId = rootLocationId
     locationType = 'station'
     const location = getLocation(rootLocationId)
-    locationName = location?.name ?? `Location ${rootLocationId}`
     systemId = location?.solarSystemId
-    systemName = location?.solarSystemName ?? ''
     regionId = location?.regionId
-    regionName = location?.regionName ?? ''
   }
-
-  if (!regionName) regionName = 'Unknown Region'
 
   return {
     rootLocationId: locationId,
     rootLocationType: locationType,
-    locationName,
     systemId,
-    systemName,
     regionId,
-    regionName,
   }
 }
 
@@ -191,7 +160,7 @@ export function computeModeFlags(
   const isShip = type?.categoryId === CategoryIds.SHIP
   const inHangar = HANGAR_FLAGS.has(rootFlag)
 
-  const hasOfficeInChain = parentChain.some(p => p.type_id === OFFICE_TYPE_ID)
+  const hasOfficeInChain = parentChain.some((p) => p.type_id === OFFICE_TYPE_ID)
 
   let inStructure = false
   if (parentChain.length > 0) {
@@ -201,10 +170,10 @@ export function computeModeFlags(
   }
 
   const isActiveShip = rootFlag === 'ActiveShip'
-  const immediateParent = parentChain[0]
-  const parentIsOwnedStructure = immediateParent != null && ownedStructureIds.has(immediateParent.item_id)
-  const isOwnedStructure = ownedStructureIds.has(asset.item_id) ||
-    (parentIsOwnedStructure && isFittedOrContentFlag(asset.location_flag))
+  const isDirectlyInOwnedStructure = ownedStructureIds.has(asset.location_id)
+  const isOwnedStructure =
+    ownedStructureIds.has(asset.item_id) ||
+    (isDirectlyInOwnedStructure && isFittedOrContentFlag(asset.location_flag))
 
   return {
     inHangar,
@@ -233,23 +202,35 @@ export function resolveAsset(
 
   const parentChain = buildParentChain(asset, itemIdToAsset)
   const rootFlag = getRootFlag(asset, parentChain)
+  const parentStructure = getStructure(asset.location_id)
+  const parentIsUnresolvable =
+    !parentStructure || parentStructure.inaccessible === true
+  const hasOrphanedParent =
+    asset.location_type === 'item' &&
+    parentChain.length === 0 &&
+    !itemIdToAsset.has(asset.location_id) &&
+    parentIsUnresolvable &&
+    !getLocation(asset.location_id)
   const rootLocation = resolveRootLocation(asset, parentChain, starbaseMoonIds)
-  const modeFlags = computeModeFlags(asset, parentChain, rootFlag, ownedStructureIds)
+  const modeFlags = computeModeFlags(
+    asset,
+    parentChain,
+    rootFlag,
+    ownedStructureIds
+  )
 
   const sdeType = getType(asset.type_id)
   const customName = assetNames.get(asset.item_id)
-  const rawTypeName = getTypeName(asset.type_id)
-  const baseName = customName ? `${rawTypeName} (${customName})` : rawTypeName
-  const isBlueprint = sdeType?.categoryId === RefCategoryIds.BLUEPRINT
   const isBpc = asset.is_blueprint_copy ?? false
-  const typeName = isBlueprint ? formatBlueprintName(baseName, asset.item_id) : baseName
+  const blueprint = getBlueprint(asset.type_id)
 
   const volume = sdeType?.packagedVolume ?? sdeType?.volume ?? 0
   const abyssalPrice = getAbyssalPrice(asset.item_id)
-  const price = isBpc ? 0 : (abyssalPrice ?? prices.get(asset.type_id) ?? 0)
-
-  const isAbyssal = isAbyssalTypeId(asset.type_id)
-  const categoryName = isAbyssal ? 'Abyssals' : (sdeType?.categoryName ?? '')
+  const price = isBpc
+    ? 0
+    : blueprint
+      ? (blueprint.basePrice ?? 0)
+      : (abyssalPrice ?? prices.get(asset.type_id) ?? 0)
 
   return {
     asset,
@@ -259,19 +240,14 @@ export function resolveAsset(
     rootLocationType: rootLocation.rootLocationType,
     parentChain,
     rootFlag,
+    hasOrphanedParent,
 
-    locationName: rootLocation.locationName,
     systemId: rootLocation.systemId,
-    systemName: rootLocation.systemName,
     regionId: rootLocation.regionId,
-    regionName: rootLocation.regionName,
 
     typeId: asset.type_id,
-    typeName,
     categoryId: sdeType?.categoryId ?? 0,
-    categoryName,
     groupId: sdeType?.groupId ?? 0,
-    groupName: sdeType?.groupName ?? '',
     volume,
 
     price,
@@ -295,7 +271,10 @@ export function resolveAllAssets(
   for (const { owner, assets } of assetsByOwner) {
     for (const asset of assets) {
       const type = getType(asset.type_id)
-      if (type?.categoryId === CategoryIds.OWNER || type?.categoryId === CategoryIds.STATION) {
+      if (
+        type?.categoryId === CategoryIds.OWNER ||
+        type?.categoryId === CategoryIds.STATION
+      ) {
         continue
       }
       results.push(resolveAsset(asset, owner, lookupMap, context))
@@ -303,4 +282,260 @@ export function resolveAllAssets(
   }
 
   return results
+}
+
+export function resolveMarketOrder(
+  order: MarketOrder,
+  owner: Owner,
+  prices: Map<number, number>
+): ResolvedAsset {
+  const isStructure = order.location_id > 1_000_000_000_000
+
+  const syntheticAsset: ESIAsset = {
+    item_id: order.order_id,
+    type_id: order.type_id,
+    location_id: order.location_id,
+    location_type: isStructure ? 'other' : 'station',
+    location_flag: 'SellOrder',
+    quantity: order.volume_remain,
+    is_singleton: false,
+  }
+
+  let systemId: number | undefined
+  let regionId: number | undefined
+
+  if (isStructure) {
+    const structure = getStructure(order.location_id)
+    if (structure?.solarSystemId) {
+      const system = getLocation(structure.solarSystemId)
+      systemId = structure.solarSystemId
+      regionId = system?.regionId
+    }
+  } else {
+    const location = getLocation(order.location_id)
+    systemId = location?.solarSystemId
+    regionId = location?.regionId
+  }
+
+  const sdeType = getType(order.type_id)
+  const volume = sdeType?.packagedVolume ?? sdeType?.volume ?? 0
+  const price = prices.get(order.type_id) ?? 0
+
+  const modeFlags: AssetModeFlags = {
+    inHangar: false,
+    inShipHangar: false,
+    inItemHangar: false,
+    inDeliveries: false,
+    inAssetSafety: false,
+    inOffice: false,
+    inStructure: isStructure,
+    isContract: false,
+    isMarketOrder: true,
+    isIndustryJob: false,
+    isOwnedStructure: false,
+    isActiveShip: false,
+  }
+
+  return {
+    asset: syntheticAsset,
+    owner,
+
+    rootLocationId: order.location_id,
+    rootLocationType: isStructure ? 'structure' : 'station',
+    parentChain: [],
+    rootFlag: 'SellOrder',
+    hasOrphanedParent: false,
+
+    systemId,
+    regionId,
+
+    typeId: order.type_id,
+    categoryId: sdeType?.categoryId ?? 0,
+    groupId: sdeType?.groupId ?? 0,
+    volume,
+
+    price,
+    totalValue: price * order.volume_remain,
+    totalVolume: volume * order.volume_remain,
+
+    modeFlags,
+
+    customName: undefined,
+    isBlueprintCopy: false,
+  }
+}
+
+export function resolveContractItem(
+  contract: ESIContract,
+  item: ESIContractItem,
+  owner: Owner,
+  prices: Map<number, number>
+): ResolvedAsset {
+  const locationId = contract.start_location_id ?? 0
+  const isStructure = locationId > 1_000_000_000_000
+
+  const syntheticAsset: ESIAsset = {
+    item_id: contract.contract_id * 1_000_000 + item.record_id,
+    type_id: item.type_id,
+    location_id: locationId,
+    location_type: isStructure ? 'other' : 'station',
+    location_flag: 'InContract',
+    quantity: item.quantity,
+    is_singleton: item.is_singleton ?? false,
+    is_blueprint_copy: item.is_blueprint_copy,
+  }
+
+  let systemId: number | undefined
+  let regionId: number | undefined
+
+  if (isStructure) {
+    const structure = getStructure(locationId)
+    if (structure?.solarSystemId) {
+      const system = getLocation(structure.solarSystemId)
+      systemId = structure.solarSystemId
+      regionId = system?.regionId
+    }
+  } else if (locationId) {
+    const location = getLocation(locationId)
+    systemId = location?.solarSystemId
+    regionId = location?.regionId
+  }
+
+  const sdeType = getType(item.type_id)
+  const isBpc = item.is_blueprint_copy ?? false
+  const blueprint = getBlueprint(item.type_id)
+
+  const volume = sdeType?.packagedVolume ?? sdeType?.volume ?? 0
+  const price = isBpc
+    ? 0
+    : blueprint
+      ? (blueprint.basePrice ?? 0)
+      : (prices.get(item.type_id) ?? 0)
+
+  const modeFlags: AssetModeFlags = {
+    inHangar: false,
+    inShipHangar: false,
+    inItemHangar: false,
+    inDeliveries: false,
+    inAssetSafety: false,
+    inOffice: false,
+    inStructure: isStructure,
+    isContract: true,
+    isMarketOrder: false,
+    isIndustryJob: false,
+    isOwnedStructure: false,
+    isActiveShip: false,
+  }
+
+  return {
+    asset: syntheticAsset,
+    owner,
+
+    rootLocationId: locationId,
+    rootLocationType: isStructure ? 'structure' : 'station',
+    parentChain: [],
+    rootFlag: 'InContract',
+    hasOrphanedParent: false,
+
+    systemId,
+    regionId,
+
+    typeId: item.type_id,
+    categoryId: sdeType?.categoryId ?? 0,
+    groupId: sdeType?.groupId ?? 0,
+    volume,
+
+    price,
+    totalValue: price * item.quantity,
+    totalVolume: volume * item.quantity,
+
+    modeFlags,
+
+    customName: undefined,
+    isBlueprintCopy: isBpc,
+  }
+}
+
+export function resolveIndustryJob(
+  job: ESIIndustryJob,
+  owner: Owner,
+  prices: Map<number, number>
+): ResolvedAsset {
+  const locationId = job.location_id ?? job.facility_id
+  const isStructure = locationId > 1_000_000_000_000
+
+  const productTypeId = job.product_type_id ?? job.blueprint_type_id
+
+  const syntheticAsset: ESIAsset = {
+    item_id: job.job_id,
+    type_id: productTypeId,
+    location_id: locationId,
+    location_type: isStructure ? 'other' : 'station',
+    location_flag: 'IndustryJob',
+    quantity: job.runs,
+    is_singleton: false,
+  }
+
+  let systemId: number | undefined
+  let regionId: number | undefined
+
+  if (isStructure) {
+    const structure = getStructure(locationId)
+    if (structure?.solarSystemId) {
+      const system = getLocation(structure.solarSystemId)
+      systemId = structure.solarSystemId
+      regionId = system?.regionId
+    }
+  } else if (locationId) {
+    const location = getLocation(locationId)
+    systemId = location?.solarSystemId
+    regionId = location?.regionId
+  }
+
+  const sdeType = getType(productTypeId)
+  const volume = sdeType?.packagedVolume ?? sdeType?.volume ?? 0
+  const price = prices.get(productTypeId) ?? 0
+
+  const modeFlags: AssetModeFlags = {
+    inHangar: false,
+    inShipHangar: false,
+    inItemHangar: false,
+    inDeliveries: false,
+    inAssetSafety: false,
+    inOffice: false,
+    inStructure: isStructure,
+    isContract: false,
+    isMarketOrder: false,
+    isIndustryJob: true,
+    isOwnedStructure: false,
+    isActiveShip: false,
+  }
+
+  return {
+    asset: syntheticAsset,
+    owner,
+
+    rootLocationId: locationId,
+    rootLocationType: isStructure ? 'structure' : 'station',
+    parentChain: [],
+    rootFlag: 'IndustryJob',
+    hasOrphanedParent: false,
+
+    systemId,
+    regionId,
+
+    typeId: productTypeId,
+    categoryId: sdeType?.categoryId ?? 0,
+    groupId: sdeType?.groupId ?? 0,
+    volume,
+
+    price,
+    totalValue: price * job.runs,
+    totalVolume: volume * job.runs,
+
+    modeFlags,
+
+    customName: undefined,
+    isBlueprintCopy: false,
+  }
 }

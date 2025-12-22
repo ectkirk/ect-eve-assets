@@ -1,10 +1,17 @@
 import { create } from 'zustand'
-import { getStarbaseDetail, type ESIStarbaseDetail } from '@/api/endpoints/starbases'
-import { FUEL_BLOCK_TYPE_IDS, STRONTIUM_TYPE_ID } from '@/lib/structure-constants'
+import {
+  getStarbaseDetail,
+  type ESIStarbaseDetail,
+} from '@/api/endpoints/starbases'
+import {
+  FUEL_BLOCK_TYPE_IDS,
+  STRONTIUM_TYPE_ID,
+} from '@/lib/structure-constants'
+import { useStoreRegistry } from './store-registry'
 import { logger } from '@/lib/logger'
 
 const DB_NAME = 'ecteveassets-starbase-details'
-const DB_VERSION = 1
+const DB_VERSION = 2
 const STORE_NAME = 'details'
 const STALE_THRESHOLD_MS = 5 * 60 * 1000
 
@@ -17,12 +24,14 @@ interface StarbaseDetailKey {
 
 interface StoredDetail {
   starbaseId: number
+  corporationId: number
   detail: ESIStarbaseDetail
   fetchedAt: number
 }
 
 interface StarbaseDetailsState {
   details: Map<number, ESIStarbaseDetail>
+  corporationById: Map<number, number>
   fetchedAt: Map<number, number>
   loading: Set<number>
   failed: Set<number>
@@ -31,9 +40,13 @@ interface StarbaseDetailsState {
 
 interface StarbaseDetailsActions {
   init: () => Promise<void>
-  fetchDetail: (key: StarbaseDetailKey, force?: boolean) => Promise<ESIStarbaseDetail | null>
+  fetchDetail: (
+    key: StarbaseDetailKey,
+    force?: boolean
+  ) => Promise<ESIStarbaseDetail | null>
   getDetail: (starbaseId: number) => ESIStarbaseDetail | undefined
   removeOrphans: (validStarbaseIds: Set<number>) => Promise<void>
+  removeForOwner: (ownerType: string, ownerId: number) => Promise<void>
   clear: () => Promise<void>
 }
 
@@ -48,7 +61,9 @@ async function openDB(): Promise<IDBDatabase> {
     const request = indexedDB.open(DB_NAME, DB_VERSION)
 
     request.onerror = () => {
-      logger.error('Failed to open starbase details DB', request.error, { module: 'StarbaseDetailsStore' })
+      logger.error('Failed to open starbase details DB', request.error, {
+        module: 'StarbaseDetailsStore',
+      })
       reject(request.error)
     }
 
@@ -59,15 +74,20 @@ async function openDB(): Promise<IDBDatabase> {
 
     request.onupgradeneeded = (event) => {
       const database = (event.target as IDBOpenDBRequest).result
-      if (!database.objectStoreNames.contains(STORE_NAME)) {
-        database.createObjectStore(STORE_NAME, { keyPath: 'starbaseId' })
+      if (database.objectStoreNames.contains(STORE_NAME)) {
+        database.deleteObjectStore(STORE_NAME)
       }
+      const store = database.createObjectStore(STORE_NAME, {
+        keyPath: 'starbaseId',
+      })
+      store.createIndex('corporationId', 'corporationId', { unique: false })
     }
   })
 }
 
 interface LoadedDetails {
   details: Map<number, ESIStarbaseDetail>
+  corporationById: Map<number, number>
   fetchedAt: Map<number, number>
 }
 
@@ -81,25 +101,36 @@ async function loadAllFromDB(): Promise<LoadedDetails> {
 
     tx.oncomplete = () => {
       const details = new Map<number, ESIStarbaseDetail>()
+      const corporationById = new Map<number, number>()
       const fetchedAt = new Map<number, number>()
       for (const stored of request.result as StoredDetail[]) {
         details.set(stored.starbaseId, stored.detail)
+        corporationById.set(stored.starbaseId, stored.corporationId)
         fetchedAt.set(stored.starbaseId, stored.fetchedAt)
       }
-      resolve({ details, fetchedAt })
+      resolve({ details, corporationById, fetchedAt })
     }
 
     tx.onerror = () => reject(tx.error)
   })
 }
 
-async function saveToDB(starbaseId: number, detail: ESIStarbaseDetail): Promise<void> {
+async function saveToDB(
+  starbaseId: number,
+  corporationId: number,
+  detail: ESIStarbaseDetail
+): Promise<void> {
   const database = await openDB()
 
   return new Promise((resolve, reject) => {
     const tx = database.transaction([STORE_NAME], 'readwrite')
     const store = tx.objectStore(STORE_NAME)
-    store.put({ starbaseId, detail, fetchedAt: Date.now() } as StoredDetail)
+    store.put({
+      starbaseId,
+      corporationId,
+      detail,
+      fetchedAt: Date.now(),
+    } as StoredDetail)
     tx.oncomplete = () => resolve()
     tx.onerror = () => reject(tx.error)
   })
@@ -116,6 +147,27 @@ async function deleteFromDB(starbaseId: number): Promise<void> {
   })
 }
 
+async function deleteByCorpFromDB(corporationId: number): Promise<number[]> {
+  const database = await openDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction([STORE_NAME], 'readwrite')
+    const store = tx.objectStore(STORE_NAME)
+    const index = store.index('corporationId')
+    const request = index.getAllKeys(corporationId)
+
+    request.onsuccess = () => {
+      const keys = request.result as number[]
+      for (const key of keys) {
+        store.delete(key)
+      }
+      tx.oncomplete = () => resolve(keys)
+    }
+
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
 async function clearDB(): Promise<void> {
   const database = await openDB()
 
@@ -127,137 +179,250 @@ async function clearDB(): Promise<void> {
   })
 }
 
-export const useStarbaseDetailsStore = create<StarbaseDetailsStore>((set, get) => ({
-  details: new Map(),
-  fetchedAt: new Map(),
-  loading: new Set(),
-  failed: new Set(),
-  initialized: false,
+export const useStarbaseDetailsStore = create<StarbaseDetailsStore>(
+  (set, get) => ({
+    details: new Map(),
+    corporationById: new Map(),
+    fetchedAt: new Map(),
+    loading: new Set(),
+    failed: new Set(),
+    initialized: false,
 
-  init: async () => {
-    if (get().initialized) return
+    init: async () => {
+      if (get().initialized) return
 
-    try {
-      const { details, fetchedAt } = await loadAllFromDB()
-      set({ details, fetchedAt, initialized: true })
-      logger.info('Starbase details loaded from cache', {
-        module: 'StarbaseDetailsStore',
-        count: details.size,
-      })
-    } catch (err) {
-      logger.error('Failed to load starbase details from cache', err instanceof Error ? err : undefined, {
-        module: 'StarbaseDetailsStore',
-      })
-      set({ initialized: true })
-    }
-  },
+      try {
+        const { details, corporationById, fetchedAt } = await loadAllFromDB()
+        set({ details, corporationById, fetchedAt, initialized: true })
+        logger.info('Starbase details loaded from cache', {
+          module: 'StarbaseDetailsStore',
+          count: details.size,
+        })
+      } catch (err) {
+        logger.error(
+          'Failed to load starbase details from cache',
+          err instanceof Error ? err : undefined,
+          {
+            module: 'StarbaseDetailsStore',
+          }
+        )
+        set({ initialized: true })
+      }
+    },
 
-  fetchDetail: async ({ corporationId, starbaseId, systemId, characterId }, force = false) => {
-    const state = get()
+    fetchDetail: async (
+      { corporationId, starbaseId, systemId, characterId },
+      force = false
+    ) => {
+      const state = get()
 
-    if (state.loading.has(starbaseId)) {
-      return state.details.get(starbaseId) ?? null
-    }
+      if (state.loading.has(starbaseId)) {
+        return state.details.get(starbaseId) ?? null
+      }
 
-    const cachedAt = state.fetchedAt.get(starbaseId)
-    const isStale = !cachedAt || Date.now() - cachedAt > STALE_THRESHOLD_MS
+      const cachedAt = state.fetchedAt.get(starbaseId)
+      const isStale = !cachedAt || Date.now() - cachedAt > STALE_THRESHOLD_MS
 
-    if (state.details.has(starbaseId) && !isStale && !force) {
-      return state.details.get(starbaseId)!
-    }
+      if (state.details.has(starbaseId) && !isStale && !force) {
+        return state.details.get(starbaseId)!
+      }
 
-    set((s) => ({ loading: new Set(s.loading).add(starbaseId) }))
+      set((s) => ({ loading: new Set(s.loading).add(starbaseId) }))
 
-    try {
-      const detail = await getStarbaseDetail(characterId, corporationId, starbaseId, systemId)
-      const now = Date.now()
+      try {
+        const detail = await getStarbaseDetail(
+          characterId,
+          corporationId,
+          starbaseId,
+          systemId
+        )
+        const now = Date.now()
+        set((s) => {
+          const newDetails = new Map(s.details)
+          newDetails.set(starbaseId, detail)
+          const newCorporationById = new Map(s.corporationById)
+          newCorporationById.set(starbaseId, corporationId)
+          const newFetchedAt = new Map(s.fetchedAt)
+          newFetchedAt.set(starbaseId, now)
+          const newLoading = new Set(s.loading)
+          newLoading.delete(starbaseId)
+          return {
+            details: newDetails,
+            corporationById: newCorporationById,
+            fetchedAt: newFetchedAt,
+            loading: newLoading,
+          }
+        })
+
+        saveToDB(starbaseId, corporationId, detail).catch((err) => {
+          logger.error(
+            'Failed to save starbase detail to cache',
+            err instanceof Error ? err : undefined,
+            {
+              module: 'StarbaseDetailsStore',
+              starbaseId,
+            }
+          )
+        })
+
+        return detail
+      } catch (err) {
+        logger.error(
+          'Failed to fetch starbase detail',
+          err instanceof Error ? err : undefined,
+          {
+            module: 'StarbaseDetailsStore',
+            starbaseId,
+          }
+        )
+        set((s) => {
+          const newLoading = new Set(s.loading)
+          newLoading.delete(starbaseId)
+          const newFailed = new Set(s.failed)
+          newFailed.add(starbaseId)
+          return { loading: newLoading, failed: newFailed }
+        })
+        return null
+      }
+    },
+
+    getDetail: (starbaseId) => get().details.get(starbaseId),
+
+    removeOrphans: async (validStarbaseIds) => {
+      const state = get()
+      const toRemove: number[] = []
+
+      for (const starbaseId of state.details.keys()) {
+        if (!validStarbaseIds.has(starbaseId)) {
+          toRemove.push(starbaseId)
+        }
+      }
+
+      if (toRemove.length === 0) return
+
       set((s) => {
         const newDetails = new Map(s.details)
-        newDetails.set(starbaseId, detail)
+        const newCorporationById = new Map(s.corporationById)
         const newFetchedAt = new Map(s.fetchedAt)
-        newFetchedAt.set(starbaseId, now)
-        const newLoading = new Set(s.loading)
-        newLoading.delete(starbaseId)
-        return { details: newDetails, fetchedAt: newFetchedAt, loading: newLoading }
-      })
-
-      saveToDB(starbaseId, detail).catch((err) => {
-        logger.error('Failed to save starbase detail to cache', err instanceof Error ? err : undefined, {
-          module: 'StarbaseDetailsStore',
-          starbaseId,
-        })
-      })
-
-      return detail
-    } catch (err) {
-      logger.error('Failed to fetch starbase detail', err instanceof Error ? err : undefined, {
-        module: 'StarbaseDetailsStore',
-        starbaseId,
-      })
-      set((s) => {
-        const newLoading = new Set(s.loading)
-        newLoading.delete(starbaseId)
         const newFailed = new Set(s.failed)
-        newFailed.add(starbaseId)
-        return { loading: newLoading, failed: newFailed }
+        for (const id of toRemove) {
+          newDetails.delete(id)
+          newCorporationById.delete(id)
+          newFetchedAt.delete(id)
+          newFailed.delete(id)
+        }
+        return {
+          details: newDetails,
+          corporationById: newCorporationById,
+          fetchedAt: newFetchedAt,
+          failed: newFailed,
+        }
       })
-      return null
-    }
-  },
 
-  getDetail: (starbaseId) => get().details.get(starbaseId),
-
-  removeOrphans: async (validStarbaseIds) => {
-    const state = get()
-    const toRemove: number[] = []
-
-    for (const starbaseId of state.details.keys()) {
-      if (!validStarbaseIds.has(starbaseId)) {
-        toRemove.push(starbaseId)
-      }
-    }
-
-    if (toRemove.length === 0) return
-
-    set((s) => {
-      const newDetails = new Map(s.details)
-      const newFetchedAt = new Map(s.fetchedAt)
-      const newFailed = new Set(s.failed)
       for (const id of toRemove) {
-        newDetails.delete(id)
-        newFetchedAt.delete(id)
-        newFailed.delete(id)
-      }
-      return { details: newDetails, fetchedAt: newFetchedAt, failed: newFailed }
-    })
-
-    for (const id of toRemove) {
-      deleteFromDB(id).catch((err) => {
-        logger.error('Failed to delete orphan starbase detail', err instanceof Error ? err : undefined, {
-          module: 'StarbaseDetailsStore',
-          starbaseId: id,
+        deleteFromDB(id).catch((err) => {
+          logger.error(
+            'Failed to delete orphan starbase detail',
+            err instanceof Error ? err : undefined,
+            {
+              module: 'StarbaseDetailsStore',
+              starbaseId: id,
+            }
+          )
         })
-      })
-    }
+      }
 
-    logger.info('Removed orphan starbase details', {
-      module: 'StarbaseDetailsStore',
-      count: toRemove.length,
-    })
-  },
-
-  clear: async () => {
-    set({ details: new Map(), fetchedAt: new Map(), loading: new Set(), failed: new Set() })
-    try {
-      await clearDB()
-      logger.info('Starbase details cache cleared', { module: 'StarbaseDetailsStore' })
-    } catch (err) {
-      logger.error('Failed to clear starbase details cache', err instanceof Error ? err : undefined, {
+      logger.info('Removed orphan starbase details', {
         module: 'StarbaseDetailsStore',
+        count: toRemove.length,
       })
-    }
-  },
-}))
+    },
+
+    removeForOwner: async (ownerType, ownerId) => {
+      if (ownerType !== 'corporation') return
+
+      const state = get()
+      const toRemove: number[] = []
+
+      for (const [starbaseId, corpId] of state.corporationById) {
+        if (corpId === ownerId) {
+          toRemove.push(starbaseId)
+        }
+      }
+
+      if (toRemove.length === 0) return
+
+      set((s) => {
+        const newDetails = new Map(s.details)
+        const newCorporationById = new Map(s.corporationById)
+        const newFetchedAt = new Map(s.fetchedAt)
+        const newFailed = new Set(s.failed)
+        for (const id of toRemove) {
+          newDetails.delete(id)
+          newCorporationById.delete(id)
+          newFetchedAt.delete(id)
+          newFailed.delete(id)
+        }
+        return {
+          details: newDetails,
+          corporationById: newCorporationById,
+          fetchedAt: newFetchedAt,
+          failed: newFailed,
+        }
+      })
+
+      try {
+        await deleteByCorpFromDB(ownerId)
+        logger.info('Removed starbase details for corporation', {
+          module: 'StarbaseDetailsStore',
+          corporationId: ownerId,
+          count: toRemove.length,
+        })
+      } catch (err) {
+        logger.error(
+          'Failed to delete starbase details from DB',
+          err instanceof Error ? err : undefined,
+          {
+            module: 'StarbaseDetailsStore',
+            corporationId: ownerId,
+          }
+        )
+      }
+    },
+
+    clear: async () => {
+      set({
+        details: new Map(),
+        corporationById: new Map(),
+        fetchedAt: new Map(),
+        loading: new Set(),
+        failed: new Set(),
+      })
+      try {
+        await clearDB()
+        logger.info('Starbase details cache cleared', {
+          module: 'StarbaseDetailsStore',
+        })
+      } catch (err) {
+        logger.error(
+          'Failed to clear starbase details cache',
+          err instanceof Error ? err : undefined,
+          {
+            module: 'StarbaseDetailsStore',
+          }
+        )
+      }
+    },
+  })
+)
+
+useStoreRegistry.getState().register({
+  name: 'starbase details',
+  removeForOwner: useStarbaseDetailsStore.getState().removeForOwner,
+  clear: useStarbaseDetailsStore.getState().clear,
+  getIsUpdating: () => useStarbaseDetailsStore.getState().loading.size > 0,
+  init: useStarbaseDetailsStore.getState().init,
+})
 
 export function calculateFuelHours(
   detail: ESIStarbaseDetail | undefined,
@@ -266,7 +431,9 @@ export function calculateFuelHours(
 ): number | null {
   if (!detail?.fuels || towerSize === undefined) return null
 
-  const fuelBlocks = detail.fuels.find((f) => FUEL_BLOCK_TYPE_IDS.has(f.type_id))
+  const fuelBlocks = detail.fuels.find((f) =>
+    FUEL_BLOCK_TYPE_IDS.has(f.type_id)
+  )
   if (!fuelBlocks) return null
 
   const baseRate = towerSize * 10

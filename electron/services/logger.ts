@@ -18,7 +18,16 @@ const LOG_LEVELS: Record<LogLevel, number> = {
 
 const LOG_RETENTION_DAYS = 7
 const MAX_LOG_SIZE_MB = 10
-const SENSITIVE_KEYS = ['accessToken', 'refreshToken', 'access_token', 'refresh_token', 'token', 'password', 'secret', 'authorization']
+const SENSITIVE_KEYS = [
+  'accessToken',
+  'refreshToken',
+  'access_token',
+  'refresh_token',
+  'token',
+  'password',
+  'secret',
+  'authorization',
+]
 
 let logDir: string
 let logFile: string
@@ -26,6 +35,7 @@ let currentLogLevel: LogLevel = 'DEBUG'
 
 function ensureLogDir(): void {
   if (!logDir) {
+    if (!app?.getPath) return
     logDir = path.join(app.getPath('userData'), 'logs')
   }
   if (!fs.existsSync(logDir)) {
@@ -33,16 +43,17 @@ function ensureLogDir(): void {
   }
 }
 
-function getLogFilePath(): string {
+function getLogFilePath(): string | null {
   ensureLogDir()
+  if (!logDir) return null
   const date = new Date().toISOString().split('T')[0]
   return path.join(logDir, `app-${date}.log`)
 }
 
 function rotateLogsIfNeeded(): void {
   ensureLogDir()
+  if (!logDir) return
 
-  // Check current log file size
   if (logFile && fs.existsSync(logFile)) {
     const stats = fs.statSync(logFile)
     const sizeMB = stats.size / (1024 * 1024)
@@ -77,10 +88,16 @@ function sanitizeValue(value: unknown): unknown {
   return value
 }
 
-function sanitizeContext(context: Record<string, unknown>): Record<string, unknown> {
+function sanitizeContext(
+  context: Record<string, unknown>
+): Record<string, unknown> {
   const sanitized: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(context)) {
-    if (SENSITIVE_KEYS.some(sensitive => key.toLowerCase().includes(sensitive.toLowerCase()))) {
+    if (
+      SENSITIVE_KEYS.some((sensitive) =>
+        key.toLowerCase().includes(sensitive.toLowerCase())
+      )
+    ) {
       sanitized[key] = '[REDACTED]'
     } else {
       sanitized[key] = sanitizeValue(value)
@@ -89,7 +106,11 @@ function sanitizeContext(context: Record<string, unknown>): Record<string, unkno
   return sanitized
 }
 
-function formatMessage(level: LogLevel, message: string, context?: LogContext): string {
+function formatMessage(
+  level: LogLevel,
+  message: string,
+  context?: LogContext
+): string {
   const timestamp = new Date().toISOString()
   const sanitizedContext = context ? sanitizeContext(context) : undefined
   const module = sanitizedContext?.module ? `[${sanitizedContext.module}]` : ''
@@ -106,6 +127,7 @@ function formatMessage(level: LogLevel, message: string, context?: LogContext): 
 function writeToFile(formatted: string): void {
   try {
     const currentPath = getLogFilePath()
+    if (!currentPath) return
     if (currentPath !== logFile) {
       logFile = currentPath
       rotateLogsIfNeeded()

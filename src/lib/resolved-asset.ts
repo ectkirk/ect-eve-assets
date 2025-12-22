@@ -1,5 +1,14 @@
 import type { ESIAsset } from '@/api/endpoints/assets'
 import type { Owner } from '@/store/auth-store'
+import {
+  getType,
+  getLocation,
+  getRegion,
+  getLocationName,
+  CategoryIds,
+} from '@/store/reference-cache'
+import { formatBlueprintName } from '@/store/blueprints-store'
+import { isAbyssalTypeId } from '@/api/mutamarket-client'
 
 export interface AssetModeFlags {
   inHangar: boolean
@@ -24,19 +33,14 @@ export interface ResolvedAsset {
   rootLocationType: 'station' | 'structure' | 'solar_system'
   parentChain: ESIAsset[]
   rootFlag: string
+  hasOrphanedParent: boolean
 
-  locationName: string
   systemId: number | undefined
-  systemName: string
   regionId: number | undefined
-  regionName: string
 
   typeId: number
-  typeName: string
   categoryId: number
-  categoryName: string
   groupId: number
-  groupName: string
   volume: number
 
   price: number
@@ -49,12 +53,50 @@ export interface ResolvedAsset {
   isBlueprintCopy: boolean
 }
 
+export interface AssetDisplayNames {
+  typeName: string
+  categoryName: string
+  groupName: string
+  locationName: string
+  systemName: string
+  regionName: string
+}
+
+export function getAssetDisplayNames(ra: ResolvedAsset): AssetDisplayNames {
+  const type = getType(ra.typeId)
+  const isAbyssal = isAbyssalTypeId(ra.typeId)
+
+  let typeName = type?.name ?? `Unknown Type ${ra.typeId}`
+  if (ra.customName) {
+    typeName = `${typeName} (${ra.customName})`
+  }
+  if (ra.categoryId === CategoryIds.BLUEPRINT) {
+    typeName = formatBlueprintName(typeName, ra.asset.item_id)
+  }
+
+  const systemLocation = ra.systemId ? getLocation(ra.systemId) : undefined
+
+  return {
+    typeName,
+    categoryName: isAbyssal ? 'Abyssals' : (type?.categoryName ?? ''),
+    groupName: type?.groupName ?? '',
+    locationName: ra.hasOrphanedParent
+      ? 'Unknown Parent'
+      : getLocationName(ra.rootLocationId),
+    systemName: systemLocation?.name ?? '',
+    regionName: ra.regionId ? (getRegion(ra.regionId)?.name ?? '') : '',
+  }
+}
+
 export interface ResolvedAssetsByOwner {
   owner: Owner
   assets: ResolvedAsset[]
 }
 
-export function matchesAssetTypeFilter(modeFlags: AssetModeFlags, filterValue: string): boolean {
+export function matchesAssetTypeFilter(
+  modeFlags: AssetModeFlags,
+  filterValue: string
+): boolean {
   if (!filterValue) return true
   switch (filterValue) {
     case 'ACTIVE_SHIP':
@@ -85,11 +127,12 @@ export function matchesAssetTypeFilter(modeFlags: AssetModeFlags, filterValue: s
 export function matchesSearch(ra: ResolvedAsset, search: string): boolean {
   if (!search) return true
   const searchLower = search.toLowerCase()
+  const names = getAssetDisplayNames(ra)
   return (
-    ra.typeName.toLowerCase().includes(searchLower) ||
-    ra.groupName.toLowerCase().includes(searchLower) ||
-    ra.locationName.toLowerCase().includes(searchLower) ||
-    ra.systemName.toLowerCase().includes(searchLower) ||
-    ra.regionName.toLowerCase().includes(searchLower)
+    names.typeName.toLowerCase().includes(searchLower) ||
+    names.groupName.toLowerCase().includes(searchLower) ||
+    names.locationName.toLowerCase().includes(searchLower) ||
+    names.systemName.toLowerCase().includes(searchLower) ||
+    names.regionName.toLowerCase().includes(searchLower)
   )
 }

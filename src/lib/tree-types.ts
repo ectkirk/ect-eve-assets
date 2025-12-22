@@ -2,6 +2,7 @@ import type { ESIAsset } from '@/api/endpoints/assets'
 
 export enum TreeMode {
   ALL = 'ALL',
+  ACTIVE_SHIP = 'ACTIVE_SHIP',
   ITEM_HANGAR = 'ITEM_HANGAR',
   SHIP_HANGAR = 'SHIP_HANGAR',
   DELIVERIES = 'DELIVERIES',

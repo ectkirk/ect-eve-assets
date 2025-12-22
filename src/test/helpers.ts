@@ -1,6 +1,12 @@
 import type { Owner } from '@/store/auth-store'
 
-export function createMockOwner(overrides: Partial<Owner> & { id: number; name: string; type: 'character' | 'corporation' }): Owner {
+export function createMockOwner(
+  overrides: Partial<Owner> & {
+    id: number
+    name: string
+    type: 'character' | 'corporation'
+  }
+): Owner {
   return {
     id: overrides.id,
     characterId: overrides.characterId ?? overrides.id,

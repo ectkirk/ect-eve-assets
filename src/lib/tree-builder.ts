@@ -1,4 +1,4 @@
-import type { ResolvedAsset } from './resolved-asset'
+import { type ResolvedAsset, getAssetDisplayNames } from './resolved-asset'
 import {
   type TreeNode,
   type TreeNodeType,
@@ -23,32 +23,49 @@ function isOffice(typeId: number): boolean {
   return typeId === OFFICE_TYPE_ID
 }
 
-export function shouldIncludeByMode(ra: ResolvedAsset, mode: TreeMode): boolean {
+export function shouldIncludeByMode(
+  ra: ResolvedAsset,
+  mode: TreeMode
+): boolean {
   const mf = ra.modeFlags
-
-  if (mf.isContract || mf.isMarketOrder || mf.isIndustryJob) {
-    return mode === TreeMode.ALL
-  }
-
-  if (mf.isOwnedStructure) {
-    return mode === TreeMode.ALL || mode === TreeMode.STRUCTURES
-  }
 
   switch (mode) {
     case TreeMode.ALL:
       return true
+    case TreeMode.ACTIVE_SHIP:
+      return mf.isActiveShip
     case TreeMode.ITEM_HANGAR:
-      return mf.inItemHangar
+      return (
+        mf.inItemHangar &&
+        !mf.isContract &&
+        !mf.isMarketOrder &&
+        !mf.isIndustryJob
+      )
     case TreeMode.SHIP_HANGAR:
-      return mf.inShipHangar
+      return (
+        mf.inShipHangar &&
+        !mf.isContract &&
+        !mf.isMarketOrder &&
+        !mf.isIndustryJob
+      )
     case TreeMode.DELIVERIES:
       return mf.inDeliveries
     case TreeMode.ASSET_SAFETY:
       return mf.inAssetSafety
     case TreeMode.OFFICE:
-      return mf.inOffice
+      return (
+        mf.inOffice && !mf.isContract && !mf.isMarketOrder && !mf.isIndustryJob
+      )
     case TreeMode.STRUCTURES:
       return mf.isOwnedStructure
+    case TreeMode.CONTRACTS:
+      return mf.isContract
+    case TreeMode.MARKET_ORDERS:
+      return mf.isMarketOrder
+    case TreeMode.INDUSTRY_JOBS:
+      return mf.isIndustryJob
+    case TreeMode.CLONES:
+      return false
     default:
       return true
   }
@@ -60,9 +77,10 @@ function createItemNode(
   stationName?: string
 ): TreeNode {
   const type = getType(ra.typeId)
+  const names = getAssetDisplayNames(ra)
 
   let nodeType: TreeNodeType = 'item'
-  let displayName = ra.typeName
+  let displayName = names.typeName
 
   if (isOffice(ra.typeId)) {
     nodeType = 'office'
@@ -79,10 +97,10 @@ function createItemNode(
     children: [],
     asset: ra.asset,
     typeId: ra.typeId,
-    typeName: ra.typeName,
+    typeName: names.typeName,
     categoryId: ra.categoryId,
-    categoryName: ra.categoryName,
-    groupName: ra.groupName,
+    categoryName: names.categoryName,
+    groupName: names.groupName,
     quantity: ra.asset.quantity,
     totalCount: ra.asset.quantity,
     totalValue: ra.totalValue,
@@ -112,7 +130,9 @@ function createDivisionNode(
   hangarDivisionNames?: Map<number, string>
 ): TreeNode {
   const divisionNum = getDivisionNumber(flag)
-  const customName = divisionNum ? hangarDivisionNames?.get(divisionNum) : undefined
+  const customName = divisionNum
+    ? hangarDivisionNames?.get(divisionNum)
+    : undefined
   const defaultName = DIVISION_FLAG_NAMES[flag] || flag
   const divisionName = customName || defaultName
 
@@ -173,7 +193,8 @@ function aggregateTotals(node: TreeNode): void {
 
   if (isItemNode && node.asset) {
     const type = getType(node.asset.type_id)
-    totalVolume = (type?.packagedVolume ?? type?.volume ?? 0) * (node.quantity ?? 0)
+    totalVolume =
+      (type?.packagedVolume ?? type?.volume ?? 0) * (node.quantity ?? 0)
   }
 
   for (const child of node.children) {
@@ -253,23 +274,32 @@ export function buildTree(
   for (const ra of filteredAssets) {
     if (addedItemIds.has(ra.asset.item_id)) continue
 
+    const names = getAssetDisplayNames(ra)
     const stationKey = `station-${ra.rootLocationId}`
     let stationNode = stationNodes.get(stationKey)
     if (!stationNode) {
-      stationNode = createLocationNode('station', stationKey, ra.locationName, 0, {
-        locationId: ra.rootLocationId,
-        regionId: ra.regionId,
-        regionName: ra.regionName,
-        systemId: ra.systemId,
-        systemName: ra.systemName,
-      })
+      stationNode = createLocationNode(
+        'station',
+        stationKey,
+        names.locationName,
+        0,
+        {
+          locationId: ra.rootLocationId,
+          regionId: ra.regionId,
+          regionName: names.regionName,
+          systemId: ra.systemId,
+          systemName: names.systemName,
+        }
+      )
       stationNodes.set(stationKey, stationNode)
     }
 
     // Filter out the root structure if it appears in the chain (for owned structures where
     // rootLocationId is the structure's item_id). For stations, rootLocationId is a station
     // ID which won't match any asset's item_id.
-    const parentChain = ra.parentChain.filter((p) => p.item_id !== ra.rootLocationId)
+    const parentChain = ra.parentChain.filter(
+      (p) => p.item_id !== ra.rootLocationId
+    )
 
     let officeIndex = -1
     let divisionFlag: string | undefined
@@ -277,7 +307,9 @@ export function buildTree(
       if (isOffice(parentChain[i]!.type_id)) {
         officeIndex = i
         if (i === 0) {
-          divisionFlag = OFFICE_DIVISION_FLAGS.has(ra.asset.location_flag) ? ra.asset.location_flag : undefined
+          divisionFlag = OFFICE_DIVISION_FLAGS.has(ra.asset.location_flag)
+            ? ra.asset.location_flag
+            : undefined
         } else {
           const childOfOffice = parentChain[i - 1]!
           divisionFlag = OFFICE_DIVISION_FLAGS.has(childOfOffice.location_flag)
@@ -300,7 +332,11 @@ export function buildTree(
       let parentNode = nodeIndex.get(parentNodeId)
 
       if (!parentNode && parentResolved) {
-        parentNode = createItemNode(parentResolved, currentDepth, ra.locationName)
+        parentNode = createItemNode(
+          parentResolved,
+          currentDepth,
+          names.locationName
+        )
         currentParent.children.push(parentNode)
         nodeIndex.set(parentNodeId, parentNode)
         addedItemIds.add(parentAsset.item_id)
@@ -316,7 +352,10 @@ export function buildTree(
         parentNode = {
           id: parentNodeId,
           nodeType: pNodeType,
-          name: pNodeType === 'office' ? ra.locationName : (parentType?.name ?? `Unknown ${parentAsset.type_id}`),
+          name:
+            pNodeType === 'office'
+              ? names.locationName
+              : (parentType?.name ?? `Unknown ${parentAsset.type_id}`),
           depth: currentDepth,
           children: [],
           asset: parentAsset,
@@ -362,7 +401,7 @@ export function buildTree(
       }
     }
 
-    const itemNode = createItemNode(ra, currentDepth, ra.locationName)
+    const itemNode = createItemNode(ra, currentDepth, names.locationName)
     currentParent.children.push(itemNode)
     nodeIndex.set(itemNode.id, itemNode)
     addedItemIds.add(ra.asset.item_id)
@@ -438,7 +477,10 @@ export function flattenTree(
   return result
 }
 
-export function getAllNodeIds(nodes: TreeNode[], result: string[] = []): string[] {
+export function getAllNodeIds(
+  nodes: TreeNode[],
+  result: string[] = []
+): string[] {
   for (const node of nodes) {
     if (node.children.length > 0) {
       result.push(node.id)
@@ -462,19 +504,30 @@ function nodeMatchesCategory(node: TreeNode, category: string): boolean {
   return false
 }
 
-function filterTreeRecursive(nodes: TreeNode[], searchLower: string, category?: string): TreeNode[] {
+function filterTreeRecursive(
+  nodes: TreeNode[],
+  searchLower: string,
+  category?: string
+): TreeNode[] {
   const result: TreeNode[] = []
 
   for (const node of nodes) {
-    const filteredChildren = filterTreeRecursive(node.children, searchLower, category)
-    const selfMatchesSearch = !searchLower || nodeMatchesSearch(node, searchLower)
+    const filteredChildren = filterTreeRecursive(
+      node.children,
+      searchLower,
+      category
+    )
+    const selfMatchesSearch =
+      !searchLower || nodeMatchesSearch(node, searchLower)
     const selfMatchesCategory = !category || nodeMatchesCategory(node, category)
     const selfMatches = selfMatchesSearch && selfMatchesCategory
 
     if (selfMatches || filteredChildren.length > 0) {
       const filteredNode: TreeNode = {
         ...node,
-        children: selfMatches ? filterTreeRecursive(node.children, searchLower, category) : filteredChildren,
+        children: selfMatches
+          ? filterTreeRecursive(node.children, searchLower, category)
+          : filteredChildren,
       }
       result.push(filteredNode)
     }
@@ -483,7 +536,11 @@ function filterTreeRecursive(nodes: TreeNode[], searchLower: string, category?: 
   return result
 }
 
-export function filterTree(nodes: TreeNode[], search: string, category?: string): TreeNode[] {
+export function filterTree(
+  nodes: TreeNode[],
+  search: string,
+  category?: string
+): TreeNode[] {
   if (!search && !category) return nodes
 
   const filtered = filterTreeRecursive(nodes, search.toLowerCase(), category)

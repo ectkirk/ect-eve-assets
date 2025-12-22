@@ -9,18 +9,25 @@ export interface SortState<T extends string> {
   direction: SortDirection
 }
 
-export function useSortable<T extends string>(defaultColumn: T, defaultDirection: SortDirection = 'desc') {
+export function useSortable<T extends string>(
+  defaultColumn: T,
+  defaultDirection: SortDirection = 'desc'
+) {
   const [sortColumn, setSortColumn] = useState<T>(defaultColumn)
-  const [sortDirection, setSortDirection] = useState<SortDirection>(defaultDirection)
+  const [sortDirection, setSortDirection] =
+    useState<SortDirection>(defaultDirection)
 
-  const handleSort = useCallback((column: T) => {
-    if (sortColumn === column) {
-      setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'))
-    } else {
-      setSortColumn(column)
-      setSortDirection('desc')
-    }
-  }, [sortColumn])
+  const handleSort = useCallback(
+    (column: T) => {
+      if (sortColumn === column) {
+        setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'))
+      } else {
+        setSortColumn(column)
+        setSortDirection('desc')
+      }
+    },
+    [sortColumn]
+  )
 
   return {
     sortColumn,
@@ -54,13 +61,16 @@ export function SortableHeader<T extends string>({
       className={`cursor-pointer select-none hover:bg-surface-tertiary/50 ${className}`}
       onClick={() => onSort(column)}
     >
-      <div className={`flex items-center gap-1 ${isRightAligned ? 'justify-end' : ''}`}>
+      <div
+        className={`flex items-center gap-1 ${isRightAligned ? 'justify-end' : ''}`}
+      >
         {label}
-        {isActive && (
-          sortDirection === 'asc'
-            ? <ArrowUp className="h-3 w-3" />
-            : <ArrowDown className="h-3 w-3" />
-        )}
+        {isActive &&
+          (sortDirection === 'asc' ? (
+            <ArrowUp className="h-3 w-3" />
+          ) : (
+            <ArrowDown className="h-3 w-3" />
+          ))}
       </div>
     </TableHead>
   )

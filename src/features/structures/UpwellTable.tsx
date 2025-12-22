@@ -28,15 +28,25 @@ import type { StructureRow, UpwellSortColumn } from './types'
 
 interface UpwellTableProps {
   rows: StructureRow[]
-  onViewStructureInfo: (structure: ESICorporationStructure, ownerName: string) => void
+  onViewStructureInfo: (
+    structure: ESICorporationStructure,
+    ownerName: string
+  ) => void
   onViewFitting: (node: TreeNode) => void
 }
 
-export function UpwellTable({ rows, onViewStructureInfo, onViewFitting }: UpwellTableProps) {
+export function UpwellTable({
+  rows,
+  onViewStructureInfo,
+  onViewFitting,
+}: UpwellTableProps) {
   const sort = useSortable<UpwellSortColumn>('region', 'asc')
 
   const sortedRows = useMemo(() => {
-    const getValue = (row: StructureRow, column: UpwellSortColumn): number | string => {
+    const getValue = (
+      row: StructureRow,
+      column: UpwellSortColumn
+    ): number | string => {
       switch (column) {
         case 'name':
           return (row.structure.name ?? '').toLowerCase()
@@ -51,9 +61,12 @@ export function UpwellTable({ rows, onViewStructureInfo, onViewFitting }: Upwell
         case 'details': {
           const timer = getStructureTimer(row.structure)
           if (timer.type === 'reinforcing') return timer.timestamp ?? Infinity
-          if (timer.type === 'vulnerable') return (timer.timestamp ?? Infinity) + 1e14
-          if (timer.type === 'unanchoring') return (timer.timestamp ?? Infinity) + 1e15
-          if (timer.type === 'anchoring') return (timer.timestamp ?? Infinity) + 1e16
+          if (timer.type === 'vulnerable')
+            return (timer.timestamp ?? Infinity) + 1e14
+          if (timer.type === 'unanchoring')
+            return (timer.timestamp ?? Infinity) + 1e15
+          if (timer.type === 'anchoring')
+            return (timer.timestamp ?? Infinity) + 1e16
           return Infinity
         }
         default:
@@ -85,17 +98,61 @@ export function UpwellTable({ rows, onViewStructureInfo, onViewFitting }: Upwell
   return (
     <div className="rounded-lg border border-border bg-surface-secondary/30 overflow-hidden flex-shrink-0">
       <div className="px-3 py-2 border-b border-border bg-surface-secondary/50">
-        <h3 className="text-sm font-medium text-content-primary">Upwell Structures ({sortedRows.length})</h3>
+        <h3 className="text-sm font-medium text-content-primary">
+          Upwell Structures ({sortedRows.length})
+        </h3>
       </div>
       <Table className="table-fixed">
         <TableHeader className="bg-surface-secondary">
           <TableRow className="hover:bg-transparent">
-            <SortableHeader column="name" label="Structure" sortColumn={sort.sortColumn} sortDirection={sort.sortDirection} onSort={sort.handleSort} className="w-[35%]" />
-            <SortableHeader column="type" label="Type" sortColumn={sort.sortColumn} sortDirection={sort.sortDirection} onSort={sort.handleSort} className="w-[20%]" />
-            <SortableHeader column="region" label="Region" sortColumn={sort.sortColumn} sortDirection={sort.sortDirection} onSort={sort.handleSort} className="w-[15%]" />
-            <SortableHeader column="state" label="State" sortColumn={sort.sortColumn} sortDirection={sort.sortDirection} onSort={sort.handleSort} className="w-[10%]" />
-            <SortableHeader column="fuel" label="Fuel" sortColumn={sort.sortColumn} sortDirection={sort.sortDirection} onSort={sort.handleSort} className="w-[10%] text-right" />
-            <SortableHeader column="details" label="Details" sortColumn={sort.sortColumn} sortDirection={sort.sortDirection} onSort={sort.handleSort} className="w-[10%] text-right" />
+            <SortableHeader
+              column="name"
+              label="Structure"
+              sortColumn={sort.sortColumn}
+              sortDirection={sort.sortDirection}
+              onSort={sort.handleSort}
+              className="w-[35%]"
+            />
+            <SortableHeader
+              column="type"
+              label="Type"
+              sortColumn={sort.sortColumn}
+              sortDirection={sort.sortDirection}
+              onSort={sort.handleSort}
+              className="w-[20%]"
+            />
+            <SortableHeader
+              column="region"
+              label="Region"
+              sortColumn={sort.sortColumn}
+              sortDirection={sort.sortDirection}
+              onSort={sort.handleSort}
+              className="w-[15%]"
+            />
+            <SortableHeader
+              column="state"
+              label="State"
+              sortColumn={sort.sortColumn}
+              sortDirection={sort.sortDirection}
+              onSort={sort.handleSort}
+              className="w-[10%]"
+            />
+            <SortableHeader
+              column="fuel"
+              label="Fuel"
+              sortColumn={sort.sortColumn}
+              sortDirection={sort.sortDirection}
+              onSort={sort.handleSort}
+              className="w-[10%] text-right"
+            />
+            <SortableHeader
+              column="details"
+              label="Details"
+              sortColumn={sort.sortColumn}
+              sortDirection={sort.sortDirection}
+              onSort={sort.handleSort}
+              className="w-[10%] text-right"
+            />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -106,7 +163,10 @@ export function UpwellTable({ rows, onViewStructureInfo, onViewFitting }: Upwell
             const hasFitting = row.treeNode !== null
             const timerInfo = getStructureTimer(row.structure)
 
-            const timerColorClass = getTimerColorClass(timerInfo.type, timerInfo.isUrgent)
+            const timerColorClass = getTimerColorClass(
+              timerInfo.type,
+              timerInfo.isUrgent
+            )
 
             const tableRow = (
               <TableRow key={`upwell-${row.structure.structure_id}`}>
@@ -118,33 +178,53 @@ export function UpwellTable({ rows, onViewStructureInfo, onViewFitting }: Upwell
                       className="w-5 h-5 rounded"
                     />
                     <span className="truncate" title={row.structure.name}>
-                      {row.structure.name || `Structure ${row.structure.structure_id}`}
+                      {row.structure.name ||
+                        `Structure ${row.structure.structure_id}`}
                     </span>
-                    {isReinforced && <AlertTriangle className="h-4 w-4 text-status-negative" />}
+                    {isReinforced && (
+                      <AlertTriangle className="h-4 w-4 text-status-negative" />
+                    )}
                   </div>
                 </TableCell>
                 <TableCell className="py-1.5">
                   <div className="flex items-center gap-2">
                     <TypeIcon typeId={row.structure.type_id} />
-                    <span className="text-content-secondary">{row.typeName}</span>
+                    <span className="text-content-secondary">
+                      {row.typeName}
+                    </span>
                   </div>
                 </TableCell>
-                <TableCell className="py-1.5 text-content-secondary">{row.regionName}</TableCell>
+                <TableCell className="py-1.5 text-content-secondary">
+                  {row.regionName}
+                </TableCell>
                 <TableCell className="py-1.5">
                   <span className={stateInfo.color}>{stateInfo.label}</span>
                 </TableCell>
                 <TableCell className="py-1.5 text-right">
                   <div className="flex items-center justify-end gap-1">
-                    {fuelInfo.isLow && <Fuel className="h-4 w-4 text-status-negative" />}
-                    <span className={cn('tabular-nums', fuelInfo.isLow ? 'text-status-negative' : 'text-content-secondary')}>
+                    {fuelInfo.isLow && (
+                      <Fuel className="h-4 w-4 text-status-negative" />
+                    )}
+                    <span
+                      className={cn(
+                        'tabular-nums',
+                        fuelInfo.isLow
+                          ? 'text-status-negative'
+                          : 'text-content-secondary'
+                      )}
+                    >
                       {fuelInfo.text}
                     </span>
                   </div>
                 </TableCell>
                 <TableCell className="py-1.5 text-right">
                   <div className="flex items-center justify-end gap-1">
-                    {timerInfo.type !== 'none' && <Clock className="h-3.5 w-3.5" />}
-                    <span className={cn('tabular-nums text-sm', timerColorClass)}>
+                    {timerInfo.type !== 'none' && (
+                      <Clock className="h-3.5 w-3.5" />
+                    )}
+                    <span
+                      className={cn('tabular-nums text-sm', timerColorClass)}
+                    >
                       {timerInfo.text}
                     </span>
                   </div>
@@ -156,11 +236,17 @@ export function UpwellTable({ rows, onViewStructureInfo, onViewFitting }: Upwell
               <ContextMenu key={`upwell-${row.structure.structure_id}`}>
                 <ContextMenuTrigger asChild>{tableRow}</ContextMenuTrigger>
                 <ContextMenuContent>
-                  <ContextMenuItem onClick={() => onViewStructureInfo(row.structure, row.owner.name)}>
+                  <ContextMenuItem
+                    onClick={() =>
+                      onViewStructureInfo(row.structure, row.owner.name)
+                    }
+                  >
                     Show Structure Info
                   </ContextMenuItem>
                   {hasFitting && (
-                    <ContextMenuItem onClick={() => onViewFitting(row.treeNode!)}>
+                    <ContextMenuItem
+                      onClick={() => onViewFitting(row.treeNode!)}
+                    >
                       View Fitting
                     </ContextMenuItem>
                   )}

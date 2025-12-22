@@ -14,15 +14,24 @@ interface ChangelogModalProps {
 }
 
 const TYPE_STYLES: Record<string, { label: string; color: string }> = {
-  feat: { label: 'Feature', color: 'bg-semantic-positive/20 text-semantic-positive' },
+  feat: {
+    label: 'Feature',
+    color: 'bg-semantic-positive/20 text-semantic-positive',
+  },
   fix: { label: 'Fix', color: 'bg-semantic-danger/20 text-semantic-danger' },
   refactor: { label: 'Refactor', color: 'bg-status-info/20 text-status-info' },
-  perf: { label: 'Performance', color: 'bg-semantic-warning/20 text-semantic-warning' },
+  perf: {
+    label: 'Performance',
+    color: 'bg-semantic-warning/20 text-semantic-warning',
+  },
   docs: { label: 'Docs', color: 'bg-status-special/20 text-status-special' },
   chore: { label: 'Chore', color: 'bg-content-muted/20 text-content-muted' },
 }
 
-const DEFAULT_STYLE = { label: 'Change', color: 'bg-content-muted/20 text-content-muted' }
+const DEFAULT_STYLE = {
+  label: 'Change',
+  color: 'bg-content-muted/20 text-content-muted',
+}
 
 export function ChangelogModal({ open, onOpenChange }: ChangelogModalProps) {
   return (
@@ -31,7 +40,9 @@ export function ChangelogModal({ open, onOpenChange }: ChangelogModalProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             Changelog
-            <span className="text-sm font-normal text-content-secondary">v{changelogData.version}</span>
+            <span className="text-sm font-normal text-content-secondary">
+              v{changelogData.version}
+            </span>
           </DialogTitle>
         </DialogHeader>
         <ScrollArea className="max-h-[60vh]">
@@ -45,11 +56,15 @@ export function ChangelogModal({ open, onOpenChange }: ChangelogModalProps) {
                 const style = TYPE_STYLES[change.type] ?? DEFAULT_STYLE
                 return (
                   <li key={idx} className="flex items-start gap-2">
-                    <span className={`shrink-0 rounded px-1.5 py-0.5 text-xs ${style.color}`}>
+                    <span
+                      className={`shrink-0 rounded px-1.5 py-0.5 text-xs ${style.color}`}
+                    >
                       {style.label}
                     </span>
                     <span className="text-content-secondary">
-                      <span className="text-content-muted">[{change.scope}]</span>{' '}
+                      <span className="text-content-muted">
+                        [{change.scope}]
+                      </span>{' '}
                       {change.description}
                     </span>
                   </li>

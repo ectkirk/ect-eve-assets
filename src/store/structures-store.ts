@@ -5,7 +5,9 @@ import { ESICorporationStructureSchema } from '@/api/schemas'
 import { processUpwellNotifications } from '@/lib/structure-notifications'
 import { z } from 'zod'
 
-export type ESICorporationStructure = z.infer<typeof ESICorporationStructureSchema>
+export type ESICorporationStructure = z.infer<
+  typeof ESICorporationStructureSchema
+>
 
 export interface OwnerStructures {
   owner: Owner
@@ -38,7 +40,9 @@ export const useStructuresStore = createOwnerStore<
   onBeforeOwnerUpdate: (owner, state: BaseState<OwnerStructures>) => {
     const key = ownerKey(owner.type, owner.id)
     const previousStructures =
-      state.dataByOwner.find((os) => ownerKey(os.owner.type, os.owner.id) === key)?.structures ?? []
+      state.dataByOwner.find(
+        (os) => ownerKey(os.owner.type, os.owner.id) === key
+      )?.structures ?? []
     return { previousData: previousStructures }
   },
   onAfterOwnerUpdate: ({ newData, previousData }) => {
@@ -46,4 +50,3 @@ export const useStructuresStore = createOwnerStore<
     processUpwellNotifications(previousData, newData)
   },
 })
-

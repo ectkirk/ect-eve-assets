@@ -1,5 +1,11 @@
 import { create } from 'zustand'
-import { persist, createJSONStorage, type StateStorage } from 'zustand/middleware'
+import {
+  persist,
+  createJSONStorage,
+  type StateStorage,
+} from 'zustand/middleware'
+
+const TOKEN_EXPIRY_BUFFER_MS = 60_000
 
 // Custom storage adapter using Electron IPC for reliable file-based persistence
 const electronStorage: StateStorage = {
@@ -35,6 +41,13 @@ const electronStorage: StateStorage = {
 
 export type OwnerType = 'character' | 'corporation'
 
+export interface CorporationRoles {
+  roles: string[]
+  roles_at_hq?: string[]
+  roles_at_base?: string[]
+  roles_at_other?: string[]
+}
+
 export interface Owner {
   id: number // Character ID or Corporation ID
   type: OwnerType
@@ -47,11 +60,11 @@ export interface Owner {
   refreshToken: string
   expiresAt: number | null
   scopes?: string[]
+  corporationRoles?: CorporationRoles | null
   authFailed?: boolean
   scopesOutdated?: boolean
 }
 
-// Helper to create owner key
 export function ownerKey(type: OwnerType, id: number): string {
   return `${type}-${id}`
 }
@@ -70,6 +83,7 @@ interface AuthState {
     refreshToken: string
     expiresAt: number
     scopes?: string[]
+    corporationRoles?: CorporationRoles | null
     owner: {
       id: number
       type: OwnerType
@@ -85,10 +99,16 @@ interface AuthState {
   isOwnerSelected: (ownerId: string) => boolean
   updateOwnerTokens: (
     ownerId: string,
-    tokens: { accessToken: string; refreshToken: string; expiresAt: number; scopes?: string[] }
+    tokens: {
+      accessToken: string
+      refreshToken: string
+      expiresAt: number
+      scopes?: string[]
+    }
   ) => void
   setOwnerAuthFailed: (ownerId: string, failed: boolean) => void
   setOwnerScopesOutdated: (ownerId: string, outdated: boolean) => void
+  updateOwnerRoles: (ownerId: string, roles: CorporationRoles) => void
   clearAuth: () => void
 
   // Helpers
@@ -96,6 +116,7 @@ interface AuthState {
   hasOwnerAuthFailed: (ownerId: string) => boolean
   hasOwnerScopesOutdated: (ownerId: string) => boolean
   ownerHasScope: (ownerId: string, scope: string) => boolean
+  ownerHasDirectorRole: (ownerId: string) => boolean
   getOwner: (ownerId: string) => Owner | null
   getOwnerByCharacterId: (characterId: number) => Owner | null
   getAllOwners: () => Owner[]
@@ -129,7 +150,14 @@ export const useAuthStore = create<AuthState>()(
       selectedOwnerIds: [],
       isAuthenticated: false,
 
-      addOwner: ({ accessToken, refreshToken, expiresAt, scopes, owner }) => {
+      addOwner: ({
+        accessToken,
+        refreshToken,
+        expiresAt,
+        scopes,
+        corporationRoles,
+        owner,
+      }) => {
         const key = ownerKey(owner.type, owner.id)
         set((state) => {
           const newOwners = {
@@ -144,6 +172,7 @@ export const useAuthStore = create<AuthState>()(
               refreshToken,
               expiresAt,
               scopes,
+              corporationRoles,
             },
           }
           const alreadySelected = state.selectedOwnerIds.includes(key)
@@ -162,7 +191,9 @@ export const useAuthStore = create<AuthState>()(
           const { [ownerId]: _removed, ...remaining } = state.owners
           return {
             owners: remaining,
-            selectedOwnerIds: state.selectedOwnerIds.filter((id) => id !== ownerId),
+            selectedOwnerIds: state.selectedOwnerIds.filter(
+              (id) => id !== ownerId
+            ),
             isAuthenticated: Object.keys(remaining).length > 0,
           }
         })
@@ -192,7 +223,10 @@ export const useAuthStore = create<AuthState>()(
         return get().selectedOwnerIds.includes(ownerId)
       },
 
-      updateOwnerTokens: (ownerId, { accessToken, refreshToken, expiresAt, scopes }) => {
+      updateOwnerTokens: (
+        ownerId,
+        { accessToken, refreshToken, expiresAt, scopes }
+      ) => {
         set((state) => {
           const owner = state.owners[ownerId]
           if (!owner) return state
@@ -245,6 +279,22 @@ export const useAuthStore = create<AuthState>()(
         })
       },
 
+      updateOwnerRoles: (ownerId, roles) => {
+        set((state) => {
+          const owner = state.owners[ownerId]
+          if (!owner) return state
+          return {
+            owners: {
+              ...state.owners,
+              [ownerId]: {
+                ...owner,
+                corporationRoles: roles,
+              },
+            },
+          }
+        })
+      },
+
       clearAuth: () => {
         set({
           owners: {},
@@ -276,13 +326,21 @@ export const useAuthStore = create<AuthState>()(
         return owner.scopes.includes(scope)
       },
 
+      ownerHasDirectorRole: (ownerId) => {
+        const owner = get().owners[ownerId]
+        return owner?.corporationRoles?.roles?.includes('Director') ?? false
+      },
+
       getOwner: (ownerId) => {
         return get().owners[ownerId] ?? null
       },
 
       getOwnerByCharacterId: (characterId) => {
         const { owners } = get()
-        return Object.values(owners).find((o) => o.characterId === characterId) ?? null
+        return (
+          Object.values(owners).find((o) => o.characterId === characterId) ??
+          null
+        )
       },
 
       getAllOwners: () => {
@@ -294,13 +352,15 @@ export const useAuthStore = create<AuthState>()(
       },
 
       getCorporationOwners: () => {
-        return Object.values(get().owners).filter((o) => o.type === 'corporation')
+        return Object.values(get().owners).filter(
+          (o) => o.type === 'corporation'
+        )
       },
 
       isOwnerTokenExpired: (ownerId) => {
         const owner = get().owners[ownerId]
         if (!owner?.expiresAt) return true
-        return Date.now() >= owner.expiresAt - 60000
+        return Date.now() >= owner.expiresAt - TOKEN_EXPIRY_BUFFER_MS
       },
 
       // Legacy compatibility - computed getters
@@ -374,6 +434,7 @@ export const useAuthStore = create<AuthState>()(
               corporationId: owner.corporationId,
               refreshToken: owner.refreshToken,
               scopes: owner.scopes,
+              corporationRoles: owner.corporationRoles,
               scopesOutdated: owner.scopesOutdated,
               accessToken: null,
               expiresAt: null,
@@ -386,12 +447,17 @@ export const useAuthStore = create<AuthState>()(
         if (state) {
           state.isAuthenticated = Object.keys(state.owners).length > 0
           // Migration: handle old activeOwnerId format
-          const rawState = state as AuthState & { activeOwnerId?: string | null }
+          const rawState = state as AuthState & {
+            activeOwnerId?: string | null
+          }
           if ('activeOwnerId' in rawState && !state.selectedOwnerIds?.length) {
             const ownerKeys = Object.keys(state.owners)
             if (rawState.activeOwnerId === null) {
               state.selectedOwnerIds = ownerKeys
-            } else if (rawState.activeOwnerId && ownerKeys.includes(rawState.activeOwnerId)) {
+            } else if (
+              rawState.activeOwnerId &&
+              ownerKeys.includes(rawState.activeOwnerId)
+            ) {
               state.selectedOwnerIds = [rawState.activeOwnerId]
             } else {
               state.selectedOwnerIds = ownerKeys
@@ -415,11 +481,5 @@ export function useActiveCharacter() {
 }
 
 export function findOwnerByKey(ownerKeyStr: string): Owner | undefined {
-  const owners = useAuthStore.getState().owners
-  for (const owner of Object.values(owners)) {
-    if (owner && ownerKey(owner.type, owner.id) === ownerKeyStr) {
-      return owner
-    }
-  }
-  return undefined
+  return useAuthStore.getState().owners[ownerKeyStr]
 }

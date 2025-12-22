@@ -12,12 +12,21 @@ import {
   hasType,
   getType,
   hasLocation,
+  getLocation,
   hasStructure,
   getStructure,
+  saveStructures,
+  saveTypes,
   notifyCacheListeners,
+  type CachedStructure,
+  type CachedType,
 } from '@/store/reference-cache'
 import { resolveTypes, resolveLocations } from '@/api/ref-client'
-import { resolveStructures, resolveNames } from '@/api/endpoints/universe'
+import {
+  resolveStructures,
+  resolveNames,
+  hasName,
+} from '@/api/endpoints/universe'
 import { logger } from './logger'
 
 export interface ResolutionIds {
@@ -25,6 +34,7 @@ export interface ResolutionIds {
   locationIds: Set<number>
   structureToCharacter: Map<number, number>
   entityIds: Set<number>
+  implantIds: Set<number>
 }
 
 function needsTypeResolution(typeId: number): boolean {
@@ -68,12 +78,20 @@ function collectFromAssets(
         ids.typeIds.add(asset.type_id)
       }
 
-      if (asset.location_type !== 'item' && asset.location_id <= 1_000_000_000_000 && !hasLocation(asset.location_id)) {
+      if (
+        asset.location_type !== 'item' &&
+        asset.location_id <= 1_000_000_000_000 &&
+        !hasLocation(asset.location_id)
+      ) {
         ids.locationIds.add(asset.location_id)
       }
 
       const type = hasType(asset.type_id) ? getType(asset.type_id) : undefined
-      if (type?.categoryId === 65 && asset.location_type === 'solar_system' && !hasStructure(asset.item_id)) {
+      if (
+        type?.categoryId === 65 &&
+        asset.location_type === 'solar_system' &&
+        !hasStructure(asset.item_id)
+      ) {
         ids.structureToCharacter.set(asset.item_id, owner.characterId)
       }
 
@@ -89,7 +107,10 @@ function collectFromContracts(
   contractsByOwner: OwnerContracts[],
   ids: ResolutionIds
 ): void {
-  const checkLocation = (locationId: number | undefined, characterId: number) => {
+  const checkLocation = (
+    locationId: number | undefined,
+    characterId: number
+  ) => {
     if (!locationId) return
     if (locationId > 1_000_000_000_000) {
       if (!hasStructure(locationId)) {
@@ -105,8 +126,10 @@ function collectFromContracts(
       checkLocation(contract.start_location_id, owner.characterId)
       checkLocation(contract.end_location_id, owner.characterId)
 
-      ids.entityIds.add(contract.issuer_id)
-      if (contract.assignee_id) {
+      if (!hasName(contract.issuer_id)) {
+        ids.entityIds.add(contract.issuer_id)
+      }
+      if (contract.assignee_id && !hasName(contract.assignee_id)) {
         ids.entityIds.add(contract.assignee_id)
       }
 
@@ -141,10 +164,7 @@ function collectFromOrders(
   }
 }
 
-function collectFromJobs(
-  jobsByOwner: OwnerJobs[],
-  ids: ResolutionIds
-): void {
+function collectFromJobs(jobsByOwner: OwnerJobs[], ids: ResolutionIds): void {
   for (const { owner, jobs } of jobsByOwner) {
     for (const job of jobs) {
       if (needsTypeResolution(job.blueprint_type_id)) {
@@ -201,6 +221,11 @@ function collectFromStarbases(
   }
 }
 
+function needsImplantSlot(typeId: number): boolean {
+  const type = getType(typeId)
+  return !type?.implantSlot
+}
+
 function collectFromClones(
   clonesByOwner: CharacterCloneData[],
   ids: ResolutionIds
@@ -209,6 +234,9 @@ function collectFromClones(
     for (const implantId of activeImplants) {
       if (needsTypeResolution(implantId)) {
         ids.typeIds.add(implantId)
+      }
+      if (needsImplantSlot(implantId)) {
+        ids.implantIds.add(implantId)
       }
     }
 
@@ -237,6 +265,9 @@ function collectFromClones(
         if (needsTypeResolution(implantId)) {
           ids.typeIds.add(implantId)
         }
+        if (needsImplantSlot(implantId)) {
+          ids.implantIds.add(implantId)
+        }
       }
     }
   }
@@ -248,7 +279,9 @@ function collectFromLoyalty(
 ): void {
   for (const { loyaltyPoints } of loyaltyByOwner) {
     for (const lp of loyaltyPoints) {
-      ids.entityIds.add(lp.corporation_id)
+      if (!hasName(lp.corporation_id)) {
+        ids.entityIds.add(lp.corporation_id)
+      }
     }
   }
 }
@@ -268,6 +301,7 @@ export async function collectResolutionIds(
     locationIds: new Set(),
     structureToCharacter: new Map(),
     entityIds: new Set(),
+    implantIds: new Set(),
   }
 
   collectFromAssets(assetsByOwner, ids)
@@ -282,35 +316,73 @@ export async function collectResolutionIds(
   return ids
 }
 
-export async function resolveAllReferenceData(ids: ResolutionIds): Promise<void> {
+export async function resolveAllReferenceData(
+  ids: ResolutionIds
+): Promise<void> {
+  const { useStarbasesStore } = await import('@/store/starbases-store')
+  const starbasesByOwner = useStarbasesStore.getState().dataByOwner
+
+  const starbaseIds = new Set<number>()
+  const starbaseData = new Map<
+    number,
+    { moonId: number | undefined; systemId: number; typeId: number }
+  >()
+  for (const { starbases } of starbasesByOwner) {
+    for (const starbase of starbases) {
+      starbaseIds.add(starbase.starbase_id)
+      starbaseData.set(starbase.starbase_id, {
+        moonId: starbase.moon_id,
+        systemId: starbase.system_id,
+        typeId: starbase.type_id,
+      })
+    }
+  }
+
+  const upwellStructures = new Map<number, number>()
+  for (const [structureId, characterId] of ids.structureToCharacter) {
+    if (!starbaseIds.has(structureId)) {
+      upwellStructures.set(structureId, characterId)
+    }
+  }
+
+  const uncachedStarbases = Array.from(starbaseIds).filter(
+    (id) => !hasStructure(id)
+  )
+
   const hasWork =
     ids.typeIds.size > 0 ||
-    ids.structureToCharacter.size > 0 ||
+    upwellStructures.size > 0 ||
     ids.locationIds.size > 0 ||
-    ids.entityIds.size > 0
+    ids.entityIds.size > 0 ||
+    ids.implantIds.size > 0 ||
+    uncachedStarbases.length > 0
 
   if (!hasWork) return
 
   logger.info('Resolving reference data', {
     module: 'DataResolver',
     types: ids.typeIds.size,
-    structures: ids.structureToCharacter.size,
+    structures: upwellStructures.size,
+    starbases: uncachedStarbases.length,
     locations: ids.locationIds.size,
     entities: ids.entityIds.size,
+    implants: ids.implantIds.size,
   })
 
-  const typesPromise = ids.typeIds.size > 0
-    ? resolveTypes(Array.from(ids.typeIds)).catch(() => {})
-    : Promise.resolve()
+  const typesPromise =
+    ids.typeIds.size > 0
+      ? resolveTypes(Array.from(ids.typeIds)).catch(() => {})
+      : Promise.resolve()
 
-  const entitiesPromise = ids.entityIds.size > 0
-    ? resolveNames(Array.from(ids.entityIds)).catch(() => {})
-    : Promise.resolve()
+  const entitiesPromise =
+    ids.entityIds.size > 0
+      ? resolveNames(Array.from(ids.entityIds)).catch(() => {})
+      : Promise.resolve()
 
-  if (ids.structureToCharacter.size > 0) {
-    await resolveStructures(ids.structureToCharacter).catch(() => {})
+  if (upwellStructures.size > 0) {
+    await resolveStructures(upwellStructures).catch(() => {})
 
-    for (const [structureId] of ids.structureToCharacter) {
+    for (const [structureId] of upwellStructures) {
       const structure = getStructure(structureId)
       if (structure?.solarSystemId && !hasLocation(structure.solarSystemId)) {
         ids.locationIds.add(structure.solarSystemId)
@@ -318,11 +390,50 @@ export async function resolveAllReferenceData(ids: ResolutionIds): Promise<void>
     }
   }
 
-  const locationsPromise = ids.locationIds.size > 0
-    ? resolveLocations(Array.from(ids.locationIds)).catch(() => {})
-    : Promise.resolve()
+  const locationsPromise =
+    ids.locationIds.size > 0
+      ? resolveLocations(Array.from(ids.locationIds)).catch(() => {})
+      : Promise.resolve()
 
   await Promise.all([typesPromise, entitiesPromise, locationsPromise])
+
+  if (starbaseData.size > 0) {
+    const starbaseStructures: CachedStructure[] = []
+    for (const [starbaseId, data] of starbaseData) {
+      if (hasStructure(starbaseId)) continue
+
+      let name: string
+      let solarSystemId: number
+
+      if (data.moonId) {
+        const moon = getLocation(data.moonId)
+        name = moon?.name ?? `Moon ${data.moonId}`
+        solarSystemId = moon?.solarSystemId ?? data.systemId
+      } else {
+        const system = getLocation(data.systemId)
+        const type = getType(data.typeId)
+        name = type?.name
+          ? `${type.name} (${system?.name ?? `System ${data.systemId}`})`
+          : `Starbase ${starbaseId}`
+        solarSystemId = data.systemId
+      }
+
+      starbaseStructures.push({
+        id: starbaseId,
+        name,
+        solarSystemId,
+        typeId: data.typeId,
+        ownerId: 0,
+      })
+    }
+    if (starbaseStructures.length > 0) {
+      await saveStructures(starbaseStructures)
+      logger.info('Cached starbase locations', {
+        module: 'DataResolver',
+        count: starbaseStructures.length,
+      })
+    }
+  }
 
   if (ids.typeIds.size > 0) {
     const { fetchPrices } = await import('@/api/ref-client')
@@ -330,6 +441,23 @@ export async function resolveAllReferenceData(ids: ResolutionIds): Promise<void>
     const prices = await fetchPrices(Array.from(ids.typeIds))
     if (prices.size > 0) {
       await useAssetStore.getState().setPrices(prices)
+    }
+  }
+
+  if (ids.implantIds.size > 0) {
+    const { fetchImplantSlots } = await import('@/api/ref-client')
+    const slots = await fetchImplantSlots(Array.from(ids.implantIds))
+    if (slots.size > 0) {
+      const typesToUpdate: CachedType[] = []
+      for (const [typeId, slot] of slots) {
+        const existing = getType(typeId)
+        if (existing && existing.implantSlot !== slot) {
+          typesToUpdate.push({ ...existing, implantSlot: slot })
+        }
+      }
+      if (typesToUpdate.length > 0) {
+        await saveTypes(typesToUpdate)
+      }
     }
   }
 
@@ -352,9 +480,9 @@ async function runResolution(): Promise<void> {
 
   const ids = await collectResolutionIds(
     useAssetStore.getState().assetsByOwner,
-    useContractsStore.getState().contractsByOwner,
-    useMarketOrdersStore.getState().dataByOwner,
-    useIndustryJobsStore.getState().dataByOwner,
+    useContractsStore.getContractsByOwner(),
+    useMarketOrdersStore.getOrdersByOwner(),
+    useIndustryJobsStore.getJobsByOwner(),
     useStructuresStore.getState().dataByOwner,
     useStarbasesStore.getState().dataByOwner,
     useClonesStore.getState().dataByOwner,
@@ -362,8 +490,6 @@ async function runResolution(): Promise<void> {
   )
 
   await resolveAllReferenceData(ids)
-
-  useAssetStore.getState().rebuildSyntheticAssets()
 }
 
 export async function triggerResolution(): Promise<void> {

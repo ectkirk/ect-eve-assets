@@ -1,16 +1,10 @@
-import { useState, useMemo } from 'react'
+import { useMemo, Fragment, useReducer } from 'react'
 import { useAuthStore, type Owner, ownerKey } from '@/store/auth-store'
-import { useAssetStore } from '@/store/asset-store'
-import { useBlueprintsStore } from '@/store/blueprints-store'
-import { useClonesStore } from '@/store/clones-store'
-import { useContractsStore } from '@/store/contracts-store'
-import { useIndustryJobsStore } from '@/store/industry-jobs-store'
-import { useMarketOrdersStore } from '@/store/market-orders-store'
-import { useWalletStore } from '@/store/wallet-store'
-import { useWalletJournalStore } from '@/store/wallet-journal-store'
-import { useStructuresStore } from '@/store/structures-store'
+import { ownerModalReducer, initialOwnerModalState } from './owner-modal-state'
 import { useExpiryCacheStore } from '@/store/expiry-cache-store'
+import { useStoreRegistry } from '@/store/store-registry'
 import { esi } from '@/api/esi'
+import { getCharacterRoles } from '@/api/endpoints/corporation'
 import {
   Dialog,
   DialogContent,
@@ -20,18 +14,8 @@ import {
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import {
-  X,
-  Loader2,
-  Building2,
-  User,
-  Search,
-  Square,
-  CheckSquare,
-  AlertCircle,
-  RefreshCw,
-} from 'lucide-react'
-import { OwnerIcon } from '@/components/ui/type-icon'
+import { Loader2, User, Search } from 'lucide-react'
+import { OwnerRow } from './OwnerRow'
 
 interface OwnerManagementModalProps {
   open: boolean
@@ -40,10 +24,9 @@ interface OwnerManagementModalProps {
 
 async function fetchCorpName(corpId: number): Promise<string> {
   try {
-    const data = await esi.fetch<{ name: string }>(
-      `/corporations/${corpId}/`,
-      { requiresAuth: false }
-    )
+    const data = await esi.fetch<{ name: string }>(`/corporations/${corpId}/`, {
+      requiresAuth: false,
+    })
     return data.name
   } catch {
     return `Corporation ${corpId}`
@@ -54,40 +37,30 @@ export function OwnerManagementModal({
   open,
   onOpenChange,
 }: OwnerManagementModalProps) {
-  const [isAddingCharacter, setIsAddingCharacter] = useState(false)
-  const [isAddingCorporation, setIsAddingCorporation] = useState(false)
-  const [isUpdatingData, setIsUpdatingData] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [ownerToRemove, setOwnerToRemove] = useState<Owner | null>(null)
-  const [showLogoutAllConfirm, setShowLogoutAllConfirm] = useState(false)
+  const [state, dispatch] = useReducer(
+    ownerModalReducer,
+    initialOwnerModalState
+  )
+  const {
+    authFlow,
+    isUpdatingData,
+    searchQuery,
+    error,
+    ownerToRemove,
+    showLogoutAllConfirm,
+    refreshingRolesOwner,
+  } = state
 
   const ownersRecord = useAuthStore((state) => state.owners)
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
   const selectedOwnerIds = useAuthStore((state) => state.selectedOwnerIds)
-  const selectedSet = useMemo(() => new Set(selectedOwnerIds), [selectedOwnerIds])
+  const selectedSet = useMemo(
+    () => new Set(selectedOwnerIds),
+    [selectedOwnerIds]
+  )
 
-  const assetsUpdating = useAssetStore((s) => s.isUpdating)
-  const blueprintsUpdating = useBlueprintsStore((s) => s.isUpdating)
-  const clonesUpdating = useClonesStore((s) => s.isUpdating)
-  const contractsUpdating = useContractsStore((s) => s.isUpdating)
-  const industryUpdating = useIndustryJobsStore((s) => s.isUpdating)
-  const ordersUpdating = useMarketOrdersStore((s) => s.isUpdating)
-  const walletUpdating = useWalletStore((s) => s.isUpdating)
-  const journalUpdating = useWalletJournalStore((s) => s.isUpdating)
-  const structuresUpdating = useStructuresStore((s) => s.isUpdating)
-
-  const isBusy =
-    isUpdatingData ||
-    assetsUpdating ||
-    blueprintsUpdating ||
-    clonesUpdating ||
-    contractsUpdating ||
-    industryUpdating ||
-    ordersUpdating ||
-    walletUpdating ||
-    journalUpdating ||
-    structuresUpdating
+  const currentlyRefreshing = useExpiryCacheStore((s) => s.currentlyRefreshing)
+  const isBusy = isUpdatingData || !!currentlyRefreshing
 
   const characterOwners = useMemo(
     () => owners.filter((o) => o.type === 'character'),
@@ -98,23 +71,42 @@ export function OwnerManagementModal({
     [owners]
   )
 
+  const corpsByCharacterId = useMemo(() => {
+    const map = new Map<number, Owner[]>()
+    for (const corp of corpOwners) {
+      const existing = map.get(corp.characterId) ?? []
+      existing.push(corp)
+      map.set(corp.characterId, existing)
+    }
+    return map
+  }, [corpOwners])
+
+  const addedCorpIds = useMemo(
+    () => new Set(corpOwners.map((c) => c.id)),
+    [corpOwners]
+  )
+
   const filteredCharacters = useMemo(() => {
     if (!searchQuery) return characterOwners
     const query = searchQuery.toLowerCase()
-    return characterOwners.filter((o) => o.name.toLowerCase().includes(query))
-  }, [characterOwners, searchQuery])
+    return characterOwners.filter((char) => {
+      if (char.name.toLowerCase().includes(query)) return true
+      const corps = corpsByCharacterId.get(char.id) ?? []
+      return corps.some((c) => c.name.toLowerCase().includes(query))
+    })
+  }, [characterOwners, searchQuery, corpsByCharacterId])
 
-  const filteredCorps = useMemo(() => {
-    if (!searchQuery) return corpOwners
+  const getFilteredCorpsForCharacter = (characterId: number): Owner[] => {
+    const corps = corpsByCharacterId.get(characterId) ?? []
+    if (!searchQuery) return corps
     const query = searchQuery.toLowerCase()
-    return corpOwners.filter((o) => o.name.toLowerCase().includes(query))
-  }, [corpOwners, searchQuery])
+    return corps.filter((c) => c.name.toLowerCase().includes(query))
+  }
 
   const handleAddCharacter = async () => {
     if (!window.electronAPI) return
 
-    setIsAddingCharacter(true)
-    setError(null)
+    dispatch({ type: 'START_AUTH', flow: 'character' })
     try {
       const result = await window.electronAPI.startAuth(false)
       if (
@@ -137,23 +129,25 @@ export function OwnerManagementModal({
           refreshToken: result.refreshToken,
           expiresAt: result.expiresAt ?? Date.now() + 1200000,
           scopes: result.scopes,
+          corporationRoles: result.corporationRoles,
           owner: newOwner,
         })
-        setIsAddingCharacter(false)
-        useExpiryCacheStore.getState().queueAllEndpointsForOwner(ownerKey(newOwner.type, newOwner.id))
+        dispatch({ type: 'END_AUTH' })
+        useExpiryCacheStore
+          .getState()
+          .queueAllEndpointsForOwner(ownerKey(newOwner.type, newOwner.id))
       } else if (result.error && result.error !== 'Authentication cancelled') {
-        setError(result.error)
+        dispatch({ type: 'SET_ERROR', error: result.error })
       }
     } finally {
-      setIsAddingCharacter(false)
+      dispatch({ type: 'END_AUTH' })
     }
   }
 
-  const handleAddCorporation = async () => {
+  const handleAddCorporation = async (forCharacter?: Owner) => {
     if (!window.electronAPI) return
 
-    setIsAddingCorporation(true)
-    setError(null)
+    dispatch({ type: 'START_AUTH', flow: 'corporation' })
     try {
       const result = await window.electronAPI.startAuth(true)
       if (
@@ -164,6 +158,14 @@ export function OwnerManagementModal({
         result.characterName &&
         result.corporationId
       ) {
+        if (forCharacter && result.characterId !== forCharacter.characterId) {
+          dispatch({
+            type: 'SET_ERROR',
+            error: `Please authenticate with ${forCharacter.name} to add their corporation.`,
+          })
+          return
+        }
+
         const store = useAuthStore.getState()
 
         const charKey = ownerKey('character', result.characterId)
@@ -173,6 +175,7 @@ export function OwnerManagementModal({
             refreshToken: result.refreshToken,
             expiresAt: result.expiresAt ?? Date.now() + 1200000,
             scopes: result.scopes,
+            corporationRoles: result.corporationRoles,
             owner: {
               id: result.characterId,
               type: 'character',
@@ -188,6 +191,9 @@ export function OwnerManagementModal({
             expiresAt: result.expiresAt ?? Date.now() + 1200000,
             scopes: result.scopes,
           })
+          if (result.corporationRoles) {
+            store.updateOwnerRoles(charKey, result.corporationRoles)
+          }
         }
 
         const corpName = await fetchCorpName(result.corporationId)
@@ -203,15 +209,20 @@ export function OwnerManagementModal({
           refreshToken: result.refreshToken,
           expiresAt: result.expiresAt ?? Date.now() + 1200000,
           scopes: result.scopes,
+          corporationRoles: result.corporationRoles,
           owner: newCorpOwner,
         })
-        setIsAddingCorporation(false)
-        useExpiryCacheStore.getState().queueAllEndpointsForOwner(ownerKey(newCorpOwner.type, newCorpOwner.id))
+        dispatch({ type: 'END_AUTH' })
+        useExpiryCacheStore
+          .getState()
+          .queueAllEndpointsForOwner(
+            ownerKey(newCorpOwner.type, newCorpOwner.id)
+          )
       } else if (result.error && result.error !== 'Authentication cancelled') {
-        setError(result.error)
+        dispatch({ type: 'SET_ERROR', error: result.error })
       }
     } finally {
-      setIsAddingCorporation(false)
+      dispatch({ type: 'END_AUTH' })
     }
   }
 
@@ -221,34 +232,32 @@ export function OwnerManagementModal({
 
   const handleRemoveOwnerClick = (owner: Owner, e: React.MouseEvent) => {
     e.stopPropagation()
-    setOwnerToRemove(owner)
+    dispatch({ type: 'CONFIRM_REMOVE', owner })
   }
 
   const handleRemoveOwnerConfirm = async () => {
     if (!ownerToRemove) return
     const owner = ownerToRemove
-    setOwnerToRemove(null)
-    setIsUpdatingData(true)
+    dispatch({ type: 'CANCEL_REMOVE' })
+    dispatch({ type: 'SET_UPDATING', value: true })
     try {
-      const key = ownerKey(owner.type, owner.id)
-      if (window.electronAPI && owner.type === 'character') {
-        await window.electronAPI.logout(owner.id)
+      const ownersToRemove: Owner[] = [owner]
+      if (owner.type === 'character') {
+        const linkedCorps = corpsByCharacterId.get(owner.id) ?? []
+        ownersToRemove.push(...linkedCorps)
       }
-      useAuthStore.getState().removeOwner(key)
-      useExpiryCacheStore.getState().clearForOwner(key)
-      await Promise.all([
-        useAssetStore.getState().removeForOwner(owner.type, owner.id),
-        useBlueprintsStore.getState().removeForOwner(owner.type, owner.id),
-        useClonesStore.getState().removeForOwner(owner.type, owner.id),
-        useContractsStore.getState().removeForOwner(owner.type, owner.id),
-        useIndustryJobsStore.getState().removeForOwner(owner.type, owner.id),
-        useMarketOrdersStore.getState().removeForOwner(owner.type, owner.id),
-        useWalletStore.getState().removeForOwner(owner.type, owner.id),
-        useWalletJournalStore.getState().removeForOwner(owner.type, owner.id),
-        useStructuresStore.getState().removeForOwner(owner.type, owner.id),
-      ])
+
+      for (const o of ownersToRemove) {
+        const key = ownerKey(o.type, o.id)
+        if (window.electronAPI && o.type === 'character') {
+          await window.electronAPI.logout(o.id)
+        }
+        await useStoreRegistry.getState().removeForOwnerAll(o.type, o.id)
+        useExpiryCacheStore.getState().clearForOwner(key)
+        useAuthStore.getState().removeOwner(key)
+      }
     } finally {
-      setIsUpdatingData(false)
+      dispatch({ type: 'SET_UPDATING', value: false })
     }
   }
 
@@ -268,14 +277,15 @@ export function OwnerManagementModal({
     e.stopPropagation()
     if (!window.electronAPI) return
 
-    const hadCorporationScopes = owner.scopes?.some((s) => s.includes('corporation'))
-    const needsCorporationScopes = owner.type === 'corporation' || hadCorporationScopes
-    if (needsCorporationScopes) {
-      setIsAddingCorporation(true)
-    } else {
-      setIsAddingCharacter(true)
-    }
-    setError(null)
+    const hadCorporationScopes = owner.scopes?.some((s) =>
+      s.includes('corporation')
+    )
+    const needsCorporationScopes =
+      owner.type === 'corporation' || hadCorporationScopes
+    dispatch({
+      type: 'START_AUTH',
+      flow: needsCorporationScopes ? 'corporation' : 'character',
+    })
 
     try {
       const result = await window.electronAPI.startAuth(needsCorporationScopes)
@@ -286,9 +296,10 @@ export function OwnerManagementModal({
         result.characterId
       ) {
         if (result.characterId !== owner.characterId) {
-          setError(
-            `Wrong character authenticated. Expected ${owner.name}, got a different character. Please try again.`
-          )
+          dispatch({
+            type: 'SET_ERROR',
+            error: `Wrong character authenticated. Expected ${owner.name}, got a different character. Please try again.`,
+          })
           return
         }
         const key = ownerKey(owner.type, owner.id)
@@ -299,21 +310,20 @@ export function OwnerManagementModal({
           scopes: result.scopes,
         })
       } else if (result.error && result.error !== 'Authentication cancelled') {
-        setError(result.error)
+        dispatch({ type: 'SET_ERROR', error: result.error })
       }
     } finally {
-      setIsAddingCharacter(false)
-      setIsAddingCorporation(false)
+      dispatch({ type: 'END_AUTH' })
     }
   }
 
   const handleLogoutAllClick = () => {
-    setShowLogoutAllConfirm(true)
+    dispatch({ type: 'SHOW_LOGOUT_ALL' })
   }
 
   const handleLogoutAllConfirm = async () => {
-    setShowLogoutAllConfirm(false)
-    setIsUpdatingData(true)
+    dispatch({ type: 'HIDE_LOGOUT_ALL' })
+    dispatch({ type: 'SET_UPDATING', value: true })
     try {
       if (window.electronAPI) {
         for (const owner of characterOwners) {
@@ -321,21 +331,27 @@ export function OwnerManagementModal({
         }
       }
       useAuthStore.getState().clearAuth()
-      await Promise.all([
-        useAssetStore.getState().clear(),
-        useBlueprintsStore.getState().clear(),
-        useClonesStore.getState().clear(),
-        useContractsStore.getState().clear(),
-        useIndustryJobsStore.getState().clear(),
-        useMarketOrdersStore.getState().clear(),
-        useWalletStore.getState().clear(),
-        useWalletJournalStore.getState().clear(),
-        useStructuresStore.getState().clear(),
-        useExpiryCacheStore.getState().clear(),
-      ])
+      await useStoreRegistry.getState().clearAll()
+      await useExpiryCacheStore.getState().clear()
       onOpenChange(false)
     } finally {
-      setIsUpdatingData(false)
+      dispatch({ type: 'SET_UPDATING', value: false })
+    }
+  }
+
+  const handleRefreshRoles = async (owner: Owner) => {
+    const key = ownerKey(owner.type, owner.id)
+    dispatch({ type: 'SET_REFRESHING_ROLES', ownerKey: key })
+    try {
+      const roles = await getCharacterRoles(owner.characterId)
+      useAuthStore.getState().updateOwnerRoles(key, roles)
+    } catch {
+      dispatch({
+        type: 'SET_ERROR',
+        error: 'Failed to refresh corporation roles',
+      })
+    } finally {
+      dispatch({ type: 'SET_REFRESHING_ROLES', ownerKey: null })
     }
   }
 
@@ -362,7 +378,9 @@ export function OwnerManagementModal({
               type="text"
               placeholder="Search accounts..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) =>
+                dispatch({ type: 'SET_SEARCH', query: e.target.value })
+              }
               className="w-full rounded-md border border-border bg-surface-secondary py-2 pl-10 pr-4 text-sm text-content placeholder:text-content-muted focus:border-accent focus:outline-hidden focus:ring-1 focus:ring-accent"
             />
           </div>
@@ -389,11 +407,11 @@ export function OwnerManagementModal({
               </div>
             )}
 
-            {/* Characters Section */}
+            {/* Characters & Corporations Section */}
             <div>
               <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-content-secondary">
                 <User className="h-3 w-3" />
-                Characters ({filteredCharacters.length})
+                Accounts ({filteredCharacters.length})
               </div>
               {filteredCharacters.length === 0 ? (
                 <p className="py-4 text-center text-sm text-content-muted">
@@ -401,44 +419,52 @@ export function OwnerManagementModal({
                 </p>
               ) : (
                 <div className="space-y-1">
-                  {filteredCharacters.map((owner) => (
-                    <OwnerRow
-                      key={ownerKey(owner.type, owner.id)}
-                      owner={owner}
-                      isSelected={selectedSet.has(ownerKey(owner.type, owner.id))}
-                      disabled={isBusy}
-                      onToggle={() => handleToggleOwner(owner)}
-                      onRemove={(e) => handleRemoveOwnerClick(owner, e)}
-                      onReauth={(e) => handleReauth(owner, e)}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
+                  {filteredCharacters.map((character) => {
+                    const charKey = ownerKey(character.type, character.id)
+                    const hasDirector =
+                      character.corporationRoles?.roles?.includes('Director') ??
+                      false
+                    const characterCorps = getFilteredCorpsForCharacter(
+                      character.id
+                    )
+                    const corpAlreadyAdded = addedCorpIds.has(
+                      character.corporationId
+                    )
 
-            {/* Corporations Section */}
-            <div>
-              <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-status-corp/70">
-                <Building2 className="h-3 w-3" />
-                Corporations ({filteredCorps.length})
-              </div>
-              {filteredCorps.length === 0 ? (
-                <p className="py-4 text-center text-sm text-content-muted">
-                  No corporations added
-                </p>
-              ) : (
-                <div className="space-y-1">
-                  {filteredCorps.map((owner) => (
-                    <OwnerRow
-                      key={ownerKey(owner.type, owner.id)}
-                      owner={owner}
-                      isSelected={selectedSet.has(ownerKey(owner.type, owner.id))}
-                      disabled={isBusy}
-                      onToggle={() => handleToggleOwner(owner)}
-                      onRemove={(e) => handleRemoveOwnerClick(owner, e)}
-                      onReauth={(e) => handleReauth(owner, e)}
-                    />
-                  ))}
+                    return (
+                      <Fragment key={charKey}>
+                        <OwnerRow
+                          owner={character}
+                          isSelected={selectedSet.has(charKey)}
+                          disabled={isBusy}
+                          isRefreshingRoles={refreshingRolesOwner === charKey}
+                          hasDirectorRole={hasDirector}
+                          hasCorporation={corpAlreadyAdded}
+                          onToggle={() => handleToggleOwner(character)}
+                          onRemove={(e) => handleRemoveOwnerClick(character, e)}
+                          onReauth={(e) => handleReauth(character, e)}
+                          onRefreshRoles={() => handleRefreshRoles(character)}
+                          onAddCorporation={() =>
+                            handleAddCorporation(character)
+                          }
+                        />
+                        {characterCorps.map((corp) => (
+                          <OwnerRow
+                            key={ownerKey(corp.type, corp.id)}
+                            owner={corp}
+                            isSelected={selectedSet.has(
+                              ownerKey(corp.type, corp.id)
+                            )}
+                            disabled={isBusy}
+                            indented
+                            onToggle={() => handleToggleOwner(corp)}
+                            onRemove={(e) => handleRemoveOwnerClick(corp, e)}
+                            onReauth={(e) => handleReauth(corp, e)}
+                          />
+                        ))}
+                      </Fragment>
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -447,7 +473,7 @@ export function OwnerManagementModal({
 
         {/* Actions */}
         <div className="flex flex-col gap-2 border-t border-border pt-4">
-          {isAddingCharacter || isAddingCorporation ? (
+          {authFlow !== 'idle' ? (
             <div className="flex flex-col items-center gap-3 py-2">
               <div className="flex items-center gap-2 text-content-secondary">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -466,24 +492,15 @@ export function OwnerManagementModal({
               <span>Updating data...</span>
             </div>
           ) : (
-            <div className="flex gap-2">
-              <button
-                onClick={handleAddCharacter}
-                className="flex flex-1 items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium hover:bg-accent-hover"
-              >
-                <User className="h-4 w-4" />
-                Add Character
-              </button>
-              <button
-                onClick={handleAddCorporation}
-                className="flex flex-1 items-center justify-center gap-2 rounded-md bg-semantic-warning px-4 py-2 text-sm font-medium text-content hover:opacity-90"
-              >
-                <Building2 className="h-4 w-4" />
-                Add Corporation
-              </button>
-            </div>
+            <button
+              onClick={handleAddCharacter}
+              className="flex w-full items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium hover:bg-accent-hover"
+            >
+              <User className="h-4 w-4" />
+              Add Character
+            </button>
           )}
-          {owners.length > 0 && !isBusy && (
+          {owners.length > 0 && !isBusy && authFlow === 'idle' && (
             <button
               onClick={handleLogoutAllClick}
               className="w-full rounded-md border border-semantic-danger/50 px-4 py-2 text-sm font-medium text-semantic-danger hover:bg-semantic-danger/10"
@@ -495,7 +512,7 @@ export function OwnerManagementModal({
 
         <ConfirmDialog
           open={ownerToRemove !== null}
-          onOpenChange={(open) => !open && setOwnerToRemove(null)}
+          onOpenChange={(open) => !open && dispatch({ type: 'CANCEL_REMOVE' })}
           title={`Remove ${ownerToRemove?.type === 'corporation' ? 'Corporation' : 'Character'}?`}
           description={`Are you sure you want to remove ${ownerToRemove?.name}? All cached data for this account will be deleted.`}
           confirmLabel="Remove"
@@ -505,7 +522,9 @@ export function OwnerManagementModal({
 
         <ConfirmDialog
           open={showLogoutAllConfirm}
-          onOpenChange={setShowLogoutAllConfirm}
+          onOpenChange={(open) =>
+            dispatch({ type: open ? 'SHOW_LOGOUT_ALL' : 'HIDE_LOGOUT_ALL' })
+          }
           title="Logout All Accounts?"
           description="Are you sure you want to logout all accounts? All cached data will be deleted and you will need to re-authenticate each account."
           confirmLabel="Logout All"
@@ -514,69 +533,5 @@ export function OwnerManagementModal({
         />
       </DialogContent>
     </Dialog>
-  )
-}
-
-interface OwnerRowProps {
-  owner: Owner
-  isSelected: boolean
-  disabled?: boolean
-  onToggle: () => void
-  onRemove: (e: React.MouseEvent) => void
-  onReauth: (e: React.MouseEvent) => void
-}
-
-function OwnerRow({ owner, isSelected, disabled, onToggle, onRemove, onReauth }: OwnerRowProps) {
-  const isCorp = owner.type === 'corporation'
-  const needsAttention = owner.authFailed || owner.scopesOutdated
-  const CheckIcon = isSelected ? CheckSquare : Square
-
-  return (
-    <div
-      onClick={disabled ? undefined : onToggle}
-      className={`flex cursor-pointer items-center justify-between rounded-md px-3 py-2 transition-colors ${
-        disabled ? 'cursor-not-allowed opacity-50' : 'hover:bg-surface-tertiary'
-      } ${owner.authFailed ? 'ring-1 ring-semantic-danger/50' : ''} ${owner.scopesOutdated && !owner.authFailed ? 'ring-1 ring-semantic-warning/50' : ''}`}
-    >
-      <div className="flex items-center gap-2">
-        <CheckIcon className={`h-4 w-4 ${isSelected ? 'text-accent' : 'text-content-muted'}`} />
-        <OwnerIcon ownerId={owner.id} ownerType={owner.type} size="lg" />
-        <span className={`text-sm ${isCorp ? 'text-status-corp' : ''}`}>
-          {owner.name}
-        </span>
-        {owner.authFailed && (
-          <span className="flex items-center gap-1 text-xs text-semantic-danger">
-            <AlertCircle className="h-3 w-3" />
-            Re-auth needed
-          </span>
-        )}
-        {owner.scopesOutdated && !owner.authFailed && (
-          <span className="flex items-center gap-1 text-xs text-semantic-warning">
-            <AlertCircle className="h-3 w-3" />
-            Upgrade scopes
-          </span>
-        )}
-      </div>
-      <div className="flex items-center gap-1">
-        {needsAttention && !disabled && (
-          <button
-            onClick={onReauth}
-            className="rounded p-1 text-semantic-warning hover:bg-surface-tertiary"
-            title={owner.authFailed ? 'Re-authenticate' : 'Upgrade scopes'}
-          >
-            <RefreshCw className="h-4 w-4" />
-          </button>
-        )}
-        {!disabled && (
-          <button
-            onClick={onRemove}
-            className="rounded p-1 text-content-secondary hover:bg-surface-tertiary hover:text-semantic-danger"
-            title={`Remove ${owner.type}`}
-          >
-            <X className="h-4 w-4" />
-          </button>
-        )}
-      </div>
-    </div>
   )
 }

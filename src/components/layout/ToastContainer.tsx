@@ -1,7 +1,21 @@
 import { useEffect, useRef, type ReactNode } from 'react'
-import { useNotificationStore, type Notification, type NotificationType } from '@/store/toast-store'
+import {
+  useNotificationStore,
+  type Notification,
+  type NotificationType,
+} from '@/store/toast-store'
 import { useShallow } from 'zustand/react/shallow'
-import { X, TrendingUp, FileCheck, Bell, AlertTriangle, Shield, Fuel, Anchor, ZapOff } from 'lucide-react'
+import {
+  X,
+  TrendingUp,
+  FileCheck,
+  Bell,
+  AlertTriangle,
+  Shield,
+  Fuel,
+  Anchor,
+  ZapOff,
+} from 'lucide-react'
 
 function formatTime(timestamp: number): string {
   const date = new Date(timestamp)
@@ -29,7 +43,13 @@ function getNotificationIcon(type: NotificationType): ReactNode {
   }
 }
 
-function NotificationItem({ notification, onDismiss }: { notification: Notification; onDismiss: () => void }) {
+function NotificationItem({
+  notification,
+  onDismiss,
+}: {
+  notification: Notification
+  onDismiss: () => void
+}) {
   const icon = getNotificationIcon(notification.type)
 
   return (
@@ -37,8 +57,12 @@ function NotificationItem({ notification, onDismiss }: { notification: Notificat
       <div className="mt-0.5">{icon}</div>
       <div className="flex-1 min-w-0">
         <div className="font-medium text-content">{notification.title}</div>
-        <div className="text-sm text-content-secondary truncate">{notification.message}</div>
-        <div className="text-xs text-content-muted mt-1">{formatTime(notification.timestamp)}</div>
+        <div className="text-sm text-content-secondary truncate">
+          {notification.message}
+        </div>
+        <div className="text-xs text-content-muted mt-1">
+          {formatTime(notification.timestamp)}
+        </div>
       </div>
       <button
         onClick={onDismiss}
@@ -58,7 +82,8 @@ export function ToastContainer() {
       isPanelOpen: s.isPanelOpen,
     }))
   )
-  const { togglePanel, closePanel, dismissNotification, clearAll } = useNotificationStore.getState()
+  const { togglePanel, closePanel, dismissNotification, clearAll } =
+    useNotificationStore.getState()
   const panelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -77,7 +102,9 @@ export function ToastContainer() {
       {isPanelOpen && (
         <div className="absolute bottom-12 right-0 w-80 rounded-lg border border-border bg-surface-secondary shadow-lg">
           <div className="flex items-center justify-between border-b border-border px-3 py-2">
-            <span className="font-medium text-content-secondary">Notifications</span>
+            <span className="font-medium text-content-secondary">
+              Notifications
+            </span>
             {notifications.length > 0 && (
               <button
                 onClick={clearAll}

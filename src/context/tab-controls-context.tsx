@@ -1,4 +1,10 @@
-import { createContext, useContext, useState, useMemo, type ReactNode } from 'react'
+import {
+  createContext,
+  useContext,
+  useState,
+  useMemo,
+  type ReactNode,
+} from 'react'
 
 interface ColumnConfig {
   id: string
@@ -58,29 +64,43 @@ const TabControlsContext = createContext<TabControlsContextValue | null>(null)
 
 export function TabControlsProvider({ children }: { children: ReactNode }) {
   const [columns, setColumns] = useState<ColumnConfig[]>([])
-  const [expandCollapse, setExpandCollapse] = useState<ExpandCollapseConfig | null>(null)
+  const [expandCollapse, setExpandCollapse] =
+    useState<ExpandCollapseConfig | null>(null)
   const [search, setSearch] = useState('')
-  const [categoryFilter, setCategoryFilter] = useState<CategoryFilterConfig | null>(null)
-  const [assetTypeFilter, setAssetTypeFilter] = useState<AssetTypeFilterConfig | null>(null)
+  const [categoryFilter, setCategoryFilter] =
+    useState<CategoryFilterConfig | null>(null)
+  const [assetTypeFilter, setAssetTypeFilter] =
+    useState<AssetTypeFilterConfig | null>(null)
   const [resultCount, setResultCount] = useState<ResultCount | null>(null)
   const [totalValue, setTotalValue] = useState<TotalValueConfig | null>(null)
 
-  const value = useMemo(() => ({
-    columns,
-    setColumns,
-    expandCollapse,
-    setExpandCollapse,
-    search,
-    setSearch,
-    categoryFilter,
-    setCategoryFilter,
-    assetTypeFilter,
-    setAssetTypeFilter,
-    resultCount,
-    setResultCount,
-    totalValue,
-    setTotalValue,
-  }), [columns, expandCollapse, search, categoryFilter, assetTypeFilter, resultCount, totalValue])
+  const value = useMemo(
+    () => ({
+      columns,
+      setColumns,
+      expandCollapse,
+      setExpandCollapse,
+      search,
+      setSearch,
+      categoryFilter,
+      setCategoryFilter,
+      assetTypeFilter,
+      setAssetTypeFilter,
+      resultCount,
+      setResultCount,
+      totalValue,
+      setTotalValue,
+    }),
+    [
+      columns,
+      expandCollapse,
+      search,
+      categoryFilter,
+      assetTypeFilter,
+      resultCount,
+      totalValue,
+    ]
+  )
 
   return (
     <TabControlsContext.Provider value={value}>
@@ -91,6 +111,7 @@ export function TabControlsProvider({ children }: { children: ReactNode }) {
 
 export function useTabControls() {
   const ctx = useContext(TabControlsContext)
-  if (!ctx) throw new Error('useTabControls must be used within TabControlsProvider')
+  if (!ctx)
+    throw new Error('useTabControls must be used within TabControlsProvider')
   return ctx
 }

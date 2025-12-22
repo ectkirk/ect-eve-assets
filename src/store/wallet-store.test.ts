@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import 'fake-indexeddb/auto'
-import { useWalletStore, isCorporationWallet, type OwnerWallet } from './wallet-store'
+import {
+  useWalletStore,
+  isCorporationWallet,
+  type OwnerWallet,
+} from './wallet-store'
 import { createMockOwner, createMockAuthState } from '@/test/helpers'
 
 vi.mock('./auth-store', () => ({
@@ -44,7 +48,12 @@ describe('wallet-store', () => {
   describe('isCorporationWallet', () => {
     it('returns true for corporation wallets', () => {
       const wallet: OwnerWallet = {
-        owner: createMockOwner({ id: 98000001, characterId: 12345, name: 'Corp', type: 'corporation' }),
+        owner: createMockOwner({
+          id: 98000001,
+          characterId: 12345,
+          name: 'Corp',
+          type: 'corporation',
+        }),
         divisions: [],
       }
       expect(isCorporationWallet(wallet)).toBe(true)
@@ -77,8 +86,14 @@ describe('wallet-store', () => {
     it('sums character balances', () => {
       useWalletStore.setState({
         dataByOwner: [
-          { owner: createMockOwner({ id: 1, name: 'A', type: 'character' }), balance: 1000000 },
-          { owner: createMockOwner({ id: 2, name: 'B', type: 'character' }), balance: 2000000 },
+          {
+            owner: createMockOwner({ id: 1, name: 'A', type: 'character' }),
+            balance: 1000000,
+          },
+          {
+            owner: createMockOwner({ id: 2, name: 'B', type: 'character' }),
+            balance: 2000000,
+          },
         ],
       })
       expect(useWalletStore.getState().getTotalBalance()).toBe(3000000)
@@ -88,7 +103,12 @@ describe('wallet-store', () => {
       useWalletStore.setState({
         dataByOwner: [
           {
-            owner: createMockOwner({ id: 98000001, characterId: 12345, name: 'Corp', type: 'corporation' }),
+            owner: createMockOwner({
+              id: 98000001,
+              characterId: 12345,
+              name: 'Corp',
+              type: 'corporation',
+            }),
             divisions: [
               { division: 1, balance: 1000000 },
               { division: 2, balance: 2000000 },
@@ -102,9 +122,17 @@ describe('wallet-store', () => {
     it('sums both character and corporation balances', () => {
       useWalletStore.setState({
         dataByOwner: [
-          { owner: createMockOwner({ id: 1, name: 'A', type: 'character' }), balance: 1000000 },
           {
-            owner: createMockOwner({ id: 98000001, characterId: 1, name: 'Corp', type: 'corporation' }),
+            owner: createMockOwner({ id: 1, name: 'A', type: 'character' }),
+            balance: 1000000,
+          },
+          {
+            owner: createMockOwner({
+              id: 98000001,
+              characterId: 1,
+              name: 'Corp',
+              type: 'corporation',
+            }),
             divisions: [{ division: 1, balance: 5000000 }],
           },
         ],
@@ -127,8 +155,14 @@ describe('wallet-store', () => {
       const { useAuthStore } = await import('./auth-store')
       const { esi } = await import('@/api/esi')
 
-      const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
-      vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
+      const mockOwner = createMockOwner({
+        id: 12345,
+        name: 'Test',
+        type: 'character',
+      })
+      vi.mocked(useAuthStore.getState).mockReturnValue(
+        createMockAuthState({ 'character-12345': mockOwner })
+      )
 
       vi.mocked(esi.fetchWithMeta).mockResolvedValue({
         data: 5000000,
@@ -141,15 +175,25 @@ describe('wallet-store', () => {
 
       expect(esi.fetchWithMeta).toHaveBeenCalled()
       expect(useWalletStore.getState().dataByOwner).toHaveLength(1)
-      expect((useWalletStore.getState().dataByOwner[0] as { balance: number }).balance).toBe(5000000)
+      expect(
+        (useWalletStore.getState().dataByOwner[0] as { balance: number })
+          .balance
+      ).toBe(5000000)
     })
 
     it('fetches corporation wallets', async () => {
       const { useAuthStore } = await import('./auth-store')
       const { esi } = await import('@/api/esi')
 
-      const mockCorpOwner = createMockOwner({ id: 98000001, characterId: 12345, name: 'Test Corp', type: 'corporation' })
-      vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'corporation-98000001': mockCorpOwner }))
+      const mockCorpOwner = createMockOwner({
+        id: 98000001,
+        characterId: 12345,
+        name: 'Test Corp',
+        type: 'corporation',
+      })
+      vi.mocked(useAuthStore.getState).mockReturnValue(
+        createMockAuthState({ 'corporation-98000001': mockCorpOwner })
+      )
 
       vi.mocked(esi.fetchWithMeta).mockResolvedValue({
         data: [
@@ -171,8 +215,14 @@ describe('wallet-store', () => {
       const { useAuthStore } = await import('./auth-store')
       const { esi } = await import('@/api/esi')
 
-      const mockOwner = createMockOwner({ id: 12345, name: 'Test', type: 'character' })
-      vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({ 'character-12345': mockOwner }))
+      const mockOwner = createMockOwner({
+        id: 12345,
+        name: 'Test',
+        type: 'character',
+      })
+      vi.mocked(useAuthStore.getState).mockReturnValue(
+        createMockAuthState({ 'character-12345': mockOwner })
+      )
 
       vi.mocked(esi.fetchWithMeta).mockRejectedValue(new Error('API Error'))
 
