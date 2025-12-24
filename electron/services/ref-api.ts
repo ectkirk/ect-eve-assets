@@ -270,7 +270,7 @@ export function registerRefAPIHandlers(): void {
         return { error: 'Invalid typeIds array (max 1000)' }
       }
       const body: { typeIds: number[]; itemIds?: number[] } = { typeIds }
-      if (itemIds !== undefined) {
+      if (Array.isArray(itemIds) && itemIds.length > 0) {
         if (!validateIds(itemIds, 1000)) {
           return { error: 'Invalid itemIds array (max 1000)' }
         }

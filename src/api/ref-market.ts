@@ -159,13 +159,15 @@ async function fetchMarketFromAPI(
 }
 
 async function fetchJitaPricesChunk(
-  chunk: number[]
+  chunk: number[],
+  itemIds?: number[]
 ): Promise<Map<number, number>> {
   const results = new Map<number, number>()
   const chunkStart = performance.now()
 
   try {
-    const rawData = await window.electronAPI!.refMarketJita(chunk)
+    const validItemIds = itemIds && itemIds.length > 0 ? itemIds : undefined
+    const rawData = await window.electronAPI!.refMarketJita(chunk, validItemIds)
     const duration = Math.round(performance.now() - chunkStart)
 
     const data = validateRefResponse(
@@ -183,9 +185,18 @@ async function fetchJitaPricesChunk(
         returned++
       }
     }
+    if (data.mutaItems) {
+      for (const [idStr, price] of Object.entries(data.mutaItems)) {
+        if (price !== null && price > 0) {
+          results.set(Number(idStr), price)
+          returned++
+        }
+      }
+    }
     logger.info('RefAPI /market/jita', {
       module: 'RefAPI',
       requested: chunk.length,
+      mutaRequested: validItemIds?.length ?? 0,
       returned,
       duration,
     })
@@ -197,27 +208,36 @@ async function fetchJitaPricesChunk(
 }
 
 async function fetchJitaPricesFromAPI(
-  typeIds: number[]
+  typeIds: number[],
+  itemIds?: number[]
 ): Promise<Map<number, number>> {
-  if (typeIds.length === 0) return new Map()
+  if (typeIds.length === 0 && (!itemIds || itemIds.length === 0)) {
+    return new Map()
+  }
 
   const totalStart = performance.now()
+  const results = new Map<number, number>()
 
-  const results = await processChunksParallel(
-    typeIds,
-    1000,
-    fetchJitaPricesChunk,
-    (chunk, acc) => {
-      for (const [k, v] of chunk) acc.set(k, v)
-    },
-    new Map<number, number>()
-  )
+  const chunks: number[][] = []
+  for (let i = 0; i < typeIds.length; i += 1000) {
+    chunks.push(typeIds.slice(i, i + 1000))
+  }
+  if (chunks.length === 0) chunks.push([])
 
-  if (typeIds.length > 1000) {
+  let firstChunk = true
+  for (const chunk of chunks) {
+    const chunkItemIds = firstChunk ? itemIds : undefined
+    firstChunk = false
+    const chunkResults = await fetchJitaPricesChunk(chunk, chunkItemIds)
+    for (const [k, v] of chunkResults) results.set(k, v)
+  }
+
+  if (typeIds.length > 1000 || (itemIds && itemIds.length > 0)) {
     const totalDuration = Math.round(performance.now() - totalStart)
     logger.info('RefAPI /market/jita total', {
       module: 'RefAPI',
       requested: typeIds.length,
+      itemIds: itemIds?.length ?? 0,
       returned: results.size,
       duration: totalDuration,
     })
@@ -268,7 +288,7 @@ async function fetchContractPricesChunk(
 
     let returned = 0
     for (const [idStr, item] of Object.entries(data.items)) {
-      if (item.price !== null && item.price > 0 && item.hasSufficientData) {
+      if (item.price !== null && item.price > 0) {
         results.set(Number(idStr), item.price)
         returned++
       }
@@ -342,16 +362,19 @@ function categorizeTypeIdsByEndpoint(typeIds: number[]): {
 }
 
 async function fetchPricesRouted(
-  typeIds: number[]
+  typeIds: number[],
+  itemIds?: number[]
 ): Promise<Map<number, number>> {
-  if (typeIds.length === 0) return new Map()
+  if (typeIds.length === 0 && (!itemIds || itemIds.length === 0)) {
+    return new Map()
+  }
 
   await resolveTypes(typeIds)
 
   const { plexIds, contractIds } = categorizeTypeIdsByEndpoint(typeIds)
   const results = new Map<number, number>()
 
-  const jitaPrices = await fetchJitaPricesFromAPI(typeIds)
+  const jitaPrices = await fetchJitaPricesFromAPI(typeIds, itemIds)
   for (const [id, price] of jitaPrices) {
     results.set(id, price)
   }
@@ -397,9 +420,10 @@ async function fetchPricesRouted(
 }
 
 export async function fetchPrices(
-  typeIds: number[]
+  typeIds: number[],
+  itemIds?: number[]
 ): Promise<Map<number, number>> {
-  return fetchPricesRouted(typeIds)
+  return fetchPricesRouted(typeIds, itemIds)
 }
 
 export const queuePriceRefresh = fetchPrices
