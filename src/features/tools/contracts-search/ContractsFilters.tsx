@@ -156,9 +156,10 @@ export function ContractsFilters({
             >
               <option value="all">All Regions</option>
               <option value="the_forge">The Forge</option>
-              {filters.locationSelection === 'custom' && filters.locationName && (
-                <option value="custom">{filters.locationName}</option>
-              )}
+              {filters.locationSelection === 'custom' &&
+                filters.locationName && (
+                  <option value="custom">{filters.locationName}</option>
+                )}
             </select>
             <button
               onClick={() => setShowLocationPicker(true)}

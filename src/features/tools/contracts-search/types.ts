@@ -28,6 +28,13 @@ export interface ContractSearchFilters {
   issuer: string
 }
 
+export interface ContractTopItem {
+  typeId: number
+  typeName: string
+  quantity: number
+  value: number
+}
+
 export interface SearchContract {
   contractId: number
   type: 'item_exchange' | 'auction' | 'courier'
@@ -42,19 +49,12 @@ export interface SearchContract {
   regionId: number
   systemName: string
   systemId: number
-  securityStatus: number
+  securityStatus: number | null
   dateIssued: string
   dateExpired: string
   title: string
   itemCount: number
-  items?: SearchContractItem[]
-}
-
-export interface SearchContractItem {
-  typeId: number
-  typeName: string
-  quantity: number
-  isBlueprintCopy?: boolean
+  topItems: ContractTopItem[]
 }
 
 export interface ContractSearchRequest {

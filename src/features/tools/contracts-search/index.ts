@@ -3,5 +3,4 @@ export type {
   ContractSearchFilters,
   ContractSearchMode,
   SearchContract,
-  SearchContractItem,
 } from './types'

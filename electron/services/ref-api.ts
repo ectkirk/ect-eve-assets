@@ -263,12 +263,22 @@ export function registerRefAPIHandlers(): void {
     })
   }
 
-  ipcMain.handle('ref:marketJita', async (_event, typeIds: unknown) => {
-    if (!validateIds(typeIds, 1000)) {
-      return { error: 'Invalid typeIds array (max 1000)' }
+  ipcMain.handle(
+    'ref:marketJita',
+    async (_event, typeIds: unknown, itemIds: unknown) => {
+      if (!validateIds(typeIds, 1000)) {
+        return { error: 'Invalid typeIds array (max 1000)' }
+      }
+      const body: { typeIds: number[]; itemIds?: number[] } = { typeIds }
+      if (itemIds !== undefined) {
+        if (!validateIds(itemIds, 1000)) {
+          return { error: 'Invalid itemIds array (max 1000)' }
+        }
+        body.itemIds = itemIds
+      }
+      return refPost('/market/jita', body, 'ref:marketJita')
     }
-    return refPost('/market/jita', { typeIds }, 'ref:marketJita')
-  })
+  )
 
   ipcMain.handle('ref:marketContracts', async (_event, typeIds: unknown) => {
     if (!validateIds(typeIds, 100)) {
@@ -360,6 +370,34 @@ export function registerRefAPIHandlers(): void {
       return await response.json()
     } catch (err) {
       logger.error('ref:buybackCalculator fetch failed', err, {
+        module: 'RefAPI',
+      })
+      return { error: String(err) }
+    }
+  })
+
+  ipcMain.handle('ref:contractsSearch', async (_event, params: unknown) => {
+    if (typeof params !== 'object' || params === null) {
+      return { error: 'Invalid params' }
+    }
+
+    await waitForRefRateLimit()
+    try {
+      const response = await fetchRefWithRetry(
+        `${REF_API_BASE}/contracts/search`,
+        {
+          method: 'POST',
+          headers: getRefHeaders('json'),
+          body: JSON.stringify(params),
+        }
+      )
+      if (!response.ok) {
+        const errorText = await response.text()
+        return { error: `HTTP ${response.status}: ${errorText}` }
+      }
+      return await response.json()
+    } catch (err) {
+      logger.error('ref:contractsSearch fetch failed', err, {
         module: 'RefAPI',
       })
       return { error: String(err) }
