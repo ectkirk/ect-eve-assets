@@ -230,7 +230,7 @@ async function fetchJitaPricesFromAPI(
 
       if (data.contractItems) {
         for (const [idStr, item] of Object.entries(data.contractItems)) {
-          if (item.price !== null && item.price > 0) {
+          if (item && item.price !== null && item.price > 0) {
             results.set(Number(idStr), item.price)
           }
         }
