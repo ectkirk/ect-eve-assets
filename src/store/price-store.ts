@@ -203,19 +203,19 @@ async function clearDB(): Promise<void> {
 
 const JITA_REFRESH_INTERVAL_MS = 60 * 60 * 1000
 
-function getNextWednesdayNoonGMT(): Date {
+function getNextWednesday8amGMT(): Date {
   const now = new Date()
   const utcDay = now.getUTCDay()
   const utcHour = now.getUTCHours()
 
   let daysUntilWednesday = (3 - utcDay + 7) % 7
-  if (daysUntilWednesday === 0 && utcHour >= 12) {
+  if (daysUntilWednesday === 0 && utcHour >= 8) {
     daysUntilWednesday = 7
   }
 
   const next = new Date(now)
   next.setUTCDate(now.getUTCDate() + daysUntilWednesday)
-  next.setUTCHours(12, 0, 0, 0)
+  next.setUTCHours(8, 0, 0, 0)
   return next
 }
 
@@ -223,9 +223,14 @@ function shouldRefreshEsi(lastRefreshAt: number | null): boolean {
   if (!lastRefreshAt) return true
   const lastRefresh = new Date(lastRefreshAt)
   const now = new Date()
-  const lastWednesday = getNextWednesdayNoonGMT()
+  const lastWednesday = getNextWednesday8amGMT()
   lastWednesday.setUTCDate(lastWednesday.getUTCDate() - 7)
   return lastRefresh < lastWednesday && now >= lastWednesday
+}
+
+function shouldRefreshJita(lastRefreshAt: number | null): boolean {
+  if (!lastRefreshAt) return true
+  return Date.now() - lastRefreshAt > JITA_REFRESH_INTERVAL_MS
 }
 
 let jitaRefreshInterval: ReturnType<typeof setInterval> | null = null
@@ -290,7 +295,7 @@ export const usePriceStore = create<PriceStore>((set, get) => ({
       }
 
       scheduleEsiRefresh(get())
-      startJitaRefreshTimer()
+      startJitaRefreshTimer(shouldRefreshJita(loaded.lastJitaRefreshAt))
     } catch (err) {
       logger.error(
         'Failed to init price store',
@@ -664,7 +669,7 @@ function scheduleEsiRefresh(store: PriceStore): void {
     clearTimeout(esiRefreshTimer)
   }
 
-  const nextUpdate = getNextWednesdayNoonGMT()
+  const nextUpdate = getNextWednesday8amGMT()
   const msUntilUpdate = nextUpdate.getTime() - Date.now()
   const maxTimeout = 2147483647
 
@@ -684,40 +689,49 @@ function scheduleEsiRefresh(store: PriceStore): void {
   }, msUntilUpdate)
 }
 
-function startJitaRefreshTimer(): void {
+async function triggerJitaRefreshIfNeeded(): Promise<void> {
+  const { useExpiryCacheStore } = await import('./expiry-cache-store')
+  const { useAssetStore } = await import('./asset-store')
+  const { collectOwnedIds } = await import('./type-id-collector')
+  const { useContractsStore } = await import('./contracts-store')
+  const { useMarketOrdersStore } = await import('./market-orders-store')
+  const { useIndustryJobsStore } = await import('./industry-jobs-store')
+  const { useStructuresStore } = await import('./structures-store')
+
+  const state = usePriceStore.getState()
+  if (!state.initialized || state.isUpdating) return
+  if (useExpiryCacheStore.getState().isPaused) return
+
+  const { typeIds, abyssalItemIds } = collectOwnedIds(
+    useAssetStore.getState().assetsByOwner,
+    useMarketOrdersStore.getOrdersByOwner(),
+    useContractsStore.getContractsByOwner(),
+    useIndustryJobsStore.getJobsByOwner(),
+    useStructuresStore.getState().dataByOwner
+  )
+
+  if (typeIds.size > 0 || abyssalItemIds.size > 0) {
+    logger.info('Jita price refresh triggered', { module: 'PriceStore' })
+    await state.refreshAllJitaPrices(
+      Array.from(typeIds),
+      Array.from(abyssalItemIds)
+    )
+  }
+
+  await state.pruneOrphanedPrices(typeIds, abyssalItemIds)
+}
+
+function startJitaRefreshTimer(triggerImmediateIfStale: boolean): void {
   if (jitaRefreshInterval) return
 
-  jitaRefreshInterval = setInterval(async () => {
-    const { useExpiryCacheStore } = await import('./expiry-cache-store')
-    const { useAssetStore } = await import('./asset-store')
-    const { collectOwnedIds } = await import('./type-id-collector')
-    const { useContractsStore } = await import('./contracts-store')
-    const { useMarketOrdersStore } = await import('./market-orders-store')
-    const { useIndustryJobsStore } = await import('./industry-jobs-store')
-    const { useStructuresStore } = await import('./structures-store')
+  if (triggerImmediateIfStale) {
+    triggerJitaRefreshIfNeeded()
+  }
 
-    const state = usePriceStore.getState()
-    if (!state.initialized || state.isUpdating) return
-    if (useExpiryCacheStore.getState().isPaused) return
-
-    const { typeIds, abyssalItemIds } = collectOwnedIds(
-      useAssetStore.getState().assetsByOwner,
-      useMarketOrdersStore.getOrdersByOwner(),
-      useContractsStore.getContractsByOwner(),
-      useIndustryJobsStore.getJobsByOwner(),
-      useStructuresStore.getState().dataByOwner
-    )
-
-    if (typeIds.size > 0 || abyssalItemIds.size > 0) {
-      logger.info('Hourly price refresh triggered', { module: 'PriceStore' })
-      await state.refreshAllJitaPrices(
-        Array.from(typeIds),
-        Array.from(abyssalItemIds)
-      )
-    }
-
-    await state.pruneOrphanedPrices(typeIds, abyssalItemIds)
-  }, JITA_REFRESH_INTERVAL_MS)
+  jitaRefreshInterval = setInterval(
+    triggerJitaRefreshIfNeeded,
+    JITA_REFRESH_INTERVAL_MS
+  )
 }
 
 export function stopPriceRefreshTimers(): void {
