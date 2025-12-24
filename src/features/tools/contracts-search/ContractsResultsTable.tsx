@@ -8,7 +8,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { AbyssalPreview } from '@/components/ui/abyssal-preview'
 import { formatNumber } from '@/lib/utils'
 import type { SearchContract, ContractSearchMode } from './types'
 
@@ -163,6 +162,11 @@ export function ContractsResultsTable({
     contract: SearchContract
   } | null>(null)
   const tableRef = useRef<HTMLDivElement>(null)
+  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const tooltipRef = useRef<HTMLDivElement>(null)
+  const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(
+    null
+  )
 
   const handleSort = useCallback(
     (column: SortColumn) => {
@@ -178,18 +182,50 @@ export function ContractsResultsTable({
 
   const handleRowHover = useCallback(
     (contract: SearchContract, e: React.MouseEvent) => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current)
+      }
       if (contract.topItems.length > 0) {
-        setTooltipPos({ x: e.clientX + 12, y: e.clientY + 12 })
-        setHoveredContract(contract)
+        const x = e.clientX
+        const y = e.clientY
+        hoverTimeoutRef.current = setTimeout(() => {
+          setCursorPos({ x, y })
+          setHoveredContract(contract)
+        }, 300)
       }
     },
     []
   )
 
   const handleRowLeave = useCallback(() => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current)
+      hoverTimeoutRef.current = null
+    }
+    setCursorPos(null)
     setTooltipPos(null)
     setHoveredContract(null)
   }, [])
+
+  useEffect(() => {
+    if (!cursorPos || !hoveredContract || !tooltipRef.current) {
+      setTooltipPos(null)
+      return
+    }
+    const rect = tooltipRef.current.getBoundingClientRect()
+    const padding = 12
+    let x = cursorPos.x + padding
+    let y = cursorPos.y + padding
+
+    if (x + rect.width > window.innerWidth - padding) {
+      x = cursorPos.x - rect.width - padding
+    }
+    if (y + rect.height > window.innerHeight - padding) {
+      y = cursorPos.y - rect.height - padding
+    }
+
+    setTooltipPos({ x, y })
+  }, [cursorPos, hoveredContract])
 
   const handleContextMenu = useCallback(
     (e: React.MouseEvent, contract: SearchContract) => {
@@ -349,15 +385,9 @@ export function ContractsResultsTable({
                 }
               >
                 <TableCell className="font-medium">
-                  {contract.topItems.length > 1 ? (
-                    '[Multiple Items]'
-                  ) : contract.topItems[0]?.itemId ? (
-                    <AbyssalPreview itemId={contract.topItems[0].itemId}>
-                      {contract.topItems[0].typeName}
-                    </AbyssalPreview>
-                  ) : (
-                    contract.topItems[0]?.typeName || '-'
-                  )}
+                  {contract.topItems.length > 1
+                    ? '[Multiple Items]'
+                    : (contract.topItems[0]?.typeName || '-')}
                 </TableCell>
                 <TableCell>
                   <div>
@@ -400,31 +430,79 @@ export function ContractsResultsTable({
           </TableBody>
         </Table>
 
-        {tooltipPos &&
-          hoveredContract &&
-          hoveredContract.topItems.length > 0 && (
-            <div
-              className="fixed z-50 max-h-80 min-w-48 overflow-auto rounded border border-border bg-surface-secondary p-2 shadow-lg"
-              style={{ left: tooltipPos.x, top: tooltipPos.y }}
-            >
-              <ul className="space-y-1 text-sm">
-                {hoveredContract.topItems.map((item) => (
-                  <li key={item.typeId} className="text-content">
-                    {item.typeName} x{item.quantity.toLocaleString()}
-                  </li>
-                ))}
-                {hoveredContract.itemCount >
-                  hoveredContract.topItems.length && (
-                  <li className="text-content-muted">
-                    +
-                    {hoveredContract.itemCount -
-                      hoveredContract.topItems.length}{' '}
-                    more...
-                  </li>
-                )}
-              </ul>
+        {hoveredContract && hoveredContract.topItems.length > 0 && (
+          <div
+            ref={tooltipRef}
+            className="fixed z-50 min-w-56 rounded border border-border bg-surface-secondary p-3 shadow-lg"
+            style={{
+              left: tooltipPos?.x ?? cursorPos?.x ?? 0,
+              top: tooltipPos?.y ?? cursorPos?.y ?? 0,
+              visibility: tooltipPos ? 'visible' : 'hidden',
+            }}
+          >
+            <div className="mb-2 font-medium text-amber-400">
+              {hoveredContract.topItems.length > 1
+                ? '[Multiple Items]'
+                : hoveredContract.topItems[0]?.typeName}
             </div>
-          )}
+            <div className="space-y-1 text-sm">
+              <div>
+                <span className="text-content-muted">Contract Type: </span>
+                <span className="text-content">
+                  {hoveredContract.type === 'item_exchange'
+                    ? 'Item Exchange'
+                    : hoveredContract.type === 'auction'
+                      ? 'Auction'
+                      : 'Courier'}
+                </span>
+              </div>
+              <div>
+                <span className="text-content-muted">Location: </span>
+                <span className="text-content">
+                  {hoveredContract.systemName}
+                  {hoveredContract.securityStatus != null && (
+                    <span
+                      className={`ml-1 ${getSecurityColor(hoveredContract.securityStatus)}`}
+                    >
+                      ({hoveredContract.securityStatus.toFixed(1)})
+                    </span>
+                  )}
+                </span>
+              </div>
+              <div>
+                <span className="text-content-muted">Issuer: </span>
+                <span className="text-content">{hoveredContract.issuerName}</span>
+              </div>
+              {hoveredContract.title && (
+                <div>
+                  <span className="text-content-muted">
+                    Description By Issuer:{' '}
+                  </span>
+                  <span className="text-content">{hoveredContract.title}</span>
+                </div>
+              )}
+              <div className="mt-2">
+                <span className="text-content-muted">Items:</span>
+                <ul className="ml-2 mt-1 space-y-0.5">
+                  {hoveredContract.topItems.map((item) => (
+                    <li key={item.typeId} className="text-content">
+                      {item.quantity.toLocaleString()} x {item.typeName}
+                    </li>
+                  ))}
+                  {hoveredContract.itemCount >
+                    hoveredContract.topItems.length && (
+                    <li className="text-content-muted">More...</li>
+                  )}
+                </ul>
+              </div>
+              {hoveredContract.topItems.length > 1 && (
+                <div className="mt-2 text-content-muted">
+                  Contract contains multiple items. Open it to view them.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {contextMenu && (
           <div
