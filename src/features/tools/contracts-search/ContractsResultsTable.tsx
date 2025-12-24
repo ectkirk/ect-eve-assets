@@ -8,6 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { AbyssalPreview } from '@/components/ui/abyssal-preview'
 import { formatNumber } from '@/lib/utils'
 import type { SearchContract, ContractSearchMode } from './types'
 
@@ -348,9 +349,15 @@ export function ContractsResultsTable({
                 }
               >
                 <TableCell className="font-medium">
-                  {contract.topItems.length > 1
-                    ? '[Multiple Items]'
-                    : contract.topItems[0]?.typeName || '-'}
+                  {contract.topItems.length > 1 ? (
+                    '[Multiple Items]'
+                  ) : contract.topItems[0]?.itemId ? (
+                    <AbyssalPreview itemId={contract.topItems[0].itemId}>
+                      {contract.topItems[0].typeName}
+                    </AbyssalPreview>
+                  ) : (
+                    contract.topItems[0]?.typeName || '-'
+                  )}
                 </TableCell>
                 <TableCell>
                   <div>

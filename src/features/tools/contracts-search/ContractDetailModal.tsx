@@ -8,6 +8,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { AbyssalPreview } from '@/components/ui/abyssal-preview'
+import { isAbyssalTypeId } from '@/api/mutamarket-client'
 import { formatNumber } from '@/lib/utils'
 import { useContractItems, type ContractItem } from './useContractItems'
 import type { SearchContract } from './types'
@@ -87,25 +89,39 @@ function ItemsTable({ items }: { items: ContractItem[] }) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {items.map((item, idx) => (
-              <TableRow key={`${item.typeId}-${idx}`}>
-                <TableCell className="font-medium">{item.typeName}</TableCell>
-                <TableCell className="text-right">
-                  {item.quantity.toLocaleString()}
-                </TableCell>
-                <TableCell className="text-content-secondary">
-                  {item.groupName}
-                </TableCell>
-                <TableCell className="text-content-secondary">
-                  {item.categoryName}
-                </TableCell>
-                <TableCell className="text-right font-mono">
-                  {item.price
-                    ? formatNumber((item.price ?? 0) * item.quantity)
-                    : '-'}
-                </TableCell>
-              </TableRow>
-            ))}
+            {items.map((item, idx) => {
+              const isAbyssal = item.itemId && isAbyssalTypeId(item.typeId)
+              const nameContent = (
+                <span className="font-medium">{item.typeName}</span>
+              )
+              return (
+                <TableRow key={`${item.typeId}-${idx}`}>
+                  <TableCell className="font-medium">
+                    {isAbyssal ? (
+                      <AbyssalPreview itemId={item.itemId!}>
+                        {nameContent}
+                      </AbyssalPreview>
+                    ) : (
+                      nameContent
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {item.quantity.toLocaleString()}
+                  </TableCell>
+                  <TableCell className="text-content-secondary">
+                    {item.groupName}
+                  </TableCell>
+                  <TableCell className="text-content-secondary">
+                    {item.categoryName}
+                  </TableCell>
+                  <TableCell className="text-right font-mono">
+                    {item.price
+                      ? formatNumber((item.price ?? 0) * item.quantity)
+                      : '-'}
+                  </TableCell>
+                </TableRow>
+              )
+            })}
           </TableBody>
         </Table>
       </div>

@@ -202,7 +202,8 @@ declare global {
   }
 
   interface ContractSearchTopItem {
-    typeId: number
+    typeId?: number
+    itemId?: number
     typeName: string
     quantity: number
     value: number

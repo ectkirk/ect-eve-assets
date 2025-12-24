@@ -29,7 +29,8 @@ export interface ContractSearchFilters {
 }
 
 export interface ContractTopItem {
-  typeId: number
+  typeId?: number
+  itemId?: number
   typeName: string
   quantity: number
   value: number
