@@ -16,9 +16,9 @@ import {
   getType,
   getStructure,
   getLocation,
-  getAbyssalPrice,
   getBlueprint,
 } from '@/store/reference-cache'
+import { getValidAbyssalPrice } from '@/api/mutamarket-client'
 
 export interface AssetLookupMap {
   itemIdToAsset: Map<number, ESIAsset>
@@ -225,7 +225,7 @@ export function resolveAsset(
   const blueprint = getBlueprint(asset.type_id)
 
   const volume = sdeType?.packagedVolume ?? sdeType?.volume ?? 0
-  const abyssalPrice = getAbyssalPrice(asset.item_id)
+  const abyssalPrice = getValidAbyssalPrice(asset.item_id)
   const price = isBpc
     ? 0
     : blueprint

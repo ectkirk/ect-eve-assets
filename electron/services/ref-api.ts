@@ -265,16 +265,20 @@ export function registerRefAPIHandlers(): void {
       return { error: 'Invalid params' }
     }
     const p = params as Record<string, unknown>
-    if (!validateIds(p.typeIds, 1000)) {
-      return { error: 'Invalid typeIds array (max 1000)' }
-    }
 
     const body: {
-      typeIds: number[]
+      typeIds?: number[]
       itemIds?: number[]
       contractTypeIds?: number[]
       includePlex?: boolean
-    } = { typeIds: p.typeIds as number[] }
+    } = {}
+
+    if (Array.isArray(p.typeIds) && p.typeIds.length > 0) {
+      if (!validateIds(p.typeIds, 1000)) {
+        return { error: 'Invalid typeIds array (max 1000)' }
+      }
+      body.typeIds = p.typeIds
+    }
 
     if (Array.isArray(p.itemIds) && p.itemIds.length > 0) {
       if (!validateIds(p.itemIds, 1000)) {
@@ -292,6 +296,10 @@ export function registerRefAPIHandlers(): void {
 
     if (p.includePlex === true) {
       body.includePlex = true
+    }
+
+    if (!body.typeIds && !body.itemIds && !body.contractTypeIds && !body.includePlex) {
+      return { error: 'At least one of typeIds, itemIds, contractTypeIds, or includePlex required' }
     }
 
     return refPost('/market/jita', body, 'ref:marketJita')

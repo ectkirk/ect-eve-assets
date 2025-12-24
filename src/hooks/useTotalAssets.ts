@@ -1,11 +1,12 @@
 import { useMemo } from 'react'
 import { useAssetStore } from '@/store/asset-store'
+import { usePriceStore } from '@/store/price-store'
 import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { useContractsStore } from '@/store/contracts-store'
 import { useIndustryJobsStore } from '@/store/industry-jobs-store'
 import { useWalletStore } from '@/store/wallet-store'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
-import { isAbyssalTypeId, getCachedAbyssalPrice } from '@/api/mutamarket-client'
+import { isAbyssalTypeId, getValidAbyssalPrice } from '@/api/mutamarket-client'
 import { getType } from '@/store/reference-cache'
 import { CategoryIds } from '@/lib/tree-types'
 import { calculateStructureValues } from '@/lib/structure-constants'
@@ -22,7 +23,7 @@ export interface AssetTotals {
 
 export function useTotalAssets(): AssetTotals {
   const assetsByOwner = useAssetStore((s) => s.assetsByOwner)
-  const prices = useAssetStore((s) => s.prices)
+  const prices = usePriceStore((s) => s.jitaPrices)
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
 
   const ordersById = useMarketOrdersStore((s) => s.itemsById)
@@ -61,7 +62,7 @@ export function useTotalAssets(): AssetTotals {
         if (asset.is_blueprint_copy) continue
 
         const abyssalPrice = isAbyssalTypeId(asset.type_id)
-          ? getCachedAbyssalPrice(asset.item_id)
+          ? getValidAbyssalPrice(asset.item_id)
           : undefined
         const price = abyssalPrice ?? prices.get(asset.type_id) ?? 0
         assetsTotal += price * asset.quantity

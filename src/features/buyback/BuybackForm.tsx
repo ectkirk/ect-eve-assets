@@ -7,6 +7,7 @@ interface BuybackFormProps {
   onReset?: () => void
   submitLabel?: string
   resetLabel?: string
+  defaultText?: string
 }
 
 export function BuybackForm({
@@ -16,8 +17,9 @@ export function BuybackForm({
   onReset,
   submitLabel = 'Get Quote',
   resetLabel = 'Create a new quote',
+  defaultText = '',
 }: BuybackFormProps) {
-  const [text, setText] = useState('')
+  const [text, setText] = useState(defaultText)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()

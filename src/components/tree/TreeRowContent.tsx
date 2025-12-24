@@ -4,7 +4,7 @@ import { TableCell } from '@/components/ui/table'
 import { TypeIcon, OwnerIcon } from '@/components/ui/type-icon'
 import { AbyssalPreview } from '@/components/ui/abyssal-preview'
 import { isAbyssalTypeId } from '@/api/mutamarket-client'
-import { hasAbyssal } from '@/store/reference-cache'
+import { usePriceStore } from '@/store/price-store'
 import { cn } from '@/lib/utils'
 import type { TreeNode, TreeNodeType } from '@/lib/tree-types'
 import {
@@ -168,7 +168,7 @@ export const TreeRowContent = memo(function TreeRowContent({
                     node.typeId &&
                     node.asset?.item_id &&
                     isAbyssalTypeId(node.typeId) &&
-                    hasAbyssal(node.asset.item_id)
+                    usePriceStore.getState().hasAbyssalPrice(node.asset.item_id)
                   ) {
                     return (
                       <AbyssalPreview itemId={node.asset.item_id}>

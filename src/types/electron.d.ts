@@ -159,7 +159,7 @@ declare global {
   }
 
   interface RefMarketJitaParams {
-    typeIds: number[]
+    typeIds?: number[]
     itemIds?: number[]
     contractTypeIds?: number[]
     includePlex?: boolean

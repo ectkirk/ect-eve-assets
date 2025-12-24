@@ -10,7 +10,7 @@ import {
 } from '@/store/contracts-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
-import { useAssetStore } from '@/store/asset-store'
+import { usePriceStore } from '@/store/price-store'
 import { cn, formatNumber } from '@/lib/utils'
 import { ContractsTable } from './ContractsTable'
 import {
@@ -68,7 +68,7 @@ export function ContractsTab() {
   const ownersRecord = useAuthStore((s) => s.owners)
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
 
-  const prices = useAssetStore((s) => s.prices)
+  const prices = usePriceStore((s) => s.jitaPrices)
   const contractsUpdating = useContractsStore((s) => s.isUpdating)
   const updateError = useContractsStore((s) => s.updateError)
   const init = useContractsStore((s) => s.init)

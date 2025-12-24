@@ -11,7 +11,6 @@ import type {
   CachedType,
   CachedStructure,
   CachedLocation,
-  CachedAbyssal,
   CachedName,
 } from './types'
 
@@ -26,7 +25,6 @@ export type {
   CachedType,
   CachedStructure,
   CachedLocation,
-  CachedAbyssal,
   CachedName,
 }
 
@@ -41,7 +39,6 @@ let stationsCache = new Map<number, CachedStation>()
 let refStructuresCache = new Map<number, CachedRefStructure>()
 let structuresCache = new Map<number, CachedStructure>()
 let locationsCache = new Map<number, CachedLocation>()
-let abyssalsCache = new Map<number, CachedAbyssal>()
 let namesCache = new Map<number, CachedName>()
 let blueprintsCache = new Map<number, CachedBlueprint>()
 let initialized = false
@@ -88,7 +85,6 @@ export async function initCache(): Promise<void> {
       refStructures,
       structures,
       locations,
-      abyssals,
       names,
       categories,
       groups,
@@ -101,7 +97,6 @@ export async function initCache(): Promise<void> {
       loadStore<CachedRefStructure>('refStructures'),
       loadStore<CachedStructure>('structures'),
       loadStore<CachedLocation>('locations'),
-      loadStore<CachedAbyssal>('abyssals'),
       loadStore<CachedName>('names'),
       loadStore<CachedCategory>('categories'),
       loadStore<CachedGroup>('groups'),
@@ -115,7 +110,6 @@ export async function initCache(): Promise<void> {
     refStructuresCache = refStructures
     structuresCache = structures
     locationsCache = locations
-    abyssalsCache = abyssals
     namesCache = names
     categoriesCache = categories
     groupsCache = groups
@@ -154,7 +148,6 @@ export async function initCache(): Promise<void> {
       universeDataLoaded,
       structures: structuresCache.size,
       locations: locationsCache.size,
-      abyssals: abyssalsCache.size,
       names: namesCache.size,
       categories: categoriesCache.size,
       groups: groupsCache.size,
@@ -469,18 +462,6 @@ export function getLocationName(id: number): string {
   return location?.name ?? `Location ${id}`
 }
 
-export function getAbyssal(itemId: number): CachedAbyssal | undefined {
-  return abyssalsCache.get(itemId)
-}
-
-export function hasAbyssal(itemId: number): boolean {
-  return abyssalsCache.has(itemId)
-}
-
-export function getAbyssalPrice(itemId: number): number | undefined {
-  return abyssalsCache.get(itemId)?.price
-}
-
 export function getName(id: number): CachedName | undefined {
   return namesCache.get(id)
 }
@@ -522,13 +503,6 @@ export async function saveLocations(
   })
 }
 
-export async function saveAbyssals(abyssals: CachedAbyssal[]): Promise<void> {
-  await writeBatch('abyssals', abyssals, () => {
-    for (const abyssal of abyssals) abyssalsCache.set(abyssal.id, abyssal)
-    notifyListeners()
-  })
-}
-
 export async function clearReferenceCache(): Promise<void> {
   logger.info('Clearing reference cache', { module: 'ReferenceCache' })
 
@@ -541,7 +515,6 @@ export async function clearReferenceCache(): Promise<void> {
   refStructuresCache.clear()
   structuresCache.clear()
   locationsCache.clear()
-  abyssalsCache.clear()
   namesCache.clear()
   blueprintsCache.clear()
   initialized = false
@@ -573,13 +546,6 @@ export async function clearStructuresCache(): Promise<void> {
   logger.info('Clearing structures cache', { module: 'ReferenceCache' })
   structuresCache.clear()
   await clearStore('structures')
-  notifyListeners()
-}
-
-export async function clearAbyssalsCache(): Promise<void> {
-  logger.info('Clearing abyssals cache', { module: 'ReferenceCache' })
-  abyssalsCache.clear()
-  await clearStore('abyssals')
   notifyListeners()
 }
 

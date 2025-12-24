@@ -1,9 +1,8 @@
 import type { StoreApi, UseBoundStore } from 'zustand'
 import { type Owner, findOwnerByKey } from './auth-store'
-import { useAssetStore } from './asset-store'
+import { usePriceStore } from './price-store'
 import { esi } from '@/api/esi'
 import { ESIIndustryJobSchema } from '@/api/schemas'
-import { queuePriceRefresh } from '@/api/ref-client'
 import { logger } from '@/lib/logger'
 import {
   createVisibilityStore,
@@ -74,29 +73,24 @@ async function fetchJobsForOwner(owner: Owner): Promise<{
 async function fetchProductPrices(
   jobsById: Map<number, StoredJob>
 ): Promise<void> {
-  const existingPrices = useAssetStore.getState().prices
-  const deltaTypeIds: number[] = []
+  const priceStore = usePriceStore.getState()
+  const typeIds: number[] = []
 
   for (const { item: job } of jobsById.values()) {
-    if (job.product_type_id && !existingPrices.has(job.product_type_id)) {
-      deltaTypeIds.push(job.product_type_id)
+    if (job.product_type_id) {
+      typeIds.push(job.product_type_id)
     }
   }
 
-  if (deltaTypeIds.length === 0) return
+  if (typeIds.length === 0) return
 
   try {
-    const prices = await queuePriceRefresh(deltaTypeIds)
-    if (prices.size > 0) {
-      await useAssetStore.getState().setPrices(prices)
-    }
+    await priceStore.ensureJitaPrices(typeIds)
   } catch (err) {
     logger.error(
       'Failed to fetch industry job prices',
       err instanceof Error ? err : undefined,
-      {
-        module: 'IndustryJobsStore',
-      }
+      { module: 'IndustryJobsStore' }
     )
   }
 }

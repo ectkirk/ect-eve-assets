@@ -1,10 +1,5 @@
 import { logger } from '@/lib/logger'
-import {
-  hasAbyssal,
-  getAbyssalPrice,
-  saveAbyssals,
-  type CachedAbyssal,
-} from '@/store/reference-cache'
+import { usePriceStore } from '@/store/price-store'
 import { MutamarketModuleSchema } from './schemas'
 import { z } from 'zod'
 
@@ -32,11 +27,12 @@ export function getMutamarketUrl(typeName: string, itemId: number): string {
 }
 
 export function getCachedAbyssalPrice(itemId: number): number | undefined {
-  return getAbyssalPrice(itemId)
+  return usePriceStore.getState().getAbyssalPrice(itemId)
 }
 
-export function hasCachedAbyssalPrice(itemId: number): boolean {
-  return hasAbyssal(itemId)
+export function getValidAbyssalPrice(itemId: number): number | undefined {
+  const price = usePriceStore.getState().getAbyssalPrice(itemId)
+  return price !== undefined && price > 0 ? price : undefined
 }
 
 const MAX_RETRIES = 2
@@ -100,7 +96,7 @@ async function fetchSingleAbyssalPriceInternal(
 
     if (rawData.error) {
       if (rawData.status === 404) {
-        return { price: 0, persist: true }
+        return { price: -1, persist: true }
       }
       if (retryCount < MAX_RETRIES) {
         const delay = RETRY_DELAYS[retryCount] ?? 1000
@@ -125,7 +121,7 @@ async function fetchSingleAbyssalPriceInternal(
       return null
     }
 
-    const price = parseResult.data.estimated_value ?? 0
+    const price = parseResult.data.estimated_value ?? -1
     return { price, persist: true }
   } catch {
     if (retryCount < MAX_RETRIES) {
@@ -141,16 +137,15 @@ export async function fetchAbyssalPrices(
   items: AbyssalItem[],
   onProgress?: (fetched: number, total: number) => void
 ): Promise<Map<number, number>> {
+  const priceStore = usePriceStore.getState()
   const results = new Map<number, number>()
   const uncachedItems: AbyssalItem[] = []
 
   for (const item of items) {
-    if (hasAbyssal(item.itemId)) {
-      const price = getAbyssalPrice(item.itemId)
-      if (price !== undefined && price > 0) {
-        results.set(item.itemId, price)
-      }
-    } else {
+    const price = priceStore.getAbyssalPrice(item.itemId)
+    if (price !== undefined && price > 0) {
+      results.set(item.itemId, price)
+    } else if (price === undefined || price === 0) {
       uncachedItems.push(item)
     }
   }
@@ -160,7 +155,7 @@ export async function fetchAbyssalPrices(
   }
 
   let fetched = 0
-  const toSave: CachedAbyssal[] = []
+  const toSave: Array<{ itemId: number; price: number }> = []
 
   for (const item of uncachedItems) {
     const result = await queueAbyssalRequest(item)
@@ -169,11 +164,7 @@ export async function fetchAbyssalPrices(
         results.set(item.itemId, result.price)
       }
       if (result.persist) {
-        toSave.push({
-          id: item.itemId,
-          price: result.price,
-          fetchedAt: Date.now(),
-        })
+        toSave.push({ itemId: item.itemId, price: result.price })
       }
     }
     fetched++
@@ -181,7 +172,7 @@ export async function fetchAbyssalPrices(
   }
 
   if (toSave.length > 0) {
-    await saveAbyssals(toSave)
+    await usePriceStore.getState().setAbyssalPrices(toSave)
   }
 
   return results

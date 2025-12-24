@@ -436,12 +436,8 @@ export async function resolveAllReferenceData(
   }
 
   if (ids.typeIds.size > 0) {
-    const { fetchPrices } = await import('@/api/ref-client')
-    const { useAssetStore } = await import('@/store/asset-store')
-    const prices = await fetchPrices(Array.from(ids.typeIds))
-    if (prices.size > 0) {
-      await useAssetStore.getState().setPrices(prices)
-    }
+    const { usePriceStore } = await import('@/store/price-store')
+    await usePriceStore.getState().ensureJitaPrices(Array.from(ids.typeIds))
   }
 
   if (ids.implantIds.size > 0) {

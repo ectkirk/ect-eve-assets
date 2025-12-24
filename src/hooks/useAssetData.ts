@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from 'react'
 import { useAuthStore, type Owner } from '@/store/auth-store'
 import { useAssetStore, type OwnerAssets } from '@/store/asset-store'
+import { usePriceStore } from '@/store/price-store'
 import { subscribe as subscribeToCache } from '@/store/reference-cache'
 
 export type { OwnerAssets }
@@ -24,7 +25,7 @@ export function useAssetData(): AssetDataResult {
 
   const assetsByOwner = useAssetStore((s) => s.assetsByOwner)
   const assetNames = useAssetStore((s) => s.assetNames)
-  const prices = useAssetStore((s) => s.prices)
+  const prices = usePriceStore((s) => s.jitaPrices)
   const isUpdating = useAssetStore((s) => s.isUpdating)
   const updateError = useAssetStore((s) => s.updateError)
   const updateProgress = useAssetStore((s) => s.updateProgress)

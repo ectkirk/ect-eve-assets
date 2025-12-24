@@ -11,13 +11,9 @@ import {
   getLocation,
   hasLocation,
   getLocationName,
-  getAbyssal,
-  hasAbyssal,
-  getAbyssalPrice,
   saveTypes,
   saveStructures,
   saveLocations,
-  saveAbyssals,
   subscribe,
 } from './reference-cache'
 
@@ -171,38 +167,6 @@ describe('Reference Cache', () => {
 
     it('returns fallback for unknown location', () => {
       expect(getLocationName(99999999)).toBe('Location 99999999')
-    })
-  })
-
-  describe('abyssals', () => {
-    it('getAbyssal returns undefined for unknown abyssal', () => {
-      expect(getAbyssal(99999999)).toBeUndefined()
-    })
-
-    it('hasAbyssal returns false for unknown abyssal', () => {
-      expect(hasAbyssal(99999999)).toBe(false)
-    })
-
-    it('getAbyssalPrice returns undefined for unknown abyssal', () => {
-      expect(getAbyssalPrice(99999999)).toBeUndefined()
-    })
-
-    it('saveAbyssals and getAbyssal work together', async () => {
-      const testAbyssal = {
-        id: 12345678,
-        price: 500000000,
-        fetchedAt: Date.now(),
-      }
-
-      await saveAbyssals([testAbyssal])
-
-      expect(hasAbyssal(12345678)).toBe(true)
-      expect(getAbyssal(12345678)).toEqual(testAbyssal)
-      expect(getAbyssalPrice(12345678)).toBe(500000000)
-    })
-
-    it('saveAbyssals with empty array does nothing', async () => {
-      await expect(saveAbyssals([])).resolves.not.toThrow()
     })
   })
 

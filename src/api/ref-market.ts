@@ -188,11 +188,15 @@ async function fetchJitaPricesFromAPI(
   for (const chunk of chunks) {
     const chunkStart = performance.now()
     const request: {
-      typeIds: number[]
+      typeIds?: number[]
       itemIds?: number[]
       contractTypeIds?: number[]
       includePlex?: boolean
-    } = { typeIds: chunk }
+    } = {}
+
+    if (chunk.length > 0) {
+      request.typeIds = chunk
+    }
 
     if (firstChunk) {
       if (itemIds && itemIds.length > 0) request.itemIds = itemIds
@@ -214,17 +218,18 @@ async function fetchJitaPricesFromAPI(
       )
       if (!data) continue
 
-      for (const [idStr, price] of Object.entries(data.items)) {
-        if (price !== null && price > 0) {
-          results.set(Number(idStr), price)
+      if (data.items) {
+        for (const [idStr, price] of Object.entries(data.items)) {
+          if (price !== null && price > 0) {
+            results.set(Number(idStr), price)
+          }
         }
       }
 
       if (data.mutaItems) {
         for (const [idStr, price] of Object.entries(data.mutaItems)) {
-          if (price !== null && price > 0) {
-            results.set(Number(idStr), price)
-          }
+          const id = Number(idStr)
+          results.set(id, price !== null && price > 0 ? price : 0)
         }
       }
 
@@ -289,13 +294,23 @@ async function fetchPricesConsolidated(
     includePlex,
   })
 
-  logger.info('Prices fetched', {
-    module: 'RefAPI',
-    total: typeIds.length,
-    contracts: contractTypeIds.length,
-    plex: includePlex,
-    returned: results.size,
-  })
+  const missingTypeIds = typeIds.filter((id) => !results.has(id))
+  if (missingTypeIds.length > 0 && missingTypeIds.length <= 10) {
+    logger.info('Prices fetched (some missing)', {
+      module: 'RefAPI',
+      total: typeIds.length,
+      returned: results.size,
+      missingTypeIds,
+    })
+  } else {
+    logger.info('Prices fetched', {
+      module: 'RefAPI',
+      total: typeIds.length,
+      contracts: contractTypeIds.length,
+      plex: includePlex,
+      returned: results.size,
+    })
+  }
 
   return results
 }

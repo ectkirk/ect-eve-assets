@@ -18,7 +18,8 @@ import {
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { Loader2 } from 'lucide-react'
 import { isAbyssalTypeId, getMutamarketUrl } from '@/api/mutamarket-client'
-import { CategoryIds, hasAbyssal, getType } from '@/store/reference-cache'
+import { CategoryIds, getType } from '@/store/reference-cache'
+import { usePriceStore } from '@/store/price-store'
 import { useResolvedAssets } from '@/hooks/useResolvedAssets'
 import { useRowSelection, useBuybackSelection } from '@/hooks'
 import {
@@ -398,7 +399,8 @@ export function AssetsTab() {
                 if (!row) return null
                 const modeFlags = row.original.modeFlags
                 const isAbyssalResolved =
-                  row.original.isAbyssal && hasAbyssal(row.original.itemId)
+                  row.original.isAbyssal &&
+                  usePriceStore.getState().hasAbyssalPrice(row.original.itemId)
                 const rowId = getRowId(row.original)
                 const isRowSelected = selectedIds.has(rowId)
                 const rowContent = (

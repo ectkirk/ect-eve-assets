@@ -1,21 +1,31 @@
+import { isAbyssalTypeId } from '@/api/mutamarket-client'
 import type { OwnerAssets } from './asset-store'
 import type { OwnerContracts } from './contracts-store'
 import type { OwnerOrders } from './market-orders-store'
 import type { OwnerJobs } from './industry-jobs-store'
 import type { OwnerStructures } from './structures-store'
 
-export function collectAllTypeIds(
+export interface OwnedIds {
+  typeIds: Set<number>
+  abyssalItemIds: Set<number>
+}
+
+export function collectOwnedIds(
   assetsByOwner: OwnerAssets[],
   ordersByOwner: OwnerOrders[],
   contractsByOwner: OwnerContracts[],
   jobsByOwner: OwnerJobs[],
   structuresByOwner: OwnerStructures[]
-): Set<number> {
+): OwnedIds {
   const typeIds = new Set<number>()
+  const abyssalItemIds = new Set<number>()
 
   for (const { assets } of assetsByOwner) {
     for (const asset of assets) {
       typeIds.add(asset.type_id)
+      if (isAbyssalTypeId(asset.type_id)) {
+        abyssalItemIds.add(asset.item_id)
+      }
     }
   }
 
@@ -30,6 +40,9 @@ export function collectAllTypeIds(
       if (items) {
         for (const item of items) {
           typeIds.add(item.type_id)
+          if (item.item_id && isAbyssalTypeId(item.type_id)) {
+            abyssalItemIds.add(item.item_id)
+          }
         }
       }
     }
@@ -49,5 +62,5 @@ export function collectAllTypeIds(
     }
   }
 
-  return typeIds
+  return { typeIds, abyssalItemIds }
 }

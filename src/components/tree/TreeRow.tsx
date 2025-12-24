@@ -7,7 +7,7 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
 import { isAbyssalTypeId, getMutamarketUrl } from '@/api/mutamarket-client'
-import { hasAbyssal } from '@/store/reference-cache'
+import { usePriceStore } from '@/store/price-store'
 import { cn } from '@/lib/utils'
 import type { TreeNode } from '@/lib/tree-types'
 import { TreeRowContent } from './TreeRowContent'
@@ -17,9 +17,11 @@ interface TreeRowProps {
   virtualIndex: number
   isExpanded: boolean
   isSelected: boolean
+  showBuybackOption: boolean
   onToggleExpand: (nodeId: string) => void
   onRowClick: (id: string, event: React.MouseEvent) => void
   onViewFitting: (node: TreeNode) => void
+  onSellToBuyback: () => void
   visibleColumns: string[]
 }
 
@@ -28,9 +30,11 @@ export const TreeRow = memo(function TreeRow({
   virtualIndex,
   isExpanded,
   isSelected,
+  showBuybackOption,
   onToggleExpand,
   onRowClick,
   onViewFitting,
+  onSellToBuyback,
   visibleColumns,
 }: TreeRowProps) {
   const handleRowClick = useCallback(
@@ -55,7 +59,7 @@ export const TreeRow = memo(function TreeRow({
     node.typeId &&
     node.asset?.item_id &&
     isAbyssalTypeId(node.typeId) &&
-    hasAbyssal(node.asset.item_id)
+    usePriceStore.getState().hasAbyssalPrice(node.asset.item_id)
 
   const row = (
     <TableRow
@@ -83,11 +87,17 @@ export const TreeRow = memo(function TreeRow({
     </TableRow>
   )
 
-  if (isShip || isAbyssalResolved) {
+  const showBuyback = isSelected && showBuybackOption
+  if (isShip || isAbyssalResolved || showBuyback) {
     return (
       <ContextMenu>
         <ContextMenuTrigger asChild>{row}</ContextMenuTrigger>
         <ContextMenuContent>
+          {showBuyback && (
+            <ContextMenuItem onClick={onSellToBuyback}>
+              Sell to buyback
+            </ContextMenuItem>
+          )}
           {isShip && (
             <ContextMenuItem onClick={handleViewFittingClick}>
               View Fitting

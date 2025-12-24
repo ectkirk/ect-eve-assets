@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import { esi } from '@/api/esi'
-import { fetchPrices } from '@/api/ref-market'
+import { usePriceStore } from '@/store/price-store'
 import { isAbyssalTypeId } from '@/api/mutamarket-client'
 import { getType } from '@/store/reference-cache'
 
@@ -53,7 +53,9 @@ export function useContractItems() {
         .filter((i) => i.item_id && isAbyssalTypeId(i.type_id))
         .map((i) => i.item_id!)
 
-      const prices = await fetchPrices(typeIds, abyssalItemIds)
+      const prices = await usePriceStore
+        .getState()
+        .ensureJitaPrices(typeIds, abyssalItemIds)
 
       const resolved: ContractItem[] = includedItems.map((item) => {
         const typeInfo = getType(item.type_id)

@@ -6,7 +6,7 @@ import { useTabControls } from '@/context'
 import { useColumnSettings, useCacheVersion } from '@/hooks'
 import { hasType, getType } from '@/store/reference-cache'
 import { useRegionalMarketStore } from '@/store/regional-market-store'
-import { useESIPricesStore } from '@/store/esi-prices-store'
+import { usePriceStore } from '@/store/price-store'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import { MultiSelectDropdown } from '@/components/ui/multi-select-dropdown'
 import { formatNumber } from '@/lib/utils'
@@ -41,7 +41,7 @@ export function MarketOrdersTab() {
   const cacheVersion = useCacheVersion()
 
   const regionalMarketStore = useRegionalMarketStore()
-  const getAveragePrice = useESIPricesStore((s) => s.getAveragePrice)
+  const getAveragePrice = usePriceStore((s) => s.getEsiAveragePrice)
 
   const { search, setResultCount, setTotalValue, setColumns } = useTabControls()
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)

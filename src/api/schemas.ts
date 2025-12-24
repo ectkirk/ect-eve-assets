@@ -475,7 +475,7 @@ export const MarketContractItemSchema = z.object({
 })
 
 export const MarketJitaResponseSchema = z.object({
-  items: z.record(z.string(), z.number().nullable()),
+  items: z.record(z.string(), z.number().nullable()).optional(),
   mutaItems: z.record(z.string(), z.number().nullable()).optional(),
   contractItems: z
     .record(z.string(), MarketContractItemSchema.nullable())

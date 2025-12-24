@@ -149,8 +149,7 @@ export function BuybackResults({ result, config }: BuybackResultsProps) {
                 />
               </p>
               <p className="mt-1 text-content-secondary">
-                Set the reason to:{' '}
-                <CopyButton text={quoteRef} label="ref" />
+                Set the reason to: <CopyButton text={quoteRef} label="ref" />
               </p>
             </div>
           </div>

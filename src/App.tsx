@@ -1,9 +1,9 @@
 import { useEffect, useState, Component, type ReactNode } from 'react'
 import { useAuthStore } from './store/auth-store'
-import { useAssetStore, stopPriceRefreshTimer } from './store/asset-store'
+import { useAssetStore } from './store/asset-store'
 import { useStoreRegistry } from './store/store-registry'
 import { useRegionalMarketStore } from './store/regional-market-store'
-import { useESIPricesStore } from './store/esi-prices-store'
+import { usePriceStore, stopPriceRefreshTimers } from './store/price-store'
 import { useExpiryCacheStore } from './store/expiry-cache-store'
 import { useNotificationStore } from './store/toast-store'
 import { MainLayout } from './components/layout/MainLayout'
@@ -80,7 +80,7 @@ function App() {
     const cleanupTokenProvider = setupESITokenProvider()
     return () => {
       cleanupTokenProvider()
-      stopPriceRefreshTimer()
+      stopPriceRefreshTimers()
     }
   }, [])
 
@@ -120,7 +120,7 @@ function App() {
         return Promise.all([
           useStoreRegistry.getState().initAll(['assets']),
           useRegionalMarketStore.getState().init(),
-          useESIPricesStore.getState().init(),
+          usePriceStore.getState().init(),
           useNotificationStore.getState().init(),
         ])
       })
