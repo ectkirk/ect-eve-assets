@@ -58,6 +58,7 @@ interface RawType {
   groupId?: number | null
   volume?: number | null
   packagedVolume?: number | null
+  isPublished?: number
 }
 
 function enrichType(raw: RawType): CachedType {
@@ -75,6 +76,7 @@ function enrichType(raw: RawType): CachedType {
     categoryName: category?.name ?? '',
     volume: raw.volume ?? 0,
     packagedVolume: raw.packagedVolume ?? undefined,
+    published: raw.isPublished !== 0,
     ...towerInfo,
   }
 }

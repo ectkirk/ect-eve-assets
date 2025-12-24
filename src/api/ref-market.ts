@@ -7,6 +7,7 @@ import {
   RefImplantsResponseSchema,
 } from './schemas'
 import { z } from 'zod'
+import { isTypePublished } from '@/store/reference-cache'
 
 export type MarketBulkItem = z.infer<typeof MarketBulkItemSchema>
 
@@ -282,30 +283,32 @@ async function fetchPricesConsolidated(
     return new Map()
   }
 
-  const contractTypeIds = typeIds.filter((id) =>
+  const publishedTypeIds = typeIds.filter(isTypePublished)
+
+  const contractTypeIds = publishedTypeIds.filter((id) =>
     CONTRACT_PRICED_TYPE_IDS.has(id)
   )
-  const includePlex = typeIds.includes(PLEX_TYPE_ID)
+  const includePlex = publishedTypeIds.includes(PLEX_TYPE_ID)
 
   const results = await fetchJitaPricesFromAPI({
-    typeIds,
+    typeIds: publishedTypeIds,
     itemIds,
     contractTypeIds: contractTypeIds.length > 0 ? contractTypeIds : undefined,
     includePlex,
   })
 
-  const missingTypeIds = typeIds.filter((id) => !results.has(id))
+  const missingTypeIds = publishedTypeIds.filter((id) => !results.has(id))
   if (missingTypeIds.length > 0 && missingTypeIds.length <= 10) {
     logger.info('Prices fetched (some missing)', {
       module: 'RefAPI',
-      total: typeIds.length,
+      total: publishedTypeIds.length,
       returned: results.size,
       missingTypeIds,
     })
   } else {
     logger.info('Prices fetched', {
       module: 'RefAPI',
-      total: typeIds.length,
+      total: publishedTypeIds.length,
       contracts: contractTypeIds.length,
       plex: includePlex,
       returned: results.size,

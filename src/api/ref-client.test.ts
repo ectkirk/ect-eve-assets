@@ -34,6 +34,7 @@ vi.mock('@/store/reference-cache', () => ({
   isBlueprintsLoaded: vi.fn(() => true),
   setBlueprintsLoaded: vi.fn(),
   notifyCacheListeners: vi.fn(),
+  isTypePublished: vi.fn(() => true),
 }))
 
 import {

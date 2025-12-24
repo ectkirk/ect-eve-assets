@@ -174,6 +174,12 @@ export function hasType(id: number): boolean {
   return typesCache.has(id)
 }
 
+export function isTypePublished(id: number): boolean {
+  const type = typesCache.get(id)
+  if (!type) return false
+  return type.published !== false
+}
+
 export function getCategory(id: number): CachedCategory | undefined {
   return categoriesCache.get(id)
 }

@@ -44,6 +44,7 @@ declare global {
         groupId?: number | null
         volume?: number | null
         packagedVolume?: number | null
+        isPublished?: number
       }
     >
     pagination?: {

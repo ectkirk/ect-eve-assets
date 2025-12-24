@@ -55,6 +55,7 @@ export interface CachedType {
   implantSlot?: number
   towerSize?: number
   fuelTier?: number
+  published?: boolean
 }
 
 export interface CachedStructure {
@@ -153,6 +154,7 @@ const CachedTypeSchema = z.object({
   implantSlot: z.number().optional(),
   towerSize: z.number().optional(),
   fuelTier: z.number().optional(),
+  published: z.boolean().optional(),
 })
 
 const CachedStructureSchema = z.object({
