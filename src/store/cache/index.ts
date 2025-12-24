@@ -647,3 +647,27 @@ export async function clearCoreReferenceCache(): Promise<void> {
   ])
   notifyListeners()
 }
+
+export function getAllCategories(publishedOnly = false): CachedCategory[] {
+  const all = Array.from(categoriesCache.values())
+  return publishedOnly ? all.filter((c) => c.published === true) : all
+}
+
+export function getAllGroups(publishedOnly = false): CachedGroup[] {
+  const all = Array.from(groupsCache.values())
+  return publishedOnly ? all.filter((g) => g.published === true) : all
+}
+
+export function getGroupsByCategory(
+  categoryId: number,
+  publishedOnly = false
+): CachedGroup[] {
+  return Array.from(groupsCache.values()).filter(
+    (g) =>
+      g.categoryId === categoryId && (!publishedOnly || g.published === true)
+  )
+}
+
+export function getAllRegions(): CachedRegion[] {
+  return Array.from(regionsCache.values())
+}
