@@ -298,8 +298,16 @@ export function registerRefAPIHandlers(): void {
       body.includePlex = true
     }
 
-    if (!body.typeIds && !body.itemIds && !body.contractTypeIds && !body.includePlex) {
-      return { error: 'At least one of typeIds, itemIds, contractTypeIds, or includePlex required' }
+    if (
+      !body.typeIds &&
+      !body.itemIds &&
+      !body.contractTypeIds &&
+      !body.includePlex
+    ) {
+      return {
+        error:
+          'At least one of typeIds, itemIds, contractTypeIds, or includePlex required',
+      }
     }
 
     return refPost('/market/jita', body, 'ref:marketJita')

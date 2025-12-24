@@ -26,7 +26,6 @@ export interface OwnerJobs {
 
 interface IndustryJobsExtras {
   getTotal: (
-    prices: Map<number, number>,
     selectedOwnerIds: string[],
     state?: {
       itemsById: Map<number, StoredJob>
@@ -122,7 +121,6 @@ export const useIndustryJobsStore: IndustryJobsStore = Object.assign(
   baseStore,
   {
     getTotal(
-      prices: Map<number, number>,
       selectedOwnerIds: string[],
       stateOverride?: {
         itemsById: Map<number, StoredJob>
@@ -140,6 +138,7 @@ export const useIndustryJobsStore: IndustryJobsStore = Object.assign(
         }
       }
 
+      const priceStore = usePriceStore.getState()
       let total = 0
       for (const jobId of visibleJobIds) {
         const stored = itemsById.get(jobId)
@@ -149,7 +148,7 @@ export const useIndustryJobsStore: IndustryJobsStore = Object.assign(
         if (job.status !== 'active' && job.status !== 'ready') continue
 
         const productTypeId = job.product_type_id ?? job.blueprint_type_id
-        total += (prices.get(productTypeId) ?? 0) * job.runs
+        total += priceStore.getItemPrice(productTypeId) * job.runs
       }
       return total
     },

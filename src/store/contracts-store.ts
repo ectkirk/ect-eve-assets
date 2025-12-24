@@ -18,7 +18,7 @@ import {
   type SourceOwner,
   type VisibilityStore,
 } from './create-visibility-store'
-import { isAbyssalTypeId } from '@/api/mutamarket-client'
+import { usePriceStore, isAbyssalTypeId } from './price-store'
 
 export interface StoredContract extends StoredItem<ESIContract> {
   item: ESIContract
@@ -41,7 +41,6 @@ interface ContractsExtraState {
 
 interface ContractsExtras {
   getTotal: (
-    prices: Map<number, number>,
     selectedOwnerIds: string[],
     state?: {
       itemsById: Map<number, StoredContract>
@@ -450,7 +449,6 @@ baseStore.setState({
 
 export const useContractsStore: ContractsStore = Object.assign(baseStore, {
   getTotal(
-    prices: Map<number, number>,
     selectedOwnerIds: string[],
     stateOverride?: {
       itemsById: Map<number, StoredContract>
@@ -476,6 +474,7 @@ export const useContractsStore: ContractsStore = Object.assign(baseStore, {
       }
     }
 
+    const priceStore = usePriceStore.getState()
     let total = 0
     for (const contractId of visibleIds) {
       const stored = itemsById.get(contractId)
@@ -491,7 +490,11 @@ export const useContractsStore: ContractsStore = Object.assign(baseStore, {
         if (isIssuer) {
           for (const item of items) {
             if (item.is_included) {
-              total += (prices.get(item.type_id) ?? 0) * item.quantity
+              const price = priceStore.getItemPrice(item.type_id, {
+                itemId: item.item_id,
+                isBlueprintCopy: item.is_blueprint_copy,
+              })
+              total += price * item.quantity
             }
           }
         }

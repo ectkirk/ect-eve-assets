@@ -12,13 +12,8 @@ import {
   OFFICE_TYPE_ID,
   isFittedOrContentFlag,
 } from './tree-types'
-import {
-  getType,
-  getStructure,
-  getLocation,
-  getBlueprint,
-} from '@/store/reference-cache'
-import { getValidAbyssalPrice } from '@/api/mutamarket-client'
+import { getType, getStructure, getLocation } from '@/store/reference-cache'
+import { usePriceStore } from '@/store/price-store'
 
 export interface AssetLookupMap {
   itemIdToAsset: Map<number, ESIAsset>
@@ -26,7 +21,6 @@ export interface AssetLookupMap {
 }
 
 export interface ResolutionContext {
-  prices: Map<number, number>
   assetNames: Map<number, string>
   ownedStructureIds: Set<number>
   starbaseMoonIds: Map<number, number>
@@ -198,7 +192,7 @@ export function resolveAsset(
   context: ResolutionContext
 ): ResolvedAsset {
   const { itemIdToAsset } = lookupMap
-  const { prices, assetNames, ownedStructureIds, starbaseMoonIds } = context
+  const { assetNames, ownedStructureIds, starbaseMoonIds } = context
 
   const parentChain = buildParentChain(asset, itemIdToAsset)
   const rootFlag = getRootFlag(asset, parentChain)
@@ -222,15 +216,12 @@ export function resolveAsset(
   const sdeType = getType(asset.type_id)
   const customName = assetNames.get(asset.item_id)
   const isBpc = asset.is_blueprint_copy ?? false
-  const blueprint = getBlueprint(asset.type_id)
 
   const volume = sdeType?.packagedVolume ?? sdeType?.volume ?? 0
-  const abyssalPrice = getValidAbyssalPrice(asset.item_id)
-  const price = isBpc
-    ? 0
-    : blueprint
-      ? (blueprint.basePrice ?? 0)
-      : (abyssalPrice ?? prices.get(asset.type_id) ?? 0)
+  const price = usePriceStore.getState().getItemPrice(asset.type_id, {
+    itemId: asset.item_id,
+    isBlueprintCopy: isBpc,
+  })
 
   return {
     asset,
@@ -286,8 +277,7 @@ export function resolveAllAssets(
 
 export function resolveMarketOrder(
   order: MarketOrder,
-  owner: Owner,
-  prices: Map<number, number>
+  owner: Owner
 ): ResolvedAsset {
   const isStructure = order.location_id > 1_000_000_000_000
 
@@ -319,7 +309,7 @@ export function resolveMarketOrder(
 
   const sdeType = getType(order.type_id)
   const volume = sdeType?.packagedVolume ?? sdeType?.volume ?? 0
-  const price = prices.get(order.type_id) ?? 0
+  const price = usePriceStore.getState().getItemPrice(order.type_id)
 
   const modeFlags: AssetModeFlags = {
     inHangar: false,
@@ -368,8 +358,7 @@ export function resolveMarketOrder(
 export function resolveContractItem(
   contract: ESIContract,
   item: ESIContractItem,
-  owner: Owner,
-  prices: Map<number, number>
+  owner: Owner
 ): ResolvedAsset {
   const locationId = contract.start_location_id ?? 0
   const isStructure = locationId > 1_000_000_000_000
@@ -403,14 +392,12 @@ export function resolveContractItem(
 
   const sdeType = getType(item.type_id)
   const isBpc = item.is_blueprint_copy ?? false
-  const blueprint = getBlueprint(item.type_id)
 
   const volume = sdeType?.packagedVolume ?? sdeType?.volume ?? 0
-  const price = isBpc
-    ? 0
-    : blueprint
-      ? (blueprint.basePrice ?? 0)
-      : (prices.get(item.type_id) ?? 0)
+  const price = usePriceStore.getState().getItemPrice(item.type_id, {
+    itemId: item.item_id,
+    isBlueprintCopy: isBpc,
+  })
 
   const modeFlags: AssetModeFlags = {
     inHangar: false,
@@ -458,8 +445,7 @@ export function resolveContractItem(
 
 export function resolveIndustryJob(
   job: ESIIndustryJob,
-  owner: Owner,
-  prices: Map<number, number>
+  owner: Owner
 ): ResolvedAsset {
   const locationId = job.location_id ?? job.facility_id
   const isStructure = locationId > 1_000_000_000_000
@@ -494,7 +480,7 @@ export function resolveIndustryJob(
 
   const sdeType = getType(productTypeId)
   const volume = sdeType?.packagedVolume ?? sdeType?.volume ?? 0
-  const price = prices.get(productTypeId) ?? 0
+  const price = usePriceStore.getState().getItemPrice(productTypeId)
 
   const modeFlags: AssetModeFlags = {
     inHangar: false,

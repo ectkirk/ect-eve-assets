@@ -30,11 +30,9 @@ function getDefaultSort(showCourierColumns: boolean): ContractSortColumn {
 export function ContractsTable({
   contracts,
   showCourierColumns = false,
-  prices,
 }: {
   contracts: ContractRow[]
   showCourierColumns?: boolean
-  prices: Map<number, number>
 }) {
   const [page, setPage] = useState(0)
   const [selectedContract, setSelectedContract] = useState<ContractRow | null>(
@@ -215,7 +213,6 @@ export function ContractsTable({
               ]
             : ''
         }
-        prices={prices}
       />
     </>
   )

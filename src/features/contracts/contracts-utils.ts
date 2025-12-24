@@ -3,7 +3,7 @@ import type { ESIContract, ESIContractItem } from '@/api/endpoints/contracts'
 import type { ContractWithItems } from '@/store/contracts-store'
 import { hasType, getType } from '@/store/reference-cache'
 import { getName } from '@/api/endpoints/universe'
-import { isAbyssalTypeId, getValidAbyssalPrice } from '@/api/mutamarket-client'
+import { usePriceStore } from '@/store/price-store'
 import { getLocationName } from '@/lib/location-utils'
 
 export type ContractSortColumn =
@@ -111,8 +111,7 @@ export function buildContractRow(
   contractWithItems: ContractWithItems,
   ownerType: 'character' | 'corporation',
   ownerId: number,
-  isIssuer: boolean,
-  prices: Map<number, number>
+  isIssuer: boolean
 ): ContractRow {
   const contract = contractWithItems.contract
   const items = contractWithItems.items ?? []
@@ -137,14 +136,13 @@ export function buildContractRow(
     assigneeName = '-'
   }
 
+  const priceStore = usePriceStore.getState()
   let itemValue = 0
   for (const item of items) {
-    if (item.is_blueprint_copy) continue
-    const abyssalPrice =
-      isAbyssalTypeId(item.type_id) && item.item_id
-        ? getValidAbyssalPrice(item.item_id)
-        : undefined
-    const price = abyssalPrice ?? prices.get(item.type_id) ?? 0
+    const price = priceStore.getItemPrice(item.type_id, {
+      itemId: item.item_id,
+      isBlueprintCopy: item.is_blueprint_copy,
+    })
     itemValue += price * item.quantity
   }
 

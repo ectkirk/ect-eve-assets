@@ -39,6 +39,14 @@ vi.mock('./regional-market-store', () => ({
   },
 }))
 
+vi.mock('./price-store', () => ({
+  usePriceStore: {
+    getState: vi.fn(() => ({
+      getItemPrice: vi.fn((typeId: number) => (typeId === 34 ? 10 : 0)),
+    })),
+  },
+}))
+
 describe('market-orders-store', () => {
   beforeEach(() => {
     vi.clearAllMocks()

@@ -9,6 +9,23 @@ import {
   idbPutBatch,
   idbClearMultiple,
 } from '@/lib/idb-utils'
+import { getBlueprint } from '@/store/reference-cache'
+
+const ABYSSAL_TYPE_IDS = new Set([
+  56305, 47757, 47753, 47749, 56306, 47745, 47408, 47740, 52230, 49738, 52227,
+  90483, 90498, 49734, 90593, 90529, 49730, 49726, 90524, 90502, 49722, 90460,
+  90474, 90487, 90467, 56313, 47702, 90493, 78621, 47736, 47732, 56308, 56310,
+  56307, 56312, 56311, 56309, 47832, 48427, 56304, 56303, 47846, 47838, 47820,
+  47777, 48439, 84434, 84436, 84435, 84437, 47789, 47808, 47844, 47836, 47817,
+  47773, 48435, 84438, 47828, 48423, 84440, 84439, 84441, 47785, 47804, 60482,
+  60483, 47842, 47812, 47769, 48431, 84442, 47824, 48419, 84444, 84443, 84445,
+  47781, 47800, 47840, 47793, 60480, 60478, 60479, 90622, 90621, 90618, 90614,
+  60481,
+])
+
+export function isAbyssalTypeId(typeId: number): boolean {
+  return ABYSSAL_TYPE_IDS.has(typeId)
+}
 
 interface JitaPriceRecord {
   typeId: number
@@ -35,6 +52,7 @@ interface MetaRecord {
 interface PriceState {
   jitaPrices: Map<number, number>
   abyssalPrices: Map<number, number>
+  marketPrices: Map<number, number>
   esiPrices: Map<
     number,
     { averagePrice: number | null; adjustedPrice: number | null }
@@ -43,10 +61,17 @@ interface PriceState {
   lastEsiRefreshAt: number | null
   isUpdating: boolean
   initialized: boolean
+  priceVersion: number
+}
+
+export interface GetItemPriceOptions {
+  itemId?: number
+  isBlueprintCopy?: boolean
 }
 
 interface PriceActions {
   init: () => Promise<void>
+  getItemPrice: (typeId: number, options?: GetItemPriceOptions) => number
   getJitaPrice: (typeId: number) => number | undefined
   getAbyssalPrice: (itemId: number) => number | undefined
   hasAbyssalPrice: (itemId: number) => boolean
@@ -60,6 +85,7 @@ interface PriceActions {
   setAbyssalPrices: (
     prices: Array<{ itemId: number; price: number }>
   ) => Promise<void>
+  setMarketPrices: (prices: Map<number, number>) => void
   refreshAllJitaPrices: (
     typeIds: number[],
     abyssalItemIds?: number[]
@@ -208,11 +234,13 @@ let esiRefreshTimer: ReturnType<typeof setTimeout> | null = null
 export const usePriceStore = create<PriceStore>((set, get) => ({
   jitaPrices: new Map(),
   abyssalPrices: new Map(),
+  marketPrices: new Map(),
   esiPrices: new Map(),
   lastJitaRefreshAt: null,
   lastEsiRefreshAt: null,
   isUpdating: false,
   initialized: false,
+  priceVersion: 0,
 
   init: async () => {
     if (get().initialized) return
@@ -280,6 +308,25 @@ export const usePriceStore = create<PriceStore>((set, get) => ({
   getAbyssalPrice: (itemId) => get().abyssalPrices.get(itemId),
 
   hasAbyssalPrice: (itemId) => get().abyssalPrices.has(itemId),
+
+  getItemPrice: (typeId, options) => {
+    if (options?.isBlueprintCopy) return 0
+
+    const blueprint = getBlueprint(typeId)
+    if (blueprint) return blueprint.basePrice ?? 0
+
+    if (options?.itemId && isAbyssalTypeId(typeId)) {
+      const abyssalPrice = get().abyssalPrices.get(options.itemId)
+      if (abyssalPrice !== undefined && abyssalPrice > 0) {
+        return abyssalPrice
+      }
+    }
+
+    const marketPrice = get().marketPrices.get(typeId)
+    if (marketPrice !== undefined) return marketPrice
+
+    return get().jitaPrices.get(typeId) ?? 0
+  },
 
   getEsiAveragePrice: (typeId) =>
     get().esiPrices.get(typeId)?.averagePrice ?? undefined,
@@ -419,6 +466,13 @@ export const usePriceStore = create<PriceStore>((set, get) => ({
 
     set({ abyssalPrices: merged })
     await saveAbyssalPricesToDB(records)
+  },
+
+  setMarketPrices: (prices) => {
+    set((state) => ({
+      marketPrices: prices,
+      priceVersion: state.priceVersion + 1,
+    }))
   },
 
   refreshAllJitaPrices: async (typeIds, abyssalItemIds) => {
@@ -594,10 +648,12 @@ export const usePriceStore = create<PriceStore>((set, get) => ({
     set({
       jitaPrices: new Map(),
       abyssalPrices: new Map(),
+      marketPrices: new Map(),
       esiPrices: new Map(),
       lastJitaRefreshAt: null,
       lastEsiRefreshAt: null,
       initialized: false,
+      priceVersion: 0,
     })
     logger.info('Price store cleared', { module: 'PriceStore' })
   },

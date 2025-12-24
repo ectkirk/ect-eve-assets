@@ -1,6 +1,7 @@
 import type { StoreApi, UseBoundStore } from 'zustand'
 import { type Owner, findOwnerByKey } from './auth-store'
 import { useToastStore } from './toast-store'
+import { usePriceStore } from './price-store'
 import { esi } from '@/api/esi'
 import {
   ESIMarketOrderSchema,
@@ -225,7 +226,6 @@ export const useMarketOrdersStore: MarketOrdersStore = Object.assign(
       const { itemsById, visibilityByOwner } =
         stateOverride ?? baseStore.getState()
       const selectedSet = new Set(selectedOwnerIds)
-      const regionalStore = useRegionalMarketStore.getState()
 
       const visibleOrderIds = new Set<number>()
       for (const [key, orderIds] of visibilityByOwner) {
@@ -234,6 +234,7 @@ export const useMarketOrdersStore: MarketOrdersStore = Object.assign(
         }
       }
 
+      const priceStore = usePriceStore.getState()
       let total = 0
       for (const orderId of visibleOrderIds) {
         const stored = itemsById.get(orderId)
@@ -243,8 +244,7 @@ export const useMarketOrdersStore: MarketOrdersStore = Object.assign(
         if (order.is_buy_order) {
           total += order.escrow ?? 0
         } else {
-          total +=
-            (regionalStore.getPrice(order.type_id) ?? 0) * order.volume_remain
+          total += priceStore.getItemPrice(order.type_id) * order.volume_remain
         }
       }
       return total

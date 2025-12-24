@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { DEFAULT_REGION_ID } from '@/api/endpoints/market'
 import { useExpiryCacheStore } from '@/store/expiry-cache-store'
 import { useStoreRegistry } from '@/store/store-registry'
+import { usePriceStore } from '@/store/price-store'
 import { logger } from '@/lib/logger'
 import {
   loadFromDB,
@@ -219,6 +220,10 @@ export const useRegionalMarketStore = create<RegionalMarketStore>(
 
         set({ ...hydrated, initialized: true })
 
+        if (hydrated.pricesByType.size > 0) {
+          usePriceStore.getState().setMarketPrices(hydrated.pricesByType)
+        }
+
         logger.info('Regional market store initialized', {
           module: 'RegionalMarketStore',
           types: hydrated.pricesByType.size,
@@ -288,6 +293,8 @@ export const useRegionalMarketStore = create<RegionalMarketStore>(
           trackedStructures: result.trackedStructures,
           isUpdating: false,
         })
+
+        usePriceStore.getState().setMarketPrices(result.sellPricesByType)
 
         if (get().trackedTypes.size > 0 || get().trackedStructures.size > 0) {
           useExpiryCacheStore
