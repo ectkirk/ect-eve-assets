@@ -16,7 +16,7 @@ import { logger } from '@/lib/logger'
 
 export interface RegisteredStore {
   name: string
-  removeForOwner: (ownerType: string, ownerId: number) => Promise<void>
+  removeForOwner?: (ownerType: string, ownerId: number) => Promise<void>
   clear: () => Promise<void>
   getIsUpdating: () => boolean
   init?: () => Promise<void>
@@ -72,9 +72,9 @@ export const useStoreRegistry = create<StoreRegistry>((set, get) => ({
   removeForOwnerAll: async (ownerType, ownerId) => {
     const { stores } = get()
     const results = await Promise.allSettled(
-      Array.from(stores.values()).map((store) =>
-        store.removeForOwner(ownerType, ownerId)
-      )
+      Array.from(stores.values())
+        .filter((store) => store.removeForOwner)
+        .map((store) => store.removeForOwner!(ownerType, ownerId))
     )
     for (const result of results) {
       if (result.status === 'rejected') {

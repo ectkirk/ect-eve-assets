@@ -49,6 +49,8 @@ async function getDB() {
   return openDatabase(DB_CONFIG)
 }
 
+let initPromise: Promise<void> | null = null
+
 export const useDivisionsStore = create<DivisionsStore>((set, get) => ({
   divisionsByCorp: new Map(),
   isLoading: false,
@@ -56,27 +58,32 @@ export const useDivisionsStore = create<DivisionsStore>((set, get) => ({
 
   init: async () => {
     if (get().initialized) return
+    if (initPromise) return initPromise
 
-    try {
-      const db = await getDB()
-      const items = await idbGetAll<CorporationDivisions>(db, 'divisions')
-      const divisionsByCorp = new Map<number, CorporationDivisions>()
-      for (const item of items) {
-        divisionsByCorp.set(item.corporationId, item)
+    initPromise = (async () => {
+      try {
+        const db = await getDB()
+        const items = await idbGetAll<CorporationDivisions>(db, 'divisions')
+        const divisionsByCorp = new Map<number, CorporationDivisions>()
+        for (const item of items) {
+          divisionsByCorp.set(item.corporationId, item)
+        }
+        set({ divisionsByCorp, initialized: true })
+        logger.info('Divisions store initialized', {
+          module: 'DivisionsStore',
+          corps: divisionsByCorp.size,
+        })
+      } catch (err) {
+        logger.error(
+          'Failed to load divisions from DB',
+          err instanceof Error ? err : undefined,
+          { module: 'DivisionsStore' }
+        )
+        set({ initialized: true })
       }
-      set({ divisionsByCorp, initialized: true })
-      logger.info('Divisions store initialized', {
-        module: 'DivisionsStore',
-        corps: divisionsByCorp.size,
-      })
-    } catch (err) {
-      logger.error(
-        'Failed to load divisions from DB',
-        err instanceof Error ? err : undefined,
-        { module: 'DivisionsStore' }
-      )
-      set({ initialized: true })
-    }
+    })()
+
+    return initPromise
   },
 
   fetchForOwner: async (owner: Owner) => {
@@ -156,7 +163,8 @@ export const useDivisionsStore = create<DivisionsStore>((set, get) => ({
   clear: async () => {
     const db = await getDB()
     await idbClear(db, 'divisions')
-    set({ divisionsByCorp: new Map() })
+    initPromise = null
+    set({ divisionsByCorp: new Map(), initialized: false })
   },
 }))
 

@@ -2,10 +2,8 @@ import { useEffect, useState, Component, type ReactNode } from 'react'
 import { useAuthStore } from './store/auth-store'
 import { useAssetStore } from './store/asset-store'
 import { useStoreRegistry } from './store/store-registry'
-import { useRegionalMarketStore } from './store/regional-market-store'
-import { usePriceStore, stopPriceRefreshTimers } from './store/price-store'
+import { stopPriceRefreshTimers } from './store/price-store'
 import { useExpiryCacheStore } from './store/expiry-cache-store'
-import { useNotificationStore } from './store/toast-store'
 import { MainLayout } from './components/layout/MainLayout'
 import { initCache } from './store/reference-cache'
 import {
@@ -117,12 +115,7 @@ function App() {
       })
       .then(() => {
         logger.info('Asset store initialized', { module: 'App' })
-        return Promise.all([
-          useStoreRegistry.getState().initAll(['assets']),
-          useRegionalMarketStore.getState().init(),
-          usePriceStore.getState().init(),
-          useNotificationStore.getState().init(),
-        ])
+        return useStoreRegistry.getState().initAll(['assets'])
       })
       .then(async () => {
         logger.info('All stores initialized', { module: 'App' })

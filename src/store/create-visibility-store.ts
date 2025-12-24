@@ -154,6 +154,8 @@ export function createVisibilityStore<
   type FullStore = VisibilityStore<TStoredItem, TExtraState, TExtraActions>
   type FullState = VisibilityState<TStoredItem> & TExtraState
 
+  let initPromise: Promise<void> | null = null
+
   const store = create<FullStore>((set, get) => {
     const baseSet = (partial: Partial<FullState>) =>
       set(partial as Partial<FullStore>)
@@ -173,36 +175,41 @@ export function createVisibilityStore<
 
       init: async () => {
         if (get().initialized) return
+        if (initPromise) return initPromise
 
-        try {
-          const { items, visibility } = await db.loadAll()
-          const extra = rebuildExtraState ? rebuildExtraState(items) : {}
+        initPromise = (async () => {
+          try {
+            const { items, visibility } = await db.loadAll()
+            const extra = rebuildExtraState ? rebuildExtraState(items) : {}
 
-          set({
-            itemsById: items,
-            visibilityByOwner: visibility,
-            initialized: true,
-            ...extra,
-          } as Partial<FullStore>)
+            set({
+              itemsById: items,
+              visibilityByOwner: visibility,
+              initialized: true,
+              ...extra,
+            } as Partial<FullStore>)
 
-          if (items.size > 0) {
-            triggerResolution()
-            onAfterInit?.(items)
+            if (items.size > 0) {
+              triggerResolution()
+              onAfterInit?.(items)
+            }
+
+            logger.info(`${name} store initialized`, {
+              module: moduleName,
+              items: items.size,
+              owners: visibility.size,
+            })
+          } catch (err) {
+            logger.error(
+              `Failed to load ${name} from DB`,
+              err instanceof Error ? err : undefined,
+              { module: moduleName }
+            )
+            set({ initialized: true } as Partial<FullStore>)
           }
+        })()
 
-          logger.info(`${name} store initialized`, {
-            module: moduleName,
-            items: items.size,
-            owners: visibility.size,
-          })
-        } catch (err) {
-          logger.error(
-            `Failed to load ${name} from DB`,
-            err instanceof Error ? err : undefined,
-            { module: moduleName }
-          )
-          set({ initialized: true } as Partial<FullStore>)
-        }
+        return initPromise
       },
 
       update: async (force = false) => {
@@ -441,6 +448,7 @@ export function createVisibilityStore<
 
       clear: async () => {
         await db.clear()
+        initPromise = null
         const extra = extraState ? { ...extraState } : {}
         set({
           itemsById: new Map(),

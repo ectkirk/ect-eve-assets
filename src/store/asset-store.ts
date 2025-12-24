@@ -118,6 +118,8 @@ async function fetchOwnerAssetNames(
   return getCharacterAssetNames(owner.id, owner.characterId, nameableIds)
 }
 
+let initPromise: Promise<void> | null = null
+
 export const useAssetStore = create<AssetStore>((set, get) => ({
   assetsByOwner: [],
   assetNames: new Map(),
@@ -128,50 +130,55 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
 
   init: async () => {
     if (get().initialized) return
+    if (initPromise) return initPromise
 
-    try {
-      const loaded = await db.loadAll()
-      const assetsByOwner = loaded.map((d) => ({
-        owner: d.owner,
-        assets: d.data,
-      }))
+    initPromise = (async () => {
+      try {
+        const loaded = await db.loadAll()
+        const assetsByOwner = loaded.map((d) => ({
+          owner: d.owner,
+          assets: d.data,
+        }))
 
-      const assetNamesEntries =
-        await db.loadMeta<[number, string][]>('assetNames')
-      const assetNames = new Map(assetNamesEntries ?? [])
+        const assetNamesEntries =
+          await db.loadMeta<[number, string][]>('assetNames')
+        const assetNames = new Map(assetNamesEntries ?? [])
 
-      set({
-        assetsByOwner,
-        assetNames,
-        initialized: true,
-      })
-      logger.info('Asset store initialized from DB', {
-        module: 'AssetStore',
-        owners: assetsByOwner.length,
-        assets: assetsByOwner.reduce((sum, o) => sum + o.assets.length, 0),
-      })
+        set({
+          assetsByOwner,
+          assetNames,
+          initialized: true,
+        })
+        logger.info('Asset store initialized from DB', {
+          module: 'AssetStore',
+          owners: assetsByOwner.length,
+          assets: assetsByOwner.reduce((sum, o) => sum + o.assets.length, 0),
+        })
 
-      const abyssalItemIds: number[] = []
-      for (const { assets } of assetsByOwner) {
-        for (const asset of assets) {
-          if (isAbyssalTypeId(asset.type_id)) {
-            abyssalItemIds.push(asset.item_id)
+        const abyssalItemIds: number[] = []
+        for (const { assets } of assetsByOwner) {
+          for (const asset of assets) {
+            if (isAbyssalTypeId(asset.type_id)) {
+              abyssalItemIds.push(asset.item_id)
+            }
           }
         }
-      }
 
-      if (abyssalItemIds.length > 0) {
-        const { usePriceStore } = await import('./price-store')
-        usePriceStore.getState().ensureJitaPrices([], abyssalItemIds)
+        if (abyssalItemIds.length > 0) {
+          const { usePriceStore } = await import('./price-store')
+          usePriceStore.getState().ensureJitaPrices([], abyssalItemIds)
+        }
+      } catch (err) {
+        logger.error(
+          'Failed to load assets from DB',
+          err instanceof Error ? err : undefined,
+          { module: 'AssetStore' }
+        )
+        set({ initialized: true })
       }
-    } catch (err) {
-      logger.error(
-        'Failed to load assets from DB',
-        err instanceof Error ? err : undefined,
-        { module: 'AssetStore' }
-      )
-      set({ initialized: true })
-    }
+    })()
+
+    return initPromise
   },
 
   update: async (force = false) => {
@@ -473,6 +480,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
 
   clear: async () => {
     await db.clear()
+    initPromise = null
     set({
       assetsByOwner: [],
       assetNames: new Map(),

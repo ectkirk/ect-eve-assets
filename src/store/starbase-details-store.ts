@@ -179,6 +179,8 @@ async function clearDB(): Promise<void> {
   })
 }
 
+let initPromise: Promise<void> | null = null
+
 export const useStarbaseDetailsStore = create<StarbaseDetailsStore>(
   (set, get) => ({
     details: new Map(),
@@ -190,24 +192,29 @@ export const useStarbaseDetailsStore = create<StarbaseDetailsStore>(
 
     init: async () => {
       if (get().initialized) return
+      if (initPromise) return initPromise
 
-      try {
-        const { details, corporationById, fetchedAt } = await loadAllFromDB()
-        set({ details, corporationById, fetchedAt, initialized: true })
-        logger.info('Starbase details loaded from cache', {
-          module: 'StarbaseDetailsStore',
-          count: details.size,
-        })
-      } catch (err) {
-        logger.error(
-          'Failed to load starbase details from cache',
-          err instanceof Error ? err : undefined,
-          {
+      initPromise = (async () => {
+        try {
+          const { details, corporationById, fetchedAt } = await loadAllFromDB()
+          set({ details, corporationById, fetchedAt, initialized: true })
+          logger.info('Starbase details loaded from cache', {
             module: 'StarbaseDetailsStore',
-          }
-        )
-        set({ initialized: true })
-      }
+            count: details.size,
+          })
+        } catch (err) {
+          logger.error(
+            'Failed to load starbase details from cache',
+            err instanceof Error ? err : undefined,
+            {
+              module: 'StarbaseDetailsStore',
+            }
+          )
+          set({ initialized: true })
+        }
+      })()
+
+      return initPromise
     },
 
     fetchDetail: async (
@@ -391,12 +398,14 @@ export const useStarbaseDetailsStore = create<StarbaseDetailsStore>(
     },
 
     clear: async () => {
+      initPromise = null
       set({
         details: new Map(),
         corporationById: new Map(),
         fetchedAt: new Map(),
         loading: new Set(),
         failed: new Set(),
+        initialized: false,
       })
       try {
         await clearDB()
