@@ -149,18 +149,6 @@ export interface RefMarketResult {
   error?: string
 }
 
-export interface RefMarketJitaResult {
-  items?: Record<string, number | null>
-  error?: string
-}
-
-export interface RefMarketPlexResult {
-  typeId?: number
-  lowestSell?: number | null
-  highestBuy?: number | null
-  error?: string
-}
-
 export interface RefMarketContractItem {
   price: number | null
   salesCount: number
@@ -168,8 +156,22 @@ export interface RefMarketContractItem {
   hasSufficientData: boolean
 }
 
-export interface RefMarketContractsResult {
-  items?: Record<string, RefMarketContractItem>
+export interface RefMarketJitaParams {
+  typeIds: number[]
+  itemIds?: number[]
+  contractTypeIds?: number[]
+  includePlex?: boolean
+}
+
+export interface RefMarketJitaResult {
+  items?: Record<string, number | null>
+  mutaItems?: Record<string, number | null>
+  contractItems?: Record<string, RefMarketContractItem>
+  plex?: {
+    typeId: number
+    lowestSell: number | null
+    highestBuy: number | null
+  }
   error?: string
 }
 
@@ -471,12 +473,7 @@ export interface ElectronAPI {
   refMoons: (ids: number[]) => Promise<RefMoonsResult>
   refShipSlots: (ids: number[]) => Promise<RefShipsResult>
   refMarket: (params: RefMarketParams) => Promise<RefMarketResult>
-  refMarketJita: (
-    typeIds: number[],
-    itemIds?: number[]
-  ) => Promise<RefMarketJitaResult>
-  refMarketPlex: () => Promise<RefMarketPlexResult>
-  refMarketContracts: (typeIds: number[]) => Promise<RefMarketContractsResult>
+  refMarketJita: (params: RefMarketJitaParams) => Promise<RefMarketJitaResult>
   refBlueprints: () => Promise<BlueprintsResult>
   refBuybackCalculate: (
     text: string,
@@ -574,11 +571,8 @@ const electronAPI: ElectronAPI = {
   refShipSlots: (ids: number[]) => ipcRenderer.invoke('ref:shipslots', ids),
   refMarket: (params: RefMarketParams) =>
     ipcRenderer.invoke('ref:market', params),
-  refMarketJita: (typeIds: number[], itemIds?: number[]) =>
-    ipcRenderer.invoke('ref:marketJita', typeIds, itemIds),
-  refMarketPlex: () => ipcRenderer.invoke('ref:marketPlex'),
-  refMarketContracts: (typeIds: number[]) =>
-    ipcRenderer.invoke('ref:marketContracts', typeIds),
+  refMarketJita: (params: RefMarketJitaParams) =>
+    ipcRenderer.invoke('ref:marketJita', params),
   refBlueprints: () => ipcRenderer.invoke('ref:blueprints'),
   refBuybackCalculate: (text: string, config: BuybackConfig) =>
     ipcRenderer.invoke('ref:buybackCalculate', text, config),

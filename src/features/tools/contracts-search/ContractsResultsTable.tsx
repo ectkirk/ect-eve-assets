@@ -208,10 +208,8 @@ export function ContractsResultsTable({
   }, [])
 
   useEffect(() => {
-    if (!cursorPos || !hoveredContract || !tooltipRef.current) {
-      setTooltipPos(null)
-      return
-    }
+    if (!cursorPos || !hoveredContract || !tooltipRef.current) return
+
     const rect = tooltipRef.current.getBoundingClientRect()
     const padding = 12
     let x = cursorPos.x + padding
@@ -224,7 +222,7 @@ export function ContractsResultsTable({
       y = cursorPos.y - rect.height - padding
     }
 
-    setTooltipPos({ x, y })
+    requestAnimationFrame(() => setTooltipPos({ x, y }))
   }, [cursorPos, hoveredContract])
 
   const handleContextMenu = useCallback(
@@ -387,7 +385,7 @@ export function ContractsResultsTable({
                 <TableCell className="font-medium">
                   {contract.topItems.length > 1
                     ? '[Multiple Items]'
-                    : (contract.topItems[0]?.typeName || '-')}
+                    : contract.topItems[0]?.typeName || '-'}
                 </TableCell>
                 <TableCell>
                   <div>
@@ -471,7 +469,9 @@ export function ContractsResultsTable({
               </div>
               <div>
                 <span className="text-content-muted">Issuer: </span>
-                <span className="text-content">{hoveredContract.issuerName}</span>
+                <span className="text-content">
+                  {hoveredContract.issuerName}
+                </span>
               </div>
               {hoveredContract.title && (
                 <div>

@@ -151,18 +151,6 @@ declare global {
     error?: string
   }
 
-  interface RefMarketJitaResult {
-    items?: Record<string, number | null>
-    error?: string
-  }
-
-  interface RefMarketPlexResult {
-    typeId?: number
-    lowestSell?: number | null
-    highestBuy?: number | null
-    error?: string
-  }
-
   interface RefMarketContractItem {
     price: number | null
     salesCount: number
@@ -170,8 +158,22 @@ declare global {
     hasSufficientData: boolean
   }
 
-  interface RefMarketContractsResult {
-    items?: Record<string, RefMarketContractItem>
+  interface RefMarketJitaParams {
+    typeIds: number[]
+    itemIds?: number[]
+    contractTypeIds?: number[]
+    includePlex?: boolean
+  }
+
+  interface RefMarketJitaResult {
+    items?: Record<string, number | null>
+    mutaItems?: Record<string, number | null>
+    contractItems?: Record<string, RefMarketContractItem>
+    plex?: {
+      typeId: number
+      lowestSell: number | null
+      highestBuy: number | null
+    }
     error?: string
   }
 
@@ -473,12 +475,7 @@ declare global {
     refMoons: (ids: number[]) => Promise<RefMoonsResult>
     refShipSlots: (ids: number[]) => Promise<RefShipsResult>
     refMarket: (params: RefMarketParams) => Promise<RefMarketResult>
-    refMarketJita: (
-      typeIds: number[],
-      itemIds?: number[]
-    ) => Promise<RefMarketJitaResult>
-    refMarketPlex: () => Promise<RefMarketPlexResult>
-    refMarketContracts: (typeIds: number[]) => Promise<RefMarketContractsResult>
+    refMarketJita: (params: RefMarketJitaParams) => Promise<RefMarketJitaResult>
     refBlueprints: () => Promise<BlueprintsResult>
     refBuybackCalculate: (
       text: string,

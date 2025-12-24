@@ -320,7 +320,7 @@ describe('ref-client', () => {
       const result = await fetchPrices([34])
 
       expect(result.get(34)).toBe(5.5)
-      expect(mockRefMarketJita).toHaveBeenCalledWith([34])
+      expect(mockRefMarketJita).toHaveBeenCalledWith({ typeIds: [34] })
     })
 
     it('excludes null prices', async () => {

@@ -467,17 +467,6 @@ export const MarketBulkResponseSchema = z.object({
   items: z.record(z.string(), MarketBulkItemSchema),
 })
 
-export const MarketJitaResponseSchema = z.object({
-  items: z.record(z.string(), z.number().nullable()),
-  mutaItems: z.record(z.string(), z.number().nullable()).optional(),
-})
-
-export const MarketPlexResponseSchema = z.object({
-  typeId: z.number(),
-  lowestSell: z.number().nullable(),
-  highestBuy: z.number().nullable(),
-})
-
 export const MarketContractItemSchema = z.object({
   price: z.number().nullable(),
   salesCount: z.number(),
@@ -485,8 +474,17 @@ export const MarketContractItemSchema = z.object({
   hasSufficientData: z.boolean(),
 })
 
-export const MarketContractsResponseSchema = z.object({
-  items: z.record(z.string(), MarketContractItemSchema),
+export const MarketJitaResponseSchema = z.object({
+  items: z.record(z.string(), z.number().nullable()),
+  mutaItems: z.record(z.string(), z.number().nullable()).optional(),
+  contractItems: z.record(z.string(), MarketContractItemSchema).optional(),
+  plex: z
+    .object({
+      typeId: z.number(),
+      lowestSell: z.number().nullable(),
+      highestBuy: z.number().nullable(),
+    })
+    .optional(),
 })
 
 // Mutamarket schemas

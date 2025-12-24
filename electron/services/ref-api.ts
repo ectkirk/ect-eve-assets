@@ -158,9 +158,6 @@ export function registerRefAPIHandlers(): void {
   ipcMain.handle('ref:blueprints', () =>
     refGet('/reference/blueprints', 'ref:blueprints')
   )
-  ipcMain.handle('ref:marketPlex', () =>
-    refGet('/market/plex', 'ref:marketPlex')
-  )
   ipcMain.handle('ref:buybackInfo', () =>
     refGet('/buyback/info', 'ref:buybackInfo')
   )
@@ -263,28 +260,41 @@ export function registerRefAPIHandlers(): void {
     })
   }
 
-  ipcMain.handle(
-    'ref:marketJita',
-    async (_event, typeIds: unknown, itemIds: unknown) => {
-      if (!validateIds(typeIds, 1000)) {
-        return { error: 'Invalid typeIds array (max 1000)' }
-      }
-      const body: { typeIds: number[]; itemIds?: number[] } = { typeIds }
-      if (Array.isArray(itemIds) && itemIds.length > 0) {
-        if (!validateIds(itemIds, 1000)) {
-          return { error: 'Invalid itemIds array (max 1000)' }
-        }
-        body.itemIds = itemIds
-      }
-      return refPost('/market/jita', body, 'ref:marketJita')
+  ipcMain.handle('ref:marketJita', async (_event, params: unknown) => {
+    if (typeof params !== 'object' || params === null) {
+      return { error: 'Invalid params' }
     }
-  )
+    const p = params as Record<string, unknown>
+    if (!validateIds(p.typeIds, 1000)) {
+      return { error: 'Invalid typeIds array (max 1000)' }
+    }
 
-  ipcMain.handle('ref:marketContracts', async (_event, typeIds: unknown) => {
-    if (!validateIds(typeIds, 100)) {
-      return { error: 'Invalid typeIds array (max 100)' }
+    const body: {
+      typeIds: number[]
+      itemIds?: number[]
+      contractTypeIds?: number[]
+      includePlex?: boolean
+    } = { typeIds: p.typeIds as number[] }
+
+    if (Array.isArray(p.itemIds) && p.itemIds.length > 0) {
+      if (!validateIds(p.itemIds, 1000)) {
+        return { error: 'Invalid itemIds array (max 1000)' }
+      }
+      body.itemIds = p.itemIds
     }
-    return refPost('/market/contracts', { typeIds }, 'ref:marketContracts')
+
+    if (Array.isArray(p.contractTypeIds) && p.contractTypeIds.length > 0) {
+      if (!validateIds(p.contractTypeIds, 100)) {
+        return { error: 'Invalid contractTypeIds array (max 100)' }
+      }
+      body.contractTypeIds = p.contractTypeIds
+    }
+
+    if (p.includePlex === true) {
+      body.includePlex = true
+    }
+
+    return refPost('/market/jita', body, 'ref:marketJita')
   })
 
   ipcMain.handle('ref:market', async (_event, params: unknown) => {
