@@ -20,7 +20,11 @@ import {
   type BuybackTabType,
 } from '@/features/buyback'
 // TODO: Re-enable when tools feature is ready
-import { ToolsTab as _ToolsTab, TOOLS_TABS as _TOOLS_TABS, type ToolsTabType } from '@/features/tools'
+import {
+  ToolsTab as _ToolsTab,
+  TOOLS_TABS as _TOOLS_TABS,
+  type ToolsTabType,
+} from '@/features/tools'
 import { useBuybackActionStore } from '@/store/buyback-action-store'
 import { useTotalAssets } from '@/hooks'
 import { formatNumber } from '@/lib/utils'
