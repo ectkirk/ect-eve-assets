@@ -10,6 +10,7 @@ import {
   createWindow,
   readStorage,
   writeStorage,
+  toggleMaximize,
   type WindowManager,
 } from './services/window.js'
 import {
@@ -41,18 +42,14 @@ const windowManager: WindowManager = {
   mainWindow: null,
   manualMaximized: false,
   restoreBounds: null,
+  normalBounds: null,
+  isToggling: false,
 }
 
 const windowContext = {
   getMainWindow: () => windowManager.mainWindow,
-  getManualMaximized: () => windowManager.manualMaximized,
-  setManualMaximized: (value: boolean) => {
-    windowManager.manualMaximized = value
-  },
-  getRestoreBounds: () => windowManager.restoreBounds,
-  setRestoreBounds: (bounds: Electron.Rectangle | null) => {
-    windowManager.restoreBounds = bounds
-  },
+  toggleMaximize: () => toggleMaximize(windowManager),
+  isMaximized: () => windowManager.manualMaximized,
   characterTokens,
   readStorage,
   writeStorage,

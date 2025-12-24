@@ -1,4 +1,4 @@
-import { ipcMain, shell, screen, session, app, BrowserWindow } from 'electron'
+import { ipcMain, shell, session, app, BrowserWindow } from 'electron'
 import {
   startAuth,
   refreshAccessToken,
@@ -17,10 +17,8 @@ const MAX_STORAGE_SIZE = 5 * 1024 * 1024
 
 interface WindowContext {
   getMainWindow: () => BrowserWindow | null
-  getManualMaximized: () => boolean
-  setManualMaximized: (value: boolean) => void
-  getRestoreBounds: () => Electron.Rectangle | null
-  setRestoreBounds: (bounds: Electron.Rectangle | null) => void
+  toggleMaximize: () => void
+  isMaximized: () => boolean
   characterTokens: Map<number, string>
   readStorage: () => Record<string, unknown> | null
   writeStorage: (data: Record<string, unknown>) => void
@@ -250,53 +248,13 @@ export function registerUpdaterHandler(): void {
   })
 }
 
-function getValidBounds(bounds: Electron.Rectangle): Electron.Rectangle {
-  const displays = screen.getAllDisplays()
-  for (const display of displays) {
-    const { x, y, width, height } = display.workArea
-    const centerX = bounds.x + bounds.width / 2
-    const centerY = bounds.y + bounds.height / 2
-    if (
-      centerX >= x &&
-      centerX < x + width &&
-      centerY >= y &&
-      centerY < y + height
-    ) {
-      return bounds
-    }
-  }
-  const primary = screen.getPrimaryDisplay().workArea
-  return {
-    x: primary.x + Math.round((primary.width - bounds.width) / 2),
-    y: primary.y + Math.round((primary.height - bounds.height) / 2),
-    width: Math.min(bounds.width, primary.width),
-    height: Math.min(bounds.height, primary.height),
-  }
-}
-
 export function registerWindowControlHandlers(ctx: WindowContext): void {
   ipcMain.handle('window:minimize', () => {
     ctx.getMainWindow()?.minimize()
   })
 
   ipcMain.handle('window:maximize', () => {
-    const mainWindow = ctx.getMainWindow()
-    if (!mainWindow) return
-
-    if (ctx.getManualMaximized()) {
-      const restoreBounds = ctx.getRestoreBounds()
-      if (restoreBounds) {
-        mainWindow.setBounds(getValidBounds(restoreBounds))
-      }
-      ctx.setManualMaximized(false)
-      mainWindow.webContents.send('window:maximizeChange', false)
-    } else {
-      ctx.setRestoreBounds(mainWindow.getBounds())
-      const display = screen.getDisplayMatching(mainWindow.getBounds())
-      mainWindow.setBounds(display.workArea)
-      ctx.setManualMaximized(true)
-      mainWindow.webContents.send('window:maximizeChange', true)
-    }
+    ctx.toggleMaximize()
   })
 
   ipcMain.handle('window:close', () => {
@@ -304,7 +262,7 @@ export function registerWindowControlHandlers(ctx: WindowContext): void {
   })
 
   ipcMain.handle('window:isMaximized', () => {
-    return ctx.getManualMaximized()
+    return ctx.isMaximized()
   })
 
   ipcMain.handle('window:getPlatform', () => {
