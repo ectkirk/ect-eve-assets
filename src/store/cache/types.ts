@@ -27,12 +27,14 @@ export interface CachedRefStructure {
 export interface CachedCategory {
   id: number
   name: string
+  published?: boolean
 }
 
 export interface CachedGroup {
   id: number
   name: string
   categoryId: number
+  published?: boolean
 }
 
 export interface CachedBlueprint {
@@ -123,12 +125,14 @@ const CachedRefStructureSchema = z.object({
 const CachedCategorySchema = z.object({
   id: z.number(),
   name: z.string(),
+  published: z.boolean().optional(),
 })
 
 const CachedGroupSchema = z.object({
   id: z.number(),
   name: z.string(),
   categoryId: z.number(),
+  published: z.boolean().optional(),
 })
 
 const CachedBlueprintSchema = z.object({

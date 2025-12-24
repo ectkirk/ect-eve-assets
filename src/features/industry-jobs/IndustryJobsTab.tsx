@@ -12,7 +12,7 @@ import {
   PauseCircle,
 } from 'lucide-react'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
-import { useAssetStore } from '@/store/asset-store'
+import { usePriceStore } from '@/store/price-store'
 import { useIndustryJobsStore } from '@/store/industry-jobs-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useTabControls } from '@/context'
@@ -351,7 +351,7 @@ export function IndustryJobsTab() {
   const ownersRecord = useAuthStore((s) => s.owners)
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
 
-  const prices = useAssetStore((s) => s.prices)
+  const prices = usePriceStore((s) => s.jitaPrices)
   const itemsById = useIndustryJobsStore((s) => s.itemsById)
   const visibilityByOwner = useIndustryJobsStore((s) => s.visibilityByOwner)
   const jobsCount = itemsById.size

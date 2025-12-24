@@ -25,14 +25,20 @@ vi.mock('@/api/endpoints/assets', () => ({
 }))
 
 vi.mock('@/api/ref-client', () => ({
-  fetchPrices: vi.fn(),
   resolveTypes: vi.fn(),
+}))
+
+vi.mock('./price-store', () => ({
+  usePriceStore: {
+    getState: () => ({
+      ensureJitaPrices: vi.fn().mockResolvedValue(new Map()),
+    }),
+  },
 }))
 
 vi.mock('@/api/mutamarket-client', () => ({
   fetchAbyssalPrices: vi.fn(),
   isAbyssalTypeId: vi.fn(() => false),
-  hasCachedAbyssalPrice: vi.fn(() => true),
 }))
 
 vi.mock('@/lib/logger', () => ({
@@ -45,7 +51,6 @@ describe('asset-store', () => {
     useAssetStore.setState({
       assetsByOwner: [],
       assetNames: new Map(),
-      prices: new Map(),
       isUpdating: false,
       updateError: null,
       updateProgress: null,
@@ -62,7 +67,6 @@ describe('asset-store', () => {
       const state = useAssetStore.getState()
       expect(state.assetsByOwner).toEqual([])
       expect(state.assetNames).toBeInstanceOf(Map)
-      expect(state.prices).toBeInstanceOf(Map)
       expect(state.isUpdating).toBe(false)
       expect(state.updateError).toBeNull()
       expect(state.initialized).toBe(false)
@@ -124,7 +128,7 @@ describe('asset-store', () => {
       const { useAuthStore } = await import('./auth-store')
       const { esi } = await import('@/api/esi')
       const { getCharacterAssetNames } = await import('@/api/endpoints/assets')
-      const { fetchPrices, resolveTypes } = await import('@/api/ref-client')
+      const { resolveTypes } = await import('@/api/ref-client')
 
       const mockOwner = createMockOwner({
         id: 12345,
@@ -153,7 +157,6 @@ describe('asset-store', () => {
         notModified: false,
       })
       vi.mocked(getCharacterAssetNames).mockResolvedValue([])
-      vi.mocked(fetchPrices).mockResolvedValue(new Map([[34, 5]]))
       vi.mocked(resolveTypes).mockResolvedValue(new Map())
 
       useExpiryCacheStore.setState({
@@ -183,7 +186,7 @@ describe('asset-store', () => {
       const { useAuthStore } = await import('./auth-store')
       const { esi } = await import('@/api/esi')
       const { getCharacterAssetNames } = await import('@/api/endpoints/assets')
-      const { fetchPrices, resolveTypes } = await import('@/api/ref-client')
+      const { resolveTypes } = await import('@/api/ref-client')
 
       const mockOwner = createMockOwner({
         id: 12345,
@@ -201,7 +204,6 @@ describe('asset-store', () => {
         notModified: false,
       })
       vi.mocked(getCharacterAssetNames).mockResolvedValue([])
-      vi.mocked(fetchPrices).mockResolvedValue(new Map())
       vi.mocked(resolveTypes).mockResolvedValue(new Map())
 
       useExpiryCacheStore.setState({
@@ -280,7 +282,6 @@ describe('asset-store', () => {
       useAssetStore.setState({
         assetsByOwner: [{ owner: {} as never, assets: [] }],
         assetNames: new Map([[1, 'test']]),
-        prices: new Map([[34, 5]]),
         updateError: 'some error',
       })
 
@@ -289,7 +290,6 @@ describe('asset-store', () => {
       const state = useAssetStore.getState()
       expect(state.assetsByOwner).toHaveLength(0)
       expect(state.assetNames.size).toBe(0)
-      expect(state.prices.size).toBe(0)
       expect(state.updateError).toBeNull()
     })
   })

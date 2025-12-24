@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from 'react'
 import { useAuthStore, type Owner } from '@/store/auth-store'
 import { useAssetStore, type OwnerAssets } from '@/store/asset-store'
+import { usePriceStore } from '@/store/price-store'
 import { subscribe as subscribeToCache } from '@/store/reference-cache'
 
 export type { OwnerAssets }
@@ -12,7 +13,7 @@ export interface AssetDataResult {
   hasData: boolean
   hasError: boolean
   errorMessage: string | null
-  prices: Map<number, number>
+  priceVersion: number
   assetNames: Map<number, string>
   cacheVersion: number
   updateProgress: { current: number; total: number } | null
@@ -24,7 +25,7 @@ export function useAssetData(): AssetDataResult {
 
   const assetsByOwner = useAssetStore((s) => s.assetsByOwner)
   const assetNames = useAssetStore((s) => s.assetNames)
-  const prices = useAssetStore((s) => s.prices)
+  const priceVersion = usePriceStore((s) => s.priceVersion)
   const isUpdating = useAssetStore((s) => s.isUpdating)
   const updateError = useAssetStore((s) => s.updateError)
   const updateProgress = useAssetStore((s) => s.updateProgress)
@@ -43,7 +44,7 @@ export function useAssetData(): AssetDataResult {
     hasData,
     hasError: !!updateError,
     errorMessage: updateError,
-    prices,
+    priceVersion,
     assetNames,
     cacheVersion,
     updateProgress,

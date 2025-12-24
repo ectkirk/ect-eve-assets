@@ -9,6 +9,8 @@ export interface AssetRow {
   quantity: number
   locationId: number
   resolvedLocationId: number
+  systemId: number | undefined
+  regionId: number | undefined
   locationName: string
   systemName: string
   regionName: string
@@ -88,6 +90,8 @@ export function createAssetRow(
     quantity: ra.asset.quantity,
     locationId: ra.asset.location_id,
     resolvedLocationId: ra.rootLocationId,
+    systemId: ra.systemId,
+    regionId: ra.regionId,
     locationName: names.locationName,
     systemName: names.systemName,
     regionName: names.regionName,

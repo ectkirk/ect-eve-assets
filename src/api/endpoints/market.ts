@@ -40,16 +40,6 @@ export const EMPTY_PRICE_DATA: PriceData = {
 
 export const DEFAULT_REGION_ID = 10000002
 
-export const CAPITAL_GROUP_IDS = new Set([
-  30, // Titan
-  659, // Supercarrier
-  547, // Carrier
-  485, // Dreadnought
-  1538, // Force Auxiliary
-  4594, // Lancer Dreadnought
-  883, // Capital Industrial Ship (Rorqual)
-])
-
 export async function getCharacterOrders(
   characterId: number
 ): Promise<ESIMarketOrder[]> {

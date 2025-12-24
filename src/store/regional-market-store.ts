@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { DEFAULT_REGION_ID } from '@/api/endpoints/market'
 import { useExpiryCacheStore } from '@/store/expiry-cache-store'
 import { useStoreRegistry } from '@/store/store-registry'
+import { usePriceStore } from '@/store/price-store'
 import { logger } from '@/lib/logger'
 import {
   loadFromDB,
@@ -197,6 +198,8 @@ function cleanupLocationPrices(
   for (const typeId of emptyTypeIds) locationMap.delete(typeId)
 }
 
+let initPromise: Promise<void> | null = null
+
 export const useRegionalMarketStore = create<RegionalMarketStore>(
   (set, get) => ({
     pricesByType: new Map(),
@@ -212,31 +215,40 @@ export const useRegionalMarketStore = create<RegionalMarketStore>(
 
     init: async () => {
       if (get().initialized) return
+      if (initPromise) return initPromise
 
-      try {
-        const { prices, tracked, structures } = await loadFromDB()
-        const hydrated = hydrateFromRecords(prices, tracked, structures)
+      initPromise = (async () => {
+        try {
+          const { prices, tracked, structures } = await loadFromDB()
+          const hydrated = hydrateFromRecords(prices, tracked, structures)
 
-        set({ ...hydrated, initialized: true })
+          set({ ...hydrated, initialized: true })
 
-        logger.info('Regional market store initialized', {
-          module: 'RegionalMarketStore',
-          types: hydrated.pricesByType.size,
-          tracked: hydrated.trackedTypes.size,
-          structures: hydrated.trackedStructures.size,
-        })
-
-        get().update()
-      } catch (err) {
-        logger.error(
-          'Failed to load regional market from DB',
-          err instanceof Error ? err : undefined,
-          {
-            module: 'RegionalMarketStore',
+          if (hydrated.pricesByType.size > 0) {
+            usePriceStore.getState().setMarketPrices(hydrated.pricesByType)
           }
-        )
-        set({ initialized: true })
-      }
+
+          logger.info('Regional market store initialized', {
+            module: 'RegionalMarketStore',
+            types: hydrated.pricesByType.size,
+            tracked: hydrated.trackedTypes.size,
+            structures: hydrated.trackedStructures.size,
+          })
+
+          get().update()
+        } catch (err) {
+          logger.error(
+            'Failed to load regional market from DB',
+            err instanceof Error ? err : undefined,
+            {
+              module: 'RegionalMarketStore',
+            }
+          )
+          set({ initialized: true })
+        }
+      })()
+
+      return initPromise
     },
 
     update: async () => {
@@ -288,6 +300,8 @@ export const useRegionalMarketStore = create<RegionalMarketStore>(
           trackedStructures: result.trackedStructures,
           isUpdating: false,
         })
+
+        usePriceStore.getState().setMarketPrices(result.sellPricesByType)
 
         if (get().trackedTypes.size > 0 || get().trackedStructures.size > 0) {
           useExpiryCacheStore
@@ -562,6 +576,7 @@ export const useRegionalMarketStore = create<RegionalMarketStore>(
 
     clear: async () => {
       await clearDB()
+      initPromise = null
       useExpiryCacheStore.getState().clearForOwner(OWNER_KEY)
       set({
         pricesByType: new Map(),

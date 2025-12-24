@@ -97,7 +97,7 @@ export function StructuresTab() {
   const updateError = structureError || starbaseError
   const initialized = structuresInitialized && starbasesInitialized
 
-  const { assetsByOwner, assetNames, prices } = useAssetData()
+  const { assetsByOwner, assetNames, priceVersion } = useAssetData()
 
   useEffect(() => {
     initStructures()
@@ -145,8 +145,9 @@ export function StructuresTab() {
   const { structureAssetMap, structuresTotal: structureTotalValue } =
     useMemo(() => {
       void cacheVersion
-      return calculateStructureValues(assetsByOwner, prices, selectedOwnerIds)
-    }, [assetsByOwner, prices, selectedOwnerIds, cacheVersion])
+      void priceVersion
+      return calculateStructureValues(assetsByOwner, selectedOwnerIds)
+    }, [assetsByOwner, priceVersion, selectedOwnerIds, cacheVersion])
 
   const [fittingDialogOpen, setFittingDialogOpen] = useState(false)
   const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null)

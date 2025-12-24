@@ -7,10 +7,35 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { useSortable, SortableHeader } from '@/hooks'
+import {
+  useSortable,
+  SortableHeader,
+  useRowSelection,
+  useBuybackSelection,
+} from '@/hooks'
 import { useColumnSettings } from '@/hooks'
-import type { TreeNode } from '@/lib/tree-types'
+import type { TreeNode, TreeNodeType } from '@/lib/tree-types'
 import { flattenTree, getAllNodeIds } from '@/lib/tree-builder'
+
+const LOCATION_NODE_TYPES: Set<TreeNodeType> = new Set([
+  'station',
+  'office',
+  'division',
+])
+
+function collectDescendantItems(node: TreeNode): TreeNode[] {
+  const items: TreeNode[] = []
+  const stack = [...node.children]
+  while (stack.length > 0) {
+    const current = stack.pop()!
+    if (current.nodeType === 'item' || current.nodeType === 'ship') {
+      items.push(current)
+    }
+    stack.push(...current.children)
+  }
+  return items
+}
+import { getType } from '@/store/reference-cache'
 import { cn } from '@/lib/utils'
 import { useTabControls } from '@/context'
 import { FittingDialog } from '@/components/dialogs/FittingDialog'
@@ -18,6 +43,8 @@ import {
   type TreeSortColumn,
   type TreeTableProps,
   sortTreeNodes,
+  formatNumber,
+  formatVolume,
   TREE_COLUMNS,
   COLUMN_STYLES,
 } from './types'
@@ -54,6 +81,89 @@ export function TreeTable({
     () => flattenTree(sortedNodes, expandedNodes),
     [sortedNodes, expandedNodes]
   )
+
+  const getNodeId = useCallback((node: TreeNode) => node.id, [])
+  const getCopyData = useCallback((node: TreeNode) => {
+    const isItem = node.nodeType === 'item' || node.nodeType === 'ship'
+    const name = node.typeId
+      ? (getType(node.typeId)?.name ?? node.name)
+      : node.name
+    const quantity = node.quantity ?? node.totalCount
+
+    if (isItem) {
+      return { name, quantity, isItem: true }
+    }
+
+    const fullRowData = [
+      node.name,
+      node.regionName ?? '-',
+      node.totalCount.toLocaleString(),
+      node.totalValue > 0 ? formatNumber(node.totalValue) + ' ISK' : '-',
+      node.totalVolume > 0 ? formatVolume(node.totalVolume) : '-',
+    ].join('\t')
+
+    return { name, quantity, isItem: false, fullRowData }
+  }, [])
+  const { selectedIds, handleRowClick, selectedCount } = useRowSelection({
+    items: flatRows,
+    getId: getNodeId,
+    getCopyData,
+    containerRef: tableContainerRef,
+  })
+
+  const { buybackItems, expandedBuybackIds, hasLocationSelected } =
+    useMemo(() => {
+      const itemNodes: TreeNode[] = []
+      const expandedIds = new Set(selectedIds)
+      let hasLocation = false
+
+      for (const node of flatRows) {
+        if (node.nodeType === 'item' || node.nodeType === 'ship') {
+          itemNodes.push(node)
+        }
+        if (
+          selectedIds.has(node.id) &&
+          LOCATION_NODE_TYPES.has(node.nodeType)
+        ) {
+          hasLocation = true
+          const descendants = collectDescendantItems(node)
+          for (const desc of descendants) {
+            expandedIds.add(desc.id)
+            itemNodes.push(desc)
+          }
+        }
+      }
+
+      const seenIds = new Set<string>()
+      const items = itemNodes
+        .filter((node) => {
+          if (seenIds.has(node.id)) return false
+          seenIds.add(node.id)
+          return true
+        })
+        .map((node) => ({
+          id: node.id,
+          name: node.typeId
+            ? (getType(node.typeId)?.name ?? node.name)
+            : node.name,
+          quantity: node.quantity ?? node.totalCount,
+          locationId: node.locationId,
+          systemId: node.systemId,
+          regionId: node.regionId,
+        }))
+
+      return {
+        buybackItems: items,
+        expandedBuybackIds: expandedIds,
+        hasLocationSelected: hasLocation,
+      }
+    }, [selectedIds, flatRows])
+
+  const { canSellToBuyback, handleSellToBuyback } = useBuybackSelection({
+    selectedIds: expandedBuybackIds,
+    items: buybackItems,
+    minItems: hasLocationSelected ? 1 : 2,
+  })
 
   const rowVirtualizer = useVirtualizer({
     count: flatRows.length,
@@ -119,92 +229,104 @@ export function TreeTable({
   }
 
   return (
-    <div
-      ref={tableContainerRef}
-      className="h-full rounded-lg border border-border bg-surface-secondary/30 overflow-auto"
-    >
-      <Table style={{ tableLayout: 'fixed', width: '100%' }}>
-        <TableHeader className="sticky top-0 z-10 bg-surface-secondary">
-          <TableRow className="bg-surface-secondary hover:bg-surface-secondary">
-            {visibleColumns.map((colId) => {
-              const col = TREE_COLUMNS.find((c) => c.id === colId)
-              if (!col) return null
-              return (
-                <SortableHeader
-                  key={colId}
-                  column={colId as TreeSortColumn}
-                  label={col.label}
-                  sortColumn={sortColumn}
-                  sortDirection={sortDirection}
-                  onSort={handleSort}
-                  className={cn(
-                    COLUMN_STYLES[colId]?.width,
-                    COLUMN_STYLES[colId]?.align
-                  )}
-                />
-              )
-            })}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {flatRows.length > 0 ? (
-            <>
-              {rowVirtualizer.getVirtualItems().length > 0 && (
-                <tr>
-                  <td
-                    colSpan={visibleColumns.length}
-                    style={{
-                      height: rowVirtualizer.getVirtualItems()[0]?.start ?? 0,
-                    }}
-                  />
-                </tr>
-              )}
-              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                const node = flatRows[virtualRow.index]
-                if (!node) return null
+    <div className="flex flex-col h-full">
+      {selectedCount > 0 && (
+        <div className="px-3 py-1.5 text-xs text-content-secondary bg-surface-secondary/50 border-b border-border flex-shrink-0">
+          {selectedCount} selected — Ctrl+C to copy
+        </div>
+      )}
+      <div
+        ref={tableContainerRef}
+        tabIndex={0}
+        className="flex-1 min-h-0 rounded-lg border border-border bg-surface-secondary/30 overflow-auto outline-none focus:ring-1 focus:ring-accent/50"
+      >
+        <Table style={{ tableLayout: 'fixed', width: '100%' }}>
+          <TableHeader className="sticky top-0 z-10 bg-surface-secondary">
+            <TableRow className="bg-surface-secondary hover:bg-surface-secondary">
+              {visibleColumns.map((colId) => {
+                const col = TREE_COLUMNS.find((c) => c.id === colId)
+                if (!col) return null
                 return (
-                  <TreeRow
-                    key={node.id}
-                    node={node}
-                    virtualIndex={virtualRow.index}
-                    isExpanded={expandedNodes.has(node.id)}
-                    onToggleExpand={onToggleExpand}
-                    onViewFitting={handleViewFitting}
-                    visibleColumns={visibleColumns}
+                  <SortableHeader
+                    key={colId}
+                    column={colId as TreeSortColumn}
+                    label={col.label}
+                    sortColumn={sortColumn}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                    className={cn(
+                      COLUMN_STYLES[colId]?.width,
+                      COLUMN_STYLES[colId]?.align
+                    )}
                   />
                 )
               })}
-              {rowVirtualizer.getVirtualItems().length > 0 && (
-                <tr>
-                  <td
-                    colSpan={visibleColumns.length}
-                    style={{
-                      height:
-                        rowVirtualizer.getTotalSize() -
-                        (rowVirtualizer.getVirtualItems().at(-1)?.end ?? 0),
-                    }}
-                  />
-                </tr>
-              )}
-            </>
-          ) : (
-            <TableRow>
-              <TableCell
-                colSpan={visibleColumns.length}
-                className="h-24 text-center"
-              >
-                No items found.
-              </TableCell>
             </TableRow>
-          )}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {flatRows.length > 0 ? (
+              <>
+                {rowVirtualizer.getVirtualItems().length > 0 && (
+                  <tr>
+                    <td
+                      colSpan={visibleColumns.length}
+                      style={{
+                        height: rowVirtualizer.getVirtualItems()[0]?.start ?? 0,
+                      }}
+                    />
+                  </tr>
+                )}
+                {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                  const node = flatRows[virtualRow.index]
+                  if (!node) return null
+                  return (
+                    <TreeRow
+                      key={node.id}
+                      node={node}
+                      virtualIndex={virtualRow.index}
+                      isExpanded={expandedNodes.has(node.id)}
+                      isSelected={selectedIds.has(node.id)}
+                      showBuybackOption={canSellToBuyback}
+                      onToggleExpand={onToggleExpand}
+                      onRowClick={handleRowClick}
+                      onViewFitting={handleViewFitting}
+                      onSellToBuyback={handleSellToBuyback}
+                      visibleColumns={visibleColumns}
+                    />
+                  )
+                })}
+                {rowVirtualizer.getVirtualItems().length > 0 && (
+                  <tr>
+                    <td
+                      colSpan={visibleColumns.length}
+                      style={{
+                        height:
+                          rowVirtualizer.getTotalSize() -
+                          (rowVirtualizer.getVirtualItems().at(-1)?.end ?? 0),
+                      }}
+                    />
+                  </tr>
+                )}
+              </>
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={visibleColumns.length}
+                  className="h-24 text-center"
+                >
+                  No items found.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
 
-      <FittingDialog
-        open={fittingDialogOpen}
-        onOpenChange={setFittingDialogOpen}
-        shipNode={selectedShipNode}
-      />
+        <FittingDialog
+          open={fittingDialogOpen}
+          onOpenChange={setFittingDialogOpen}
+          shipNode={selectedShipNode}
+        />
+      </div>
     </div>
   )
 }

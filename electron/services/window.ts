@@ -130,6 +130,41 @@ export interface WindowManager {
   mainWindow: BrowserWindow | null
   manualMaximized: boolean
   restoreBounds: Electron.Rectangle | null
+  normalBounds: Electron.Rectangle | null
+  isToggling: boolean
+}
+
+const DEFAULT_BOUNDS = { x: 100, y: 100, width: 1800, height: 900 }
+
+export function toggleMaximize(manager: WindowManager): void {
+  if (!manager.mainWindow || manager.isToggling) return
+
+  manager.isToggling = true
+  try {
+    if (manager.manualMaximized) {
+      const restoreBounds =
+        manager.restoreBounds ?? manager.normalBounds ?? DEFAULT_BOUNDS
+      const validBounds = getValidatedWindowState(restoreBounds)
+
+      if (manager.mainWindow.isMaximized()) {
+        manager.mainWindow.unmaximize()
+      }
+      manager.mainWindow.setBounds(validBounds)
+      manager.manualMaximized = false
+      manager.normalBounds = restoreBounds
+      manager.mainWindow.webContents.send('window:maximizeChange', false)
+    } else {
+      const currentBounds = manager.mainWindow.getBounds()
+      manager.normalBounds = currentBounds
+      manager.restoreBounds = currentBounds
+      const display = screen.getDisplayMatching(currentBounds)
+      manager.mainWindow.setBounds(display.workArea)
+      manager.manualMaximized = true
+      manager.mainWindow.webContents.send('window:maximizeChange', true)
+    }
+  } finally {
+    manager.isToggling = false
+  }
 }
 
 export function createWindow(
@@ -160,24 +195,25 @@ export function createWindow(
     backgroundColor: '#0f172a',
   })
 
+  manager.normalBounds = manager.mainWindow.getBounds()
+
   if (savedState.isMaximized) {
     const display = screen.getDisplayMatching(manager.mainWindow.getBounds())
-    manager.restoreBounds = manager.mainWindow.getBounds()
+    manager.restoreBounds = manager.normalBounds
     manager.mainWindow.setBounds(display.workArea)
     manager.manualMaximized = true
   }
 
-  let normalBounds = manager.mainWindow.getBounds()
   let saveTimeout: NodeJS.Timeout | null = null
 
   const saveCurrentState = () => {
     if (!manager.mainWindow) return
     const isMax = manager.manualMaximized || manager.mainWindow.isMaximized()
     if (!isMax) {
-      normalBounds = manager.mainWindow.getBounds()
+      manager.normalBounds = manager.mainWindow.getBounds()
     }
     saveWindowState({
-      ...normalBounds,
+      ...(manager.normalBounds ?? DEFAULT_WINDOW_STATE),
       isMaximized: isMax,
     })
   }
@@ -294,20 +330,23 @@ function setupKeyboardShortcuts(mainWindow: BrowserWindow): void {
 function setupWindowEvents(manager: WindowManager): void {
   if (!manager.mainWindow) return
 
-  const normalBounds = manager.mainWindow.getBounds()
-
   manager.mainWindow.on('maximize', () => {
-    if (!manager.manualMaximized && manager.mainWindow) {
-      manager.restoreBounds = normalBounds
-    }
-    manager.manualMaximized = true
-    manager.mainWindow?.webContents.send('window:maximizeChange', true)
+    if (manager.isToggling) return
+    if (!manager.mainWindow) return
+
+    manager.isToggling = true
+    manager.mainWindow.unmaximize()
+    setTimeout(() => {
+      manager.isToggling = false
+      toggleMaximize(manager)
+    }, 50)
   })
 
   manager.mainWindow.on('unmaximize', () => {
-    manager.manualMaximized = false
-    manager.restoreBounds = null
-    manager.mainWindow?.webContents.send('window:maximizeChange', false)
+    if (manager.isToggling) return
+    if (manager.manualMaximized) {
+      toggleMaximize(manager)
+    }
   })
 
   manager.mainWindow.on('minimize', () => {

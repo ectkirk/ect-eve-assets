@@ -74,7 +74,6 @@ export function useResolvedAssets(): ResolvedAssetsResult {
     let assets =
       assetData.assetsByOwner.length > 0
         ? resolveAllAssets(assetData.assetsByOwner, {
-            prices: assetData.prices,
             assetNames: assetData.assetNames,
             ownedStructureIds,
             starbaseMoonIds,
@@ -97,9 +96,7 @@ export function useResolvedAssets(): ResolvedAssetsResult {
         for (const orderId of orderIds) {
           const stored = ordersById.get(orderId)
           if (stored && !stored.item.is_buy_order) {
-            assets.push(
-              resolveMarketOrder(stored.item, owner, assetData.prices)
-            )
+            assets.push(resolveMarketOrder(stored.item, owner))
           }
         }
       }
@@ -129,9 +126,7 @@ export function useResolvedAssets(): ResolvedAssetsResult {
 
           for (const item of items) {
             if (item.is_included) {
-              assets.push(
-                resolveContractItem(contract, item, owner, assetData.prices)
-              )
+              assets.push(resolveContractItem(contract, item, owner))
             }
           }
         }
@@ -150,7 +145,7 @@ export function useResolvedAssets(): ResolvedAssetsResult {
           const job = stored.item
           if (job.status !== 'active' && job.status !== 'ready') continue
 
-          assets.push(resolveIndustryJob(job, owner, assetData.prices))
+          assets.push(resolveIndustryJob(job, owner))
         }
       }
     }
@@ -158,7 +153,7 @@ export function useResolvedAssets(): ResolvedAssetsResult {
     return assets
   }, [
     assetData.assetsByOwner,
-    assetData.prices,
+    assetData.priceVersion,
     assetData.assetNames,
     ownedStructureIds,
     starbaseMoonIds,

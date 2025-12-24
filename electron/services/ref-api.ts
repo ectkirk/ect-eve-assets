@@ -158,9 +158,6 @@ export function registerRefAPIHandlers(): void {
   ipcMain.handle('ref:blueprints', () =>
     refGet('/reference/blueprints', 'ref:blueprints')
   )
-  ipcMain.handle('ref:marketPlex', () =>
-    refGet('/market/plex', 'ref:marketPlex')
-  )
   ipcMain.handle('ref:buybackInfo', () =>
     refGet('/buyback/info', 'ref:buybackInfo')
   )
@@ -263,18 +260,57 @@ export function registerRefAPIHandlers(): void {
     })
   }
 
-  ipcMain.handle('ref:marketJita', async (_event, typeIds: unknown) => {
-    if (!validateIds(typeIds, 1000)) {
-      return { error: 'Invalid typeIds array (max 1000)' }
+  ipcMain.handle('ref:marketJita', async (_event, params: unknown) => {
+    if (typeof params !== 'object' || params === null) {
+      return { error: 'Invalid params' }
     }
-    return refPost('/market/jita', { typeIds }, 'ref:marketJita')
-  })
+    const p = params as Record<string, unknown>
 
-  ipcMain.handle('ref:marketContracts', async (_event, typeIds: unknown) => {
-    if (!validateIds(typeIds, 100)) {
-      return { error: 'Invalid typeIds array (max 100)' }
+    const body: {
+      typeIds?: number[]
+      itemIds?: number[]
+      contractTypeIds?: number[]
+      includePlex?: boolean
+    } = {}
+
+    if (Array.isArray(p.typeIds) && p.typeIds.length > 0) {
+      if (!validateIds(p.typeIds, 1000)) {
+        return { error: 'Invalid typeIds array (max 1000)' }
+      }
+      body.typeIds = p.typeIds
     }
-    return refPost('/market/contracts', { typeIds }, 'ref:marketContracts')
+
+    if (Array.isArray(p.itemIds) && p.itemIds.length > 0) {
+      if (!validateIds(p.itemIds, 1000)) {
+        return { error: 'Invalid itemIds array (max 1000)' }
+      }
+      body.itemIds = p.itemIds
+    }
+
+    if (Array.isArray(p.contractTypeIds) && p.contractTypeIds.length > 0) {
+      if (!validateIds(p.contractTypeIds, 100)) {
+        return { error: 'Invalid contractTypeIds array (max 100)' }
+      }
+      body.contractTypeIds = p.contractTypeIds
+    }
+
+    if (p.includePlex === true) {
+      body.includePlex = true
+    }
+
+    if (
+      !body.typeIds &&
+      !body.itemIds &&
+      !body.contractTypeIds &&
+      !body.includePlex
+    ) {
+      return {
+        error:
+          'At least one of typeIds, itemIds, contractTypeIds, or includePlex required',
+      }
+    }
+
+    return refPost('/market/jita', body, 'ref:marketJita')
   })
 
   ipcMain.handle('ref:market', async (_event, params: unknown) => {
@@ -360,6 +396,34 @@ export function registerRefAPIHandlers(): void {
       return await response.json()
     } catch (err) {
       logger.error('ref:buybackCalculator fetch failed', err, {
+        module: 'RefAPI',
+      })
+      return { error: String(err) }
+    }
+  })
+
+  ipcMain.handle('ref:contractsSearch', async (_event, params: unknown) => {
+    if (typeof params !== 'object' || params === null) {
+      return { error: 'Invalid params' }
+    }
+
+    await waitForRefRateLimit()
+    try {
+      const response = await fetchRefWithRetry(
+        `${REF_API_BASE}/contracts/search`,
+        {
+          method: 'POST',
+          headers: getRefHeaders('json'),
+          body: JSON.stringify(params),
+        }
+      )
+      if (!response.ok) {
+        const errorText = await response.text()
+        return { error: `HTTP ${response.status}: ${errorText}` }
+      }
+      return await response.json()
+    } catch (err) {
+      logger.error('ref:contractsSearch fetch failed', err, {
         module: 'RefAPI',
       })
       return { error: String(err) }

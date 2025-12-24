@@ -12,7 +12,6 @@ import {
   clearCoreReferenceCache,
   clearLocationsCache,
   clearStructuresCache,
-  clearAbyssalsCache,
   clearUniverseCache,
 } from '@/store/reference-cache'
 import {
@@ -22,7 +21,7 @@ import {
 } from '@/api/ref-client'
 import { useStoreRegistry } from '@/store/store-registry'
 import { useRegionalMarketStore } from '@/store/regional-market-store'
-import { useESIPricesStore } from '@/store/esi-prices-store'
+import { usePriceStore } from '@/store/price-store'
 import { useExpiryCacheStore } from '@/store/expiry-cache-store'
 import { useDivisionsStore } from '@/store/divisions-store'
 import { logger } from '@/lib/logger'
@@ -82,11 +81,12 @@ const CACHE_OPTIONS: CacheOption[] = [
     clear: clearStructuresCache,
   },
   {
-    id: 'abyssals',
-    label: 'Abyssal Prices',
+    id: 'prices',
+    label: 'All Cached Prices (Jita, Abyssal, ESI)',
     group: 'reference',
     requiresReload: false,
-    clear: clearAbyssalsCache,
+    clear: () => usePriceStore.getState().clear(),
+    refetch: () => usePriceStore.getState().init(),
   },
   {
     id: 'assets',
@@ -108,12 +108,10 @@ const CACHE_OPTIONS: CacheOption[] = [
     clear: async () => {
       await registry().clearByNames(['market orders'])
       await useRegionalMarketStore.getState().clear()
-      await useESIPricesStore.getState().clear()
     },
     refetch: async () => {
       await registry().refetchByNames(['market orders'])
       await useRegionalMarketStore.getState().init()
-      await useESIPricesStore.getState().update(true)
     },
   },
   {

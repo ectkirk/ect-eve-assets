@@ -1,4 +1,11 @@
-import { useMemo, useState, useEffect, useRef, Fragment } from 'react'
+import {
+  useMemo,
+  useState,
+  useEffect,
+  useRef,
+  Fragment,
+  useCallback,
+} from 'react'
 import {
   useReactTable,
   getCoreRowModel,
@@ -11,8 +18,10 @@ import {
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { Loader2 } from 'lucide-react'
 import { isAbyssalTypeId, getMutamarketUrl } from '@/api/mutamarket-client'
-import { CategoryIds, hasAbyssal } from '@/store/reference-cache'
+import { CategoryIds, getType } from '@/store/reference-cache'
+import { usePriceStore } from '@/store/price-store'
 import { useResolvedAssets } from '@/hooks/useResolvedAssets'
+import { useRowSelection, useBuybackSelection } from '@/hooks'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -238,6 +247,44 @@ export function AssetsTab() {
   const tableContainerRef = useRef<HTMLDivElement>(null)
   const { rows } = table.getRowModel()
 
+  const sortedData = useMemo(() => rows.map((r) => r.original), [rows])
+  const getRowId = useCallback(
+    (row: AssetRow) => `${row.itemId}-${row.locationId}`,
+    []
+  )
+  const getCopyData = useCallback(
+    (row: AssetRow) => ({
+      name: getType(row.typeId)?.name ?? row.typeName,
+      quantity: row.quantity,
+      isItem: true,
+    }),
+    []
+  )
+  const { selectedIds, handleRowClick, selectedCount } = useRowSelection({
+    items: sortedData,
+    getId: getRowId,
+    getCopyData,
+    containerRef: tableContainerRef,
+  })
+
+  const buybackItems = useMemo(
+    () =>
+      sortedData.map((row) => ({
+        id: getRowId(row),
+        name: getType(row.typeId)?.name ?? row.typeName,
+        quantity: row.quantity,
+        locationId: row.resolvedLocationId,
+        systemId: row.systemId,
+        regionId: row.regionId,
+      })),
+    [sortedData, getRowId]
+  )
+
+  const { canSellToBuyback, handleSellToBuyback } = useBuybackSelection({
+    selectedIds,
+    items: buybackItems,
+  })
+
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => tableContainerRef.current,
@@ -305,9 +352,15 @@ export function AssetsTab() {
 
   return (
     <div className="flex flex-col h-full">
+      {selectedCount > 0 && (
+        <div className="px-3 py-1.5 text-xs text-content-secondary bg-surface-secondary/50 border-b border-border">
+          {selectedCount} selected — Ctrl+C to copy
+        </div>
+      )}
       <div
         ref={tableContainerRef}
-        className="flex-1 min-h-0 rounded-lg border border-border bg-surface-secondary/30 overflow-auto"
+        tabIndex={0}
+        className="flex-1 min-h-0 rounded-lg border border-border bg-surface-secondary/30 overflow-auto outline-none focus:ring-1 focus:ring-accent/50"
       >
         <div className="grid" style={{ gridTemplateColumns }}>
           <div className="contents">
@@ -346,12 +399,16 @@ export function AssetsTab() {
                 if (!row) return null
                 const modeFlags = row.original.modeFlags
                 const isAbyssalResolved =
-                  row.original.isAbyssal && hasAbyssal(row.original.itemId)
+                  row.original.isAbyssal &&
+                  usePriceStore.getState().hasAbyssalPrice(row.original.itemId)
+                const rowId = getRowId(row.original)
+                const isRowSelected = selectedIds.has(rowId)
                 const rowContent = (
                   <div
                     key={row.id}
                     data-index={virtualRow.index}
-                    className="contents group"
+                    className="contents group cursor-pointer select-none"
+                    onClick={(e) => handleRowClick(rowId, e)}
                   >
                     {row.getVisibleCells().map((cell) => (
                       <div
@@ -359,11 +416,22 @@ export function AssetsTab() {
                         className={cn(
                           'py-2 text-sm border-b border-border/50 group-hover:bg-surface-tertiary/50 flex items-center',
                           cell.column.id === 'ownerName' ? 'px-2' : 'px-4',
-                          modeFlags.isActiveShip && 'bg-row-active-ship',
-                          modeFlags.isContract && 'bg-row-contract',
-                          modeFlags.isMarketOrder && 'bg-row-order',
-                          modeFlags.isIndustryJob && 'bg-row-industry',
-                          modeFlags.isOwnedStructure && 'bg-row-structure'
+                          isRowSelected && 'bg-accent/20',
+                          !isRowSelected &&
+                            modeFlags.isActiveShip &&
+                            'bg-row-active-ship',
+                          !isRowSelected &&
+                            modeFlags.isContract &&
+                            'bg-row-contract',
+                          !isRowSelected &&
+                            modeFlags.isMarketOrder &&
+                            'bg-row-order',
+                          !isRowSelected &&
+                            modeFlags.isIndustryJob &&
+                            'bg-row-industry',
+                          !isRowSelected &&
+                            modeFlags.isOwnedStructure &&
+                            'bg-row-structure'
                         )}
                       >
                         {flexRender(
@@ -374,26 +442,34 @@ export function AssetsTab() {
                     ))}
                   </div>
                 )
-                if (isAbyssalResolved) {
+                const showBuybackOption = isRowSelected && canSellToBuyback
+                if (isAbyssalResolved || showBuybackOption) {
                   return (
                     <ContextMenu key={row.id}>
                       <ContextMenuTrigger asChild>
                         {rowContent}
                       </ContextMenuTrigger>
                       <ContextMenuContent>
-                        <ContextMenuItem
-                          onClick={() =>
-                            window.open(
-                              getMutamarketUrl(
-                                row.original.typeName,
-                                row.original.itemId
-                              ),
-                              '_blank'
-                            )
-                          }
-                        >
-                          Open in Mutamarket
-                        </ContextMenuItem>
+                        {showBuybackOption && (
+                          <ContextMenuItem onClick={handleSellToBuyback}>
+                            Sell to buyback
+                          </ContextMenuItem>
+                        )}
+                        {isAbyssalResolved && (
+                          <ContextMenuItem
+                            onClick={() =>
+                              window.open(
+                                getMutamarketUrl(
+                                  row.original.typeName,
+                                  row.original.itemId
+                                ),
+                                '_blank'
+                              )
+                            }
+                          >
+                            Open in Mutamarket
+                          </ContextMenuItem>
+                        )}
                       </ContextMenuContent>
                     </ContextMenu>
                   )

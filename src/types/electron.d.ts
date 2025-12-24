@@ -151,18 +151,6 @@ declare global {
     error?: string
   }
 
-  interface RefMarketJitaResult {
-    items?: Record<string, number | null>
-    error?: string
-  }
-
-  interface RefMarketPlexResult {
-    typeId?: number
-    lowestSell?: number | null
-    highestBuy?: number | null
-    error?: string
-  }
-
   interface RefMarketContractItem {
     price: number | null
     salesCount: number
@@ -170,8 +158,87 @@ declare global {
     hasSufficientData: boolean
   }
 
-  interface RefMarketContractsResult {
-    items?: Record<string, RefMarketContractItem>
+  interface RefMarketJitaParams {
+    typeIds?: number[]
+    itemIds?: number[]
+    contractTypeIds?: number[]
+    includePlex?: boolean
+  }
+
+  interface RefMarketJitaResult {
+    items?: Record<string, number | null>
+    mutaItems?: Record<string, number | null>
+    contractItems?: Record<string, RefMarketContractItem>
+    plex?: {
+      typeId: number
+      lowestSell: number | null
+      highestBuy: number | null
+    }
+    error?: string
+  }
+
+  interface ContractSearchParams {
+    mode: 'buySell' | 'courier'
+    searchText?: string
+    regionId?: number | null
+    systemId?: number | null
+    contractType?:
+      | 'want_to_sell'
+      | 'want_to_buy'
+      | 'auction'
+      | 'exclude_want_to_buy'
+    categoryId?: number | null
+    groupId?: number | null
+    typeId?: number | null
+    excludeMultiple?: boolean
+    priceMin?: number | null
+    priceMax?: number | null
+    securityHigh?: boolean
+    securityLow?: boolean
+    securityNull?: boolean
+    issuer?: string
+    page?: number
+    pageSize?: number
+    sortBy?: 'price' | 'dateIssued' | 'dateExpired'
+    sortDirection?: 'asc' | 'desc'
+  }
+
+  interface ContractSearchTopItem {
+    typeId?: number
+    itemId?: number
+    typeName: string
+    quantity: number
+    value: number
+  }
+
+  interface ContractSearchContract {
+    contractId: number
+    type: 'item_exchange' | 'auction' | 'courier'
+    price: number
+    buyout?: number
+    reward?: number
+    collateral?: number
+    volume?: number
+    title: string
+    issuerCharacterId: number
+    issuerCorporationId: number
+    regionName: string
+    regionId: number
+    systemName: string
+    systemId: number
+    securityStatus: number | null
+    dateIssued: string
+    dateExpired: string
+    itemCount: number
+    topItems: ContractSearchTopItem[]
+  }
+
+  interface ContractSearchResult {
+    contracts?: ContractSearchContract[]
+    total?: number
+    page?: number
+    pageSize?: number
+    totalPages?: number
     error?: string
   }
 
@@ -408,9 +475,7 @@ declare global {
     refMoons: (ids: number[]) => Promise<RefMoonsResult>
     refShipSlots: (ids: number[]) => Promise<RefShipsResult>
     refMarket: (params: RefMarketParams) => Promise<RefMarketResult>
-    refMarketJita: (typeIds: number[]) => Promise<RefMarketJitaResult>
-    refMarketPlex: () => Promise<RefMarketPlexResult>
-    refMarketContracts: (typeIds: number[]) => Promise<RefMarketContractsResult>
+    refMarketJita: (params: RefMarketJitaParams) => Promise<RefMarketJitaResult>
     refBlueprints: () => Promise<BlueprintsResult>
     refBuybackCalculate: (
       text: string,
@@ -418,6 +483,9 @@ declare global {
     ) => Promise<BuybackResult>
     refBuybackCalculator: (text: string) => Promise<BuybackCalculatorResult>
     refBuybackInfo: () => Promise<BuybackInfoResult>
+    refContractsSearch: (
+      params: ContractSearchParams
+    ) => Promise<ContractSearchResult>
     mutamarketModule: (
       itemId: number,
       typeId?: number
@@ -444,6 +512,7 @@ declare global {
     onWindowMinimizeChange: (
       callback: (isMinimized: boolean) => void
     ) => () => void
+    clearStorageAndRestart: () => Promise<void>
     esi: ESIAPI
   }
 

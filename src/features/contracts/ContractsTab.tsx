@@ -10,7 +10,7 @@ import {
 } from '@/store/contracts-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
-import { useAssetStore } from '@/store/asset-store'
+import { usePriceStore } from '@/store/price-store'
 import { cn, formatNumber } from '@/lib/utils'
 import { ContractsTable } from './ContractsTable'
 import {
@@ -25,12 +25,10 @@ function DirectionGroupRow({
   group,
   isExpanded,
   onToggle,
-  prices,
 }: {
   group: DirectionGroup
   isExpanded: boolean
   onToggle: () => void
-  prices: Map<number, number>
 }) {
   const colorClass =
     group.direction === 'in' ? 'text-status-positive' : 'text-status-warning'
@@ -57,7 +55,7 @@ function DirectionGroupRow({
       </button>
       {isExpanded && (
         <div className="border-t border-border/50 bg-surface/30 px-4 pb-2">
-          <ContractsTable contracts={group.contracts} prices={prices} />
+          <ContractsTable contracts={group.contracts} />
         </div>
       )}
     </div>
@@ -68,7 +66,7 @@ export function ContractsTab() {
   const ownersRecord = useAuthStore((s) => s.owners)
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
 
-  const prices = useAssetStore((s) => s.prices)
+  const priceVersion = usePriceStore((s) => s.priceVersion)
   const contractsUpdating = useContractsStore((s) => s.isUpdating)
   const updateError = useContractsStore((s) => s.updateError)
   const init = useContractsStore((s) => s.init)
@@ -192,8 +190,7 @@ export function ContractsTab() {
           contractWithItems,
           owner.type,
           owner.id,
-          isIssuer,
-          prices
+          isIssuer
         )
 
         if (isCourier) {
@@ -255,7 +252,14 @@ export function ContractsTab() {
             }
           : null,
     }
-  }, [contractsByOwner, cacheVersion, owners, prices, search, selectedSet])
+  }, [
+    contractsByOwner,
+    cacheVersion,
+    owners,
+    priceVersion,
+    search,
+    selectedSet,
+  ])
 
   const toggleDirection = useCallback((direction: string) => {
     setExpandedDirections((prev) => {
@@ -381,7 +385,6 @@ export function ContractsTab() {
                   group={group}
                   isExpanded={expandedDirections.has(group.direction)}
                   onToggle={() => toggleDirection(group.direction)}
-                  prices={prices}
                 />
               ))}
             </div>
@@ -417,7 +420,6 @@ export function ContractsTab() {
                     <ContractsTable
                       contracts={courierGroup.contracts}
                       showCourierColumns
-                      prices={prices}
                     />
                   </div>
                 )}

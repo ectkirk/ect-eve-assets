@@ -134,6 +134,7 @@ export function createOwnerStore<
   }
 
   const updatingOwners = new Set<string>()
+  let initPromise: Promise<void> | null = null
 
   const storeCreator: StateCreator<
     OwnerStore<TOwnerData, TExtraState, TExtraActions>
@@ -163,33 +164,40 @@ export function createOwnerStore<
 
       init: async () => {
         if (get().initialized) return
+        if (initPromise) return initPromise
 
-        try {
-          const loaded = await db.loadAll()
-          const dataByOwner = loaded.map((d) => toOwnerData(d.owner, d.data))
-          const extra = rebuildExtraState ? rebuildExtraState(dataByOwner) : {}
-          set({ dataByOwner, initialized: true, ...extra } as Partial<
-            OwnerStore<TOwnerData, TExtraState, TExtraActions>
-          >)
-          if (dataByOwner.length > 0) {
-            triggerResolution()
-          }
-          logger.info(`${name} store initialized`, {
-            module: moduleName,
-            owners: dataByOwner.length,
-          })
-        } catch (err) {
-          logger.error(
-            `Failed to load ${name} from DB`,
-            err instanceof Error ? err : undefined,
-            {
-              module: moduleName,
+        initPromise = (async () => {
+          try {
+            const loaded = await db.loadAll()
+            const dataByOwner = loaded.map((d) => toOwnerData(d.owner, d.data))
+            const extra = rebuildExtraState
+              ? rebuildExtraState(dataByOwner)
+              : {}
+            set({ dataByOwner, initialized: true, ...extra } as Partial<
+              OwnerStore<TOwnerData, TExtraState, TExtraActions>
+            >)
+            if (dataByOwner.length > 0) {
+              triggerResolution()
             }
-          )
-          set({ initialized: true } as Partial<
-            OwnerStore<TOwnerData, TExtraState, TExtraActions>
-          >)
-        }
+            logger.info(`${name} store initialized`, {
+              module: moduleName,
+              owners: dataByOwner.length,
+            })
+          } catch (err) {
+            logger.error(
+              `Failed to load ${name} from DB`,
+              err instanceof Error ? err : undefined,
+              {
+                module: moduleName,
+              }
+            )
+            set({ initialized: true } as Partial<
+              OwnerStore<TOwnerData, TExtraState, TExtraActions>
+            >)
+          }
+        })()
+
+        return initPromise
       },
 
       update: async (force = false) => {
@@ -427,6 +435,7 @@ export function createOwnerStore<
 
       clear: async () => {
         await db.clear()
+        initPromise = null
         const extra = extraState ? { ...extraState } : {}
         set({
           dataByOwner: [],

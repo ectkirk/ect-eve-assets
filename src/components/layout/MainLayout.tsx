@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Loader2 } from 'lucide-react'
 import { useAuthStore } from '@/store/auth-store'
 import { useAssetStore } from '@/store/asset-store'
@@ -19,6 +19,13 @@ import {
   tabToKey,
   type BuybackTabType,
 } from '@/features/buyback'
+// TODO: Re-enable when tools feature is ready
+import {
+  ToolsTab as _ToolsTab,
+  TOOLS_TABS as _TOOLS_TABS,
+  type ToolsTabType,
+} from '@/features/tools'
+import { useBuybackActionStore } from '@/store/buyback-action-store'
 import { useTotalAssets } from '@/hooks'
 import { formatNumber } from '@/lib/utils'
 import { TabControlsProvider } from '@/context'
@@ -28,7 +35,7 @@ import { OwnerButton } from './OwnerButton'
 import { WindowControls } from './WindowControls'
 import { SearchBar } from './SearchBar'
 
-type AppMode = 'assets' | 'buyback'
+type AppMode = 'assets' | 'buyback' | 'tools'
 
 const ASSET_TABS = [
   'Assets',
@@ -86,6 +93,18 @@ function ModeSwitcher({
       >
         Assets
       </button>
+      {/* TODO: Re-enable when tools feature is ready
+      <button
+        onClick={() => onModeChange('tools')}
+        className={`rounded px-3 py-1 text-sm font-medium transition-colors ${
+          mode === 'tools'
+            ? 'bg-surface-tertiary text-content'
+            : 'text-content-muted hover:text-content-secondary'
+        }`}
+      >
+        Tools
+      </button>
+      */}
       <button
         onClick={() => onModeChange('buyback')}
         className={`rounded px-3 py-1 text-sm font-medium transition-colors ${
@@ -177,6 +196,24 @@ function MainLayoutInner() {
   const [activeBuybackTab, setActiveBuybackTab] = useState<BuybackTabType>(
     BUYBACK_TABS[1]
   )
+  // TODO: Re-enable when tools feature is ready
+  const [_activeToolsTab, _setActiveToolsTab] = useState<ToolsTabType>(
+    _TOOLS_TABS[0]
+  )
+  const [buybackPrefill, setBuybackPrefill] = useState<string | null>(null)
+
+  useEffect(() => {
+    return useBuybackActionStore.subscribe((state, prevState) => {
+      if (state.pendingAction && !prevState.pendingAction) {
+        setMode('buyback')
+        setActiveBuybackTab(state.pendingAction.securityTab)
+        setBuybackPrefill(state.pendingAction.text)
+        queueMicrotask(() => {
+          useBuybackActionStore.getState().clearAction()
+        })
+      }
+    })
+  }, [])
 
   return (
     <div className="flex h-full flex-col">
@@ -234,37 +271,54 @@ function MainLayoutInner() {
       {/* Tab Navigation */}
       <nav className="flex items-center border-b border-border bg-surface-secondary px-2">
         <div className="flex gap-1">
-          {mode === 'assets'
-            ? ASSET_TABS.map((tab) => (
+          {mode === 'assets' &&
+            ASSET_TABS.map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveAssetTab(tab)}
+                className={`px-3 py-2 text-sm transition-colors ${
+                  activeAssetTab === tab
+                    ? 'border-b-2 border-accent text-accent'
+                    : 'text-content-secondary hover:text-content'
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+          {mode === 'buyback' &&
+            BUYBACK_TABS.map((tab) => {
+              const styling = getStyling(tabToKey(tab))
+              return (
                 <button
                   key={tab}
-                  onClick={() => setActiveAssetTab(tab)}
-                  className={`px-3 py-2 text-sm transition-colors ${
-                    activeAssetTab === tab
+                  onClick={() => setActiveBuybackTab(tab)}
+                  className={`flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
+                    activeBuybackTab === tab
                       ? 'border-b-2 border-accent text-accent'
                       : 'text-content-secondary hover:text-content'
                   }`}
                 >
+                  <span className={`h-2 w-2 rounded-full ${styling.color}`} />
                   {tab}
                 </button>
-              ))
-            : BUYBACK_TABS.map((tab) => {
-                const styling = getStyling(tabToKey(tab))
-                return (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveBuybackTab(tab)}
-                    className={`flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
-                      activeBuybackTab === tab
-                        ? 'border-b-2 border-accent text-accent'
-                        : 'text-content-secondary hover:text-content'
-                    }`}
-                  >
-                    <span className={`h-2 w-2 rounded-full ${styling.color}`} />
-                    {tab}
-                  </button>
-                )
-              })}
+              )
+            })}
+          {/* TODO: Re-enable when tools feature is ready
+          {mode === 'tools' &&
+            TOOLS_TABS.map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveToolsTab(tab)}
+                className={`px-3 py-2 text-sm transition-colors ${
+                  activeToolsTab === tab
+                    ? 'border-b-2 border-accent text-accent'
+                    : 'text-content-secondary hover:text-content'
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+          */}
         </div>
         <div className="flex-1" />
         <OwnerButton />
@@ -274,12 +328,24 @@ function MainLayoutInner() {
       {mode === 'assets' && <SearchBar />}
 
       {/* Content Area */}
-      <main className="flex-1 overflow-auto p-4">
-        {mode === 'assets' ? (
-          <AssetTabContent tab={activeAssetTab} />
-        ) : (
-          <BuybackTab activeTab={activeBuybackTab} />
+      <main className="flex-1 overflow-hidden">
+        {mode === 'assets' && (
+          <div className="h-full overflow-auto p-4">
+            <AssetTabContent tab={activeAssetTab} />
+          </div>
         )}
+        {mode === 'buyback' && (
+          <div className="h-full overflow-auto p-4">
+            <BuybackTab
+              activeTab={activeBuybackTab}
+              prefillText={buybackPrefill}
+              onPrefillConsumed={() => setBuybackPrefill(null)}
+            />
+          </div>
+        )}
+        {/* TODO: Re-enable when tools feature is ready
+        {mode === 'tools' && <ToolsTab activeTab={activeToolsTab} />}
+        */}
       </main>
     </div>
   )

@@ -7,7 +7,7 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
 import { isAbyssalTypeId, getMutamarketUrl } from '@/api/mutamarket-client'
-import { hasAbyssal } from '@/store/reference-cache'
+import { usePriceStore } from '@/store/price-store'
 import { cn } from '@/lib/utils'
 import type { TreeNode } from '@/lib/tree-types'
 import { TreeRowContent } from './TreeRowContent'
@@ -16,8 +16,12 @@ interface TreeRowProps {
   node: TreeNode
   virtualIndex: number
   isExpanded: boolean
+  isSelected: boolean
+  showBuybackOption: boolean
   onToggleExpand: (nodeId: string) => void
+  onRowClick: (id: string, event: React.MouseEvent) => void
   onViewFitting: (node: TreeNode) => void
+  onSellToBuyback: () => void
   visibleColumns: string[]
 }
 
@@ -25,15 +29,20 @@ export const TreeRow = memo(function TreeRow({
   node,
   virtualIndex,
   isExpanded,
+  isSelected,
+  showBuybackOption,
   onToggleExpand,
+  onRowClick,
   onViewFitting,
+  onSellToBuyback,
   visibleColumns,
 }: TreeRowProps) {
-  const handleRowClick = useCallback(() => {
-    if (node.children.length > 0) {
-      onToggleExpand(node.id)
-    }
-  }, [node.children.length, node.id, onToggleExpand])
+  const handleRowClick = useCallback(
+    (e: React.MouseEvent) => {
+      onRowClick(node.id, e)
+    },
+    [node.id, onRowClick]
+  )
 
   const handleViewFittingClick = useCallback(() => {
     onViewFitting(node)
@@ -50,20 +59,22 @@ export const TreeRow = memo(function TreeRow({
     node.typeId &&
     node.asset?.item_id &&
     isAbyssalTypeId(node.typeId) &&
-    hasAbyssal(node.asset.item_id)
+    usePriceStore.getState().hasAbyssalPrice(node.asset.item_id)
 
   const row = (
     <TableRow
       key={node.id}
       data-index={virtualIndex}
       className={cn(
-        node.nodeType === 'region' && 'bg-surface-secondary/30',
-        node.nodeType === 'system' && 'bg-surface-secondary/20',
-        node.isActiveShip && 'bg-row-active-ship',
-        node.isInContract && 'bg-row-contract',
-        node.isInMarketOrder && 'bg-row-order',
-        node.isInIndustryJob && 'bg-row-industry',
-        node.isOwnedStructure && 'bg-row-structure'
+        'cursor-pointer select-none',
+        isSelected && 'bg-accent/20',
+        !isSelected && node.nodeType === 'region' && 'bg-surface-secondary/30',
+        !isSelected && node.nodeType === 'system' && 'bg-surface-secondary/20',
+        !isSelected && node.isActiveShip && 'bg-row-active-ship',
+        !isSelected && node.isInContract && 'bg-row-contract',
+        !isSelected && node.isInMarketOrder && 'bg-row-order',
+        !isSelected && node.isInIndustryJob && 'bg-row-industry',
+        !isSelected && node.isOwnedStructure && 'bg-row-structure'
       )}
       onClick={handleRowClick}
     >
@@ -76,11 +87,17 @@ export const TreeRow = memo(function TreeRow({
     </TableRow>
   )
 
-  if (isShip || isAbyssalResolved) {
+  const showBuyback = isSelected && showBuybackOption
+  if (isShip || isAbyssalResolved || showBuyback) {
     return (
       <ContextMenu>
         <ContextMenuTrigger asChild>{row}</ContextMenuTrigger>
         <ContextMenuContent>
+          {showBuyback && (
+            <ContextMenuItem onClick={onSellToBuyback}>
+              Sell to buyback
+            </ContextMenuItem>
+          )}
           {isShip && (
             <ContextMenuItem onClick={handleViewFittingClick}>
               View Fitting

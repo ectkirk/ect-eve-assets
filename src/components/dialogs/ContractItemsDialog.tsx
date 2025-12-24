@@ -7,6 +7,7 @@ import {
 } from '@/components/ui/dialog'
 import { TypeIcon } from '@/components/ui/type-icon'
 import { hasType, getType } from '@/store/reference-cache'
+import { usePriceStore } from '@/store/price-store'
 import { formatNumber } from '@/lib/utils'
 
 interface ContractItem {
@@ -14,6 +15,7 @@ interface ContractItem {
   quantity: number
   is_included?: boolean
   is_blueprint_copy?: boolean
+  item_id?: number
 }
 
 interface ContractItemsDialogProps {
@@ -21,7 +23,6 @@ interface ContractItemsDialogProps {
   onOpenChange: (open: boolean) => void
   items: ContractItem[]
   contractType: string
-  prices: Map<number, number>
 }
 
 export function ContractItemsDialog({
@@ -29,11 +30,13 @@ export function ContractItemsDialog({
   onOpenChange,
   items,
   contractType,
-  prices,
 }: ContractItemsDialogProps) {
+  const priceStore = usePriceStore.getState()
   const totalValue = items.reduce((sum, item) => {
-    if (item.is_blueprint_copy) return sum
-    const price = prices.get(item.type_id) ?? 0
+    const price = priceStore.getItemPrice(item.type_id, {
+      itemId: item.item_id,
+      isBlueprintCopy: item.is_blueprint_copy,
+    })
     return sum + price * item.quantity
   }, 0)
 
@@ -55,10 +58,11 @@ export function ContractItemsDialog({
                 ? getType(item.type_id)
                 : undefined
               const typeName = type?.name ?? `Unknown Type ${item.type_id}`
-              const price = prices.get(item.type_id) ?? 0
-              const itemValue = item.is_blueprint_copy
-                ? 0
-                : price * item.quantity
+              const itemValue =
+                priceStore.getItemPrice(item.type_id, {
+                  itemId: item.item_id,
+                  isBlueprintCopy: item.is_blueprint_copy,
+                }) * item.quantity
 
               return (
                 <div

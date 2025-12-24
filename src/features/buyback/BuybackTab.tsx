@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { BuybackForm } from './BuybackForm'
 import { BuybackResults } from './BuybackResults'
 import { BuybackFAQ } from './BuybackFAQ'
@@ -64,9 +64,15 @@ function ToggleGroup<T extends string>({
 
 interface BuybackTabProps {
   activeTab: BuybackTabType
+  prefillText?: string | null
+  onPrefillConsumed?: () => void
 }
 
-export function BuybackTab({ activeTab }: BuybackTabProps) {
+export function BuybackTab({
+  activeTab,
+  prefillText,
+  onPrefillConsumed,
+}: BuybackTabProps) {
   const {
     info,
     isLoading: isLoadingInfo,
@@ -77,6 +83,18 @@ export function BuybackTab({ activeTab }: BuybackTabProps) {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const prevTabRef = useRef(activeTab)
+  const [formKey, setFormKey] = useState(0)
+  const [pendingAutoSubmit, setPendingAutoSubmit] = useState<string | null>(
+    null
+  )
+
+  useEffect(() => {
+    if (prefillText && prefillText !== pendingAutoSubmit) {
+      setFormKey((k) => k + 1)
+      setPendingAutoSubmit(prefillText)
+      onPrefillConsumed?.()
+    }
+  }, [prefillText, pendingAutoSubmit, onPrefillConsumed])
 
   const [assetSafetySecLevel, setAssetSafetySecLevel] =
     useState<AssetSafetySecurityLevel>('nullsec')
@@ -152,40 +170,50 @@ export function BuybackTab({ activeTab }: BuybackTabProps) {
     }
   }, [activeTab, assetSafetySecLevel, npcStation])
 
-  const handleSubmit = async (text: string) => {
-    if (!config) return
+  const handleSubmit = useCallback(
+    async (text: string) => {
+      if (!config) return
 
-    setIsLoading(true)
-    setError(null)
+      setIsLoading(true)
+      setError(null)
 
-    try {
-      const buybackConfig: BuybackConfig = {
-        buyRate: config.buyRate,
-        iskPerM3: config.iskPerM3,
-        acceptCapitals: config.acceptCapitals,
-        assetSafetyRate: config.assetSafetyRate,
+      try {
+        const buybackConfig: BuybackConfig = {
+          buyRate: config.buyRate,
+          iskPerM3: config.iskPerM3,
+          acceptCapitals: config.acceptCapitals,
+          assetSafetyRate: config.assetSafetyRate,
+        }
+        const res = await window.electronAPI!.refBuybackCalculate(
+          text,
+          buybackConfig
+        )
+        if (res.error) {
+          setError(res.error)
+          setResult(null)
+        } else {
+          setResult(res)
+        }
+      } catch (err) {
+        setError(String(err))
+      } finally {
+        setIsLoading(false)
       }
-      const res = await window.electronAPI!.refBuybackCalculate(
-        text,
-        buybackConfig
-      )
-      if (res.error) {
-        setError(res.error)
-        setResult(null)
-      } else {
-        setResult(res)
-      }
-    } catch (err) {
-      setError(String(err))
-    } finally {
-      setIsLoading(false)
-    }
-  }
+    },
+    [config]
+  )
 
   const handleReset = () => {
     setResult(null)
     setError(null)
   }
+
+  useEffect(() => {
+    if (pendingAutoSubmit && config && !isLoading && !result) {
+      handleSubmit(pendingAutoSubmit)
+      setPendingAutoSubmit(null)
+    }
+  }, [pendingAutoSubmit, config, isLoading, result, handleSubmit])
 
   if (isLoadingInfo && !info) {
     return (
@@ -261,10 +289,12 @@ export function BuybackTab({ activeTab }: BuybackTabProps) {
 
         <div className="rounded-lg border border-border bg-surface-secondary/50 p-6">
           <BuybackForm
+            key={formKey}
             onSubmit={handleSubmit}
             isLoading={isLoading}
             hasQuote={!!result}
             onReset={handleReset}
+            defaultText={pendingAutoSubmit ?? ''}
           />
         </div>
 

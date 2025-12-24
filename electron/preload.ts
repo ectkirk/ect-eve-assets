@@ -149,18 +149,6 @@ export interface RefMarketResult {
   error?: string
 }
 
-export interface RefMarketJitaResult {
-  items?: Record<string, number | null>
-  error?: string
-}
-
-export interface RefMarketPlexResult {
-  typeId?: number
-  lowestSell?: number | null
-  highestBuy?: number | null
-  error?: string
-}
-
 export interface RefMarketContractItem {
   price: number | null
   salesCount: number
@@ -168,8 +156,86 @@ export interface RefMarketContractItem {
   hasSufficientData: boolean
 }
 
-export interface RefMarketContractsResult {
-  items?: Record<string, RefMarketContractItem>
+export interface RefMarketJitaParams {
+  typeIds?: number[]
+  itemIds?: number[]
+  contractTypeIds?: number[]
+  includePlex?: boolean
+}
+
+export interface RefMarketJitaResult {
+  items?: Record<string, number | null>
+  mutaItems?: Record<string, number | null>
+  contractItems?: Record<string, RefMarketContractItem>
+  plex?: {
+    typeId: number
+    lowestSell: number | null
+    highestBuy: number | null
+  }
+  error?: string
+}
+
+export interface ContractSearchParams {
+  mode: 'buySell' | 'courier'
+  searchText?: string
+  regionId?: number | null
+  systemId?: number | null
+  contractType?:
+    | 'want_to_sell'
+    | 'want_to_buy'
+    | 'auction'
+    | 'exclude_want_to_buy'
+  categoryId?: number | null
+  groupId?: number | null
+  typeId?: number | null
+  excludeMultiple?: boolean
+  priceMin?: number | null
+  priceMax?: number | null
+  securityHigh?: boolean
+  securityLow?: boolean
+  securityNull?: boolean
+  issuer?: string
+  page?: number
+  pageSize?: number
+  sortBy?: 'price' | 'dateIssued' | 'dateExpired'
+  sortDirection?: 'asc' | 'desc'
+}
+
+export interface ContractSearchItem {
+  typeId: number
+  typeName: string
+  quantity: number
+  isBlueprintCopy?: boolean
+}
+
+export interface ContractSearchContract {
+  contractId: number
+  type: 'item_exchange' | 'auction' | 'courier'
+  price: number
+  buyout?: number
+  reward?: number
+  collateral?: number
+  volume?: number
+  title: string
+  issuerCharacterId: number
+  issuerCorporationId: number
+  regionName: string
+  regionId: number
+  systemName: string
+  systemId: number
+  securityStatus: number | null
+  dateIssued: string
+  dateExpired: string
+  itemCount: number
+  itemSummary: string
+}
+
+export interface ContractSearchResult {
+  contracts?: ContractSearchContract[]
+  total?: number
+  page?: number
+  pageSize?: number
+  totalPages?: number
   error?: string
 }
 
@@ -407,9 +473,7 @@ export interface ElectronAPI {
   refMoons: (ids: number[]) => Promise<RefMoonsResult>
   refShipSlots: (ids: number[]) => Promise<RefShipsResult>
   refMarket: (params: RefMarketParams) => Promise<RefMarketResult>
-  refMarketJita: (typeIds: number[]) => Promise<RefMarketJitaResult>
-  refMarketPlex: () => Promise<RefMarketPlexResult>
-  refMarketContracts: (typeIds: number[]) => Promise<RefMarketContractsResult>
+  refMarketJita: (params: RefMarketJitaParams) => Promise<RefMarketJitaResult>
   refBlueprints: () => Promise<BlueprintsResult>
   refBuybackCalculate: (
     text: string,
@@ -417,6 +481,9 @@ export interface ElectronAPI {
   ) => Promise<BuybackResult>
   refBuybackCalculator: (text: string) => Promise<BuybackCalculatorResult>
   refBuybackInfo: () => Promise<BuybackInfoResult>
+  refContractsSearch: (
+    params: ContractSearchParams
+  ) => Promise<ContractSearchResult>
   mutamarketModule: (
     itemId: number,
     typeId?: number
@@ -441,6 +508,7 @@ export interface ElectronAPI {
   onWindowMinimizeChange: (
     callback: (isMinimized: boolean) => void
   ) => () => void
+  clearStorageAndRestart: () => Promise<void>
   esi: ESIAPI
 }
 
@@ -504,17 +572,16 @@ const electronAPI: ElectronAPI = {
   refShipSlots: (ids: number[]) => ipcRenderer.invoke('ref:shipslots', ids),
   refMarket: (params: RefMarketParams) =>
     ipcRenderer.invoke('ref:market', params),
-  refMarketJita: (typeIds: number[]) =>
-    ipcRenderer.invoke('ref:marketJita', typeIds),
-  refMarketPlex: () => ipcRenderer.invoke('ref:marketPlex'),
-  refMarketContracts: (typeIds: number[]) =>
-    ipcRenderer.invoke('ref:marketContracts', typeIds),
+  refMarketJita: (params: RefMarketJitaParams) =>
+    ipcRenderer.invoke('ref:marketJita', params),
   refBlueprints: () => ipcRenderer.invoke('ref:blueprints'),
   refBuybackCalculate: (text: string, config: BuybackConfig) =>
     ipcRenderer.invoke('ref:buybackCalculate', text, config),
   refBuybackCalculator: (text: string) =>
     ipcRenderer.invoke('ref:buybackCalculator', text),
   refBuybackInfo: () => ipcRenderer.invoke('ref:buybackInfo'),
+  refContractsSearch: (params: ContractSearchParams) =>
+    ipcRenderer.invoke('ref:contractsSearch', params),
   mutamarketModule: (itemId: number, typeId?: number) =>
     ipcRenderer.invoke('mutamarket:module', itemId, typeId),
   onUpdateAvailable: (callback: (version: string) => void) => {
@@ -557,6 +624,8 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.on('window:minimizeChange', handler)
     return () => ipcRenderer.removeListener('window:minimizeChange', handler)
   },
+  clearStorageAndRestart: () =>
+    ipcRenderer.invoke('window:clearStorageAndRestart'),
   esi,
 }
 

@@ -1,11 +1,9 @@
 import { useEffect, useState, Component, type ReactNode } from 'react'
 import { useAuthStore } from './store/auth-store'
-import { useAssetStore, stopPriceRefreshTimer } from './store/asset-store'
+import { useAssetStore } from './store/asset-store'
 import { useStoreRegistry } from './store/store-registry'
-import { useRegionalMarketStore } from './store/regional-market-store'
-import { useESIPricesStore } from './store/esi-prices-store'
+import { stopPriceRefreshTimers } from './store/price-store'
 import { useExpiryCacheStore } from './store/expiry-cache-store'
-import { useNotificationStore } from './store/toast-store'
 import { MainLayout } from './components/layout/MainLayout'
 import { initCache } from './store/reference-cache'
 import {
@@ -80,7 +78,7 @@ function App() {
     const cleanupTokenProvider = setupESITokenProvider()
     return () => {
       cleanupTokenProvider()
-      stopPriceRefreshTimer()
+      stopPriceRefreshTimers()
     }
   }, [])
 
@@ -117,16 +115,10 @@ function App() {
       })
       .then(() => {
         logger.info('Asset store initialized', { module: 'App' })
-        return Promise.all([
-          useStoreRegistry.getState().initAll(['assets']),
-          useRegionalMarketStore.getState().init(),
-          useESIPricesStore.getState().init(),
-          useNotificationStore.getState().init(),
-        ])
+        return useStoreRegistry.getState().initAll(['assets'])
       })
       .then(async () => {
         logger.info('All stores initialized', { module: 'App' })
-        useAssetStore.getState().refreshPrices()
         const ownerKeys = Object.keys(useAuthStore.getState().owners)
         useExpiryCacheStore.getState().queueMissingEndpoints(ownerKeys)
         appInitComplete = true
@@ -138,12 +130,42 @@ function App() {
       })
   }, [])
 
+  const [isClearing, setIsClearing] = useState(false)
+  const [clearError, setClearError] = useState<string | null>(null)
+
   if (cacheError) {
+    const handleClearAndRestart = async () => {
+      if (isClearing) return
+      setIsClearing(true)
+      setClearError(null)
+      try {
+        await window.electronAPI?.clearStorageAndRestart?.()
+      } catch (err) {
+        setClearError(err instanceof Error ? err.message : 'Failed to clear')
+        setIsClearing(false)
+      }
+    }
     return (
       <div className="flex h-screen items-center justify-center bg-surface text-content">
-        <div className="text-center">
-          <p className="text-semantic-danger">Failed to initialize cache</p>
-          <p className="text-sm text-content-secondary">{cacheError}</p>
+        <div className="text-center max-w-md">
+          <p className="text-semantic-danger text-lg font-bold">
+            Failed to initialize cache
+          </p>
+          <p className="text-sm text-content-secondary mt-2">{cacheError}</p>
+          <p className="text-xs text-content-muted mt-4">
+            This is usually caused by corrupted cache data. Clearing the cache
+            will resolve this issue.
+          </p>
+          {clearError && (
+            <p className="text-xs text-semantic-danger mt-2">{clearError}</p>
+          )}
+          <button
+            onClick={handleClearAndRestart}
+            disabled={isClearing}
+            className="mt-4 px-4 py-2 bg-accent rounded hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isClearing ? 'Clearing...' : 'Clear Cache & Restart'}
+          </button>
         </div>
       </div>
     )

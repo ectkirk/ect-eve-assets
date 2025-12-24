@@ -18,6 +18,7 @@ import {
   type SourceOwner,
   type VisibilityStore,
 } from './create-visibility-store'
+import { usePriceStore, isAbyssalTypeId } from './price-store'
 
 export interface StoredContract extends StoredItem<ESIContract> {
   item: ESIContract
@@ -40,7 +41,6 @@ interface ContractsExtraState {
 
 interface ContractsExtras {
   getTotal: (
-    prices: Map<number, number>,
     selectedOwnerIds: string[],
     state?: {
       itemsById: Map<number, StoredContract>
@@ -242,12 +242,8 @@ async function fetchItemsForContracts(
       })
 
       if (typeIds.size > 0) {
-        const { fetchPrices } = await import('@/api/ref-client')
-        const { useAssetStore } = await import('./asset-store')
-        const prices = await fetchPrices(Array.from(typeIds))
-        if (prices.size > 0) {
-          await useAssetStore.getState().setPrices(prices)
-        }
+        const { usePriceStore } = await import('./price-store')
+        await usePriceStore.getState().ensureJitaPrices(Array.from(typeIds))
       }
 
       triggerResolution()
@@ -299,21 +295,23 @@ const baseStore = createVisibilityStore<
     baseStore.setState({ itemsByContractId: loadedItems })
 
     const typeIds = new Set<number>()
+    const abyssalItemIds: number[] = []
     for (const items of loadedItems.values()) {
       if (items) {
         for (const item of items) {
           typeIds.add(item.type_id)
+          if (item.item_id && isAbyssalTypeId(item.type_id)) {
+            abyssalItemIds.push(item.item_id)
+          }
         }
       }
     }
 
-    if (typeIds.size > 0) {
-      const { fetchPrices } = await import('@/api/ref-client')
-      const { useAssetStore } = await import('./asset-store')
-      const prices = await fetchPrices(Array.from(typeIds))
-      if (prices.size > 0) {
-        await useAssetStore.getState().setPrices(prices)
-      }
+    if (typeIds.size > 0 || abyssalItemIds.length > 0) {
+      const { usePriceStore } = await import('./price-store')
+      await usePriceStore
+        .getState()
+        .ensureJitaPrices(Array.from(typeIds), abyssalItemIds)
       triggerResolution()
     }
   },
@@ -429,12 +427,8 @@ const baseStore = createVisibilityStore<
         })
 
         if (typeIds.size > 0) {
-          const { fetchPrices } = await import('@/api/ref-client')
-          const { useAssetStore } = await import('./asset-store')
-          const prices = await fetchPrices(Array.from(typeIds))
-          if (prices.size > 0) {
-            await useAssetStore.getState().setPrices(prices)
-          }
+          const { usePriceStore } = await import('./price-store')
+          await usePriceStore.getState().ensureJitaPrices(Array.from(typeIds))
         }
 
         triggerResolution()
@@ -455,7 +449,6 @@ baseStore.setState({
 
 export const useContractsStore: ContractsStore = Object.assign(baseStore, {
   getTotal(
-    prices: Map<number, number>,
     selectedOwnerIds: string[],
     stateOverride?: {
       itemsById: Map<number, StoredContract>
@@ -481,6 +474,7 @@ export const useContractsStore: ContractsStore = Object.assign(baseStore, {
       }
     }
 
+    const priceStore = usePriceStore.getState()
     let total = 0
     for (const contractId of visibleIds) {
       const stored = itemsById.get(contractId)
@@ -496,7 +490,11 @@ export const useContractsStore: ContractsStore = Object.assign(baseStore, {
         if (isIssuer) {
           for (const item of items) {
             if (item.is_included) {
-              total += (prices.get(item.type_id) ?? 0) * item.quantity
+              const price = priceStore.getItemPrice(item.type_id, {
+                itemId: item.item_id,
+                isBlueprintCopy: item.is_blueprint_copy,
+              })
+              total += price * item.quantity
             }
           }
         }

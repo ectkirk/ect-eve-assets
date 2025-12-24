@@ -7,6 +7,7 @@ import {
   idbDelete,
   idbClear,
 } from '@/lib/idb-utils'
+import { useStoreRegistry } from '@/store/store-registry'
 
 export type NotificationType =
   | 'order-filled'
@@ -65,6 +66,8 @@ async function getDB() {
   return openDatabase(DB_CONFIG)
 }
 
+let initPromise: Promise<void> | null = null
+
 export const useNotificationStore = create<NotificationStore>((set, get) => ({
   notifications: [],
   unseenCount: 0,
@@ -73,28 +76,33 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
 
   init: async () => {
     if (get().initialized) return
+    if (initPromise) return initPromise
 
-    try {
-      const db = await getDB()
-      const loaded = await idbGetAll<Notification>(db, 'notifications')
-      const notifications = loaded.sort((a, b) => a.timestamp - b.timestamp)
-      const unseenCount = notifications.filter((n) => !n.seen).length
-      set({ notifications, initialized: true, unseenCount })
-      logger.info('Notifications loaded from cache', {
-        module: 'NotificationStore',
-        count: notifications.length,
-        unseen: unseenCount,
-      })
-    } catch (err) {
-      logger.error(
-        'Failed to load notifications from cache',
-        err instanceof Error ? err : undefined,
-        {
+    initPromise = (async () => {
+      try {
+        const db = await getDB()
+        const loaded = await idbGetAll<Notification>(db, 'notifications')
+        const notifications = loaded.sort((a, b) => a.timestamp - b.timestamp)
+        const unseenCount = notifications.filter((n) => !n.seen).length
+        set({ notifications, initialized: true, unseenCount })
+        logger.info('Notifications loaded from cache', {
           module: 'NotificationStore',
-        }
-      )
-      set({ initialized: true })
-    }
+          count: notifications.length,
+          unseen: unseenCount,
+        })
+      } catch (err) {
+        logger.error(
+          'Failed to load notifications from cache',
+          err instanceof Error ? err : undefined,
+          {
+            module: 'NotificationStore',
+          }
+        )
+        set({ initialized: true })
+      }
+    })()
+
+    return initPromise
   },
 
   addNotification: (type, title, message, entityId, eventKey) => {
@@ -142,7 +150,8 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
   },
 
   clearAll: () => {
-    set({ notifications: [], unseenCount: 0 })
+    initPromise = null
+    set({ notifications: [], unseenCount: 0, initialized: false })
 
     getDB()
       .then((db) => idbClear(db, 'notifications'))
@@ -220,3 +229,10 @@ export const useToastStore = {
 }
 export type Toast = Notification
 export type ToastType = NotificationType
+
+useStoreRegistry.getState().register({
+  name: 'notifications',
+  clear: async () => useNotificationStore.getState().clearAll(),
+  getIsUpdating: () => false,
+  init: useNotificationStore.getState().init,
+})
