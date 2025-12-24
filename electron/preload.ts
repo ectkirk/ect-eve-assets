@@ -508,6 +508,7 @@ export interface ElectronAPI {
   onWindowMinimizeChange: (
     callback: (isMinimized: boolean) => void
   ) => () => void
+  clearStorageAndRestart: () => Promise<void>
   esi: ESIAPI
 }
 
@@ -623,6 +624,8 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.on('window:minimizeChange', handler)
     return () => ipcRenderer.removeListener('window:minimizeChange', handler)
   },
+  clearStorageAndRestart: () =>
+    ipcRenderer.invoke('window:clearStorageAndRestart'),
   esi,
 }
 

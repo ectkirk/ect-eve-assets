@@ -1,4 +1,4 @@
-import { ipcMain, shell, screen, BrowserWindow } from 'electron'
+import { ipcMain, shell, screen, session, app, BrowserWindow } from 'electron'
 import {
   startAuth,
   refreshAccessToken,
@@ -322,5 +322,19 @@ export function registerWindowControlHandlers(ctx: WindowContext): void {
       overlayOptions.symbolColor = opts.symbolColor
     if (typeof opts.height === 'number') overlayOptions.height = opts.height
     mainWindow.setTitleBarOverlay(overlayOptions)
+  })
+
+  ipcMain.handle('window:clearStorageAndRestart', async () => {
+    logger.info('Clearing all storage data and restarting', {
+      module: 'Window',
+    })
+    try {
+      await session.defaultSession.clearStorageData()
+      app.relaunch()
+      app.exit(0)
+    } catch (err) {
+      logger.error('Failed to clear storage', err, { module: 'Window' })
+      throw err
+    }
   })
 }

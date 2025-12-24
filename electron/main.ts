@@ -71,45 +71,70 @@ function registerAllHandlers(): void {
   registerESIHandlers()
 }
 
-app.whenReady().then(() => {
-  initLogger()
-  logger.info('App starting', { module: 'Main', version: app.getVersion() })
+const gotTheLock = app.requestSingleInstanceLock()
 
-  registerAllHandlers()
-
-  createWindow(
-    VITE_DEV_SERVER_URL,
-    RENDERER_DIST,
-    VITE_PUBLIC,
-    path.join(__dirname, 'preload.cjs'),
-    windowManager
-  )
-  logger.info('Main window created', { module: 'Main' })
-
-  if (app.isPackaged && windowManager.mainWindow) {
-    initUpdater(windowManager.mainWindow)
-  }
-
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow(
-        VITE_DEV_SERVER_URL,
-        RENDERER_DIST,
-        VITE_PUBLIC,
-        path.join(__dirname, 'preload.cjs'),
-        windowManager
-      )
-    }
-  })
-})
-
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
+if (!gotTheLock) {
+  app.quit()
+} else {
+  const handleShutdownSignal = (signal: string) => {
+    logger.info(`Received ${signal}, shutting down gracefully`, {
+      module: 'Main',
+    })
+    getESIService().saveImmediately()
     app.quit()
   }
-})
 
-app.on('before-quit', () => {
-  stopUpdater()
-  getESIService().saveImmediately()
-})
+  process.on('SIGTERM', () => handleShutdownSignal('SIGTERM'))
+  process.on('SIGINT', () => handleShutdownSignal('SIGINT'))
+  app.on('second-instance', () => {
+    if (windowManager.mainWindow) {
+      if (windowManager.mainWindow.isMinimized()) {
+        windowManager.mainWindow.restore()
+      }
+      windowManager.mainWindow.focus()
+    }
+  })
+
+  app.whenReady().then(() => {
+    initLogger()
+    logger.info('App starting', { module: 'Main', version: app.getVersion() })
+
+    registerAllHandlers()
+
+    createWindow(
+      VITE_DEV_SERVER_URL,
+      RENDERER_DIST,
+      VITE_PUBLIC,
+      path.join(__dirname, 'preload.cjs'),
+      windowManager
+    )
+    logger.info('Main window created', { module: 'Main' })
+
+    if (app.isPackaged && windowManager.mainWindow) {
+      initUpdater(windowManager.mainWindow)
+    }
+
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) {
+        createWindow(
+          VITE_DEV_SERVER_URL,
+          RENDERER_DIST,
+          VITE_PUBLIC,
+          path.join(__dirname, 'preload.cjs'),
+          windowManager
+        )
+      }
+    })
+  })
+
+  app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') {
+      app.quit()
+    }
+  })
+
+  app.on('before-quit', () => {
+    stopUpdater()
+    getESIService().saveImmediately()
+  })
+}

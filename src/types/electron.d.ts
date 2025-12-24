@@ -512,6 +512,7 @@ declare global {
     onWindowMinimizeChange: (
       callback: (isMinimized: boolean) => void
     ) => () => void
+    clearStorageAndRestart: () => Promise<void>
     esi: ESIAPI
   }
 
