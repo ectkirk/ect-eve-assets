@@ -25,7 +25,6 @@ import { useTotalAssets } from '@/hooks'
 import { formatNumber } from '@/lib/utils'
 import { TabControlsProvider } from '@/context'
 import { UpdateBanner } from './UpdateBanner'
-import { ToastContainer } from './ToastContainer'
 import { OwnerButton } from './OwnerButton'
 import { WindowControls } from './WindowControls'
 import { SearchBar } from './SearchBar'
@@ -209,7 +208,6 @@ function MainLayoutInner() {
 
   return (
     <div className="flex h-full flex-col">
-      <ToastContainer />
       <UpdateBanner />
       {/* Header */}
       <header

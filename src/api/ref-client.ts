@@ -11,14 +11,7 @@ export {
   resolveLocations,
 } from './ref-universe-loader'
 
-export {
-  fetchPrices,
-  queuePriceRefresh,
-  fetchMarketComparison,
-  fetchImplantSlots,
-  type MarketBulkItem,
-  type MarketComparisonPrices,
-} from './ref-market'
+export { fetchPrices, queuePriceRefresh, fetchImplantSlots } from './ref-market'
 
 import { RefTypeSchema } from './schemas'
 import { z } from 'zod'

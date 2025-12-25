@@ -127,28 +127,6 @@ export interface RefShipsResult {
   error?: string
 }
 
-export interface RefMarketParams {
-  regionId: number
-  typeIds: number[]
-  avg?: boolean
-  buy?: boolean
-  jita?: boolean
-}
-
-export interface RefMarketItem {
-  lowestSell: number | null
-  averagePrice?: number | null
-  avg30dPrice?: number | null
-  avg30dVolume?: number | null
-  highestBuy?: number | null
-}
-
-export interface RefMarketResult {
-  regionId?: number
-  items?: Record<string, RefMarketItem>
-  error?: string
-}
-
 export interface RefMarketContractItem {
   price: number | null
   salesCount: number
@@ -472,14 +450,12 @@ export interface ElectronAPI {
   refImplants: (ids: number[]) => Promise<RefApiResult>
   refMoons: (ids: number[]) => Promise<RefMoonsResult>
   refShipSlots: (ids: number[]) => Promise<RefShipsResult>
-  refMarket: (params: RefMarketParams) => Promise<RefMarketResult>
   refMarketJita: (params: RefMarketJitaParams) => Promise<RefMarketJitaResult>
   refBlueprints: () => Promise<BlueprintsResult>
   refBuybackCalculate: (
     text: string,
     config: BuybackConfig
   ) => Promise<BuybackResult>
-  refBuybackCalculator: (text: string) => Promise<BuybackCalculatorResult>
   refBuybackInfo: () => Promise<BuybackInfoResult>
   refContractsSearch: (
     params: ContractSearchParams
@@ -570,15 +546,11 @@ const electronAPI: ElectronAPI = {
   refImplants: (ids: number[]) => ipcRenderer.invoke('ref:implants', ids),
   refMoons: (ids: number[]) => ipcRenderer.invoke('ref:moons', ids),
   refShipSlots: (ids: number[]) => ipcRenderer.invoke('ref:shipslots', ids),
-  refMarket: (params: RefMarketParams) =>
-    ipcRenderer.invoke('ref:market', params),
   refMarketJita: (params: RefMarketJitaParams) =>
     ipcRenderer.invoke('ref:marketJita', params),
   refBlueprints: () => ipcRenderer.invoke('ref:blueprints'),
   refBuybackCalculate: (text: string, config: BuybackConfig) =>
     ipcRenderer.invoke('ref:buybackCalculate', text, config),
-  refBuybackCalculator: (text: string) =>
-    ipcRenderer.invoke('ref:buybackCalculator', text),
   refBuybackInfo: () => ipcRenderer.invoke('ref:buybackInfo'),
   refContractsSearch: (params: ContractSearchParams) =>
     ipcRenderer.invoke('ref:contractsSearch', params),

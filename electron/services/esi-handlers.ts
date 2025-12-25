@@ -2,6 +2,8 @@ import { ipcMain, BrowserWindow } from 'electron'
 import { getESIService } from './esi/index.js'
 import type { ESIRequestOptions } from './esi/types.js'
 
+const TOKEN_REQUEST_TIMEOUT_MS = 10000
+
 interface PendingTokenRequest {
   resolve: (token: string | null) => void
   timeout: NodeJS.Timeout
@@ -27,7 +29,7 @@ export function setupESIService(
           if (pending.length === 0) pendingTokenRequests.delete(characterId)
         }
         resolve(null)
-      }, 10000)
+      }, TOKEN_REQUEST_TIMEOUT_MS)
 
       const wrappedResolve = (token: string | null) => {
         clearTimeout(timeout)

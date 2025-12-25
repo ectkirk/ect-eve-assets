@@ -1,15 +1,8 @@
 import { logger } from '@/lib/logger'
 import { CONTRACT_PRICED_TYPE_IDS } from '@/lib/eve-constants'
-import {
-  MarketBulkResponseSchema,
-  MarketBulkItemSchema,
-  MarketJitaResponseSchema,
-  RefImplantsResponseSchema,
-} from './schemas'
+import { MarketJitaResponseSchema, RefImplantsResponseSchema } from './schemas'
 import { z } from 'zod'
 import { isTypePublished } from '@/store/reference-cache'
-
-export type MarketBulkItem = z.infer<typeof MarketBulkItemSchema>
 
 function validateRefResponse<T>(
   rawData: unknown,
@@ -38,122 +31,7 @@ function validateRefResponse<T>(
   return parseResult.data
 }
 
-const CHUNK_CONCURRENCY = 3
-const THE_FORGE_REGION_ID = 10000002
 const PLEX_TYPE_ID = 44992
-
-async function processChunksParallel<T, R>(
-  items: T[],
-  chunkSize: number,
-  processor: (chunk: T[]) => Promise<R>,
-  merger: (results: R, accumulated: R) => void,
-  initial: R
-): Promise<R> {
-  if (items.length === 0) return initial
-
-  const chunks: T[][] = []
-  for (let i = 0; i < items.length; i += chunkSize) {
-    chunks.push(items.slice(i, i + chunkSize))
-  }
-
-  const results = initial
-  let index = 0
-
-  async function processNext(): Promise<void> {
-    while (index < chunks.length) {
-      const chunkIndex = index++
-      const chunk = chunks[chunkIndex]
-      if (!chunk) continue
-      const result = await processor(chunk)
-      merger(result, results)
-    }
-  }
-
-  const workers = Array.from(
-    { length: Math.min(CHUNK_CONCURRENCY, chunks.length) },
-    () => processNext()
-  )
-  await Promise.all(workers)
-
-  return results
-}
-
-interface MarketBulkOptions {
-  avg?: boolean
-  buy?: boolean
-  jita?: boolean
-}
-
-function createMarketChunkFetcher(options: MarketBulkOptions) {
-  return async (chunk: number[]): Promise<Map<number, MarketBulkItem>> => {
-    const results = new Map<number, MarketBulkItem>()
-    const chunkStart = performance.now()
-
-    try {
-      const rawData = await window.electronAPI!.refMarket({
-        regionId: THE_FORGE_REGION_ID,
-        typeIds: chunk,
-        ...options,
-      })
-      const duration = Math.round(performance.now() - chunkStart)
-
-      const data = validateRefResponse(
-        rawData,
-        MarketBulkResponseSchema,
-        '/market/bulk',
-        { requested: chunk.length, duration }
-      )
-      if (!data) return results
-
-      const returned = Object.keys(data.items).length
-      logger.info('RefAPI /market/bulk', {
-        module: 'RefAPI',
-        requested: chunk.length,
-        returned,
-        duration,
-      })
-
-      for (const [idStr, item] of Object.entries(data.items)) {
-        results.set(Number(idStr), item)
-      }
-    } catch (error) {
-      logger.error('RefAPI /market/bulk error', error, { module: 'RefAPI' })
-    }
-
-    return results
-  }
-}
-
-async function fetchMarketFromAPI(
-  typeIds: number[],
-  options: MarketBulkOptions = {}
-): Promise<Map<number, MarketBulkItem>> {
-  if (typeIds.length === 0) return new Map()
-
-  const totalStart = performance.now()
-
-  const results = await processChunksParallel(
-    typeIds,
-    100,
-    createMarketChunkFetcher(options),
-    (chunk, acc) => {
-      for (const [k, v] of chunk) acc.set(k, v)
-    },
-    new Map<number, MarketBulkItem>()
-  )
-
-  if (typeIds.length > 100) {
-    const totalDuration = Math.round(performance.now() - totalStart)
-    logger.info('RefAPI /market/bulk total', {
-      module: 'RefAPI',
-      requested: typeIds.length,
-      returned: results.size,
-      duration: totalDuration,
-    })
-  }
-
-  return results
-}
 
 interface JitaRequestParams {
   typeIds: number[]
@@ -326,33 +204,6 @@ export async function fetchPrices(
 }
 
 export const queuePriceRefresh = fetchPrices
-
-export interface MarketComparisonPrices {
-  averagePrice: number | null
-  highestBuy: number | null
-  lowestSell: number | null
-}
-
-export async function fetchMarketComparison(
-  typeIds: number[]
-): Promise<Map<number, MarketComparisonPrices>> {
-  const fetched = await fetchMarketFromAPI(typeIds, {
-    avg: true,
-    buy: true,
-    jita: true,
-  })
-  const results = new Map<number, MarketComparisonPrices>()
-
-  for (const [typeId, item] of fetched) {
-    results.set(typeId, {
-      averagePrice: item.averagePrice ?? null,
-      highestBuy: item.highestBuy ?? null,
-      lowestSell: item.lowestSell,
-    })
-  }
-
-  return results
-}
 
 export async function fetchImplantSlots(
   typeIds: number[]

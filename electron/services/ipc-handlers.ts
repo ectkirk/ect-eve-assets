@@ -14,6 +14,8 @@ const VALID_LOG_LEVELS = ['DEBUG', 'INFO', 'WARN', 'ERROR'] as const
 const MAX_LOG_MESSAGE_LENGTH = 10000
 const MAX_LOG_CONTEXT_SIZE = 50000
 const MAX_STORAGE_SIZE = 5 * 1024 * 1024
+const MAX_REFRESH_TOKEN_LENGTH = 4000
+const MAX_BUG_DESCRIPTION_LENGTH = 1024
 
 interface WindowContext {
   getMainWindow: () => BrowserWindow | null
@@ -50,7 +52,7 @@ export function registerAuthHandlers(ctx: WindowContext): void {
       if (
         typeof refreshToken !== 'string' ||
         refreshToken.length === 0 ||
-        refreshToken.length > 4000
+        refreshToken.length > MAX_REFRESH_TOKEN_LENGTH
       ) {
         return { success: false, error: 'Invalid refresh token' }
       }
@@ -84,10 +86,9 @@ export function registerAuthHandlers(ctx: WindowContext): void {
         ctx.characterTokens.delete(characterId)
       }
     } else {
-      for (const [id, token] of ctx.characterTokens) {
-        await revokeToken(token)
-        ctx.characterTokens.delete(id)
-      }
+      const tokens = [...ctx.characterTokens.entries()]
+      await Promise.all(tokens.map(([, token]) => revokeToken(token)))
+      ctx.characterTokens.clear()
     }
     return { success: true }
   })
@@ -218,7 +219,9 @@ export function registerBugReportHandler(): void {
                   },
                   {
                     name: 'Description',
-                    value: description.trim().substring(0, 1024),
+                    value: description
+                      .trim()
+                      .substring(0, MAX_BUG_DESCRIPTION_LENGTH),
                   },
                 ],
                 timestamp: new Date().toISOString(),

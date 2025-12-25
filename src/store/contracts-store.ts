@@ -1,6 +1,5 @@
 import type { StoreApi, UseBoundStore } from 'zustand'
 import { useAuthStore, type Owner, findOwnerByKey } from './auth-store'
-import { useToastStore } from './toast-store'
 import {
   getContractItems,
   getCorporationContractItems,
@@ -10,7 +9,6 @@ import {
 import { esi } from '@/api/esi'
 import { ESIContractSchema } from '@/api/schemas'
 import { logger } from '@/lib/logger'
-import { formatNumber } from '@/lib/utils'
 import { triggerResolution } from '@/lib/data-resolver'
 import {
   createVisibilityStore,
@@ -327,58 +325,10 @@ const baseStore = createVisibilityStore<
     previousContractsByOwner.set(ownerKey, prev)
   },
 
-  onAfterOwnerUpdate: ({ owner, newItems, itemsById }) => {
+  onAfterOwnerUpdate: ({ owner, itemsById }) => {
     const ownerKey = `${owner.type}-${owner.id}`
-    const prev = previousContractsByOwner.get(ownerKey) ?? new Map()
     previousContractsByOwner.delete(ownerKey)
 
-    const ownerId = owner.type === 'corporation' ? owner.id : owner.characterId
-    const allOwners = Object.values(useAuthStore.getState().owners).filter(
-      (o): o is Owner => !!o
-    )
-    const allOwnerIds = new Set(
-      allOwners.map((o) => (o.type === 'corporation' ? o.id : o.characterId))
-    )
-
-    const toastStore = useToastStore.getState()
-
-    for (const contract of newItems) {
-      const prevContract = prev.get(contract.contract_id)
-
-      if (!prevContract) {
-        if (
-          contract.assignee_id === ownerId &&
-          !allOwnerIds.has(contract.issuer_id) &&
-          contract.status === 'outstanding'
-        ) {
-          toastStore.addToast(
-            'contract-accepted',
-            'New Contract Assigned',
-            contract.price
-              ? `${formatNumber(contract.price)} ISK`
-              : 'Item exchange'
-          )
-        }
-      } else if (
-        (prevContract.status === 'outstanding' ||
-          prevContract.status === 'in_progress') &&
-        contract.status === 'finished' &&
-        (owner.type === 'corporation'
-          ? contract.issuer_corporation_id === owner.id
-          : contract.issuer_id === owner.characterId) &&
-        !allOwnerIds.has(contract.acceptor_id)
-      ) {
-        toastStore.addToast(
-          'contract-accepted',
-          'Contract Completed',
-          contract.price
-            ? `${formatNumber(contract.price)} ISK`
-            : 'Item exchange'
-        )
-      }
-    }
-
-    // Fetch items for single-owner updates (updateForOwner doesn't call onAfterBatchUpdate)
     fetchItemsForContracts(itemsById)
   },
 

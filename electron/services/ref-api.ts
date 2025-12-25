@@ -9,18 +9,27 @@ const REF_MIN_REQUEST_INTERVAL_MS = 250
 
 let refGlobalRetryAfter = 0
 let refLastRequestTime = 0
+let cachedBaseHeaders: Record<string, string> | null = null
+let cachedJsonHeaders: Record<string, string> | null = null
 
 function getRefHeaders(contentType?: 'json'): Record<string, string> {
-  const headers: Record<string, string> = {
-    'User-Agent': `ECTEVEAssets/${app.getVersion()} (ecteveassets@edencom.net; +https://github.com/ectkirk/ect-eve-assets)`,
-  }
-  if (REF_API_KEY) {
-    headers['X-App-Key'] = REF_API_KEY
-  }
   if (contentType === 'json') {
-    headers['Content-Type'] = 'application/json'
+    if (!cachedJsonHeaders) {
+      cachedJsonHeaders = {
+        'User-Agent': `ECTEVEAssets/${app.getVersion()} (ecteveassets@edencom.net; +https://github.com/ectkirk/ect-eve-assets)`,
+        'Content-Type': 'application/json',
+        ...(REF_API_KEY && { 'X-App-Key': REF_API_KEY }),
+      }
+    }
+    return cachedJsonHeaders
   }
-  return headers
+  if (!cachedBaseHeaders) {
+    cachedBaseHeaders = {
+      'User-Agent': `ECTEVEAssets/${app.getVersion()} (ecteveassets@edencom.net; +https://github.com/ectkirk/ect-eve-assets)`,
+      ...(REF_API_KEY && { 'X-App-Key': REF_API_KEY }),
+    }
+  }
+  return cachedBaseHeaders
 }
 
 function setRefGlobalBackoff(delayMs: number): void {
@@ -36,14 +45,14 @@ function setRefGlobalBackoff(delayMs: number): void {
 }
 
 async function waitForRefRateLimit(): Promise<void> {
-  const now = Date.now()
+  let now = Date.now()
 
   if (refGlobalRetryAfter > now) {
-    const waitMs = refGlobalRetryAfter - now
-    await new Promise((r) => setTimeout(r, waitMs))
+    await new Promise((r) => setTimeout(r, refGlobalRetryAfter - now))
+    now = Date.now()
   }
 
-  const timeSinceLastRequest = Date.now() - refLastRequestTime
+  const timeSinceLastRequest = now - refLastRequestTime
   if (timeSinceLastRequest < REF_MIN_REQUEST_INTERVAL_MS) {
     await new Promise((r) =>
       setTimeout(r, REF_MIN_REQUEST_INTERVAL_MS - timeSinceLastRequest)
@@ -313,33 +322,6 @@ export function registerRefAPIHandlers(): void {
     return refPost('/market/jita', body, 'ref:marketJita')
   })
 
-  ipcMain.handle('ref:market', async (_event, params: unknown) => {
-    if (typeof params !== 'object' || params === null) {
-      return { error: 'Invalid params' }
-    }
-    const p = params as Record<string, unknown>
-    if (
-      typeof p.regionId !== 'number' ||
-      !Number.isInteger(p.regionId) ||
-      p.regionId <= 0
-    ) {
-      return { error: 'Invalid regionId' }
-    }
-    if (!validateIds(p.typeIds, 100)) {
-      return { error: 'Invalid typeIds array (max 100)' }
-    }
-
-    const body: Record<string, unknown> = {
-      regionId: p.regionId,
-      typeIds: p.typeIds,
-    }
-    if (p.avg === true) body.avg = true
-    if (p.buy === true) body.buy = true
-    if (p.jita === true) body.jita = true
-
-    return refPost('/market/bulk', body, 'ref:market')
-  })
-
   ipcMain.handle(
     'ref:buybackCalculate',
     async (_event, text: unknown, config: unknown) => {
@@ -373,34 +355,6 @@ export function registerRefAPIHandlers(): void {
       }
     }
   )
-
-  ipcMain.handle('ref:buybackCalculator', async (_event, text: unknown) => {
-    if (typeof text !== 'string' || !text.trim()) {
-      return { error: 'Text is required' }
-    }
-
-    await waitForRefRateLimit()
-    try {
-      const response = await fetchRefWithRetry(
-        'https://edencom.net/api/buyback/calculator',
-        {
-          method: 'POST',
-          headers: getRefHeaders('json'),
-          body: JSON.stringify({ text }),
-        }
-      )
-      if (!response.ok) {
-        const errorText = await response.text()
-        return { error: `HTTP ${response.status}: ${errorText}` }
-      }
-      return await response.json()
-    } catch (err) {
-      logger.error('ref:buybackCalculator fetch failed', err, {
-        module: 'RefAPI',
-      })
-      return { error: String(err) }
-    }
-  })
 
   ipcMain.handle('ref:contractsSearch', async (_event, params: unknown) => {
     if (typeof params !== 'object' || params === null) {

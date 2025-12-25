@@ -60,7 +60,6 @@ import {
 
 const mockRefTypesPage = vi.fn()
 const mockRefMoons = vi.fn()
-const mockRefMarket = vi.fn()
 const mockRefMarketJita = vi.fn()
 const mockRefCategories = vi.fn()
 const mockRefGroups = vi.fn()
@@ -126,7 +125,6 @@ describe('ref-client', () => {
     window.electronAPI = {
       refTypesPage: mockRefTypesPage,
       refMoons: mockRefMoons,
-      refMarket: mockRefMarket,
       refMarketJita: mockRefMarketJita,
       refCategories: mockRefCategories,
       refGroups: mockRefGroups,

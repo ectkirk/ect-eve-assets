@@ -130,28 +130,6 @@ declare global {
     error?: string
   }
 
-  interface RefMarketParams {
-    regionId: number
-    typeIds: number[]
-    avg?: boolean
-    buy?: boolean
-    jita?: boolean
-  }
-
-  interface RefMarketItem {
-    lowestSell: number | null
-    averagePrice?: number | null
-    avg30dPrice?: number | null
-    avg30dVolume?: number | null
-    highestBuy?: number | null
-  }
-
-  interface RefMarketResult {
-    regionId?: number
-    items?: Record<string, RefMarketItem>
-    error?: string
-  }
-
   interface RefMarketContractItem {
     price: number | null
     salesCount: number
@@ -475,14 +453,12 @@ declare global {
     refImplants: (ids: number[]) => Promise<RefApiResult>
     refMoons: (ids: number[]) => Promise<RefMoonsResult>
     refShipSlots: (ids: number[]) => Promise<RefShipsResult>
-    refMarket: (params: RefMarketParams) => Promise<RefMarketResult>
     refMarketJita: (params: RefMarketJitaParams) => Promise<RefMarketJitaResult>
     refBlueprints: () => Promise<BlueprintsResult>
     refBuybackCalculate: (
       text: string,
       config: BuybackConfig
     ) => Promise<BuybackResult>
-    refBuybackCalculator: (text: string) => Promise<BuybackCalculatorResult>
     refBuybackInfo: () => Promise<BuybackInfoResult>
     refContractsSearch: (
       params: ContractSearchParams

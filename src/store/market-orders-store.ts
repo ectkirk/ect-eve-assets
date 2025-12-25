@@ -1,13 +1,11 @@
 import type { StoreApi, UseBoundStore } from 'zustand'
 import { type Owner, findOwnerByKey } from './auth-store'
-import { useToastStore } from './toast-store'
 import { usePriceStore } from './price-store'
 import { esi } from '@/api/esi'
 import {
   ESIMarketOrderSchema,
   ESICorporationMarketOrderSchema,
 } from '@/api/schemas'
-import { getTypeName } from '@/store/reference-cache'
 import { useRegionalMarketStore } from '@/store/regional-market-store'
 import { logger } from '@/lib/logger'
 import {
@@ -165,16 +163,6 @@ const baseStore = createVisibilityStore<MarketOrder, StoredOrder>({
     )
 
     if (completedOrders.length > 0) {
-      const toastStore = useToastStore.getState()
-      for (const order of completedOrders) {
-        const typeName = getTypeName(order.type_id)
-        const action = order.is_buy_order ? 'Buy' : 'Sell'
-        toastStore.addToast(
-          'order-filled',
-          `${action} Order Filled`,
-          `${order.volume_total.toLocaleString()}x ${typeName}`
-        )
-      }
       logger.info('Market orders completed', {
         module: 'MarketOrdersStore',
         owner: owner.name,
