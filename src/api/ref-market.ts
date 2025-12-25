@@ -32,6 +32,7 @@ function validateRefResponse<T>(
 }
 
 const PLEX_TYPE_ID = 44992
+const EXCLUDED_TYPE_IDS = new Set([670, 33328]) // Capsules - no market price
 
 interface JitaRequestParams {
   typeIds: number[]
@@ -161,7 +162,9 @@ async function fetchPricesConsolidated(
     return new Map()
   }
 
-  const publishedTypeIds = typeIds.filter(isTypePublished)
+  const publishedTypeIds = typeIds.filter(
+    (id) => isTypePublished(id) && !EXCLUDED_TYPE_IDS.has(id)
+  )
 
   const contractTypeIds = publishedTypeIds.filter((id) =>
     CONTRACT_PRICED_TYPE_IDS.has(id)
