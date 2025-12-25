@@ -37,6 +37,9 @@ export function useTotalAssets(): AssetTotals {
   const walletsByOwner = useWalletStore((s) => s.dataByOwner)
 
   return useMemo(() => {
+    void priceVersion
+    void cacheVersion
+
     const selectedSet = new Set(selectedOwnerIds)
     const matchesOwner = (type: 'character' | 'corporation', id: number) =>
       selectedSet.has(ownerKey(type, id))

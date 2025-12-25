@@ -71,6 +71,9 @@ export function useResolvedAssets(): ResolvedAssetsResult {
   }, [starbasesByOwner, structuresByOwner])
 
   const resolvedAssets = useMemo(() => {
+    void assetData.priceVersion
+    void assetData.cacheVersion
+
     let assets =
       assetData.assetsByOwner.length > 0
         ? resolveAllAssets(assetData.assetsByOwner, {

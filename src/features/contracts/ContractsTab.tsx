@@ -144,6 +144,7 @@ export function ContractsTab() {
 
   const { directionGroups, courierGroup } = useMemo(() => {
     void cacheVersion
+    void priceVersion
 
     const filteredContractsByOwner = contractsByOwner.filter(({ owner }) =>
       selectedSet.has(ownerKey(owner.type, owner.id))
