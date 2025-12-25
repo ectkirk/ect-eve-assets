@@ -118,9 +118,12 @@ export async function initCache(): Promise<void> {
         if (++checked >= 5) break
       }
       if (needsRefresh) {
-        logger.info('Types cache missing published field, clearing for refresh', {
-          module: 'ReferenceCache',
-        })
+        logger.info(
+          'Types cache missing published field, clearing for refresh',
+          {
+            module: 'ReferenceCache',
+          }
+        )
         typesCache = new Map()
         await clearStore('types')
         try {

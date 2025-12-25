@@ -142,7 +142,15 @@ const baseStore = createVisibilityStore<MarketOrder, StoredOrder>({
       characterId: owner.characterId,
     },
   }),
-  onAfterInit: registerPricesFromOrders,
+  onAfterInit: (itemsById) => {
+    registerPricesFromOrders(itemsById)
+
+    const activeTypeIds = new Set<number>()
+    for (const { item } of itemsById.values()) {
+      activeTypeIds.add(item.type_id)
+    }
+    useRegionalMarketStore.getState().syncTypesWithOrders(activeTypeIds)
+  },
   onBeforeOwnerUpdate: (owner, previousVisibility, itemsById) => {
     const ownerKey = `${owner.type}:${owner.id}`
     const previousOrders = new Map<number, MarketOrder>()
