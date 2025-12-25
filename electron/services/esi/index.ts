@@ -2,6 +2,7 @@ import { app } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
 import { ESICache } from './cache'
+import { ESIHealthChecker } from './health'
 import {
   RateLimitTracker,
   guessRateLimitGroup,
@@ -15,6 +16,7 @@ import {
   type ESIRequestOptions,
   type ESIResponse,
   type ESIResponseMeta,
+  type ESIHealthStatus,
 } from './types'
 import { ESIError } from '../../../shared/esi-types'
 
@@ -28,6 +30,7 @@ type TokenProvider = (characterId: number) => Promise<string | null>
 export class MainESIService {
   private cache = new ESICache()
   private rateLimiter = new RateLimitTracker()
+  private healthChecker: ESIHealthChecker
   private tokenProvider: TokenProvider | null = null
   private rateLimitFilePath: string
   private userAgent: string
@@ -40,6 +43,7 @@ export class MainESIService {
     this.rateLimitFilePath = path.join(userData, RATE_LIMIT_FILE)
     this.cache.setFilePath(path.join(userData, CACHE_FILE))
     this.userAgent = makeUserAgent(app.getVersion())
+    this.healthChecker = new ESIHealthChecker(app.getVersion())
     this.loadState()
   }
 
@@ -167,6 +171,16 @@ export class MainESIService {
   ): Promise<ESIResponse<unknown>> {
     while (this.paused) {
       await this.delay(100)
+    }
+
+    const healthCheck = await this.healthChecker.ensureHealthy(endpoint)
+    if (!healthCheck.healthy) {
+      return {
+        success: false,
+        error: healthCheck.error ?? 'ESI service unavailable',
+        status: 503,
+        retryAfter: 60,
+      }
     }
 
     const characterId = options.characterId ?? 0
@@ -354,6 +368,14 @@ export class MainESIService {
       globalRetryAfter: this.rateLimiter.getGlobalRetryAfter(),
       activeRequests: this.activeRequests,
     }
+  }
+
+  async getHealthStatus(): Promise<ESIHealthStatus> {
+    return this.healthChecker.getHealthStatus()
+  }
+
+  getCachedHealthStatus(): ESIHealthStatus | null {
+    return this.healthChecker.getCachedStatus()
   }
 
   pause(): void {

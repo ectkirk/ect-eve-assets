@@ -41,3 +41,23 @@ export interface CacheEntry {
   etag: string
   expires: number
 }
+
+export type ESIRouteStatus =
+  | 'OK'
+  | 'Degraded'
+  | 'Down'
+  | 'Recovering'
+  | 'Unknown'
+
+export interface ESIRouteHealth {
+  method: string
+  path: string
+  status: ESIRouteStatus
+}
+
+export interface ESIHealthStatus {
+  healthy: boolean
+  status: 'healthy' | 'degraded' | 'down' | 'unknown'
+  routes: ESIRouteHealth[]
+  fetchedAt: number
+}

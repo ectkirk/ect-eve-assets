@@ -208,4 +208,12 @@ export function registerESIHandlers(): void {
   ipcMain.handle('esi:getRateLimitInfo', () => {
     return getESIService().getRateLimitInfo()
   })
+
+  ipcMain.handle('esi:getHealth', async () => {
+    return getESIService().getHealthStatus()
+  })
+
+  ipcMain.handle('esi:getCachedHealth', () => {
+    return getESIService().getCachedHealthStatus()
+  })
 }
