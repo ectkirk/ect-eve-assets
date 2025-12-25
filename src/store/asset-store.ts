@@ -260,7 +260,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
             .getState()
             .setExpiry(ownerKey, endpoint, expiresAt, etag)
 
-          resolveTypes(Array.from(new Set(assets.map((a) => a.type_id))))
+          await resolveTypes(Array.from(new Set(assets.map((a) => a.type_id))))
           const names = await fetchOwnerAssetNames(owner, assets)
           for (const n of names) {
             if (n.name && n.name !== 'None') {
@@ -368,7 +368,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         .getState()
         .setExpiry(ownerKey, endpoint, expiresAt, etag)
 
-      resolveTypes(Array.from(new Set(assets.map((a) => a.type_id))))
+      await resolveTypes(Array.from(new Set(assets.map((a) => a.type_id))))
       const names = await fetchOwnerAssetNames(owner, assets)
       for (const n of names) {
         if (n.name && n.name !== 'None') {
