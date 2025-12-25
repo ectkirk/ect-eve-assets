@@ -36,7 +36,7 @@ export interface VisibilityStoreConfig<
   ) => Promise<{ data: TItem[]; expiresAt: number; etag: string | null }>
   toStoredItem: (owner: Owner, item: TItem) => TStoredItem
   isEmpty?: (items: TItem[]) => boolean
-  onAfterInit?: (itemsById: Map<number, TStoredItem>) => void
+  onAfterInit?: (itemsById: Map<number, TStoredItem>) => void | Promise<void>
   onBeforeOwnerUpdate?: (
     owner: Owner,
     previousVisibility: Set<number>,
@@ -191,7 +191,7 @@ export function createVisibilityStore<
 
             if (items.size > 0) {
               triggerResolution()
-              onAfterInit?.(items)
+              await onAfterInit?.(items)
             }
 
             logger.info(`${name} store initialized`, {

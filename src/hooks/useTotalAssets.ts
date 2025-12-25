@@ -9,6 +9,7 @@ import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { getType } from '@/store/reference-cache'
 import { CategoryIds } from '@/lib/tree-types'
 import { calculateStructureValues } from '@/lib/structure-constants'
+import { useCacheVersion } from './useCacheVersion'
 
 export interface AssetTotals {
   total: number
@@ -23,6 +24,7 @@ export interface AssetTotals {
 export function useTotalAssets(): AssetTotals {
   const assetsByOwner = useAssetStore((s) => s.assetsByOwner)
   const priceVersion = usePriceStore((s) => s.priceVersion)
+  const cacheVersion = useCacheVersion()
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
 
   const ordersById = useMarketOrdersStore((s) => s.itemsById)
@@ -113,6 +115,7 @@ export function useTotalAssets(): AssetTotals {
   }, [
     assetsByOwner,
     priceVersion,
+    cacheVersion,
     selectedOwnerIds,
     ordersById,
     ordersVisibility,

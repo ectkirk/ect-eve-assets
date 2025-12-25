@@ -62,6 +62,7 @@ type ExpiryCacheStore = ExpiryCacheState & ExpiryCacheActions
 
 let db: IDBDatabase | null = null
 let sortedPatternsCache: string[] | null = null
+let initPromise: Promise<void> | null = null
 
 function makeKey(ownerKey: string, endpoint: string): string {
   return `${ownerKey}:${endpoint}`
@@ -329,42 +330,49 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
   isPaused: false,
 
   init: async () => {
-    const currentGen = get().pollingGeneration
-    const newGen = currentGen + 1
-    set({ pollingGeneration: newGen })
+    if (get().initialized) return
+    if (initPromise) return initPromise
 
-    try {
-      const endpoints = await loadFromDB()
-      set({ endpoints, initialized: true })
+    initPromise = (async () => {
+      const currentGen = get().pollingGeneration
+      const newGen = currentGen + 1
+      set({ pollingGeneration: newGen })
 
-      const now = Date.now()
-      const expired: Array<{ ownerKey: string; endpoint: string }> = []
+      try {
+        const endpoints = await loadFromDB()
+        set({ endpoints, initialized: true })
 
-      for (const [key, expiry] of endpoints) {
-        if (expiry.expiresAt <= now) {
-          const parsed = parseKey(key)
-          if (parsed) expired.push(parsed)
+        const now = Date.now()
+        const expired: Array<{ ownerKey: string; endpoint: string }> = []
+
+        for (const [key, expiry] of endpoints) {
+          if (expiry.expiresAt <= now) {
+            const parsed = parseKey(key)
+            if (parsed) expired.push(parsed)
+          }
         }
+
+        logger.info('Expiry cache initialized', {
+          module: 'ExpiryCacheStore',
+          total: endpoints.size,
+          expired: expired.length,
+        })
+
+        for (const item of expired) {
+          get().queueRefresh(item.ownerKey, item.endpoint)
+        }
+
+        schedulePoll(newGen)
+      } catch (error) {
+        logger.error('Failed to initialize expiry cache', error, {
+          module: 'ExpiryCacheStore',
+        })
+        set({ initialized: true })
+        schedulePoll(newGen)
       }
+    })()
 
-      logger.info('Expiry cache initialized', {
-        module: 'ExpiryCacheStore',
-        total: endpoints.size,
-        expired: expired.length,
-      })
-
-      for (const item of expired) {
-        get().queueRefresh(item.ownerKey, item.endpoint)
-      }
-
-      schedulePoll(newGen)
-    } catch (error) {
-      logger.error('Failed to initialize expiry cache', error, {
-        module: 'ExpiryCacheStore',
-      })
-      set({ initialized: true })
-      schedulePoll(newGen)
-    }
+    return initPromise
   },
 
   setExpiry: (ownerKey, endpoint, expiresAt, etag, isEmpty) => {
@@ -587,10 +595,12 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
   },
 
   clear: async () => {
+    initPromise = null
     set({
       endpoints: new Map(),
       refreshQueue: [],
       pollingGeneration: get().pollingGeneration + 1,
+      initialized: false,
     })
 
     try {

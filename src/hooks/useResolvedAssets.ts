@@ -154,6 +154,7 @@ export function useResolvedAssets(): ResolvedAssetsResult {
   }, [
     assetData.assetsByOwner,
     assetData.priceVersion,
+    assetData.cacheVersion,
     assetData.assetNames,
     ownedStructureIds,
     starbaseMoonIds,
