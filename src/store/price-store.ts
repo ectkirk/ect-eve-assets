@@ -658,6 +658,7 @@ export const usePriceStore = create<PriceStore>((set, get) => ({
   clear: async () => {
     await clearDB()
     initPromise = null
+    stopPriceRefreshTimers()
     set({
       jitaPrices: new Map(),
       abyssalPrices: new Map(),
