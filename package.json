@@ -62,7 +62,8 @@
     "linux": {
       "target": [
         "AppImage"
-      ]
+      ],
+      "artifactName": "ECTEVEAssets-${version}.${ext}"
     },
     "nsis": {
       "oneClick": false,
