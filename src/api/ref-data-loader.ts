@@ -76,7 +76,7 @@ function enrichType(raw: RawType): CachedType {
     categoryName: category?.name ?? '',
     volume: raw.volume ?? 0,
     packagedVolume: raw.packagedVolume ?? undefined,
-    published: raw.isPublished !== 0,
+    published: raw.isPublished === 1,
     ...towerInfo,
   }
 }

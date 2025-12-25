@@ -104,6 +104,33 @@ export async function initCache(): Promise<void> {
     ])
 
     typesCache = types
+
+    // Check if types cache needs refresh due to missing published field (added in 1.10.0)
+    // Types are loaded atomically, so sampling a few is sufficient
+    if (types.size > 0) {
+      let needsRefresh = false
+      let checked = 0
+      for (const type of types.values()) {
+        if (type.published === undefined) {
+          needsRefresh = true
+          break
+        }
+        if (++checked >= 5) break
+      }
+      if (needsRefresh) {
+        logger.info('Types cache missing published field, clearing for refresh', {
+          module: 'ReferenceCache',
+        })
+        typesCache = new Map()
+        await clearStore('types')
+        try {
+          localStorage.removeItem(ALL_TYPES_LOADED_KEY)
+        } catch {
+          // ignore
+        }
+      }
+    }
+
     regionsCache = regions
     systemsCache = systems
     stationsCache = stations
@@ -177,7 +204,7 @@ export function hasType(id: number): boolean {
 export function isTypePublished(id: number): boolean {
   const type = typesCache.get(id)
   if (!type) return false
-  return type.published !== false
+  return type.published === true
 }
 
 export function getCategory(id: number): CachedCategory | undefined {
