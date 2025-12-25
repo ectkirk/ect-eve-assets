@@ -105,13 +105,13 @@ export async function initCache(): Promise<void> {
 
     typesCache = types
 
-    // Check if types cache needs refresh due to missing published field (added in 1.10.0)
+    // Check if types cache needs refresh due to missing/invalid published field (added in 1.10.0)
     // Types are loaded atomically, so sampling a few is sufficient
     if (types.size > 0) {
       let needsRefresh = false
       let checked = 0
       for (const type of types.values()) {
-        if (type.published === undefined) {
+        if (typeof type.published !== 'boolean') {
           needsRefresh = true
           break
         }
@@ -119,7 +119,7 @@ export async function initCache(): Promise<void> {
       }
       if (needsRefresh) {
         logger.info(
-          'Types cache missing published field, clearing for refresh',
+          'Types cache has invalid published field, clearing for refresh',
           {
             module: 'ReferenceCache',
           }
