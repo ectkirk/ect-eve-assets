@@ -19,12 +19,7 @@ import {
   tabToKey,
   type BuybackTabType,
 } from '@/features/buyback'
-// TODO: Re-enable when tools feature is ready
-import {
-  ToolsTab as _ToolsTab,
-  TOOLS_TABS as _TOOLS_TABS,
-  type ToolsTabType,
-} from '@/features/tools'
+import { ToolsTab, TOOLS_TABS, type ToolsTabType } from '@/features/tools'
 import { useBuybackActionStore } from '@/store/buyback-action-store'
 import { useTotalAssets } from '@/hooks'
 import { formatNumber } from '@/lib/utils'
@@ -93,7 +88,6 @@ function ModeSwitcher({
       >
         Assets
       </button>
-      {/* TODO: Re-enable when tools feature is ready
       <button
         onClick={() => onModeChange('tools')}
         className={`rounded px-3 py-1 text-sm font-medium transition-colors ${
@@ -104,7 +98,6 @@ function ModeSwitcher({
       >
         Tools
       </button>
-      */}
       <button
         onClick={() => onModeChange('buyback')}
         className={`rounded px-3 py-1 text-sm font-medium transition-colors ${
@@ -196,9 +189,8 @@ function MainLayoutInner() {
   const [activeBuybackTab, setActiveBuybackTab] = useState<BuybackTabType>(
     BUYBACK_TABS[1]
   )
-  // TODO: Re-enable when tools feature is ready
-  const [_activeToolsTab, _setActiveToolsTab] = useState<ToolsTabType>(
-    _TOOLS_TABS[0]
+  const [activeToolsTab, setActiveToolsTab] = useState<ToolsTabType>(
+    TOOLS_TABS[0]
   )
   const [buybackPrefill, setBuybackPrefill] = useState<string | null>(null)
 
@@ -303,7 +295,6 @@ function MainLayoutInner() {
                 </button>
               )
             })}
-          {/* TODO: Re-enable when tools feature is ready
           {mode === 'tools' &&
             TOOLS_TABS.map((tab) => (
               <button
@@ -318,7 +309,6 @@ function MainLayoutInner() {
                 {tab}
               </button>
             ))}
-          */}
         </div>
         <div className="flex-1" />
         <OwnerButton />
@@ -343,9 +333,7 @@ function MainLayoutInner() {
             />
           </div>
         )}
-        {/* TODO: Re-enable when tools feature is ready
         {mode === 'tools' && <ToolsTab activeTab={activeToolsTab} />}
-        */}
       </main>
     </div>
   )
