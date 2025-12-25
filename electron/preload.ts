@@ -45,6 +45,7 @@ export interface RefTypesPageResult {
       groupId?: number | null
       volume?: number | null
       packagedVolume?: number | null
+      isPublished?: number
     }
   >
   pagination?: {

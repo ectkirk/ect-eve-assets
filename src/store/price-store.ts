@@ -60,7 +60,8 @@ interface PriceState {
   >
   lastJitaRefreshAt: number | null
   lastEsiRefreshAt: number | null
-  isUpdating: boolean
+  isUpdatingJita: boolean
+  isUpdatingEsi: boolean
   initialized: boolean
   priceVersion: number
 }
@@ -245,7 +246,8 @@ export const usePriceStore = create<PriceStore>((set, get) => ({
   esiPrices: new Map(),
   lastJitaRefreshAt: null,
   lastEsiRefreshAt: null,
-  isUpdating: false,
+  isUpdatingJita: false,
+  isUpdatingEsi: false,
   initialized: false,
   priceVersion: 0,
 
@@ -491,13 +493,13 @@ export const usePriceStore = create<PriceStore>((set, get) => ({
     const hasTypeIds = typeIds.length > 0
     const hasAbyssalIds = abyssalItemIds && abyssalItemIds.length > 0
     if (!hasTypeIds && !hasAbyssalIds) return
-    if (get().isUpdating) return
+    if (get().isUpdatingJita) return
 
     if (!get().initialized) {
       await get().init()
     }
 
-    set({ isUpdating: true })
+    set({ isUpdatingJita: true })
 
     try {
       const { fetchPrices } = await import('@/api/ref-market')
@@ -531,7 +533,7 @@ export const usePriceStore = create<PriceStore>((set, get) => ({
         jitaPrices: mergedJita,
         abyssalPrices: mergedAbyssal,
         lastJitaRefreshAt: now,
-        isUpdating: false,
+        isUpdatingJita: false,
       })
 
       const db = await getDB()
@@ -555,17 +557,17 @@ export const usePriceStore = create<PriceStore>((set, get) => ({
         err instanceof Error ? err : undefined,
         { module: 'PriceStore' }
       )
-      set({ isUpdating: false })
+      set({ isUpdatingJita: false })
     }
   },
 
   refreshEsiPrices: async () => {
     const state = get()
-    if (state.isUpdating) return
+    if (state.isUpdatingEsi) return
     if (!shouldRefreshEsi(state.lastEsiRefreshAt) && state.esiPrices.size > 0)
       return
 
-    set({ isUpdating: true })
+    set({ isUpdatingEsi: true })
 
     try {
       logger.info('Fetching ESI market prices', { module: 'PriceStore' })
@@ -584,7 +586,7 @@ export const usePriceStore = create<PriceStore>((set, get) => ({
 
       const now = Date.now()
       await saveEsiPricesToDB(esiPrices, now)
-      set({ esiPrices, lastEsiRefreshAt: now, isUpdating: false })
+      set({ esiPrices, lastEsiRefreshAt: now, isUpdatingEsi: false })
 
       logger.info('ESI market prices updated', {
         module: 'PriceStore',
@@ -598,7 +600,7 @@ export const usePriceStore = create<PriceStore>((set, get) => ({
           module: 'PriceStore',
         }
       )
-      set({ isUpdating: false })
+      set({ isUpdatingEsi: false })
     }
   },
 
@@ -666,6 +668,8 @@ export const usePriceStore = create<PriceStore>((set, get) => ({
       esiPrices: new Map(),
       lastJitaRefreshAt: null,
       lastEsiRefreshAt: null,
+      isUpdatingJita: false,
+      isUpdatingEsi: false,
       initialized: false,
       priceVersion: 0,
     })
@@ -708,7 +712,7 @@ async function triggerJitaRefreshIfNeeded(): Promise<void> {
   const { useStructuresStore } = await import('./structures-store')
 
   const state = usePriceStore.getState()
-  if (!state.initialized || state.isUpdating) return
+  if (!state.initialized || state.isUpdatingJita) return
   if (useExpiryCacheStore.getState().isPaused) return
 
   const { typeIds, abyssalItemIds } = collectOwnedIds(
@@ -757,6 +761,9 @@ export function stopPriceRefreshTimers(): void {
 useStoreRegistry.getState().register({
   name: 'prices',
   clear: usePriceStore.getState().clear,
-  getIsUpdating: () => usePriceStore.getState().isUpdating,
+  getIsUpdating: () => {
+    const state = usePriceStore.getState()
+    return state.isUpdatingJita || state.isUpdatingEsi
+  },
   init: usePriceStore.getState().init,
 })

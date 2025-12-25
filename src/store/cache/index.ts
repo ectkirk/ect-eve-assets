@@ -105,25 +105,30 @@ export async function initCache(): Promise<void> {
 
     typesCache = types
 
-    // Check if types cache needs refresh due to missing/invalid published field (added in 1.10.0)
-    // Types are loaded atomically, so sampling a few is sufficient
+    // Check if types cache needs refresh:
+    // 1. Non-boolean published field (old data format)
+    // 2. All sampled types have published=false (API didn't provide field, bug in <= 1.9.1)
     if (types.size > 0) {
       let needsRefresh = false
       let checked = 0
+      let allFalse = true
       for (const type of types.values()) {
         if (typeof type.published !== 'boolean') {
           needsRefresh = true
           break
         }
-        if (++checked >= 5) break
+        if (type.published === true) {
+          allFalse = false
+        }
+        if (++checked >= 10) break
+      }
+      if (!needsRefresh && allFalse && checked >= 10) {
+        needsRefresh = true
       }
       if (needsRefresh) {
-        logger.info(
-          'Types cache has invalid published field, clearing for refresh',
-          {
-            module: 'ReferenceCache',
-          }
-        )
+        logger.info('Types cache needs refresh, clearing', {
+          module: 'ReferenceCache',
+        })
         typesCache = new Map()
         await clearStore('types')
         try {
