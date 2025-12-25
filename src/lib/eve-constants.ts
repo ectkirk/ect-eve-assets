@@ -16,3 +16,17 @@ export const CONTRACT_PRICED_TYPE_IDS = new Set([
   ...CAPITAL_TYPE_IDS,
   ...AT_SHIP_TYPE_IDS,
 ])
+
+export const IndustryActivity = {
+  MANUFACTURING: 1,
+  COPYING: 5,
+  INVENTION: 8,
+  REACTION: 9,
+} as const
+
+export function isIndustryJobBpcProduct(activityId: number): boolean {
+  return (
+    activityId === IndustryActivity.COPYING ||
+    activityId === IndustryActivity.INVENTION
+  )
+}

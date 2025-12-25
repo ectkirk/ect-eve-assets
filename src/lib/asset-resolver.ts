@@ -14,6 +14,7 @@ import {
 } from './tree-types'
 import { getType, getStructure, getLocation } from '@/store/reference-cache'
 import { usePriceStore } from '@/store/price-store'
+import { isIndustryJobBpcProduct } from './eve-constants'
 
 export interface AssetLookupMap {
   itemIdToAsset: Map<number, ESIAsset>
@@ -451,6 +452,7 @@ export function resolveIndustryJob(
   const isStructure = locationId > 1_000_000_000_000
 
   const productTypeId = job.product_type_id ?? job.blueprint_type_id
+  const isBpcProduct = isIndustryJobBpcProduct(job.activity_id)
 
   const syntheticAsset: ESIAsset = {
     item_id: job.job_id,
@@ -480,7 +482,9 @@ export function resolveIndustryJob(
 
   const sdeType = getType(productTypeId)
   const volume = sdeType?.packagedVolume ?? sdeType?.volume ?? 0
-  const price = usePriceStore.getState().getItemPrice(productTypeId)
+  const price = usePriceStore.getState().getItemPrice(productTypeId, {
+    isBlueprintCopy: isBpcProduct,
+  })
 
   const modeFlags: AssetModeFlags = {
     inHangar: false,
@@ -522,6 +526,6 @@ export function resolveIndustryJob(
     modeFlags,
 
     customName: undefined,
-    isBlueprintCopy: false,
+    isBlueprintCopy: isBpcProduct,
   }
 }

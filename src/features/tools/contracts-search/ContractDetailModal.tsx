@@ -71,7 +71,7 @@ function InfoRow({
 
 function ItemsTable({ items }: { items: ContractItem[] }) {
   const totalValue = items.reduce(
-    (sum, item) => sum + (item.price ?? 0) * item.quantity,
+    (sum, item) => sum + item.price * item.quantity,
     0
   )
 
@@ -116,7 +116,7 @@ function ItemsTable({ items }: { items: ContractItem[] }) {
                   </TableCell>
                   <TableCell className="text-right font-mono">
                     {item.price
-                      ? formatNumber((item.price ?? 0) * item.quantity)
+                      ? formatNumber(item.price * item.quantity)
                       : '-'}
                   </TableCell>
                 </TableRow>

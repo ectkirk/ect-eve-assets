@@ -4,6 +4,7 @@ import { usePriceStore } from './price-store'
 import { esi } from '@/api/esi'
 import { ESIIndustryJobSchema } from '@/api/schemas'
 import { logger } from '@/lib/logger'
+import { isIndustryJobBpcProduct } from '@/lib/eve-constants'
 import {
   createVisibilityStore,
   type StoredItem,
@@ -148,7 +149,10 @@ export const useIndustryJobsStore: IndustryJobsStore = Object.assign(
         if (job.status !== 'active' && job.status !== 'ready') continue
 
         const productTypeId = job.product_type_id ?? job.blueprint_type_id
-        total += priceStore.getItemPrice(productTypeId) * job.runs
+        total +=
+          priceStore.getItemPrice(productTypeId, {
+            isBlueprintCopy: isIndustryJobBpcProduct(job.activity_id),
+          }) * job.runs
       }
       return total
     },

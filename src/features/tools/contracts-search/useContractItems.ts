@@ -12,6 +12,7 @@ interface ESIContractItem {
   record_id: number
   type_id: number
   item_id?: number
+  is_blueprint_copy?: boolean
 }
 
 export interface ContractItem {
@@ -21,7 +22,7 @@ export interface ContractItem {
   groupName: string
   categoryName: string
   quantity: number
-  price: number | null
+  price: number
 }
 
 const itemsCache = new Map<number, ContractItem[]>()
@@ -53,14 +54,10 @@ export function useContractItems() {
         .filter((i) => i.item_id && isAbyssalTypeId(i.type_id))
         .map((i) => i.item_id!)
 
-      const prices = await usePriceStore
-        .getState()
-        .ensureJitaPrices(typeIds, abyssalItemIds)
-
+      const priceStore = usePriceStore.getState()
+      await priceStore.ensureJitaPrices(typeIds, abyssalItemIds)
       const resolved: ContractItem[] = includedItems.map((item) => {
         const typeInfo = getType(item.type_id)
-        const isAbyssal = item.item_id && isAbyssalTypeId(item.type_id)
-        const priceKey = isAbyssal ? item.item_id! : item.type_id
         return {
           typeId: item.type_id,
           itemId: item.item_id,
@@ -68,13 +65,16 @@ export function useContractItems() {
           groupName: typeInfo?.groupName ?? '',
           categoryName: typeInfo?.categoryName ?? '',
           quantity: item.quantity || 1,
-          price: prices.get(priceKey) ?? null,
+          price: priceStore.getItemPrice(item.type_id, {
+            itemId: item.item_id,
+            isBlueprintCopy: item.is_blueprint_copy,
+          }),
         }
       })
 
       resolved.sort((a, b) => {
-        const aPrice = (a.price ?? 0) * a.quantity
-        const bPrice = (b.price ?? 0) * b.quantity
+        const aPrice = a.price * a.quantity
+        const bPrice = b.price * b.quantity
         return bPrice - aPrice
       })
 
