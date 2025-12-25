@@ -5,10 +5,39 @@ import {
   SORT_PRESETS,
   type SortPreset,
 } from './ContractsResultsTable'
-import { ContractDetailModal } from './ContractDetailModal'
+import {
+  ContractDetailModal,
+  type DisplayContract,
+} from './ContractDetailModal'
 import { DEFAULT_FILTERS } from './types'
 import type { ContractSearchFilters, SearchContract } from './types'
 import { resolveNames } from '@/api/endpoints/universe'
+
+function toDisplayContract(sc: SearchContract): DisplayContract {
+  const topItemName =
+    sc.topItems.length > 1
+      ? '[Multiple Items]'
+      : (sc.topItems[0]?.typeName ?? '[Empty]')
+
+  return {
+    contractId: sc.contractId,
+    type: sc.type,
+    title: sc.title,
+    issuerName: sc.issuerName,
+    locationName: sc.systemName,
+    regionName: sc.regionName,
+    systemName: sc.systemName,
+    securityStatus: sc.securityStatus,
+    dateIssued: sc.dateIssued,
+    dateExpired: sc.dateExpired,
+    price: sc.price,
+    reward: sc.reward,
+    collateral: sc.collateral,
+    volume: sc.volume,
+    availability: 'public',
+    topItemName,
+  }
+}
 
 const THE_FORGE_REGION_ID = 10000002
 const PAGE_SIZE = 100
@@ -215,7 +244,7 @@ export function ContractsSearchPanel() {
 
       {selectedContract && (
         <ContractDetailModal
-          contract={selectedContract}
+          contract={toDisplayContract(selectedContract)}
           onClose={() => setSelectedContract(null)}
         />
       )}

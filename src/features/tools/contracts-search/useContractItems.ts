@@ -3,6 +3,9 @@ import { esi } from '@/api/esi'
 import { usePriceStore } from '@/store/price-store'
 import { isAbyssalTypeId } from '@/api/mutamarket-client'
 import { getType } from '@/store/reference-cache'
+import { type ContractItem } from '@/lib/contract-items'
+
+export type { ContractItem }
 
 interface ESIContractItem {
   is_included: boolean
@@ -13,16 +16,6 @@ interface ESIContractItem {
   type_id: number
   item_id?: number
   is_blueprint_copy?: boolean
-}
-
-export interface ContractItem {
-  typeId: number
-  itemId?: number
-  typeName: string
-  groupName: string
-  categoryName: string
-  quantity: number
-  price: number
 }
 
 const itemsCache = new Map<number, ContractItem[]>()
@@ -69,6 +62,7 @@ export function useContractItems() {
             itemId: item.item_id,
             isBlueprintCopy: item.is_blueprint_copy,
           }),
+          isBlueprintCopy: item.is_blueprint_copy,
         }
       })
 

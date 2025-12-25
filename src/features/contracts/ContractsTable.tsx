@@ -10,7 +10,11 @@ import {
 } from '@/components/ui/table'
 import { cn, formatNumber } from '@/lib/utils'
 import { TypeIcon as ItemTypeIcon } from '@/components/ui/type-icon'
-import { ContractItemsDialog } from '@/components/dialogs/ContractItemsDialog'
+import {
+  ContractDetailModal,
+  type DisplayContract,
+} from '@/features/tools/contracts-search/ContractDetailModal'
+import { resolveContractItems, type ContractItem } from '@/lib/contract-items'
 import {
   type ContractSortColumn,
   type ContractRow,
@@ -27,6 +31,46 @@ function getDefaultSort(showCourierColumns: boolean): ContractSortColumn {
   return showCourierColumns ? 'price' : 'value'
 }
 
+interface SelectedContractData {
+  display: DisplayContract
+  items: ContractItem[]
+}
+
+function toDisplayContract(row: ContractRow): SelectedContractData {
+  const contract = row.contractWithItems.contract
+  const items = row.items
+
+  const topItemName =
+    items.length > 1
+      ? '[Multiple Items]'
+      : items.length === 1
+        ? row.typeName
+        : '[Empty]'
+
+  const display: DisplayContract = {
+    contractId: contract.contract_id,
+    type: contract.type,
+    title: contract.title,
+    issuerName: row.assignerName,
+    assigneeName: row.assigneeName,
+    locationName: row.locationName,
+    endLocationName: row.endLocationName || undefined,
+    dateIssued: contract.date_issued,
+    dateExpired: contract.date_expired,
+    price: contract.price ?? 0,
+    reward: contract.reward,
+    collateral: contract.collateral,
+    volume: contract.volume,
+    status: contract.status,
+    availability: contract.availability,
+    topItemName,
+  }
+
+  const resolvedItems = resolveContractItems(items)
+
+  return { display, items: resolvedItems }
+}
+
 export function ContractsTable({
   contracts,
   showCourierColumns = false,
@@ -35,9 +79,8 @@ export function ContractsTable({
   showCourierColumns?: boolean
 }) {
   const [page, setPage] = useState(0)
-  const [selectedContract, setSelectedContract] = useState<ContractRow | null>(
-    null
-  )
+  const [selectedContract, setSelectedContract] =
+    useState<SelectedContractData | null>(null)
   const { sortColumn, sortDirection, handleSort } =
     useSortable<ContractSortColumn>(getDefaultSort(showCourierColumns), 'desc')
 
@@ -202,18 +245,13 @@ export function ContractsTable({
           onPageChange={setPage}
         />
       )}
-      <ContractItemsDialog
-        open={selectedContract !== null}
-        onOpenChange={(open) => !open && setSelectedContract(null)}
-        items={selectedContract?.items ?? []}
-        contractType={
-          selectedContract
-            ? CONTRACT_TYPE_NAMES[
-                selectedContract.contractWithItems.contract.type
-              ]
-            : ''
-        }
-      />
+      {selectedContract && (
+        <ContractDetailModal
+          contract={selectedContract.display}
+          preloadedItems={selectedContract.items}
+          onClose={() => setSelectedContract(null)}
+        />
+      )}
     </>
   )
 }
@@ -225,7 +263,7 @@ function ContractTableRow({
 }: {
   row: ContractRow
   showCourierColumns: boolean
-  onSelectContract: (row: ContractRow) => void
+  onSelectContract: (data: SelectedContractData) => void
 }) {
   const contract = row.contractWithItems.contract
   const items = row.items
@@ -258,7 +296,7 @@ function ContractTableRow({
           <div className="flex items-center gap-2">
             {hasMultipleItems ? (
               <button
-                onClick={() => onSelectContract(row)}
+                onClick={() => onSelectContract(toDisplayContract(row))}
                 className="flex items-center gap-1.5 hover:text-link text-accent"
               >
                 <Package className="h-4 w-4" />

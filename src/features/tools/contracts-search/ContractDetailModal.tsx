@@ -10,9 +10,31 @@ import {
 } from '@/components/ui/table'
 import { AbyssalPreview } from '@/components/ui/abyssal-preview'
 import { isAbyssalTypeId } from '@/api/mutamarket-client'
-import { formatNumber } from '@/lib/utils'
-import { useContractItems, type ContractItem } from './useContractItems'
-import type { SearchContract } from './types'
+import { cn, formatNumber } from '@/lib/utils'
+import { useContractItems } from './useContractItems'
+import type { ContractItem } from '@/lib/contract-items'
+
+export interface DisplayContract {
+  contractId: number
+  type: 'item_exchange' | 'auction' | 'courier' | 'unknown' | 'loan'
+  title?: string
+  issuerName: string
+  assigneeName?: string
+  locationName: string
+  endLocationName?: string
+  regionName?: string
+  systemName?: string
+  securityStatus?: number | null
+  dateIssued: string
+  dateExpired: string
+  price: number
+  reward?: number
+  collateral?: number
+  volume?: number
+  status?: string
+  availability?: 'public' | 'personal' | 'corporation' | 'alliance'
+  topItemName?: string
+}
 
 function getSecurityColor(sec: number): string {
   if (sec >= 0.5) return 'text-status-positive'
@@ -92,7 +114,14 @@ function ItemsTable({ items }: { items: ContractItem[] }) {
             {items.map((item, idx) => {
               const isAbyssal = item.itemId && isAbyssalTypeId(item.typeId)
               const nameContent = (
-                <span className="font-medium">{item.typeName}</span>
+                <span
+                  className={cn(
+                    'font-medium',
+                    item.isBlueprintCopy && 'text-status-special'
+                  )}
+                >
+                  {item.typeName}
+                </span>
               )
               return (
                 <TableRow key={`${item.typeId}-${idx}`}>
@@ -138,19 +167,25 @@ function ItemsTable({ items }: { items: ContractItem[] }) {
 }
 
 interface ContractDetailModalProps {
-  contract: SearchContract
+  contract: DisplayContract
+  preloadedItems?: ContractItem[]
   onClose: () => void
 }
 
 export function ContractDetailModal({
   contract,
+  preloadedItems,
   onClose,
 }: ContractDetailModalProps) {
-  const { items, loading, error, fetchItems } = useContractItems()
+  const { items: fetchedItems, loading, error, fetchItems } = useContractItems()
+  const items = preloadedItems ?? fetchedItems
+  const isLoading = preloadedItems ? false : loading || fetchedItems === null
 
   useEffect(() => {
-    fetchItems(contract.contractId)
-  }, [contract.contractId, fetchItems])
+    if (!preloadedItems) {
+      fetchItems(contract.contractId)
+    }
+  }, [contract.contractId, fetchItems, preloadedItems])
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -160,10 +195,11 @@ export function ContractDetailModal({
     return () => window.removeEventListener('keydown', handler)
   }, [onClose])
 
-  const title =
-    contract.topItems.length > 1
-      ? '[Multiple Items]'
-      : contract.topItems[0]?.typeName || '[Empty]'
+  const title = contract.topItemName ?? '[Multiple Items]'
+  const availabilityText =
+    contract.availability === 'public'
+      ? `Public${contract.regionName ? ` - Region: ${contract.regionName}` : ''}`
+      : (contract.assigneeName ?? 'Private')
 
   return (
     <div
@@ -198,16 +234,20 @@ export function ContractDetailModal({
               {getContractTypeLabel(contract.type)}
             </InfoRow>
             <InfoRow label="Issued By">{contract.issuerName}</InfoRow>
-            <InfoRow label="Availability">
-              Public - Region: {contract.regionName}
-            </InfoRow>
+            <InfoRow label="Availability">{availabilityText}</InfoRow>
             <InfoRow label="Location">
               {contract.securityStatus != null && (
                 <span className={getSecurityColor(contract.securityStatus)}>
                   {contract.securityStatus.toFixed(1)}{' '}
                 </span>
               )}
-              {contract.systemName}
+              {contract.systemName ?? contract.locationName}
+              {contract.endLocationName && (
+                <span className="text-content-muted">
+                  {' '}
+                  → {contract.endLocationName}
+                </span>
+              )}
             </InfoRow>
             <InfoRow label="Date Issued">
               {formatDateTime(contract.dateIssued)}
@@ -216,36 +256,61 @@ export function ContractDetailModal({
               {formatDateTime(contract.dateExpired)} (
               {getTimeRemaining(contract.dateExpired)})
             </InfoRow>
-          </div>
-
-          <div className="border-b border-border px-4 py-3">
-            <div className="flex items-baseline gap-4">
-              <span className="text-sm font-medium text-content">
-                You Will Pay
-              </span>
-              <span className="text-lg font-bold text-orange-400">
-                {formatNumber(contract.price)} ISK
-              </span>
-            </div>
-          </div>
-
-          <div className="px-4 py-3">
-            <h3 className="mb-2 text-sm font-medium text-status-positive">
-              You Will Get
-            </h3>
-            {loading ? (
-              <div className="flex items-center gap-2 py-8 text-content-muted">
-                <Loader2 className="h-5 w-5 animate-spin" />
-                Loading items...
-              </div>
-            ) : error ? (
-              <div className="py-4 text-red-400">{error}</div>
-            ) : items && items.length > 0 ? (
-              <ItemsTable items={items} />
-            ) : (
-              <div className="py-4 text-content-muted">No items</div>
+            {contract.status && (
+              <InfoRow label="Status">
+                <span className="capitalize">
+                  {contract.status.replace('_', ' ')}
+                </span>
+              </InfoRow>
             )}
           </div>
+
+          {contract.type === 'courier' ? (
+            <div className="border-b border-border px-4 py-3 text-sm">
+              <InfoRow label="Volume">
+                {contract.volume?.toLocaleString() ?? '-'} m³
+              </InfoRow>
+              <InfoRow label="Reward">
+                <span className="text-status-positive">
+                  {formatNumber(contract.reward ?? 0)} ISK
+                </span>
+              </InfoRow>
+              <InfoRow label="Collateral">
+                <span className="text-status-highlight">
+                  {formatNumber(contract.collateral ?? 0)} ISK
+                </span>
+              </InfoRow>
+            </div>
+          ) : (
+            <div className="border-b border-border px-4 py-3">
+              <div className="flex items-baseline gap-4">
+                <span className="text-sm font-medium text-content">Price</span>
+                <span className="text-lg font-bold text-status-highlight">
+                  {formatNumber(contract.price)} ISK
+                </span>
+              </div>
+            </div>
+          )}
+
+          {contract.type !== 'courier' && (
+            <div className="px-4 py-3">
+              <h3 className="mb-2 text-sm font-medium text-status-positive">
+                Items
+              </h3>
+              {isLoading ? (
+                <div className="flex items-center gap-2 py-8 text-content-muted">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Loading items...
+                </div>
+              ) : error ? (
+                <div className="py-4 text-red-400">{error}</div>
+              ) : items && items.length > 0 ? (
+                <ItemsTable items={items} />
+              ) : (
+                <div className="py-4 text-content-muted">No items</div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
