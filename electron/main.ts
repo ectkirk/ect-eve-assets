@@ -26,6 +26,7 @@ import { registerMutamarketHandlers } from './services/mutamarket.js'
 import {
   setupESIService,
   registerESIHandlers,
+  stopESIHandlers,
 } from './services/esi-handlers.js'
 import { getESIService } from './services/esi/index.js'
 
@@ -73,11 +74,18 @@ const gotTheLock = app.requestSingleInstanceLock()
 if (!gotTheLock) {
   app.quit()
 } else {
+  let isShuttingDown = false
   const handleShutdownSignal = (signal: string) => {
+    if (isShuttingDown) return
+    isShuttingDown = true
     logger.info(`Received ${signal}, shutting down gracefully`, {
       module: 'Main',
     })
-    getESIService().saveImmediately()
+    try {
+      getESIService().saveImmediately()
+    } catch (err) {
+      logger.error('Failed to save state on shutdown', err, { module: 'Main' })
+    }
     app.quit()
   }
 
@@ -125,13 +133,21 @@ if (!gotTheLock) {
   })
 
   app.on('window-all-closed', () => {
+    logger.info('All windows closed', { module: 'Main' })
     if (process.platform !== 'darwin') {
       app.quit()
     }
   })
 
   app.on('before-quit', () => {
+    logger.info('App quitting, cleaning up...', { module: 'Main' })
     stopUpdater()
-    getESIService().saveImmediately()
+    stopESIHandlers()
+    try {
+      getESIService().saveImmediately()
+      logger.info('State saved successfully', { module: 'Main' })
+    } catch (err) {
+      logger.error('Failed to save state on quit', err, { module: 'Main' })
+    }
   })
 }

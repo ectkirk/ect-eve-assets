@@ -6,6 +6,7 @@ const REF_API_KEY = process.env['REF_API_KEY'] || ''
 const REF_MAX_RETRIES = 3
 const REF_RETRY_BASE_DELAY_MS = 2000
 const REF_MIN_REQUEST_INTERVAL_MS = 250
+const REF_REQUEST_TIMEOUT_MS = 30000
 
 let refGlobalRetryAfter = 0
 let refLastRequestTime = 0
@@ -69,8 +70,19 @@ async function fetchRefWithRetry(
   let lastError: Error | null = null
 
   for (let attempt = 0; attempt <= REF_MAX_RETRIES; attempt++) {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      REF_REQUEST_TIMEOUT_MS
+    )
+
     try {
-      const response = await fetch(url, options)
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+      })
+      clearTimeout(timeoutId)
+
       if (response.status === 429) {
         const retryAfterHeader = response.headers.get('Retry-After')
         const retryAfterMs = retryAfterHeader
@@ -91,13 +103,19 @@ async function fetchRefWithRetry(
       }
       return response
     } catch (err) {
-      lastError = err instanceof Error ? err : new Error(String(err))
+      clearTimeout(timeoutId)
+      if (err instanceof Error && err.name === 'AbortError') {
+        lastError = new Error('Request timeout')
+      } else {
+        lastError = err instanceof Error ? err : new Error(String(err))
+      }
       if (attempt < REF_MAX_RETRIES) {
         const delay = REF_RETRY_BASE_DELAY_MS * Math.pow(2, attempt)
         logger.warn('Ref API request failed, retrying', {
           module: 'RefAPI',
           attempt: attempt + 1,
           delay,
+          reason: lastError.message,
         })
         await new Promise((r) => setTimeout(r, delay))
       }

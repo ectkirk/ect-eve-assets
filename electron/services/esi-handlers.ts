@@ -1,26 +1,69 @@
 import { ipcMain, BrowserWindow } from 'electron'
 import { getESIService } from './esi/index.js'
+import { logger } from './logger.js'
 import type { ESIRequestOptions } from './esi/types.js'
 
 const TOKEN_REQUEST_TIMEOUT_MS = 10000
+const STALE_CLEANUP_INTERVAL_MS = 60000
+const MAX_PENDING_PER_CHARACTER = 10
 
 interface PendingTokenRequest {
   resolve: (token: string | null) => void
   timeout: NodeJS.Timeout
+  createdAt: number
 }
 
 const pendingTokenRequests = new Map<number, PendingTokenRequest[]>()
+let cleanupInterval: NodeJS.Timeout | null = null
+
+function cleanupStaleRequests(): void {
+  const now = Date.now()
+  const staleThreshold = TOKEN_REQUEST_TIMEOUT_MS * 2
+
+  for (const [characterId, pending] of pendingTokenRequests) {
+    const stale = pending.filter((p) => now - p.createdAt > staleThreshold)
+    for (const p of stale) {
+      clearTimeout(p.timeout)
+      p.resolve(null)
+    }
+    const remaining = pending.filter((p) => now - p.createdAt <= staleThreshold)
+    if (remaining.length === 0) {
+      pendingTokenRequests.delete(characterId)
+    } else {
+      pendingTokenRequests.set(characterId, remaining)
+    }
+  }
+}
 
 export function setupESIService(
   getMainWindow: () => BrowserWindow | null
 ): void {
   const esiService = getESIService()
 
+  if (!cleanupInterval) {
+    cleanupInterval = setInterval(
+      cleanupStaleRequests,
+      STALE_CLEANUP_INTERVAL_MS
+    )
+  }
+
   esiService.setTokenProvider(async (characterId: number) => {
     const win = getMainWindow()
     if (!win) return null
 
+    const existing = pendingTokenRequests.get(characterId)
+    if (existing && existing.length >= MAX_PENDING_PER_CHARACTER) {
+      return null
+    }
+
     return new Promise<string | null>((resolve) => {
+      const now = Date.now()
+
+      const wrappedResolve = (token: string | null) => {
+        clearTimeout(timeout)
+        resolve(token)
+      }
+
       const timeout = setTimeout(() => {
         const pending = pendingTokenRequests.get(characterId)
         if (pending) {
@@ -31,22 +74,45 @@ export function setupESIService(
         resolve(null)
       }, TOKEN_REQUEST_TIMEOUT_MS)
 
-      const wrappedResolve = (token: string | null) => {
-        clearTimeout(timeout)
-        resolve(token)
+      const request: PendingTokenRequest = {
+        resolve: wrappedResolve,
+        timeout,
+        createdAt: now,
       }
 
-      const existing = pendingTokenRequests.get(characterId)
       if (existing) {
-        existing.push({ resolve: wrappedResolve, timeout })
+        existing.push(request)
       } else {
-        pendingTokenRequests.set(characterId, [
-          { resolve: wrappedResolve, timeout },
-        ])
-        win.webContents.send('esi:requestToken', characterId)
+        pendingTokenRequests.set(characterId, [request])
+        try {
+          win.webContents.send('esi:requestToken', characterId)
+        } catch (err) {
+          logger.warn('Failed to send token request to renderer', {
+            module: 'ESI',
+            characterId,
+            error: err instanceof Error ? err.message : String(err),
+          })
+          pendingTokenRequests.delete(characterId)
+          clearTimeout(timeout)
+          resolve(null)
+          return
+        }
       }
     })
   })
+}
+
+export function stopESIHandlers(): void {
+  if (cleanupInterval) {
+    clearInterval(cleanupInterval)
+    cleanupInterval = null
+  }
+  for (const [, pending] of pendingTokenRequests) {
+    for (const p of pending) {
+      clearTimeout(p.timeout)
+    }
+  }
+  pendingTokenRequests.clear()
 }
 
 function parseESIOptions(options: unknown): ESIRequestOptions {

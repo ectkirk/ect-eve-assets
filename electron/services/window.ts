@@ -152,7 +152,14 @@ export function toggleMaximize(manager: WindowManager): void {
       manager.mainWindow.setBounds(validBounds)
       manager.manualMaximized = false
       manager.normalBounds = restoreBounds
-      manager.mainWindow.webContents.send('window:maximizeChange', false)
+      try {
+        manager.mainWindow.webContents.send('window:maximizeChange', false)
+      } catch (err) {
+        logger.debug('Failed to send maximizeChange event', {
+          module: 'Window',
+          error: err instanceof Error ? err.message : String(err),
+        })
+      }
     } else {
       const currentBounds = manager.mainWindow.getBounds()
       manager.normalBounds = currentBounds
@@ -160,7 +167,14 @@ export function toggleMaximize(manager: WindowManager): void {
       const display = screen.getDisplayMatching(currentBounds)
       manager.mainWindow.setBounds(display.workArea)
       manager.manualMaximized = true
-      manager.mainWindow.webContents.send('window:maximizeChange', true)
+      try {
+        manager.mainWindow.webContents.send('window:maximizeChange', true)
+      } catch (err) {
+        logger.debug('Failed to send maximizeChange event', {
+          module: 'Window',
+          error: err instanceof Error ? err.message : String(err),
+        })
+      }
     }
   } finally {
     manager.isToggling = false
@@ -242,8 +256,12 @@ export function createWindow(
       if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
         shell.openExternal(url)
       }
-    } catch {
-      // Invalid URL, ignore
+    } catch (err) {
+      logger.debug('Invalid URL in window open handler', {
+        module: 'Window',
+        url,
+        error: err instanceof Error ? err.message : String(err),
+      })
     }
     return { action: 'deny' }
   })
@@ -354,7 +372,14 @@ function setupWindowEvents(manager: WindowManager): void {
       module: 'Window',
     })
     getESIService().pause()
-    manager.mainWindow?.webContents.send('window:minimizeChange', true)
+    try {
+      manager.mainWindow?.webContents.send('window:minimizeChange', true)
+    } catch (err) {
+      logger.debug('Failed to send minimizeChange event', {
+        module: 'Window',
+        error: err instanceof Error ? err.message : String(err),
+      })
+    }
   })
 
   manager.mainWindow.on('restore', () => {
@@ -362,6 +387,13 @@ function setupWindowEvents(manager: WindowManager): void {
       module: 'Window',
     })
     getESIService().resume()
-    manager.mainWindow?.webContents.send('window:minimizeChange', false)
+    try {
+      manager.mainWindow?.webContents.send('window:minimizeChange', false)
+    } catch (err) {
+      logger.debug('Failed to send minimizeChange event', {
+        module: 'Window',
+        error: err instanceof Error ? err.message : String(err),
+      })
+    }
   })
 }

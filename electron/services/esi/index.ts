@@ -20,6 +20,8 @@ import { ESIError } from '../../../shared/esi-types'
 
 const RATE_LIMIT_FILE = 'rate-limits.json'
 const CACHE_FILE = 'esi-cache.json'
+const ESI_MAX_RETRIES = 2
+const ESI_REQUEST_TIMEOUT_MS = 30000
 
 type TokenProvider = (characterId: number) => Promise<string | null>
 
@@ -188,7 +190,8 @@ export class MainESIService {
 
   private async executeRequest(
     endpoint: string,
-    options: ESIRequestOptions
+    options: ESIRequestOptions,
+    attempt = 0
   ): Promise<ESIResponse<unknown>> {
     const url = `${ESI_BASE_URL}${endpoint}`
     const cacheKey = this.cache.makeKey(options.characterId, endpoint)
@@ -223,13 +226,21 @@ export class MainESIService {
       headers['If-None-Match'] = options.etag
     }
 
+    const controller = new AbortController()
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      ESI_REQUEST_TIMEOUT_MS
+    )
+
     this.activeRequests++
     try {
       const response = await fetch(url, {
         method: options.method ?? 'GET',
         headers,
         body: options.body,
+        signal: controller.signal,
       })
+      clearTimeout(timeoutId)
 
       this.rateLimiter.updateFromHeaders(
         options.characterId ?? 0,
@@ -241,6 +252,13 @@ export class MainESIService {
         const retryAfter = response.headers.get('Retry-After')
         const waitSec = retryAfter ? parseInt(retryAfter, 10) : 60
         this.rateLimiter.setGlobalRetryAfter(waitSec)
+
+        if (attempt < ESI_MAX_RETRIES) {
+          this.activeRequests--
+          await this.delay(waitSec * 1000)
+          return this.executeRequest(endpoint, options, attempt + 1)
+        }
+
         return {
           success: false,
           error: 'Rate limited',
@@ -272,8 +290,14 @@ export class MainESIService {
         try {
           const errorBody = (await response.json()) as { error?: string }
           if (errorBody.error) errorMessage = errorBody.error
-        } catch {
-          // Non-JSON response
+        } catch (parseErr) {
+          logger.debug('ESI error response was not JSON', {
+            module: 'ESI',
+            endpoint,
+            status: response.status,
+            parseError:
+              parseErr instanceof Error ? parseErr.message : String(parseErr),
+          })
         }
         return { success: false, error: errorMessage, status: response.status }
       }
@@ -296,11 +320,15 @@ export class MainESIService {
 
       return result
     } catch (error) {
+      clearTimeout(timeoutId)
       if (error instanceof ESIError) throw error
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Network error',
-      }
+      const message =
+        error instanceof Error && error.name === 'AbortError'
+          ? 'Request timeout'
+          : error instanceof Error
+            ? error.message
+            : 'Network error'
+      return { success: false, error: message }
     } finally {
       this.activeRequests--
     }
@@ -344,7 +372,7 @@ export class MainESIService {
         this.rateLimiter.loadState(states)
       }
     } catch (err) {
-      logger.debug('Failed to load rate limit state', {
+      logger.warn('Failed to load rate limit state', {
         module: 'ESI',
         error: err instanceof Error ? err.message : String(err),
       })
@@ -365,7 +393,7 @@ export class MainESIService {
       const states = this.rateLimiter.exportState()
       fs.writeFileSync(this.rateLimitFilePath, JSON.stringify(states, null, 2))
     } catch (err) {
-      logger.debug('Failed to save rate limit state', {
+      logger.warn('Failed to save rate limit state', {
         module: 'ESI',
         error: err instanceof Error ? err.message : String(err),
       })

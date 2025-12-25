@@ -135,9 +135,21 @@ async function fetchCharacterRoles(
         headers: { Authorization: `Bearer ${accessToken}` },
       }
     )
-    if (!response.ok) return null
+    if (!response.ok) {
+      logger.debug('Failed to fetch character roles', {
+        module: 'Auth',
+        characterId,
+        status: response.status,
+      })
+      return null
+    }
     return (await response.json()) as CorporationRoles
-  } catch {
+  } catch (err) {
+    logger.debug('Error fetching character roles', {
+      module: 'Auth',
+      characterId,
+      error: err instanceof Error ? err.message : String(err),
+    })
     return null
   }
 }
