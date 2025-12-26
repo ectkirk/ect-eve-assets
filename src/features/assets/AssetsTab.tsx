@@ -264,7 +264,7 @@ export function AssetsTab() {
     }),
     []
   )
-  const { selectedIds, handleRowClick, selectedCount } = useRowSelection({
+  const { selectedIds, handleRowClick } = useRowSelection({
     items: sortedData,
     getId: getRowId,
     getCopyData,
@@ -356,11 +356,6 @@ export function AssetsTab() {
 
   return (
     <div className="flex flex-col h-full">
-      {selectedCount > 0 && (
-        <div className="px-3 py-1.5 text-xs text-content-secondary bg-surface-secondary/50 border-b border-border">
-          {selectedCount} selected — Ctrl+C to copy
-        </div>
-      )}
       <div
         ref={tableContainerRef}
         tabIndex={0}

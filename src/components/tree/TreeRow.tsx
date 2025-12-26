@@ -21,7 +21,7 @@ interface TreeRowProps {
   onToggleExpand: (nodeId: string) => void
   onRowClick: (id: string, event: React.MouseEvent) => void
   onViewFitting: (node: TreeNode) => void
-  onSellToBuyback: () => void
+  onSellToBuyback: (node: TreeNode) => void
   visibleColumns: string[]
 }
 
@@ -37,11 +37,17 @@ export const TreeRow = memo(function TreeRow({
   onSellToBuyback,
   visibleColumns,
 }: TreeRowProps) {
+  const hasChildren = node.children.length > 0
+
   const handleRowClick = useCallback(
     (e: React.MouseEvent) => {
-      onRowClick(node.id, e)
+      if (hasChildren) {
+        onToggleExpand(node.id)
+      } else {
+        onRowClick(node.id, e)
+      }
     },
-    [node.id, onRowClick]
+    [node.id, hasChildren, onRowClick, onToggleExpand]
   )
 
   const handleViewFittingClick = useCallback(() => {
@@ -87,14 +93,15 @@ export const TreeRow = memo(function TreeRow({
     </TableRow>
   )
 
-  const showBuyback = isSelected && showBuybackOption
+  const showBuyback =
+    (isSelected && showBuybackOption) || (hasChildren && showBuybackOption)
   if (isShip || isAbyssalResolved || showBuyback) {
     return (
       <ContextMenu>
         <ContextMenuTrigger asChild>{row}</ContextMenuTrigger>
         <ContextMenuContent>
           {showBuyback && (
-            <ContextMenuItem onClick={onSellToBuyback}>
+            <ContextMenuItem onClick={() => onSellToBuyback(node)}>
               Sell to buyback
             </ContextMenuItem>
           )}

@@ -13,6 +13,11 @@ import {
   useRowSelection,
   useBuybackSelection,
 } from '@/hooks'
+import {
+  useBuybackActionStore,
+  getSecurityTab,
+} from '@/store/buyback-action-store'
+import { getType, getSystem } from '@/store/reference-cache'
 import { useColumnSettings } from '@/hooks'
 import type { TreeNode, TreeNodeType } from '@/lib/tree-types'
 import { flattenTree, getAllNodeIds } from '@/lib/tree-builder'
@@ -35,7 +40,6 @@ function collectDescendantItems(node: TreeNode): TreeNode[] {
   }
   return items
 }
-import { getType } from '@/store/reference-cache'
 import { cn } from '@/lib/utils'
 import { useTabControls } from '@/context'
 import { FittingDialog } from '@/components/dialogs/FittingDialog'
@@ -104,7 +108,7 @@ export function TreeTable({
 
     return { name, quantity, isItem: false, fullRowData }
   }, [])
-  const { selectedIds, handleRowClick, selectedCount } = useRowSelection({
+  const { selectedIds, handleRowClick } = useRowSelection({
     items: flatRows,
     getId: getNodeId,
     getCopyData,
@@ -164,6 +168,34 @@ export function TreeTable({
     items: buybackItems,
     minItems: hasLocationSelected ? 1 : 2,
   })
+
+  const triggerBuyback = useBuybackActionStore((s) => s.triggerBuyback)
+
+  const handleNodeSellToBuyback = useCallback(
+    (node: TreeNode) => {
+      if (node.children.length > 0) {
+        const descendants = collectDescendantItems(node)
+        if (descendants.length === 0) return
+
+        const items = descendants.map((n) => ({
+          name: n.typeId ? (getType(n.typeId)?.name ?? n.name) : n.name,
+          quantity: n.quantity ?? n.totalCount,
+        }))
+
+        const first = descendants[0]
+        if (!first?.systemId) return
+
+        const system = getSystem(first.systemId)
+        const securityTab = getSecurityTab(system?.securityStatus)
+        const text = items.map((i) => `${i.name}\t${i.quantity}`).join('\n')
+
+        triggerBuyback({ text, securityTab })
+      } else {
+        handleSellToBuyback()
+      }
+    },
+    [handleSellToBuyback, triggerBuyback]
+  )
 
   const rowVirtualizer = useVirtualizer({
     count: flatRows.length,
@@ -230,11 +262,6 @@ export function TreeTable({
 
   return (
     <div className="flex flex-col h-full">
-      {selectedCount > 0 && (
-        <div className="px-3 py-1.5 text-xs text-content-secondary bg-surface-secondary/50 border-b border-border flex-shrink-0">
-          {selectedCount} selected — Ctrl+C to copy
-        </div>
-      )}
       <div
         ref={tableContainerRef}
         tabIndex={0}
@@ -290,7 +317,7 @@ export function TreeTable({
                       onToggleExpand={onToggleExpand}
                       onRowClick={handleRowClick}
                       onViewFitting={handleViewFitting}
-                      onSellToBuyback={handleSellToBuyback}
+                      onSellToBuyback={handleNodeSellToBuyback}
                       visibleColumns={visibleColumns}
                     />
                   )

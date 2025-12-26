@@ -369,7 +369,7 @@ export const usePriceStore = create<PriceStore>((set, get) => ({
     const seenTypeIds = new Set<number>()
 
     for (const typeId of typeIds) {
-      if (seenTypeIds.has(typeId)) continue
+      if (seenTypeIds.has(typeId) || isAbyssalTypeId(typeId)) continue
       seenTypeIds.add(typeId)
 
       const cached = getTypeJitaPrice(typeId)
