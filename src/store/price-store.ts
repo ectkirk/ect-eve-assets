@@ -18,7 +18,11 @@ import {
 } from '@/store/reference-cache'
 import { useStoreRegistry } from '@/store/store-registry'
 
-const ABYSSAL_TYPE_IDS = new Set([
+/**
+ * Type IDs for abyssal (mutaplasmid-modified) modules.
+ * These require per-item pricing since each is unique.
+ */
+export const ABYSSAL_TYPE_IDS = new Set([
   56305, 47757, 47753, 47749, 56306, 47745, 47408, 47740, 52230, 49738, 52227,
   90483, 90498, 49734, 90593, 90529, 49730, 49726, 90524, 90502, 49722, 90460,
   90474, 90487, 90467, 56313, 47702, 90493, 78621, 47736, 47732, 56308, 56310,
@@ -34,6 +38,15 @@ export function isAbyssalTypeId(typeId: number): boolean {
   return ABYSSAL_TYPE_IDS.has(typeId)
 }
 
+/**
+ * Abyssal price storage record.
+ *
+ * Price semantics:
+ * - `> 0`: Valid estimated price from Mutamarket
+ * - `0`: Ref API returned no price (will re-fetch from Mutamarket on manual sync)
+ * - `-1`: Mutamarket returned 404 or 0 (won't re-fetch)
+ * - `undefined` (not in cache): Never fetched
+ */
 interface AbyssalPriceRecord {
   itemId: number
   price: number

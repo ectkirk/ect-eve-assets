@@ -30,12 +30,15 @@ export interface AbyssalItem {
   typeId: number
 }
 
+type FetchResult = { price: number; persist: boolean } | null
+
 interface QueuedRequest {
   item: AbyssalItem
-  resolve: (result: { price: number; persist: boolean } | null) => void
+  resolve: (result: FetchResult) => void
 }
 
 const requestQueue: QueuedRequest[] = []
+const pendingItems = new Map<number, Promise<FetchResult>>()
 let queueProcessing = false
 let lastRequestTime = 0
 
@@ -43,39 +46,54 @@ async function processQueue(): Promise<void> {
   if (queueProcessing) return
   queueProcessing = true
 
-  while (requestQueue.length > 0) {
-    const now = Date.now()
-    const timeSinceLastRequest = now - lastRequestTime
-    if (timeSinceLastRequest < REQUEST_DELAY_MS) {
-      await new Promise((r) =>
-        setTimeout(r, REQUEST_DELAY_MS - timeSinceLastRequest)
-      )
-    }
-    lastRequestTime = Date.now()
+  try {
+    while (requestQueue.length > 0) {
+      const now = Date.now()
+      const timeSinceLastRequest = now - lastRequestTime
+      if (timeSinceLastRequest < REQUEST_DELAY_MS) {
+        await new Promise((r) =>
+          setTimeout(r, REQUEST_DELAY_MS - timeSinceLastRequest)
+        )
+      }
+      lastRequestTime = Date.now()
 
-    const request = requestQueue.shift()
-    if (request) {
-      const result = await fetchSingleAbyssalPriceInternal(request.item)
-      request.resolve(result)
+      const request = requestQueue.shift()
+      if (request) {
+        const result = await fetchSingleAbyssalPriceInternal(request.item)
+        pendingItems.delete(request.item.itemId)
+        request.resolve(result)
+      }
     }
+  } finally {
+    queueProcessing = false
   }
-
-  queueProcessing = false
 }
 
-function queueAbyssalRequest(
-  item: AbyssalItem
-): Promise<{ price: number; persist: boolean } | null> {
-  return new Promise((resolve) => {
+function queueAbyssalRequest(item: AbyssalItem): Promise<FetchResult> {
+  const existing = pendingItems.get(item.itemId)
+  if (existing) return existing
+
+  const promise = new Promise<FetchResult>((resolve) => {
     requestQueue.push({ item, resolve })
     processQueue()
   })
+  pendingItems.set(item.itemId, promise)
+  return promise
+}
+
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  retryCount: number
+): Promise<T> {
+  const delay = RETRY_DELAYS[retryCount] ?? 1000
+  await new Promise((resolve) => setTimeout(resolve, delay))
+  return fn()
 }
 
 async function fetchSingleAbyssalPriceInternal(
   item: AbyssalItem,
   retryCount = 0
-): Promise<{ price: number; persist: boolean } | null> {
+): Promise<FetchResult> {
   const { itemId, typeId } = item
   try {
     const rawData = await window.electronAPI!.mutamarketModule(itemId, typeId)
@@ -85,9 +103,10 @@ async function fetchSingleAbyssalPriceInternal(
         return { price: -1, persist: true }
       }
       if (retryCount < MAX_RETRIES) {
-        const delay = RETRY_DELAYS[retryCount] ?? 1000
-        await new Promise((resolve) => setTimeout(resolve, delay))
-        return fetchSingleAbyssalPriceInternal(item, retryCount + 1)
+        return retryWithBackoff(
+          () => fetchSingleAbyssalPriceInternal(item, retryCount + 1),
+          retryCount
+        )
       }
       logger.warn('Mutamarket API failed', {
         module: 'Mutamarket',
@@ -107,18 +126,19 @@ async function fetchSingleAbyssalPriceInternal(
       return null
     }
 
-    const price = parseResult.data.estimated_value ?? -1
+    const price = parseResult.data.estimated_value || -1
     return { price, persist: true }
   } catch (error) {
     if (retryCount < MAX_RETRIES) {
-      const delay = RETRY_DELAYS[retryCount] ?? 1000
-      await new Promise((resolve) => setTimeout(resolve, delay))
-      return fetchSingleAbyssalPriceInternal(item, retryCount + 1)
+      return retryWithBackoff(
+        () => fetchSingleAbyssalPriceInternal(item, retryCount + 1),
+        retryCount
+      )
     }
     logger.warn('Mutamarket fetch failed after retries', {
       module: 'Mutamarket',
-      itemId: item.itemId,
-      typeId: item.typeId,
+      itemId,
+      typeId,
       retryCount,
       error,
     })

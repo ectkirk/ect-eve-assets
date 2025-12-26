@@ -10,27 +10,18 @@ import {
 const mockGetAbyssalPrice = vi.fn()
 const mockSetAbyssalPrices = vi.fn()
 
-const ABYSSAL_TYPE_IDS = new Set([
-  56305, 47757, 47753, 47749, 56306, 47745, 47408, 47740, 52230, 49738, 52227,
-  90483, 90498, 49734, 90593, 90529, 49730, 49726, 90524, 90502, 49722, 90460,
-  90474, 90487, 90467, 56313, 47702, 90493, 78621, 47736, 47732, 56308, 56310,
-  56307, 56312, 56311, 56309, 47832, 48427, 56304, 56303, 47846, 47838, 47820,
-  47777, 48439, 84434, 84436, 84435, 84437, 47789, 47808, 47844, 47836, 47817,
-  47773, 48435, 84438, 47828, 48423, 84440, 84439, 84441, 47785, 47804, 60482,
-  60483, 47842, 47812, 47769, 48431, 84442, 47824, 48419, 84444, 84443, 84445,
-  47781, 47800, 47840, 47793, 60480, 60478, 60479, 90622, 90621, 90618, 90614,
-  60481,
-])
-
-vi.mock('@/store/price-store', () => ({
-  usePriceStore: {
-    getState: () => ({
-      getAbyssalPrice: mockGetAbyssalPrice,
-      setAbyssalPrices: mockSetAbyssalPrices,
-    }),
-  },
-  isAbyssalTypeId: (typeId: number) => ABYSSAL_TYPE_IDS.has(typeId),
-}))
+vi.mock('@/store/price-store', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/store/price-store')>()
+  return {
+    ...actual,
+    usePriceStore: {
+      getState: () => ({
+        getAbyssalPrice: mockGetAbyssalPrice,
+        setAbyssalPrices: mockSetAbyssalPrices,
+      }),
+    },
+  }
+})
 
 vi.mock('@/lib/logger', () => ({
   logger: {
@@ -241,6 +232,26 @@ describe('mutamarket-client', () => {
         id: 12345,
         type: { id: 47408, name: 'Abyssal Damage Control' },
         source_type: { id: 2048, name: 'Damage Control II' },
+      })
+
+      const result = await fetchAbyssalPrices([item(12345)])
+
+      expect(result.has(12345)).toBe(false)
+      expect(mockSetAbyssalPrices).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ itemId: 12345, price: -1 }),
+        ])
+      )
+    })
+
+    it('treats zero estimated_value as -1 to prevent re-fetching', async () => {
+      mockGetAbyssalPrice.mockReturnValue(undefined)
+
+      mockMutamarketModule.mockResolvedValue({
+        id: 12345,
+        type: { id: 47408, name: 'Abyssal Damage Control' },
+        source_type: { id: 2048, name: 'Damage Control II' },
+        estimated_value: 0,
       })
 
       const result = await fetchAbyssalPrices([item(12345)])
