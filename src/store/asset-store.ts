@@ -376,14 +376,14 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         }
       }
 
-      const { usePriceStore } = await import('./price-store')
+      const { usePriceStore, getJitaPrice } = await import('./price-store')
       const priceStore = usePriceStore.getState()
 
       const missingTypeIds: number[] = []
       const missingAbyssalIds: number[] = []
 
       for (const asset of assets) {
-        if (priceStore.getJitaPrice(asset.type_id) === undefined) {
+        if (getJitaPrice(asset.type_id) === undefined) {
           missingTypeIds.push(asset.type_id)
         }
         if (isAbyssalTypeId(asset.type_id)) {

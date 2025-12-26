@@ -12,7 +12,7 @@ import {
   PauseCircle,
 } from 'lucide-react'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
-import { usePriceStore } from '@/store/price-store'
+import { usePriceStore, getJitaPrice } from '@/store/price-store'
 import { useIndustryJobsStore } from '@/store/industry-jobs-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useTabControls } from '@/context'
@@ -351,7 +351,7 @@ export function IndustryJobsTab() {
   const ownersRecord = useAuthStore((s) => s.owners)
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
 
-  const prices = usePriceStore((s) => s.jitaPrices)
+  const priceVersion = usePriceStore((s) => s.priceVersion)
   const itemsById = useIndustryJobsStore((s) => s.itemsById)
   const visibilityByOwner = useIndustryJobsStore((s) => s.visibilityByOwner)
   const jobsCount = itemsById.size
@@ -429,7 +429,7 @@ export function IndustryJobsTab() {
             : undefined
 
         const productPrice = job.product_type_id
-          ? (prices.get(job.product_type_id) ?? 0)
+          ? (getJitaPrice(job.product_type_id) ?? 0)
           : 0
         const productValue = productPrice * job.runs
 
@@ -508,7 +508,7 @@ export function IndustryJobsTab() {
     }
 
     return sorted
-  }, [jobsByOwner, cacheVersion, prices, search, selectedSet])
+  }, [jobsByOwner, cacheVersion, priceVersion, search, selectedSet])
 
   const expandableIds = useMemo(
     () => locationGroups.map((g) => g.locationId),

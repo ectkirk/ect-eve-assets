@@ -218,17 +218,6 @@ export interface ContractSearchResult {
   error?: string
 }
 
-export interface BlueprintListItem {
-  id: number
-  name: string
-  productId: number
-  productName: string
-}
-
-export type BlueprintsResult =
-  | { items: Record<string, [number, number | null]> }
-  | { error: string }
-
 export interface BuybackConfig {
   buyRate: number
   iskPerM3: number
@@ -452,7 +441,6 @@ export interface ElectronAPI {
   refMoons: (ids: number[]) => Promise<RefMoonsResult>
   refShipSlots: (ids: number[]) => Promise<RefShipsResult>
   refMarketJita: (params: RefMarketJitaParams) => Promise<RefMarketJitaResult>
-  refBlueprints: () => Promise<BlueprintsResult>
   refBuybackCalculate: (
     text: string,
     config: BuybackConfig
@@ -549,7 +537,6 @@ const electronAPI: ElectronAPI = {
   refShipSlots: (ids: number[]) => ipcRenderer.invoke('ref:shipslots', ids),
   refMarketJita: (params: RefMarketJitaParams) =>
     ipcRenderer.invoke('ref:marketJita', params),
-  refBlueprints: () => ipcRenderer.invoke('ref:blueprints'),
   refBuybackCalculate: (text: string, config: BuybackConfig) =>
     ipcRenderer.invoke('ref:buybackCalculate', text, config),
   refBuybackInfo: () => ipcRenderer.invoke('ref:buybackInfo'),

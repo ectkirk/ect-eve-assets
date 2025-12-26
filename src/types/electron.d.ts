@@ -221,17 +221,6 @@ declare global {
     error?: string
   }
 
-  interface BlueprintListItem {
-    id: number
-    name: string
-    productId: number
-    productName: string
-  }
-
-  type BlueprintsResult =
-    | { items: Record<string, [number, number | null]> }
-    | { error: string }
-
   interface BuybackConfig {
     buyRate: number
     iskPerM3: number
@@ -454,7 +443,6 @@ declare global {
     refMoons: (ids: number[]) => Promise<RefMoonsResult>
     refShipSlots: (ids: number[]) => Promise<RefShipsResult>
     refMarketJita: (params: RefMarketJitaParams) => Promise<RefMarketJitaResult>
-    refBlueprints: () => Promise<BlueprintsResult>
     refBuybackCalculate: (
       text: string,
       config: BuybackConfig

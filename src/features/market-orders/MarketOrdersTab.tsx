@@ -6,7 +6,7 @@ import { useTabControls } from '@/context'
 import { useColumnSettings, useCacheVersion } from '@/hooks'
 import { hasType, getType } from '@/store/reference-cache'
 import { useRegionalMarketStore } from '@/store/regional-market-store'
-import { usePriceStore } from '@/store/price-store'
+import { getEsiAveragePrice } from '@/store/price-store'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import { MultiSelectDropdown } from '@/components/ui/multi-select-dropdown'
 import { formatNumber } from '@/lib/utils'
@@ -41,7 +41,6 @@ export function MarketOrdersTab() {
   const cacheVersion = useCacheVersion()
 
   const regionalMarketStore = useRegionalMarketStore()
-  const getAveragePrice = usePriceStore((s) => s.getEsiAveragePrice)
 
   const { search, setResultCount, setTotalValue, setColumns } = useTabControls()
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
@@ -87,7 +86,7 @@ export function MarketOrdersTab() {
             order.type_id,
             order.location_id
           ) ?? null
-        const eveEstimated = getAveragePrice(order.type_id) ?? null
+        const eveEstimated = getEsiAveragePrice(order.type_id) ?? null
         const expiryTime =
           new Date(order.issued).getTime() +
           order.duration * 24 * 60 * 60 * 1000
@@ -113,13 +112,7 @@ export function MarketOrdersTab() {
     }
 
     return orders
-  }, [
-    ordersByOwner,
-    cacheVersion,
-    selectedSet,
-    regionalMarketStore,
-    getAveragePrice,
-  ])
+  }, [ordersByOwner, cacheVersion, selectedSet, regionalMarketStore])
 
   const availableLocations = useMemo(() => {
     const locationMap = new Map<number, string>()

@@ -41,7 +41,6 @@ vi.mock('@/lib/logger', () => ({
 vi.mock('./price-store', () => ({
   usePriceStore: {
     getState: vi.fn(() => ({
-      jitaPrices: new Map<number, number>(),
       abyssalPrices: new Map<number, number>(),
       marketPrices: new Map<number, number>(),
       getItemPrice: vi.fn((typeId: number) => {

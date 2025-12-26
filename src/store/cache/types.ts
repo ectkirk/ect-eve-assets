@@ -37,12 +37,6 @@ export interface CachedGroup {
   published?: boolean
 }
 
-export interface CachedBlueprint {
-  id: number
-  productId: number
-  basePrice?: number
-}
-
 export interface CachedType {
   id: number
   name: string
@@ -56,6 +50,11 @@ export interface CachedType {
   towerSize?: number
   fuelTier?: number
   published?: boolean
+  productId?: number
+  basePrice?: number
+  jitaPrice?: number
+  esiAveragePrice?: number
+  esiAdjustedPrice?: number
 }
 
 export interface CachedStructure {
@@ -136,12 +135,6 @@ const CachedGroupSchema = z.object({
   published: z.boolean().optional(),
 })
 
-const CachedBlueprintSchema = z.object({
-  id: z.number(),
-  productId: z.number(),
-  basePrice: z.number().optional(),
-})
-
 const CachedTypeSchema = z.object({
   id: z.number(),
   name: z.string(),
@@ -155,6 +148,11 @@ const CachedTypeSchema = z.object({
   towerSize: z.number().optional(),
   fuelTier: z.number().optional(),
   published: z.boolean().optional(),
+  productId: z.number().optional(),
+  basePrice: z.number().optional(),
+  jitaPrice: z.number().optional(),
+  esiAveragePrice: z.number().optional(),
+  esiAdjustedPrice: z.number().optional(),
 })
 
 const CachedStructureSchema = z.object({
@@ -211,5 +209,4 @@ export const cacheSchemas: Record<string, z.ZodType> = {
   names: CachedNameSchema,
   categories: CachedCategorySchema,
   groups: CachedGroupSchema,
-  blueprints: CachedBlueprintSchema,
 }

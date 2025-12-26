@@ -7,7 +7,6 @@ import type {
   CachedRefStructure,
   CachedCategory,
   CachedGroup,
-  CachedBlueprint,
   CachedType,
   CachedStructure,
   CachedLocation,
@@ -21,7 +20,6 @@ export type {
   CachedRefStructure,
   CachedCategory,
   CachedGroup,
-  CachedBlueprint,
   CachedType,
   CachedStructure,
   CachedLocation,
@@ -40,18 +38,21 @@ let refStructuresCache = new Map<number, CachedRefStructure>()
 let structuresCache = new Map<number, CachedStructure>()
 let locationsCache = new Map<number, CachedLocation>()
 let namesCache = new Map<number, CachedName>()
-let blueprintsCache = new Map<number, CachedBlueprint>()
 let initialized = false
 let referenceDataLoaded = false
 let allTypesLoaded = false
 let universeDataLoaded = false
 let refStructuresLoaded = false
-let blueprintsLoaded = false
 
 const ALL_TYPES_LOADED_KEY = 'ecteveassets-all-types-loaded'
 const UNIVERSE_LOADED_KEY = 'ecteveassets-universe-loaded'
 const REF_STRUCTURES_LOADED_KEY = 'ecteveassets-ref-structures-loaded'
-const BLUEPRINTS_LOADED_KEY = 'ecteveassets-blueprints-loaded'
+const TYPES_SCHEMA_VERSION_KEY = 'ecteveassets-types-schema-version'
+
+// Bump this when the API adds new fields to types that require re-download
+// v1: initial
+// v2: added productId, basePrice for blueprints
+const TYPES_SCHEMA_VERSION = 2
 
 const listeners = new Set<() => void>()
 
@@ -88,7 +89,6 @@ export async function initCache(): Promise<void> {
       names,
       categories,
       groups,
-      blueprints,
     ] = await Promise.all([
       loadStore<CachedType>('types'),
       loadStore<CachedRegion>('regions'),
@@ -100,42 +100,27 @@ export async function initCache(): Promise<void> {
       loadStore<CachedName>('names'),
       loadStore<CachedCategory>('categories'),
       loadStore<CachedGroup>('groups'),
-      loadStore<CachedBlueprint>('blueprints'),
     ])
 
     typesCache = types
 
-    // Check if types cache needs refresh:
-    // 1. Non-boolean published field (old data format)
-    // 2. All sampled types have published=false (API didn't provide field, bug in <= 1.9.1)
+    // Check if types schema version changed (API added new fields)
     if (types.size > 0) {
-      let needsRefresh = false
-      let checked = 0
-      let allFalse = true
-      for (const type of types.values()) {
-        if (typeof type.published !== 'boolean') {
-          needsRefresh = true
-          break
-        }
-        if (type.published === true) {
-          allFalse = false
-        }
-        if (++checked >= 10) break
-      }
-      if (!needsRefresh && allFalse && checked >= 10) {
-        needsRefresh = true
-      }
-      if (needsRefresh) {
-        logger.info('Types cache needs refresh, clearing', {
-          module: 'ReferenceCache',
-        })
-        typesCache = new Map()
-        await clearStore('types')
-        try {
+      try {
+        const storedVersion = localStorage.getItem(TYPES_SCHEMA_VERSION_KEY)
+        if (storedVersion !== String(TYPES_SCHEMA_VERSION)) {
+          logger.info('Types schema version changed, clearing cache', {
+            module: 'ReferenceCache',
+            oldVersion: storedVersion,
+            newVersion: TYPES_SCHEMA_VERSION,
+          })
+          typesCache = new Map()
+          await clearStore('types')
           localStorage.removeItem(ALL_TYPES_LOADED_KEY)
-        } catch {
-          // ignore
+          localStorage.removeItem(TYPES_SCHEMA_VERSION_KEY)
         }
+      } catch {
+        // localStorage not available
       }
     }
 
@@ -148,7 +133,6 @@ export async function initCache(): Promise<void> {
     namesCache = names
     categoriesCache = categories
     groupsCache = groups
-    blueprintsCache = blueprints
     initialized = true
     referenceDataLoaded = categoriesCache.size > 0 && groupsCache.size > 0
 
@@ -164,9 +148,6 @@ export async function initCache(): Promise<void> {
       refStructuresLoaded =
         localStorage.getItem(REF_STRUCTURES_LOADED_KEY) === 'true' &&
         refStructuresCache.size > 0
-      blueprintsLoaded =
-        localStorage.getItem(BLUEPRINTS_LOADED_KEY) === 'true' &&
-        blueprintsCache.size > 0
     } catch {
       // localStorage not available
     }
@@ -186,8 +167,6 @@ export async function initCache(): Promise<void> {
       names: namesCache.size,
       categories: categoriesCache.size,
       groups: groupsCache.size,
-      blueprints: blueprintsCache.size,
-      blueprintsLoaded,
     })
   } catch (err) {
     logger.error('Failed to initialize cache', err, {
@@ -215,6 +194,82 @@ export function isTypePublished(id: number): boolean {
   return type.published === true
 }
 
+export function getTypeJitaPrice(id: number): number | undefined {
+  return typesCache.get(id)?.jitaPrice
+}
+
+export function getTypeEsiAveragePrice(id: number): number | undefined {
+  return typesCache.get(id)?.esiAveragePrice
+}
+
+export function getTypeEsiAdjustedPrice(id: number): number | undefined {
+  return typesCache.get(id)?.esiAdjustedPrice
+}
+
+export function getTypeBasePrice(id: number): number | undefined {
+  return typesCache.get(id)?.basePrice
+}
+
+export function getTypeProductId(id: number): number | undefined {
+  return typesCache.get(id)?.productId
+}
+
+export function isTypeBlueprint(id: number): boolean {
+  return typesCache.get(id)?.productId !== undefined
+}
+
+export async function updateTypePrices(
+  prices: Array<{ id: number; jitaPrice: number }>
+): Promise<void> {
+  if (prices.length === 0) return
+
+  const updates: CachedType[] = []
+  for (const { id, jitaPrice } of prices) {
+    const type = typesCache.get(id)
+    if (type) {
+      const updated = { ...type, jitaPrice }
+      typesCache.set(id, updated)
+      updates.push(updated)
+    }
+  }
+
+  if (updates.length > 0) {
+    await writeBatch('types', updates, () => {
+      notifyListeners()
+    })
+  }
+}
+
+export async function updateTypeEsiPrices(
+  prices: Array<{
+    id: number
+    esiAveragePrice: number | null
+    esiAdjustedPrice: number | null
+  }>
+): Promise<void> {
+  if (prices.length === 0) return
+
+  const updates: CachedType[] = []
+  for (const { id, esiAveragePrice, esiAdjustedPrice } of prices) {
+    const type = typesCache.get(id)
+    if (type) {
+      const updated = {
+        ...type,
+        esiAveragePrice: esiAveragePrice ?? undefined,
+        esiAdjustedPrice: esiAdjustedPrice ?? undefined,
+      }
+      typesCache.set(id, updated)
+      updates.push(updated)
+    }
+  }
+
+  if (updates.length > 0) {
+    await writeBatch('types', updates, () => {
+      notifyListeners()
+    })
+  }
+}
+
 export function getCategory(id: number): CachedCategory | undefined {
   return categoriesCache.get(id)
 }
@@ -236,8 +291,10 @@ export function setAllTypesLoaded(loaded: boolean): void {
   try {
     if (loaded) {
       localStorage.setItem(ALL_TYPES_LOADED_KEY, 'true')
+      localStorage.setItem(TYPES_SCHEMA_VERSION_KEY, String(TYPES_SCHEMA_VERSION))
     } else {
       localStorage.removeItem(ALL_TYPES_LOADED_KEY)
+      localStorage.removeItem(TYPES_SCHEMA_VERSION_KEY)
     }
   } catch {
     // localStorage not available
@@ -373,43 +430,6 @@ export async function setGroups(groups: CachedGroup[]): Promise<void> {
       count: groups.length,
     })
   })
-}
-
-export async function setBlueprints(
-  blueprints: CachedBlueprint[]
-): Promise<void> {
-  await writeBatch('blueprints', blueprints, () => {
-    blueprintsCache = new Map(blueprints.map((b) => [b.id, b]))
-    logger.info('Blueprints saved', {
-      module: 'ReferenceCache',
-      count: blueprints.length,
-    })
-  })
-}
-
-export function getBlueprint(id: number): CachedBlueprint | undefined {
-  return blueprintsCache.get(id)
-}
-
-export function getAllBlueprints(): Map<number, CachedBlueprint> {
-  return blueprintsCache
-}
-
-export function isBlueprintsLoaded(): boolean {
-  return blueprintsLoaded
-}
-
-export function setBlueprintsLoaded(loaded: boolean): void {
-  blueprintsLoaded = loaded
-  try {
-    if (loaded) {
-      localStorage.setItem(BLUEPRINTS_LOADED_KEY, 'true')
-    } else {
-      localStorage.removeItem(BLUEPRINTS_LOADED_KEY)
-    }
-  } catch {
-    // localStorage not available
-  }
 }
 
 export function getStructure(id: number): CachedStructure | undefined {
@@ -557,13 +577,11 @@ export async function clearReferenceCache(): Promise<void> {
   structuresCache.clear()
   locationsCache.clear()
   namesCache.clear()
-  blueprintsCache.clear()
   initialized = false
   referenceDataLoaded = false
   setAllTypesLoaded(false)
   setUniverseDataLoaded(false)
   setRefStructuresLoaded(false)
-  setBlueprintsLoaded(false)
 
   await deleteDatabase()
 }
@@ -629,28 +647,17 @@ export async function clearUniverseCache(): Promise<void> {
   notifyListeners()
 }
 
-export async function clearBlueprintsCache(): Promise<void> {
-  logger.info('Clearing blueprints cache', { module: 'ReferenceCache' })
-  blueprintsCache.clear()
-  setBlueprintsLoaded(false)
-  await clearStore('blueprints')
-  notifyListeners()
-}
-
 export async function clearCoreReferenceCache(): Promise<void> {
   logger.info('Clearing core reference cache', { module: 'ReferenceCache' })
   typesCache.clear()
   categoriesCache.clear()
   groupsCache.clear()
-  blueprintsCache.clear()
   referenceDataLoaded = false
   setAllTypesLoaded(false)
-  setBlueprintsLoaded(false)
   await Promise.all([
     clearStore('types'),
     clearStore('categories'),
     clearStore('groups'),
-    clearStore('blueprints'),
   ])
   notifyListeners()
 }

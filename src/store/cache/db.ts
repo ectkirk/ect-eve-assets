@@ -2,7 +2,7 @@ import { logger } from '@/lib/logger'
 import { cacheSchemas } from './types'
 
 const DB_NAME = 'ecteveassets-cache'
-const DB_VERSION = 10
+const DB_VERSION = 12
 
 let db: IDBDatabase | null = null
 
@@ -61,14 +61,38 @@ export async function openDB(): Promise<IDBDatabase> {
       if (!database.objectStoreNames.contains('refStructures')) {
         database.createObjectStore('refStructures', { keyPath: 'id' })
       }
-      if (!database.objectStoreNames.contains('blueprints')) {
-        database.createObjectStore('blueprints', { keyPath: 'id' })
-      }
 
       if (oldVersion < 4 && database.objectStoreNames.contains('locations')) {
         const tx = (event.target as IDBOpenDBRequest).transaction!
         tx.objectStore('locations').clear()
         logger.info('Cleared locations cache for v4 upgrade', {
+          module: 'ReferenceCache',
+        })
+      }
+
+      if (oldVersion < 11 && database.objectStoreNames.contains('types')) {
+        const tx = (event.target as IDBOpenDBRequest).transaction!
+        tx.objectStore('types').clear()
+        try {
+          localStorage.removeItem('ecteveassets-all-types-loaded')
+          localStorage.removeItem('ecteveassets-types-schema-version')
+        } catch {
+          // ignore
+        }
+        logger.info('Cleared types cache for v11 upgrade (prices merged)', {
+          module: 'ReferenceCache',
+        })
+      }
+
+      // v12: Remove legacy blueprints store (blueprint data now in types table)
+      if (oldVersion < 12 && database.objectStoreNames.contains('blueprints')) {
+        database.deleteObjectStore('blueprints')
+        try {
+          localStorage.removeItem('ecteveassets-blueprints-loaded')
+        } catch {
+          // ignore
+        }
+        logger.info('Removed legacy blueprints store', {
           module: 'ReferenceCache',
         })
       }
