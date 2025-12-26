@@ -411,6 +411,7 @@ export function IndustryJobsTab() {
 
   const locationGroups = useMemo(() => {
     void cacheVersion
+    void priceVersion
 
     const groups = new Map<number, LocationGroup>()
 
