@@ -20,6 +20,7 @@ import {
   type BuybackTabType,
 } from '@/features/buyback'
 import { ToolsTab, TOOLS_TABS, type ToolsTabType } from '@/features/tools'
+import { FreightPanel } from '@/features/tools/freight'
 import { useBuybackActionStore } from '@/store/buyback-action-store'
 import { useRegionalMarketActionStore } from '@/store/regional-market-action-store'
 import { useTotalAssets } from '@/hooks'
@@ -30,7 +31,7 @@ import { OwnerButton } from './OwnerButton'
 import { WindowControls } from './WindowControls'
 import { SearchBar } from './SearchBar'
 
-type AppMode = 'assets' | 'buyback' | 'tools'
+type AppMode = 'assets' | 'buyback' | 'freight' | 'tools'
 
 const ASSET_TABS = [
   'Assets',
@@ -107,6 +108,16 @@ function ModeSwitcher({
         }`}
       >
         Buyback
+      </button>
+      <button
+        onClick={() => onModeChange('freight')}
+        className={`rounded px-3 py-1 text-sm font-medium transition-colors ${
+          mode === 'freight'
+            ? 'bg-surface-tertiary text-content'
+            : 'text-content-muted hover:text-content-secondary'
+        }`}
+      >
+        Freight
       </button>
     </div>
   )
@@ -353,6 +364,7 @@ function MainLayoutInner() {
             />
           </div>
         )}
+        {mode === 'freight' && <FreightPanel />}
         {mode === 'tools' && (
           <ToolsTab
             activeTab={activeToolsTab}

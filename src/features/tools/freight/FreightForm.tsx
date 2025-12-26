@@ -1,0 +1,106 @@
+import { useState } from 'react'
+import { Loader2 } from 'lucide-react'
+
+interface FreightFormProps {
+  onSubmit: (text: string) => void
+  isLoading?: boolean
+  hasResult?: boolean
+  onReset?: () => void
+}
+
+export function FreightForm({
+  onSubmit,
+  isLoading = false,
+  hasResult = false,
+  onReset,
+}: FreightFormProps) {
+  const [text, setText] = useState('')
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (text.trim() && !isLoading) {
+      onSubmit(text)
+    }
+  }
+
+  const handleClear = () => {
+    setText('')
+  }
+
+  const handleReset = () => {
+    setText('')
+    onReset?.()
+  }
+
+  const lineCount = text.trim() ? text.trim().split('\n').length : 0
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label
+          htmlFor="freight-input"
+          className="mb-2 block text-sm font-medium text-content-secondary"
+        >
+          Item list
+        </label>
+        <textarea
+          id="freight-input"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Paste items from EVE (inventory, contracts, fittings, etc.)"
+          rows={8}
+          className={`w-full rounded-lg border px-4 py-3 font-mono text-sm transition-colors focus:outline-none ${
+            hasResult
+              ? 'cursor-not-allowed border-border bg-surface text-content-muted'
+              : 'border-border bg-surface-secondary text-content placeholder-content-muted focus:border-accent focus:ring-2 focus:ring-action/20'
+          }`}
+          disabled={isLoading || hasResult}
+        />
+        <div className="mt-2 text-sm text-content-secondary">
+          {lineCount > 0
+            ? `${lineCount} line${lineCount !== 1 ? 's' : ''}`
+            : 'No items'}
+        </div>
+      </div>
+
+      <div className="flex gap-3">
+        {hasResult ? (
+          <button
+            type="button"
+            onClick={handleReset}
+            className="rounded-lg bg-action px-6 py-2.5 font-medium text-action-foreground transition-colors hover:bg-action-hover focus:ring-2 focus:ring-action focus:ring-offset-2 focus:ring-offset-surface focus:outline-none"
+          >
+            Calculate new shipment
+          </button>
+        ) : (
+          <>
+            <button
+              type="submit"
+              disabled={!text.trim() || isLoading}
+              className="rounded-lg bg-action px-6 py-2.5 font-medium text-action-foreground transition-colors hover:bg-action-hover focus:ring-2 focus:ring-action focus:ring-offset-2 focus:ring-offset-surface focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isLoading ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Calculating...
+                </span>
+              ) : (
+                'Calculate Shipping'
+              )}
+            </button>
+            {text.trim() && (
+              <button
+                type="button"
+                onClick={handleClear}
+                disabled={isLoading}
+                className="rounded-lg border border-border px-4 py-2.5 font-medium text-content-secondary transition-colors hover:bg-surface-secondary focus:ring-2 focus:ring-border focus:ring-offset-2 focus:ring-offset-surface focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Clear
+              </button>
+            )}
+          </>
+        )}
+      </div>
+    </form>
+  )
+}

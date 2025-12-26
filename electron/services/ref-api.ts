@@ -372,6 +372,17 @@ export function registerRefAPIHandlers(): void {
     }
   )
 
+  ipcMain.handle('ref:shippingInfo', () =>
+    refGet('/shipping/info', 'ref:shippingInfo')
+  )
+
+  ipcMain.handle('ref:shippingCalculate', async (_event, text: unknown) => {
+    if (typeof text !== 'string' || !text.trim()) {
+      return { error: 'Text is required' }
+    }
+    return refPost('/shipping/calculate', { text }, 'ref:shippingCalculate')
+  })
+
   ipcMain.handle('ref:contractsSearch', async (_event, params: unknown) => {
     if (typeof params !== 'object' || params === null) {
       return { error: 'Invalid params' }

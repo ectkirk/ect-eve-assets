@@ -26,3 +26,11 @@ export function formatNumber(value: number): string {
 export function formatISK(value: number): string {
   return formatNumber(value) + ' ISK'
 }
+
+export function formatVolume(value: number, decimals: 0 | 2 = 0): string {
+  return value.toLocaleString('en-US', { maximumFractionDigits: decimals })
+}
+
+export function formatIsk(value: number): string {
+  return value.toLocaleString('en-US', { maximumFractionDigits: 0 })
+}

@@ -362,6 +362,102 @@ declare global {
     error?: string
   }
 
+  interface ShippingTier {
+    name: string
+    volumeCapacity: number
+    maxCollateral: number
+    cost: number
+    delivery: string
+    expiration: string
+    description: string
+    nullSecAllowed: boolean
+  }
+
+  interface ShippingInfoResult {
+    service?: {
+      name: string
+      corporation: string
+      ticker: string
+      website: string
+      forumUrl: string
+      deliveryTimesUrl: string
+    }
+    tiers?: ShippingTier[]
+    limits?: {
+      maxVolumePerPackage: number
+      maxCollateral: number
+      maxItemsPerRequest: number
+    }
+    contractSettings?: { corporation: string; expiration: string }
+    excludedItems?: Array<{ type: string; reason: string }>
+    faq?: Array<{ question: string; answer: string }>
+    error?: string
+  }
+
+  interface ShippingPackageItem {
+    itemName: string
+    quantity: number
+    typeId: number
+    unitVolume: number
+    totalVolume: number
+    unitValue: number
+    totalValue: number
+    groupName: string
+  }
+
+  interface ShippingPackage {
+    packageNumber: number
+    tier: ShippingTier
+    items: ShippingPackageItem[]
+    totalVolume: number
+    totalValue: number
+    volumeUtilization: number
+    cost: number
+  }
+
+  interface ShippingUnshippableItem {
+    itemName: string
+    quantity: number
+    typeId: number
+    totalVolume: number
+    totalValue: number
+    reason: 'volume_exceeds_capacity' | 'value_exceeds_collateral'
+  }
+
+  interface ShippingManualCollateralItem {
+    itemName: string
+    quantity: number
+    typeId: number
+    unitVolume: number
+    totalVolume: number
+    groupName: string
+    reason: string
+    isBlueprint: boolean
+  }
+
+  interface ShippingCalculateResult {
+    items?: ShippingPackageItem[]
+    unmatchedItems?: string[]
+    manualCollateralItems?: ShippingManualCollateralItem[]
+    shippingPlan?: {
+      packages: ShippingPackage[]
+      unshippableItems: ShippingUnshippableItem[]
+      summary: {
+        totalPackages: number
+        totalShippingCost: number
+        totalCargoVolume: number
+        totalCargoValue: number
+        costBreakdown: Array<{
+          tierName: string
+          count: number
+          subtotal: number
+        }>
+      }
+    }
+    serviceTiers?: ShippingTier[]
+    error?: string
+  }
+
   interface ESIRequestOptions {
     method?: 'GET' | 'POST'
     body?: string
@@ -450,6 +546,8 @@ declare global {
       config: BuybackConfig
     ) => Promise<BuybackResult>
     refBuybackInfo: () => Promise<BuybackInfoResult>
+    refShippingInfo: () => Promise<ShippingInfoResult>
+    refShippingCalculate: (text: string) => Promise<ShippingCalculateResult>
     refContractsSearch: (
       params: ContractSearchParams
     ) => Promise<ContractSearchResult>

@@ -359,6 +359,102 @@ export interface BuybackInfoResult {
   error?: string
 }
 
+export interface ShippingTier {
+  name: string
+  volumeCapacity: number
+  maxCollateral: number
+  cost: number
+  delivery: string
+  expiration: string
+  description: string
+  nullSecAllowed: boolean
+}
+
+export interface ShippingInfoResult {
+  service?: {
+    name: string
+    corporation: string
+    ticker: string
+    website: string
+    forumUrl: string
+    deliveryTimesUrl: string
+  }
+  tiers?: ShippingTier[]
+  limits?: {
+    maxVolumePerPackage: number
+    maxCollateral: number
+    maxItemsPerRequest: number
+  }
+  contractSettings?: { corporation: string; expiration: string }
+  excludedItems?: Array<{ type: string; reason: string }>
+  faq?: Array<{ question: string; answer: string }>
+  error?: string
+}
+
+export interface ShippingPackageItem {
+  itemName: string
+  quantity: number
+  typeId: number
+  unitVolume: number
+  totalVolume: number
+  unitValue: number
+  totalValue: number
+  groupName: string
+}
+
+export interface ShippingPackage {
+  packageNumber: number
+  tier: ShippingTier
+  items: ShippingPackageItem[]
+  totalVolume: number
+  totalValue: number
+  volumeUtilization: number
+  cost: number
+}
+
+export interface ShippingUnshippableItem {
+  itemName: string
+  quantity: number
+  typeId: number
+  totalVolume: number
+  totalValue: number
+  reason: 'volume_exceeds_capacity' | 'value_exceeds_collateral'
+}
+
+export interface ShippingManualCollateralItem {
+  itemName: string
+  quantity: number
+  typeId: number
+  unitVolume: number
+  totalVolume: number
+  groupName: string
+  reason: string
+  isBlueprint: boolean
+}
+
+export interface ShippingCalculateResult {
+  items?: ShippingPackageItem[]
+  unmatchedItems?: string[]
+  manualCollateralItems?: ShippingManualCollateralItem[]
+  shippingPlan?: {
+    packages: ShippingPackage[]
+    unshippableItems: ShippingUnshippableItem[]
+    summary: {
+      totalPackages: number
+      totalShippingCost: number
+      totalCargoVolume: number
+      totalCargoValue: number
+      costBreakdown: Array<{
+        tierName: string
+        count: number
+        subtotal: number
+      }>
+    }
+  }
+  serviceTiers?: ShippingTier[]
+  error?: string
+}
+
 export interface ESIRequestOptions {
   method?: 'GET' | 'POST'
   body?: string
@@ -448,6 +544,8 @@ export interface ElectronAPI {
     config: BuybackConfig
   ) => Promise<BuybackResult>
   refBuybackInfo: () => Promise<BuybackInfoResult>
+  refShippingInfo: () => Promise<ShippingInfoResult>
+  refShippingCalculate: (text: string) => Promise<ShippingCalculateResult>
   refContractsSearch: (
     params: ContractSearchParams
   ) => Promise<ContractSearchResult>
@@ -563,6 +661,9 @@ const electronAPI: ElectronAPI = {
   refBuybackCalculate: (text: string, config: BuybackConfig) =>
     ipcRenderer.invoke('ref:buybackCalculate', text, config),
   refBuybackInfo: () => ipcRenderer.invoke('ref:buybackInfo'),
+  refShippingInfo: () => ipcRenderer.invoke('ref:shippingInfo'),
+  refShippingCalculate: (text: string) =>
+    ipcRenderer.invoke('ref:shippingCalculate', text),
   refContractsSearch: (params: ContractSearchParams) =>
     ipcRenderer.invoke('ref:contractsSearch', params),
   mutamarketModule: (itemId: number, typeId?: number) =>
