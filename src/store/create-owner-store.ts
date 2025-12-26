@@ -412,19 +412,23 @@ export function createOwnerStore<
       },
 
       removeForOwner: async (ownerType: string, ownerId: number) => {
-        const state = get()
         const ownerKey = `${ownerType}-${ownerId}`
-        const updated = (state.dataByOwner as TOwnerData[]).filter(
-          (d: TOwnerData) => `${d.owner.type}-${d.owner.id}` !== ownerKey
+        const hasOwner = get().dataByOwner.some(
+          (d: TOwnerData) => `${d.owner.type}-${d.owner.id}` === ownerKey
         )
-
-        if (updated.length === state.dataByOwner.length) return
+        if (!hasOwner) return
 
         await db.delete(ownerKey)
-        const extra = rebuildExtraState ? rebuildExtraState(updated) : {}
-        set({ dataByOwner: updated, ...extra } as Partial<
-          OwnerStore<TOwnerData, TExtraState, TExtraActions>
-        >)
+
+        set((current) => {
+          const updated = (current.dataByOwner as TOwnerData[]).filter(
+            (d: TOwnerData) => `${d.owner.type}-${d.owner.id}` !== ownerKey
+          )
+          const extra = rebuildExtraState ? rebuildExtraState(updated) : {}
+          return { dataByOwner: updated, ...extra } as Partial<
+            OwnerStore<TOwnerData, TExtraState, TExtraActions>
+          >
+        })
 
         useExpiryCacheStore.getState().clearForOwner(ownerKey)
         logger.info(`${name} removed for owner`, {

@@ -67,6 +67,7 @@ export const TreeRowContent = memo(function TreeRowContent({
   onToggleExpand,
   visibleColumns,
 }: TreeRowContentProps) {
+  const abyssalPrices = usePriceStore((s) => s.abyssalPrices)
   const hasChildren = node.children.length > 0
   const indentPx = node.depth * 20
 
@@ -168,7 +169,7 @@ export const TreeRowContent = memo(function TreeRowContent({
                     node.typeId &&
                     node.asset?.item_id &&
                     isAbyssalTypeId(node.typeId) &&
-                    usePriceStore.getState().hasAbyssalPrice(node.asset.item_id)
+                    abyssalPrices.has(node.asset.item_id)
                   ) {
                     return (
                       <AbyssalPreview itemId={node.asset.item_id}>

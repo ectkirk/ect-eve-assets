@@ -417,27 +417,34 @@ export function createVisibilityStore<
       },
 
       removeForOwner: async (ownerType: string, ownerId: number) => {
-        const state = get()
         const currentOwnerKey = `${ownerType}-${ownerId}`
 
-        if (!state.visibilityByOwner.has(currentOwnerKey)) return
-
-        const visibilityByOwner = new Map(state.visibilityByOwner)
-        visibilityByOwner.delete(currentOwnerKey)
+        if (!get().visibilityByOwner.has(currentOwnerKey)) return
 
         await db.deleteVisibility(currentOwnerKey)
 
-        const itemsById = new Map(state.itemsById)
-        if (shouldDeleteStaleItems) {
-          const visibleIds = collectVisibleItemIds(visibilityByOwner)
-          const staleIds = removeStaleItems(itemsById, visibleIds)
-          if (staleIds.length > 0) {
-            await db.deleteItems(staleIds)
-          }
-        }
+        let staleIds: number[] = []
+        set((current) => {
+          const visibilityByOwner = new Map(current.visibilityByOwner)
+          visibilityByOwner.delete(currentOwnerKey)
 
-        const extra = rebuildExtraState ? rebuildExtraState(itemsById) : {}
-        set({ itemsById, visibilityByOwner, ...extra } as Partial<FullStore>)
+          const itemsById = new Map(current.itemsById)
+          if (shouldDeleteStaleItems) {
+            const visibleIds = collectVisibleItemIds(visibilityByOwner)
+            staleIds = removeStaleItems(itemsById, visibleIds)
+          }
+
+          const extra = rebuildExtraState ? rebuildExtraState(itemsById) : {}
+          return {
+            itemsById,
+            visibilityByOwner,
+            ...extra,
+          } as Partial<FullStore>
+        })
+
+        if (staleIds.length > 0) {
+          await db.deleteItems(staleIds)
+        }
 
         useExpiryCacheStore.getState().clearForOwner(currentOwnerKey)
 

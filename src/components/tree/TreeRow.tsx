@@ -38,6 +38,7 @@ export const TreeRow = memo(function TreeRow({
   onSellToBuyback,
   visibleColumns,
 }: TreeRowProps) {
+  const abyssalPrices = usePriceStore((s) => s.abyssalPrices)
   const hasChildren = node.children.length > 0
 
   const handleRowClick = useCallback(
@@ -66,7 +67,7 @@ export const TreeRow = memo(function TreeRow({
     node.typeId &&
     node.asset?.item_id &&
     isAbyssalTypeId(node.typeId) &&
-    usePriceStore.getState().hasAbyssalPrice(node.asset.item_id)
+    abyssalPrices.has(node.asset.item_id)
 
   const row = (
     <TableRow

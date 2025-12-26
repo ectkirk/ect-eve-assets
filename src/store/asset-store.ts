@@ -431,16 +431,19 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
   },
 
   removeForOwner: async (ownerType: string, ownerId: number) => {
-    const state = get()
     const ownerKey = `${ownerType}-${ownerId}`
-    const updated = state.assetsByOwner.filter(
-      (oa) => `${oa.owner.type}-${oa.owner.id}` !== ownerKey
+    const hasOwner = get().assetsByOwner.some(
+      (oa) => `${oa.owner.type}-${oa.owner.id}` === ownerKey
     )
-
-    if (updated.length === state.assetsByOwner.length) return
+    if (!hasOwner) return
 
     await db.delete(ownerKey)
-    set({ assetsByOwner: updated })
+
+    set((current) => ({
+      assetsByOwner: current.assetsByOwner.filter(
+        (oa) => `${oa.owner.type}-${oa.owner.id}` !== ownerKey
+      ),
+    }))
 
     useExpiryCacheStore.getState().clearForOwner(ownerKey)
 
@@ -450,30 +453,36 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
   },
 
   pruneStaleMetadata: async () => {
-    const state = get()
+    const currentState = get()
     const currentItemIds = new Set<number>()
-    for (const { assets } of state.assetsByOwner) {
+    for (const { assets } of currentState.assetsByOwner) {
       for (const asset of assets) {
         currentItemIds.add(asset.item_id)
       }
     }
 
-    const prunedNames = new Map<number, string>()
-    let namesRemoved = 0
-    for (const [itemId, name] of state.assetNames) {
-      if (currentItemIds.has(itemId)) {
-        prunedNames.set(itemId, name)
-      } else {
-        namesRemoved++
+    const staleIds = new Set<number>()
+    for (const itemId of currentState.assetNames.keys()) {
+      if (!currentItemIds.has(itemId)) {
+        staleIds.add(itemId)
       }
     }
 
-    if (namesRemoved > 0) {
-      await saveNamesToDB(prunedNames)
-      set({ assetNames: prunedNames })
+    if (staleIds.size > 0) {
+      set((current) => {
+        const prunedNames = new Map<number, string>()
+        for (const [itemId, name] of current.assetNames) {
+          if (!staleIds.has(itemId)) {
+            prunedNames.set(itemId, name)
+          }
+        }
+        return { assetNames: prunedNames }
+      })
+
+      await saveNamesToDB(get().assetNames)
       logger.info('Pruned stale asset names', {
         module: 'AssetStore',
-        namesRemoved,
+        namesRemoved: staleIds.size,
       })
     }
   },
