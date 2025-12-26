@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/context-menu'
 import { isAbyssalTypeId, getMutamarketUrl } from '@/api/mutamarket-client'
 import { usePriceStore } from '@/store/price-store'
+import { BUYBACK_REGIONS } from '@/hooks'
 import { cn } from '@/lib/utils'
 import type { TreeNode } from '@/lib/tree-types'
 import { TreeRowContent } from './TreeRowContent'
@@ -93,7 +94,9 @@ export const TreeRow = memo(function TreeRow({
     </TableRow>
   )
 
-  const showBuyback = (isSelected && showBuybackOption) || hasChildren
+  const isInBuybackRegion = node.regionId && BUYBACK_REGIONS.has(node.regionId)
+  const showBuyback =
+    (isSelected && showBuybackOption) || (hasChildren && isInBuybackRegion)
   if (isShip || isAbyssalResolved || showBuyback) {
     return (
       <ContextMenu>

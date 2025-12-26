@@ -14,4 +14,8 @@ export {
   type SortState,
 } from './useSortable'
 export { useRowSelection, type CopyData } from './useRowSelection'
-export { useBuybackSelection, type BuybackItem } from './useBuybackSelection'
+export {
+  useBuybackSelection,
+  BUYBACK_REGIONS,
+  type BuybackItem,
+} from './useBuybackSelection'

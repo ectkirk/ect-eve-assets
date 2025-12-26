@@ -5,7 +5,7 @@ import {
   getSecurityTab,
 } from '@/store/buyback-action-store'
 
-const BUYBACK_REGIONS = new Set([
+export const BUYBACK_REGIONS = new Set([
   10000054, // Aridia
   10000069, // Black Rise
   10000055, // Branch
