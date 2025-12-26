@@ -25,7 +25,7 @@ const RATE_LIMIT_FILE = 'rate-limits.json'
 const CACHE_FILE = 'esi-cache.json'
 const ESI_MAX_RETRIES = 2
 const ESI_REQUEST_TIMEOUT_MS = 30000
-const MAX_CONCURRENT_PAGES = 20
+const MAX_CONCURRENT_PAGES = 10
 
 export type ProgressCallback = (progress: {
   current: number
@@ -420,13 +420,30 @@ export class MainESIService {
       return result
     } catch (error) {
       clearTimeout(timeoutId)
+
       if (error instanceof ESIError) throw error
-      const message =
-        error instanceof Error && error.name === 'AbortError'
-          ? 'Request timeout'
-          : error instanceof Error
-            ? error.message
-            : 'Network error'
+
+      const isAbort = error instanceof Error && error.name === 'AbortError'
+      const message = isAbort
+        ? 'Request timeout'
+        : error instanceof Error
+          ? error.message
+          : 'Network error'
+
+      if (attempt < ESI_MAX_RETRIES && !isAbort) {
+        const backoffMs = Math.min(1000 * Math.pow(2, attempt), 10000)
+        logger.debug('Retrying after network error', {
+          module: 'ESI',
+          endpoint,
+          attempt: attempt + 1,
+          error: message,
+          backoffMs,
+        })
+        this.activeRequests--
+        await this.delay(backoffMs)
+        return this.executeRequest(endpoint, options, attempt + 1)
+      }
+
       return { success: false, error: message }
     } finally {
       this.activeRequests--
