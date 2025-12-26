@@ -6,6 +6,7 @@ import { useStoreRegistry } from '@/store/store-registry'
 import {
   loadAllOrdersFromDB,
   saveOrdersToDB,
+  deleteRegionsFromDB,
   clearOrdersDB,
   type StoredRegionOrders,
 } from './regional-orders-db'
@@ -14,7 +15,6 @@ import type { ESIRegionOrder } from '@/api/endpoints/market'
 const MODULE = 'RegionalOrdersStore'
 
 interface RegionCache {
-  orders: ESIRegionOrder[]
   ordersByType: Map<number, ESIRegionOrder[]>
   fetchedAt: number
   expiresAt: number
@@ -54,6 +54,14 @@ function buildOrdersByType(
   return map
 }
 
+function countOrders(ordersByType: Map<number, ESIRegionOrder[]>): number {
+  let count = 0
+  for (const orders of ordersByType.values()) {
+    count += orders.length
+  }
+  return count
+}
+
 let initPromise: Promise<void> | null = null
 
 export const useRegionalOrdersStore = create<RegionalOrdersStore>(
@@ -75,27 +83,42 @@ export const useRegionalOrdersStore = create<RegionalOrdersStore>(
           if (storedRegions.length > 0) {
             const now = Date.now()
             const newCache = new Map<number, RegionCache>()
+            const expiredRegionIds: number[] = []
 
             for (const stored of storedRegions) {
               if (stored.expiresAt > now) {
                 newCache.set(stored.regionId, {
-                  orders: stored.orders,
                   ordersByType: buildOrdersByType(stored.orders),
                   fetchedAt: stored.fetchedAt,
                   expiresAt: stored.expiresAt,
                 })
+              } else {
+                expiredRegionIds.push(stored.regionId)
               }
             }
 
             set({ regionCache: newCache, initialized: true })
 
+            if (expiredRegionIds.length > 0) {
+              deleteRegionsFromDB(expiredRegionIds).catch((err) => {
+                logger.warn('Failed to delete expired regions from DB', {
+                  module: MODULE,
+                  error: err instanceof Error ? err.message : String(err),
+                  regionIds: expiredRegionIds,
+                })
+              })
+            }
+
+            let totalOrders = 0
+            for (const cache of newCache.values()) {
+              totalOrders += countOrders(cache.ordersByType)
+            }
+
             logger.info('Regional orders store initialized from cache', {
               module: MODULE,
               cachedRegions: newCache.size,
-              totalOrders: Array.from(newCache.values()).reduce(
-                (sum, c) => sum + c.orders.length,
-                0
-              ),
+              expiredRegions: expiredRegionIds.length,
+              totalOrders,
             })
           } else {
             set({ initialized: true })
@@ -117,13 +140,12 @@ export const useRegionalOrdersStore = create<RegionalOrdersStore>(
     },
 
     setRegion: async (regionId: number) => {
-      const state = get()
-
-      if (!state.initialized) {
+      if (!get().initialized) {
         await get().init()
       }
 
-      const cached = get().regionCache.get(regionId)
+      const { status, regionCache } = get()
+      const cached = regionCache.get(regionId)
       const now = Date.now()
 
       if (cached && cached.expiresAt > now) {
@@ -131,13 +153,13 @@ export const useRegionalOrdersStore = create<RegionalOrdersStore>(
         logger.debug('Using cached orders for region', {
           module: MODULE,
           regionId,
-          orderCount: cached.orders.length,
+          orderCount: countOrders(cached.ordersByType),
           expiresIn: cached.expiresAt - now,
         })
         return
       }
 
-      if (state.status === 'loading') {
+      if (status === 'loading') {
         logger.debug('Already loading, skipping', { module: MODULE, regionId })
         return
       }
@@ -173,7 +195,7 @@ export const useRegionalOrdersStore = create<RegionalOrdersStore>(
         const expiresAt = result.expiresAt
 
         const newCache = new Map(get().regionCache)
-        newCache.set(regionId, { orders, ordersByType, fetchedAt, expiresAt })
+        newCache.set(regionId, { ordersByType, fetchedAt, expiresAt })
 
         set({
           regionCache: newCache,

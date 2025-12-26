@@ -72,6 +72,21 @@ export async function saveOrdersToDB(
   })
 }
 
+export async function deleteRegionsFromDB(regionIds: number[]): Promise<void> {
+  if (regionIds.length === 0) return
+  const database = await openDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction([STORE_ORDERS], 'readwrite')
+    const store = tx.objectStore(STORE_ORDERS)
+    for (const regionId of regionIds) {
+      store.delete(regionId)
+    }
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
 export async function clearOrdersDB(): Promise<void> {
   const database = await openDB()
 

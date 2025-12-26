@@ -201,7 +201,7 @@ export class MainESIService {
     if (totalPages > 1) {
       const limit = pLimit(MAX_CONCURRENT_PAGES)
       const pages = Array.from({ length: totalPages - 1 }, (_, i) => i + 2)
-      let completed = 1
+      const completedPages = new Set<number>([1])
 
       const pageResults = await Promise.all(
         pages.map((page) =>
@@ -219,8 +219,8 @@ export class MainESIService {
               )
             }
 
-            completed++
-            onProgress?.({ current: completed, total: totalPages })
+            completedPages.add(page)
+            onProgress?.({ current: completedPages.size, total: totalPages })
 
             return {
               data: result.data as T[],
