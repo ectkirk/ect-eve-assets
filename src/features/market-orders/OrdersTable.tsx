@@ -7,8 +7,15 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu'
 import { TypeIcon, OwnerIcon } from '@/components/ui/type-icon'
 import { formatNumber } from '@/lib/utils'
+import { useRegionalMarketActionStore } from '@/store/regional-market-action-store'
 import type { OrderRow, SortColumn, DiffSortMode } from './types'
 import {
   formatExpiry,
@@ -32,6 +39,7 @@ export function OrdersTable({
   )
   const [diffSortMode, setDiffSortMode] = useState<DiffSortMode>('number')
   const show = (col: string) => visibleColumns.has(col)
+  const navigateToType = useRegionalMarketActionStore((s) => s.navigateToType)
 
   const sortedOrders = useMemo(() => {
     return sortRows(orders, sortColumn, sortDirection, (row, column) => {
@@ -186,8 +194,8 @@ export function OrdersTable({
           const isBuy = row.order.is_buy_order
           const total = row.order.price * row.order.volume_remain
           const compPrice = isBuy ? row.highestBuy : row.lowestSell
-          return (
-            <TableRow key={row.order.order_id}>
+          const rowContent = (
+            <TableRow>
               {show('item') && (
                 <TableCell className="py-1.5">
                   <div className="flex items-center gap-2 min-w-0">
@@ -271,6 +279,16 @@ export function OrdersTable({
                 </TableCell>
               )}
             </TableRow>
+          )
+          return (
+            <ContextMenu key={row.order.order_id}>
+              <ContextMenuTrigger asChild>{rowContent}</ContextMenuTrigger>
+              <ContextMenuContent>
+                <ContextMenuItem onClick={() => navigateToType(row.typeId)}>
+                  View in Regional Market
+                </ContextMenuItem>
+              </ContextMenuContent>
+            </ContextMenu>
           )
         })}
       </TableBody>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Loader2 } from 'lucide-react'
 import { useAuthStore } from '@/store/auth-store'
 import { useAssetStore } from '@/store/asset-store'
@@ -21,6 +21,7 @@ import {
 } from '@/features/buyback'
 import { ToolsTab, TOOLS_TABS, type ToolsTabType } from '@/features/tools'
 import { useBuybackActionStore } from '@/store/buyback-action-store'
+import { useRegionalMarketActionStore } from '@/store/regional-market-action-store'
 import { useTotalAssets } from '@/hooks'
 import { formatNumber } from '@/lib/utils'
 import { TabControlsProvider } from '@/context'
@@ -192,6 +193,9 @@ function MainLayoutInner() {
     TOOLS_TABS[0]
   )
   const [buybackPrefill, setBuybackPrefill] = useState<string | null>(null)
+  const [regionalMarketTypeId, setRegionalMarketTypeId] = useState<
+    number | null
+  >(null)
 
   useEffect(() => {
     return useBuybackActionStore.subscribe((state, prevState) => {
@@ -205,6 +209,24 @@ function MainLayoutInner() {
       }
     })
   }, [])
+
+  useEffect(() => {
+    return useRegionalMarketActionStore.subscribe((state, prevState) => {
+      if (state.pendingAction && !prevState.pendingAction) {
+        setMode('tools')
+        setActiveToolsTab('Regional Market')
+        setRegionalMarketTypeId(state.pendingAction.typeId)
+        queueMicrotask(() => {
+          useRegionalMarketActionStore.getState().clearAction()
+        })
+      }
+    })
+  }, [])
+
+  const clearRegionalMarketTypeId = useCallback(
+    () => setRegionalMarketTypeId(null),
+    []
+  )
 
   return (
     <div className="flex h-full flex-col">
@@ -331,7 +353,13 @@ function MainLayoutInner() {
             />
           </div>
         )}
-        {mode === 'tools' && <ToolsTab activeTab={activeToolsTab} />}
+        {mode === 'tools' && (
+          <ToolsTab
+            activeTab={activeToolsTab}
+            regionalMarketTypeId={regionalMarketTypeId}
+            onRegionalMarketTypeConsumed={clearRegionalMarketTypeId}
+          />
+        )}
       </main>
     </div>
   )

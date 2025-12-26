@@ -15,6 +15,11 @@ import type { MarketGroupNode } from './types'
 
 const THE_FORGE_REGION_ID = 10000002
 
+interface RegionalMarketPanelProps {
+  initialTypeId?: number | null
+  onInitialTypeConsumed?: () => void
+}
+
 function findGroupNode(
   nodes: MarketGroupNode[],
   groupId: number
@@ -51,7 +56,10 @@ function buildBreadcrumbPath(
   return path
 }
 
-export function RegionalMarketPanel() {
+export function RegionalMarketPanel({
+  initialTypeId,
+  onInitialTypeConsumed,
+}: RegionalMarketPanelProps) {
   const [selectedRegionId, setSelectedRegionId] = useState(THE_FORGE_REGION_ID)
   const [selectedMarketGroupId, setSelectedMarketGroupId] = useState<
     number | null
@@ -77,6 +85,34 @@ export function RegionalMarketPanel() {
   useEffect(() => {
     setRegion(selectedRegionId)
   }, [selectedRegionId, setRegion])
+
+  const selectType = useCallback(
+    (typeId: number) => {
+      const type = types.get(typeId)
+      if (!type?.marketGroupId) return
+
+      const path = buildBreadcrumbPath(tree, type.marketGroupId)
+      const groupIdsToExpand = path.map((node) => node.group.id)
+
+      setExpandedGroupIds((prev) => {
+        const next = new Set(prev)
+        for (const id of groupIdsToExpand) next.add(id)
+        return next
+      })
+      setSelectedMarketGroupId(type.marketGroupId)
+      setSelectedTypeId(type.id)
+    },
+    [tree, types]
+  )
+
+  useEffect(() => {
+    if (!initialTypeId || loading || tree.length === 0) return
+
+    queueMicrotask(() => {
+      selectType(initialTypeId)
+      onInitialTypeConsumed?.()
+    })
+  }, [initialTypeId, loading, tree, selectType, onInitialTypeConsumed])
 
   const sortedRegions = useMemo(() => {
     const list = Array.from(regions.values()).filter((r) =>
@@ -155,20 +191,9 @@ export function RegionalMarketPanel() {
 
   const handleSearchSelect = useCallback(
     (type: CachedType) => {
-      if (!type.marketGroupId) return
-
-      const path = buildBreadcrumbPath(tree, type.marketGroupId)
-      const groupIdsToExpand = path.map((node) => node.group.id)
-
-      setExpandedGroupIds((prev) => {
-        const next = new Set(prev)
-        for (const id of groupIdsToExpand) next.add(id)
-        return next
-      })
-      setSelectedMarketGroupId(type.marketGroupId)
-      setSelectedTypeId(type.id)
+      selectType(type.id)
     },
-    [tree]
+    [selectType]
   )
 
   if (loading) {
