@@ -85,28 +85,6 @@ export function useMarketGroups(): UseMarketGroupsResult {
   return { tree, loading, error }
 }
 
-export function flattenTree(
-  nodes: MarketGroupNode[],
-  expandedIds: Set<number>
-): MarketGroupNode[] {
-  const result: MarketGroupNode[] = []
-
-  function traverse(node: MarketGroupNode) {
-    result.push(node)
-    if (expandedIds.has(node.group.id)) {
-      for (const child of node.children) {
-        traverse(child)
-      }
-    }
-  }
-
-  for (const node of nodes) {
-    traverse(node)
-  }
-
-  return result
-}
-
 export function flattenTreeWithItems(
   nodes: MarketGroupNode[],
   expandedIds: Set<number>,

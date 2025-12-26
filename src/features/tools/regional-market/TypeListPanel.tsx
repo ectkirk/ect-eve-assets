@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react'
+import { memo, useMemo, useCallback } from 'react'
 import { Folder, ChevronRight } from 'lucide-react'
 import { TypeIcon } from '@/components/ui/type-icon'
 import {
@@ -110,6 +110,11 @@ export function TypeListPanel({
     return selectedGroup.children.filter(hasAvailableItems)
   }, [selectedGroup, groupsWithAvailableItems])
 
+  const handleSelectGroup = useCallback(
+    (groupId: number) => onSelectGroup?.(groupId),
+    [onSelectGroup]
+  )
+
   if (!selectedGroup) {
     return (
       <div className="h-full flex flex-col items-center justify-center text-content-secondary">
@@ -142,7 +147,7 @@ export function TypeListPanel({
               <SubgroupRow
                 key={child.group.id}
                 node={child}
-                onSelect={onSelectGroup ?? (() => {})}
+                onSelect={handleSelectGroup}
               />
             ))
           ) : filteredTypes.length > 0 ? (
