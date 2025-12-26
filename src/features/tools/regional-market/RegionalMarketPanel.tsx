@@ -4,6 +4,7 @@ import {
   type CachedType,
 } from '@/store/reference-cache'
 import { useRegionalOrdersStore } from '@/store/regional-orders-store'
+import { BUYBACK_REGIONS } from '@/hooks/useBuybackSelection'
 import { TypeIcon } from '@/components/ui/type-icon'
 import { MarketGroupTree } from './MarketGroupTree'
 import { MarketItemSearch } from './MarketItemSearch'
@@ -78,7 +79,9 @@ export function RegionalMarketPanel() {
   }, [selectedRegionId, setRegion])
 
   const sortedRegions = useMemo(() => {
-    const list = Array.from(regions.values())
+    const list = Array.from(regions.values()).filter((r) =>
+      BUYBACK_REGIONS.has(r.id)
+    )
     list.sort((a, b) => a.name.localeCompare(b.name))
     return list
   }, [regions])
