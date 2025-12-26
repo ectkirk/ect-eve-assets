@@ -468,6 +468,36 @@ export const MarketJitaResponseSchema = z.object({
     .optional(),
 })
 
+// ESI Type Information
+export const ESIDogmaAttributeSchema = z.object({
+  attribute_id: z.number(),
+  value: z.number(),
+})
+
+export const ESIDogmaEffectSchema = z.object({
+  effect_id: z.number(),
+  is_default: z.boolean(),
+})
+
+export const ESITypeInfoSchema = z.object({
+  type_id: z.number(),
+  name: z.string(),
+  description: z.string(),
+  group_id: z.number(),
+  published: z.boolean(),
+  capacity: z.number().optional(),
+  dogma_attributes: z.array(ESIDogmaAttributeSchema).optional(),
+  dogma_effects: z.array(ESIDogmaEffectSchema).optional(),
+  graphic_id: z.number().optional(),
+  icon_id: z.number().optional(),
+  market_group_id: z.number().optional(),
+  mass: z.number().optional(),
+  packaged_volume: z.number().optional(),
+  portion_size: z.number().optional(),
+  radius: z.number().optional(),
+  volume: z.number().optional(),
+})
+
 // Mutamarket schemas
 export const MutamarketModuleSchema = z.object({
   id: z.number(),

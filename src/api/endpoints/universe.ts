@@ -8,8 +8,14 @@ import {
   type CachedName,
 } from '@/store/reference-cache'
 import { logger } from '@/lib/logger'
-import { ESIStructureSchema, ESINameSchema } from '../schemas'
+import {
+  ESIStructureSchema,
+  ESINameSchema,
+  ESITypeInfoSchema,
+} from '../schemas'
 import { z } from 'zod'
+
+export type ESITypeInfo = z.infer<typeof ESITypeInfoSchema>
 
 export type ESIStructure = z.infer<typeof ESIStructureSchema>
 
@@ -194,4 +200,11 @@ export async function resolveNames(
   }
 
   return results
+}
+
+export async function getTypeInfo(typeId: number): Promise<ESITypeInfo> {
+  return esi.fetch<ESITypeInfo>(`/universe/types/${typeId}/`, {
+    requiresAuth: false,
+    schema: ESITypeInfoSchema,
+  })
 }
