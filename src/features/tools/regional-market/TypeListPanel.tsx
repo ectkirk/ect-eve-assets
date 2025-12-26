@@ -5,6 +5,7 @@ import {
   useReferenceCacheStore,
   type CachedType,
 } from '@/store/reference-cache'
+import { useRegionalOrdersStore } from '@/store/regional-orders-store'
 import { getTypeInfo } from '@/api/endpoints/universe'
 import type { MarketGroupNode } from './types'
 import { getDescendantMarketGroupIds } from './use-market-groups'
@@ -96,6 +97,27 @@ export function TypeListPanel({
   onSelectGroup,
 }: TypeListPanelProps) {
   const allTypes = useReferenceCacheStore((s) => s.types)
+  const regionId = useRegionalOrdersStore((s) => s.regionId)
+  const status = useRegionalOrdersStore((s) => s.status)
+  const getAvailableTypeIds = useRegionalOrdersStore(
+    (s) => s.getAvailableTypeIds
+  )
+
+  const availableTypeIds = useMemo(() => {
+    if (status !== 'ready' || !regionId) return undefined
+    return getAvailableTypeIds()
+  }, [regionId, status, getAvailableTypeIds])
+
+  const groupsWithAvailableItems = useMemo(() => {
+    if (!availableTypeIds) return null
+    const set = new Set<number>()
+    for (const type of allTypes.values()) {
+      if (type.marketGroupId && availableTypeIds.has(type.id)) {
+        set.add(type.marketGroupId)
+      }
+    }
+    return set
+  }, [allTypes, availableTypeIds])
 
   const filteredTypes = useMemo(() => {
     if (!selectedGroup) return []
@@ -105,13 +127,27 @@ export function TypeListPanel({
     const types: CachedType[] = []
     for (const type of allTypes.values()) {
       if (type.marketGroupId && marketGroupIds.has(type.marketGroupId)) {
+        if (availableTypeIds && !availableTypeIds.has(type.id)) continue
         types.push(type)
       }
     }
 
     types.sort((a, b) => a.name.localeCompare(b.name))
     return types
-  }, [selectedGroup, allTypes])
+  }, [selectedGroup, allTypes, availableTypeIds])
+
+  const filteredChildren = useMemo(() => {
+    if (!selectedGroup || !groupsWithAvailableItems) {
+      return selectedGroup?.children ?? []
+    }
+
+    function hasAvailableItems(node: MarketGroupNode): boolean {
+      if (groupsWithAvailableItems!.has(node.group.id)) return true
+      return node.children.some(hasAvailableItems)
+    }
+
+    return selectedGroup.children.filter(hasAvailableItems)
+  }, [selectedGroup, groupsWithAvailableItems])
 
   if (!selectedGroup) {
     return (
@@ -122,18 +158,18 @@ export function TypeListPanel({
     )
   }
 
-  if (selectedGroup.children.length > 0) {
+  if (filteredChildren.length > 0) {
     return (
       <div className="h-full flex flex-col">
         <div className="px-4 py-2.5 border-b border-border bg-surface-secondary">
           <div className="font-medium text-sm">{selectedGroup.group.name}</div>
           <div className="text-xs text-content-secondary mt-0.5">
-            {selectedGroup.children.length} subgroup
-            {selectedGroup.children.length !== 1 ? 's' : ''}
+            {filteredChildren.length} subgroup
+            {filteredChildren.length !== 1 ? 's' : ''}
           </div>
         </div>
         <div className="flex-1 overflow-auto p-3">
-          {selectedGroup.children.map((child) => (
+          {filteredChildren.map((child) => (
             <button
               key={child.group.id}
               onClick={() => onSelectGroup?.(child.group.id)}
@@ -145,9 +181,7 @@ export function TypeListPanel({
                   {child.group.name}
                 </div>
                 <div className="text-xs text-content-secondary">
-                  {child.children.length > 0
-                    ? `${child.children.length} subgroups`
-                    : 'View items'}
+                  {child.children.length > 0 ? 'Browse' : 'View items'}
                 </div>
               </div>
               <ChevronRight className="h-4 w-4 text-content-tertiary flex-shrink-0" />

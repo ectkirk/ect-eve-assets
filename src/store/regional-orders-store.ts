@@ -13,9 +13,11 @@ import {
 import type { ESIRegionOrder } from '@/api/endpoints/market'
 
 const MODULE = 'RegionalOrdersStore'
+const EMPTY_SET: ReadonlySet<number> = new Set()
 
 interface RegionCache {
   ordersByType: Map<number, ESIRegionOrder[]>
+  availableTypeIds: Set<number>
   fetchedAt: number
   expiresAt: number
 }
@@ -34,6 +36,7 @@ interface RegionalOrdersActions {
   init: () => Promise<void>
   setRegion: (regionId: number) => Promise<void>
   getOrdersForType: (typeId: number) => ESIRegionOrder[]
+  getAvailableTypeIds: () => ReadonlySet<number>
   clear: () => Promise<void>
 }
 
@@ -87,8 +90,10 @@ export const useRegionalOrdersStore = create<RegionalOrdersStore>(
 
             for (const stored of storedRegions) {
               if (stored.expiresAt > now) {
+                const ordersByType = buildOrdersByType(stored.orders)
                 newCache.set(stored.regionId, {
-                  ordersByType: buildOrdersByType(stored.orders),
+                  ordersByType,
+                  availableTypeIds: new Set(ordersByType.keys()),
                   fetchedAt: stored.fetchedAt,
                   expiresAt: stored.expiresAt,
                 })
@@ -191,11 +196,17 @@ export const useRegionalOrdersStore = create<RegionalOrdersStore>(
 
         const orders = result.data
         const ordersByType = buildOrdersByType(orders)
+        const availableTypeIds = new Set(ordersByType.keys())
         const fetchedAt = Date.now()
         const expiresAt = result.expiresAt
 
         const newCache = new Map(get().regionCache)
-        newCache.set(regionId, { ordersByType, fetchedAt, expiresAt })
+        newCache.set(regionId, {
+          ordersByType,
+          availableTypeIds,
+          fetchedAt,
+          expiresAt,
+        })
 
         set({
           regionCache: newCache,
@@ -245,6 +256,12 @@ export const useRegionalOrdersStore = create<RegionalOrdersStore>(
       if (!regionId) return []
       const cached = regionCache.get(regionId)
       return cached?.ordersByType.get(typeId) ?? []
+    },
+
+    getAvailableTypeIds: () => {
+      const { regionId, regionCache } = get()
+      if (!regionId) return EMPTY_SET
+      return regionCache.get(regionId)?.availableTypeIds ?? EMPTY_SET
     },
 
     clear: async () => {

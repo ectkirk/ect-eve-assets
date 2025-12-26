@@ -110,13 +110,15 @@ export function flattenTree(
 export function flattenTreeWithItems(
   nodes: MarketGroupNode[],
   expandedIds: Set<number>,
-  types: Map<number, CachedType>
+  types: Map<number, CachedType>,
+  availableTypeIds?: ReadonlySet<number>
 ): TreeRow[] {
   const result: TreeRow[] = []
 
   const typesByMarketGroup = new Map<number, CachedType[]>()
   for (const type of types.values()) {
     if (type.marketGroupId) {
+      if (availableTypeIds && !availableTypeIds.has(type.id)) continue
       const list = typesByMarketGroup.get(type.marketGroupId) ?? []
       list.push(type)
       typesByMarketGroup.set(type.marketGroupId, list)
@@ -127,7 +129,19 @@ export function flattenTreeWithItems(
     list.sort((a, b) => a.name.localeCompare(b.name))
   }
 
+  const groupsWithItems = new Set<number>()
+  if (availableTypeIds) {
+    for (const groupId of typesByMarketGroup.keys()) {
+      groupsWithItems.add(groupId)
+    }
+    for (const node of nodes) {
+      propagateHasItems(node, groupsWithItems)
+    }
+  }
+
   function traverse(node: MarketGroupNode) {
+    if (availableTypeIds && !groupsWithItems.has(node.group.id)) return
+
     const isLeaf = node.children.length === 0
     const hasItems = typesByMarketGroup.has(node.group.id)
 
@@ -157,6 +171,22 @@ export function flattenTreeWithItems(
   }
 
   return result
+}
+
+function propagateHasItems(
+  node: MarketGroupNode,
+  groupsWithItems: Set<number>
+): boolean {
+  let hasItems = groupsWithItems.has(node.group.id)
+  for (const child of node.children) {
+    if (propagateHasItems(child, groupsWithItems)) {
+      hasItems = true
+    }
+  }
+  if (hasItems) {
+    groupsWithItems.add(node.group.id)
+  }
+  return hasItems
 }
 
 export function getAllGroupIds(nodes: MarketGroupNode[]): number[] {

@@ -7,6 +7,7 @@ import {
   useReferenceCacheStore,
   type CachedType,
 } from '@/store/reference-cache'
+import { useRegionalOrdersStore } from '@/store/regional-orders-store'
 import type { MarketGroupNode } from './types'
 import { flattenTreeWithItems } from './use-market-groups'
 
@@ -150,20 +151,31 @@ export function MarketGroupTree({
 }: MarketGroupTreeProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const types = useReferenceCacheStore((s) => s.types)
+  const regionId = useRegionalOrdersStore((s) => s.regionId)
+  const status = useRegionalOrdersStore((s) => s.status)
+  const getAvailableTypeIds = useRegionalOrdersStore(
+    (s) => s.getAvailableTypeIds
+  )
+
+  const availableTypeIds = useMemo(() => {
+    if (status !== 'ready' || !regionId) return undefined
+    return getAvailableTypeIds()
+  }, [regionId, status, getAvailableTypeIds])
 
   const groupsWithItems = useMemo(() => {
     const set = new Set<number>()
     for (const type of types.values()) {
       if (type.marketGroupId) {
+        if (availableTypeIds && !availableTypeIds.has(type.id)) continue
         set.add(type.marketGroupId)
       }
     }
     return set
-  }, [types])
+  }, [types, availableTypeIds])
 
   const flatRows = useMemo(
-    () => flattenTreeWithItems(tree, expandedIds, types),
-    [tree, expandedIds, types]
+    () => flattenTreeWithItems(tree, expandedIds, types, availableTypeIds),
+    [tree, expandedIds, types, availableTypeIds]
   )
 
   const virtualizer = useVirtualizer({

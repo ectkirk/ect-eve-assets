@@ -5,6 +5,7 @@ import {
   useReferenceCacheStore,
   type CachedType,
 } from '@/store/reference-cache'
+import { useRegionalOrdersStore } from '@/store/regional-orders-store'
 
 interface MarketItemSearchProps {
   onSelectType: (type: CachedType) => void
@@ -40,14 +41,27 @@ export function MarketItemSearch({ onSelectType }: MarketItemSearchProps) {
   const inputRef = useRef<HTMLInputElement>(null)
 
   const types = useReferenceCacheStore((s) => s.types)
+  const regionId = useRegionalOrdersStore((s) => s.regionId)
+  const status = useRegionalOrdersStore((s) => s.status)
+  const getAvailableTypeIds = useRegionalOrdersStore(
+    (s) => s.getAvailableTypeIds
+  )
 
-  const marketableTypes = useMemo(() => {
+  const availableTypeIds = useMemo(() => {
+    if (status !== 'ready' || !regionId) return null
+    return getAvailableTypeIds()
+  }, [regionId, status, getAvailableTypeIds])
+
+  const searchableTypes = useMemo(() => {
     const result: CachedType[] = []
     for (const type of types.values()) {
-      if (type.marketGroupId) result.push(type)
+      if (type.marketGroupId) {
+        if (availableTypeIds && !availableTypeIds.has(type.id)) continue
+        result.push(type)
+      }
     }
     return result
-  }, [types])
+  }, [types, availableTypeIds])
 
   const searchResults = useMemo(() => {
     if (!debouncedQuery || debouncedQuery.length < 2) return []
@@ -55,7 +69,7 @@ export function MarketItemSearch({ onSelectType }: MarketItemSearchProps) {
     const query = debouncedQuery.toLowerCase()
     const matches: CachedType[] = []
 
-    for (const type of marketableTypes) {
+    for (const type of searchableTypes) {
       if (type.name.toLowerCase().includes(query)) {
         matches.push(type)
         if (matches.length >= MAX_RESULTS) break
@@ -71,7 +85,7 @@ export function MarketItemSearch({ onSelectType }: MarketItemSearchProps) {
     })
 
     return matches
-  }, [debouncedQuery, marketableTypes])
+  }, [debouncedQuery, searchableTypes])
 
   useEffect(() => {
     return () => {
