@@ -108,28 +108,6 @@ declare global {
     status?: number
   }
 
-  interface RefShipsResult {
-    ships?: Record<
-      number,
-      {
-        id: number
-        name: string
-        groupId: number
-        groupName: string
-        slots: {
-          high: number
-          mid: number
-          low: number
-          rig: number
-          subsystem: number
-          launcher: number
-          turret: number
-        }
-      }
-    >
-    error?: string
-  }
-
   interface RefMarketContractItem {
     price: number | null
     salesCount: number
@@ -440,7 +418,6 @@ declare global {
       params?: RefStructuresPageParams
     ) => Promise<RefStructuresPageResult>
     refMoons: (ids: number[]) => Promise<RefMoonsResult>
-    refShipSlots: (ids: number[]) => Promise<RefShipsResult>
     refMarketJita: (params: RefMarketJitaParams) => Promise<RefMarketJitaResult>
     refBuybackCalculate: (
       text: string,

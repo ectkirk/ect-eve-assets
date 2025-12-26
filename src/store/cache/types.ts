@@ -37,6 +37,16 @@ export interface CachedGroup {
   published?: boolean
 }
 
+export interface TypeSlots {
+  high: number
+  mid: number
+  low: number
+  rig: number
+  subsystem: number
+  launcher: number
+  turret: number
+}
+
 export interface CachedType {
   id: number
   name: string
@@ -47,6 +57,7 @@ export interface CachedType {
   volume: number
   packagedVolume?: number
   implantSlot?: number
+  slots?: TypeSlots
   towerSize?: number
   fuelTier?: number
   published?: boolean
@@ -135,6 +146,16 @@ const CachedGroupSchema = z.object({
   published: z.boolean().optional(),
 })
 
+const TypeSlotsSchema = z.object({
+  high: z.number(),
+  mid: z.number(),
+  low: z.number(),
+  rig: z.number(),
+  subsystem: z.number(),
+  launcher: z.number(),
+  turret: z.number(),
+})
+
 const CachedTypeSchema = z.object({
   id: z.number(),
   name: z.string(),
@@ -145,6 +166,7 @@ const CachedTypeSchema = z.object({
   volume: z.number(),
   packagedVolume: z.number().optional(),
   implantSlot: z.number().optional(),
+  slots: TypeSlotsSchema.optional(),
   towerSize: z.number().optional(),
   fuelTier: z.number().optional(),
   published: z.boolean().optional(),

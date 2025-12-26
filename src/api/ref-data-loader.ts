@@ -48,6 +48,16 @@ function getTowerInfo(
   return { towerSize, fuelTier }
 }
 
+interface RawSlots {
+  high: number
+  mid: number
+  low: number
+  rig: number
+  subsystem: number
+  launcher: number
+  turret: number
+}
+
 interface RawType {
   id: number
   name: string
@@ -58,6 +68,7 @@ interface RawType {
   productId?: number | null
   basePrice?: number | null
   implantSlot?: number | null
+  slots?: RawSlots | null
 }
 
 function enrichType(raw: RawType): CachedType {
@@ -79,6 +90,7 @@ function enrichType(raw: RawType): CachedType {
     productId: raw.productId ?? undefined,
     basePrice: raw.basePrice ?? undefined,
     implantSlot: raw.implantSlot ?? undefined,
+    slots: raw.slots ?? undefined,
     ...towerInfo,
   }
 }

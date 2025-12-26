@@ -106,28 +106,6 @@ export interface MutamarketResult {
   status?: number
 }
 
-export interface RefShipsResult {
-  ships?: Record<
-    number,
-    {
-      id: number
-      name: string
-      groupId: number
-      groupName: string
-      slots: {
-        high: number
-        mid: number
-        low: number
-        rig: number
-        subsystem: number
-        launcher: number
-        turret: number
-      }
-    }
-  >
-  error?: string
-}
-
 export interface RefMarketContractItem {
   price: number | null
   salesCount: number
@@ -438,7 +416,6 @@ export interface ElectronAPI {
     params?: RefStructuresPageParams
   ) => Promise<RefStructuresPageResult>
   refMoons: (ids: number[]) => Promise<RefMoonsResult>
-  refShipSlots: (ids: number[]) => Promise<RefShipsResult>
   refMarketJita: (params: RefMarketJitaParams) => Promise<RefMarketJitaResult>
   refBuybackCalculate: (
     text: string,
@@ -532,7 +509,6 @@ const electronAPI: ElectronAPI = {
   refUniverseStructuresPage: (params?: RefStructuresPageParams) =>
     ipcRenderer.invoke('ref:universe-structures-page', params),
   refMoons: (ids: number[]) => ipcRenderer.invoke('ref:moons', ids),
-  refShipSlots: (ids: number[]) => ipcRenderer.invoke('ref:shipslots', ids),
   refMarketJita: (params: RefMarketJitaParams) =>
     ipcRenderer.invoke('ref:marketJita', params),
   refBuybackCalculate: (text: string, config: BuybackConfig) =>

@@ -271,7 +271,6 @@ export function registerRefAPIHandlers(): void {
 
   const idsEndpoints = [
     { channel: 'ref:moons', endpoint: '/reference/moons', max: 1000 },
-    { channel: 'ref:shipslots', endpoint: '/reference/shipslots', max: 500 },
   ]
 
   for (const { channel, endpoint, max } of idsEndpoints) {
