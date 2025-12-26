@@ -93,8 +93,7 @@ export const TreeRow = memo(function TreeRow({
     </TableRow>
   )
 
-  const showBuyback =
-    (isSelected && showBuybackOption) || (hasChildren && showBuybackOption)
+  const showBuyback = (isSelected && showBuybackOption) || hasChildren
   if (isShip || isAbyssalResolved || showBuyback) {
     return (
       <ContextMenu>
