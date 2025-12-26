@@ -81,7 +81,7 @@ function enrichType(raw: RawType): CachedType {
     groupName: group?.name ?? '',
     categoryId: group?.categoryId ?? 0,
     categoryName: category?.name ?? '',
-    marketGroupId: raw.marketGroupId ?? undefined,
+    marketGroupId: raw.marketGroupId,
     volume: raw.volume ?? 0,
     packagedVolume: raw.packagedVolume ?? undefined,
     published: raw.isPublished === 1,

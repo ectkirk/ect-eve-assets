@@ -33,7 +33,7 @@ const ALL_TYPES_LOADED_KEY = 'ecteveassets-all-types-loaded'
 const UNIVERSE_LOADED_KEY = 'ecteveassets-universe-loaded'
 const REF_STRUCTURES_LOADED_KEY = 'ecteveassets-ref-structures-loaded'
 const TYPES_SCHEMA_VERSION_KEY = 'ecteveassets-types-schema-version'
-const TYPES_SCHEMA_VERSION = 2
+const TYPES_SCHEMA_VERSION = 3
 
 interface ReferenceCacheState {
   types: Map<number, CachedType>
@@ -602,7 +602,8 @@ export function isTypePublished(id: number): boolean {
 
 export function isTypeMarketable(id: number): boolean {
   const type = useReferenceCacheStore.getState().types.get(id)
-  return type?.marketGroupId !== undefined
+  // null = explicitly not marketable, undefined = unknown (assume marketable for backwards compat)
+  return type?.marketGroupId !== null
 }
 
 export function getTypeJitaPrice(id: number): number | undefined {

@@ -54,7 +54,7 @@ export interface CachedType {
   groupName: string
   categoryId: number
   categoryName: string
-  marketGroupId?: number
+  marketGroupId?: number | null
   volume: number
   packagedVolume?: number
   implantSlot?: number
@@ -164,7 +164,7 @@ const CachedTypeSchema = z.object({
   groupName: z.string(),
   categoryId: z.number(),
   categoryName: z.string(),
-  marketGroupId: z.number().optional(),
+  marketGroupId: z.number().nullable().optional(),
   volume: z.number(),
   packagedVolume: z.number().optional(),
   implantSlot: z.number().optional(),
