@@ -119,8 +119,11 @@ export async function initCache(): Promise<void> {
           localStorage.removeItem(ALL_TYPES_LOADED_KEY)
           localStorage.removeItem(TYPES_SCHEMA_VERSION_KEY)
         }
-      } catch {
-        // localStorage not available
+      } catch (err) {
+        logger.warn('localStorage not available for schema version check', {
+          module: 'ReferenceCache',
+          error: err instanceof Error ? err.message : String(err),
+        })
       }
     }
 
@@ -148,8 +151,11 @@ export async function initCache(): Promise<void> {
       refStructuresLoaded =
         localStorage.getItem(REF_STRUCTURES_LOADED_KEY) === 'true' &&
         refStructuresCache.size > 0
-    } catch {
-      // localStorage not available
+    } catch (err) {
+      logger.warn('localStorage not available for loading flags', {
+        module: 'ReferenceCache',
+        error: err instanceof Error ? err.message : String(err),
+      })
     }
 
     logger.info('Reference cache initialized', {
@@ -296,8 +302,11 @@ export function setAllTypesLoaded(loaded: boolean): void {
       localStorage.removeItem(ALL_TYPES_LOADED_KEY)
       localStorage.removeItem(TYPES_SCHEMA_VERSION_KEY)
     }
-  } catch {
-    // localStorage not available
+  } catch (err) {
+    logger.warn('localStorage not available for setAllTypesLoaded', {
+      module: 'ReferenceCache',
+      error: err instanceof Error ? err.message : String(err),
+    })
   }
 }
 
@@ -313,8 +322,11 @@ export function setUniverseDataLoaded(loaded: boolean): void {
     } else {
       localStorage.removeItem(UNIVERSE_LOADED_KEY)
     }
-  } catch {
-    // localStorage not available
+  } catch (err) {
+    logger.warn('localStorage not available for setUniverseDataLoaded', {
+      module: 'ReferenceCache',
+      error: err instanceof Error ? err.message : String(err),
+    })
   }
 }
 
@@ -330,8 +342,11 @@ export function setRefStructuresLoaded(loaded: boolean): void {
     } else {
       localStorage.removeItem(REF_STRUCTURES_LOADED_KEY)
     }
-  } catch {
-    // localStorage not available
+  } catch (err) {
+    logger.warn('localStorage not available for setRefStructuresLoaded', {
+      module: 'ReferenceCache',
+      error: err instanceof Error ? err.message : String(err),
+    })
   }
 }
 

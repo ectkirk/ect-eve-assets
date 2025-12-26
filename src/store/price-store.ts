@@ -100,8 +100,11 @@ function getLastJitaRefreshAt(): number | null {
 function setLastJitaRefreshAt(timestamp: number): void {
   try {
     localStorage.setItem(JITA_REFRESH_KEY, String(timestamp))
-  } catch {
-    // ignore
+  } catch (err) {
+    logger.warn('localStorage not available for Jita refresh timestamp', {
+      module: 'PriceStore',
+      error: err instanceof Error ? err.message : String(err),
+    })
   }
 }
 
@@ -117,8 +120,11 @@ function getLastEsiRefreshAt(): number | null {
 function setLastEsiRefreshAt(timestamp: number): void {
   try {
     localStorage.setItem(ESI_REFRESH_KEY, String(timestamp))
-  } catch {
-    // ignore
+  } catch (err) {
+    logger.warn('localStorage not available for ESI refresh timestamp', {
+      module: 'PriceStore',
+      error: err instanceof Error ? err.message : String(err),
+    })
   }
 }
 
@@ -126,8 +132,11 @@ function clearRefreshTimestamps(): void {
   try {
     localStorage.removeItem(JITA_REFRESH_KEY)
     localStorage.removeItem(ESI_REFRESH_KEY)
-  } catch {
-    // ignore
+  } catch (err) {
+    logger.warn('localStorage not available for clearing refresh timestamps', {
+      module: 'PriceStore',
+      error: err instanceof Error ? err.message : String(err),
+    })
   }
 }
 

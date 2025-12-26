@@ -76,8 +76,11 @@ export async function openDB(): Promise<IDBDatabase> {
         try {
           localStorage.removeItem('ecteveassets-all-types-loaded')
           localStorage.removeItem('ecteveassets-types-schema-version')
-        } catch {
-          // ignore
+        } catch (err) {
+          logger.warn('localStorage not available during v11 migration', {
+            module: 'ReferenceCache',
+            error: err instanceof Error ? err.message : String(err),
+          })
         }
         logger.info('Cleared types cache for v11 upgrade (prices merged)', {
           module: 'ReferenceCache',
@@ -89,8 +92,11 @@ export async function openDB(): Promise<IDBDatabase> {
         database.deleteObjectStore('blueprints')
         try {
           localStorage.removeItem('ecteveassets-blueprints-loaded')
-        } catch {
-          // ignore
+        } catch (err) {
+          logger.warn('localStorage not available during v12 migration', {
+            module: 'ReferenceCache',
+            error: err instanceof Error ? err.message : String(err),
+          })
         }
         logger.info('Removed legacy blueprints store', {
           module: 'ReferenceCache',
