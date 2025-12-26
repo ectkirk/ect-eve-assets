@@ -436,14 +436,6 @@ export const RefStructuresPageResponseSchema = z.object({
   }),
 })
 
-export const RefImplantSchema = z.object({
-  slot: z.number(),
-})
-
-export const RefImplantsResponseSchema = z.object({
-  items: z.record(z.string(), RefImplantSchema),
-})
-
 export const RefMoonSchema = z.object({
   id: z.number(),
   name: z.string(),

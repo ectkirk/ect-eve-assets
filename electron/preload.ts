@@ -437,7 +437,6 @@ export interface ElectronAPI {
   refUniverseStructuresPage: (
     params?: RefStructuresPageParams
   ) => Promise<RefStructuresPageResult>
-  refImplants: (ids: number[]) => Promise<RefApiResult>
   refMoons: (ids: number[]) => Promise<RefMoonsResult>
   refShipSlots: (ids: number[]) => Promise<RefShipsResult>
   refMarketJita: (params: RefMarketJitaParams) => Promise<RefMarketJitaResult>
@@ -532,7 +531,6 @@ const electronAPI: ElectronAPI = {
   refUniverseStations: () => ipcRenderer.invoke('ref:universe-stations'),
   refUniverseStructuresPage: (params?: RefStructuresPageParams) =>
     ipcRenderer.invoke('ref:universe-structures-page', params),
-  refImplants: (ids: number[]) => ipcRenderer.invoke('ref:implants', ids),
   refMoons: (ids: number[]) => ipcRenderer.invoke('ref:moons', ids),
   refShipSlots: (ids: number[]) => ipcRenderer.invoke('ref:shipslots', ids),
   refMarketJita: (params: RefMarketJitaParams) =>

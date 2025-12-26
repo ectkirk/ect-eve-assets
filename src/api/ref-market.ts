@@ -1,6 +1,6 @@
 import { logger } from '@/lib/logger'
 import { CONTRACT_PRICED_TYPE_IDS } from '@/lib/eve-constants'
-import { MarketJitaResponseSchema, RefImplantsResponseSchema } from './schemas'
+import { MarketJitaResponseSchema } from './schemas'
 import { z } from 'zod'
 import { isTypePublished } from '@/store/reference-cache'
 
@@ -207,40 +207,3 @@ export async function fetchPrices(
 }
 
 export const queuePriceRefresh = fetchPrices
-
-export async function fetchImplantSlots(
-  typeIds: number[]
-): Promise<Map<number, number>> {
-  if (typeIds.length === 0) return new Map()
-
-  const start = performance.now()
-  const results = new Map<number, number>()
-
-  try {
-    const rawData = await window.electronAPI!.refImplants(typeIds)
-    const duration = Math.round(performance.now() - start)
-
-    const data = validateRefResponse(
-      rawData,
-      RefImplantsResponseSchema,
-      '/implants',
-      { duration }
-    )
-    if (!data) return results
-
-    for (const [idStr, item] of Object.entries(data.items)) {
-      results.set(Number(idStr), item.slot)
-    }
-
-    logger.info('RefAPI /implants', {
-      module: 'RefAPI',
-      requested: typeIds.length,
-      returned: results.size,
-      duration,
-    })
-  } catch (error) {
-    logger.error('RefAPI /implants error', error, { module: 'RefAPI' })
-  }
-
-  return results
-}

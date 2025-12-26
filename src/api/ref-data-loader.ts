@@ -57,6 +57,7 @@ interface RawType {
   isPublished?: number
   productId?: number | null
   basePrice?: number | null
+  implantSlot?: number | null
 }
 
 function enrichType(raw: RawType): CachedType {
@@ -77,6 +78,7 @@ function enrichType(raw: RawType): CachedType {
     published: raw.isPublished === 1,
     productId: raw.productId ?? undefined,
     basePrice: raw.basePrice ?? undefined,
+    implantSlot: raw.implantSlot ?? undefined,
     ...towerInfo,
   }
 }
