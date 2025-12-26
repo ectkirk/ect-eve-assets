@@ -401,18 +401,18 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
 
       triggerResolution()
 
-      const updatedAssets = state.assetsByOwner.filter(
-        (oa) => `${oa.owner.type}-${oa.owner.id}` !== ownerKey
-      )
-      updatedAssets.push({ owner, assets })
-
-      set({
-        assetsByOwner: updatedAssets,
+      set((current) => ({
+        assetsByOwner: [
+          ...current.assetsByOwner.filter(
+            (oa) => `${oa.owner.type}-${oa.owner.id}` !== ownerKey
+          ),
+          { owner, assets },
+        ],
         assetNames: newNames,
         isUpdating: false,
         updateProgress: null,
         updateError: null,
-      })
+      }))
 
       logger.info('Assets updated for owner', {
         module: 'AssetStore',

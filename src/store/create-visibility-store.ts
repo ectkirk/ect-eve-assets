@@ -350,8 +350,9 @@ export function createVisibilityStore<
           })
           const { data: items, expiresAt, etag } = await fetchData(owner)
 
-          const itemsById = new Map(state.itemsById)
-          const visibilityByOwner = new Map(state.visibilityByOwner)
+          const currentState = get()
+          const itemsById = new Map(currentState.itemsById)
+          const visibilityByOwner = new Map(currentState.visibilityByOwner)
           const itemBatch: Array<{ id: number; stored: TStoredItem }> = []
 
           const ownerVisibility = new Set<number>()
