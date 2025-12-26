@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from 'react'
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { getRegionalOrders, type ESIRegionOrder } from '@/api/endpoints/market'
 import { useReferenceCacheStore } from '@/store/reference-cache'
@@ -118,6 +118,7 @@ function OrderTable({
         >
           {virtualRows.map((virtualRow) => {
             const order = sortedOrders[virtualRow.index]!
+            const locationName = getLocationName(order)
             return (
               <div
                 key={order.order_id}
@@ -144,9 +145,9 @@ function OrderTable({
                 </div>
                 <div
                   className="truncate text-content-secondary"
-                  title={getLocationName(order)}
+                  title={locationName}
                 >
-                  {getLocationName(order)}
+                  {locationName}
                 </div>
                 <div className="text-right text-content-secondary tabular-nums">
                   {formatTimeLeft(order.issued, order.duration)}
@@ -167,9 +168,7 @@ interface FetchState {
 }
 
 export function OrderDetailPanel({ regionId, typeId }: OrderDetailPanelProps) {
-  const [orderCache, setOrderCache] = useState<Map<string, CachedOrders>>(
-    new Map()
-  )
+  const orderCacheRef = useRef<Map<string, CachedOrders>>(new Map())
   const [fetchState, setFetchState] = useState<FetchState>({
     loading: false,
     error: null,
@@ -178,63 +177,57 @@ export function OrderDetailPanel({ regionId, typeId }: OrderDetailPanelProps) {
   const fetchingRef = useRef<string | null>(null)
 
   const cacheKey = typeId ? `${regionId}-${typeId}` : null
-  const cached = cacheKey ? (orderCache.get(cacheKey) ?? null) : null
-  const isCacheValid =
-    cached && Date.now() - cached.fetchedAt < ORDER_CACHE_TTL_MS
 
-  const fetchOrders = useCallback(async () => {
+  useEffect(() => {
     if (!typeId || !cacheKey) return
     if (fetchingRef.current === cacheKey) return
 
-    const existingCache = orderCache.get(cacheKey)
+    const existingCache = orderCacheRef.current.get(cacheKey)
     if (
       existingCache &&
       Date.now() - existingCache.fetchedAt < ORDER_CACHE_TTL_MS
     ) {
-      setFetchState((s) => ({ ...s, orders: existingCache }))
+      setFetchState({ loading: false, error: null, orders: existingCache })
       return
     }
 
     fetchingRef.current = cacheKey
     setFetchState({ loading: true, error: null, orders: null })
 
-    try {
-      const [sellOrders, buyOrders] = await Promise.all([
-        getRegionalOrders(regionId, typeId, 'sell'),
-        getRegionalOrders(regionId, typeId, 'buy'),
-      ])
+    let cancelled = false
 
-      const newOrders: CachedOrders = {
-        sellOrders,
-        buyOrders,
-        fetchedAt: Date.now(),
-      }
+    Promise.all([
+      getRegionalOrders(regionId, typeId, 'sell'),
+      getRegionalOrders(regionId, typeId, 'buy'),
+    ])
+      .then(([sellOrders, buyOrders]) => {
+        if (cancelled) return
 
-      setOrderCache((prev) => {
-        const next = new Map(prev)
-        next.set(cacheKey, newOrders)
-        return next
+        const newOrders: CachedOrders = {
+          sellOrders,
+          buyOrders,
+          fetchedAt: Date.now(),
+        }
+
+        orderCacheRef.current.set(cacheKey, newOrders)
+        setFetchState({ loading: false, error: null, orders: newOrders })
       })
-      setFetchState({
-        loading: false,
-        error: null,
-        orders: newOrders,
+      .catch((err) => {
+        if (cancelled) return
+        setFetchState({
+          loading: false,
+          error: err instanceof Error ? err.message : 'Failed to load orders',
+          orders: null,
+        })
       })
-    } catch (err) {
-      setFetchState({
-        loading: false,
-        error: err instanceof Error ? err.message : 'Failed to load orders',
-        orders: null,
+      .finally(() => {
+        if (!cancelled) fetchingRef.current = null
       })
-    } finally {
-      fetchingRef.current = null
+
+    return () => {
+      cancelled = true
     }
-  }, [regionId, typeId, cacheKey, orderCache])
-
-  const shouldFetch = typeId && !isCacheValid && !fetchState.loading
-  if (shouldFetch && fetchingRef.current !== cacheKey) {
-    fetchOrders()
-  }
+  }, [regionId, typeId, cacheKey])
 
   if (!typeId) {
     return (
@@ -260,8 +253,7 @@ export function OrderDetailPanel({ regionId, typeId }: OrderDetailPanelProps) {
     )
   }
 
-  const orders = isCacheValid ? cached : fetchState.orders
-  if (!orders) {
+  if (!fetchState.orders) {
     return (
       <div className="h-full flex items-center justify-center text-content-secondary text-sm">
         No order data
@@ -272,11 +264,15 @@ export function OrderDetailPanel({ regionId, typeId }: OrderDetailPanelProps) {
   return (
     <div className="h-full flex flex-col">
       <OrderTable
-        orders={orders.sellOrders}
+        orders={fetchState.orders.sellOrders}
         title="Sellers"
         isBuyOrder={false}
       />
-      <OrderTable orders={orders.buyOrders} title="Buyers" isBuyOrder={true} />
+      <OrderTable
+        orders={fetchState.orders.buyOrders}
+        title="Buyers"
+        isBuyOrder={true}
+      />
     </div>
   )
 }

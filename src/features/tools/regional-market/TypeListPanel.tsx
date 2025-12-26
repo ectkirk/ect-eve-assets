@@ -11,12 +11,20 @@ import { getDescendantMarketGroupIds } from './use-market-groups'
 
 interface TypeListPanelProps {
   selectedGroup: MarketGroupNode | null
-  selectedTypeId: number | null
   onSelectType: (typeId: number) => void
   onSelectGroup?: (groupId: number) => void
 }
 
+const DESCRIPTION_CACHE_MAX_SIZE = 500
 const descriptionCache = new Map<number, string>()
+
+function cacheDescription(typeId: number, description: string): void {
+  if (descriptionCache.size >= DESCRIPTION_CACHE_MAX_SIZE) {
+    const firstKey = descriptionCache.keys().next().value
+    if (firstKey !== undefined) descriptionCache.delete(firstKey)
+  }
+  descriptionCache.set(typeId, description)
+}
 
 function stripHtmlTags(html: string): string {
   return html.replace(/<[^>]*>/g, '')
@@ -43,12 +51,12 @@ const TypeCard = memo(function TypeCard({
       .then((info) => {
         if (cancelled) return
         const desc = info.description ? stripHtmlTags(info.description) : ''
-        descriptionCache.set(type.id, desc)
+        cacheDescription(type.id, desc)
         setDescription(desc)
       })
       .catch(() => {
         if (!cancelled) {
-          descriptionCache.set(type.id, '')
+          cacheDescription(type.id, '')
           setDescription('')
         }
       })
@@ -84,11 +92,9 @@ const TypeCard = memo(function TypeCard({
 
 export function TypeListPanel({
   selectedGroup,
-  selectedTypeId,
   onSelectType,
   onSelectGroup,
 }: TypeListPanelProps) {
-  void selectedTypeId
   const allTypes = useReferenceCacheStore((s) => s.types)
 
   const filteredTypes = useMemo(() => {

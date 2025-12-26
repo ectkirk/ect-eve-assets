@@ -15,11 +15,6 @@ export interface MarketGroupNode {
   depth: number
 }
 
-export interface FlattenedGroupRow {
-  node: MarketGroupNode
-  isExpanded: boolean
-}
-
 export type TreeRow =
   | { kind: 'group'; node: MarketGroupNode }
   | { kind: 'item'; type: CachedType; depth: number; parentGroupId: number }

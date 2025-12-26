@@ -210,7 +210,6 @@ export function RegionalMarketPanel() {
     return (
       <TypeListPanel
         selectedGroup={selectedGroup}
-        selectedTypeId={selectedTypeId}
         onSelectType={handleSelectType}
         onSelectGroup={handleSelectGroup}
       />
