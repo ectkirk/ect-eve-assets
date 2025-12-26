@@ -297,7 +297,10 @@ export function setAllTypesLoaded(loaded: boolean): void {
   try {
     if (loaded) {
       localStorage.setItem(ALL_TYPES_LOADED_KEY, 'true')
-      localStorage.setItem(TYPES_SCHEMA_VERSION_KEY, String(TYPES_SCHEMA_VERSION))
+      localStorage.setItem(
+        TYPES_SCHEMA_VERSION_KEY,
+        String(TYPES_SCHEMA_VERSION)
+      )
     } else {
       localStorage.removeItem(ALL_TYPES_LOADED_KEY)
       localStorage.removeItem(TYPES_SCHEMA_VERSION_KEY)

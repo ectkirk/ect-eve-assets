@@ -109,12 +109,19 @@ async function fetchSingleAbyssalPriceInternal(
 
     const price = parseResult.data.estimated_value ?? -1
     return { price, persist: true }
-  } catch {
+  } catch (error) {
     if (retryCount < MAX_RETRIES) {
       const delay = RETRY_DELAYS[retryCount] ?? 1000
       await new Promise((resolve) => setTimeout(resolve, delay))
       return fetchSingleAbyssalPriceInternal(item, retryCount + 1)
     }
+    logger.warn('Mutamarket fetch failed after retries', {
+      module: 'Mutamarket',
+      itemId: item.itemId,
+      typeId: item.typeId,
+      retryCount,
+      error,
+    })
     return null
   }
 }

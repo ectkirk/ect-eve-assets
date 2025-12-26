@@ -6,6 +6,7 @@ import {
   ESICorporationDivisionsSchema,
 } from '../schemas'
 import { z } from 'zod'
+import { logger } from '@/lib/logger'
 
 export type ESICharacterRoles = z.infer<typeof ESICharacterRolesSchema>
 export type ESICorporationDivisions = z.infer<
@@ -43,7 +44,12 @@ export async function getCharacterCorpRoles(
   try {
     const rolesResponse = await getCharacterRoles(characterId)
     return rolesResponse.roles ?? []
-  } catch {
+  } catch (error) {
+    logger.warn('Failed to fetch character corporation roles', {
+      module: 'ESI',
+      characterId,
+      error,
+    })
     return []
   }
 }

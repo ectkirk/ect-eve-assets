@@ -93,7 +93,12 @@ export const esi = {
         batch.map(async (item) => {
           try {
             return { item, result: await fetcher(item) }
-          } catch {
+          } catch (error) {
+            logger.warn('Batch fetch item failed', {
+              module: 'ESI',
+              item,
+              error,
+            })
             return { item, result: null }
           }
         })

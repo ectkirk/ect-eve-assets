@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { Copy, Check } from 'lucide-react'
+import { logger } from '@/lib/logger'
 import {
   Dialog,
   DialogContent,
@@ -175,8 +176,11 @@ export function FittingDialog({
       await navigator.clipboard.writeText(eft)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
-    } catch {
-      // Clipboard API failed
+    } catch (error) {
+      logger.warn('Failed to copy fitting to clipboard', {
+        module: 'Fitting',
+        error,
+      })
     }
   }, [fitting])
 

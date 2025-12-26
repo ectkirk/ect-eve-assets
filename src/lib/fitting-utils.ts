@@ -1,5 +1,6 @@
 import type { TreeNode } from './tree-types'
 import { getType } from '@/store/reference-cache'
+import { logger } from '@/lib/logger'
 
 export interface ModuleItem {
   type_id: number
@@ -318,7 +319,12 @@ export async function fetchShipSlots(
       rig: ship.slots.rig ?? 0,
       subsystem: ship.slots.subsystem ?? 0,
     }
-  } catch {
+  } catch (error) {
+    logger.warn('Failed to fetch ship slots', {
+      module: 'Fitting',
+      shipTypeId,
+      error,
+    })
     return null
   }
 }

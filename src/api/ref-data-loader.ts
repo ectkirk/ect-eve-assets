@@ -226,4 +226,3 @@ async function loadAllTypes(onProgress?: ReferenceDataProgress): Promise<void> {
     duration,
   })
 }
-
