@@ -600,6 +600,11 @@ export function isTypePublished(id: number): boolean {
   return type?.published === true
 }
 
+export function isTypeMarketable(id: number): boolean {
+  const type = useReferenceCacheStore.getState().types.get(id)
+  return type?.marketGroupId !== undefined
+}
+
 export function getTypeJitaPrice(id: number): number | undefined {
   return useReferenceCacheStore.getState().types.get(id)?.jitaPrice
 }

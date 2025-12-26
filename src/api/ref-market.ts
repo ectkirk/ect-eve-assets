@@ -2,7 +2,7 @@ import { logger } from '@/lib/logger'
 import { CONTRACT_PRICED_TYPE_IDS } from '@/lib/eve-constants'
 import { MarketJitaResponseSchema } from './schemas'
 import { z } from 'zod'
-import { isTypePublished } from '@/store/reference-cache'
+import { isTypePublished, isTypeMarketable } from '@/store/reference-cache'
 
 function validateRefResponse<T>(
   rawData: unknown,
@@ -162,34 +162,35 @@ async function fetchPricesConsolidated(
     return new Map()
   }
 
-  const publishedTypeIds = typeIds.filter(
-    (id) => isTypePublished(id) && !EXCLUDED_TYPE_IDS.has(id)
+  const pricableTypeIds = typeIds.filter(
+    (id) =>
+      isTypePublished(id) && isTypeMarketable(id) && !EXCLUDED_TYPE_IDS.has(id)
   )
 
-  const contractTypeIds = publishedTypeIds.filter((id) =>
+  const contractTypeIds = pricableTypeIds.filter((id) =>
     CONTRACT_PRICED_TYPE_IDS.has(id)
   )
-  const includePlex = publishedTypeIds.includes(PLEX_TYPE_ID)
+  const includePlex = pricableTypeIds.includes(PLEX_TYPE_ID)
 
   const results = await fetchJitaPricesFromAPI({
-    typeIds: publishedTypeIds,
+    typeIds: pricableTypeIds,
     itemIds,
     contractTypeIds: contractTypeIds.length > 0 ? contractTypeIds : undefined,
     includePlex,
   })
 
-  const missingTypeIds = publishedTypeIds.filter((id) => !results.has(id))
+  const missingTypeIds = pricableTypeIds.filter((id) => !results.has(id))
   if (missingTypeIds.length > 0 && missingTypeIds.length <= 10) {
     logger.info('Prices fetched (some missing)', {
       module: 'RefAPI',
-      total: publishedTypeIds.length,
+      total: pricableTypeIds.length,
       returned: results.size,
       missingTypeIds,
     })
   } else {
     logger.info('Prices fetched', {
       module: 'RefAPI',
-      total: publishedTypeIds.length,
+      total: pricableTypeIds.length,
       contracts: contractTypeIds.length,
       plex: includePlex,
       returned: results.size,

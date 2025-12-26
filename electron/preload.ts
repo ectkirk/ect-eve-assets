@@ -43,6 +43,7 @@ export interface RefTypesPageResult {
       id: number
       name: string
       groupId?: number | null
+      marketGroupId?: number | null
       volume?: number | null
       packagedVolume?: number | null
       isPublished?: number
@@ -97,6 +98,21 @@ export interface RefStructuresPageResult {
 
 export interface RefMoonsResult {
   items?: Record<string, { id: number; name: string; systemId: number }>
+  error?: string
+}
+
+export interface RefMarketGroupsResult {
+  items?: Record<
+    string,
+    {
+      id: number
+      name: string
+      parentGroupId: number | null
+      hasTypes: boolean
+      iconId: number | null
+    }
+  >
+  total?: number
   error?: string
 }
 
@@ -416,6 +432,7 @@ export interface ElectronAPI {
     params?: RefStructuresPageParams
   ) => Promise<RefStructuresPageResult>
   refMoons: (ids: number[]) => Promise<RefMoonsResult>
+  refMarketGroups: () => Promise<RefMarketGroupsResult>
   refMarketJita: (params: RefMarketJitaParams) => Promise<RefMarketJitaResult>
   refBuybackCalculate: (
     text: string,
@@ -509,6 +526,7 @@ const electronAPI: ElectronAPI = {
   refUniverseStructuresPage: (params?: RefStructuresPageParams) =>
     ipcRenderer.invoke('ref:universe-structures-page', params),
   refMoons: (ids: number[]) => ipcRenderer.invoke('ref:moons', ids),
+  refMarketGroups: () => ipcRenderer.invoke('ref:marketGroups'),
   refMarketJita: (params: RefMarketJitaParams) =>
     ipcRenderer.invoke('ref:marketJita', params),
   refBuybackCalculate: (text: string, config: BuybackConfig) =>

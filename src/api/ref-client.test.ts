@@ -32,6 +32,7 @@ vi.mock('@/store/reference-cache', () => ({
   isUniverseDataLoaded: vi.fn(() => false),
   isRefStructuresLoaded: vi.fn(() => false),
   isTypePublished: vi.fn(() => true),
+  isTypeMarketable: vi.fn(() => true),
   useReferenceCacheStore: {
     getState: () => ({
       saveTypes: mockSaveTypes,

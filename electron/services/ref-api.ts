@@ -182,6 +182,9 @@ export function registerRefAPIHandlers(): void {
     refGet('/reference/categories', 'ref:categories')
   )
   ipcMain.handle('ref:groups', () => refGet('/reference/groups', 'ref:groups'))
+  ipcMain.handle('ref:marketGroups', () =>
+    refGet('/reference/market-groups', 'ref:marketGroups')
+  )
   ipcMain.handle('ref:buybackInfo', () =>
     refGet('/buyback/info', 'ref:buybackInfo')
   )

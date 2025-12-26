@@ -58,6 +58,7 @@ interface RawType {
   id: number
   name: string
   groupId?: number | null
+  marketGroupId?: number | null
   volume?: number | null
   packagedVolume?: number | null
   isPublished?: number
@@ -80,6 +81,7 @@ function enrichType(raw: RawType): CachedType {
     groupName: group?.name ?? '',
     categoryId: group?.categoryId ?? 0,
     categoryName: category?.name ?? '',
+    marketGroupId: raw.marketGroupId ?? undefined,
     volume: raw.volume ?? 0,
     packagedVolume: raw.packagedVolume ?? undefined,
     published: raw.isPublished === 1,

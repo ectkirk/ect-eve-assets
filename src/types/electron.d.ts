@@ -42,6 +42,7 @@ declare global {
         id: number
         name: string
         groupId?: number | null
+        marketGroupId?: number | null
         volume?: number | null
         packagedVolume?: number | null
         isPublished?: number
@@ -99,6 +100,21 @@ declare global {
 
   interface RefMoonsResult {
     items?: Record<string, { id: number; name: string; systemId: number }>
+    error?: string
+  }
+
+  interface RefMarketGroupsResult {
+    items?: Record<
+      string,
+      {
+        id: number
+        name: string
+        parentGroupId: number | null
+        hasTypes: boolean
+        iconId: number | null
+      }
+    >
+    total?: number
     error?: string
   }
 
@@ -418,6 +434,7 @@ declare global {
       params?: RefStructuresPageParams
     ) => Promise<RefStructuresPageResult>
     refMoons: (ids: number[]) => Promise<RefMoonsResult>
+    refMarketGroups: () => Promise<RefMarketGroupsResult>
     refMarketJita: (params: RefMarketJitaParams) => Promise<RefMarketJitaResult>
     refBuybackCalculate: (
       text: string,
