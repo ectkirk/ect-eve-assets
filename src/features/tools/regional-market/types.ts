@@ -1,4 +1,3 @@
-import type { ESIRegionOrder } from '@/api/endpoints/market'
 import type { CachedType } from '@/store/reference-cache'
 
 export interface MarketGroup {
@@ -18,11 +17,3 @@ export interface MarketGroupNode {
 export type TreeRow =
   | { kind: 'group'; node: MarketGroupNode }
   | { kind: 'item'; type: CachedType; depth: number; parentGroupId: number }
-
-export interface CachedOrders {
-  sellOrders: ESIRegionOrder[]
-  buyOrders: ESIRegionOrder[]
-  fetchedAt: number
-}
-
-export const ORDER_CACHE_TTL_MS = 5 * 60 * 1000

@@ -394,6 +394,15 @@ export interface ESIAPI {
     endpoint: string,
     options?: ESIRequestOptions
   ) => Promise<ESIResponseMeta<T[]>>
+  fetchPaginatedWithProgress: <T>(
+    endpoint: string,
+    options?: ESIRequestOptions,
+    progressChannel?: string
+  ) => Promise<ESIResponseMeta<T[]>>
+  onPaginatedProgress: (
+    channel: string,
+    callback: (progress: { current: number; total: number }) => void
+  ) => () => void
   clearCache: () => Promise<void>
   clearCacheByPattern: (pattern: string) => Promise<number>
   getRateLimitInfo: () => Promise<ESIRateLimitInfo>
@@ -485,6 +494,28 @@ const esi: ESIAPI = {
       endpoint,
       options
     ) as Promise<ESIResponseMeta<T[]>>,
+  fetchPaginatedWithProgress: <T>(
+    endpoint: string,
+    options?: ESIRequestOptions,
+    progressChannel?: string
+  ) =>
+    ipcRenderer.invoke(
+      'esi:fetchPaginatedWithProgress',
+      endpoint,
+      options,
+      progressChannel
+    ) as Promise<ESIResponseMeta<T[]>>,
+  onPaginatedProgress: (
+    channel: string,
+    callback: (progress: { current: number; total: number }) => void
+  ) => {
+    const handler = (
+      _event: unknown,
+      progress: { current: number; total: number }
+    ) => callback(progress)
+    ipcRenderer.on(channel, handler)
+    return () => ipcRenderer.removeListener(channel, handler)
+  },
   clearCache: () => ipcRenderer.invoke('esi:clearCache'),
   clearCacheByPattern: (pattern: string) =>
     ipcRenderer.invoke('esi:clearCacheByPattern', pattern) as Promise<number>,

@@ -1,7 +1,12 @@
-import { useState, useCallback, useMemo } from 'react'
-import { useReferenceCacheStore } from '@/store/reference-cache'
+import { useState, useCallback, useMemo, useEffect } from 'react'
+import {
+  useReferenceCacheStore,
+  type CachedType,
+} from '@/store/reference-cache'
+import { useRegionalOrdersStore } from '@/store/regional-orders-store'
 import { TypeIcon } from '@/components/ui/type-icon'
 import { MarketGroupTree } from './MarketGroupTree'
+import { MarketItemSearch } from './MarketItemSearch'
 import { TypeListPanel } from './TypeListPanel'
 import { OrderDetailPanel } from './OrderDetailPanel'
 import { useMarketGroups, getAllGroupIds } from './use-market-groups'
@@ -58,6 +63,19 @@ export function RegionalMarketPanel() {
   const { tree, loading, error } = useMarketGroups()
   const regions = useReferenceCacheStore((s) => s.regions)
   const types = useReferenceCacheStore((s) => s.types)
+
+  const ordersStatus = useRegionalOrdersStore((s) => s.status)
+  const ordersProgress = useRegionalOrdersStore((s) => s.progress)
+  const setRegion = useRegionalOrdersStore((s) => s.setRegion)
+  const initOrdersStore = useRegionalOrdersStore((s) => s.init)
+
+  useEffect(() => {
+    initOrdersStore()
+  }, [initOrdersStore])
+
+  useEffect(() => {
+    setRegion(selectedRegionId)
+  }, [selectedRegionId, setRegion])
 
   const sortedRegions = useMemo(() => {
     const list = Array.from(regions.values())
@@ -132,6 +150,24 @@ export function RegionalMarketPanel() {
     setExpandedGroupIds(new Set())
   }, [])
 
+  const handleSearchSelect = useCallback(
+    (type: CachedType) => {
+      if (!type.marketGroupId) return
+
+      const path = buildBreadcrumbPath(tree, type.marketGroupId)
+      const groupIdsToExpand = path.map((node) => node.group.id)
+
+      setExpandedGroupIds((prev) => {
+        const next = new Set(prev)
+        for (const id of groupIdsToExpand) next.add(id)
+        return next
+      })
+      setSelectedMarketGroupId(type.marketGroupId)
+      setSelectedTypeId(type.id)
+    },
+    [tree]
+  )
+
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center text-content-secondary">
@@ -202,9 +238,7 @@ export function RegionalMarketPanel() {
 
   const renderContentPanel = () => {
     if (selectedTypeId) {
-      return (
-        <OrderDetailPanel regionId={selectedRegionId} typeId={selectedTypeId} />
-      )
+      return <OrderDetailPanel typeId={selectedTypeId} />
     }
 
     return (
@@ -223,7 +257,8 @@ export function RegionalMarketPanel() {
         <select
           value={selectedRegionId}
           onChange={handleRegionChange}
-          className="rounded border border-border bg-surface-tertiary px-2 py-1 text-sm focus:border-accent focus:outline-hidden"
+          disabled={ordersStatus === 'loading'}
+          className="rounded border border-border bg-surface-tertiary px-2 py-1 text-sm focus:border-accent focus:outline-hidden disabled:opacity-50"
         >
           {sortedRegions.map((region) => (
             <option key={region.id} value={region.id}>
@@ -231,6 +266,21 @@ export function RegionalMarketPanel() {
             </option>
           ))}
         </select>
+        {ordersStatus === 'loading' && ordersProgress && (
+          <div className="flex items-center gap-2 text-sm text-content-secondary">
+            <div className="w-32 h-2 bg-surface-tertiary rounded-full overflow-hidden">
+              <div
+                className="h-full bg-accent transition-all duration-150"
+                style={{
+                  width: `${(ordersProgress.current / ordersProgress.total) * 100}%`,
+                }}
+              />
+            </div>
+            <span className="tabular-nums text-xs">
+              {ordersProgress.current}/{ordersProgress.total}
+            </span>
+          </div>
+        )}
         <div className="flex-1" />
         <button
           onClick={handleExpandAll}
@@ -247,16 +297,21 @@ export function RegionalMarketPanel() {
       </div>
 
       <div className="flex-1 flex min-h-0">
-        <div className="w-64 border-r border-border flex-shrink-0 overflow-hidden">
-          <MarketGroupTree
-            tree={tree}
-            expandedIds={expandedGroupIds}
-            selectedGroupId={selectedMarketGroupId}
-            selectedTypeId={selectedTypeId}
-            onToggleExpand={handleToggleExpand}
-            onSelectGroup={handleSelectGroup}
-            onSelectType={handleSelectType}
-          />
+        <div className="w-64 border-r border-border flex-shrink-0 flex flex-col overflow-hidden">
+          <div className="border-b border-border">
+            <MarketItemSearch onSelectType={handleSearchSelect} />
+          </div>
+          <div className="flex-1 min-h-0">
+            <MarketGroupTree
+              tree={tree}
+              expandedIds={expandedGroupIds}
+              selectedGroupId={selectedMarketGroupId}
+              selectedTypeId={selectedTypeId}
+              onToggleExpand={handleToggleExpand}
+              onSelectGroup={handleSelectGroup}
+              onSelectType={handleSelectType}
+            />
+          </div>
         </div>
 
         <div className="flex-1 min-w-0 flex flex-col overflow-hidden">

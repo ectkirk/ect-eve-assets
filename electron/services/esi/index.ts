@@ -1,6 +1,7 @@
 import { app } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
+import pLimit from 'p-limit'
 import { ESICache } from './cache'
 import { ESIHealthChecker } from './health'
 import {
@@ -24,6 +25,12 @@ const RATE_LIMIT_FILE = 'rate-limits.json'
 const CACHE_FILE = 'esi-cache.json'
 const ESI_MAX_RETRIES = 2
 const ESI_REQUEST_TIMEOUT_MS = 30000
+const MAX_CONCURRENT_PAGES = 20
+
+export type ProgressCallback = (progress: {
+  current: number
+  total: number
+}) => void
 
 type TokenProvider = (characterId: number) => Promise<string | null>
 
@@ -149,6 +156,84 @@ export class MainESIService {
       }
 
       page++
+    }
+
+    if (!lastMeta?.expiresAt) {
+      const error = `ESI meta missing: expiresAt not returned for ${endpoint}`
+      logger.error(error, undefined, { module: 'ESI', endpoint })
+      throw new Error(error)
+    }
+
+    return {
+      data: results,
+      expiresAt: lastMeta.expiresAt,
+      etag: lastMeta.etag ?? null,
+      notModified: lastMeta.notModified ?? false,
+    }
+  }
+
+  async fetchPaginatedWithProgress<T>(
+    endpoint: string,
+    options: ESIRequestOptions = {},
+    onProgress?: ProgressCallback
+  ): Promise<ESIResponseMeta<T[]>> {
+    const separator = endpoint.includes('?') ? '&' : '?'
+
+    const firstResult = await this.executeWithRateLimit(
+      `${endpoint}${separator}page=1`,
+      options
+    )
+
+    if (!firstResult.success) {
+      throw new ESIError(
+        firstResult.error,
+        firstResult.status ?? 500,
+        firstResult.retryAfter
+      )
+    }
+
+    const totalPages = (firstResult as { xPages?: number }).xPages ?? 1
+    const results: T[] = [...(firstResult.data as T[])]
+    let lastMeta = firstResult.meta
+
+    onProgress?.({ current: 1, total: totalPages })
+
+    if (totalPages > 1) {
+      const limit = pLimit(MAX_CONCURRENT_PAGES)
+      const pages = Array.from({ length: totalPages - 1 }, (_, i) => i + 2)
+      let completed = 1
+
+      const pageResults = await Promise.all(
+        pages.map((page) =>
+          limit(async () => {
+            const result = await this.executeWithRateLimit(
+              `${endpoint}${separator}page=${page}`,
+              options
+            )
+
+            if (!result.success) {
+              throw new ESIError(
+                result.error,
+                result.status ?? 500,
+                result.retryAfter
+              )
+            }
+
+            completed++
+            onProgress?.({ current: completed, total: totalPages })
+
+            return {
+              data: result.data as T[],
+              meta: result.meta,
+            }
+          })
+        )
+      )
+
+      for (const { data, meta } of pageResults) {
+        results.push(...data)
+        if (meta) lastMeta = meta
+      }
     }
 
     if (!lastMeta?.expiresAt) {

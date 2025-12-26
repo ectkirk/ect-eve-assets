@@ -131,7 +131,13 @@ function parseESIOptions(options: unknown): ESIRequestOptions {
   return esiOptions
 }
 
-export function registerESIHandlers(): void {
+let mainWindowGetter: (() => BrowserWindow | null) | null = null
+
+export function registerESIHandlers(
+  getMainWindow: () => BrowserWindow | null
+): void {
+  mainWindowGetter = getMainWindow
+
   ipcMain.handle(
     'esi:provideToken',
     (_event, characterId: unknown, token: unknown) => {
@@ -186,6 +192,36 @@ export function registerESIHandlers(): void {
       return getESIService().fetchPaginatedWithMeta(
         endpoint,
         parseESIOptions(options)
+      )
+    }
+  )
+
+  ipcMain.handle(
+    'esi:fetchPaginatedWithProgress',
+    async (
+      _event,
+      endpoint: unknown,
+      options: unknown,
+      progressChannel: unknown
+    ) => {
+      if (typeof endpoint !== 'string') throw new Error('Invalid endpoint')
+      const channel =
+        typeof progressChannel === 'string' ? progressChannel : null
+      const win = mainWindowGetter?.()
+
+      const onProgress =
+        channel && win
+          ? (progress: { current: number; total: number }) => {
+              if (!win.isDestroyed()) {
+                win.webContents.send(channel, progress)
+              }
+            }
+          : undefined
+
+      return getESIService().fetchPaginatedWithProgress(
+        endpoint,
+        parseESIOptions(options),
+        onProgress
       )
     }
   )

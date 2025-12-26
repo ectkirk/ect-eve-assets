@@ -396,6 +396,15 @@ declare global {
       endpoint: string,
       options?: ESIRequestOptions
     ) => Promise<ESIResponseMeta<T[]>>
+    fetchPaginatedWithProgress: <T>(
+      endpoint: string,
+      options?: ESIRequestOptions,
+      progressChannel?: string
+    ) => Promise<ESIResponseMeta<T[]>>
+    onPaginatedProgress: (
+      channel: string,
+      callback: (progress: { current: number; total: number }) => void
+    ) => () => void
     clearCache: () => Promise<void>
     clearCacheByPattern: (pattern: string) => Promise<number>
     getRateLimitInfo: () => Promise<ESIRateLimitInfo>

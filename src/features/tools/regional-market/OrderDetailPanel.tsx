@@ -1,13 +1,11 @@
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
+import { useMemo, useRef, useCallback } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { getRegionalOrders, type ESIRegionOrder } from '@/api/endpoints/market'
+import type { ESIRegionOrder } from '@/api/endpoints/market'
 import { useReferenceCacheStore } from '@/store/reference-cache'
+import { useRegionalOrdersStore } from '@/store/regional-orders-store'
 import { formatNumber, cn } from '@/lib/utils'
-import type { CachedOrders } from './types'
-import { ORDER_CACHE_TTL_MS } from './types'
 
 interface OrderDetailPanelProps {
-  regionId: number
   typeId: number | null
 }
 
@@ -161,73 +159,25 @@ function OrderTable({
   )
 }
 
-interface FetchState {
-  loading: boolean
-  error: string | null
-  orders: CachedOrders | null
-}
+export function OrderDetailPanel({ typeId }: OrderDetailPanelProps) {
+  const status = useRegionalOrdersStore((s) => s.status)
+  const error = useRegionalOrdersStore((s) => s.error)
+  const getOrdersForType = useRegionalOrdersStore((s) => s.getOrdersForType)
 
-export function OrderDetailPanel({ regionId, typeId }: OrderDetailPanelProps) {
-  const orderCacheRef = useRef<Map<string, CachedOrders>>(new Map())
-  const [fetchState, setFetchState] = useState<FetchState>({
-    loading: false,
-    error: null,
-    orders: null,
-  })
-  const fetchingRef = useRef<string | null>(null)
-
-  const cacheKey = typeId ? `${regionId}-${typeId}` : null
-
-  useEffect(() => {
-    if (!typeId || !cacheKey) return
-    if (fetchingRef.current === cacheKey) return
-
-    const existingCache = orderCacheRef.current.get(cacheKey)
-    if (
-      existingCache &&
-      Date.now() - existingCache.fetchedAt < ORDER_CACHE_TTL_MS
-    ) {
-      setFetchState({ loading: false, error: null, orders: existingCache })
-      return
+  const orders = useMemo(() => {
+    if (!typeId) return { sellOrders: [], buyOrders: [] }
+    const allOrders = getOrdersForType(typeId)
+    const sellOrders: ESIRegionOrder[] = []
+    const buyOrders: ESIRegionOrder[] = []
+    for (const order of allOrders) {
+      if (order.is_buy_order) {
+        buyOrders.push(order)
+      } else {
+        sellOrders.push(order)
+      }
     }
-
-    fetchingRef.current = cacheKey
-    setFetchState({ loading: true, error: null, orders: null })
-
-    let cancelled = false
-
-    Promise.all([
-      getRegionalOrders(regionId, typeId, 'sell'),
-      getRegionalOrders(regionId, typeId, 'buy'),
-    ])
-      .then(([sellOrders, buyOrders]) => {
-        if (cancelled) return
-
-        const newOrders: CachedOrders = {
-          sellOrders,
-          buyOrders,
-          fetchedAt: Date.now(),
-        }
-
-        orderCacheRef.current.set(cacheKey, newOrders)
-        setFetchState({ loading: false, error: null, orders: newOrders })
-      })
-      .catch((err) => {
-        if (cancelled) return
-        setFetchState({
-          loading: false,
-          error: err instanceof Error ? err.message : 'Failed to load orders',
-          orders: null,
-        })
-      })
-      .finally(() => {
-        if (!cancelled) fetchingRef.current = null
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [regionId, typeId, cacheKey])
+    return { sellOrders, buyOrders }
+  }, [typeId, getOrdersForType])
 
   if (!typeId) {
     return (
@@ -237,26 +187,26 @@ export function OrderDetailPanel({ regionId, typeId }: OrderDetailPanelProps) {
     )
   }
 
-  if (fetchState.loading) {
+  if (status === 'loading') {
     return (
       <div className="h-full flex items-center justify-center text-content-secondary text-sm">
-        Loading orders...
+        Loading region orders...
       </div>
     )
   }
 
-  if (fetchState.error) {
+  if (status === 'error') {
     return (
       <div className="h-full flex items-center justify-center text-status-negative text-sm">
-        {fetchState.error}
+        {error ?? 'Failed to load orders'}
       </div>
     )
   }
 
-  if (!fetchState.orders) {
+  if (status === 'idle') {
     return (
       <div className="h-full flex items-center justify-center text-content-secondary text-sm">
-        No order data
+        Select a region to load market data
       </div>
     )
   }
@@ -264,15 +214,11 @@ export function OrderDetailPanel({ regionId, typeId }: OrderDetailPanelProps) {
   return (
     <div className="h-full flex flex-col">
       <OrderTable
-        orders={fetchState.orders.sellOrders}
+        orders={orders.sellOrders}
         title="Sellers"
         isBuyOrder={false}
       />
-      <OrderTable
-        orders={fetchState.orders.buyOrders}
-        title="Buyers"
-        isBuyOrder={true}
-      />
+      <OrderTable orders={orders.buyOrders} title="Buyers" isBuyOrder={true} />
     </div>
   )
 }

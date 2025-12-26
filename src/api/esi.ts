@@ -76,6 +76,41 @@ export const esi = {
     return result
   },
 
+  async fetchPaginatedWithProgress<T>(
+    endpoint: string,
+    options: ESIRequestOptions & {
+      schema?: z.ZodType<T>
+      onProgress?: (progress: { current: number; total: number }) => void
+    } = {}
+  ): Promise<ESIResponseMeta<T[]>> {
+    const { schema, onProgress, ...esiOptions } = options
+    const progressChannel = onProgress
+      ? `esi:progress:${Date.now()}-${Math.random().toString(36).slice(2)}`
+      : undefined
+
+    let cleanup: (() => void) | undefined
+    if (progressChannel && onProgress) {
+      cleanup = getESI().onPaginatedProgress(progressChannel, onProgress)
+    }
+
+    try {
+      const result = await getESI().fetchPaginatedWithProgress<T>(
+        endpoint,
+        esiOptions,
+        progressChannel
+      )
+      if (schema && !result.notModified) {
+        return {
+          ...result,
+          data: validate(result.data, schema.array(), endpoint),
+        }
+      }
+      return result
+    } finally {
+      cleanup?.()
+    }
+  },
+
   async fetchBatch<T, R>(
     items: T[],
     fetcher: (item: T) => Promise<R>,

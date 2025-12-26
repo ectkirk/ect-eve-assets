@@ -66,7 +66,7 @@ function registerAllHandlers(): void {
   registerRefAPIHandlers()
   registerMutamarketHandlers()
   setupESIService(() => windowManager.mainWindow)
-  registerESIHandlers()
+  registerESIHandlers(() => windowManager.mainWindow)
 }
 
 const gotTheLock = app.requestSingleInstanceLock()
