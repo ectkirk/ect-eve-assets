@@ -1,8 +1,6 @@
 import { useState, useMemo, useRef, useCallback } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { TypeIcon } from '@/components/ui/type-icon'
 import { getRegionalOrders, type ESIRegionOrder } from '@/api/endpoints/market'
-import { getTypeInfo, type ESITypeInfo } from '@/api/endpoints/universe'
 import { useReferenceCacheStore } from '@/store/reference-cache'
 import { formatNumber, cn } from '@/lib/utils'
 import type { CachedOrders } from './types'
@@ -87,11 +85,11 @@ function OrderTable({
 
   if (orders.length === 0) {
     return (
-      <div className="flex-1 flex flex-col min-h-0">
-        <div className="px-3 py-2 border-b border-border-subtle font-medium text-sm">
+      <div className="flex-1 flex flex-col min-h-0 m-3 rounded-lg border border-border bg-surface-secondary/30">
+        <div className="px-4 py-2 font-medium text-sm bg-surface-secondary border-b border-border">
           {title}
         </div>
-        <div className="flex-1 flex items-center justify-center text-content-secondary text-sm">
+        <div className="flex-1 flex items-center justify-center text-content-tertiary text-sm py-8">
           No {isBuyOrder ? 'buy' : 'sell'} orders
         </div>
       </div>
@@ -101,13 +99,13 @@ function OrderTable({
   const virtualRows = virtualizer.getVirtualItems()
 
   return (
-    <div className="flex-1 flex flex-col min-h-0">
-      <div className="px-3 py-2 border-b border-border-subtle font-medium text-sm">
+    <div className="flex-1 flex flex-col min-h-0 m-3 rounded-lg border border-border bg-surface-secondary/30 overflow-hidden">
+      <div className="px-4 py-2 font-medium text-sm bg-surface-secondary border-b border-border">
         {title} ({orders.length})
       </div>
-      <div className="grid grid-cols-[1fr_80px_1fr_80px] gap-2 px-3 py-1.5 text-xs text-content-secondary border-b border-border-subtle">
+      <div className="grid grid-cols-[80px_1fr_1fr_80px] gap-2 px-4 py-2 text-xs text-content-secondary bg-surface-secondary border-b border-border">
+        <div>Qty</div>
         <div>Price</div>
-        <div className="text-right">Quantity</div>
         <div>Location</div>
         <div className="text-right">Expires</div>
       </div>
@@ -131,18 +129,18 @@ function OrderTable({
                   height: ROW_HEIGHT,
                   transform: `translateY(${virtualRow.start}px)`,
                 }}
-                className="grid grid-cols-[1fr_80px_1fr_80px] gap-2 px-3 items-center text-sm hover:bg-surface-tertiary"
+                className="grid grid-cols-[80px_1fr_1fr_80px] gap-2 px-4 items-center text-sm border-b border-border/50 hover:bg-surface-tertiary/50"
               >
+                <div className="tabular-nums">
+                  {formatNumber(order.volume_remain)}
+                </div>
                 <div
                   className={cn(
-                    'tabular-nums font-medium truncate',
+                    'tabular-nums',
                     isBuyOrder ? 'text-status-positive' : 'text-status-negative'
                   )}
                 >
-                  {formatPrice(order.price)} ISK
-                </div>
-                <div className="text-right tabular-nums">
-                  {formatNumber(order.volume_remain)}
+                  {formatPrice(order.price)}
                 </div>
                 <div
                   className="truncate text-content-secondary"
@@ -165,7 +163,6 @@ function OrderTable({
 interface FetchState {
   loading: boolean
   error: string | null
-  typeInfo: ESITypeInfo | null
   orders: CachedOrders | null
 }
 
@@ -176,14 +173,9 @@ export function OrderDetailPanel({ regionId, typeId }: OrderDetailPanelProps) {
   const [fetchState, setFetchState] = useState<FetchState>({
     loading: false,
     error: null,
-    typeInfo: null,
     orders: null,
   })
   const fetchingRef = useRef<string | null>(null)
-
-  const cachedType = useReferenceCacheStore((s) =>
-    typeId ? s.types.get(typeId) : undefined
-  )
 
   const cacheKey = typeId ? `${regionId}-${typeId}` : null
   const cached = cacheKey ? (orderCache.get(cacheKey) ?? null) : null
@@ -204,13 +196,12 @@ export function OrderDetailPanel({ regionId, typeId }: OrderDetailPanelProps) {
     }
 
     fetchingRef.current = cacheKey
-    setFetchState({ loading: true, error: null, typeInfo: null, orders: null })
+    setFetchState({ loading: true, error: null, orders: null })
 
     try {
-      const [sellOrders, buyOrders, info] = await Promise.all([
+      const [sellOrders, buyOrders] = await Promise.all([
         getRegionalOrders(regionId, typeId, 'sell'),
         getRegionalOrders(regionId, typeId, 'buy'),
-        getTypeInfo(typeId),
       ])
 
       const newOrders: CachedOrders = {
@@ -227,14 +218,12 @@ export function OrderDetailPanel({ regionId, typeId }: OrderDetailPanelProps) {
       setFetchState({
         loading: false,
         error: null,
-        typeInfo: info,
         orders: newOrders,
       })
     } catch (err) {
       setFetchState({
         loading: false,
         error: err instanceof Error ? err.message : 'Failed to load orders',
-        typeInfo: null,
         orders: null,
       })
     } finally {
@@ -280,44 +269,14 @@ export function OrderDetailPanel({ regionId, typeId }: OrderDetailPanelProps) {
     )
   }
 
-  const typeName =
-    cachedType?.name ?? fetchState.typeInfo?.name ?? `Type ${typeId}`
-
   return (
     <div className="h-full flex flex-col">
-      <div className="px-3 py-3 border-b border-border-subtle flex items-start gap-3">
-        <TypeIcon
-          typeId={typeId}
-          categoryId={cachedType?.categoryId}
-          size="lg"
-        />
-        <div className="flex-1 min-w-0">
-          <div className="font-medium text-sm">{typeName}</div>
-          {fetchState.typeInfo?.description && (
-            <div
-              className="text-xs text-content-secondary mt-1 line-clamp-3"
-              dangerouslySetInnerHTML={{
-                __html: fetchState.typeInfo.description
-                  .replace(/<a[^>]*>/g, '')
-                  .replace(/<\/a>/g, ''),
-              }}
-            />
-          )}
-        </div>
-      </div>
-
-      <div className="flex-1 flex flex-col min-h-0">
-        <OrderTable
-          orders={orders.sellOrders}
-          title="Sellers"
-          isBuyOrder={false}
-        />
-        <OrderTable
-          orders={orders.buyOrders}
-          title="Buyers"
-          isBuyOrder={true}
-        />
-      </div>
+      <OrderTable
+        orders={orders.sellOrders}
+        title="Sellers"
+        isBuyOrder={false}
+      />
+      <OrderTable orders={orders.buyOrders} title="Buyers" isBuyOrder={true} />
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
-import type { MarketGroup, MarketGroupNode } from './types'
+import type { CachedType } from '@/store/reference-cache'
+import type { MarketGroup, MarketGroupNode, TreeRow } from './types'
 
 interface UseMarketGroupsResult {
   tree: MarketGroupNode[]
@@ -95,6 +96,58 @@ export function flattenTree(
     if (expandedIds.has(node.group.id)) {
       for (const child of node.children) {
         traverse(child)
+      }
+    }
+  }
+
+  for (const node of nodes) {
+    traverse(node)
+  }
+
+  return result
+}
+
+export function flattenTreeWithItems(
+  nodes: MarketGroupNode[],
+  expandedIds: Set<number>,
+  types: Map<number, CachedType>
+): TreeRow[] {
+  const result: TreeRow[] = []
+
+  const typesByMarketGroup = new Map<number, CachedType[]>()
+  for (const type of types.values()) {
+    if (type.marketGroupId) {
+      const list = typesByMarketGroup.get(type.marketGroupId) ?? []
+      list.push(type)
+      typesByMarketGroup.set(type.marketGroupId, list)
+    }
+  }
+
+  for (const list of typesByMarketGroup.values()) {
+    list.sort((a, b) => a.name.localeCompare(b.name))
+  }
+
+  function traverse(node: MarketGroupNode) {
+    const isLeaf = node.children.length === 0
+    const hasItems = typesByMarketGroup.has(node.group.id)
+
+    result.push({ kind: 'group', node })
+
+    if (expandedIds.has(node.group.id)) {
+      for (const child of node.children) {
+        traverse(child)
+      }
+
+      if (isLeaf && hasItems) {
+        const items = typesByMarketGroup.get(node.group.id)!
+        for (const type of items) {
+          result.push({
+            kind: 'item',
+            type,
+            depth: node.depth + 1,
+            parentGroupId: node.group.id,
+          })
+        }
       }
     }
   }

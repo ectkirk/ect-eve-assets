@@ -1,4 +1,5 @@
 import type { ESIRegionOrder } from '@/api/endpoints/market'
+import type { CachedType } from '@/store/reference-cache'
 
 export interface MarketGroup {
   id: number
@@ -18,6 +19,10 @@ export interface FlattenedGroupRow {
   node: MarketGroupNode
   isExpanded: boolean
 }
+
+export type TreeRow =
+  | { kind: 'group'; node: MarketGroupNode }
+  | { kind: 'item'; type: CachedType; depth: number; parentGroupId: number }
 
 export interface CachedOrders {
   sellOrders: ESIRegionOrder[]

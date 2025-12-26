@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo } from 'react'
 import { useReferenceCacheStore } from '@/store/reference-cache'
+import { TypeIcon } from '@/components/ui/type-icon'
 import { MarketGroupTree } from './MarketGroupTree'
 import { TypeListPanel } from './TypeListPanel'
 import { OrderDetailPanel } from './OrderDetailPanel'
@@ -20,6 +21,30 @@ function findGroupNode(
   return null
 }
 
+function buildBreadcrumbPath(
+  tree: MarketGroupNode[],
+  groupId: number
+): MarketGroupNode[] {
+  const path: MarketGroupNode[] = []
+
+  function findPath(nodes: MarketGroupNode[]): boolean {
+    for (const node of nodes) {
+      if (node.group.id === groupId) {
+        path.push(node)
+        return true
+      }
+      if (findPath(node.children)) {
+        path.unshift(node)
+        return true
+      }
+    }
+    return false
+  }
+
+  findPath(tree)
+  return path
+}
+
 export function RegionalMarketPanel() {
   const [selectedRegionId, setSelectedRegionId] = useState(THE_FORGE_REGION_ID)
   const [selectedMarketGroupId, setSelectedMarketGroupId] = useState<
@@ -32,6 +57,7 @@ export function RegionalMarketPanel() {
 
   const { tree, loading, error } = useMarketGroups()
   const regions = useReferenceCacheStore((s) => s.regions)
+  const types = useReferenceCacheStore((s) => s.types)
 
   const sortedRegions = useMemo(() => {
     const list = Array.from(regions.values())
@@ -43,6 +69,16 @@ export function RegionalMarketPanel() {
     if (!selectedMarketGroupId) return null
     return findGroupNode(tree, selectedMarketGroupId)
   }, [tree, selectedMarketGroupId])
+
+  const breadcrumbPath = useMemo(() => {
+    if (!selectedMarketGroupId) return []
+    return buildBreadcrumbPath(tree, selectedMarketGroupId)
+  }, [tree, selectedMarketGroupId])
+
+  const selectedTypeName = useMemo(() => {
+    if (!selectedTypeId) return null
+    return types.get(selectedTypeId)?.name ?? null
+  }, [types, selectedTypeId])
 
   const handleToggleExpand = useCallback((groupId: number) => {
     setExpandedGroupIds((prev) => {
@@ -59,10 +95,25 @@ export function RegionalMarketPanel() {
   const handleSelectGroup = useCallback((groupId: number) => {
     setSelectedMarketGroupId(groupId)
     setSelectedTypeId(null)
+    setExpandedGroupIds((prev) => {
+      const next = new Set(prev)
+      next.add(groupId)
+      return next
+    })
   }, [])
 
   const handleSelectType = useCallback((typeId: number) => {
     setSelectedTypeId(typeId)
+  }, [])
+
+  const handleBreadcrumbClick = useCallback((groupId: number | null) => {
+    if (groupId === null) {
+      setSelectedMarketGroupId(null)
+      setSelectedTypeId(null)
+    } else {
+      setSelectedMarketGroupId(groupId)
+      setSelectedTypeId(null)
+    }
   }, [])
 
   const handleRegionChange = useCallback(
@@ -94,6 +145,75 @@ export function RegionalMarketPanel() {
       <div className="h-full flex items-center justify-center text-status-negative">
         {error}
       </div>
+    )
+  }
+
+  const selectedType = selectedTypeId ? types.get(selectedTypeId) : null
+
+  const renderBreadcrumb = () => {
+    if (breadcrumbPath.length === 0 && !selectedTypeId) return null
+
+    return (
+      <div className="flex items-center gap-2 px-4 py-2 border-b border-border text-sm overflow-x-auto">
+        {selectedTypeId && selectedType && (
+          <TypeIcon
+            typeId={selectedTypeId}
+            categoryId={selectedType.categoryId}
+            size="lg"
+          />
+        )}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => handleBreadcrumbClick(null)}
+            className="text-content-secondary hover:text-accent shrink-0"
+          >
+            Market
+          </button>
+          {breadcrumbPath.map((node) => (
+            <span
+              key={node.group.id}
+              className="flex items-center gap-1 shrink-0"
+            >
+              <span className="text-content-tertiary">/</span>
+              <button
+                onClick={() => handleBreadcrumbClick(node.group.id)}
+                className={
+                  node.group.id === selectedMarketGroupId && !selectedTypeId
+                    ? 'text-content font-medium'
+                    : 'text-content-secondary hover:text-accent'
+                }
+              >
+                {node.group.name}
+              </button>
+            </span>
+          ))}
+          {selectedTypeId && selectedTypeName && (
+            <span className="flex items-center gap-1 shrink-0">
+              <span className="text-content-tertiary">/</span>
+              <span className="text-content font-medium">
+                {selectedTypeName}
+              </span>
+            </span>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  const renderContentPanel = () => {
+    if (selectedTypeId) {
+      return (
+        <OrderDetailPanel regionId={selectedRegionId} typeId={selectedTypeId} />
+      )
+    }
+
+    return (
+      <TypeListPanel
+        selectedGroup={selectedGroup}
+        selectedTypeId={selectedTypeId}
+        onSelectType={handleSelectType}
+        onSelectGroup={handleSelectGroup}
+      />
     )
   }
 
@@ -133,24 +253,18 @@ export function RegionalMarketPanel() {
             tree={tree}
             expandedIds={expandedGroupIds}
             selectedGroupId={selectedMarketGroupId}
+            selectedTypeId={selectedTypeId}
             onToggleExpand={handleToggleExpand}
             onSelectGroup={handleSelectGroup}
-          />
-        </div>
-
-        <div className="w-72 border-r border-border flex-shrink-0 overflow-hidden">
-          <TypeListPanel
-            selectedGroup={selectedGroup}
-            selectedTypeId={selectedTypeId}
             onSelectType={handleSelectType}
           />
         </div>
 
-        <div className="flex-1 min-w-0 overflow-hidden">
-          <OrderDetailPanel
-            regionId={selectedRegionId}
-            typeId={selectedTypeId}
-          />
+        <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+          {renderBreadcrumb()}
+          <div className="flex-1 min-h-0 overflow-hidden">
+            {renderContentPanel()}
+          </div>
         </div>
       </div>
     </div>

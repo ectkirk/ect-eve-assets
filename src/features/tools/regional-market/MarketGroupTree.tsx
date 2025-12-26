@@ -1,22 +1,23 @@
-import { memo, useRef, useCallback } from 'react'
+import { memo, useRef, useCallback, useMemo } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import {
-  ChevronRight,
-  ChevronDown,
-  Folder,
-  FolderOpen,
-  Package,
-} from 'lucide-react'
+import { ChevronRight, ChevronDown, Folder, FolderOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { TypeIcon } from '@/components/ui/type-icon'
+import {
+  useReferenceCacheStore,
+  type CachedType,
+} from '@/store/reference-cache'
 import type { MarketGroupNode } from './types'
-import { flattenTree } from './use-market-groups'
+import { flattenTreeWithItems } from './use-market-groups'
 
 interface MarketGroupTreeProps {
   tree: MarketGroupNode[]
   expandedIds: Set<number>
   selectedGroupId: number | null
+  selectedTypeId: number | null
   onToggleExpand: (groupId: number) => void
   onSelectGroup: (groupId: number) => void
+  onSelectType: (typeId: number) => void
 }
 
 const ROW_HEIGHT = 28
@@ -25,16 +26,19 @@ const MarketGroupRow = memo(function MarketGroupRow({
   node,
   isExpanded,
   isSelected,
+  hasItems,
   onToggleExpand,
   onSelectGroup,
 }: {
   node: MarketGroupNode
   isExpanded: boolean
   isSelected: boolean
+  hasItems: boolean
   onToggleExpand: (groupId: number) => void
   onSelectGroup: (groupId: number) => void
 }) {
   const hasChildren = node.children.length > 0
+  const canExpand = hasChildren || hasItems
   const indentPx = node.depth * 16
 
   const handleChevronClick = useCallback(
@@ -46,11 +50,11 @@ const MarketGroupRow = memo(function MarketGroupRow({
   )
 
   const handleRowClick = useCallback(() => {
-    if (hasChildren) {
+    if (canExpand) {
       onToggleExpand(node.group.id)
     }
     onSelectGroup(node.group.id)
-  }, [hasChildren, onToggleExpand, onSelectGroup, node.group.id])
+  }, [canExpand, onToggleExpand, onSelectGroup, node.group.id])
 
   return (
     <div
@@ -61,7 +65,7 @@ const MarketGroupRow = memo(function MarketGroupRow({
       style={{ height: ROW_HEIGHT, paddingLeft: `${indentPx + 8}px` }}
       onClick={handleRowClick}
     >
-      {hasChildren ? (
+      {canExpand ? (
         <button
           onClick={handleChevronClick}
           className="p-0.5 hover:bg-surface-secondary rounded flex-shrink-0"
@@ -83,7 +87,7 @@ const MarketGroupRow = memo(function MarketGroupRow({
           <Folder className="h-4 w-4 text-accent flex-shrink-0" />
         )
       ) : (
-        <Package className="h-4 w-4 text-content-secondary flex-shrink-0" />
+        <Folder className="h-4 w-4 text-content-secondary flex-shrink-0" />
       )}
 
       <span
@@ -99,16 +103,68 @@ const MarketGroupRow = memo(function MarketGroupRow({
   )
 })
 
+const ItemRow = memo(function ItemRow({
+  type,
+  depth,
+  isSelected,
+  onSelect,
+}: {
+  type: CachedType
+  depth: number
+  isSelected: boolean
+  onSelect: (typeId: number) => void
+}) {
+  const indentPx = depth * 16
+
+  return (
+    <div
+      className={cn(
+        'flex items-center gap-1.5 px-2 cursor-pointer hover:bg-surface-tertiary',
+        isSelected && 'bg-accent/20'
+      )}
+      style={{ height: ROW_HEIGHT, paddingLeft: `${indentPx + 8 + 22}px` }}
+      onClick={() => onSelect(type.id)}
+    >
+      <TypeIcon typeId={type.id} categoryId={type.categoryId} size="sm" />
+      <span
+        className={cn(
+          'text-sm truncate min-w-0',
+          isSelected && 'text-accent font-medium'
+        )}
+        title={type.name}
+      >
+        {type.name}
+      </span>
+    </div>
+  )
+})
+
 export function MarketGroupTree({
   tree,
   expandedIds,
   selectedGroupId,
+  selectedTypeId,
   onToggleExpand,
   onSelectGroup,
+  onSelectType,
 }: MarketGroupTreeProps) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const types = useReferenceCacheStore((s) => s.types)
 
-  const flatRows = flattenTree(tree, expandedIds)
+  const groupsWithItems = useMemo(() => {
+    const set = new Set<number>()
+    for (const type of types.values()) {
+      if (type.marketGroupId) {
+        set.add(type.marketGroupId)
+      }
+    }
+    return set
+  }, [types])
+
+  const flatRows = useMemo(
+    () => flattenTreeWithItems(tree, expandedIds, types),
+    [tree, expandedIds, types]
+  )
 
   const virtualizer = useVirtualizer({
     count: flatRows.length,
@@ -128,10 +184,13 @@ export function MarketGroupTree({
         }}
       >
         {virtualRows.map((virtualRow) => {
-          const node = flatRows[virtualRow.index]!
+          const row = flatRows[virtualRow.index]!
+          const key =
+            row.kind === 'group' ? `g-${row.node.group.id}` : `i-${row.type.id}`
+
           return (
             <div
-              key={node.group.id}
+              key={key}
               style={{
                 position: 'absolute',
                 top: 0,
@@ -141,13 +200,23 @@ export function MarketGroupTree({
                 transform: `translateY(${virtualRow.start}px)`,
               }}
             >
-              <MarketGroupRow
-                node={node}
-                isExpanded={expandedIds.has(node.group.id)}
-                isSelected={selectedGroupId === node.group.id}
-                onToggleExpand={onToggleExpand}
-                onSelectGroup={onSelectGroup}
-              />
+              {row.kind === 'group' ? (
+                <MarketGroupRow
+                  node={row.node}
+                  isExpanded={expandedIds.has(row.node.group.id)}
+                  isSelected={selectedGroupId === row.node.group.id}
+                  hasItems={groupsWithItems.has(row.node.group.id)}
+                  onToggleExpand={onToggleExpand}
+                  onSelectGroup={onSelectGroup}
+                />
+              ) : (
+                <ItemRow
+                  type={row.type}
+                  depth={row.depth}
+                  isSelected={selectedTypeId === row.type.id}
+                  onSelect={onSelectType}
+                />
+              )}
             </div>
           )
         })}

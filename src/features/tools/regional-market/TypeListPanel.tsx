@@ -1,12 +1,11 @@
-import { memo, useRef, useMemo } from 'react'
-import { useVirtualizer } from '@tanstack/react-virtual'
+import { memo, useMemo, useState, useEffect } from 'react'
+import { Folder, ChevronRight } from 'lucide-react'
 import { TypeIcon } from '@/components/ui/type-icon'
 import {
   useReferenceCacheStore,
   type CachedType,
 } from '@/store/reference-cache'
-import { formatISK } from '@/lib/utils'
-import { cn } from '@/lib/utils'
+import { getTypeInfo } from '@/api/endpoints/universe'
 import type { MarketGroupNode } from './types'
 import { getDescendantMarketGroupIds } from './use-market-groups'
 
@@ -14,42 +13,70 @@ interface TypeListPanelProps {
   selectedGroup: MarketGroupNode | null
   selectedTypeId: number | null
   onSelectType: (typeId: number) => void
+  onSelectGroup?: (groupId: number) => void
 }
 
-const ROW_HEIGHT = 44
+const descriptionCache = new Map<number, string>()
 
-const TypeRow = memo(function TypeRow({
+function stripHtmlTags(html: string): string {
+  return html.replace(/<[^>]*>/g, '')
+}
+
+const TypeCard = memo(function TypeCard({
   type,
-  isSelected,
   onSelect,
+  isVisible,
 }: {
   type: CachedType
-  isSelected: boolean
   onSelect: (typeId: number) => void
+  isVisible: boolean
 }) {
+  const [description, setDescription] = useState<string | null>(
+    descriptionCache.get(type.id) ?? null
+  )
+
+  useEffect(() => {
+    if (!isVisible || description !== null) return
+
+    let cancelled = false
+    getTypeInfo(type.id)
+      .then((info) => {
+        if (cancelled) return
+        const desc = info.description ? stripHtmlTags(info.description) : ''
+        descriptionCache.set(type.id, desc)
+        setDescription(desc)
+      })
+      .catch(() => {
+        if (!cancelled) {
+          descriptionCache.set(type.id, '')
+          setDescription('')
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [type.id, isVisible, description])
+
   return (
     <div
-      className={cn(
-        'flex items-center gap-3 px-3 cursor-pointer hover:bg-surface-tertiary',
-        isSelected && 'bg-accent/20'
-      )}
-      style={{ height: ROW_HEIGHT }}
+      className="flex gap-4 p-4 mx-3 my-1.5 rounded border border-border/50 hover:border-border hover:bg-surface-tertiary/50 transition-colors cursor-pointer"
       onClick={() => onSelect(type.id)}
     >
-      <TypeIcon typeId={type.id} categoryId={type.categoryId} size="lg" />
+      <TypeIcon typeId={type.id} categoryId={type.categoryId} size="xl" />
       <div className="flex-1 min-w-0">
-        <div
-          className={cn(
-            'text-sm truncate',
-            isSelected && 'text-accent font-medium'
-          )}
-          title={type.name}
-        >
+        <div className="font-medium text-content" title={type.name}>
           {type.name}
         </div>
-        <div className="text-xs text-content-secondary">
-          {type.jitaPrice ? formatISK(type.jitaPrice) : 'No price data'}
-        </div>
+        {description ? (
+          <p className="text-xs text-content-secondary mt-1.5 leading-relaxed">
+            {description}
+          </p>
+        ) : (
+          <div className="text-xs text-content-tertiary italic mt-1.5">
+            Loading...
+          </div>
+        )}
       </div>
     </div>
   )
@@ -59,8 +86,9 @@ export function TypeListPanel({
   selectedGroup,
   selectedTypeId,
   onSelectType,
+  onSelectGroup,
 }: TypeListPanelProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
+  void selectedTypeId
   const allTypes = useReferenceCacheStore((s) => s.types)
 
   const filteredTypes = useMemo(() => {
@@ -79,66 +107,79 @@ export function TypeListPanel({
     return types
   }, [selectedGroup, allTypes])
 
-  const virtualizer = useVirtualizer({
-    count: filteredTypes.length,
-    getScrollElement: () => containerRef.current,
-    estimateSize: () => ROW_HEIGHT,
-    overscan: 5,
-  })
-
-  const virtualRows = virtualizer.getVirtualItems()
-
   if (!selectedGroup) {
     return (
-      <div className="h-full flex items-center justify-center text-content-secondary text-sm">
-        Select a market group
+      <div className="h-full flex flex-col items-center justify-center text-content-secondary">
+        <div className="text-lg font-medium mb-2">No Type Selected</div>
+        <div className="text-sm">Select a market group to browse items</div>
+      </div>
+    )
+  }
+
+  if (selectedGroup.children.length > 0) {
+    return (
+      <div className="h-full flex flex-col">
+        <div className="px-4 py-2.5 border-b border-border bg-surface-secondary">
+          <div className="font-medium text-sm">{selectedGroup.group.name}</div>
+          <div className="text-xs text-content-secondary mt-0.5">
+            {selectedGroup.children.length} subgroup
+            {selectedGroup.children.length !== 1 ? 's' : ''}
+          </div>
+        </div>
+        <div className="flex-1 overflow-auto p-3">
+          {selectedGroup.children.map((child) => (
+            <button
+              key={child.group.id}
+              onClick={() => onSelectGroup?.(child.group.id)}
+              className="w-full flex items-center gap-3 p-3 rounded border border-border/50 hover:border-border hover:bg-surface-tertiary/50 text-left transition-colors mb-2"
+            >
+              <Folder className="h-5 w-5 text-content-secondary flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="font-medium text-sm truncate">
+                  {child.group.name}
+                </div>
+                <div className="text-xs text-content-secondary">
+                  {child.children.length > 0
+                    ? `${child.children.length} subgroups`
+                    : 'View items'}
+                </div>
+              </div>
+              <ChevronRight className="h-4 w-4 text-content-tertiary flex-shrink-0" />
+            </button>
+          ))}
+        </div>
       </div>
     )
   }
 
   if (filteredTypes.length === 0) {
     return (
-      <div className="h-full flex items-center justify-center text-content-secondary text-sm">
-        No items in this group
+      <div className="h-full flex flex-col items-center justify-center text-content-secondary">
+        <div className="text-sm">No items in this group</div>
+        <div className="text-xs mt-1">
+          Try selecting a different market group
+        </div>
       </div>
     )
   }
 
   return (
     <div className="h-full flex flex-col">
-      <div className="px-3 py-2 border-b border-border-subtle text-sm text-content-secondary">
-        {filteredTypes.length} item{filteredTypes.length !== 1 ? 's' : ''}
-      </div>
-      <div ref={containerRef} className="flex-1 overflow-auto">
-        <div
-          style={{
-            height: virtualizer.getTotalSize(),
-            position: 'relative',
-          }}
-        >
-          {virtualRows.map((virtualRow) => {
-            const type = filteredTypes[virtualRow.index]!
-            return (
-              <div
-                key={type.id}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: ROW_HEIGHT,
-                  transform: `translateY(${virtualRow.start}px)`,
-                }}
-              >
-                <TypeRow
-                  type={type}
-                  isSelected={selectedTypeId === type.id}
-                  onSelect={onSelectType}
-                />
-              </div>
-            )
-          })}
+      <div className="px-4 py-2.5 border-b border-border bg-surface-secondary">
+        <div className="font-medium text-sm">{selectedGroup.group.name}</div>
+        <div className="text-xs text-content-secondary mt-0.5">
+          {filteredTypes.length} item{filteredTypes.length !== 1 ? 's' : ''}
         </div>
+      </div>
+      <div className="flex-1 overflow-auto">
+        {filteredTypes.map((type) => (
+          <TypeCard
+            key={type.id}
+            type={type}
+            onSelect={onSelectType}
+            isVisible
+          />
+        ))}
       </div>
     </div>
   )

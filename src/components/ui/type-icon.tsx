@@ -7,7 +7,7 @@ export interface TypeIconProps {
   typeId: number
   categoryId?: number
   isBlueprintCopy?: boolean
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg' | 'xl'
   className?: string
 }
 
@@ -15,25 +15,37 @@ const SIZE_CLASSES = {
   sm: 'h-4 w-4',
   md: 'h-5 w-5',
   lg: 'h-6 w-6',
+  xl: 'h-12 w-12',
 }
 
 export function getTypeIconUrl(
   typeId: number,
-  options?: { categoryId?: number; isBlueprintCopy?: boolean }
+  options?: {
+    categoryId?: number
+    isBlueprintCopy?: boolean
+    imageSize?: number
+  }
 ): string | null {
-  const { categoryId, isBlueprintCopy } = options ?? {}
+  const { categoryId, isBlueprintCopy, imageSize = 32 } = options ?? {}
 
   if (categoryId === SKIN_CATEGORY_ID) {
-    return `https://images.evetech.net/types/81350/icon?size=32`
+    return `https://images.evetech.net/types/81350/icon?size=${imageSize}`
   }
 
   if (categoryId === BLUEPRINT_CATEGORY_ID) {
     return isBlueprintCopy
-      ? `https://images.evetech.net/types/${typeId}/bpc?size=32`
-      : `https://images.evetech.net/types/${typeId}/bp?size=32`
+      ? `https://images.evetech.net/types/${typeId}/bpc?size=${imageSize}`
+      : `https://images.evetech.net/types/${typeId}/bp?size=${imageSize}`
   }
 
-  return `https://images.evetech.net/types/${typeId}/icon?size=32`
+  return `https://images.evetech.net/types/${typeId}/icon?size=${imageSize}`
+}
+
+const IMAGE_SIZES: Record<string, number> = {
+  sm: 32,
+  md: 32,
+  lg: 32,
+  xl: 64,
 }
 
 export function TypeIcon({
@@ -44,7 +56,8 @@ export function TypeIcon({
   className,
 }: TypeIconProps) {
   const sizeClass = SIZE_CLASSES[size]
-  const url = getTypeIconUrl(typeId, { categoryId, isBlueprintCopy })
+  const imageSize = IMAGE_SIZES[size]
+  const url = getTypeIconUrl(typeId, { categoryId, isBlueprintCopy, imageSize })
 
   if (!url) {
     return (
