@@ -15,6 +15,9 @@ import {
   updateTypePrices,
   updateTypeEsiPrices,
   isTypeBlueprint,
+  clearTypePrices,
+  clearJitaPrices,
+  clearEsiPrices,
 } from '@/store/reference-cache'
 import { useStoreRegistry } from '@/store/store-registry'
 
@@ -85,6 +88,9 @@ interface PriceActions {
   ) => Promise<void>
   refreshEsiPrices: () => Promise<void>
   pruneAbyssalPrices: (ownedAbyssalIds: Set<number>) => Promise<void>
+  clearAbyssal: () => Promise<void>
+  clearJita: () => Promise<void>
+  clearEsi: () => Promise<void>
   clear: () => Promise<void>
 }
 
@@ -582,11 +588,41 @@ export const usePriceStore = create<PriceStore>((set, get) => ({
     })
   },
 
+  clearAbyssal: async () => {
+    await clearAbyssalDB()
+    set({ abyssalPrices: new Map() })
+    logger.info('Abyssal prices cleared', { module: 'PriceStore' })
+  },
+
+  clearJita: async () => {
+    try {
+      localStorage.removeItem(JITA_REFRESH_KEY)
+    } catch {
+      // localStorage unavailable
+    }
+    initPromise = null
+    stopPriceRefreshTimers()
+    clearJitaPrices()
+    set({ marketPrices: new Map(), initialized: false })
+    logger.info('Jita price cache cleared', { module: 'PriceStore' })
+  },
+
+  clearEsi: async () => {
+    try {
+      localStorage.removeItem(ESI_REFRESH_KEY)
+    } catch {
+      // localStorage unavailable
+    }
+    clearEsiPrices()
+    logger.info('ESI price cache cleared', { module: 'PriceStore' })
+  },
+
   clear: async () => {
     await clearAbyssalDB()
     clearRefreshTimestamps()
     initPromise = null
     stopPriceRefreshTimers()
+    clearTypePrices()
     set({
       abyssalPrices: new Map(),
       marketPrices: new Map(),

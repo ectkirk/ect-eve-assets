@@ -276,6 +276,31 @@ export async function updateTypeEsiPrices(
   }
 }
 
+type PriceField = 'jitaPrice' | 'esiAveragePrice' | 'esiAdjustedPrice'
+
+function clearPriceFields(fields: PriceField[]): void {
+  for (const [id, type] of typesCache) {
+    if (fields.some((f) => type[f] !== undefined)) {
+      const updated = { ...type }
+      for (const f of fields) updated[f] = undefined
+      typesCache.set(id, updated)
+    }
+  }
+  notifyListeners()
+}
+
+export function clearJitaPrices(): void {
+  clearPriceFields(['jitaPrice'])
+}
+
+export function clearEsiPrices(): void {
+  clearPriceFields(['esiAveragePrice', 'esiAdjustedPrice'])
+}
+
+export function clearTypePrices(): void {
+  clearPriceFields(['jitaPrice', 'esiAveragePrice', 'esiAdjustedPrice'])
+}
+
 export function getCategory(id: number): CachedCategory | undefined {
   return categoriesCache.get(id)
 }
