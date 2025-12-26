@@ -266,19 +266,25 @@ export function RegionalMarketPanel() {
             </option>
           ))}
         </select>
-        {ordersStatus === 'loading' && ordersProgress && (
+        {ordersStatus === 'loading' && (
           <div className="flex items-center gap-2 text-sm text-content-secondary">
-            <div className="w-32 h-2 bg-surface-tertiary rounded-full overflow-hidden">
-              <div
-                className="h-full bg-accent transition-all duration-150"
-                style={{
-                  width: `${(ordersProgress.current / ordersProgress.total) * 100}%`,
-                }}
-              />
-            </div>
-            <span className="tabular-nums text-xs">
-              {ordersProgress.current}/{ordersProgress.total}
-            </span>
+            {ordersProgress ? (
+              <>
+                <div className="w-32 h-2 bg-surface-tertiary rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-accent transition-all duration-150"
+                    style={{
+                      width: `${(ordersProgress.current / ordersProgress.total) * 100}%`,
+                    }}
+                  />
+                </div>
+                <span className="tabular-nums text-xs">
+                  {ordersProgress.current}/{ordersProgress.total}
+                </span>
+              </>
+            ) : (
+              <span className="text-xs">Loading...</span>
+            )}
           </div>
         )}
         <div className="flex-1" />

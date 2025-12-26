@@ -162,10 +162,13 @@ function OrderTable({
 export function OrderDetailPanel({ typeId }: OrderDetailPanelProps) {
   const status = useRegionalOrdersStore((s) => s.status)
   const error = useRegionalOrdersStore((s) => s.error)
+  const regionId = useRegionalOrdersStore((s) => s.regionId)
   const getOrdersForType = useRegionalOrdersStore((s) => s.getOrdersForType)
 
   const orders = useMemo(() => {
-    if (!typeId) return { sellOrders: [], buyOrders: [] }
+    if (!typeId || !regionId || status !== 'ready') {
+      return { sellOrders: [], buyOrders: [] }
+    }
     const allOrders = getOrdersForType(typeId)
     const sellOrders: ESIRegionOrder[] = []
     const buyOrders: ESIRegionOrder[] = []
@@ -177,7 +180,7 @@ export function OrderDetailPanel({ typeId }: OrderDetailPanelProps) {
       }
     }
     return { sellOrders, buyOrders }
-  }, [typeId, getOrdersForType])
+  }, [typeId, regionId, status, getOrdersForType])
 
   if (!typeId) {
     return (

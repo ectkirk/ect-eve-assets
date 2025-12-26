@@ -4,7 +4,7 @@ import { ESIRegionOrderSchema } from '@/api/schemas'
 import { logger } from '@/lib/logger'
 import { useStoreRegistry } from '@/store/store-registry'
 import {
-  loadOrdersFromDB,
+  loadAllOrdersFromDB,
   saveOrdersToDB,
   clearOrdersDB,
   type StoredRegionOrders,
@@ -13,16 +13,20 @@ import type { ESIRegionOrder } from '@/api/endpoints/market'
 
 const MODULE = 'RegionalOrdersStore'
 
-interface RegionalOrdersState {
-  regionId: number | null
+interface RegionCache {
   orders: ESIRegionOrder[]
   ordersByType: Map<number, ESIRegionOrder[]>
+  fetchedAt: number
+  expiresAt: number
+}
+
+interface RegionalOrdersState {
+  regionId: number | null
+  regionCache: Map<number, RegionCache>
 
   status: 'idle' | 'loading' | 'ready' | 'error'
   progress: { current: number; total: number } | null
   error: string | null
-  fetchedAt: number | null
-  expiresAt: number | null
   initialized: boolean
 }
 
@@ -55,13 +59,10 @@ let initPromise: Promise<void> | null = null
 export const useRegionalOrdersStore = create<RegionalOrdersStore>(
   (set, get) => ({
     regionId: null,
-    orders: [],
-    ordersByType: new Map(),
+    regionCache: new Map(),
     status: 'idle',
     progress: null,
     error: null,
-    fetchedAt: null,
-    expiresAt: null,
     initialized: false,
 
     init: async () => {
@@ -70,26 +71,31 @@ export const useRegionalOrdersStore = create<RegionalOrdersStore>(
 
       initPromise = (async () => {
         try {
-          const stored = await loadOrdersFromDB()
-          if (stored) {
+          const storedRegions = await loadAllOrdersFromDB()
+          if (storedRegions.length > 0) {
             const now = Date.now()
-            const isExpired = stored.expiresAt <= now
+            const newCache = new Map<number, RegionCache>()
 
-            set({
-              regionId: stored.regionId,
-              orders: stored.orders,
-              ordersByType: buildOrdersByType(stored.orders),
-              fetchedAt: stored.fetchedAt,
-              expiresAt: stored.expiresAt,
-              status: isExpired ? 'idle' : 'ready',
-              initialized: true,
-            })
+            for (const stored of storedRegions) {
+              if (stored.expiresAt > now) {
+                newCache.set(stored.regionId, {
+                  orders: stored.orders,
+                  ordersByType: buildOrdersByType(stored.orders),
+                  fetchedAt: stored.fetchedAt,
+                  expiresAt: stored.expiresAt,
+                })
+              }
+            }
+
+            set({ regionCache: newCache, initialized: true })
 
             logger.info('Regional orders store initialized from cache', {
               module: MODULE,
-              regionId: stored.regionId,
-              orderCount: stored.orders.length,
-              expired: isExpired,
+              cachedRegions: newCache.size,
+              totalOrders: Array.from(newCache.values()).reduce(
+                (sum, c) => sum + c.orders.length,
+                0
+              ),
             })
           } else {
             set({ initialized: true })
@@ -117,17 +123,16 @@ export const useRegionalOrdersStore = create<RegionalOrdersStore>(
         await get().init()
       }
 
+      const cached = get().regionCache.get(regionId)
       const now = Date.now()
-      if (
-        state.regionId === regionId &&
-        state.expiresAt &&
-        state.expiresAt > now &&
-        state.status === 'ready'
-      ) {
+
+      if (cached && cached.expiresAt > now) {
+        set({ regionId, status: 'ready', error: null })
         logger.debug('Using cached orders for region', {
           module: MODULE,
           regionId,
-          expiresIn: state.expiresAt - now,
+          orderCount: cached.orders.length,
+          expiresIn: cached.expiresAt - now,
         })
         return
       }
@@ -167,13 +172,13 @@ export const useRegionalOrdersStore = create<RegionalOrdersStore>(
         const fetchedAt = Date.now()
         const expiresAt = result.expiresAt
 
+        const newCache = new Map(get().regionCache)
+        newCache.set(regionId, { orders, ordersByType, fetchedAt, expiresAt })
+
         set({
-          orders,
-          ordersByType,
+          regionCache: newCache,
           status: 'ready',
           progress: null,
-          fetchedAt,
-          expiresAt,
         })
 
         const stored: StoredRegionOrders = {
@@ -214,7 +219,10 @@ export const useRegionalOrdersStore = create<RegionalOrdersStore>(
     },
 
     getOrdersForType: (typeId: number) => {
-      return get().ordersByType.get(typeId) ?? []
+      const { regionId, regionCache } = get()
+      if (!regionId) return []
+      const cached = regionCache.get(regionId)
+      return cached?.ordersByType.get(typeId) ?? []
     },
 
     clear: async () => {
@@ -222,13 +230,10 @@ export const useRegionalOrdersStore = create<RegionalOrdersStore>(
       initPromise = null
       set({
         regionId: null,
-        orders: [],
-        ordersByType: new Map(),
+        regionCache: new Map(),
         status: 'idle',
         progress: null,
         error: null,
-        fetchedAt: null,
-        expiresAt: null,
         initialized: false,
       })
     },

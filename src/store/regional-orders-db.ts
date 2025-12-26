@@ -4,6 +4,7 @@ import type { ESIRegionOrder } from '@/api/endpoints/market'
 const DB_NAME = 'ecteveassets-regional-orders'
 const DB_VERSION = 1
 const STORE_ORDERS = 'orders'
+const MODULE = 'RegionalOrdersDB'
 
 export interface StoredRegionOrders {
   regionId: number
@@ -22,7 +23,7 @@ async function openDB(): Promise<IDBDatabase> {
 
     request.onerror = () => {
       logger.error('Failed to open regional orders DB', request.error, {
-        module: 'RegionalOrdersDB',
+        module: MODULE,
       })
       reject(request.error)
     }
@@ -41,7 +42,7 @@ async function openDB(): Promise<IDBDatabase> {
   })
 }
 
-export async function loadOrdersFromDB(): Promise<StoredRegionOrders | null> {
+export async function loadAllOrdersFromDB(): Promise<StoredRegionOrders[]> {
   const database = await openDB()
 
   return new Promise((resolve, reject) => {
@@ -50,8 +51,7 @@ export async function loadOrdersFromDB(): Promise<StoredRegionOrders | null> {
     const request = store.getAll()
 
     tx.oncomplete = () => {
-      const results = request.result as StoredRegionOrders[]
-      resolve(results.length > 0 ? results[0]! : null)
+      resolve(request.result as StoredRegionOrders[])
     }
 
     tx.onerror = () => reject(tx.error)
@@ -66,7 +66,6 @@ export async function saveOrdersToDB(
   return new Promise((resolve, reject) => {
     const tx = database.transaction([STORE_ORDERS], 'readwrite')
     const store = tx.objectStore(STORE_ORDERS)
-    store.clear()
     store.put(record)
     tx.oncomplete = () => resolve()
     tx.onerror = () => reject(tx.error)
