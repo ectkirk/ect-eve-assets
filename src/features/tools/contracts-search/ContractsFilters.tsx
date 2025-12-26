@@ -233,7 +233,7 @@ export function ContractsFilters({
           </div>
         )}
 
-        <div className="space-y-2 pt-1">
+        <div className="pt-1">
           <label className="flex cursor-pointer items-center gap-2">
             <input
               type="checkbox"
@@ -244,15 +244,6 @@ export function ContractsFilters({
               }
             />
             <span className="text-sm text-content">Exclude multiple items</span>
-          </label>
-          <label className="flex cursor-pointer items-center gap-2">
-            <input
-              type="checkbox"
-              className={checkboxClass}
-              checked={filters.exactMatch}
-              onChange={(e) => updateFilter('exactMatch', e.target.checked)}
-            />
-            <span className="text-sm text-content">Exact type match</span>
           </label>
         </div>
 

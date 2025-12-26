@@ -13,11 +13,58 @@ import { DEFAULT_FILTERS } from './types'
 import type { ContractSearchFilters, SearchContract } from './types'
 import { resolveNames } from '@/api/endpoints/universe'
 
+const issuerNameCache = new Map<number, string>()
+
+interface CachedResponse {
+  contracts: SearchContract[]
+  total: number
+  totalPages: number
+  timestamp: number
+}
+
+const RESPONSE_CACHE_TTL_MS = 2 * 60 * 1000
+const responseCache = new Map<string, CachedResponse>()
+
+function getResponseCacheKey(params: ContractSearchParams): string {
+  return JSON.stringify(params)
+}
+
+function getCachedResponse(key: string): CachedResponse | null {
+  const entry = responseCache.get(key)
+  if (!entry) return null
+  if (Date.now() - entry.timestamp > RESPONSE_CACHE_TTL_MS) {
+    responseCache.delete(key)
+    return null
+  }
+  return entry
+}
+
+function cacheResponse(
+  key: string,
+  contracts: SearchContract[],
+  total: number,
+  totalPages: number
+): void {
+  if (responseCache.size >= 20) {
+    const oldest = [...responseCache.entries()].sort(
+      (a, b) => a[1].timestamp - b[1].timestamp
+    )[0]
+    if (oldest) responseCache.delete(oldest[0])
+  }
+  responseCache.set(key, {
+    contracts,
+    total,
+    totalPages,
+    timestamp: Date.now(),
+  })
+}
+
 function toDisplayContract(sc: SearchContract): DisplayContract {
+  const topItems = sc.topItems ?? []
   const topItemName =
-    sc.topItems.length > 1
+    topItems.length > 1
       ? '[Multiple Items]'
-      : (sc.topItems[0]?.typeName ?? '[Empty]')
+      : (topItems[0]?.typeName ?? '[Empty]')
 
   return {
     contractId: sc.contractId,
@@ -123,34 +170,67 @@ export function ContractsSearchPanel() {
       currentFilters: ContractSearchFilters,
       currentSort: SortPreset
     ) => {
+      const params = filtersToApiParams(currentFilters, pageNum, currentSort)
+      const cacheKey = getResponseCacheKey(params)
+      const cached = getCachedResponse(cacheKey)
+
+      if (cached) {
+        setResults(cached.contracts)
+        setTotal(cached.total)
+        setTotalPages(cached.totalPages)
+        setPage(pageNum)
+        return
+      }
+
       setIsLoading(true)
       setError(null)
       try {
-        const params = filtersToApiParams(currentFilters, pageNum, currentSort)
         const response = await window.electronAPI!.refContractsSearch(params)
+
         if (response.error) {
           setError(response.error)
           setResults([])
           setTotal(0)
           setTotalPages(0)
-        } else {
-          const contracts = response.contracts ?? []
-          const characterIds = [
-            ...new Set(contracts.map((c) => c.issuerCharacterId)),
-          ]
-          const names = await resolveNames(characterIds)
-
-          const contractsWithNames: SearchContract[] = contracts.map((c) => ({
-            ...c,
-            issuerId: c.issuerCharacterId,
-            issuerName: names.get(c.issuerCharacterId)?.name ?? '',
-          }))
-
-          setResults(contractsWithNames)
-          setTotal(response.total ?? 0)
-          setTotalPages(response.totalPages ?? 0)
-          setPage(pageNum)
+          return
         }
+
+        if (!Array.isArray(response.contracts)) {
+          setError('Invalid response from server')
+          setResults([])
+          setTotal(0)
+          setTotalPages(0)
+          return
+        }
+
+        const contracts = response.contracts
+        const uncachedIds = contracts
+          .map((c) => c.issuerCharacterId)
+          .filter((id) => !issuerNameCache.has(id))
+
+        if (uncachedIds.length > 0) {
+          const uniqueIds = [...new Set(uncachedIds)]
+          const names = await resolveNames(uniqueIds)
+          for (const [id, info] of names) {
+            issuerNameCache.set(id, info.name)
+          }
+        }
+
+        const contractsWithNames: SearchContract[] = contracts.map((c) => ({
+          ...c,
+          topItems: c.topItems ?? [],
+          issuerId: c.issuerCharacterId,
+          issuerName: issuerNameCache.get(c.issuerCharacterId) ?? '',
+        }))
+
+        const totalVal = response.total ?? 0
+        const totalPagesVal = response.totalPages ?? 0
+
+        cacheResponse(cacheKey, contractsWithNames, totalVal, totalPagesVal)
+        setResults(contractsWithNames)
+        setTotal(totalVal)
+        setTotalPages(totalPagesVal)
+        setPage(pageNum)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Search failed')
         setResults([])

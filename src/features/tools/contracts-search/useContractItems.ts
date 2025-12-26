@@ -18,7 +18,35 @@ interface ESIContractItem {
   is_blueprint_copy?: boolean
 }
 
-const itemsCache = new Map<number, ContractItem[]>()
+interface CacheEntry {
+  items: ContractItem[]
+  timestamp: number
+}
+
+const CACHE_TTL_MS = 5 * 60 * 1000
+const MAX_CACHE_SIZE = 100
+
+const itemsCache = new Map<number, CacheEntry>()
+
+function getCached(contractId: number): ContractItem[] | null {
+  const entry = itemsCache.get(contractId)
+  if (!entry) return null
+  if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
+    itemsCache.delete(contractId)
+    return null
+  }
+  return entry.items
+}
+
+function setCache(contractId: number, items: ContractItem[]): void {
+  if (itemsCache.size >= MAX_CACHE_SIZE) {
+    const oldest = [...itemsCache.entries()].sort(
+      (a, b) => a[1].timestamp - b[1].timestamp
+    )[0]
+    if (oldest) itemsCache.delete(oldest[0])
+  }
+  itemsCache.set(contractId, { items, timestamp: Date.now() })
+}
 
 export function useContractItems() {
   const [items, setItems] = useState<ContractItem[] | null>(null)
@@ -26,9 +54,10 @@ export function useContractItems() {
   const [error, setError] = useState<string | null>(null)
 
   const fetchItems = useCallback(async (contractId: number) => {
-    if (itemsCache.has(contractId)) {
-      setItems(itemsCache.get(contractId)!)
-      return itemsCache.get(contractId)!
+    const cached = getCached(contractId)
+    if (cached) {
+      setItems(cached)
+      return cached
     }
 
     setLoading(true)
@@ -72,7 +101,7 @@ export function useContractItems() {
         return bPrice - aPrice
       })
 
-      itemsCache.set(contractId, resolved)
+      setCache(contractId, resolved)
       setItems(resolved)
       return resolved
     } catch (err) {

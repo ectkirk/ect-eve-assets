@@ -19,7 +19,6 @@ export interface ContractSearchFilters {
   categoryId: number | null
   groupId: number | null
   excludeMultiple: boolean
-  exactMatch: boolean
   priceMin: string
   priceMax: string
   securityHigh: boolean
@@ -82,7 +81,6 @@ export const DEFAULT_FILTERS: ContractSearchFilters = {
   categoryId: null,
   groupId: null,
   excludeMultiple: false,
-  exactMatch: false,
   priceMin: '',
   priceMax: '',
   securityHigh: true,
