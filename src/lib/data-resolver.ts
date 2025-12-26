@@ -16,7 +16,6 @@ import {
   hasStructure,
   getStructure,
   saveStructures,
-  notifyCacheListeners,
   type CachedStructure,
 } from '@/store/reference-cache'
 import { resolveTypes, resolveLocations } from '@/api/ref-client'
@@ -475,7 +474,6 @@ export async function triggerResolution(): Promise<void> {
       }
     } finally {
       resolutionPending = false
-      notifyCacheListeners()
     }
   }, 50)
 }

@@ -2,6 +2,7 @@ import { useMemo, useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { useResolvedAssets } from '@/hooks/useResolvedAssets'
 import { useDivisionsStore } from '@/store/divisions-store'
+import { useReferenceCacheStore } from '@/store/reference-cache'
 import { TreeTable, useTreeState } from '@/components/tree'
 import {
   buildTree,
@@ -25,9 +26,9 @@ export function TreeTab({ mode }: TreeTabProps) {
     hasData,
     hasError,
     errorMessage,
-    cacheVersion,
     updateProgress,
   } = useResolvedAssets()
+  const types = useReferenceCacheStore((s) => s.types)
 
   const [categoryFilter, setCategoryFilterValue] = useState('')
   const [assetTypeFilter, setAssetTypeFilterValue] = useState('')
@@ -77,14 +78,14 @@ export function TreeTab({ mode }: TreeTabProps) {
   }, [mode, assetTypeFilter])
 
   const unfilteredNodes = useMemo(() => {
-    void cacheVersion
+    void types
     if (selectedResolvedAssets.length === 0) return []
 
     return buildTree(selectedResolvedAssets, {
       mode: effectiveMode,
       hangarDivisionNames,
     })
-  }, [selectedResolvedAssets, cacheVersion, effectiveMode, hangarDivisionNames])
+  }, [selectedResolvedAssets, types, effectiveMode, hangarDivisionNames])
 
   const categories = useMemo(
     () => getTreeCategories(unfilteredNodes),

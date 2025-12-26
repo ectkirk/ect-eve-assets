@@ -7,7 +7,6 @@ import {
   isReferenceDataLoaded,
   isAllTypesLoaded,
   setAllTypesLoaded,
-  notifyCacheListeners,
   saveTypes,
   type CachedType,
 } from '@/store/reference-cache'
@@ -230,7 +229,6 @@ async function loadAllTypes(onProgress?: ReferenceDataProgress): Promise<void> {
   } while (cursor !== undefined)
 
   setAllTypesLoaded(true)
-  notifyCacheListeners()
 
   const duration = Math.round(performance.now() - start)
   logger.info('All types loaded', {

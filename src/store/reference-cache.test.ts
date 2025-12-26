@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, vi } from 'vitest'
+import { describe, it, expect, beforeAll } from 'vitest'
 import {
   CategoryIds,
   LocationFlags,
@@ -14,7 +14,7 @@ import {
   saveTypes,
   saveStructures,
   saveLocations,
-  subscribe,
+  useReferenceCacheStore,
 } from './reference-cache'
 
 describe('CategoryIds', () => {
@@ -170,11 +170,18 @@ describe('Reference Cache', () => {
     })
   })
 
-  describe('subscribe', () => {
-    it('notifies listeners on save', async () => {
-      const listener = vi.fn()
-      const unsubscribe = subscribe(listener)
+  describe('zustand store', () => {
+    it('exports useReferenceCacheStore hook', () => {
+      expect(useReferenceCacheStore).toBeDefined()
+    })
 
+    it('store has types Map', () => {
+      const state = useReferenceCacheStore.getState()
+      expect(state.types).toBeInstanceOf(Map)
+    })
+
+    it('store updates trigger state changes', async () => {
+      const initialTypes = useReferenceCacheStore.getState().types
       await saveTypes([
         {
           id: 35,
@@ -186,29 +193,9 @@ describe('Reference Cache', () => {
           volume: 0.01,
         },
       ])
-
-      expect(listener).toHaveBeenCalled()
-      unsubscribe()
-    })
-
-    it('unsubscribe stops notifications', async () => {
-      const listener = vi.fn()
-      const unsubscribe = subscribe(listener)
-      unsubscribe()
-
-      await saveTypes([
-        {
-          id: 36,
-          name: 'Mexallon',
-          groupId: 18,
-          groupName: 'Mineral',
-          categoryId: 4,
-          categoryName: 'Material',
-          volume: 0.01,
-        },
-      ])
-
-      expect(listener).not.toHaveBeenCalled()
+      const newTypes = useReferenceCacheStore.getState().types
+      expect(newTypes).not.toBe(initialTypes)
+      expect(newTypes.get(35)?.name).toBe('Pyerite')
     })
   })
 })

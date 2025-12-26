@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { ChevronRight, ChevronDown, Truck } from 'lucide-react'
 import { useTabControls } from '@/context'
-import { useColumnSettings, useCacheVersion, type ColumnConfig } from '@/hooks'
+import { useColumnSettings, type ColumnConfig } from '@/hooks'
+import { useReferenceCacheStore } from '@/store/reference-cache'
 import { useAuthStore, ownerKey, findOwnerByKey } from '@/store/auth-store'
 import {
   useContractsStore,
@@ -102,7 +103,9 @@ export function ContractsTab() {
     init()
   }, [init])
 
-  const cacheVersion = useCacheVersion()
+  const types = useReferenceCacheStore((s) => s.types)
+  const structures = useReferenceCacheStore((s) => s.structures)
+  const names = useReferenceCacheStore((s) => s.names)
 
   const [expandedDirections, setExpandedDirections] = useState<Set<string>>(
     new Set(['in', 'out'])
@@ -143,7 +146,9 @@ export function ContractsTab() {
   )
 
   const { directionGroups, courierGroup } = useMemo(() => {
-    void cacheVersion
+    void types
+    void structures
+    void names
     void priceVersion
 
     const filteredContractsByOwner = contractsByOwner.filter(({ owner }) =>
@@ -255,7 +260,9 @@ export function ContractsTab() {
     }
   }, [
     contractsByOwner,
-    cacheVersion,
+    types,
+    structures,
+    names,
     owners,
     priceVersion,
     search,

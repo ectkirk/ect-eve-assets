@@ -14,6 +14,7 @@ import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { useContractsStore } from '@/store/contracts-store'
 import { useIndustryJobsStore } from '@/store/industry-jobs-store'
 import { useAssetSettings } from '@/store/asset-settings-store'
+import { useReferenceCacheStore } from '@/store/reference-cache'
 
 export interface ResolvedAssetsResult {
   resolvedAssets: ResolvedAsset[]
@@ -24,12 +25,13 @@ export interface ResolvedAssetsResult {
   hasData: boolean
   hasError: boolean
   errorMessage: string | null
-  cacheVersion: number
   updateProgress: { current: number; total: number } | null
 }
 
 export function useResolvedAssets(): ResolvedAssetsResult {
   const assetData = useAssetData()
+  const types = useReferenceCacheStore((s) => s.types)
+  const structures = useReferenceCacheStore((s) => s.structures)
   const starbasesByOwner = useStarbasesStore((s) => s.dataByOwner)
   const structuresByOwner = useStructuresStore((s) => s.dataByOwner)
   const ordersById = useMarketOrdersStore((s) => s.itemsById)
@@ -72,7 +74,8 @@ export function useResolvedAssets(): ResolvedAssetsResult {
 
   const resolvedAssets = useMemo(() => {
     void assetData.priceVersion
-    void assetData.cacheVersion
+    void types
+    void structures
 
     let assets =
       assetData.assetsByOwner.length > 0
@@ -157,7 +160,8 @@ export function useResolvedAssets(): ResolvedAssetsResult {
   }, [
     assetData.assetsByOwner,
     assetData.priceVersion,
-    assetData.cacheVersion,
+    types,
+    structures,
     assetData.assetNames,
     ownedStructureIds,
     starbaseMoonIds,
@@ -220,7 +224,6 @@ export function useResolvedAssets(): ResolvedAssetsResult {
     hasData: assetData.hasData,
     hasError: assetData.hasError,
     errorMessage: assetData.errorMessage,
-    cacheVersion: assetData.cacheVersion,
     updateProgress: assetData.updateProgress,
   }
 }

@@ -18,7 +18,11 @@ import {
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { Loader2 } from 'lucide-react'
 import { isAbyssalTypeId, getMutamarketUrl } from '@/api/mutamarket-client'
-import { CategoryIds, getType } from '@/store/reference-cache'
+import {
+  CategoryIds,
+  getType,
+  useReferenceCacheStore,
+} from '@/store/reference-cache'
 import { usePriceStore } from '@/store/price-store'
 import { useResolvedAssets } from '@/hooks/useResolvedAssets'
 import { useRowSelection, useBuybackSelection } from '@/hooks'
@@ -54,9 +58,9 @@ export function AssetsTab() {
     hasData,
     hasError,
     errorMessage,
-    cacheVersion,
     updateProgress,
   } = useResolvedAssets()
+  const types = useReferenceCacheStore((s) => s.types)
 
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'totalValue', desc: true },
@@ -83,7 +87,7 @@ export function AssetsTab() {
   const blueprintsByItemId = useBlueprintsStore((s) => s.blueprintsByItemId)
 
   const { data, categories } = useMemo(() => {
-    void cacheVersion
+    void types
 
     const aggregated = new Map<string, AssetRow>()
     const cats = new Set<string>()
@@ -132,7 +136,7 @@ export function AssetsTab() {
       data: Array.from(aggregated.values()),
       categories: Array.from(cats).sort(),
     }
-  }, [selectedResolvedAssets, cacheVersion, blueprintsByItemId])
+  }, [selectedResolvedAssets, types, blueprintsByItemId])
 
   const { filteredData, filteredTotalValue, sourceCount } = useMemo(() => {
     const searchLower = search.toLowerCase()

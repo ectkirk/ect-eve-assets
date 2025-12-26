@@ -13,7 +13,6 @@ import {
   setUniverseDataLoaded,
   isRefStructuresLoaded,
   setRefStructuresLoaded,
-  notifyCacheListeners,
   type CachedType,
   type CachedLocation,
   type CachedRegion,
@@ -52,7 +51,6 @@ export async function loadUniverseData(
       await Promise.all([loadAllRegions(), loadAllSystems(), loadAllStations()])
 
       setUniverseDataLoaded(true)
-      notifyCacheListeners()
 
       const duration = Math.round(performance.now() - start)
       logger.info('Universe data loaded', { module: 'RefAPI', duration })
@@ -264,7 +262,6 @@ export async function loadRefStructures(
 
     await setRefStructures(allStructures)
     setRefStructuresLoaded(true)
-    notifyCacheListeners()
 
     const duration = Math.round(performance.now() - start)
     logger.info('RefStructures loaded', {

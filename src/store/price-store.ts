@@ -185,13 +185,14 @@ type StoreSet = (
 ) => void
 type StoreGet = () => PriceStore
 
-async function processAndStorePrices(
+async function storeAndPersistPrices(
   fetched: Map<number, number>,
   abyssalIdSet: Set<number>,
   set: StoreSet,
   get: StoreGet
-): Promise<void> {
-  if (fetched.size === 0) return
+): Promise<Map<number, number>> {
+  const stored = new Map<number, number>()
+  if (fetched.size === 0) return stored
 
   const jitaPriceUpdates: Array<{ id: number; jitaPrice: number }> = []
   const abyssalUpdates: Array<{ itemId: number; price: number }> = []
@@ -201,6 +202,7 @@ async function processAndStorePrices(
       abyssalUpdates.push({ itemId: id, price })
     } else {
       jitaPriceUpdates.push({ id, jitaPrice: price })
+      stored.set(id, price)
     }
   }
 
@@ -216,8 +218,13 @@ async function processAndStorePrices(
       return { abyssalPrices: merged }
     })
 
-    // Only persist records that were actually stored (the set() above may skip
-    // some based on the price > 0 || existing condition)
+    for (const { itemId } of abyssalUpdates) {
+      const actualPrice = get().abyssalPrices.get(itemId)
+      if (actualPrice !== undefined && actualPrice > 0) {
+        stored.set(itemId, actualPrice)
+      }
+    }
+
     const recordsToSave = abyssalUpdates.filter(({ itemId, price }) => {
       return get().abyssalPrices.get(itemId) === price
     })
@@ -230,6 +237,8 @@ async function processAndStorePrices(
   if (jitaPriceUpdates.length > 0) {
     await updateTypePrices(jitaPriceUpdates)
   }
+
+  return stored
 }
 
 const JITA_REFRESH_INTERVAL_MS = 60 * 60 * 1000
@@ -400,46 +409,14 @@ export const usePriceStore = create<PriceStore>((set, get) => ({
       missingAbyssalIds.length > 0 ? missingAbyssalIds : undefined
     )
 
-    const jitaPriceUpdates: Array<{ id: number; jitaPrice: number }> = []
-    const abyssalUpdates: Array<{ itemId: number; price: number }> = []
-
-    for (const [id, price] of fetched) {
-      if (missingAbyssalSet.has(id)) {
-        abyssalUpdates.push({ itemId: id, price })
-        if (price > 0) {
-          results.set(id, price)
-        }
-      } else {
-        jitaPriceUpdates.push({ id, jitaPrice: price })
-        results.set(id, price)
-      }
-    }
-
-    if (abyssalUpdates.length > 0) {
-      set((state) => {
-        const merged = new Map(state.abyssalPrices)
-        for (const { itemId, price } of abyssalUpdates) {
-          const existing = merged.get(itemId)
-          if (price > 0 || existing === undefined || existing <= 0) {
-            merged.set(itemId, price)
-          }
-        }
-        return { abyssalPrices: merged }
-      })
-
-      // Only persist records that were actually stored (the set() above may skip
-      // some based on the price > 0 || existing condition)
-      const recordsToSave = abyssalUpdates.filter(({ itemId, price }) => {
-        return get().abyssalPrices.get(itemId) === price
-      })
-
-      if (recordsToSave.length > 0) {
-        await saveAbyssalPricesToDB(recordsToSave)
-      }
-    }
-
-    if (jitaPriceUpdates.length > 0) {
-      await updateTypePrices(jitaPriceUpdates)
+    const stored = await storeAndPersistPrices(
+      fetched,
+      missingAbyssalSet,
+      set,
+      get
+    )
+    for (const [id, price] of stored) {
+      results.set(id, price)
     }
 
     if (fetched.size > 0) {
@@ -497,7 +474,7 @@ export const usePriceStore = create<PriceStore>((set, get) => ({
       const abyssalIdSet = hasAbyssalIds
         ? new Set(abyssalItemIds)
         : new Set<number>()
-      await processAndStorePrices(fetched, abyssalIdSet, set, get)
+      await storeAndPersistPrices(fetched, abyssalIdSet, set, get)
 
       setLastJitaRefreshAt(Date.now())
 

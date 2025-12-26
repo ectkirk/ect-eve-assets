@@ -1,3 +1,4 @@
+import { create } from 'zustand'
 import { logger } from '@/lib/logger'
 import { loadStore, writeBatch, clearStore, deleteDatabase } from './db'
 import type {
@@ -28,469 +29,676 @@ export type {
 
 export { CategoryIds, LocationFlags } from './constants'
 
-let categoriesCache = new Map<number, CachedCategory>()
-let groupsCache = new Map<number, CachedGroup>()
-let typesCache = new Map<number, CachedType>()
-let regionsCache = new Map<number, CachedRegion>()
-let systemsCache = new Map<number, CachedSystem>()
-let stationsCache = new Map<number, CachedStation>()
-let refStructuresCache = new Map<number, CachedRefStructure>()
-let structuresCache = new Map<number, CachedStructure>()
-let locationsCache = new Map<number, CachedLocation>()
-let namesCache = new Map<number, CachedName>()
-let initialized = false
-let referenceDataLoaded = false
-let allTypesLoaded = false
-let universeDataLoaded = false
-let refStructuresLoaded = false
-
 const ALL_TYPES_LOADED_KEY = 'ecteveassets-all-types-loaded'
 const UNIVERSE_LOADED_KEY = 'ecteveassets-universe-loaded'
 const REF_STRUCTURES_LOADED_KEY = 'ecteveassets-ref-structures-loaded'
 const TYPES_SCHEMA_VERSION_KEY = 'ecteveassets-types-schema-version'
-
-// Bump this when the API adds new fields to types that require re-download
-// v1: initial
-// v2: added productId, basePrice for blueprints
 const TYPES_SCHEMA_VERSION = 2
 
-const listeners = new Set<() => void>()
+interface ReferenceCacheState {
+  types: Map<number, CachedType>
+  categories: Map<number, CachedCategory>
+  groups: Map<number, CachedGroup>
+  regions: Map<number, CachedRegion>
+  systems: Map<number, CachedSystem>
+  stations: Map<number, CachedStation>
+  refStructures: Map<number, CachedRefStructure>
+  structures: Map<number, CachedStructure>
+  locations: Map<number, CachedLocation>
+  names: Map<number, CachedName>
 
-export function subscribe(listener: () => void): () => void {
-  listeners.add(listener)
-  return () => listeners.delete(listener)
+  initialized: boolean
+  referenceDataLoaded: boolean
+  allTypesLoaded: boolean
+  universeDataLoaded: boolean
+  refStructuresLoaded: boolean
 }
 
-let notificationPending = false
+interface ReferenceCacheActions {
+  init: () => Promise<void>
 
-function notifyListeners(): void {
-  if (notificationPending) return
-  notificationPending = true
-  queueMicrotask(() => {
-    notificationPending = false
-    listeners.forEach((fn) => fn())
-  })
+  saveTypes: (types: CachedType[]) => Promise<void>
+  setCategories: (categories: CachedCategory[]) => Promise<void>
+  setGroups: (groups: CachedGroup[]) => Promise<void>
+  setRegions: (regions: CachedRegion[]) => Promise<void>
+  setSystems: (systems: CachedSystem[]) => Promise<void>
+  setStations: (stations: CachedStation[]) => Promise<void>
+  setRefStructures: (structures: CachedRefStructure[]) => Promise<void>
+  saveStructures: (structures: CachedStructure[]) => Promise<void>
+  saveLocations: (locations: CachedLocation[]) => Promise<void>
+  saveNames: (names: CachedName[]) => Promise<void>
+
+  updateTypePrices: (
+    prices: Array<{ id: number; jitaPrice: number }>
+  ) => Promise<void>
+  updateTypeEsiPrices: (
+    prices: Array<{
+      id: number
+      esiAveragePrice: number | null
+      esiAdjustedPrice: number | null
+    }>
+  ) => Promise<void>
+  clearJitaPrices: () => void
+  clearEsiPrices: () => void
+  clearTypePrices: () => void
+
+  setAllTypesLoaded: (loaded: boolean) => void
+  setUniverseDataLoaded: (loaded: boolean) => void
+  setRefStructuresLoaded: (loaded: boolean) => void
+
+  clearTypesCache: () => Promise<void>
+  clearLocationsCache: () => Promise<void>
+  clearStructuresCache: () => Promise<void>
+  clearNamesCache: () => Promise<void>
+  clearCategoriesCache: () => Promise<void>
+  clearGroupsCache: () => Promise<void>
+  clearUniverseCache: () => Promise<void>
+  clearCoreReferenceCache: () => Promise<void>
+  clearReferenceCache: () => Promise<void>
 }
 
-export { notifyListeners as notifyCacheListeners }
+type ReferenceCacheStore = ReferenceCacheState & ReferenceCacheActions
 
-export async function initCache(): Promise<void> {
-  if (initialized) return
-
+function setLocalStorage(key: string, value: string | null): void {
   try {
-    const [
-      types,
-      regions,
-      systems,
-      stations,
-      refStructures,
-      structures,
-      locations,
-      names,
-      categories,
-      groups,
-    ] = await Promise.all([
-      loadStore<CachedType>('types'),
-      loadStore<CachedRegion>('regions'),
-      loadStore<CachedSystem>('systems'),
-      loadStore<CachedStation>('stations'),
-      loadStore<CachedRefStructure>('refStructures'),
-      loadStore<CachedStructure>('structures'),
-      loadStore<CachedLocation>('locations'),
-      loadStore<CachedName>('names'),
-      loadStore<CachedCategory>('categories'),
-      loadStore<CachedGroup>('groups'),
-    ])
-
-    typesCache = types
-
-    // Check if types schema version changed (API added new fields)
-    if (types.size > 0) {
-      try {
-        const storedVersion = localStorage.getItem(TYPES_SCHEMA_VERSION_KEY)
-        if (storedVersion !== String(TYPES_SCHEMA_VERSION)) {
-          logger.info('Types schema version changed, clearing cache', {
-            module: 'ReferenceCache',
-            oldVersion: storedVersion,
-            newVersion: TYPES_SCHEMA_VERSION,
-          })
-          typesCache = new Map()
-          await clearStore('types')
-          localStorage.removeItem(ALL_TYPES_LOADED_KEY)
-          localStorage.removeItem(TYPES_SCHEMA_VERSION_KEY)
-        }
-      } catch (err) {
-        logger.warn('localStorage not available for schema version check', {
-          module: 'ReferenceCache',
-          error: err instanceof Error ? err.message : String(err),
-        })
-      }
+    if (value === null) {
+      localStorage.removeItem(key)
+    } else {
+      localStorage.setItem(key, value)
     }
-
-    regionsCache = regions
-    systemsCache = systems
-    stationsCache = stations
-    refStructuresCache = refStructures
-    structuresCache = structures
-    locationsCache = locations
-    namesCache = names
-    categoriesCache = categories
-    groupsCache = groups
-    initialized = true
-    referenceDataLoaded = categoriesCache.size > 0 && groupsCache.size > 0
-
-    try {
-      allTypesLoaded =
-        localStorage.getItem(ALL_TYPES_LOADED_KEY) === 'true' &&
-        typesCache.size > 0
-      universeDataLoaded =
-        localStorage.getItem(UNIVERSE_LOADED_KEY) === 'true' &&
-        regionsCache.size > 0 &&
-        systemsCache.size > 0 &&
-        stationsCache.size > 0
-      refStructuresLoaded =
-        localStorage.getItem(REF_STRUCTURES_LOADED_KEY) === 'true' &&
-        refStructuresCache.size > 0
-    } catch (err) {
-      logger.warn('localStorage not available for loading flags', {
-        module: 'ReferenceCache',
-        error: err instanceof Error ? err.message : String(err),
-      })
-    }
-
-    logger.info('Reference cache initialized', {
-      module: 'ReferenceCache',
-      types: typesCache.size,
-      allTypesLoaded,
-      regions: regionsCache.size,
-      systems: systemsCache.size,
-      stations: stationsCache.size,
-      refStructures: refStructuresCache.size,
-      refStructuresLoaded,
-      universeDataLoaded,
-      structures: structuresCache.size,
-      locations: locationsCache.size,
-      names: namesCache.size,
-      categories: categoriesCache.size,
-      groups: groupsCache.size,
-    })
   } catch (err) {
-    logger.error('Failed to initialize cache', err, {
+    logger.warn('localStorage not available', {
       module: 'ReferenceCache',
+      key,
+      error: err instanceof Error ? err.message : String(err),
     })
-    initialized = true
   }
 }
 
+function getLocalStorage(key: string): string | null {
+  try {
+    return localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+let initPromise: Promise<void> | null = null
+
+export const useReferenceCacheStore = create<ReferenceCacheStore>(
+  (set, get) => ({
+    types: new Map(),
+    categories: new Map(),
+    groups: new Map(),
+    regions: new Map(),
+    systems: new Map(),
+    stations: new Map(),
+    refStructures: new Map(),
+    structures: new Map(),
+    locations: new Map(),
+    names: new Map(),
+
+    initialized: false,
+    referenceDataLoaded: false,
+    allTypesLoaded: false,
+    universeDataLoaded: false,
+    refStructuresLoaded: false,
+
+    init: async () => {
+      if (get().initialized) return
+      if (initPromise) return initPromise
+
+      initPromise = (async () => {
+        try {
+          const [
+            types,
+            regions,
+            systems,
+            stations,
+            refStructures,
+            structures,
+            locations,
+            names,
+            categories,
+            groups,
+          ] = await Promise.all([
+            loadStore<CachedType>('types'),
+            loadStore<CachedRegion>('regions'),
+            loadStore<CachedSystem>('systems'),
+            loadStore<CachedStation>('stations'),
+            loadStore<CachedRefStructure>('refStructures'),
+            loadStore<CachedStructure>('structures'),
+            loadStore<CachedLocation>('locations'),
+            loadStore<CachedName>('names'),
+            loadStore<CachedCategory>('categories'),
+            loadStore<CachedGroup>('groups'),
+          ])
+
+          let finalTypes = types
+          if (types.size > 0) {
+            const storedVersion = getLocalStorage(TYPES_SCHEMA_VERSION_KEY)
+            if (storedVersion !== String(TYPES_SCHEMA_VERSION)) {
+              logger.info('Types schema version changed, clearing cache', {
+                module: 'ReferenceCache',
+                oldVersion: storedVersion,
+                newVersion: TYPES_SCHEMA_VERSION,
+              })
+              finalTypes = new Map()
+              await clearStore('types')
+              setLocalStorage(ALL_TYPES_LOADED_KEY, null)
+              setLocalStorage(TYPES_SCHEMA_VERSION_KEY, null)
+            }
+          }
+
+          const allTypesLoaded =
+            getLocalStorage(ALL_TYPES_LOADED_KEY) === 'true' &&
+            finalTypes.size > 0
+          const universeDataLoaded =
+            getLocalStorage(UNIVERSE_LOADED_KEY) === 'true' &&
+            regions.size > 0 &&
+            systems.size > 0 &&
+            stations.size > 0
+          const refStructuresLoaded =
+            getLocalStorage(REF_STRUCTURES_LOADED_KEY) === 'true' &&
+            refStructures.size > 0
+
+          set({
+            types: finalTypes,
+            regions,
+            systems,
+            stations,
+            refStructures,
+            structures,
+            locations,
+            names,
+            categories,
+            groups,
+            initialized: true,
+            referenceDataLoaded: categories.size > 0 && groups.size > 0,
+            allTypesLoaded,
+            universeDataLoaded,
+            refStructuresLoaded,
+          })
+
+          logger.info('Reference cache initialized', {
+            module: 'ReferenceCache',
+            types: finalTypes.size,
+            allTypesLoaded,
+            regions: regions.size,
+            systems: systems.size,
+            stations: stations.size,
+            refStructures: refStructures.size,
+            refStructuresLoaded,
+            universeDataLoaded,
+            structures: structures.size,
+            locations: locations.size,
+            names: names.size,
+            categories: categories.size,
+            groups: groups.size,
+          })
+        } catch (err) {
+          logger.error('Failed to initialize cache', err, {
+            module: 'ReferenceCache',
+          })
+          set({ initialized: true })
+        }
+      })()
+
+      return initPromise
+    },
+
+    saveTypes: async (newTypes) => {
+      if (newTypes.length === 0) return
+      const current = get().types
+      const updated = new Map(current)
+      for (const type of newTypes) updated.set(type.id, type)
+
+      await writeBatch('types', newTypes, () => {
+        set({ types: updated })
+      })
+    },
+
+    setCategories: async (newCategories) => {
+      await writeBatch('categories', newCategories, () => {
+        set({ categories: new Map(newCategories.map((c) => [c.id, c])) })
+        logger.info('Categories saved', {
+          module: 'ReferenceCache',
+          count: newCategories.length,
+        })
+      })
+    },
+
+    setGroups: async (newGroups) => {
+      await writeBatch('groups', newGroups, () => {
+        set({
+          groups: new Map(newGroups.map((g) => [g.id, g])),
+          referenceDataLoaded: true,
+        })
+        logger.info('Groups saved', {
+          module: 'ReferenceCache',
+          count: newGroups.length,
+        })
+      })
+    },
+
+    setRegions: async (newRegions) => {
+      await writeBatch('regions', newRegions, () => {
+        set({ regions: new Map(newRegions.map((r) => [r.id, r])) })
+        logger.info('Regions saved', {
+          module: 'ReferenceCache',
+          count: newRegions.length,
+        })
+      })
+    },
+
+    setSystems: async (newSystems) => {
+      await writeBatch('systems', newSystems, () => {
+        set({ systems: new Map(newSystems.map((s) => [s.id, s])) })
+        logger.info('Systems saved', {
+          module: 'ReferenceCache',
+          count: newSystems.length,
+        })
+      })
+    },
+
+    setStations: async (newStations) => {
+      await writeBatch('stations', newStations, () => {
+        set({ stations: new Map(newStations.map((s) => [s.id, s])) })
+        logger.info('Stations saved', {
+          module: 'ReferenceCache',
+          count: newStations.length,
+        })
+      })
+    },
+
+    setRefStructures: async (newStructures) => {
+      await writeBatch('refStructures', newStructures, () => {
+        set({ refStructures: new Map(newStructures.map((s) => [s.id, s])) })
+        logger.info('RefStructures saved', {
+          module: 'ReferenceCache',
+          count: newStructures.length,
+        })
+      })
+    },
+
+    saveStructures: async (newStructures) => {
+      if (newStructures.length === 0) return
+      const current = get().structures
+      const updated = new Map(current)
+      for (const structure of newStructures)
+        updated.set(structure.id, structure)
+
+      await writeBatch('structures', newStructures, () => {
+        set({ structures: updated })
+      })
+    },
+
+    saveLocations: async (newLocations) => {
+      if (newLocations.length === 0) return
+      const current = get().locations
+      const updated = new Map(current)
+      for (const location of newLocations) updated.set(location.id, location)
+
+      await writeBatch('locations', newLocations, () => {
+        set({ locations: updated })
+      })
+    },
+
+    saveNames: async (newNames) => {
+      if (newNames.length === 0) return
+      const current = get().names
+      const updated = new Map(current)
+      for (const name of newNames) updated.set(name.id, name)
+
+      await writeBatch('names', newNames, () => {
+        set({ names: updated })
+      })
+    },
+
+    updateTypePrices: async (prices) => {
+      if (prices.length === 0) return
+      const current = get().types
+      const updated = new Map(current)
+      const toWrite: CachedType[] = []
+
+      for (const { id, jitaPrice } of prices) {
+        const type = current.get(id)
+        if (type) {
+          const newType = { ...type, jitaPrice }
+          updated.set(id, newType)
+          toWrite.push(newType)
+        }
+      }
+
+      if (toWrite.length > 0) {
+        await writeBatch('types', toWrite, () => {
+          set({ types: updated })
+        })
+      }
+    },
+
+    updateTypeEsiPrices: async (prices) => {
+      if (prices.length === 0) return
+      const current = get().types
+      const updated = new Map(current)
+      const toWrite: CachedType[] = []
+
+      for (const { id, esiAveragePrice, esiAdjustedPrice } of prices) {
+        const type = current.get(id)
+        if (type) {
+          const newType = {
+            ...type,
+            esiAveragePrice: esiAveragePrice ?? undefined,
+            esiAdjustedPrice: esiAdjustedPrice ?? undefined,
+          }
+          updated.set(id, newType)
+          toWrite.push(newType)
+        }
+      }
+
+      if (toWrite.length > 0) {
+        await writeBatch('types', toWrite, () => {
+          set({ types: updated })
+        })
+      }
+    },
+
+    clearJitaPrices: () => {
+      const current = get().types
+      const updated = new Map<number, CachedType>()
+      for (const [id, type] of current) {
+        if (type.jitaPrice !== undefined) {
+          updated.set(id, { ...type, jitaPrice: undefined })
+        } else {
+          updated.set(id, type)
+        }
+      }
+      set({ types: updated })
+    },
+
+    clearEsiPrices: () => {
+      const current = get().types
+      const updated = new Map<number, CachedType>()
+      for (const [id, type] of current) {
+        if (
+          type.esiAveragePrice !== undefined ||
+          type.esiAdjustedPrice !== undefined
+        ) {
+          updated.set(id, {
+            ...type,
+            esiAveragePrice: undefined,
+            esiAdjustedPrice: undefined,
+          })
+        } else {
+          updated.set(id, type)
+        }
+      }
+      set({ types: updated })
+    },
+
+    clearTypePrices: () => {
+      const current = get().types
+      const updated = new Map<number, CachedType>()
+      for (const [id, type] of current) {
+        if (
+          type.jitaPrice !== undefined ||
+          type.esiAveragePrice !== undefined ||
+          type.esiAdjustedPrice !== undefined
+        ) {
+          updated.set(id, {
+            ...type,
+            jitaPrice: undefined,
+            esiAveragePrice: undefined,
+            esiAdjustedPrice: undefined,
+          })
+        } else {
+          updated.set(id, type)
+        }
+      }
+      set({ types: updated })
+    },
+
+    setAllTypesLoaded: (loaded) => {
+      set({ allTypesLoaded: loaded })
+      if (loaded) {
+        setLocalStorage(ALL_TYPES_LOADED_KEY, 'true')
+        setLocalStorage(TYPES_SCHEMA_VERSION_KEY, String(TYPES_SCHEMA_VERSION))
+      } else {
+        setLocalStorage(ALL_TYPES_LOADED_KEY, null)
+        setLocalStorage(TYPES_SCHEMA_VERSION_KEY, null)
+      }
+    },
+
+    setUniverseDataLoaded: (loaded) => {
+      set({ universeDataLoaded: loaded })
+      setLocalStorage(UNIVERSE_LOADED_KEY, loaded ? 'true' : null)
+    },
+
+    setRefStructuresLoaded: (loaded) => {
+      set({ refStructuresLoaded: loaded })
+      setLocalStorage(REF_STRUCTURES_LOADED_KEY, loaded ? 'true' : null)
+    },
+
+    clearTypesCache: async () => {
+      logger.info('Clearing types cache', { module: 'ReferenceCache' })
+      get().setAllTypesLoaded(false)
+      await clearStore('types')
+      set({ types: new Map() })
+    },
+
+    clearLocationsCache: async () => {
+      logger.info('Clearing locations cache', { module: 'ReferenceCache' })
+      await clearStore('locations')
+      set({ locations: new Map() })
+    },
+
+    clearStructuresCache: async () => {
+      logger.info('Clearing structures cache', { module: 'ReferenceCache' })
+      await clearStore('structures')
+      set({ structures: new Map() })
+    },
+
+    clearNamesCache: async () => {
+      logger.info('Clearing names cache', { module: 'ReferenceCache' })
+      await clearStore('names')
+      set({ names: new Map() })
+    },
+
+    clearCategoriesCache: async () => {
+      logger.info('Clearing categories cache', { module: 'ReferenceCache' })
+      await clearStore('categories')
+      set({ categories: new Map() })
+    },
+
+    clearGroupsCache: async () => {
+      logger.info('Clearing groups cache', { module: 'ReferenceCache' })
+      await clearStore('groups')
+      set({ groups: new Map(), referenceDataLoaded: false })
+    },
+
+    clearUniverseCache: async () => {
+      logger.info('Clearing universe cache', { module: 'ReferenceCache' })
+      get().setUniverseDataLoaded(false)
+      get().setRefStructuresLoaded(false)
+      await Promise.all([
+        clearStore('regions'),
+        clearStore('systems'),
+        clearStore('stations'),
+        clearStore('refStructures'),
+      ])
+      set({
+        regions: new Map(),
+        systems: new Map(),
+        stations: new Map(),
+        refStructures: new Map(),
+      })
+    },
+
+    clearCoreReferenceCache: async () => {
+      logger.info('Clearing core reference cache', { module: 'ReferenceCache' })
+      get().setAllTypesLoaded(false)
+      await Promise.all([
+        clearStore('types'),
+        clearStore('categories'),
+        clearStore('groups'),
+      ])
+      set({
+        types: new Map(),
+        categories: new Map(),
+        groups: new Map(),
+        referenceDataLoaded: false,
+      })
+    },
+
+    clearReferenceCache: async () => {
+      logger.info('Clearing reference cache', { module: 'ReferenceCache' })
+      get().setAllTypesLoaded(false)
+      get().setUniverseDataLoaded(false)
+      get().setRefStructuresLoaded(false)
+      initPromise = null
+
+      await deleteDatabase()
+
+      set({
+        types: new Map(),
+        categories: new Map(),
+        groups: new Map(),
+        regions: new Map(),
+        systems: new Map(),
+        stations: new Map(),
+        refStructures: new Map(),
+        structures: new Map(),
+        locations: new Map(),
+        names: new Map(),
+        initialized: false,
+        referenceDataLoaded: false,
+      })
+    },
+  })
+)
+
+// Convenience getters for non-reactive contexts (event handlers, async code)
+// For reactive use in components, use useReferenceCacheStore selectors directly
+
 export function getType(id: number): CachedType | undefined {
-  return typesCache.get(id)
+  return useReferenceCacheStore.getState().types.get(id)
 }
 
 export function getTypeName(id: number): string {
-  return typesCache.get(id)?.name ?? `Unknown Type ${id}`
+  return (
+    useReferenceCacheStore.getState().types.get(id)?.name ??
+    `Unknown Type ${id}`
+  )
 }
 
 export function hasType(id: number): boolean {
-  return typesCache.has(id)
+  return useReferenceCacheStore.getState().types.has(id)
 }
 
 export function isTypePublished(id: number): boolean {
-  const type = typesCache.get(id)
-  if (!type) return false
-  return type.published === true
+  const type = useReferenceCacheStore.getState().types.get(id)
+  return type?.published === true
 }
 
 export function getTypeJitaPrice(id: number): number | undefined {
-  return typesCache.get(id)?.jitaPrice
+  return useReferenceCacheStore.getState().types.get(id)?.jitaPrice
 }
 
 export function getTypeEsiAveragePrice(id: number): number | undefined {
-  return typesCache.get(id)?.esiAveragePrice
+  return useReferenceCacheStore.getState().types.get(id)?.esiAveragePrice
 }
 
 export function getTypeEsiAdjustedPrice(id: number): number | undefined {
-  return typesCache.get(id)?.esiAdjustedPrice
+  return useReferenceCacheStore.getState().types.get(id)?.esiAdjustedPrice
 }
 
 export function getTypeBasePrice(id: number): number | undefined {
-  return typesCache.get(id)?.basePrice
+  return useReferenceCacheStore.getState().types.get(id)?.basePrice
 }
 
 export function getTypeProductId(id: number): number | undefined {
-  return typesCache.get(id)?.productId
+  return useReferenceCacheStore.getState().types.get(id)?.productId
 }
 
 export function isTypeBlueprint(id: number): boolean {
-  return typesCache.get(id)?.productId !== undefined
-}
-
-export async function updateTypePrices(
-  prices: Array<{ id: number; jitaPrice: number }>
-): Promise<void> {
-  if (prices.length === 0) return
-
-  const updates: CachedType[] = []
-  for (const { id, jitaPrice } of prices) {
-    const type = typesCache.get(id)
-    if (type) {
-      const updated = { ...type, jitaPrice }
-      typesCache.set(id, updated)
-      updates.push(updated)
-    }
-  }
-
-  if (updates.length > 0) {
-    await writeBatch('types', updates, () => {
-      notifyListeners()
-    })
-  }
-}
-
-export async function updateTypeEsiPrices(
-  prices: Array<{
-    id: number
-    esiAveragePrice: number | null
-    esiAdjustedPrice: number | null
-  }>
-): Promise<void> {
-  if (prices.length === 0) return
-
-  const updates: CachedType[] = []
-  for (const { id, esiAveragePrice, esiAdjustedPrice } of prices) {
-    const type = typesCache.get(id)
-    if (type) {
-      const updated = {
-        ...type,
-        esiAveragePrice: esiAveragePrice ?? undefined,
-        esiAdjustedPrice: esiAdjustedPrice ?? undefined,
-      }
-      typesCache.set(id, updated)
-      updates.push(updated)
-    }
-  }
-
-  if (updates.length > 0) {
-    await writeBatch('types', updates, () => {
-      notifyListeners()
-    })
-  }
-}
-
-type PriceField = 'jitaPrice' | 'esiAveragePrice' | 'esiAdjustedPrice'
-
-function clearPriceFields(fields: PriceField[]): void {
-  for (const [id, type] of typesCache) {
-    if (fields.some((f) => type[f] !== undefined)) {
-      const updated = { ...type }
-      for (const f of fields) updated[f] = undefined
-      typesCache.set(id, updated)
-    }
-  }
-  notifyListeners()
-}
-
-export function clearJitaPrices(): void {
-  clearPriceFields(['jitaPrice'])
-}
-
-export function clearEsiPrices(): void {
-  clearPriceFields(['esiAveragePrice', 'esiAdjustedPrice'])
-}
-
-export function clearTypePrices(): void {
-  clearPriceFields(['jitaPrice', 'esiAveragePrice', 'esiAdjustedPrice'])
+  return (
+    useReferenceCacheStore.getState().types.get(id)?.productId !== undefined
+  )
 }
 
 export function getCategory(id: number): CachedCategory | undefined {
-  return categoriesCache.get(id)
+  return useReferenceCacheStore.getState().categories.get(id)
 }
 
 export function getGroup(id: number): CachedGroup | undefined {
-  return groupsCache.get(id)
+  return useReferenceCacheStore.getState().groups.get(id)
 }
 
 export function isReferenceDataLoaded(): boolean {
-  return referenceDataLoaded
+  return useReferenceCacheStore.getState().referenceDataLoaded
 }
 
 export function isAllTypesLoaded(): boolean {
-  return allTypesLoaded
-}
-
-export function setAllTypesLoaded(loaded: boolean): void {
-  allTypesLoaded = loaded
-  try {
-    if (loaded) {
-      localStorage.setItem(ALL_TYPES_LOADED_KEY, 'true')
-      localStorage.setItem(
-        TYPES_SCHEMA_VERSION_KEY,
-        String(TYPES_SCHEMA_VERSION)
-      )
-    } else {
-      localStorage.removeItem(ALL_TYPES_LOADED_KEY)
-      localStorage.removeItem(TYPES_SCHEMA_VERSION_KEY)
-    }
-  } catch (err) {
-    logger.warn('localStorage not available for setAllTypesLoaded', {
-      module: 'ReferenceCache',
-      error: err instanceof Error ? err.message : String(err),
-    })
-  }
+  return useReferenceCacheStore.getState().allTypesLoaded
 }
 
 export function isUniverseDataLoaded(): boolean {
-  return universeDataLoaded
-}
-
-export function setUniverseDataLoaded(loaded: boolean): void {
-  universeDataLoaded = loaded
-  try {
-    if (loaded) {
-      localStorage.setItem(UNIVERSE_LOADED_KEY, 'true')
-    } else {
-      localStorage.removeItem(UNIVERSE_LOADED_KEY)
-    }
-  } catch (err) {
-    logger.warn('localStorage not available for setUniverseDataLoaded', {
-      module: 'ReferenceCache',
-      error: err instanceof Error ? err.message : String(err),
-    })
-  }
+  return useReferenceCacheStore.getState().universeDataLoaded
 }
 
 export function isRefStructuresLoaded(): boolean {
-  return refStructuresLoaded
-}
-
-export function setRefStructuresLoaded(loaded: boolean): void {
-  refStructuresLoaded = loaded
-  try {
-    if (loaded) {
-      localStorage.setItem(REF_STRUCTURES_LOADED_KEY, 'true')
-    } else {
-      localStorage.removeItem(REF_STRUCTURES_LOADED_KEY)
-    }
-  } catch (err) {
-    logger.warn('localStorage not available for setRefStructuresLoaded', {
-      module: 'ReferenceCache',
-      error: err instanceof Error ? err.message : String(err),
-    })
-  }
+  return useReferenceCacheStore.getState().refStructuresLoaded
 }
 
 export function getRefStructure(id: number): CachedRefStructure | undefined {
-  return refStructuresCache.get(id)
+  return useReferenceCacheStore.getState().refStructures.get(id)
 }
 
 export function hasRefStructure(id: number): boolean {
-  return refStructuresCache.has(id)
+  return useReferenceCacheStore.getState().refStructures.has(id)
 }
 
 export function getRegion(id: number): CachedRegion | undefined {
-  return regionsCache.get(id)
+  return useReferenceCacheStore.getState().regions.get(id)
 }
 
 export function getSystem(id: number): CachedSystem | undefined {
-  return systemsCache.get(id)
+  return useReferenceCacheStore.getState().systems.get(id)
 }
 
 export function getStation(id: number): CachedStation | undefined {
-  return stationsCache.get(id)
+  return useReferenceCacheStore.getState().stations.get(id)
 }
 
 export function hasRegion(id: number): boolean {
-  return regionsCache.has(id)
+  return useReferenceCacheStore.getState().regions.has(id)
 }
 
 export function hasSystem(id: number): boolean {
-  return systemsCache.has(id)
+  return useReferenceCacheStore.getState().systems.has(id)
 }
 
 export function hasStation(id: number): boolean {
-  return stationsCache.has(id)
-}
-
-export async function setRegions(regions: CachedRegion[]): Promise<void> {
-  await writeBatch('regions', regions, () => {
-    regionsCache = new Map(regions.map((r) => [r.id, r]))
-    logger.info('Regions saved', {
-      module: 'ReferenceCache',
-      count: regions.length,
-    })
-  })
-}
-
-export async function setSystems(systems: CachedSystem[]): Promise<void> {
-  await writeBatch('systems', systems, () => {
-    systemsCache = new Map(systems.map((s) => [s.id, s]))
-    logger.info('Systems saved', {
-      module: 'ReferenceCache',
-      count: systems.length,
-    })
-  })
-}
-
-export async function setStations(stations: CachedStation[]): Promise<void> {
-  await writeBatch('stations', stations, () => {
-    stationsCache = new Map(stations.map((s) => [s.id, s]))
-    logger.info('Stations saved', {
-      module: 'ReferenceCache',
-      count: stations.length,
-    })
-  })
-}
-
-export async function setRefStructures(
-  structures: CachedRefStructure[]
-): Promise<void> {
-  await writeBatch('refStructures', structures, () => {
-    refStructuresCache = new Map(structures.map((s) => [s.id, s]))
-    logger.info('RefStructures saved', {
-      module: 'ReferenceCache',
-      count: structures.length,
-    })
-  })
-}
-
-export async function setCategories(
-  categories: CachedCategory[]
-): Promise<void> {
-  await writeBatch('categories', categories, () => {
-    categoriesCache = new Map(categories.map((c) => [c.id, c]))
-    logger.info('Categories saved', {
-      module: 'ReferenceCache',
-      count: categories.length,
-    })
-  })
-}
-
-export async function setGroups(groups: CachedGroup[]): Promise<void> {
-  await writeBatch('groups', groups, () => {
-    groupsCache = new Map(groups.map((g) => [g.id, g]))
-    referenceDataLoaded = true
-    logger.info('Groups saved', {
-      module: 'ReferenceCache',
-      count: groups.length,
-    })
-  })
+  return useReferenceCacheStore.getState().stations.has(id)
 }
 
 export function getStructure(id: number): CachedStructure | undefined {
-  return structuresCache.get(id)
+  return useReferenceCacheStore.getState().structures.get(id)
 }
 
 export function hasStructure(id: number): boolean {
-  return structuresCache.has(id)
+  return useReferenceCacheStore.getState().structures.has(id)
 }
 
 export function getLocation(id: number): CachedLocation | undefined {
-  const cached = locationsCache.get(id)
+  const state = useReferenceCacheStore.getState()
+  const cached = state.locations.get(id)
   if (cached) return cached
 
-  const station = stationsCache.get(id)
+  const station = state.stations.get(id)
   if (station) {
-    const system = systemsCache.get(station.systemId)
-    const region = system ? regionsCache.get(system.regionId) : undefined
+    const system = state.systems.get(station.systemId)
+    const region = system ? state.regions.get(system.regionId) : undefined
     return {
       id,
       name: station.name,
@@ -502,12 +710,12 @@ export function getLocation(id: number): CachedLocation | undefined {
     }
   }
 
-  const refStructure = refStructuresCache.get(id)
+  const refStructure = state.refStructures.get(id)
   if (refStructure) {
     const system = refStructure.systemId
-      ? systemsCache.get(refStructure.systemId)
+      ? state.systems.get(refStructure.systemId)
       : undefined
-    const region = system ? regionsCache.get(system.regionId) : undefined
+    const region = system ? state.regions.get(system.regionId) : undefined
     return {
       id,
       name: refStructure.name,
@@ -519,9 +727,9 @@ export function getLocation(id: number): CachedLocation | undefined {
     }
   }
 
-  const system = systemsCache.get(id)
+  const system = state.systems.get(id)
   if (system) {
-    const region = regionsCache.get(system.regionId)
+    const region = state.regions.get(system.regionId)
     return {
       id,
       name: system.name,
@@ -533,7 +741,7 @@ export function getLocation(id: number): CachedLocation | undefined {
     }
   }
 
-  const region = regionsCache.get(id)
+  const region = state.regions.get(id)
   if (region) {
     return {
       id,
@@ -548,18 +756,20 @@ export function getLocation(id: number): CachedLocation | undefined {
 }
 
 export function hasLocation(id: number): boolean {
+  const state = useReferenceCacheStore.getState()
   return (
-    locationsCache.has(id) ||
-    stationsCache.has(id) ||
-    refStructuresCache.has(id) ||
-    systemsCache.has(id) ||
-    regionsCache.has(id)
+    state.locations.has(id) ||
+    state.stations.has(id) ||
+    state.refStructures.has(id) ||
+    state.systems.has(id) ||
+    state.regions.has(id)
   )
 }
 
 export function getLocationName(id: number): string {
+  const state = useReferenceCacheStore.getState()
   if (id > 1_000_000_000_000) {
-    const structure = structuresCache.get(id)
+    const structure = state.structures.get(id)
     return structure?.name ?? `Structure ${id}`
   }
   const location = getLocation(id)
@@ -567,151 +777,20 @@ export function getLocationName(id: number): string {
 }
 
 export function getName(id: number): CachedName | undefined {
-  return namesCache.get(id)
+  return useReferenceCacheStore.getState().names.get(id)
 }
 
 export function hasName(id: number): boolean {
-  return namesCache.has(id)
-}
-
-export async function saveNames(names: CachedName[]): Promise<void> {
-  await writeBatch('names', names, () => {
-    for (const name of names) namesCache.set(name.id, name)
-    notifyListeners()
-  })
-}
-
-export async function saveTypes(types: CachedType[]): Promise<void> {
-  await writeBatch('types', types, () => {
-    for (const type of types) typesCache.set(type.id, type)
-    notifyListeners()
-  })
-}
-
-export async function saveStructures(
-  structures: CachedStructure[]
-): Promise<void> {
-  await writeBatch('structures', structures, () => {
-    for (const structure of structures)
-      structuresCache.set(structure.id, structure)
-    notifyListeners()
-  })
-}
-
-export async function saveLocations(
-  locations: CachedLocation[]
-): Promise<void> {
-  await writeBatch('locations', locations, () => {
-    for (const location of locations) locationsCache.set(location.id, location)
-    notifyListeners()
-  })
-}
-
-export async function clearReferenceCache(): Promise<void> {
-  logger.info('Clearing reference cache', { module: 'ReferenceCache' })
-
-  categoriesCache.clear()
-  groupsCache.clear()
-  typesCache.clear()
-  regionsCache.clear()
-  systemsCache.clear()
-  stationsCache.clear()
-  refStructuresCache.clear()
-  structuresCache.clear()
-  locationsCache.clear()
-  namesCache.clear()
-  initialized = false
-  referenceDataLoaded = false
-  setAllTypesLoaded(false)
-  setUniverseDataLoaded(false)
-  setRefStructuresLoaded(false)
-
-  await deleteDatabase()
-}
-
-export async function clearTypesCache(): Promise<void> {
-  logger.info('Clearing types cache', { module: 'ReferenceCache' })
-  typesCache.clear()
-  setAllTypesLoaded(false)
-  await clearStore('types')
-  notifyListeners()
-}
-
-export async function clearLocationsCache(): Promise<void> {
-  logger.info('Clearing locations cache', { module: 'ReferenceCache' })
-  locationsCache.clear()
-  await clearStore('locations')
-  notifyListeners()
-}
-
-export async function clearStructuresCache(): Promise<void> {
-  logger.info('Clearing structures cache', { module: 'ReferenceCache' })
-  structuresCache.clear()
-  await clearStore('structures')
-  notifyListeners()
-}
-
-export async function clearNamesCache(): Promise<void> {
-  logger.info('Clearing names cache', { module: 'ReferenceCache' })
-  namesCache.clear()
-  await clearStore('names')
-  notifyListeners()
-}
-
-export async function clearCategoriesCache(): Promise<void> {
-  logger.info('Clearing categories cache', { module: 'ReferenceCache' })
-  categoriesCache.clear()
-  await clearStore('categories')
-  notifyListeners()
-}
-
-export async function clearGroupsCache(): Promise<void> {
-  logger.info('Clearing groups cache', { module: 'ReferenceCache' })
-  groupsCache.clear()
-  referenceDataLoaded = false
-  await clearStore('groups')
-  notifyListeners()
-}
-
-export async function clearUniverseCache(): Promise<void> {
-  logger.info('Clearing universe cache', { module: 'ReferenceCache' })
-  regionsCache.clear()
-  systemsCache.clear()
-  stationsCache.clear()
-  refStructuresCache.clear()
-  setUniverseDataLoaded(false)
-  setRefStructuresLoaded(false)
-  await Promise.all([
-    clearStore('regions'),
-    clearStore('systems'),
-    clearStore('stations'),
-    clearStore('refStructures'),
-  ])
-  notifyListeners()
-}
-
-export async function clearCoreReferenceCache(): Promise<void> {
-  logger.info('Clearing core reference cache', { module: 'ReferenceCache' })
-  typesCache.clear()
-  categoriesCache.clear()
-  groupsCache.clear()
-  referenceDataLoaded = false
-  setAllTypesLoaded(false)
-  await Promise.all([
-    clearStore('types'),
-    clearStore('categories'),
-    clearStore('groups'),
-  ])
-  notifyListeners()
+  return useReferenceCacheStore.getState().names.has(id)
 }
 
 export function getAllCategories(publishedOnly = false): CachedCategory[] {
-  const all = Array.from(categoriesCache.values())
+  const all = Array.from(useReferenceCacheStore.getState().categories.values())
   return publishedOnly ? all.filter((c) => c.published === true) : all
 }
 
 export function getAllGroups(publishedOnly = false): CachedGroup[] {
-  const all = Array.from(groupsCache.values())
+  const all = Array.from(useReferenceCacheStore.getState().groups.values())
   return publishedOnly ? all.filter((g) => g.published === true) : all
 }
 
@@ -719,12 +798,76 @@ export function getGroupsByCategory(
   categoryId: number,
   publishedOnly = false
 ): CachedGroup[] {
-  return Array.from(groupsCache.values()).filter(
+  return Array.from(useReferenceCacheStore.getState().groups.values()).filter(
     (g) =>
       g.categoryId === categoryId && (!publishedOnly || g.published === true)
   )
 }
 
 export function getAllRegions(): CachedRegion[] {
-  return Array.from(regionsCache.values())
+  return Array.from(useReferenceCacheStore.getState().regions.values())
 }
+
+// Legacy exports for backwards compatibility during migration
+// TODO: Remove after all consumers updated
+export const initCache = () => useReferenceCacheStore.getState().init()
+export const saveTypes = (types: CachedType[]) =>
+  useReferenceCacheStore.getState().saveTypes(types)
+export const setCategories = (categories: CachedCategory[]) =>
+  useReferenceCacheStore.getState().setCategories(categories)
+export const setGroups = (groups: CachedGroup[]) =>
+  useReferenceCacheStore.getState().setGroups(groups)
+export const setRegions = (regions: CachedRegion[]) =>
+  useReferenceCacheStore.getState().setRegions(regions)
+export const setSystems = (systems: CachedSystem[]) =>
+  useReferenceCacheStore.getState().setSystems(systems)
+export const setStations = (stations: CachedStation[]) =>
+  useReferenceCacheStore.getState().setStations(stations)
+export const setRefStructures = (structures: CachedRefStructure[]) =>
+  useReferenceCacheStore.getState().setRefStructures(structures)
+export const saveStructures = (structures: CachedStructure[]) =>
+  useReferenceCacheStore.getState().saveStructures(structures)
+export const saveLocations = (locations: CachedLocation[]) =>
+  useReferenceCacheStore.getState().saveLocations(locations)
+export const saveNames = (names: CachedName[]) =>
+  useReferenceCacheStore.getState().saveNames(names)
+export const updateTypePrices = (
+  prices: Array<{ id: number; jitaPrice: number }>
+) => useReferenceCacheStore.getState().updateTypePrices(prices)
+export const updateTypeEsiPrices = (
+  prices: Array<{
+    id: number
+    esiAveragePrice: number | null
+    esiAdjustedPrice: number | null
+  }>
+) => useReferenceCacheStore.getState().updateTypeEsiPrices(prices)
+export const clearJitaPrices = () =>
+  useReferenceCacheStore.getState().clearJitaPrices()
+export const clearEsiPrices = () =>
+  useReferenceCacheStore.getState().clearEsiPrices()
+export const clearTypePrices = () =>
+  useReferenceCacheStore.getState().clearTypePrices()
+export const setAllTypesLoaded = (loaded: boolean) =>
+  useReferenceCacheStore.getState().setAllTypesLoaded(loaded)
+export const setUniverseDataLoaded = (loaded: boolean) =>
+  useReferenceCacheStore.getState().setUniverseDataLoaded(loaded)
+export const setRefStructuresLoaded = (loaded: boolean) =>
+  useReferenceCacheStore.getState().setRefStructuresLoaded(loaded)
+export const clearTypesCache = () =>
+  useReferenceCacheStore.getState().clearTypesCache()
+export const clearLocationsCache = () =>
+  useReferenceCacheStore.getState().clearLocationsCache()
+export const clearStructuresCache = () =>
+  useReferenceCacheStore.getState().clearStructuresCache()
+export const clearNamesCache = () =>
+  useReferenceCacheStore.getState().clearNamesCache()
+export const clearCategoriesCache = () =>
+  useReferenceCacheStore.getState().clearCategoriesCache()
+export const clearGroupsCache = () =>
+  useReferenceCacheStore.getState().clearGroupsCache()
+export const clearUniverseCache = () =>
+  useReferenceCacheStore.getState().clearUniverseCache()
+export const clearCoreReferenceCache = () =>
+  useReferenceCacheStore.getState().clearCoreReferenceCache()
+export const clearReferenceCache = () =>
+  useReferenceCacheStore.getState().clearReferenceCache()

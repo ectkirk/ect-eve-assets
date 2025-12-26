@@ -5,7 +5,6 @@ export {
 } from './useAssetData'
 export { useTotalAssets } from './useTotalAssets'
 export { useColumnSettings, type ColumnConfig } from './useColumnSettings'
-export { useCacheVersion } from './useCacheVersion'
 export { useExpandCollapse } from './useExpandCollapse'
 export {
   useSortable,

@@ -3,8 +3,7 @@ import { ChevronUp, ChevronDown } from 'lucide-react'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useLoyaltyStore } from '@/store/loyalty-store'
 import { useTabControls } from '@/context'
-import { useCacheVersion } from '@/hooks'
-import { hasName, getName } from '@/store/reference-cache'
+import { useReferenceCacheStore } from '@/store/reference-cache'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import { CharacterPortrait, CorporationLogo } from '@/components/ui/type-icon'
 import { formatNumber } from '@/lib/utils'
@@ -43,7 +42,7 @@ export function LoyaltyTab() {
     init().then(() => update())
   }, [init, update])
 
-  const cacheVersion = useCacheVersion()
+  const names = useReferenceCacheStore((s) => s.names)
 
   const { search, setResultCount } = useTabControls()
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
@@ -65,7 +64,7 @@ export function LoyaltyTab() {
   }
 
   const { rows, corpTotals } = useMemo(() => {
-    void cacheVersion
+    void names
 
     const result: LoyaltyRow[] = []
     const corpMap = new Map<number, { name: string; total: number }>()
@@ -78,9 +77,7 @@ export function LoyaltyTab() {
       for (const lp of loyaltyPoints) {
         if (lp.loyalty_points <= 0) continue
 
-        const name = hasName(lp.corporation_id)
-          ? getName(lp.corporation_id)
-          : undefined
+        const name = names.get(lp.corporation_id)
         const corpName = name?.name ?? `Corporation ${lp.corporation_id}`
 
         result.push({
@@ -134,14 +131,7 @@ export function LoyaltyTab() {
       .sort((a, b) => b.total - a.total)
 
     return { rows: sortedRows, corpTotals }
-  }, [
-    loyaltyByOwner,
-    cacheVersion,
-    search,
-    selectedSet,
-    sortColumn,
-    sortDirection,
-  ])
+  }, [loyaltyByOwner, names, search, selectedSet, sortColumn, sortDirection])
 
   const totalRows = useMemo(
     () =>

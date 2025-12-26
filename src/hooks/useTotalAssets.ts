@@ -6,10 +6,9 @@ import { useContractsStore } from '@/store/contracts-store'
 import { useIndustryJobsStore } from '@/store/industry-jobs-store'
 import { useWalletStore } from '@/store/wallet-store'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
-import { getType } from '@/store/reference-cache'
+import { useReferenceCacheStore } from '@/store/reference-cache'
 import { CategoryIds } from '@/lib/tree-types'
 import { calculateStructureValues } from '@/lib/structure-constants'
-import { useCacheVersion } from './useCacheVersion'
 
 export interface AssetTotals {
   total: number
@@ -24,7 +23,7 @@ export interface AssetTotals {
 export function useTotalAssets(): AssetTotals {
   const assetsByOwner = useAssetStore((s) => s.assetsByOwner)
   const priceVersion = usePriceStore((s) => s.priceVersion)
-  const cacheVersion = useCacheVersion()
+  const types = useReferenceCacheStore((s) => s.types)
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
 
   const ordersById = useMarketOrdersStore((s) => s.itemsById)
@@ -38,7 +37,6 @@ export function useTotalAssets(): AssetTotals {
 
   return useMemo(() => {
     void priceVersion
-    void cacheVersion
 
     const selectedSet = new Set(selectedOwnerIds)
     const matchesOwner = (type: 'character' | 'corporation', id: number) =>
@@ -57,7 +55,7 @@ export function useTotalAssets(): AssetTotals {
         if (structureRelatedIds.has(asset.item_id)) continue
         if (asset.location_flag === 'SellOrder') continue
 
-        const type = getType(asset.type_id)
+        const type = types.get(asset.type_id)
         if (
           type?.categoryId === CategoryIds.OWNER ||
           type?.categoryId === CategoryIds.STATION
@@ -118,7 +116,7 @@ export function useTotalAssets(): AssetTotals {
   }, [
     assetsByOwner,
     priceVersion,
-    cacheVersion,
+    types,
     selectedOwnerIds,
     ordersById,
     ordersVisibility,

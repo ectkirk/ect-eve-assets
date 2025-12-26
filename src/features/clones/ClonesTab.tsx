@@ -6,15 +6,14 @@ import { useAssetData } from '@/hooks/useAssetData'
 import { useTabControls } from '@/context'
 import {
   useColumnSettings,
-  useCacheVersion,
   useExpandCollapse,
   type ColumnConfig,
 } from '@/hooks'
 import {
-  hasType,
   getType,
   getLocation,
   getStructure,
+  useReferenceCacheStore,
 } from '@/store/reference-cache'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import { cn } from '@/lib/utils'
@@ -54,7 +53,7 @@ interface CharacterClones {
 }
 
 function getImplantSlot(typeId: number): number {
-  const type = hasType(typeId) ? getType(typeId) : undefined
+  const type = getType(typeId)
   if (!type) return 99
 
   if (type.implantSlot !== undefined) return type.implantSlot
@@ -240,7 +239,8 @@ export function ClonesTab() {
     init().then(() => update())
   }, [init, update])
 
-  const cacheVersion = useCacheVersion()
+  const types = useReferenceCacheStore((s) => s.types)
+  const structures = useReferenceCacheStore((s) => s.structures)
 
   const { setExpandCollapse, search, setResultCount, setColumns } =
     useTabControls()
@@ -262,7 +262,7 @@ export function ClonesTab() {
   const { getColumnsForDropdown } = useColumnSettings('clones', CLONE_COLUMNS)
 
   const characterClones = useMemo(() => {
-    void cacheVersion
+    void structures
 
     const getLocationName = (
       locationId: number,
@@ -291,7 +291,7 @@ export function ClonesTab() {
         : null
 
       const activeImplantInfos: ImplantInfo[] = activeImplants.map((typeId) => {
-        const type = hasType(typeId) ? getType(typeId) : undefined
+        const type = types.get(typeId)
         return {
           typeId,
           name: type?.name ?? `Unknown Type ${typeId}`,
@@ -312,7 +312,7 @@ export function ClonesTab() {
 
       const jumpClones: CloneInfo[] = clones.jump_clones.map((jc) => {
         const implants: ImplantInfo[] = jc.implants.map((typeId) => {
-          const type = hasType(typeId) ? getType(typeId) : undefined
+          const type = types.get(typeId)
           return {
             typeId,
             name: type?.name ?? `Unknown Type ${typeId}`,
@@ -363,7 +363,7 @@ export function ClonesTab() {
     }
 
     return sorted
-  }, [clonesByOwner, cacheVersion, search, selectedSet])
+  }, [clonesByOwner, types, structures, search, selectedSet])
 
   const expandableIds = useMemo(
     () => characterClones.map((c) => c.ownerId),

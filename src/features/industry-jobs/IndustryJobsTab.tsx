@@ -18,7 +18,6 @@ import { useAssetData } from '@/hooks/useAssetData'
 import { useTabControls } from '@/context'
 import {
   useColumnSettings,
-  useCacheVersion,
   useExpandCollapse,
   useSortable,
   SortableHeader,
@@ -26,7 +25,7 @@ import {
   type ColumnConfig,
 } from '@/hooks'
 import { type ESIIndustryJob } from '@/api/endpoints/industry'
-import { hasType, getType } from '@/store/reference-cache'
+import { useReferenceCacheStore } from '@/store/reference-cache'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import {
   Table,
@@ -374,7 +373,8 @@ export function IndustryJobsTab() {
     }
   }, [initialized, update])
 
-  const cacheVersion = useCacheVersion()
+  const types = useReferenceCacheStore((s) => s.types)
+  const structures = useReferenceCacheStore((s) => s.structures)
 
   const {
     setExpandCollapse,
@@ -410,7 +410,8 @@ export function IndustryJobsTab() {
   )
 
   const locationGroups = useMemo(() => {
-    void cacheVersion
+    void types
+    void structures
     void priceVersion
 
     const groups = new Map<number, LocationGroup>()
@@ -421,13 +422,10 @@ export function IndustryJobsTab() {
 
     for (const { owner, jobs } of filteredJobsByOwner) {
       for (const job of jobs) {
-        const bpType = hasType(job.blueprint_type_id)
-          ? getType(job.blueprint_type_id)
+        const bpType = types.get(job.blueprint_type_id)
+        const productType = job.product_type_id
+          ? types.get(job.product_type_id)
           : undefined
-        const productType =
-          job.product_type_id && hasType(job.product_type_id)
-            ? getType(job.product_type_id)
-            : undefined
 
         const productPrice = job.product_type_id
           ? (getJitaPrice(job.product_type_id) ?? 0)
@@ -509,7 +507,7 @@ export function IndustryJobsTab() {
     }
 
     return sorted
-  }, [jobsByOwner, cacheVersion, priceVersion, search, selectedSet])
+  }, [jobsByOwner, types, structures, priceVersion, search, selectedSet])
 
   const expandableIds = useMemo(
     () => locationGroups.map((g) => g.locationId),
