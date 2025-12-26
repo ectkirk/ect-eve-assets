@@ -15,7 +15,7 @@ import {
   getLocation,
   hasStructure,
   getStructure,
-  saveStructures,
+  useReferenceCacheStore,
   type CachedStructure,
 } from '@/store/reference-cache'
 import { resolveTypes, resolveLocations } from '@/api/ref-client'
@@ -409,7 +409,7 @@ export async function resolveAllReferenceData(
       })
     }
     if (starbaseStructures.length > 0) {
-      await saveStructures(starbaseStructures)
+      await useReferenceCacheStore.getState().saveStructures(starbaseStructures)
       logger.info('Cached starbase locations', {
         module: 'DataResolver',
         count: starbaseStructures.length,

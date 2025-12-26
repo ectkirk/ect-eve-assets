@@ -2,12 +2,9 @@ import { logger } from '@/lib/logger'
 import {
   getGroup,
   getCategory,
-  setCategories,
-  setGroups,
   isReferenceDataLoaded,
   isAllTypesLoaded,
-  setAllTypesLoaded,
-  saveTypes,
+  useReferenceCacheStore,
   type CachedType,
 } from '@/store/reference-cache'
 import { RefCategoriesResponseSchema, RefGroupsResponseSchema } from './schemas'
@@ -136,7 +133,9 @@ export async function loadReferenceData(
             errors: categoriesResult.error.issues.slice(0, 3),
           })
         } else {
-          await setCategories(Object.values(categoriesResult.data.items))
+          await useReferenceCacheStore
+            .getState()
+            .setCategories(Object.values(categoriesResult.data.items))
           categoriesOk = true
         }
       }
@@ -154,7 +153,9 @@ export async function loadReferenceData(
             errors: groupsResult.error.issues.slice(0, 3),
           })
         } else {
-          await setGroups(Object.values(groupsResult.data.items))
+          await useReferenceCacheStore
+            .getState()
+            .setGroups(Object.values(groupsResult.data.items))
           groupsOk = true
         }
       }
@@ -216,7 +217,7 @@ async function loadAllTypes(onProgress?: ReferenceDataProgress): Promise<void> {
 
     if (rawTypes.length > 0) {
       const enrichedTypes = rawTypes.map(enrichType)
-      await saveTypes(enrichedTypes)
+      await useReferenceCacheStore.getState().saveTypes(enrichedTypes)
     }
 
     onProgress?.(
@@ -228,7 +229,7 @@ async function loadAllTypes(onProgress?: ReferenceDataProgress): Promise<void> {
       : undefined
   } while (cursor !== undefined)
 
-  setAllTypesLoaded(true)
+  useReferenceCacheStore.getState().setAllTypesLoaded(true)
 
   const duration = Math.round(performance.now() - start)
   logger.info('All types loaded', {

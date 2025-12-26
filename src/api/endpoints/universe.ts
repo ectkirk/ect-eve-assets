@@ -3,8 +3,7 @@ import { resolveLocations } from '../ref-client'
 import {
   hasStructure,
   getStructure as getCachedStructure,
-  saveStructures,
-  saveNames,
+  useReferenceCacheStore,
   type CachedStructure,
   type CachedName,
 } from '@/store/reference-cache'
@@ -128,7 +127,7 @@ export async function resolveStructures(
   }
 
   if (toCache.length > 0) {
-    await saveStructures(toCache)
+    await useReferenceCacheStore.getState().saveStructures(toCache)
     logger.info('Cached structures', { module: 'ESI', count: toCache.length })
   }
 
@@ -191,7 +190,7 @@ export async function resolveNames(
   }
 
   if (toSave.length > 0) {
-    await saveNames(toSave)
+    await useReferenceCacheStore.getState().saveNames(toSave)
   }
 
   return results

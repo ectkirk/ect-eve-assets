@@ -2,17 +2,11 @@ import { logger } from '@/lib/logger'
 import {
   getType,
   getLocation,
-  saveLocations,
   getSystem,
   getRegion,
-  setRegions,
-  setSystems,
-  setStations,
-  setRefStructures,
   isUniverseDataLoaded,
-  setUniverseDataLoaded,
   isRefStructuresLoaded,
-  setRefStructuresLoaded,
+  useReferenceCacheStore,
   type CachedType,
   type CachedLocation,
   type CachedRegion,
@@ -50,7 +44,7 @@ export async function loadUniverseData(
       onProgress?.('Loading universe data...')
       await Promise.all([loadAllRegions(), loadAllSystems(), loadAllStations()])
 
-      setUniverseDataLoaded(true)
+      useReferenceCacheStore.getState().setUniverseDataLoaded(true)
 
       const duration = Math.round(performance.now() - start)
       logger.info('Universe data loaded', { module: 'RefAPI', duration })
@@ -96,7 +90,7 @@ async function loadAllRegions(): Promise<void> {
     })
   )
 
-  await setRegions(regions)
+  await useReferenceCacheStore.getState().setRegions(regions)
 }
 
 async function loadAllSystems(): Promise<void> {
@@ -134,7 +128,7 @@ async function loadAllSystems(): Promise<void> {
     })
   )
 
-  await setSystems(systems)
+  await useReferenceCacheStore.getState().setSystems(systems)
 
   const duration = Math.round(performance.now() - start)
   logger.info('Systems loaded', {
@@ -178,7 +172,7 @@ async function loadAllStations(): Promise<void> {
     })
   )
 
-  await setStations(stations)
+  await useReferenceCacheStore.getState().setStations(stations)
 
   const duration = Math.round(performance.now() - start)
   logger.info('Stations loaded', {
@@ -260,8 +254,8 @@ export async function loadRefStructures(
         : undefined
     } while (cursor !== undefined)
 
-    await setRefStructures(allStructures)
-    setRefStructuresLoaded(true)
+    await useReferenceCacheStore.getState().setRefStructures(allStructures)
+    useReferenceCacheStore.getState().setRefStructuresLoaded(true)
 
     const duration = Math.round(performance.now() - start)
     logger.info('RefStructures loaded', {
@@ -390,7 +384,7 @@ export async function resolveLocations(
   }
 
   if (fallbacks.length > 0) {
-    await saveLocations(fallbacks)
+    await useReferenceCacheStore.getState().saveLocations(fallbacks)
   }
 
   if (moonIds.length === 0) return results
@@ -429,7 +423,7 @@ export async function resolveLocations(
   }
 
   if (toCache.length > 0) {
-    await saveLocations(toCache)
+    await useReferenceCacheStore.getState().saveLocations(toCache)
   }
 
   return results

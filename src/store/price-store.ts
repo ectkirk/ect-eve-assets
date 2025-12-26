@@ -12,12 +12,8 @@ import {
   getTypeJitaPrice,
   getTypeEsiAveragePrice,
   getTypeEsiAdjustedPrice,
-  updateTypePrices,
-  updateTypeEsiPrices,
   isTypeBlueprint,
-  clearTypePrices,
-  clearJitaPrices,
-  clearEsiPrices,
+  useReferenceCacheStore,
 } from '@/store/reference-cache'
 import { useStoreRegistry } from '@/store/store-registry'
 
@@ -235,7 +231,7 @@ async function storeAndPersistPrices(
   }
 
   if (jitaPriceUpdates.length > 0) {
-    await updateTypePrices(jitaPriceUpdates)
+    await useReferenceCacheStore.getState().updateTypePrices(jitaPriceUpdates)
   }
 
   return stored
@@ -512,7 +508,9 @@ export const usePriceStore = create<PriceStore>((set, get) => ({
         esiAdjustedPrice: item.adjusted_price ?? null,
       }))
 
-      await updateTypeEsiPrices(esiPriceUpdates)
+      await useReferenceCacheStore
+        .getState()
+        .updateTypeEsiPrices(esiPriceUpdates)
       setLastEsiRefreshAt(Date.now())
 
       logger.info('ESI market prices updated', {
@@ -579,7 +577,7 @@ export const usePriceStore = create<PriceStore>((set, get) => ({
     }
     initPromise = null
     stopPriceRefreshTimers()
-    clearJitaPrices()
+    useReferenceCacheStore.getState().clearJitaPrices()
     set({ marketPrices: new Map(), initialized: false })
     logger.info('Jita price cache cleared', { module: 'PriceStore' })
   },
@@ -590,7 +588,7 @@ export const usePriceStore = create<PriceStore>((set, get) => ({
     } catch {
       // localStorage unavailable
     }
-    clearEsiPrices()
+    useReferenceCacheStore.getState().clearEsiPrices()
     logger.info('ESI price cache cleared', { module: 'PriceStore' })
   },
 
@@ -599,7 +597,7 @@ export const usePriceStore = create<PriceStore>((set, get) => ({
     clearRefreshTimestamps()
     initPromise = null
     stopPriceRefreshTimers()
-    clearTypePrices()
+    useReferenceCacheStore.getState().clearTypePrices()
     set({
       abyssalPrices: new Map(),
       marketPrices: new Map(),

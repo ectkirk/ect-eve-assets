@@ -8,12 +8,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import {
-  clearCoreReferenceCache,
-  clearLocationsCache,
-  clearStructuresCache,
-  clearUniverseCache,
-} from '@/store/reference-cache'
+import { useReferenceCacheStore } from '@/store/reference-cache'
 import {
   loadReferenceData,
   loadUniverseData,
@@ -45,6 +40,7 @@ interface CacheOption {
 }
 
 const registry = () => useStoreRegistry.getState()
+const refCache = () => useReferenceCacheStore.getState()
 
 const CACHE_OPTIONS: CacheOption[] = [
   {
@@ -52,7 +48,7 @@ const CACHE_OPTIONS: CacheOption[] = [
     label: 'Core Reference Data (Types & Blueprints)',
     group: 'reference',
     requiresReload: false,
-    clear: clearCoreReferenceCache,
+    clear: () => refCache().clearCoreReferenceCache(),
     refetch: loadReferenceData,
   },
   {
@@ -60,7 +56,7 @@ const CACHE_OPTIONS: CacheOption[] = [
     label: 'Universe Data (Regions/Systems/Stations)',
     group: 'reference',
     requiresReload: false,
-    clear: clearUniverseCache,
+    clear: () => refCache().clearUniverseCache(),
     refetch: async () => {
       await loadUniverseData()
       await loadRefStructures()
@@ -71,14 +67,14 @@ const CACHE_OPTIONS: CacheOption[] = [
     label: 'Moon Names',
     group: 'reference',
     requiresReload: false,
-    clear: clearLocationsCache,
+    clear: () => refCache().clearLocationsCache(),
   },
   {
     id: 'playerStructures',
     label: 'Player Structure Names',
     group: 'reference',
     requiresReload: false,
-    clear: clearStructuresCache,
+    clear: () => refCache().clearStructuresCache(),
   },
   {
     id: 'jitaPrices',

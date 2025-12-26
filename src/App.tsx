@@ -5,7 +5,7 @@ import { useStoreRegistry } from './store/store-registry'
 import { stopPriceRefreshTimers } from './store/price-store'
 import { useExpiryCacheStore } from './store/expiry-cache-store'
 import { MainLayout } from './components/layout/MainLayout'
-import { initCache } from './store/reference-cache'
+import { useReferenceCacheStore } from './store/reference-cache'
 import {
   loadReferenceData,
   loadUniverseData,
@@ -100,7 +100,9 @@ function App() {
     appInitStarted = true
 
     logger.info('App starting', { module: 'App' })
-    initCache()
+    useReferenceCacheStore
+      .getState()
+      .init()
       .then(async () => {
         logger.info('Cache initialized', { module: 'App' })
         await loadReferenceData(setLoadingStatus)

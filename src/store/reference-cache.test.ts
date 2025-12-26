@@ -2,7 +2,6 @@ import { describe, it, expect, beforeAll } from 'vitest'
 import {
   CategoryIds,
   LocationFlags,
-  initCache,
   getType,
   getTypeName,
   hasType,
@@ -11,9 +10,6 @@ import {
   getLocation,
   hasLocation,
   getLocationName,
-  saveTypes,
-  saveStructures,
-  saveLocations,
   useReferenceCacheStore,
 } from './reference-cache'
 
@@ -43,14 +39,16 @@ describe('LocationFlags', () => {
   })
 })
 
+const store = () => useReferenceCacheStore.getState()
+
 describe('Reference Cache', () => {
   beforeAll(async () => {
-    await initCache()
+    await store().init()
   })
 
-  describe('initCache', () => {
+  describe('init', () => {
     it('is idempotent', async () => {
-      await expect(initCache()).resolves.not.toThrow()
+      await expect(store().init()).resolves.not.toThrow()
     })
   })
 
@@ -78,7 +76,7 @@ describe('Reference Cache', () => {
         volume: 0.01,
       }
 
-      await saveTypes([testType])
+      await store().saveTypes([testType])
 
       expect(hasType(34)).toBe(true)
       expect(getType(34)).toEqual(testType)
@@ -86,7 +84,7 @@ describe('Reference Cache', () => {
     })
 
     it('saveTypes with empty array does nothing', async () => {
-      await expect(saveTypes([])).resolves.not.toThrow()
+      await expect(store().saveTypes([])).resolves.not.toThrow()
     })
   })
 
@@ -108,14 +106,14 @@ describe('Reference Cache', () => {
         ownerId: 12345,
       }
 
-      await saveStructures([testStructure])
+      await store().saveStructures([testStructure])
 
       expect(hasStructure(1000000000001)).toBe(true)
       expect(getStructure(1000000000001)).toEqual(testStructure)
     })
 
     it('saveStructures with empty array does nothing', async () => {
-      await expect(saveStructures([])).resolves.not.toThrow()
+      await expect(store().saveStructures([])).resolves.not.toThrow()
     })
   })
 
@@ -139,14 +137,14 @@ describe('Reference Cache', () => {
         regionName: 'The Forge',
       }
 
-      await saveLocations([testLocation])
+      await store().saveLocations([testLocation])
 
       expect(hasLocation(60003760)).toBe(true)
       expect(getLocation(60003760)).toEqual(testLocation)
     })
 
     it('saveLocations with empty array does nothing', async () => {
-      await expect(saveLocations([])).resolves.not.toThrow()
+      await expect(store().saveLocations([])).resolves.not.toThrow()
     })
   })
 
@@ -182,7 +180,7 @@ describe('Reference Cache', () => {
 
     it('store updates trigger state changes', async () => {
       const initialTypes = useReferenceCacheStore.getState().types
-      await saveTypes([
+      await store().saveTypes([
         {
           id: 35,
           name: 'Pyerite',
