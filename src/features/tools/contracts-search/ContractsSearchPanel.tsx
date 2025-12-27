@@ -84,6 +84,7 @@ function toDisplayContract(sc: SearchContract): DisplayContract {
     dateIssued: sc.dateIssued,
     dateExpired: sc.dateExpired,
     price: sc.price,
+    buyout: sc.buyout,
     reward: sc.reward,
     collateral: sc.collateral,
     isWantToBuy: sc.isWantToBuy,

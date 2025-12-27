@@ -38,6 +38,7 @@ export interface DisplayContract {
   dateIssued: string
   dateExpired: string
   price: number
+  buyout?: number | null
   reward?: number
   collateral?: number
   volume?: number
@@ -261,6 +262,21 @@ export function ContractDetailModal({
                   {formatNumber(contract.collateral ?? 0)} ISK
                 </span>
               </InfoRow>
+            </div>
+          ) : contract.type === 'auction' ? (
+            <div className="border-b border-border px-4 py-3 text-sm">
+              <InfoRow label="Starting Bid">
+                <span className="text-status-highlight">
+                  {formatNumber(contract.price)} ISK
+                </span>
+              </InfoRow>
+              {contract.buyout != null && contract.buyout > 0 && (
+                <InfoRow label="Buyout">
+                  <span className="text-status-positive">
+                    {formatNumber(contract.buyout)} ISK
+                  </span>
+                </InfoRow>
+              )}
             </div>
           ) : contract.isWantToBuy ? (
             <div className="border-b border-border px-4 py-3">
