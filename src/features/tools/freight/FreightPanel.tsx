@@ -7,7 +7,17 @@ import { FreightForm } from './FreightForm'
 import { FreightResults } from './FreightResults'
 import { DEFAULT_CORPORATION, getTierColors } from './constants'
 
-export function FreightPanel() {
+interface FreightPanelProps {
+  prefillText?: string | null
+  prefillNullSec?: boolean
+  onPrefillConsumed?: () => void
+}
+
+export function FreightPanel({
+  prefillText,
+  prefillNullSec,
+  onPrefillConsumed,
+}: FreightPanelProps) {
   const {
     info,
     isLoading: isLoadingInfo,
@@ -17,17 +27,35 @@ export function FreightPanel() {
   const [result, setResult] = useState<ShippingCalculateResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [formKey, setFormKey] = useState(0)
+  const [nullSec, setNullSec] = useState(false)
+  const [pendingAutoSubmit, setPendingAutoSubmit] = useState<{
+    text: string
+    nullSec: boolean
+  } | null>(null)
+
+  useEffect(() => {
+    if (prefillText && prefillText !== pendingAutoSubmit?.text) {
+      setFormKey((k) => k + 1)
+      setNullSec(prefillNullSec ?? false)
+      setPendingAutoSubmit({
+        text: prefillText,
+        nullSec: prefillNullSec ?? false,
+      })
+      onPrefillConsumed?.()
+    }
+  }, [prefillText, prefillNullSec, pendingAutoSubmit?.text, onPrefillConsumed])
 
   useEffect(() => {
     fetchInfo()
   }, [fetchInfo])
 
-  const handleSubmit = useCallback(async (text: string) => {
+  const handleSubmit = useCallback(async (text: string, nullSec?: boolean) => {
     setIsLoading(true)
     setError(null)
 
     try {
-      const res = await window.electronAPI!.refShippingCalculate(text)
+      const res = await window.electronAPI!.refShippingCalculate(text, nullSec)
       if (res.error) {
         setError(res.error)
         setResult(null)
@@ -44,7 +72,15 @@ export function FreightPanel() {
   const handleReset = useCallback(() => {
     setResult(null)
     setError(null)
+    setNullSec(false)
   }, [])
+
+  useEffect(() => {
+    if (pendingAutoSubmit && info && !isLoading && !result) {
+      handleSubmit(pendingAutoSubmit.text, pendingAutoSubmit.nullSec)
+      setPendingAutoSubmit(null)
+    }
+  }, [pendingAutoSubmit, info, isLoading, result, handleSubmit])
 
   if (isLoadingInfo && !info) {
     return (
@@ -176,11 +212,39 @@ export function FreightPanel() {
 
         {/* Form */}
         <div className="mb-6 rounded-lg border border-border bg-surface-secondary/50 p-6">
+          <div className="mb-4 flex items-center gap-3">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={nullSec}
+              onClick={() => setNullSec(!nullSec)}
+              disabled={isLoading || !!result}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:ring-2 focus:ring-accent/20 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 ${
+                nullSec ? 'bg-semantic-info' : 'bg-surface-tertiary'
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition-transform ${
+                  nullSec ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+            <label className="text-sm text-content-secondary">
+              <span className="font-medium text-accent">
+                Null Sec Destination
+              </span>
+              <span className="ml-2 text-content-muted">
+                (NPC stations only, Priority tier, 7-day delivery)
+              </span>
+            </label>
+          </div>
           <FreightForm
-            onSubmit={handleSubmit}
+            key={formKey}
+            onSubmit={(text) => handleSubmit(text, nullSec)}
             isLoading={isLoading}
             hasResult={!!result}
             onReset={handleReset}
+            defaultText={pendingAutoSubmit?.text ?? ''}
           />
         </div>
 

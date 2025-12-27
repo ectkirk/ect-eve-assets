@@ -545,7 +545,10 @@ export interface ElectronAPI {
   ) => Promise<BuybackResult>
   refBuybackInfo: () => Promise<BuybackInfoResult>
   refShippingInfo: () => Promise<ShippingInfoResult>
-  refShippingCalculate: (text: string) => Promise<ShippingCalculateResult>
+  refShippingCalculate: (
+    text: string,
+    nullSec?: boolean
+  ) => Promise<ShippingCalculateResult>
   refContractsSearch: (
     params: ContractSearchParams
   ) => Promise<ContractSearchResult>
@@ -662,8 +665,8 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.invoke('ref:buybackCalculate', text, config),
   refBuybackInfo: () => ipcRenderer.invoke('ref:buybackInfo'),
   refShippingInfo: () => ipcRenderer.invoke('ref:shippingInfo'),
-  refShippingCalculate: (text: string) =>
-    ipcRenderer.invoke('ref:shippingCalculate', text),
+  refShippingCalculate: (text: string, nullSec?: boolean) =>
+    ipcRenderer.invoke('ref:shippingCalculate', text, nullSec),
   refContractsSearch: (params: ContractSearchParams) =>
     ipcRenderer.invoke('ref:contractsSearch', params),
   mutamarketModule: (itemId: number, typeId?: number) =>

@@ -376,12 +376,19 @@ export function registerRefAPIHandlers(): void {
     refGet('/shipping/info', 'ref:shippingInfo')
   )
 
-  ipcMain.handle('ref:shippingCalculate', async (_event, text: unknown) => {
-    if (typeof text !== 'string' || !text.trim()) {
-      return { error: 'Text is required' }
+  ipcMain.handle(
+    'ref:shippingCalculate',
+    async (_event, text: unknown, nullSec?: unknown) => {
+      if (typeof text !== 'string' || !text.trim()) {
+        return { error: 'Text is required' }
+      }
+      const body: { text: string; nullSec?: boolean } = { text }
+      if (nullSec === true) {
+        body.nullSec = true
+      }
+      return refPost('/shipping/calculate', body, 'ref:shippingCalculate')
     }
-    return refPost('/shipping/calculate', { text }, 'ref:shippingCalculate')
-  })
+  )
 
   ipcMain.handle('ref:contractsSearch', async (_event, params: unknown) => {
     if (typeof params !== 'object' || params === null) {

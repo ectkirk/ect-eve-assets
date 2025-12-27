@@ -5,7 +5,7 @@ import {
   getSecurityTab,
 } from '@/store/buyback-action-store'
 
-export const BUYBACK_REGIONS = new Set([
+export const SERVICE_REGIONS = new Set([
   10000054, // Aridia
   10000069, // Black Rise
   10000055, // Branch
@@ -72,6 +72,8 @@ export const BUYBACK_REGIONS = new Set([
   10000006, // Wicked Creek
 ])
 
+export const BUYBACK_REGIONS = SERVICE_REGIONS
+
 export interface BuybackItem {
   id: string
   name: string
@@ -112,7 +114,7 @@ export function useBuybackSelection({
     if (!allSameLocation) return null
 
     const regionId = first.regionId
-    if (!regionId || !BUYBACK_REGIONS.has(regionId)) return null
+    if (!regionId || !SERVICE_REGIONS.has(regionId)) return null
 
     const systemId = first.systemId
     const system = systemId ? getSystem(systemId) : undefined

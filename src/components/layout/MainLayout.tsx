@@ -22,6 +22,7 @@ import {
 import { ToolsTab, TOOLS_TABS, type ToolsTabType } from '@/features/tools'
 import { FreightPanel } from '@/features/tools/freight'
 import { useBuybackActionStore } from '@/store/buyback-action-store'
+import { useFreightActionStore } from '@/store/freight-action-store'
 import { useRegionalMarketActionStore } from '@/store/regional-market-action-store'
 import { useTotalAssets } from '@/hooks'
 import { formatNumber } from '@/lib/utils'
@@ -204,6 +205,10 @@ function MainLayoutInner() {
     TOOLS_TABS[0]
   )
   const [buybackPrefill, setBuybackPrefill] = useState<string | null>(null)
+  const [freightPrefill, setFreightPrefill] = useState<{
+    text: string
+    nullSec: boolean
+  } | null>(null)
   const [regionalMarketTypeId, setRegionalMarketTypeId] = useState<
     number | null
   >(null)
@@ -216,6 +221,21 @@ function MainLayoutInner() {
         setBuybackPrefill(state.pendingAction.text)
         queueMicrotask(() => {
           useBuybackActionStore.getState().clearAction()
+        })
+      }
+    })
+  }, [])
+
+  useEffect(() => {
+    return useFreightActionStore.subscribe((state, prevState) => {
+      if (state.pendingAction && !prevState.pendingAction) {
+        setMode('freight')
+        setFreightPrefill({
+          text: state.pendingAction.text,
+          nullSec: state.pendingAction.nullSec,
+        })
+        queueMicrotask(() => {
+          useFreightActionStore.getState().clearAction()
         })
       }
     })
@@ -364,7 +384,13 @@ function MainLayoutInner() {
             />
           </div>
         )}
-        {mode === 'freight' && <FreightPanel />}
+        {mode === 'freight' && (
+          <FreightPanel
+            prefillText={freightPrefill?.text}
+            prefillNullSec={freightPrefill?.nullSec}
+            onPrefillConsumed={() => setFreightPrefill(null)}
+          />
+        )}
         {mode === 'tools' && (
           <ToolsTab
             activeTab={activeToolsTab}

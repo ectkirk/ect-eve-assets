@@ -6,6 +6,7 @@ interface FreightFormProps {
   isLoading?: boolean
   hasResult?: boolean
   onReset?: () => void
+  defaultText?: string
 }
 
 export function FreightForm({
@@ -13,8 +14,9 @@ export function FreightForm({
   isLoading = false,
   hasResult = false,
   onReset,
+  defaultText = '',
 }: FreightFormProps) {
-  const [text, setText] = useState('')
+  const [text, setText] = useState(defaultText)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()

@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/context-menu'
 import { isAbyssalTypeId, getMutamarketUrl } from '@/api/mutamarket-client'
 import { usePriceStore } from '@/store/price-store'
-import { BUYBACK_REGIONS } from '@/hooks'
+import { SERVICE_REGIONS } from '@/hooks'
 import { cn } from '@/lib/utils'
 import type { TreeNode } from '@/lib/tree-types'
 import { TreeRowContent } from './TreeRowContent'
@@ -19,10 +19,12 @@ interface TreeRowProps {
   isExpanded: boolean
   isSelected: boolean
   showBuybackOption: boolean
+  showFreightOption: boolean
   onToggleExpand: (nodeId: string) => void
   onRowClick: (id: string, event: React.MouseEvent) => void
   onViewFitting: (node: TreeNode) => void
   onSellToBuyback: (node: TreeNode) => void
+  onShipFreight: (node: TreeNode) => void
   visibleColumns: string[]
 }
 
@@ -32,10 +34,12 @@ export const TreeRow = memo(function TreeRow({
   isExpanded,
   isSelected,
   showBuybackOption,
+  showFreightOption,
   onToggleExpand,
   onRowClick,
   onViewFitting,
   onSellToBuyback,
+  onShipFreight,
   visibleColumns,
 }: TreeRowProps) {
   const abyssalPrices = usePriceStore((s) => s.abyssalPrices)
@@ -95,10 +99,14 @@ export const TreeRow = memo(function TreeRow({
     </TableRow>
   )
 
-  const isInBuybackRegion = node.regionId && BUYBACK_REGIONS.has(node.regionId)
+  const isInServiceRegion = node.regionId && SERVICE_REGIONS.has(node.regionId)
+  const isStation = node.locationId && node.locationId < 100_000_000
   const showBuyback =
-    (isSelected && showBuybackOption) || (hasChildren && isInBuybackRegion)
-  if (isShip || isAbyssalResolved || showBuyback) {
+    (isSelected && showBuybackOption) || (hasChildren && isInServiceRegion)
+  const showFreight =
+    (isSelected && showFreightOption) ||
+    (hasChildren && isInServiceRegion && isStation)
+  if (isShip || isAbyssalResolved || showBuyback || showFreight) {
     return (
       <ContextMenu>
         <ContextMenuTrigger asChild>{row}</ContextMenuTrigger>
@@ -106,6 +114,11 @@ export const TreeRow = memo(function TreeRow({
           {showBuyback && (
             <ContextMenuItem onClick={() => onSellToBuyback(node)}>
               Sell to buyback
+            </ContextMenuItem>
+          )}
+          {showFreight && (
+            <ContextMenuItem onClick={() => onShipFreight(node)}>
+              Ship items
             </ContextMenuItem>
           )}
           {isShip && (

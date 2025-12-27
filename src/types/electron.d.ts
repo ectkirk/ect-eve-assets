@@ -550,7 +550,10 @@ declare global {
     ) => Promise<BuybackResult>
     refBuybackInfo: () => Promise<BuybackInfoResult>
     refShippingInfo: () => Promise<ShippingInfoResult>
-    refShippingCalculate: (text: string) => Promise<ShippingCalculateResult>
+    refShippingCalculate: (
+      text: string,
+      nullSec?: boolean
+    ) => Promise<ShippingCalculateResult>
     refContractsSearch: (
       params: ContractSearchParams
     ) => Promise<ContractSearchResult>

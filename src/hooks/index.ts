@@ -17,5 +17,7 @@ export { useRowSelection, type CopyData } from './useRowSelection'
 export {
   useBuybackSelection,
   BUYBACK_REGIONS,
+  SERVICE_REGIONS,
   type BuybackItem,
 } from './useBuybackSelection'
+export { useFreightSelection, type FreightItem } from './useFreightSelection'
