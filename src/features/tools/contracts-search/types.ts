@@ -1,5 +1,22 @@
 export type ContractSearchMode = 'buySell' | 'courier'
 
+export type SortPreset =
+  | 'created-asc'
+  | 'created-desc'
+  | 'timeLeft-asc'
+  | 'timeLeft-desc'
+  | 'price-asc'
+  | 'price-desc'
+
+export const SORT_PRESETS: { value: SortPreset; label: string }[] = [
+  { value: 'created-asc', label: 'Date Created (Oldest First)' },
+  { value: 'created-desc', label: 'Date Created (Newest First)' },
+  { value: 'timeLeft-asc', label: 'Time Left (Shortest First)' },
+  { value: 'timeLeft-desc', label: 'Time Left (Longest First)' },
+  { value: 'price-asc', label: 'Price (Lowest First)' },
+  { value: 'price-desc', label: 'Price (Highest First)' },
+]
+
 export type ContractType =
   | 'want_to_sell'
   | 'want_to_buy'

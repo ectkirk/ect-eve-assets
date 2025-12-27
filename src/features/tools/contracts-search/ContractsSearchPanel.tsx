@@ -1,18 +1,15 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback } from 'react'
 import { ContractsFilters } from './ContractsFilters'
-import {
-  ContractsResultsTable,
-  SORT_PRESETS,
-  type SortPreset,
-} from './ContractsResultsTable'
+import { ContractsResultsTable } from './ContractsResultsTable'
 import {
   ContractDetailModal,
   type DisplayContract,
 } from './ContractDetailModal'
-import { DEFAULT_FILTERS } from './types'
-import type { ContractSearchFilters, SearchContract } from './types'
+import type { ContractSearchFilters, SearchContract, SortPreset } from './types'
+import { SORT_PRESETS } from './types'
 import { resolveNames } from '@/api/endpoints/universe'
 import { usePriceStore, isAbyssalTypeId } from '@/store/price-store'
+import { useContractsSessionStore } from '@/store/contracts-session-store'
 import { THE_FORGE_REGION_ID, PAGE_SIZE } from './utils'
 
 const issuerNameCache = new Map<number, string>()
@@ -152,19 +149,27 @@ function filtersToApiParams(
 }
 
 export function ContractsSearchPanel() {
-  const [filters, setFilters] = useState<ContractSearchFilters>(DEFAULT_FILTERS)
-  const [results, setResults] = useState<SearchContract[]>([])
-  const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(0)
-  const [total, setTotal] = useState(0)
+  const filters = useContractsSessionStore((s) => s.filters)
+  const committedFilters = useContractsSessionStore((s) => s.committedFilters)
+  const committedSort = useContractsSessionStore((s) => s.committedSort)
+  const results = useContractsSessionStore((s) => s.results)
+  const page = useContractsSessionStore((s) => s.page)
+  const totalPages = useContractsSessionStore((s) => s.totalPages)
+  const total = useContractsSessionStore((s) => s.total)
+  const sortPreset = useContractsSessionStore((s) => s.sortPreset)
+  const hasSearched = useContractsSessionStore((s) => s.hasSearched)
+  const storeSetFilters = useContractsSessionStore((s) => s.setFilters)
+  const commitSearch = useContractsSessionStore((s) => s.commitSearch)
+  const commitSort = useContractsSessionStore((s) => s.commitSort)
+  const storeSetResults = useContractsSessionStore((s) => s.setResults)
+  const storeSetPage = useContractsSessionStore((s) => s.setPage)
+  const storeSetSortPreset = useContractsSessionStore((s) => s.setSortPreset)
+  const storeSetHasSearched = useContractsSessionStore((s) => s.setHasSearched)
+
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [hasSearched, setHasSearched] = useState(false)
-  const [sortPreset, setSortPreset] = useState<SortPreset>('price-desc')
   const [selectedContract, setSelectedContract] =
     useState<SearchContract | null>(null)
-  const lastFiltersRef = useRef<ContractSearchFilters>(filters)
-  const lastSortRef = useRef<SortPreset>(sortPreset)
 
   const fetchPage = useCallback(
     async (
@@ -177,10 +182,8 @@ export function ContractsSearchPanel() {
       const cached = getCachedResponse(cacheKey)
 
       if (cached) {
-        setResults(cached.contracts)
-        setTotal(cached.total)
-        setTotalPages(cached.totalPages)
-        setPage(pageNum)
+        storeSetResults(cached.contracts, cached.total, cached.totalPages)
+        storeSetPage(pageNum)
         return
       }
 
@@ -191,17 +194,13 @@ export function ContractsSearchPanel() {
 
         if (response.error) {
           setError(response.error)
-          setResults([])
-          setTotal(0)
-          setTotalPages(0)
+          storeSetResults([], 0, 0)
           return
         }
 
         if (!Array.isArray(response.contracts)) {
           setError('Invalid response from server')
-          setResults([])
-          setTotal(0)
-          setTotalPages(0)
+          storeSetResults([], 0, 0)
           return
         }
 
@@ -281,52 +280,47 @@ export function ContractsSearchPanel() {
         const totalPagesVal = response.totalPages ?? 0
 
         cacheResponse(cacheKey, contractsWithNames, totalVal, totalPagesVal)
-        setResults(contractsWithNames)
-        setTotal(totalVal)
-        setTotalPages(totalPagesVal)
-        setPage(pageNum)
+        storeSetResults(contractsWithNames, totalVal, totalPagesVal)
+        storeSetPage(pageNum)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Search failed')
-        setResults([])
-        setTotal(0)
-        setTotalPages(0)
+        storeSetResults([], 0, 0)
       } finally {
         setIsLoading(false)
       }
     },
-    []
+    [storeSetResults, storeSetPage]
   )
 
   const handleSearch = useCallback(async () => {
-    setHasSearched(true)
-    lastFiltersRef.current = filters
-    lastSortRef.current = sortPreset
+    storeSetHasSearched(true)
+    commitSearch()
     await fetchPage(1, filters, sortPreset)
-  }, [filters, sortPreset, fetchPage])
+  }, [filters, sortPreset, fetchPage, storeSetHasSearched, commitSearch])
 
   const handlePageChange = useCallback(
     (newPage: number) => {
-      fetchPage(newPage, lastFiltersRef.current, lastSortRef.current)
+      fetchPage(newPage, committedFilters, committedSort)
     },
-    [fetchPage]
+    [fetchPage, committedFilters, committedSort]
   )
 
   const handleSortChange = useCallback(
     (newSort: SortPreset) => {
-      setSortPreset(newSort)
-      lastSortRef.current = newSort
+      storeSetSortPreset(newSort)
       if (hasSearched) {
-        fetchPage(1, lastFiltersRef.current, newSort)
+        commitSort()
+        fetchPage(1, committedFilters, newSort)
       }
     },
-    [hasSearched, fetchPage]
+    [hasSearched, fetchPage, storeSetSortPreset, commitSort, committedFilters]
   )
 
   return (
     <div className="flex h-full">
       <ContractsFilters
         filters={filters}
-        onChange={setFilters}
+        onChange={storeSetFilters}
         onSearch={handleSearch}
         isLoading={isLoading}
       />
@@ -362,7 +356,7 @@ export function ContractsSearchPanel() {
           <div className="flex flex-1 flex-col overflow-hidden p-4">
             <ContractsResultsTable
               contracts={results}
-              mode={filters.mode}
+              mode={committedFilters.mode}
               page={page}
               totalPages={totalPages}
               total={total}

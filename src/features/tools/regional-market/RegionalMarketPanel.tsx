@@ -1,9 +1,10 @@
-import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useCallback, useMemo, useEffect } from 'react'
 import {
   useReferenceCacheStore,
   type CachedType,
 } from '@/store/reference-cache'
 import { useRegionalOrdersStore } from '@/store/regional-orders-store'
+import { useRegionalMarketSessionStore } from '@/store/regional-market-session-store'
 import { BUYBACK_REGIONS } from '@/hooks/useBuybackSelection'
 import { TypeIcon } from '@/components/ui/type-icon'
 import { MarketGroupTree } from './MarketGroupTree'
@@ -12,8 +13,6 @@ import { TypeListPanel } from './TypeListPanel'
 import { OrderDetailPanel } from './OrderDetailPanel'
 import { useMarketGroups, getAllGroupIds } from './use-market-groups'
 import type { MarketGroupNode } from './types'
-
-const THE_FORGE_REGION_ID = 10000002
 
 interface RegionalMarketPanelProps {
   initialTypeId?: number | null
@@ -60,14 +59,32 @@ export function RegionalMarketPanel({
   initialTypeId,
   onInitialTypeConsumed,
 }: RegionalMarketPanelProps) {
-  const [selectedRegionId, setSelectedRegionId] = useState(THE_FORGE_REGION_ID)
-  const [selectedMarketGroupId, setSelectedMarketGroupId] = useState<
-    number | null
-  >(null)
-  const [selectedTypeId, setSelectedTypeId] = useState<number | null>(null)
-  const [expandedGroupIds, setExpandedGroupIds] = useState<Set<number>>(
-    new Set()
+  const selectedRegionId = useRegionalMarketSessionStore(
+    (s) => s.selectedRegionId
   )
+  const selectedMarketGroupId = useRegionalMarketSessionStore(
+    (s) => s.selectedMarketGroupId
+  )
+  const selectedTypeId = useRegionalMarketSessionStore((s) => s.selectedTypeId)
+  const expandedGroupIds = useRegionalMarketSessionStore(
+    (s) => s.expandedGroupIds
+  )
+  const setSelectedRegionId = useRegionalMarketSessionStore(
+    (s) => s.setSelectedRegionId
+  )
+  const setSelectedMarketGroupId = useRegionalMarketSessionStore(
+    (s) => s.setSelectedMarketGroupId
+  )
+  const setSelectedTypeId = useRegionalMarketSessionStore(
+    (s) => s.setSelectedTypeId
+  )
+  const setExpandedGroupIds = useRegionalMarketSessionStore(
+    (s) => s.setExpandedGroupIds
+  )
+  const toggleExpandedGroup = useRegionalMarketSessionStore(
+    (s) => s.toggleExpandedGroup
+  )
+  const expandGroups = useRegionalMarketSessionStore((s) => s.expandGroups)
 
   const { tree, loading, error } = useMarketGroups()
   const regions = useReferenceCacheStore((s) => s.regions)
@@ -94,15 +111,11 @@ export function RegionalMarketPanel({
       const path = buildBreadcrumbPath(tree, type.marketGroupId)
       const groupIdsToExpand = path.map((node) => node.group.id)
 
-      setExpandedGroupIds((prev) => {
-        const next = new Set(prev)
-        for (const id of groupIdsToExpand) next.add(id)
-        return next
-      })
+      expandGroups(groupIdsToExpand)
       setSelectedMarketGroupId(type.marketGroupId)
       setSelectedTypeId(type.id)
     },
-    [tree, types]
+    [tree, types, expandGroups, setSelectedMarketGroupId, setSelectedTypeId]
   )
 
   useEffect(() => {
@@ -137,57 +150,57 @@ export function RegionalMarketPanel({
     return types.get(selectedTypeId)?.name ?? null
   }, [types, selectedTypeId])
 
-  const handleToggleExpand = useCallback((groupId: number) => {
-    setExpandedGroupIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(groupId)) {
-        next.delete(groupId)
-      } else {
-        next.add(groupId)
-      }
-      return next
-    })
-  }, [])
+  const handleToggleExpand = useCallback(
+    (groupId: number) => {
+      toggleExpandedGroup(groupId)
+    },
+    [toggleExpandedGroup]
+  )
 
-  const handleSelectGroup = useCallback((groupId: number) => {
-    setSelectedMarketGroupId(groupId)
-    setSelectedTypeId(null)
-    setExpandedGroupIds((prev) => {
-      const next = new Set(prev)
-      next.add(groupId)
-      return next
-    })
-  }, [])
-
-  const handleSelectType = useCallback((typeId: number) => {
-    setSelectedTypeId(typeId)
-  }, [])
-
-  const handleBreadcrumbClick = useCallback((groupId: number | null) => {
-    if (groupId === null) {
-      setSelectedMarketGroupId(null)
-      setSelectedTypeId(null)
-    } else {
+  const handleSelectGroup = useCallback(
+    (groupId: number) => {
       setSelectedMarketGroupId(groupId)
       setSelectedTypeId(null)
-    }
-  }, [])
+      expandGroups([groupId])
+    },
+    [setSelectedMarketGroupId, setSelectedTypeId, expandGroups]
+  )
+
+  const handleSelectType = useCallback(
+    (typeId: number) => {
+      setSelectedTypeId(typeId)
+    },
+    [setSelectedTypeId]
+  )
+
+  const handleBreadcrumbClick = useCallback(
+    (groupId: number | null) => {
+      if (groupId === null) {
+        setSelectedMarketGroupId(null)
+        setSelectedTypeId(null)
+      } else {
+        setSelectedMarketGroupId(groupId)
+        setSelectedTypeId(null)
+      }
+    },
+    [setSelectedMarketGroupId, setSelectedTypeId]
+  )
 
   const handleRegionChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
       setSelectedRegionId(parseInt(e.target.value, 10))
     },
-    []
+    [setSelectedRegionId]
   )
 
   const handleExpandAll = useCallback(() => {
     const allIds = getAllGroupIds(tree)
     setExpandedGroupIds(new Set(allIds))
-  }, [tree])
+  }, [tree, setExpandedGroupIds])
 
   const handleCollapseAll = useCallback(() => {
     setExpandedGroupIds(new Set())
-  }, [])
+  }, [setExpandedGroupIds])
 
   const handleSearchSelect = useCallback(
     (type: CachedType) => {

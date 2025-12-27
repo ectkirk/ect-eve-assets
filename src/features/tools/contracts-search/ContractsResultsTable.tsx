@@ -23,24 +23,11 @@ import {
   SCAM_THRESHOLD_PCT,
   PAGE_SIZE,
 } from './utils'
-import type { SearchContract, ContractSearchMode } from './types'
+import type { SearchContract, ContractSearchMode, SortPreset } from './types'
+import { SORT_PRESETS } from './types'
 
-export type SortPreset =
-  | 'created-asc'
-  | 'created-desc'
-  | 'timeLeft-asc'
-  | 'timeLeft-desc'
-  | 'price-asc'
-  | 'price-desc'
-
-export const SORT_PRESETS: { value: SortPreset; label: string }[] = [
-  { value: 'created-asc', label: 'Date Created (Oldest First)' },
-  { value: 'created-desc', label: 'Date Created (Newest First)' },
-  { value: 'timeLeft-asc', label: 'Time Left (Shortest First)' },
-  { value: 'timeLeft-desc', label: 'Time Left (Longest First)' },
-  { value: 'price-asc', label: 'Price (Lowest First)' },
-  { value: 'price-desc', label: 'Price (Highest First)' },
-]
+export type { SortPreset }
+export { SORT_PRESETS }
 
 type SortColumn =
   | 'contract'
