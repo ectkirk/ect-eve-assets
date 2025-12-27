@@ -76,13 +76,20 @@ export function getAssetDisplayNames(ra: ResolvedAsset): AssetDisplayNames {
 
   const systemLocation = ra.systemId ? getLocation(ra.systemId) : undefined
 
+  let locationName: string
+  if (ra.modeFlags.inAssetSafety) {
+    locationName = 'Asset Safety'
+  } else if (ra.hasOrphanedParent) {
+    locationName = 'Unknown Parent'
+  } else {
+    locationName = getLocationName(ra.rootLocationId)
+  }
+
   return {
     typeName,
     categoryName: isAbyssal ? 'Abyssals' : (type?.categoryName ?? ''),
     groupName: type?.groupName ?? '',
-    locationName: ra.hasOrphanedParent
-      ? 'Unknown Parent'
-      : getLocationName(ra.rootLocationId),
+    locationName,
     systemName: systemLocation?.name ?? '',
     regionName: ra.regionId ? (getRegion(ra.regionId)?.name ?? '') : '',
   }
