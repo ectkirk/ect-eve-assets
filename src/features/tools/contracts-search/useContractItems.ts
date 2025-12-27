@@ -72,16 +72,15 @@ export function useContractItems() {
         { requiresAuth: false }
       )
 
-      const includedItems = esiItems.filter((item) => item.is_included)
-      const typeIds = [...new Set(includedItems.map((i) => i.type_id))]
+      const typeIds = [...new Set(esiItems.map((i) => i.type_id))]
 
-      const abyssalItemIds = includedItems
+      const abyssalItemIds = esiItems
         .filter((i) => i.item_id && isAbyssalTypeId(i.type_id))
         .map((i) => i.item_id!)
 
       const priceStore = usePriceStore.getState()
       await priceStore.ensureJitaPrices(typeIds, abyssalItemIds)
-      const resolved: ContractItem[] = includedItems.map((item) => {
+      const resolved: ContractItem[] = esiItems.map((item) => {
         const typeInfo = getType(item.type_id)
         return {
           typeId: item.type_id,
@@ -99,6 +98,7 @@ export function useContractItems() {
           materialEfficiency: item.material_efficiency,
           timeEfficiency: item.time_efficiency,
           runs: item.runs,
+          isIncluded: item.is_included,
         }
       })
 

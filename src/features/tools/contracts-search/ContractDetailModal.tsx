@@ -274,9 +274,6 @@ export function ContractDetailModal({
 
           {contract.type !== 'courier' && (
             <div className="px-4 py-3">
-              <h3 className="mb-2 text-sm font-medium text-status-positive">
-                Items
-              </h3>
               {isLoading ? (
                 <div className="flex items-center gap-2 py-8 text-content-muted">
                   <Loader2 className="h-5 w-5 animate-spin" />
@@ -285,7 +282,38 @@ export function ContractDetailModal({
               ) : error ? (
                 <div className="py-4 text-red-400">{error}</div>
               ) : items && items.length > 0 ? (
-                <ItemsTable items={items} />
+                (() => {
+                  const includedItems = items.filter(
+                    (i) => i.isIncluded !== false
+                  )
+                  const requestedItems = items.filter(
+                    (i) => i.isIncluded === false
+                  )
+                  return (
+                    <>
+                      {includedItems.length > 0 && (
+                        <div
+                          className={requestedItems.length > 0 ? 'mb-4' : ''}
+                        >
+                          <h3 className="mb-2 text-sm font-medium text-status-positive">
+                            {requestedItems.length > 0
+                              ? 'What You Get'
+                              : 'Items'}
+                          </h3>
+                          <ItemsTable items={includedItems} />
+                        </div>
+                      )}
+                      {requestedItems.length > 0 && (
+                        <div>
+                          <h3 className="mb-2 text-sm font-medium text-status-negative">
+                            What They Want
+                          </h3>
+                          <ItemsTable items={requestedItems} />
+                        </div>
+                      )}
+                    </>
+                  )
+                })()
               ) : (
                 <div className="py-4 text-content-muted">No items</div>
               )}

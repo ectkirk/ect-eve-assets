@@ -14,6 +14,7 @@ export interface ContractItem {
   materialEfficiency?: number
   timeEfficiency?: number
   runs?: number
+  isIncluded?: boolean
 }
 
 export interface ESIContractItemLike {
