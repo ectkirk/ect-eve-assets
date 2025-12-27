@@ -102,7 +102,8 @@ export const TreeRow = memo(function TreeRow({
   const isInServiceRegion = node.regionId && SERVICE_REGIONS.has(node.regionId)
   const isStation = node.locationId && node.locationId < 100_000_000
   const showBuyback =
-    (isSelected && showBuybackOption) || (hasChildren && isInServiceRegion)
+    (isSelected && showBuybackOption) ||
+    (hasChildren && isInServiceRegion && isStation)
   const showFreight =
     (isSelected && showFreightOption) ||
     (hasChildren && isInServiceRegion && isStation)

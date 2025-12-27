@@ -186,13 +186,15 @@ export function TreeTable({
         const descendants = collectDescendantItems(node)
         if (descendants.length === 0) return
 
+        const first = descendants[0]
+        if (!first?.locationId || first.locationId >= 100_000_000) return
+
         const items = descendants.map((n) => ({
           name: n.typeId ? (getType(n.typeId)?.name ?? n.name) : n.name,
           quantity: n.quantity ?? n.totalCount,
         }))
 
-        const first = descendants[0]
-        if (!first?.systemId) return
+        if (!first.systemId) return
 
         const system = getSystem(first.systemId)
         const securityTab = getSecurityTab(system?.securityStatus)

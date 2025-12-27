@@ -108,6 +108,10 @@ export function useBuybackSelection({
     const firstLocation = first.locationId
     if (!firstLocation) return null
 
+    // Structures (player-owned) have IDs >= 100M, buyback only services stations
+    const isStructure = firstLocation >= 100_000_000
+    if (isStructure) return null
+
     const allSameLocation = selectedItems.every(
       (item) => item.locationId === firstLocation
     )
