@@ -176,15 +176,15 @@ declare global {
     sortDirection?: 'asc' | 'desc'
   }
 
-  interface ContractSearchTopItem {
-    typeId?: number
+  interface ContractSearchItem {
+    typeId: number
     itemId?: number
     typeName: string
     quantity: number
     isBlueprintCopy?: boolean
-    materialEfficiency?: number | null
-    timeEfficiency?: number | null
-    runs?: number | null
+    materialEfficiency?: number
+    timeEfficiency?: number
+    runs?: number
   }
 
   interface ContractSearchContract {
@@ -205,8 +205,7 @@ declare global {
     securityStatus: number | null
     dateIssued: string
     dateExpired: string
-    itemCount: number
-    topItems: ContractSearchTopItem[]
+    items: ContractSearchItem[]
   }
 
   interface ContractSearchResult {

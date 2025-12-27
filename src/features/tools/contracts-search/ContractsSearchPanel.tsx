@@ -219,10 +219,11 @@ export function ContractsSearchPanel() {
         }
 
         const contractsWithNames: SearchContract[] = contracts.map((c) => {
-          const topItems = c.topItems ?? []
+          const items = c.items ?? []
           return {
             ...c,
-            topItems,
+            topItems: items,
+            itemCount: items.length,
             issuerId: c.issuerCharacterId,
             issuerName: issuerNameCache.get(c.issuerCharacterId) ?? '',
             estValue: null,

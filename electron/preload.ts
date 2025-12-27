@@ -176,9 +176,13 @@ export interface ContractSearchParams {
 
 export interface ContractSearchItem {
   typeId: number
+  itemId?: number
   typeName: string
   quantity: number
   isBlueprintCopy?: boolean
+  materialEfficiency?: number
+  timeEfficiency?: number
+  runs?: number
 }
 
 export interface ContractSearchContract {
@@ -199,8 +203,7 @@ export interface ContractSearchContract {
   securityStatus: number | null
   dateIssued: string
   dateExpired: string
-  itemCount: number
-  itemSummary: string
+  items: ContractSearchItem[]
 }
 
 export interface ContractSearchResult {
