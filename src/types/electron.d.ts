@@ -174,6 +174,7 @@ declare global {
     pageSize?: number
     sortBy?: 'price' | 'dateIssued' | 'dateExpired'
     sortDirection?: 'asc' | 'desc'
+    cursor?: string
   }
 
   interface ContractSearchItem {
@@ -214,6 +215,8 @@ declare global {
     page?: number
     pageSize?: number
     totalPages?: number
+    nextCursor?: string | null
+    hasMore?: boolean
     error?: string
   }
 

@@ -19,6 +19,8 @@ interface CachedResponse {
   contracts: SearchContract[]
   total: number
   totalPages: number
+  nextCursor: string | null
+  hasMore: boolean
   timestamp: number
 }
 
@@ -43,7 +45,9 @@ function cacheResponse(
   key: string,
   contracts: SearchContract[],
   total: number,
-  totalPages: number
+  totalPages: number,
+  nextCursor: string | null,
+  hasMore: boolean
 ): void {
   if (responseCache.size >= 20) {
     const oldest = [...responseCache.entries()].sort(
@@ -55,6 +59,8 @@ function cacheResponse(
     contracts,
     total,
     totalPages,
+    nextCursor,
+    hasMore,
     timestamp: Date.now(),
   })
 }
@@ -105,8 +111,8 @@ function presetToApiSort(preset: SortPreset): {
 
 function filtersToApiParams(
   filters: ContractSearchFilters,
-  page: number,
-  sortPreset: SortPreset
+  sortPreset: SortPreset,
+  pagination: { page: number } | { cursor: string }
 ): ContractSearchParams {
   let regionId: number | null = null
   if (filters.locationSelection === 'the_forge') {
@@ -124,7 +130,7 @@ function filtersToApiParams(
 
   const { sortBy, sortDirection } = presetToApiSort(sortPreset)
 
-  return {
+  const base = {
     mode: filters.mode,
     searchText: filters.exactTypeMatch
       ? undefined
@@ -142,11 +148,15 @@ function filtersToApiParams(
     securityLow: filters.securityLow,
     securityNull: filters.securityNull,
     issuer: filters.issuer || undefined,
-    page,
     pageSize: PAGE_SIZE,
     sortBy,
     sortDirection,
   }
+
+  if ('cursor' in pagination) {
+    return { ...base, cursor: pagination.cursor }
+  }
+  return { ...base, page: pagination.page }
 }
 
 export function ContractsSearchPanel() {
@@ -159,6 +169,7 @@ export function ContractsSearchPanel() {
   const total = useContractsSessionStore((s) => s.total)
   const sortPreset = useContractsSessionStore((s) => s.sortPreset)
   const hasSearched = useContractsSessionStore((s) => s.hasSearched)
+  const nextCursor = useContractsSessionStore((s) => s.nextCursor)
   const storeSetFilters = useContractsSessionStore((s) => s.setFilters)
   const commitSearch = useContractsSessionStore((s) => s.commitSearch)
   const commitSort = useContractsSessionStore((s) => s.commitSort)
@@ -176,14 +187,22 @@ export function ContractsSearchPanel() {
     async (
       pageNum: number,
       currentFilters: ContractSearchFilters,
-      currentSort: SortPreset
+      currentSort: SortPreset,
+      cursor?: string
     ) => {
-      const params = filtersToApiParams(currentFilters, pageNum, currentSort)
+      const pagination = cursor ? { cursor } : { page: pageNum }
+      const params = filtersToApiParams(currentFilters, currentSort, pagination)
       const cacheKey = getResponseCacheKey(params)
       const cached = getCachedResponse(cacheKey)
 
       if (cached) {
-        storeSetResults(cached.contracts, cached.total, cached.totalPages)
+        storeSetResults({
+          contracts: cached.contracts,
+          total: cached.total || undefined,
+          totalPages: cached.totalPages || undefined,
+          nextCursor: cached.nextCursor,
+          hasMore: cached.hasMore,
+        })
         storeSetPage(pageNum)
         return
       }
@@ -195,13 +214,13 @@ export function ContractsSearchPanel() {
 
         if (response.error) {
           setError(response.error)
-          storeSetResults([], 0, 0)
+          storeSetResults({ contracts: [], total: 0, totalPages: 0 })
           return
         }
 
         if (!Array.isArray(response.contracts)) {
           setError('Invalid response from server')
-          storeSetResults([], 0, 0)
+          storeSetResults({ contracts: [], total: 0, totalPages: 0 })
           return
         }
 
@@ -281,15 +300,27 @@ export function ContractsSearchPanel() {
           contract.estValue = total > 0 && !hasUnpriceableATShip ? total : null
         }
 
-        const totalVal = response.total ?? 0
-        const totalPagesVal = response.totalPages ?? 0
+        const update = {
+          contracts: contractsWithNames,
+          total: response.total,
+          totalPages: response.totalPages,
+          nextCursor: response.nextCursor ?? null,
+          hasMore: response.hasMore ?? false,
+        }
 
-        cacheResponse(cacheKey, contractsWithNames, totalVal, totalPagesVal)
-        storeSetResults(contractsWithNames, totalVal, totalPagesVal)
+        cacheResponse(
+          cacheKey,
+          contractsWithNames,
+          response.total ?? 0,
+          response.totalPages ?? 0,
+          update.nextCursor,
+          update.hasMore
+        )
+        storeSetResults(update)
         storeSetPage(pageNum)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Search failed')
-        storeSetResults([], 0, 0)
+        storeSetResults({ contracts: [], total: 0, totalPages: 0 })
       } finally {
         setIsLoading(false)
       }
@@ -305,9 +336,11 @@ export function ContractsSearchPanel() {
 
   const handlePageChange = useCallback(
     (newPage: number) => {
-      fetchPage(newPage, committedFilters, committedSort)
+      const isNextPage = newPage === page + 1
+      const cursor = isNextPage && nextCursor ? nextCursor : undefined
+      fetchPage(newPage, committedFilters, committedSort, cursor)
     },
-    [fetchPage, committedFilters, committedSort]
+    [fetchPage, committedFilters, committedSort, page, nextCursor]
   )
 
   const handleSortChange = useCallback(

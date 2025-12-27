@@ -8,6 +8,14 @@ import { DEFAULT_FILTERS } from '@/features/tools/contracts-search/types'
 
 const DEFAULT_SORT: SortPreset = 'price-desc'
 
+interface ResultsUpdate {
+  contracts: SearchContract[]
+  total?: number
+  totalPages?: number
+  nextCursor?: string | null
+  hasMore?: boolean
+}
+
 interface ContractsSessionState {
   filters: ContractSearchFilters
   committedFilters: ContractSearchFilters
@@ -18,14 +26,12 @@ interface ContractsSessionState {
   total: number
   sortPreset: SortPreset
   hasSearched: boolean
+  nextCursor: string | null
+  hasMore: boolean
 
   setFilters: (filters: ContractSearchFilters) => void
   commitSearch: () => void
-  setResults: (
-    results: SearchContract[],
-    total: number,
-    totalPages: number
-  ) => void
+  setResults: (update: ResultsUpdate) => void
   setPage: (page: number) => void
   setSortPreset: (preset: SortPreset) => void
   commitSort: () => void
@@ -44,6 +50,8 @@ export const useContractsSessionStore = create<ContractsSessionState>(
     total: 0,
     sortPreset: DEFAULT_SORT,
     hasSearched: false,
+    nextCursor: null,
+    hasMore: false,
 
     setFilters: (filters) => set({ filters }),
     commitSearch: () =>
@@ -51,8 +59,14 @@ export const useContractsSessionStore = create<ContractsSessionState>(
         committedFilters: state.filters,
         committedSort: state.sortPreset,
       })),
-    setResults: (results, total, totalPages) =>
-      set({ results, total, totalPages }),
+    setResults: (update) =>
+      set((state) => ({
+        results: update.contracts,
+        total: update.total ?? state.total,
+        totalPages: update.totalPages ?? state.totalPages,
+        nextCursor: update.nextCursor ?? null,
+        hasMore: update.hasMore ?? false,
+      })),
     setPage: (page) => set({ page }),
     setSortPreset: (sortPreset) => set({ sortPreset }),
     commitSort: () => set((state) => ({ committedSort: state.sortPreset })),
@@ -68,6 +82,8 @@ export const useContractsSessionStore = create<ContractsSessionState>(
         total: 0,
         sortPreset: DEFAULT_SORT,
         hasSearched: false,
+        nextCursor: null,
+        hasMore: false,
       }),
   })
 )
