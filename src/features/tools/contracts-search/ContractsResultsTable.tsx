@@ -334,14 +334,56 @@ export function ContractsResultsTable({
           </TableHeader>
           <TableBody>
             {sortedContracts.map((contract) => {
-              const price =
-                mode === 'courier' ? (contract.reward ?? 0) : contract.price
-              const estValue = contract.estValue
-              const diff = estValue != null ? price - estValue : null
-              const pct = estValue ? (diff! / estValue) * 100 : null
+              const isWantToBuy = contract.isWantToBuy === true
+
+              let displayPrice: number | null
+              let displayEstValue: number | null
+              let diff: number | null
+              let pct: number | null
+              let diffIsGood: boolean
+
+              if (isWantToBuy) {
+                const reward = contract.reward ?? 0
+                const itemsValue = contract.estValue
+                const youGet =
+                  itemsValue != null
+                    ? reward + itemsValue
+                    : reward > 0
+                      ? reward
+                      : null
+                const youGive = contract.estRequestedValue ?? null
+                displayPrice = youGet
+                displayEstValue = youGive
+                diff =
+                  youGet != null && youGive != null ? youGet - youGive : null
+                pct = youGive && diff != null ? (diff / youGive) * 100 : null
+                diffIsGood = diff != null && diff > 0
+              } else if (mode === 'courier') {
+                displayPrice = contract.reward ?? 0
+                displayEstValue = contract.estValue
+                diff =
+                  displayEstValue != null
+                    ? displayPrice - displayEstValue
+                    : null
+                pct = displayEstValue ? (diff! / displayEstValue) * 100 : null
+                diffIsGood = diff != null && diff < 0
+              } else {
+                displayPrice = contract.price
+                displayEstValue = contract.estValue
+                diff =
+                  displayEstValue != null
+                    ? displayPrice - displayEstValue
+                    : null
+                pct = displayEstValue ? (diff! / displayEstValue) * 100 : null
+                diffIsGood = diff != null && diff < 0
+              }
+
+              const itemsToCheck = isWantToBuy
+                ? (contract.requestedItems ?? [])
+                : contract.topItems
               const isAllAbyssal =
-                contract.topItems.length > 0 &&
-                contract.topItems.every(
+                itemsToCheck.length > 0 &&
+                itemsToCheck.every(
                   (item) => item.typeId && isAbyssalTypeId(item.typeId)
                 )
 
@@ -358,32 +400,37 @@ export function ContractsResultsTable({
                   }
                 >
                   <TableCell className="font-medium">
-                    {contract.topItems.length > 1 ? (
-                      '[Multiple Items]'
-                    ) : contract.topItems[0] ? (
-                      <span className="flex items-center gap-1.5">
-                        {contract.topItems[0].typeId && (
-                          <TypeIcon
-                            typeId={contract.topItems[0].typeId}
-                            categoryId={
-                              getType(contract.topItems[0].typeId)?.categoryId
-                            }
-                            isBlueprintCopy={
-                              contract.topItems[0].isBlueprintCopy
-                            }
-                            size="sm"
-                          />
-                        )}
-                        {formatBlueprintName(contract.topItems[0])}
-                        {contract.topItems[0].quantity > 1 && (
-                          <span className="text-content-secondary">
-                            x{contract.topItems[0].quantity.toLocaleString()}
-                          </span>
-                        )}
-                      </span>
-                    ) : (
-                      '-'
-                    )}
+                    {(() => {
+                      const displayItems =
+                        isWantToBuy && contract.topItems.length === 0
+                          ? (contract.requestedItems ?? [])
+                          : contract.topItems
+                      const displayItem = displayItems[0]
+
+                      if (displayItems.length > 1) return '[Multiple Items]'
+                      if (!displayItem) return '-'
+
+                      return (
+                        <span className="flex items-center gap-1.5">
+                          {displayItem.typeId && (
+                            <TypeIcon
+                              typeId={displayItem.typeId}
+                              categoryId={
+                                getType(displayItem.typeId)?.categoryId
+                              }
+                              isBlueprintCopy={displayItem.isBlueprintCopy}
+                              size="sm"
+                            />
+                          )}
+                          {formatBlueprintName(displayItem)}
+                          {displayItem.quantity > 1 && (
+                            <span className="text-content-secondary">
+                              x{displayItem.quantity.toLocaleString()}
+                            </span>
+                          )}
+                        </span>
+                      )
+                    })()}
                   </TableCell>
                   <TableCell>
                     <div>
@@ -407,8 +454,14 @@ export function ContractsResultsTable({
                     </div>
                   </TableCell>
                   <TableCell className="font-mono">
-                    {formatNumber(price)}{' '}
-                    <span className="text-content-muted">ISK</span>
+                    {displayPrice != null ? (
+                      <>
+                        {formatNumber(displayPrice)}{' '}
+                        <span className="text-content-muted">ISK</span>
+                      </>
+                    ) : (
+                      '-'
+                    )}
                     {mode === 'courier' && contract.collateral && (
                       <div className="text-xs text-content-muted">
                         Collateral: {formatNumber(contract.collateral)}
@@ -416,9 +469,9 @@ export function ContractsResultsTable({
                     )}
                   </TableCell>
                   <TableCell className="font-mono">
-                    {estValue != null ? (
+                    {displayEstValue != null ? (
                       <>
-                        {formatNumber(estValue)}{' '}
+                        {formatNumber(displayEstValue)}{' '}
                         <span className="text-content-muted">ISK</span>
                       </>
                     ) : (
@@ -429,10 +482,10 @@ export function ContractsResultsTable({
                     {diff != null && pct != null ? (
                       <span
                         className={
-                          diff > 0
-                            ? 'text-status-negative'
-                            : diff < 0
-                              ? 'text-status-positive'
+                          diffIsGood
+                            ? 'text-status-positive'
+                            : diff !== 0
+                              ? 'text-status-negative'
                               : 'text-content-muted'
                         }
                       >

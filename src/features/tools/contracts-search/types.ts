@@ -56,6 +56,7 @@ export interface ContractTopItem {
   materialEfficiency?: number | null
   timeEfficiency?: number | null
   runs?: number | null
+  isIncluded?: boolean
 }
 
 export interface SearchContract {
@@ -77,7 +78,10 @@ export interface SearchContract {
   dateExpired: string
   title: string
   topItems: ContractTopItem[]
+  requestedItems?: ContractTopItem[]
   estValue: number | null
+  estRequestedValue?: number | null
+  isWantToBuy?: boolean
 }
 
 export const DEFAULT_FILTERS: ContractSearchFilters = {

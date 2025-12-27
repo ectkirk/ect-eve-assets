@@ -86,6 +86,7 @@ function toDisplayContract(sc: SearchContract): DisplayContract {
     price: sc.price,
     reward: sc.reward,
     collateral: sc.collateral,
+    isWantToBuy: sc.isWantToBuy,
     volume: sc.volume,
     availability: 'public',
     topItemName,
@@ -239,26 +240,30 @@ export function ContractsSearchPanel() {
 
         const contractsWithNames: SearchContract[] = contracts.map((c) => {
           const items = c.items ?? []
+          const requested = c.requestedItems ?? []
+          const isWantToBuy = requested.length > 0
           return {
             ...c,
             topItems: items,
+            requestedItems: requested,
             issuerId: c.issuerCharacterId,
             issuerName: issuerNameCache.get(c.issuerCharacterId) ?? '',
             estValue: null,
+            estRequestedValue: null,
+            isWantToBuy,
           }
         })
 
-        const eligibleItems = contractsWithNames
-          .filter(
-            (c) =>
-              !c.topItems.some(
-                (item) =>
-                  item.isBlueprintCopy ||
-                  (item.materialEfficiency ?? 0) > 0 ||
-                  (item.timeEfficiency ?? 0) > 0
-              )
-          )
-          .flatMap((c) => c.topItems)
+        const allItems = contractsWithNames.flatMap((c) => [
+          ...c.topItems,
+          ...(c.requestedItems ?? []),
+        ])
+        const eligibleItems = allItems.filter(
+          (item) =>
+            !item.isBlueprintCopy &&
+            (item.materialEfficiency ?? 0) === 0 &&
+            (item.timeEfficiency ?? 0) === 0
+        )
         const typeIds = [
           ...new Set(eligibleItems.map((item) => item.typeId).filter(Boolean)),
         ] as number[]
@@ -275,18 +280,21 @@ export function ContractsSearchPanel() {
         }
 
         const priceStore = usePriceStore.getState()
-        for (const contract of contractsWithNames) {
-          const hasBlueprint = contract.topItems.some(
+
+        const calcItemsValue = (
+          items: typeof allItems
+        ): { value: number; hasUnpriceable: boolean } => {
+          let total = 0
+          let hasUnpriceableATShip = false
+          const hasBlueprint = items.some(
             (item) =>
               item.isBlueprintCopy === true ||
               (item.materialEfficiency ?? 0) > 0 ||
               (item.timeEfficiency ?? 0) > 0
           )
-          if (hasBlueprint) continue
+          if (hasBlueprint) return { value: 0, hasUnpriceable: true }
 
-          let total = 0
-          let hasUnpriceableATShip = false
-          for (const item of contract.topItems) {
+          for (const item of items) {
             if (!item.typeId) continue
             const price = priceStore.getItemPrice(item.typeId, {
               itemId: item.itemId,
@@ -297,7 +305,23 @@ export function ContractsSearchPanel() {
             }
             total += price * item.quantity
           }
-          contract.estValue = total > 0 && !hasUnpriceableATShip ? total : null
+          return { value: total, hasUnpriceable: hasUnpriceableATShip }
+        }
+
+        for (const contract of contractsWithNames) {
+          const included = calcItemsValue(contract.topItems)
+          contract.estValue =
+            included.value > 0 && !included.hasUnpriceable
+              ? included.value
+              : null
+
+          if (contract.isWantToBuy && contract.requestedItems?.length) {
+            const requested = calcItemsValue(contract.requestedItems)
+            contract.estRequestedValue =
+              requested.value > 0 && !requested.hasUnpriceable
+                ? requested.value
+                : null
+          }
         }
 
         const update = {

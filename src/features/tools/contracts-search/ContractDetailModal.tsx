@@ -44,6 +44,7 @@ export interface DisplayContract {
   status?: string
   availability?: 'public' | 'personal' | 'corporation' | 'alliance'
   topItemName?: string
+  isWantToBuy?: boolean
 }
 
 function InfoRow({
@@ -260,6 +261,17 @@ export function ContractDetailModal({
                   {formatNumber(contract.collateral ?? 0)} ISK
                 </span>
               </InfoRow>
+            </div>
+          ) : contract.isWantToBuy ? (
+            <div className="border-b border-border px-4 py-3">
+              <div className="flex items-baseline gap-4">
+                <span className="text-sm font-medium text-content">
+                  You Receive
+                </span>
+                <span className="text-lg font-bold text-status-positive">
+                  {formatNumber(contract.reward ?? 0)} ISK
+                </span>
+              </div>
             </div>
           ) : (
             <div className="border-b border-border px-4 py-3">

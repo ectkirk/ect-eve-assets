@@ -207,6 +207,7 @@ declare global {
     dateIssued: string
     dateExpired: string
     items: ContractSearchItem[]
+    requestedItems?: ContractSearchItem[]
   }
 
   interface ContractSearchResult {
