@@ -401,34 +401,53 @@ export function ContractsResultsTable({
                 >
                   <TableCell className="font-medium">
                     {(() => {
-                      const displayItems =
+                      const showingRequested =
                         isWantToBuy && contract.topItems.length === 0
-                          ? (contract.requestedItems ?? [])
-                          : contract.topItems
+                      const displayItems = showingRequested
+                        ? (contract.requestedItems ?? [])
+                        : contract.topItems
                       const displayItem = displayItems[0]
 
-                      if (displayItems.length > 1) return '[Multiple Items]'
+                      if (displayItems.length > 1) {
+                        return showingRequested ? (
+                          <div>
+                            [Multiple Items]
+                            <div className="text-xs text-status-negative">
+                              You Provide
+                            </div>
+                          </div>
+                        ) : (
+                          '[Multiple Items]'
+                        )
+                      }
                       if (!displayItem) return '-'
 
                       return (
-                        <span className="flex items-center gap-1.5">
-                          {displayItem.typeId && (
-                            <TypeIcon
-                              typeId={displayItem.typeId}
-                              categoryId={
-                                getType(displayItem.typeId)?.categoryId
-                              }
-                              isBlueprintCopy={displayItem.isBlueprintCopy}
-                              size="sm"
-                            />
+                        <div>
+                          <span className="flex items-center gap-1.5">
+                            {displayItem.typeId && (
+                              <TypeIcon
+                                typeId={displayItem.typeId}
+                                categoryId={
+                                  getType(displayItem.typeId)?.categoryId
+                                }
+                                isBlueprintCopy={displayItem.isBlueprintCopy}
+                                size="sm"
+                              />
+                            )}
+                            {formatBlueprintName(displayItem)}
+                            {displayItem.quantity > 1 && (
+                              <span className="text-content-secondary">
+                                x{displayItem.quantity.toLocaleString()}
+                              </span>
+                            )}
+                          </span>
+                          {showingRequested && (
+                            <div className="text-xs text-status-negative">
+                              You Provide
+                            </div>
                           )}
-                          {formatBlueprintName(displayItem)}
-                          {displayItem.quantity > 1 && (
-                            <span className="text-content-secondary">
-                              x{displayItem.quantity.toLocaleString()}
-                            </span>
-                          )}
-                        </span>
+                        </div>
                       )
                     })()}
                   </TableCell>
@@ -458,6 +477,11 @@ export function ContractsResultsTable({
                       <>
                         {formatNumber(displayPrice)}{' '}
                         <span className="text-content-muted">ISK</span>
+                        {isWantToBuy && (contract.reward ?? 0) > 0 && (
+                          <div className="text-xs text-status-positive">
+                            You Receive
+                          </div>
+                        )}
                       </>
                     ) : (
                       '-'
