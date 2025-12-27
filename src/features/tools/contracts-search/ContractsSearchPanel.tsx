@@ -355,20 +355,22 @@ export function ContractsSearchPanel() {
           )}
         </div>
         {error ? (
-          <div className="flex flex-1 flex-col items-center justify-center text-red-400">
+          <div className="flex flex-1 flex-col items-center justify-center p-4 text-red-400">
             <p>{error}</p>
           </div>
         ) : hasSearched ? (
-          <ContractsResultsTable
-            contracts={results}
-            mode={filters.mode}
-            page={page}
-            totalPages={totalPages}
-            total={total}
-            onPageChange={handlePageChange}
-            onViewContract={setSelectedContract}
-            isLoading={isLoading}
-          />
+          <div className="flex flex-1 flex-col overflow-hidden p-4">
+            <ContractsResultsTable
+              contracts={results}
+              mode={filters.mode}
+              page={page}
+              totalPages={totalPages}
+              total={total}
+              onPageChange={handlePageChange}
+              onViewContract={setSelectedContract}
+              isLoading={isLoading}
+            />
+          </div>
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center text-content-muted">
             <p>Enter search criteria and click Search</p>

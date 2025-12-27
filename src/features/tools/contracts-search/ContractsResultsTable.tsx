@@ -267,10 +267,10 @@ export function ContractsResultsTable({
   }
 
   return (
-    <div className="relative flex flex-1 flex-col overflow-hidden">
+    <div className="flex flex-1 flex-col overflow-hidden">
       <div
         ref={tableRef}
-        className={`relative flex-1 overflow-auto ${isLoading ? 'opacity-50' : ''}`}
+        className={`flex-1 overflow-auto rounded-lg border border-border bg-surface-secondary/30 ${isLoading ? 'opacity-50' : ''}`}
       >
         <Table>
           <TableHeader>
