@@ -11,6 +11,7 @@ import {
 import { TypeIcon } from '@/components/ui/type-icon'
 import { formatNumber } from '@/lib/utils'
 import { getType } from '@/store/cache'
+import { isAbyssalTypeId } from '@/store/price-store'
 import { Pagination } from './Pagination'
 import { ContractTooltip } from './ContractTooltip'
 import { ContractContextMenu } from './ContractContextMenu'
@@ -338,6 +339,11 @@ export function ContractsResultsTable({
               const estValue = contract.estValue
               const diff = estValue != null ? price - estValue : null
               const pct = estValue ? (diff! / estValue) * 100 : null
+              const isAllAbyssal =
+                contract.topItems.length > 0 &&
+                contract.topItems.every(
+                  (item) => item.typeId && isAbyssalTypeId(item.typeId)
+                )
 
               return (
                 <TableRow
@@ -433,7 +439,9 @@ export function ContractsResultsTable({
                         {diff >= 0 ? '+' : ''}
                         {formatNumber(diff)}{' '}
                         {Math.abs(pct) >= SCAM_THRESHOLD_PCT ? (
-                          <span className="text-status-warning">(Scam?)</span>
+                          <span className="text-status-warning">
+                            {isAllAbyssal ? '(RMT?)' : '(Scam?)'}
+                          </span>
                         ) : (
                           `(${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%)`
                         )}
