@@ -182,6 +182,10 @@ export function ContractsResultsTable({
     []
   )
 
+  useEffect(() => {
+    tableRef.current?.scrollTo({ top: 0 })
+  }, [page])
+
   const closeContextMenu = useCallback(() => {
     setContextMenu(null)
   }, [])
