@@ -7,6 +7,7 @@ export interface TypeIconProps {
   typeId: number
   categoryId?: number
   isBlueprintCopy?: boolean
+  isBlueprint?: boolean
   size?: 'sm' | 'md' | 'lg' | 'xl'
   className?: string
 }
@@ -23,16 +24,26 @@ export function getTypeIconUrl(
   options?: {
     categoryId?: number
     isBlueprintCopy?: boolean
+    isBlueprint?: boolean
     imageSize?: number
   }
 ): string | null {
-  const { categoryId, isBlueprintCopy, imageSize = 32 } = options ?? {}
+  const {
+    categoryId,
+    isBlueprintCopy,
+    isBlueprint,
+    imageSize = 32,
+  } = options ?? {}
 
   if (categoryId === SKIN_CATEGORY_ID) {
     return `https://images.evetech.net/types/81350/icon?size=${imageSize}`
   }
 
-  if (categoryId === BLUEPRINT_CATEGORY_ID) {
+  if (
+    categoryId === BLUEPRINT_CATEGORY_ID ||
+    isBlueprint ||
+    isBlueprintCopy === true
+  ) {
     return isBlueprintCopy
       ? `https://images.evetech.net/types/${typeId}/bpc?size=${imageSize}`
       : `https://images.evetech.net/types/${typeId}/bp?size=${imageSize}`
@@ -52,12 +63,18 @@ export function TypeIcon({
   typeId,
   categoryId,
   isBlueprintCopy,
+  isBlueprint,
   size = 'md',
   className,
 }: TypeIconProps) {
   const sizeClass = SIZE_CLASSES[size]
   const imageSize = IMAGE_SIZES[size]
-  const url = getTypeIconUrl(typeId, { categoryId, isBlueprintCopy, imageSize })
+  const url = getTypeIconUrl(typeId, {
+    categoryId,
+    isBlueprintCopy,
+    isBlueprint,
+    imageSize,
+  })
 
   if (!url) {
     return (

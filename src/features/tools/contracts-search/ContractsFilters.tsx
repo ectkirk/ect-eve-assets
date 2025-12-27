@@ -1,6 +1,11 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { Search, MapPin } from 'lucide-react'
 import { getAllCategories, getGroupsByCategory } from '@/store/cache'
+import { TypeSearchInput } from '@/components/ui/type-search-input'
+import {
+  useReferenceCacheStore,
+  type CachedType,
+} from '@/store/reference-cache'
 import { LocationPickerModal } from './LocationPickerModal'
 import type {
   ContractSearchFilters,
@@ -47,6 +52,24 @@ export function ContractsFilters({
       a.name.localeCompare(b.name)
     )
   }, [filters.categoryId])
+
+  const types = useReferenceCacheStore((s) => s.types)
+  const selectedType = useMemo(() => {
+    if (!filters.typeId) return null
+    return types.get(filters.typeId) ?? null
+  }, [filters.typeId, types])
+
+  const handleTypeChange = useCallback(
+    (type: CachedType | null) => {
+      onChange({
+        ...filters,
+        typeId: type?.id ?? null,
+        typeName: type?.name ?? null,
+        searchText: '',
+      })
+    },
+    [filters, onChange]
+  )
 
   const updateFilter = <K extends keyof ContractSearchFilters>(
     key: K,
@@ -132,17 +155,19 @@ export function ContractsFilters({
       </div>
 
       <div className="flex-1 space-y-3 overflow-y-auto p-4">
-        <div>
-          <label className={labelClass}>Search by</label>
-          <input
-            type="text"
-            placeholder="Item name, type..."
-            className={inputClass}
-            value={filters.searchText}
-            onChange={(e) => updateFilter('searchText', e.target.value)}
-            onKeyDown={handleKeyDown}
-          />
-        </div>
+        {!filters.exactTypeMatch && (
+          <div>
+            <label className={labelClass}>Search by</label>
+            <input
+              type="text"
+              placeholder="Item name, type..."
+              className={inputClass}
+              value={filters.searchText}
+              onChange={(e) => updateFilter('searchText', e.target.value)}
+              onKeyDown={handleKeyDown}
+            />
+          </div>
+        )}
 
         <div>
           <label className={labelClass}>Location</label>
@@ -233,7 +258,7 @@ export function ContractsFilters({
           </div>
         )}
 
-        <div className="pt-1">
+        <div className="space-y-2 pt-1">
           <label className="flex cursor-pointer items-center gap-2">
             <input
               type="checkbox"
@@ -245,7 +270,36 @@ export function ContractsFilters({
             />
             <span className="text-sm text-content">Exclude multiple items</span>
           </label>
+          <label className="flex cursor-pointer items-center gap-2">
+            <input
+              type="checkbox"
+              className={checkboxClass}
+              checked={filters.exactTypeMatch}
+              onChange={(e) => {
+                const checked = e.target.checked
+                onChange({
+                  ...filters,
+                  exactTypeMatch: checked,
+                  typeId: checked ? filters.typeId : null,
+                  typeName: checked ? filters.typeName : null,
+                  searchText: checked ? '' : filters.searchText,
+                })
+              }}
+            />
+            <span className="text-sm text-content">Exact type match</span>
+          </label>
         </div>
+
+        {filters.exactTypeMatch && (
+          <div>
+            <label className={labelClass}>Item Type</label>
+            <TypeSearchInput
+              value={selectedType}
+              onChange={handleTypeChange}
+              placeholder="Search for exact type..."
+            />
+          </div>
+        )}
 
         <div>
           <label className={labelClass}>

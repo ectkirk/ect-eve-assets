@@ -12,6 +12,7 @@ import {
 import { DEFAULT_FILTERS } from './types'
 import type { ContractSearchFilters, SearchContract } from './types'
 import { resolveNames } from '@/api/endpoints/universe'
+import { usePriceStore } from '@/store/price-store'
 
 const issuerNameCache = new Map<number, string>()
 
@@ -129,12 +130,15 @@ function filtersToApiParams(
 
   return {
     mode: filters.mode,
-    searchText: filters.searchText || undefined,
+    searchText: filters.exactTypeMatch
+      ? undefined
+      : filters.searchText || undefined,
     regionId,
     systemId: filters.systemId,
     contractType: filters.contractType,
     categoryId: filters.categoryId,
     groupId: filters.groupId,
+    typeId: filters.typeId,
     excludeMultiple: filters.excludeMultiple,
     priceMin,
     priceMax,
@@ -222,6 +226,16 @@ export function ContractsSearchPanel() {
           issuerId: c.issuerCharacterId,
           issuerName: issuerNameCache.get(c.issuerCharacterId) ?? '',
         }))
+
+        const allItems = contractsWithNames.flatMap((c) => c.topItems)
+        const typeIds = [...new Set(allItems.map((item) => item.typeId).filter(Boolean))] as number[]
+        const abyssalItemIds = allItems
+          .filter((item) => item.itemId)
+          .map((item) => item.itemId!)
+
+        if (typeIds.length > 0 || abyssalItemIds.length > 0) {
+          await usePriceStore.getState().ensureJitaPrices(typeIds, abyssalItemIds)
+        }
 
         const totalVal = response.total ?? 0
         const totalPagesVal = response.totalPages ?? 0

@@ -10,16 +10,33 @@ import {
 } from '@/components/ui/table'
 import { TypeIcon } from '@/components/ui/type-icon'
 import { formatNumber } from '@/lib/utils'
+import { usePriceStore } from '@/store/price-store'
+import { getType } from '@/store/cache'
 import type {
   SearchContract,
   ContractSearchMode,
   ContractTopItem,
 } from './types'
 
-function formatItemName(item: ContractTopItem): string {
-  if (item.isBlueprintCopy === undefined) return item.typeName
+function getContractEstValue(topItems: ContractTopItem[]): number {
+  const getItemPrice = usePriceStore.getState().getItemPrice
+  return topItems.reduce((sum, item) => {
+    if (!item.typeId) return sum
+    const price = getItemPrice(item.typeId, {
+      itemId: item.itemId,
+      isBlueprintCopy: item.isBlueprintCopy,
+    })
+    return sum + price * item.quantity
+  }, 0)
+}
 
-  const bpType = item.isBlueprintCopy ? 'Copy' : 'Original'
+function formatItemName(item: ContractTopItem): string {
+  if (item.isBlueprintCopy == null) return item.typeName
+  if (!item.isBlueprintCopy && item.materialEfficiency == null) {
+    return item.typeName
+  }
+
+  const bpType = item.isBlueprintCopy ? 'BPC' : 'BPO'
   const me = item.materialEfficiency ?? 0
   const te = item.timeEfficiency ?? 0
   const runs = item.runs ?? 0
@@ -292,16 +309,14 @@ export function ContractsResultsTable({
           bVal = mode === 'courier' ? (b.reward ?? 0) : b.price
           break
         case 'estValue':
-          aVal = a.topItems.reduce((sum, item) => sum + item.value, 0)
-          bVal = b.topItems.reduce((sum, item) => sum + item.value, 0)
+          aVal = getContractEstValue(a.topItems)
+          bVal = getContractEstValue(b.topItems)
           break
         case 'difference': {
           const aPrice = mode === 'courier' ? (a.reward ?? 0) : a.price
           const bPrice = mode === 'courier' ? (b.reward ?? 0) : b.price
-          const aEst = a.topItems.reduce((sum, item) => sum + item.value, 0)
-          const bEst = b.topItems.reduce((sum, item) => sum + item.value, 0)
-          aVal = aPrice - aEst
-          bVal = bPrice - bEst
+          aVal = aPrice - getContractEstValue(a.topItems)
+          bVal = bPrice - getContractEstValue(b.topItems)
           break
         }
         case 'timeLeft':
@@ -443,6 +458,7 @@ export function ContractsResultsTable({
                       {contract.topItems[0].typeId && (
                         <TypeIcon
                           typeId={contract.topItems[0].typeId}
+                          categoryId={getType(contract.topItems[0].typeId)?.categoryId}
                           isBlueprintCopy={contract.topItems[0].isBlueprintCopy}
                           size="sm"
                         />
@@ -487,34 +503,57 @@ export function ContractsResultsTable({
                   )}
                 </TableCell>
                 <TableCell className="font-mono">
-                  {formatNumber(
-                    contract.topItems.reduce((sum, item) => sum + item.value, 0)
-                  )}{' '}
-                  <span className="text-content-muted">ISK</span>
+                  {(() => {
+                    const item = contract.topItems[0]
+                    const isMultiple = contract.topItems.length > 1
+                    const isBPC = item?.isBlueprintCopy === true
+                    const isResearchedBP =
+                      (item?.materialEfficiency ?? 0) > 0 ||
+                      (item?.timeEfficiency ?? 0) > 0
+                    if (isMultiple || isBPC || isResearchedBP) return '-'
+                    const estValue = getContractEstValue(contract.topItems)
+                    if (estValue === 0) return '-'
+                    return (
+                      <>
+                        {formatNumber(estValue)}{' '}
+                        <span className="text-content-muted">ISK</span>
+                      </>
+                    )
+                  })()}
                 </TableCell>
                 <TableCell className="font-mono">
                   {(() => {
+                    const item = contract.topItems[0]
+                    const isMultiple = contract.topItems.length > 1
+                    const isBPC = item?.isBlueprintCopy === true
+                    const isResearchedBP =
+                      (item?.materialEfficiency ?? 0) > 0 ||
+                      (item?.timeEfficiency ?? 0) > 0
+                    if (isMultiple || isBPC || isResearchedBP) return '-'
+                    const estValue = getContractEstValue(contract.topItems)
+                    if (estValue === 0) return '-'
                     const price =
                       mode === 'courier'
                         ? (contract.reward ?? 0)
                         : contract.price
-                    const estValue = contract.topItems.reduce(
-                      (sum, item) => sum + item.value,
-                      0
-                    )
                     const diff = price - estValue
-                    const pct = estValue > 0 ? (diff / estValue) * 100 : 0
+                    const pct = (diff / estValue) * 100
                     const color =
                       diff > 0
                         ? 'text-status-negative'
                         : diff < 0
                           ? 'text-status-positive'
                           : 'text-content-muted'
+                    const isScam = Math.abs(pct) >= 1000
                     return (
                       <span className={color}>
                         {diff >= 0 ? '+' : ''}
-                        {formatNumber(diff)} ({pct >= 0 ? '+' : ''}
-                        {pct.toFixed(1)}%)
+                        {formatNumber(diff)}{' '}
+                        {isScam ? (
+                          <span className="text-status-warning">(Scam?)</span>
+                        ) : (
+                          `(${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%)`
+                        )}
                       </span>
                     )
                   })()}
