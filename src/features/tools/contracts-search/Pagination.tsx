@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { ChevronsLeft, ChevronsRight } from 'lucide-react'
 
 const MAX_VISIBLE_PAGES = 10
 
@@ -56,6 +57,14 @@ export function Pagination({
         {total.toLocaleString()}
       </span>
       <div className="flex gap-1">
+        <button
+          onClick={() => onPageChange(1)}
+          disabled={isLoading || page === 1}
+          className="rounded px-1.5 py-1 text-sm hover:bg-surface-tertiary disabled:opacity-50"
+          title="First page"
+        >
+          <ChevronsLeft className="h-4 w-4" />
+        </button>
         {visiblePages.map((p) => (
           <button
             key={p}
@@ -68,6 +77,14 @@ export function Pagination({
             {p}
           </button>
         ))}
+        <button
+          onClick={() => onPageChange(totalPages)}
+          disabled={isLoading || page === totalPages}
+          className="rounded px-1.5 py-1 text-sm hover:bg-surface-tertiary disabled:opacity-50"
+          title="Last page"
+        >
+          <ChevronsRight className="h-4 w-4" />
+        </button>
       </div>
     </div>
   )
