@@ -88,6 +88,7 @@ export function useContractItems() {
           itemId: item.item_id,
           typeName: typeInfo?.name ?? `Unknown (${item.type_id})`,
           groupName: typeInfo?.groupName ?? '',
+          categoryId: typeInfo?.categoryId,
           categoryName: typeInfo?.categoryName ?? '',
           quantity: item.quantity || 1,
           price: priceStore.getItemPrice(item.type_id, {

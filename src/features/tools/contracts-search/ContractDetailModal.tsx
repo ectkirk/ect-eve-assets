@@ -8,11 +8,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { TypeIcon } from '@/components/ui/type-icon'
 import { AbyssalPreview } from '@/components/ui/abyssal-preview'
 import { isAbyssalTypeId } from '@/api/mutamarket-client'
 import { cn, formatNumber } from '@/lib/utils'
 import { useContractItems } from './useContractItems'
 import type { ContractItem } from '@/lib/contract-items'
+
+const BLUEPRINT_CATEGORY_ID = 9
 
 export interface DisplayContract {
   contractId: number
@@ -79,15 +82,14 @@ function getContractTypeLabel(type: string): string {
 function formatBlueprintName(item: ContractItem): string {
   if (item.isBlueprintCopy === undefined) return item.typeName
 
-  const bpType = item.isBlueprintCopy ? 'Copy' : 'Original'
   const me = item.materialEfficiency ?? 0
   const te = item.timeEfficiency ?? 0
   const runs = item.runs ?? 0
 
   if (item.isBlueprintCopy) {
-    return `${item.typeName} (${bpType}) ME${me} TE${te} ${runs}R`
+    return `${item.typeName} ME${me} TE${te} ${runs}R`
   }
-  return `${item.typeName} (${bpType}) ME${me} TE${te}`
+  return `${item.typeName} ME${me} TE${te}`
 }
 
 function InfoRow({
@@ -127,12 +129,13 @@ function ItemsTable({ items }: { items: ContractItem[] }) {
           <TableBody>
             {items.map((item, idx) => {
               const isAbyssal = item.itemId && isAbyssalTypeId(item.typeId)
+              const isBlueprint = item.categoryId === BLUEPRINT_CATEGORY_ID
               const displayName = formatBlueprintName(item)
               const nameContent = (
                 <span
                   className={cn(
                     'font-medium',
-                    item.isBlueprintCopy !== undefined && 'text-status-special'
+                    isBlueprint && 'text-status-special'
                   )}
                 >
                   {displayName}
@@ -141,13 +144,21 @@ function ItemsTable({ items }: { items: ContractItem[] }) {
               return (
                 <TableRow key={`${item.typeId}-${idx}`}>
                   <TableCell className="font-medium">
-                    {isAbyssal ? (
-                      <AbyssalPreview itemId={item.itemId!}>
-                        {nameContent}
-                      </AbyssalPreview>
-                    ) : (
-                      nameContent
-                    )}
+                    <div className="flex items-center gap-2">
+                      <TypeIcon
+                        typeId={item.typeId}
+                        categoryId={item.categoryId}
+                        isBlueprintCopy={item.isBlueprintCopy}
+                        size="sm"
+                      />
+                      {isAbyssal ? (
+                        <AbyssalPreview itemId={item.itemId!}>
+                          {nameContent}
+                        </AbyssalPreview>
+                      ) : (
+                        nameContent
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-right">
                     {item.quantity.toLocaleString()}
