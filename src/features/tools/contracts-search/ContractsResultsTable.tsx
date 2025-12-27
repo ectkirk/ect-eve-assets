@@ -8,8 +8,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { TypeIcon } from '@/components/ui/type-icon'
 import { formatNumber } from '@/lib/utils'
-import type { SearchContract, ContractSearchMode, ContractTopItem } from './types'
+import type {
+  SearchContract,
+  ContractSearchMode,
+  ContractTopItem,
+} from './types'
 
 function formatItemName(item: ContractTopItem): string {
   if (item.isBlueprintCopy === undefined) return item.typeName
@@ -49,6 +54,8 @@ type SortColumn =
   | 'contract'
   | 'location'
   | 'price'
+  | 'estValue'
+  | 'difference'
   | 'timeLeft'
   | 'issuer'
   | 'created'
@@ -79,6 +86,12 @@ function formatDate(dateStr: string): string {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+function decodeHtmlEntities(text: string): string {
+  const textarea = document.createElement('textarea')
+  textarea.innerHTML = text
+  return textarea.value
 }
 
 function getSecurityColor(sec: number): string {
@@ -278,6 +291,19 @@ export function ContractsResultsTable({
           aVal = mode === 'courier' ? (a.reward ?? 0) : a.price
           bVal = mode === 'courier' ? (b.reward ?? 0) : b.price
           break
+        case 'estValue':
+          aVal = a.topItems.reduce((sum, item) => sum + item.value, 0)
+          bVal = b.topItems.reduce((sum, item) => sum + item.value, 0)
+          break
+        case 'difference': {
+          const aPrice = mode === 'courier' ? (a.reward ?? 0) : a.price
+          const bPrice = mode === 'courier' ? (b.reward ?? 0) : b.price
+          const aEst = a.topItems.reduce((sum, item) => sum + item.value, 0)
+          const bEst = b.topItems.reduce((sum, item) => sum + item.value, 0)
+          aVal = aPrice - aEst
+          bVal = bPrice - bEst
+          break
+        }
         case 'timeLeft':
           aVal = new Date(a.dateExpired).getTime()
           bVal = new Date(b.dateExpired).getTime()
@@ -351,7 +377,20 @@ export function ContractsResultsTable({
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
-                className="text-right"
+              />
+              <SortableHeader
+                column="estValue"
+                label="Est. Value"
+                sortColumn={sortColumn}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+              />
+              <SortableHeader
+                column="difference"
+                label="Difference"
+                sortColumn={sortColumn}
+                sortDirection={sortDirection}
+                onSort={handleSort}
               />
               <SortableHeader
                 column="timeLeft"
@@ -397,11 +436,27 @@ export function ContractsResultsTable({
                 }
               >
                 <TableCell className="font-medium">
-                  {contract.topItems.length > 1
-                    ? '[Multiple Items]'
-                    : contract.topItems[0]
-                      ? formatItemName(contract.topItems[0])
-                      : '-'}
+                  {contract.topItems.length > 1 ? (
+                    '[Multiple Items]'
+                  ) : contract.topItems[0] ? (
+                    <span className="flex items-center gap-1.5">
+                      {contract.topItems[0].typeId && (
+                        <TypeIcon
+                          typeId={contract.topItems[0].typeId}
+                          isBlueprintCopy={contract.topItems[0].isBlueprintCopy}
+                          size="sm"
+                        />
+                      )}
+                      {formatItemName(contract.topItems[0])}
+                      {contract.topItems[0].quantity > 1 && (
+                        <span className="text-content-secondary">
+                          x{contract.topItems[0].quantity.toLocaleString()}
+                        </span>
+                      )}
+                    </span>
+                  ) : (
+                    '-'
+                  )}
                 </TableCell>
                 <TableCell>
                   <div>
@@ -420,7 +475,7 @@ export function ContractsResultsTable({
                     {contract.regionName}
                   </div>
                 </TableCell>
-                <TableCell className="text-right font-mono">
+                <TableCell className="font-mono">
                   {formatNumber(
                     mode === 'courier' ? (contract.reward ?? 0) : contract.price
                   )}{' '}
@@ -431,13 +486,46 @@ export function ContractsResultsTable({
                     </div>
                   )}
                 </TableCell>
+                <TableCell className="font-mono">
+                  {formatNumber(
+                    contract.topItems.reduce((sum, item) => sum + item.value, 0)
+                  )}{' '}
+                  <span className="text-content-muted">ISK</span>
+                </TableCell>
+                <TableCell className="font-mono">
+                  {(() => {
+                    const price =
+                      mode === 'courier'
+                        ? (contract.reward ?? 0)
+                        : contract.price
+                    const estValue = contract.topItems.reduce(
+                      (sum, item) => sum + item.value,
+                      0
+                    )
+                    const diff = price - estValue
+                    const pct = estValue > 0 ? (diff / estValue) * 100 : 0
+                    const color =
+                      diff > 0
+                        ? 'text-status-negative'
+                        : diff < 0
+                          ? 'text-status-positive'
+                          : 'text-content-muted'
+                    return (
+                      <span className={color}>
+                        {diff >= 0 ? '+' : ''}
+                        {formatNumber(diff)} ({pct >= 0 ? '+' : ''}
+                        {pct.toFixed(1)}%)
+                      </span>
+                    )
+                  })()}
+                </TableCell>
                 <TableCell>{getTimeLeft(contract.dateExpired)}</TableCell>
                 <TableCell>{contract.issuerName}</TableCell>
                 <TableCell className="text-content-secondary">
                   {formatDate(contract.dateIssued)}
                 </TableCell>
                 <TableCell className="max-w-xs truncate text-content-secondary">
-                  {contract.title || '-'}
+                  {contract.title ? decodeHtmlEntities(contract.title) : '-'}
                 </TableCell>
               </TableRow>
             ))}
@@ -496,7 +584,9 @@ export function ContractsResultsTable({
                   <span className="text-content-muted">
                     Description By Issuer:{' '}
                   </span>
-                  <span className="text-content">{hoveredContract.title}</span>
+                  <span className="text-content">
+                    {decodeHtmlEntities(hoveredContract.title)}
+                  </span>
                 </div>
               )}
               <div className="mt-2">

@@ -34,6 +34,8 @@ const UNIVERSE_LOADED_KEY = 'ecteveassets-universe-loaded'
 const REF_STRUCTURES_LOADED_KEY = 'ecteveassets-ref-structures-loaded'
 const TYPES_SCHEMA_VERSION_KEY = 'ecteveassets-types-schema-version'
 const TYPES_SCHEMA_VERSION = 3
+const REFERENCE_SCHEMA_VERSION_KEY = 'ecteveassets-reference-schema-version'
+const REFERENCE_SCHEMA_VERSION = 1
 
 interface ReferenceCacheState {
   types: Map<number, CachedType>
@@ -190,6 +192,26 @@ export const useReferenceCacheStore = create<ReferenceCacheStore>(
             }
           }
 
+          let finalCategories = categories
+          let finalGroups = groups
+          if (categories.size > 0 || groups.size > 0) {
+            const storedVersion = getLocalStorage(REFERENCE_SCHEMA_VERSION_KEY)
+            if (storedVersion !== String(REFERENCE_SCHEMA_VERSION)) {
+              logger.info('Reference schema version changed, clearing cache', {
+                module: 'ReferenceCache',
+                oldVersion: storedVersion,
+                newVersion: REFERENCE_SCHEMA_VERSION,
+              })
+              finalCategories = new Map()
+              finalGroups = new Map()
+              await Promise.all([
+                clearStore('categories'),
+                clearStore('groups'),
+              ])
+              setLocalStorage(REFERENCE_SCHEMA_VERSION_KEY, null)
+            }
+          }
+
           const allTypesLoaded =
             getLocalStorage(ALL_TYPES_LOADED_KEY) === 'true' &&
             finalTypes.size > 0
@@ -211,10 +233,11 @@ export const useReferenceCacheStore = create<ReferenceCacheStore>(
             structures,
             locations,
             names,
-            categories,
-            groups,
+            categories: finalCategories,
+            groups: finalGroups,
             initialized: true,
-            referenceDataLoaded: categories.size > 0 && groups.size > 0,
+            referenceDataLoaded:
+              finalCategories.size > 0 && finalGroups.size > 0,
             allTypesLoaded,
             universeDataLoaded,
             refStructuresLoaded,
@@ -233,8 +256,8 @@ export const useReferenceCacheStore = create<ReferenceCacheStore>(
             structures: structures.size,
             locations: locations.size,
             names: names.size,
-            categories: categories.size,
-            groups: groups.size,
+            categories: finalCategories.size,
+            groups: finalGroups.size,
           })
         } catch (err) {
           logger.error('Failed to initialize cache', err, {
@@ -274,6 +297,10 @@ export const useReferenceCacheStore = create<ReferenceCacheStore>(
           groups: new Map(newGroups.map((g) => [g.id, g])),
           referenceDataLoaded: true,
         })
+        setLocalStorage(
+          REFERENCE_SCHEMA_VERSION_KEY,
+          String(REFERENCE_SCHEMA_VERSION)
+        )
         logger.info('Groups saved', {
           module: 'ReferenceCache',
           count: newGroups.length,

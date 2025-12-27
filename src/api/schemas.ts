@@ -374,6 +374,7 @@ export const RefTypeSchema = z.object({
 export const RefCategorySchema = z.object({
   id: z.number(),
   name: z.string(),
+  published: z.boolean(),
 })
 
 export const RefCategoriesResponseSchema = z.object({
@@ -384,6 +385,7 @@ export const RefGroupSchema = z.object({
   id: z.number(),
   name: z.string(),
   categoryId: z.number(),
+  published: z.boolean(),
 })
 
 export const RefGroupsResponseSchema = z.object({

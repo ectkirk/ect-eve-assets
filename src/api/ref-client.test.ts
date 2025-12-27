@@ -92,10 +92,12 @@ describe('ref-client', () => {
     })
 
     mockRefCategories.mockResolvedValue({
-      items: { '4': { id: 4, name: 'Material' } },
+      items: { '4': { id: 4, name: 'Material', published: true } },
     })
     mockRefGroups.mockResolvedValue({
-      items: { '18': { id: 18, name: 'Mineral', categoryId: 4 } },
+      items: {
+        '18': { id: 18, name: 'Mineral', categoryId: 4, published: true },
+      },
     })
     mockRefTypesPage.mockResolvedValue({
       items: {},
@@ -388,10 +390,10 @@ describe('ref-client', () => {
       expect(mockRefCategories).toHaveBeenCalled()
       expect(mockRefGroups).toHaveBeenCalled()
       expect(mockSetCategories).toHaveBeenCalledWith([
-        { id: 4, name: 'Material' },
+        { id: 4, name: 'Material', published: true },
       ])
       expect(mockSetGroups).toHaveBeenCalledWith([
-        { id: 18, name: 'Mineral', categoryId: 4 },
+        { id: 18, name: 'Mineral', categoryId: 4, published: true },
       ])
     })
 
