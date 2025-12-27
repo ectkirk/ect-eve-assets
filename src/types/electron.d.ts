@@ -182,6 +182,10 @@ declare global {
     typeName: string
     quantity: number
     value: number
+    isBlueprintCopy?: boolean
+    materialEfficiency?: number | null
+    timeEfficiency?: number | null
+    runs?: number | null
   }
 
   interface ContractSearchContract {

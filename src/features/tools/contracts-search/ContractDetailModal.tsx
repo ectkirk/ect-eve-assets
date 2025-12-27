@@ -76,6 +76,20 @@ function getContractTypeLabel(type: string): string {
   }
 }
 
+function formatBlueprintName(item: ContractItem): string {
+  if (item.isBlueprintCopy === undefined) return item.typeName
+
+  const bpType = item.isBlueprintCopy ? 'Copy' : 'Original'
+  const me = item.materialEfficiency ?? 0
+  const te = item.timeEfficiency ?? 0
+  const runs = item.runs ?? 0
+
+  if (item.isBlueprintCopy) {
+    return `${item.typeName} (${bpType}) ME${me} TE${te} ${runs}R`
+  }
+  return `${item.typeName} (${bpType}) ME${me} TE${te}`
+}
+
 function InfoRow({
   label,
   children,
@@ -113,14 +127,15 @@ function ItemsTable({ items }: { items: ContractItem[] }) {
           <TableBody>
             {items.map((item, idx) => {
               const isAbyssal = item.itemId && isAbyssalTypeId(item.typeId)
+              const displayName = formatBlueprintName(item)
               const nameContent = (
                 <span
                   className={cn(
                     'font-medium',
-                    item.isBlueprintCopy && 'text-status-special'
+                    item.isBlueprintCopy !== undefined && 'text-status-special'
                   )}
                 >
-                  {item.typeName}
+                  {displayName}
                 </span>
               )
               return (

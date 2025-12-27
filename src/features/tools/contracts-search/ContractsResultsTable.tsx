@@ -9,7 +9,21 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { formatNumber } from '@/lib/utils'
-import type { SearchContract, ContractSearchMode } from './types'
+import type { SearchContract, ContractSearchMode, ContractTopItem } from './types'
+
+function formatItemName(item: ContractTopItem): string {
+  if (item.isBlueprintCopy === undefined) return item.typeName
+
+  const bpType = item.isBlueprintCopy ? 'Copy' : 'Original'
+  const me = item.materialEfficiency ?? 0
+  const te = item.timeEfficiency ?? 0
+  const runs = item.runs ?? 0
+
+  if (item.isBlueprintCopy) {
+    return `${item.typeName} (${bpType}) ME${me} TE${te} ${runs}R`
+  }
+  return `${item.typeName} (${bpType}) ME${me} TE${te}`
+}
 
 const PAGE_SIZE = 100
 const MAX_VISIBLE_PAGES = 10
@@ -385,7 +399,9 @@ export function ContractsResultsTable({
                 <TableCell className="font-medium">
                   {contract.topItems.length > 1
                     ? '[Multiple Items]'
-                    : contract.topItems[0]?.typeName || '-'}
+                    : contract.topItems[0]
+                      ? formatItemName(contract.topItems[0])
+                      : '-'}
                 </TableCell>
                 <TableCell>
                   <div>
@@ -441,7 +457,9 @@ export function ContractsResultsTable({
             <div className="mb-2 font-medium text-amber-400">
               {hoveredContract.topItems.length > 1
                 ? '[Multiple Items]'
-                : hoveredContract.topItems[0]?.typeName}
+                : hoveredContract.topItems[0]
+                  ? formatItemName(hoveredContract.topItems[0])
+                  : '-'}
             </div>
             <div className="space-y-1 text-sm">
               <div>
@@ -484,9 +502,9 @@ export function ContractsResultsTable({
               <div className="mt-2">
                 <span className="text-content-muted">Items:</span>
                 <ul className="ml-2 mt-1 space-y-0.5">
-                  {hoveredContract.topItems.map((item) => (
-                    <li key={item.typeId} className="text-content">
-                      {item.quantity.toLocaleString()} x {item.typeName}
+                  {hoveredContract.topItems.map((item, idx) => (
+                    <li key={item.typeId ?? idx} className="text-content">
+                      {item.quantity.toLocaleString()} x {formatItemName(item)}
                     </li>
                   ))}
                   {hoveredContract.itemCount >

@@ -33,6 +33,10 @@ export interface ContractTopItem {
   typeName: string
   quantity: number
   value: number
+  isBlueprintCopy?: boolean
+  materialEfficiency?: number | null
+  timeEfficiency?: number | null
+  runs?: number | null
 }
 
 export interface SearchContract {

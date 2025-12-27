@@ -10,6 +10,9 @@ export interface ContractItem {
   quantity: number
   price: number
   isBlueprintCopy?: boolean
+  materialEfficiency?: number
+  timeEfficiency?: number
+  runs?: number
 }
 
 export interface ESIContractItemLike {
@@ -17,6 +20,9 @@ export interface ESIContractItemLike {
   quantity: number
   item_id?: number
   is_blueprint_copy?: boolean
+  material_efficiency?: number
+  time_efficiency?: number
+  runs?: number
 }
 
 export function resolveContractItems(
@@ -38,6 +44,9 @@ export function resolveContractItems(
         isBlueprintCopy: item.is_blueprint_copy,
       }),
       isBlueprintCopy: item.is_blueprint_copy,
+      materialEfficiency: item.material_efficiency,
+      timeEfficiency: item.time_efficiency,
+      runs: item.runs,
     }
   })
 

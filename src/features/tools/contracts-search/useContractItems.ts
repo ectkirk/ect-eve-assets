@@ -16,6 +16,9 @@ interface ESIContractItem {
   type_id: number
   item_id?: number
   is_blueprint_copy?: boolean
+  material_efficiency?: number
+  time_efficiency?: number
+  runs?: number
 }
 
 interface CacheEntry {
@@ -92,6 +95,9 @@ export function useContractItems() {
             isBlueprintCopy: item.is_blueprint_copy,
           }),
           isBlueprintCopy: item.is_blueprint_copy,
+          materialEfficiency: item.material_efficiency,
+          timeEfficiency: item.time_efficiency,
+          runs: item.runs,
         }
       })
 
