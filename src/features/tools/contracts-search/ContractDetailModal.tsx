@@ -75,7 +75,7 @@ function ItemsTable({ items }: { items: ContractItem[] }) {
             <TableRow className="hover:bg-transparent">
               <TableHead>Name</TableHead>
               <TableHead className="w-20 text-right">Qty</TableHead>
-              <TableHead>Type</TableHead>
+              <TableHead>Group</TableHead>
               <TableHead>Category</TableHead>
               <TableHead className="text-right">Est. Value</TableHead>
             </TableRow>
@@ -187,7 +187,7 @@ export function ContractDetailModal({
       onClick={onClose}
     >
       <div
-        className="flex max-h-[80vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-xl"
+        className="flex max-h-[80vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-border px-4 py-3">

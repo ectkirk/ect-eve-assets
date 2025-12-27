@@ -42,17 +42,22 @@ interface BlueprintInfo {
 }
 
 export function formatBlueprintName(item: BlueprintInfo): string {
-  if (item.isBlueprintCopy == null) return item.typeName
-  if (!item.isBlueprintCopy && item.materialEfficiency == null) {
+  const hasBlueprintData =
+    item.isBlueprintCopy === true ||
+    item.materialEfficiency != null ||
+    item.timeEfficiency != null ||
+    item.runs != null
+
+  if (!hasBlueprintData) {
     return item.typeName
   }
 
   const bpType = item.isBlueprintCopy ? 'BPC' : 'BPO'
   const me = item.materialEfficiency ?? 0
   const te = item.timeEfficiency ?? 0
-  const runs = item.runs ?? 0
 
   if (item.isBlueprintCopy) {
+    const runs = item.runs ?? 0
     return `${item.typeName} (${bpType}) ME${me} TE${te} ${runs}R`
   }
   return `${item.typeName} (${bpType}) ME${me} TE${te}`
