@@ -7,13 +7,12 @@ import {
   type CachedType,
 } from '@/store/reference-cache'
 import { LocationPickerModal } from './LocationPickerModal'
+import { THE_FORGE_REGION_ID } from './utils'
 import type {
   ContractSearchFilters,
   ContractType,
   LocationSelection,
 } from './types'
-
-const THE_FORGE_ID = 10000002
 
 interface ContractsFiltersProps {
   filters: ContractSearchFilters
@@ -95,7 +94,7 @@ export function ContractsFilters({
       onChange({
         ...filters,
         locationSelection: 'the_forge',
-        regionId: THE_FORGE_ID,
+        regionId: THE_FORGE_REGION_ID,
         systemId: null,
         locationName: 'The Forge',
       })

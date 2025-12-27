@@ -13,6 +13,13 @@ import { AbyssalPreview } from '@/components/ui/abyssal-preview'
 import { isAbyssalTypeId } from '@/api/mutamarket-client'
 import { cn, formatNumber } from '@/lib/utils'
 import { useContractItems } from './useContractItems'
+import {
+  getSecurityColor,
+  formatBlueprintName,
+  formatDateTime,
+  formatTimeRemaining,
+  getContractTypeLabel,
+} from './utils'
 import type { ContractItem } from '@/lib/contract-items'
 
 const BLUEPRINT_CATEGORY_ID = 9
@@ -37,59 +44,6 @@ export interface DisplayContract {
   status?: string
   availability?: 'public' | 'personal' | 'corporation' | 'alliance'
   topItemName?: string
-}
-
-function getSecurityColor(sec: number): string {
-  if (sec >= 0.5) return 'text-status-positive'
-  if (sec > 0) return 'text-status-warning'
-  return 'text-status-negative'
-}
-
-function formatDateTime(dateStr: string): string {
-  const date = new Date(dateStr)
-  return date.toLocaleString('en-US', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-function getTimeRemaining(dateExpired: string): string {
-  const now = new Date()
-  const expiry = new Date(dateExpired)
-  const diff = expiry.getTime() - now.getTime()
-  if (diff <= 0) return 'Expired'
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-  return `${days} days ${hours} hours`
-}
-
-function getContractTypeLabel(type: string): string {
-  switch (type) {
-    case 'item_exchange':
-      return 'Item Exchange'
-    case 'auction':
-      return 'Auction'
-    case 'courier':
-      return 'Courier'
-    default:
-      return type
-  }
-}
-
-function formatBlueprintName(item: ContractItem): string {
-  if (item.isBlueprintCopy === undefined) return item.typeName
-
-  const me = item.materialEfficiency ?? 0
-  const te = item.timeEfficiency ?? 0
-  const runs = item.runs ?? 0
-
-  if (item.isBlueprintCopy) {
-    return `${item.typeName} ME${me} TE${te} ${runs}R`
-  }
-  return `${item.typeName} ME${me} TE${te}`
 }
 
 function InfoRow({
@@ -280,7 +234,7 @@ export function ContractDetailModal({
             </InfoRow>
             <InfoRow label="Expiration">
               {formatDateTime(contract.dateExpired)} (
-              {getTimeRemaining(contract.dateExpired)})
+              {formatTimeRemaining(contract.dateExpired)})
             </InfoRow>
             {contract.status && (
               <InfoRow label="Status">

@@ -61,6 +61,7 @@ export interface SearchContract {
   title: string
   itemCount: number
   topItems: ContractTopItem[]
+  estValue: number | null
 }
 
 export const DEFAULT_FILTERS: ContractSearchFilters = {

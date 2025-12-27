@@ -13,6 +13,7 @@ import { DEFAULT_FILTERS } from './types'
 import type { ContractSearchFilters, SearchContract } from './types'
 import { resolveNames } from '@/api/endpoints/universe'
 import { usePriceStore, isAbyssalTypeId } from '@/store/price-store'
+import { THE_FORGE_REGION_ID, PAGE_SIZE } from './utils'
 
 const issuerNameCache = new Map<number, string>()
 
@@ -86,9 +87,6 @@ function toDisplayContract(sc: SearchContract): DisplayContract {
     topItemName,
   }
 }
-
-const THE_FORGE_REGION_ID = 10000002
-const PAGE_SIZE = 100
 
 type ApiSortBy = 'price' | 'dateIssued' | 'dateExpired'
 type ApiSortDirection = 'asc' | 'desc'
@@ -220,12 +218,16 @@ export function ContractsSearchPanel() {
           }
         }
 
-        const contractsWithNames: SearchContract[] = contracts.map((c) => ({
-          ...c,
-          topItems: c.topItems ?? [],
-          issuerId: c.issuerCharacterId,
-          issuerName: issuerNameCache.get(c.issuerCharacterId) ?? '',
-        }))
+        const contractsWithNames: SearchContract[] = contracts.map((c) => {
+          const topItems = c.topItems ?? []
+          return {
+            ...c,
+            topItems,
+            issuerId: c.issuerCharacterId,
+            issuerName: issuerNameCache.get(c.issuerCharacterId) ?? '',
+            estValue: null,
+          }
+        })
 
         const eligibleItems = contractsWithNames
           .filter(
@@ -243,11 +245,38 @@ export function ContractsSearchPanel() {
           ...new Set(eligibleItems.map((item) => item.typeId).filter(Boolean)),
         ] as number[]
         const abyssalItemIds = eligibleItems
-          .filter((item) => item.itemId && item.typeId && isAbyssalTypeId(item.typeId))
+          .filter(
+            (item) => item.itemId && item.typeId && isAbyssalTypeId(item.typeId)
+          )
           .map((item) => item.itemId!)
 
         if (typeIds.length > 0 || abyssalItemIds.length > 0) {
-          await usePriceStore.getState().ensureJitaPrices(typeIds, abyssalItemIds)
+          await usePriceStore
+            .getState()
+            .ensureJitaPrices(typeIds, abyssalItemIds)
+        }
+
+        const priceStore = usePriceStore.getState()
+        for (const contract of contractsWithNames) {
+          if (contract.itemCount >= 6) continue
+          const hasBlueprint = contract.topItems.some(
+            (item) =>
+              item.isBlueprintCopy === true ||
+              (item.materialEfficiency ?? 0) > 0 ||
+              (item.timeEfficiency ?? 0) > 0
+          )
+          if (hasBlueprint) continue
+
+          let total = 0
+          for (const item of contract.topItems) {
+            if (!item.typeId) continue
+            const price = priceStore.getItemPrice(item.typeId, {
+              itemId: item.itemId,
+              isBlueprintCopy: item.isBlueprintCopy,
+            })
+            total += price * item.quantity
+          }
+          contract.estValue = total > 0 ? total : null
         }
 
         const totalVal = response.total ?? 0
