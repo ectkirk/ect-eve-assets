@@ -57,19 +57,6 @@ export interface SearchContract {
   topItems: ContractTopItem[]
 }
 
-export interface ContractSearchRequest {
-  filters: ContractSearchFilters
-  page: number
-  pageSize: number
-}
-
-export interface ContractSearchResponse {
-  contracts: SearchContract[]
-  total: number
-  page: number
-  pageSize: number
-}
-
 export const DEFAULT_FILTERS: ContractSearchFilters = {
   mode: 'buySell',
   searchText: '',
