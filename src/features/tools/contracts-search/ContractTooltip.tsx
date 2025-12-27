@@ -1,11 +1,14 @@
-import { forwardRef } from 'react'
+import { forwardRef, useMemo } from 'react'
 import {
   getSecurityColor,
   formatBlueprintName,
   decodeHtmlEntities,
   getContractTypeLabel,
 } from './utils'
+import { usePriceStore } from '@/store/price-store'
 import type { SearchContract } from './types'
+
+const TOOLTIP_ITEM_LIMIT = 2
 
 interface ContractTooltipProps {
   contract: SearchContract
@@ -15,6 +18,23 @@ interface ContractTooltipProps {
 
 export const ContractTooltip = forwardRef<HTMLDivElement, ContractTooltipProps>(
   function ContractTooltip({ contract, position, visible }, ref) {
+    const getItemPrice = usePriceStore((s) => s.getItemPrice)
+
+    const displayItems = useMemo(() => {
+      if (contract.topItems.length <= TOOLTIP_ITEM_LIMIT) {
+        return contract.topItems
+      }
+      return [...contract.topItems]
+        .sort((a, b) => {
+          const aPrice = a.typeId ? getItemPrice(a.typeId) * a.quantity : 0
+          const bPrice = b.typeId ? getItemPrice(b.typeId) * b.quantity : 0
+          return bPrice - aPrice
+        })
+        .slice(0, TOOLTIP_ITEM_LIMIT)
+    }, [contract.topItems, getItemPrice])
+
+    const hasMore = contract.topItems.length > TOOLTIP_ITEM_LIMIT
+
     if (contract.topItems.length === 0) return null
 
     return (
@@ -71,14 +91,12 @@ export const ContractTooltip = forwardRef<HTMLDivElement, ContractTooltipProps>(
           <div className="mt-2">
             <span className="text-content-muted">Items:</span>
             <ul className="ml-2 mt-1 space-y-0.5">
-              {contract.topItems.map((item, idx) => (
+              {displayItems.map((item, idx) => (
                 <li key={item.typeId ?? idx} className="text-content">
                   {item.quantity.toLocaleString()} x {formatBlueprintName(item)}
                 </li>
               ))}
-              {contract.itemCount > contract.topItems.length && (
-                <li className="text-content-muted">More...</li>
-              )}
+              {hasMore && <li className="text-content-muted">More...</li>}
             </ul>
           </div>
           {contract.topItems.length > 1 && (

@@ -59,7 +59,6 @@ export interface SearchContract {
   dateIssued: string
   dateExpired: string
   title: string
-  itemCount: number
   topItems: ContractTopItem[]
   estValue: number | null
 }

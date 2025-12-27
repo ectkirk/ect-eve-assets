@@ -223,7 +223,6 @@ export function ContractsSearchPanel() {
           return {
             ...c,
             topItems: items,
-            itemCount: items.length,
             issuerId: c.issuerCharacterId,
             issuerName: issuerNameCache.get(c.issuerCharacterId) ?? '',
             estValue: null,
@@ -233,7 +232,6 @@ export function ContractsSearchPanel() {
         const eligibleItems = contractsWithNames
           .filter(
             (c) =>
-              c.itemCount < 6 &&
               !c.topItems.some(
                 (item) =>
                   item.isBlueprintCopy ||
@@ -259,7 +257,6 @@ export function ContractsSearchPanel() {
 
         const priceStore = usePriceStore.getState()
         for (const contract of contractsWithNames) {
-          if (contract.itemCount >= 6) continue
           const hasBlueprint = contract.topItems.some(
             (item) =>
               item.isBlueprintCopy === true ||
