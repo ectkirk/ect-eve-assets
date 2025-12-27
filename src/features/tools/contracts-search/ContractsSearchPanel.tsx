@@ -12,7 +12,7 @@ import {
 import { DEFAULT_FILTERS } from './types'
 import type { ContractSearchFilters, SearchContract } from './types'
 import { resolveNames } from '@/api/endpoints/universe'
-import { usePriceStore } from '@/store/price-store'
+import { usePriceStore, isAbyssalTypeId } from '@/store/price-store'
 
 const issuerNameCache = new Map<number, string>()
 
@@ -227,10 +227,23 @@ export function ContractsSearchPanel() {
           issuerName: issuerNameCache.get(c.issuerCharacterId) ?? '',
         }))
 
-        const allItems = contractsWithNames.flatMap((c) => c.topItems)
-        const typeIds = [...new Set(allItems.map((item) => item.typeId).filter(Boolean))] as number[]
-        const abyssalItemIds = allItems
-          .filter((item) => item.itemId)
+        const eligibleItems = contractsWithNames
+          .filter(
+            (c) =>
+              c.itemCount < 6 &&
+              !c.topItems.some(
+                (item) =>
+                  item.isBlueprintCopy ||
+                  (item.materialEfficiency ?? 0) > 0 ||
+                  (item.timeEfficiency ?? 0) > 0
+              )
+          )
+          .flatMap((c) => c.topItems)
+        const typeIds = [
+          ...new Set(eligibleItems.map((item) => item.typeId).filter(Boolean)),
+        ] as number[]
+        const abyssalItemIds = eligibleItems
+          .filter((item) => item.itemId && item.typeId && isAbyssalTypeId(item.typeId))
           .map((item) => item.itemId!)
 
         if (typeIds.length > 0 || abyssalItemIds.length > 0) {

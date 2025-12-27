@@ -35,7 +35,6 @@ export interface ContractTopItem {
   itemId?: number
   typeName: string
   quantity: number
-  value: number
   isBlueprintCopy?: boolean
   materialEfficiency?: number | null
   timeEfficiency?: number | null

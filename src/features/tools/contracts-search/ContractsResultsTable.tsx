@@ -19,7 +19,7 @@ import type {
 } from './types'
 
 function getContractEstValue(topItems: ContractTopItem[]): number {
-  const getItemPrice = usePriceStore.getState().getItemPrice
+  const { getItemPrice } = usePriceStore.getState()
   return topItems.reduce((sum, item) => {
     if (!item.typeId) return sum
     const price = getItemPrice(item.typeId, {
@@ -28,6 +28,16 @@ function getContractEstValue(topItems: ContractTopItem[]): number {
     })
     return sum + price * item.quantity
   }, 0)
+}
+
+function canShowEstValue(contract: SearchContract): boolean {
+  if (contract.itemCount >= 6) return false
+  return !contract.topItems.some(
+    (item) =>
+      item.isBlueprintCopy === true ||
+      (item.materialEfficiency ?? 0) > 0 ||
+      (item.timeEfficiency ?? 0) > 0
+  )
 }
 
 function formatItemName(item: ContractTopItem): string {
@@ -504,13 +514,7 @@ export function ContractsResultsTable({
                 </TableCell>
                 <TableCell className="font-mono">
                   {(() => {
-                    const item = contract.topItems[0]
-                    const isMultiple = contract.topItems.length > 1
-                    const isBPC = item?.isBlueprintCopy === true
-                    const isResearchedBP =
-                      (item?.materialEfficiency ?? 0) > 0 ||
-                      (item?.timeEfficiency ?? 0) > 0
-                    if (isMultiple || isBPC || isResearchedBP) return '-'
+                    if (!canShowEstValue(contract)) return '-'
                     const estValue = getContractEstValue(contract.topItems)
                     if (estValue === 0) return '-'
                     return (
@@ -523,13 +527,7 @@ export function ContractsResultsTable({
                 </TableCell>
                 <TableCell className="font-mono">
                   {(() => {
-                    const item = contract.topItems[0]
-                    const isMultiple = contract.topItems.length > 1
-                    const isBPC = item?.isBlueprintCopy === true
-                    const isResearchedBP =
-                      (item?.materialEfficiency ?? 0) > 0 ||
-                      (item?.timeEfficiency ?? 0) > 0
-                    if (isMultiple || isBPC || isResearchedBP) return '-'
+                    if (!canShowEstValue(contract)) return '-'
                     const estValue = getContractEstValue(contract.topItems)
                     if (estValue === 0) return '-'
                     const price =
@@ -544,7 +542,7 @@ export function ContractsResultsTable({
                         : diff < 0
                           ? 'text-status-positive'
                           : 'text-content-muted'
-                    const isScam = Math.abs(pct) >= 1000
+                    const isScam = Math.abs(pct) >= 750
                     return (
                       <span className={color}>
                         {diff >= 0 ? '+' : ''}
