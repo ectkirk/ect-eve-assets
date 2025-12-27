@@ -9,6 +9,7 @@ import type { ContractSearchFilters, SearchContract, SortPreset } from './types'
 import { SORT_PRESETS } from './types'
 import { resolveNames } from '@/api/endpoints/universe'
 import { usePriceStore, isAbyssalTypeId } from '@/store/price-store'
+import { AT_SHIP_TYPE_IDS } from '@/lib/eve-constants'
 import { useContractsSessionStore } from '@/store/contracts-session-store'
 import { THE_FORGE_REGION_ID, PAGE_SIZE } from './utils'
 
@@ -265,15 +266,19 @@ export function ContractsSearchPanel() {
           if (hasBlueprint) continue
 
           let total = 0
+          let hasUnpriceableATShip = false
           for (const item of contract.topItems) {
             if (!item.typeId) continue
             const price = priceStore.getItemPrice(item.typeId, {
               itemId: item.itemId,
               isBlueprintCopy: item.isBlueprintCopy,
             })
+            if (price === 0 && AT_SHIP_TYPE_IDS.has(item.typeId)) {
+              hasUnpriceableATShip = true
+            }
             total += price * item.quantity
           }
-          contract.estValue = total > 0 ? total : null
+          contract.estValue = total > 0 && !hasUnpriceableATShip ? total : null
         }
 
         const totalVal = response.total ?? 0
