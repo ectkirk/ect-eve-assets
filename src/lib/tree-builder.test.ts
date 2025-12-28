@@ -1,10 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import {
-  buildTree,
-  flattenTree,
-  getAllNodeIds,
-  filterTree,
-} from './tree-builder'
+import { buildTree, flattenTree, getAllNodeIds, filterTree } from './tree'
 import { TreeMode } from './tree-types'
 import type { ESIAsset } from '@/api/endpoints/assets'
 import type { Owner } from '@/store/auth-store'

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { cn, formatNumber, formatISK } from './utils'
+import { cn, formatNumber, formatCompactISK } from './utils'
 
 describe('cn', () => {
   it('merges class names', () => {
@@ -78,15 +78,15 @@ describe('formatNumber', () => {
   })
 })
 
-describe('formatISK', () => {
+describe('formatCompactISK', () => {
   it('appends ISK suffix', () => {
-    expect(formatISK(1_500_000_000)).toBe('1.50B ISK')
-    expect(formatISK(1_500_000)).toBe('1.50M ISK')
-    expect(formatISK(1_500)).toBe('1.50K ISK')
-    expect(formatISK(500)).toBe('500 ISK')
+    expect(formatCompactISK(1_500_000_000)).toBe('1.50B ISK')
+    expect(formatCompactISK(1_500_000)).toBe('1.50M ISK')
+    expect(formatCompactISK(1_500)).toBe('1.50K ISK')
+    expect(formatCompactISK(500)).toBe('500 ISK')
   })
 
   it('handles negative values', () => {
-    expect(formatISK(-1_500_000)).toBe('-1.50M ISK')
+    expect(formatCompactISK(-1_500_000)).toBe('-1.50M ISK')
   })
 })

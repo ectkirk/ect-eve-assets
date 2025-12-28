@@ -8,58 +8,62 @@ import {
   _resetForTests,
 } from './ref-client'
 
+const mockSaveTypes = vi.fn()
+const mockSaveLocations = vi.fn()
+const mockSetCategories = vi.fn()
+const mockSetGroups = vi.fn()
+const mockSetRegions = vi.fn()
+const mockSetSystems = vi.fn()
+const mockSetStations = vi.fn()
+const mockSetRefStructures = vi.fn()
+const mockSetAllTypesLoaded = vi.fn()
+const mockSetUniverseDataLoaded = vi.fn()
+const mockSetRefStructuresLoaded = vi.fn()
+
 vi.mock('@/store/reference-cache', () => ({
   getType: vi.fn(),
-  saveTypes: vi.fn(),
   getLocation: vi.fn(),
-  saveLocations: vi.fn(),
   getGroup: vi.fn(),
   getCategory: vi.fn(),
   getSystem: vi.fn(),
   getRegion: vi.fn(),
-  setCategories: vi.fn(),
-  setGroups: vi.fn(),
-  setRegions: vi.fn(),
-  setSystems: vi.fn(),
-  setStations: vi.fn(),
-  setRefStructures: vi.fn(),
-  setBlueprints: vi.fn(),
   isReferenceDataLoaded: vi.fn(() => true),
   isAllTypesLoaded: vi.fn(() => false),
-  setAllTypesLoaded: vi.fn(),
   isUniverseDataLoaded: vi.fn(() => false),
-  setUniverseDataLoaded: vi.fn(),
   isRefStructuresLoaded: vi.fn(() => false),
-  setRefStructuresLoaded: vi.fn(),
-  isBlueprintsLoaded: vi.fn(() => true),
-  setBlueprintsLoaded: vi.fn(),
-  notifyCacheListeners: vi.fn(),
+  isTypePublished: vi.fn(() => true),
+  isTypeMarketable: vi.fn(() => true),
+  useReferenceCacheStore: {
+    getState: () => ({
+      saveTypes: mockSaveTypes,
+      saveLocations: mockSaveLocations,
+      setCategories: mockSetCategories,
+      setGroups: mockSetGroups,
+      setRegions: mockSetRegions,
+      setSystems: mockSetSystems,
+      setStations: mockSetStations,
+      setRefStructures: mockSetRefStructures,
+      setAllTypesLoaded: mockSetAllTypesLoaded,
+      setUniverseDataLoaded: mockSetUniverseDataLoaded,
+      setRefStructuresLoaded: mockSetRefStructuresLoaded,
+    }),
+  },
 }))
 
 import {
   getType,
-  saveTypes,
   getLocation,
-  saveLocations,
   getGroup,
   getCategory,
   getSystem,
   getRegion,
-  setCategories,
-  setGroups,
-  setRegions,
-  setSystems,
-  setStations,
   isReferenceDataLoaded,
   isAllTypesLoaded,
-  setAllTypesLoaded,
   isUniverseDataLoaded,
-  setUniverseDataLoaded,
 } from '@/store/reference-cache'
 
 const mockRefTypesPage = vi.fn()
 const mockRefMoons = vi.fn()
-const mockRefMarket = vi.fn()
 const mockRefMarketJita = vi.fn()
 const mockRefCategories = vi.fn()
 const mockRefGroups = vi.fn()
@@ -88,10 +92,12 @@ describe('ref-client', () => {
     })
 
     mockRefCategories.mockResolvedValue({
-      items: { '4': { id: 4, name: 'Material' } },
+      items: { '4': { id: 4, name: 'Material', published: true } },
     })
     mockRefGroups.mockResolvedValue({
-      items: { '18': { id: 18, name: 'Mineral', categoryId: 4 } },
+      items: {
+        '18': { id: 18, name: 'Mineral', categoryId: 4, published: true },
+      },
     })
     mockRefTypesPage.mockResolvedValue({
       items: {},
@@ -125,7 +131,6 @@ describe('ref-client', () => {
     window.electronAPI = {
       refTypesPage: mockRefTypesPage,
       refMoons: mockRefMoons,
-      refMarket: mockRefMarket,
       refMarketJita: mockRefMarketJita,
       refCategories: mockRefCategories,
       refGroups: mockRefGroups,
@@ -250,7 +255,7 @@ describe('ref-client', () => {
       expect(result.size).toBe(1)
       expect(result.get(40009082)?.name).toBe('Jita IV - Moon 4')
       expect(result.get(40009082)?.type).toBe('celestial')
-      expect(saveLocations).toHaveBeenCalled()
+      expect(mockSaveLocations).toHaveBeenCalled()
     })
 
     it('handles API errors gracefully', async () => {
@@ -262,7 +267,7 @@ describe('ref-client', () => {
 
       expect(result.size).toBe(1)
       expect(result.get(40009082)?.name).toBe('Celestial 40009082')
-      expect(saveLocations).toHaveBeenCalled()
+      expect(mockSaveLocations).toHaveBeenCalled()
     })
 
     it('caches placeholder for moons not returned by API', async () => {
@@ -291,7 +296,7 @@ describe('ref-client', () => {
       expect(result.get(40009082)?.name).toBe('Jita IV - Moon 4')
       expect(result.get(40099999)?.name).toBe('Celestial 40099999')
       expect(result.get(40099999)?.type).toBe('celestial')
-      expect(saveLocations).toHaveBeenCalledWith(
+      expect(mockSaveLocations).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({ id: 40009082, name: 'Jita IV - Moon 4' }),
           expect.objectContaining({
@@ -320,7 +325,7 @@ describe('ref-client', () => {
       const result = await fetchPrices([34])
 
       expect(result.get(34)).toBe(5.5)
-      expect(mockRefMarketJita).toHaveBeenCalledWith([34])
+      expect(mockRefMarketJita).toHaveBeenCalledWith({ typeIds: [34] })
     })
 
     it('excludes null prices', async () => {
@@ -384,9 +389,11 @@ describe('ref-client', () => {
 
       expect(mockRefCategories).toHaveBeenCalled()
       expect(mockRefGroups).toHaveBeenCalled()
-      expect(setCategories).toHaveBeenCalledWith([{ id: 4, name: 'Material' }])
-      expect(setGroups).toHaveBeenCalledWith([
-        { id: 18, name: 'Mineral', categoryId: 4 },
+      expect(mockSetCategories).toHaveBeenCalledWith([
+        { id: 4, name: 'Material', published: true },
+      ])
+      expect(mockSetGroups).toHaveBeenCalledWith([
+        { id: 18, name: 'Mineral', categoryId: 4, published: true },
       ])
     })
 
@@ -413,8 +420,8 @@ describe('ref-client', () => {
       expect(mockRefTypesPage).toHaveBeenCalledTimes(2)
       expect(mockRefTypesPage).toHaveBeenNthCalledWith(1, {})
       expect(mockRefTypesPage).toHaveBeenNthCalledWith(2, { after: 34 })
-      expect(saveTypes).toHaveBeenCalledTimes(2)
-      expect(setAllTypesLoaded).toHaveBeenCalledWith(true)
+      expect(mockSaveTypes).toHaveBeenCalledTimes(2)
+      expect(mockSetAllTypesLoaded).toHaveBeenCalledWith(true)
     })
 
     it('handles categories API error gracefully and continues loading', async () => {
@@ -425,8 +432,8 @@ describe('ref-client', () => {
 
       await loadReferenceData()
 
-      expect(setCategories).not.toHaveBeenCalled()
-      expect(setGroups).toHaveBeenCalled()
+      expect(mockSetCategories).not.toHaveBeenCalled()
+      expect(mockSetGroups).toHaveBeenCalled()
       expect(mockRefTypesPage).toHaveBeenCalled()
     })
 
@@ -438,7 +445,7 @@ describe('ref-client', () => {
 
       await loadReferenceData()
 
-      expect(setAllTypesLoaded).not.toHaveBeenCalled()
+      expect(mockSetAllTypesLoaded).not.toHaveBeenCalled()
     })
 
     it('deduplicates concurrent calls', async () => {
@@ -467,7 +474,7 @@ describe('ref-client', () => {
 
       await loadReferenceData()
 
-      expect(saveTypes).toHaveBeenCalledWith([
+      expect(mockSaveTypes).toHaveBeenCalledWith([
         expect.objectContaining({
           id: 34,
           name: 'Tritanium',
@@ -499,7 +506,7 @@ describe('ref-client', () => {
 
       await loadReferenceData()
 
-      expect(saveTypes).toHaveBeenCalledWith([
+      expect(mockSaveTypes).toHaveBeenCalledWith([
         expect.objectContaining({
           id: 99999,
           name: 'Unknown Item',
@@ -532,20 +539,20 @@ describe('ref-client', () => {
       expect(mockRefUniverseRegions).toHaveBeenCalled()
       expect(mockRefUniverseSystems).toHaveBeenCalled()
       expect(mockRefUniverseStations).toHaveBeenCalled()
-      expect(setRegions).toHaveBeenCalledWith([
+      expect(mockSetRegions).toHaveBeenCalledWith([
         { id: 10000002, name: 'The Forge' },
       ])
-      expect(setSystems).toHaveBeenCalledWith([
+      expect(mockSetSystems).toHaveBeenCalledWith([
         { id: 30000142, name: 'Jita', regionId: 10000002, securityStatus: 0.9 },
       ])
-      expect(setStations).toHaveBeenCalledWith([
+      expect(mockSetStations).toHaveBeenCalledWith([
         {
           id: 60003760,
           name: 'Jita IV - Moon 4 - Caldari Navy Assembly Plant',
           systemId: 30000142,
         },
       ])
-      expect(setUniverseDataLoaded).toHaveBeenCalledWith(true)
+      expect(mockSetUniverseDataLoaded).toHaveBeenCalledWith(true)
     })
 
     it('handles regions API error gracefully', async () => {
@@ -555,7 +562,7 @@ describe('ref-client', () => {
 
       await loadUniverseData()
 
-      expect(setRegions).not.toHaveBeenCalled()
+      expect(mockSetRegions).not.toHaveBeenCalled()
       expect(mockRefUniverseSystems).toHaveBeenCalled()
     })
 
@@ -566,7 +573,7 @@ describe('ref-client', () => {
 
       await loadUniverseData()
 
-      expect(setSystems).not.toHaveBeenCalled()
+      expect(mockSetSystems).not.toHaveBeenCalled()
       expect(mockRefUniverseStations).toHaveBeenCalled()
     })
 
@@ -577,8 +584,8 @@ describe('ref-client', () => {
 
       await loadUniverseData()
 
-      expect(setStations).not.toHaveBeenCalled()
-      expect(setUniverseDataLoaded).toHaveBeenCalledWith(true)
+      expect(mockSetStations).not.toHaveBeenCalled()
+      expect(mockSetUniverseDataLoaded).toHaveBeenCalledWith(true)
     })
 
     it('deduplicates concurrent calls', async () => {

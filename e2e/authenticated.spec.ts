@@ -120,12 +120,12 @@ test.describe('Application Menu', () => {
     expect(hasFileMenu).toBe(true)
   })
 
-  test('has Data menu', async () => {
-    const hasDataMenu = await electronApp.evaluate(({ Menu }) => {
+  test('has Edit menu', async () => {
+    const hasEditMenu = await electronApp.evaluate(({ Menu }) => {
       const menu = Menu.getApplicationMenu()
-      return menu?.items.some((item) => item.label === 'Data') ?? false
+      return menu?.items.some((item) => item.label === 'Edit') ?? false
     })
-    expect(hasDataMenu).toBe(true)
+    expect(hasEditMenu).toBe(true)
   })
 
   test('has View menu', async () => {
@@ -157,5 +157,197 @@ test.describe('IPC Communication', () => {
       }
     })
     expect(storageWorks).toBe(true)
+  })
+})
+
+test.describe('Mode Switching', () => {
+  test('can switch to Contracts mode', async () => {
+    const modeTablist = page.getByRole('tablist', { name: 'Application modes' })
+    if ((await modeTablist.count()) === 0) {
+      test.skip()
+      return
+    }
+    await modeTablist.getByText('Contracts').click()
+    await expect(page.getByText('Contracts')).toBeVisible()
+  })
+
+  test('can switch to Market mode', async () => {
+    const modeTablist = page.getByRole('tablist', { name: 'Application modes' })
+    if ((await modeTablist.count()) === 0) {
+      test.skip()
+      return
+    }
+    await modeTablist.getByText('Market').click()
+    await expect(page.getByText('Market')).toBeVisible()
+  })
+
+  test('can switch to Buyback mode', async () => {
+    const modeTablist = page.getByRole('tablist', { name: 'Application modes' })
+    if ((await modeTablist.count()) === 0) {
+      test.skip()
+      return
+    }
+    await modeTablist.getByText('Buyback').click()
+    await expect(page.getByText('Buyback')).toBeVisible()
+  })
+
+  test('can switch to Freight mode', async () => {
+    const modeTablist = page.getByRole('tablist', { name: 'Application modes' })
+    if ((await modeTablist.count()) === 0) {
+      test.skip()
+      return
+    }
+    await modeTablist.getByText('Freight').click()
+    await expect(page.getByText('Freight')).toBeVisible()
+  })
+
+  test('can switch back to Assets mode', async () => {
+    const modeTablist = page.getByRole('tablist', { name: 'Application modes' })
+    if ((await modeTablist.count()) === 0) {
+      test.skip()
+      return
+    }
+    await modeTablist.getByText('Assets').click()
+    await expect(
+      modeTablist.getByRole('tab', { name: 'Assets', selected: true })
+    ).toBeVisible()
+  })
+})
+
+test.describe('Search Bar', () => {
+  test('search bar is visible in Assets mode', async () => {
+    const modeTablist = page.getByRole('tablist', { name: 'Application modes' })
+    if ((await modeTablist.count()) === 0) {
+      test.skip()
+      return
+    }
+    await modeTablist.getByText('Assets').click()
+
+    const searchInput = page.getByPlaceholder(
+      'Search name, group, location, system, region...'
+    )
+    await expect(searchInput).toBeVisible()
+  })
+
+  test('can type in search input', async () => {
+    const searchInput = page.getByPlaceholder(
+      'Search name, group, location, system, region...'
+    )
+    if ((await searchInput.count()) === 0) {
+      test.skip()
+      return
+    }
+
+    await searchInput.fill('test search')
+    await expect(searchInput).toHaveValue('test search')
+  })
+
+  test('clear button appears when search has text', async () => {
+    const searchInput = page.getByPlaceholder(
+      'Search name, group, location, system, region...'
+    )
+    if ((await searchInput.count()) === 0) {
+      test.skip()
+      return
+    }
+
+    await searchInput.fill('test')
+    const clearButton = page.getByRole('button', { name: 'Clear search' })
+    await expect(clearButton).toBeVisible()
+  })
+
+  test('clear button clears the search', async () => {
+    const searchInput = page.getByPlaceholder(
+      'Search name, group, location, system, region...'
+    )
+    if ((await searchInput.count()) === 0) {
+      test.skip()
+      return
+    }
+
+    await searchInput.fill('test')
+    const clearButton = page.getByRole('button', { name: 'Clear search' })
+    await clearButton.click()
+    await expect(searchInput).toHaveValue('')
+  })
+
+  test('search bar not visible in Contracts mode', async () => {
+    const modeTablist = page.getByRole('tablist', { name: 'Application modes' })
+    if ((await modeTablist.count()) === 0) {
+      test.skip()
+      return
+    }
+    await modeTablist.getByText('Contracts').click()
+
+    const searchInput = page.getByPlaceholder(
+      'Search name, group, location, system, region...'
+    )
+    await expect(searchInput).not.toBeVisible()
+
+    await modeTablist.getByText('Assets').click()
+  })
+})
+
+test.describe('Columns Dropdown', () => {
+  test('columns button is visible in Assets mode', async () => {
+    const modeTablist = page.getByRole('tablist', { name: 'Application modes' })
+    if ((await modeTablist.count()) === 0) {
+      test.skip()
+      return
+    }
+    await modeTablist.getByText('Assets').click()
+
+    const columnsButton = page.getByRole('button', { name: /Columns/i })
+    await expect(columnsButton).toBeVisible()
+  })
+})
+
+test.describe('Asset Tab Switching', () => {
+  test('can switch to Clones tab', async () => {
+    const assetsTablist = page.getByRole('tablist', { name: 'Assets tabs' })
+    if ((await assetsTablist.count()) === 0) {
+      test.skip()
+      return
+    }
+    await assetsTablist.getByText('Clones').click()
+    await expect(
+      page.getByRole('tab', { name: 'Clones', selected: true })
+    ).toBeVisible()
+  })
+
+  test('can switch to Contracts tab', async () => {
+    const assetsTablist = page.getByRole('tablist', { name: 'Assets tabs' })
+    if ((await assetsTablist.count()) === 0) {
+      test.skip()
+      return
+    }
+    await assetsTablist.getByText('Contracts').click()
+    await expect(
+      page.getByRole('tab', { name: 'Contracts', selected: true })
+    ).toBeVisible()
+  })
+
+  test('can switch to Market Orders tab', async () => {
+    const assetsTablist = page.getByRole('tablist', { name: 'Assets tabs' })
+    if ((await assetsTablist.count()) === 0) {
+      test.skip()
+      return
+    }
+    await assetsTablist.getByText('Market Orders').click()
+    await expect(
+      page.getByRole('tab', { name: 'Market Orders', selected: true })
+    ).toBeVisible()
+  })
+
+  test('can switch back to Assets tab', async () => {
+    const assetsTablist = page.getByRole('tablist', { name: 'Assets tabs' })
+    if ((await assetsTablist.count()) === 0) {
+      test.skip()
+      return
+    }
+    await assetsTablist.getByText('Assets').first().click()
+    await expect(
+      assetsTablist.getByRole('tab', { name: 'Assets', selected: true })
+    ).toBeVisible()
   })
 })

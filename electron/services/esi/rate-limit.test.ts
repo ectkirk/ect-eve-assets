@@ -226,34 +226,34 @@ describe('RateLimitTracker', () => {
 
 describe('guessRateLimitGroup', () => {
   it('identifies character asset routes', () => {
-    expect(guessRateLimitGroup('/characters/123/assets/')).toBe('char-asset')
+    expect(guessRateLimitGroup('/characters/123/assets')).toBe('char-asset')
   })
 
   it('identifies corporation asset routes', () => {
-    expect(guessRateLimitGroup('/corporations/456/assets/')).toBe('corp-asset')
+    expect(guessRateLimitGroup('/corporations/456/assets')).toBe('corp-asset')
   })
 
   it('identifies market routes', () => {
-    expect(guessRateLimitGroup('/markets/10000002/orders/')).toBe('market')
+    expect(guessRateLimitGroup('/markets/10000002/orders')).toBe('market')
   })
 
   it('returns default for unknown routes', () => {
-    expect(guessRateLimitGroup('/some/unknown/route/')).toBe('default')
+    expect(guessRateLimitGroup('/some/unknown/route')).toBe('default')
   })
 })
 
 describe('isContractItemsEndpoint', () => {
   it('identifies contract items endpoints', () => {
+    expect(isContractItemsEndpoint('/characters/123/contracts/456/items')).toBe(
+      true
+    )
     expect(
-      isContractItemsEndpoint('/characters/123/contracts/456/items/')
-    ).toBe(true)
-    expect(
-      isContractItemsEndpoint('/corporations/123/contracts/456/items/')
+      isContractItemsEndpoint('/corporations/123/contracts/456/items')
     ).toBe(true)
   })
 
   it('returns false for non-contract-items endpoints', () => {
-    expect(isContractItemsEndpoint('/characters/123/contracts/')).toBe(false)
-    expect(isContractItemsEndpoint('/characters/123/assets/')).toBe(false)
+    expect(isContractItemsEndpoint('/characters/123/contracts')).toBe(false)
+    expect(isContractItemsEndpoint('/characters/123/assets')).toBe(false)
   })
 })

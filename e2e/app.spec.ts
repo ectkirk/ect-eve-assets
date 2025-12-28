@@ -33,7 +33,7 @@ test.afterAll(async () => {
 test.describe('Application Launch', () => {
   test('window has correct title', async () => {
     const title = await page.title()
-    expect(title).toContain('ECTEVEAssets')
+    expect(title).toContain('ECT EVE Assets')
   })
 
   test('shows login screen when not authenticated', async () => {
@@ -47,9 +47,9 @@ test.describe('Application Launch', () => {
     await expect(loginButton).toBeVisible()
   })
 
-  test('shows info text about SSO requirement', async () => {
+  test('shows info text for unauthenticated user', async () => {
     await expect(
-      page.getByText(/requires EVE SSO authentication/)
+      page.getByText(/No characters logged in|Add a character/)
     ).toBeVisible()
   })
 })

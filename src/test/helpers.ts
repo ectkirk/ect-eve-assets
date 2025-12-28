@@ -17,6 +17,9 @@ export function createMockOwner(
     refreshToken: overrides.refreshToken ?? 'mock-refresh',
     expiresAt: overrides.expiresAt ?? Date.now() + 3600000,
     scopes: overrides.scopes ?? ['esi-contracts.read_character_contracts.v1'],
+    authFailed: overrides.authFailed,
+    scopesOutdated: overrides.scopesOutdated,
+    corporationRoles: overrides.corporationRoles,
   }
 }
 
