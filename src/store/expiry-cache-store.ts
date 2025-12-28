@@ -69,8 +69,12 @@ type ExpiryCacheStore = ExpiryCacheState & ExpiryCacheActions
 let sortedPatternsCache: string[] | null = null
 let initPromise: Promise<void> | null = null
 
+function normalizeEndpoint(endpoint: string): string {
+  return endpoint.endsWith('/') ? endpoint.slice(0, -1) : endpoint
+}
+
 function makeKey(ownerKey: string, endpoint: string): string {
-  return `${ownerKey}:${endpoint}`
+  return `${ownerKey}:${normalizeEndpoint(endpoint)}`
 }
 
 function parseKey(key: string): { ownerKey: string; endpoint: string } | null {
@@ -95,10 +99,16 @@ async function loadFromDB(): Promise<Map<string, EndpointExpiry>> {
   const records = await idbGetAll<StoredExpiry>(db, STORE_EXPIRY)
   const endpoints = new Map<string, EndpointExpiry>()
   for (const stored of records) {
-    endpoints.set(stored.key, {
-      expiresAt: stored.expiresAt,
-      etag: stored.etag,
-    })
+    const parsed = parseKey(stored.key)
+    if (!parsed) continue
+    const normalizedKey = makeKey(parsed.ownerKey, parsed.endpoint)
+    const existing = endpoints.get(normalizedKey)
+    if (!existing || stored.expiresAt > existing.expiresAt) {
+      endpoints.set(normalizedKey, {
+        expiresAt: stored.expiresAt,
+        etag: stored.etag,
+      })
+    }
   }
   return endpoints
 }
@@ -139,6 +149,16 @@ function findCallback(
 ): RefreshCallback | undefined {
   for (const pattern of getSortedPatterns(callbacks)) {
     if (endpoint.includes(pattern)) return callbacks.get(pattern)
+  }
+  return undefined
+}
+
+function findMatchingPattern(
+  callbacks: Map<string, RefreshCallback>,
+  endpoint: string
+): string | undefined {
+  for (const pattern of getSortedPatterns(callbacks)) {
+    if (endpoint.includes(pattern)) return pattern
   }
   return undefined
 }
@@ -375,9 +395,15 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
 
   queueRefresh: (ownerKey, endpoint) => {
     set((state) => {
-      const alreadyQueued = state.refreshQueue.some(
-        (q) => q.ownerKey === ownerKey && q.endpoint === endpoint
-      )
+      const { callbacks } = state
+      const incomingPattern = findMatchingPattern(callbacks, endpoint)
+
+      const alreadyQueued = state.refreshQueue.some((q) => {
+        if (q.ownerKey !== ownerKey) return false
+        if (q.endpoint === endpoint) return true
+        const queuedPattern = findMatchingPattern(callbacks, q.endpoint)
+        return queuedPattern !== undefined && queuedPattern === incomingPattern
+      })
       if (alreadyQueued) return state
       return { refreshQueue: [...state.refreshQueue, { ownerKey, endpoint }] }
     })
