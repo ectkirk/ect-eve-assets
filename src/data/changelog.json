@@ -1,86 +1,46 @@
 {
-  "version": "1.9.1",
-  "date": "2025-12-24",
+  "version": "2.0.0",
+  "date": "2025-12-28",
   "changes": [
     {
       "type": "feat",
-      "scope": "contracts",
-      "description": "Add abyssal preview tooltip with pricing on hover"
+      "scope": "tools",
+      "description": "Add buyback and freight calculator tools"
+    },
+    {
+      "type": "feat",
+      "scope": "market",
+      "description": "Add regional market browser for browsing and searching market orders"
     },
     {
       "type": "feat",
       "scope": "contracts",
-      "description": "Add live API integration with contract detail modal"
+      "description": "Add public contract search with courier, auction, and WTB support"
     },
     {
-      "type": "feat",
-      "scope": "buyback",
-      "description": "Generate EEA-xxxxxx reference codes for quotes"
+      "type": "refactor",
+      "scope": "cache",
+      "description": "Migrate reference cache to Zustand and improve IndexedDB reliability"
     },
     {
-      "type": "feat",
-      "scope": "buyback",
-      "description": "Add station-level sell to buyback in tree tab"
-    },
-    {
-      "type": "feat",
-      "scope": "buyback",
-      "description": "Add cross-tab sell to buyback with region validation"
-    },
-    {
-      "type": "feat",
-      "scope": "ui",
-      "description": "Add row selection and copy to assets and tree tabs"
-    },
-    {
-      "type": "feat",
-      "scope": "structures",
-      "description": "Add fitted rigs column to upwell structure table"
-    },
-    {
-      "type": "fix",
+      "type": "refactor",
       "scope": "pricing",
-      "description": "Ensure Jita refresh triggers on init when stale"
+      "description": "Consolidate pricing into unified store with Jita API"
     },
     {
-      "type": "fix",
-      "scope": "pricing",
-      "description": "Handle null contract items and add AT ships pricing"
-    },
-    {
-      "type": "fix",
-      "scope": "contracts",
-      "description": "Correct pricing for abyssals and capital ships"
-    },
-    {
-      "type": "fix",
-      "scope": "contracts",
-      "description": "Improve hover tooltip with debounce and in-game styling"
-    },
-    {
-      "type": "fix",
-      "scope": "window",
-      "description": "Unify maximize behavior for button and double-click"
+      "type": "refactor",
+      "scope": "infrastructure",
+      "description": "Improve accessibility and code organization"
     },
     {
       "type": "fix",
       "scope": "cache",
-      "description": "Add IndexedDB corruption recovery and prevention"
+      "description": "Normalize endpoints and improve queue deduplication"
     },
     {
-      "type": "fix",
-      "scope": "prices",
-      "description": "Respect staleness check on startup"
-    },
-    {
-      "type": "refactor",
-      "scope": "pricing",
-      "description": "Consolidate all pricing through centralized price store"
-    },
-    {
-      "type": "refactor",
-      "scope": "stores",
-      "description": "Centralize init via registry and fix race conditions"
+      "type": "test",
+      "scope": "core",
+      "description": "Add E2E, component, and auth module tests"
     }
   ]
 }
