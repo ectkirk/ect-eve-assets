@@ -1,8 +1,7 @@
 import * as fs from 'fs'
-import type { CacheEntry } from './types'
+import * as fsPromises from 'fs/promises'
+import { ESI_CONFIG, type CacheEntry } from './types'
 import { logger } from '../logger.js'
-
-const MAX_ENTRIES = 2000
 
 interface SerializedCache {
   version: 1
@@ -13,6 +12,8 @@ export class ESICache {
   private cache = new Map<string, CacheEntry>()
   private filePath: string | null = null
   private saveTimeout: NodeJS.Timeout | null = null
+  private saveInProgress = false
+  private pendingSave = false
 
   setFilePath(path: string): void {
     this.filePath = path
@@ -42,11 +43,48 @@ export class ESICache {
     if (this.saveTimeout) return
     this.saveTimeout = setTimeout(() => {
       this.saveTimeout = null
-      this.save()
+      this.saveAsync()
     }, 1000)
   }
 
-  save(): void {
+  private async saveAsync(): Promise<void> {
+    if (!this.filePath) return
+
+    if (this.saveInProgress) {
+      this.pendingSave = true
+      return
+    }
+
+    this.saveInProgress = true
+    try {
+      const now = Date.now()
+      const entries: Array<{ key: string; entry: CacheEntry }> = []
+      for (const [key, entry] of this.cache) {
+        if (entry.expires > now) {
+          entries.push({ key, entry })
+        }
+      }
+      const serialized: SerializedCache = { version: 1, entries }
+      await fsPromises.writeFile(this.filePath, JSON.stringify(serialized))
+    } catch (err) {
+      logger.debug('Failed to save ESI cache', {
+        module: 'ESICache',
+        error: err instanceof Error ? err.message : String(err),
+      })
+    } finally {
+      this.saveInProgress = false
+      if (this.pendingSave) {
+        this.pendingSave = false
+        this.saveAsync()
+      }
+    }
+  }
+
+  saveImmediately(): void {
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout)
+      this.saveTimeout = null
+    }
     if (!this.filePath) return
     try {
       const now = Date.now()
@@ -59,19 +97,11 @@ export class ESICache {
       const serialized: SerializedCache = { version: 1, entries }
       fs.writeFileSync(this.filePath, JSON.stringify(serialized))
     } catch (err) {
-      logger.debug('Failed to save ESI cache', {
+      logger.debug('Failed to save ESI cache immediately', {
         module: 'ESICache',
         error: err instanceof Error ? err.message : String(err),
       })
     }
-  }
-
-  saveImmediately(): void {
-    if (this.saveTimeout) {
-      clearTimeout(this.saveTimeout)
-      this.saveTimeout = null
-    }
-    this.save()
   }
 
   get(key: string): CacheEntry | undefined {
@@ -92,24 +122,37 @@ export class ESICache {
   }
 
   set(key: string, data: unknown, etag: string, expires: number): void {
-    this.cache.set(key, { data, etag, expires })
-    if (this.cache.size > MAX_ENTRIES) {
+    if (this.cache.size >= ESI_CONFIG.cacheMaxEntries && !this.cache.has(key)) {
       this.evictOldest()
     }
+    this.cache.set(key, { data, etag, expires })
     this.scheduleSave()
   }
 
   private evictOldest(): void {
     const now = Date.now()
-    const entries = Array.from(this.cache.entries())
-      .map(([k, v]) => ({ key: k, expires: v.expires }))
-      .sort((a, b) => a.expires - b.expires)
+    const targetSize = Math.floor(ESI_CONFIG.cacheMaxEntries * 0.9)
 
-    const toRemove = Math.max(1, Math.floor(entries.length * 0.1))
-    for (let i = 0; i < toRemove && i < entries.length; i++) {
-      const entry = entries[i]
-      if (entry && (entry.expires < now || this.cache.size > MAX_ENTRIES)) {
-        this.cache.delete(entry.key)
+    for (const [key, entry] of this.cache) {
+      if (entry.expires < now) {
+        this.cache.delete(key)
+        if (this.cache.size <= targetSize) return
+      }
+    }
+
+    while (this.cache.size > targetSize) {
+      let oldestKey: string | null = null
+      let oldestExpires = Infinity
+      for (const [key, entry] of this.cache) {
+        if (entry.expires < oldestExpires) {
+          oldestExpires = entry.expires
+          oldestKey = key
+        }
+      }
+      if (oldestKey) {
+        this.cache.delete(oldestKey)
+      } else {
+        break
       }
     }
   }

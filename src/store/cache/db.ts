@@ -1,180 +1,127 @@
 import { logger } from '@/lib/logger'
+import { DB } from '@/lib/db-constants'
+import {
+  openDatabase,
+  closeDatabase,
+  deleteDatabase as idbDeleteDatabase,
+  idbGetAll,
+  idbPutBatch,
+  idbClear,
+} from '@/lib/idb-utils'
 import { cacheSchemas } from './types'
 
-const DB_NAME = 'ecteveassets-cache'
-const DB_VERSION = 10
-
-let db: IDBDatabase | null = null
-
-export async function openDB(): Promise<IDBDatabase> {
-  if (db) return db
-
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION)
-
-    request.onerror = () => {
-      logger.error('Failed to open cache DB', request.error, {
-        module: 'ReferenceCache',
-      })
-      reject(request.error)
-    }
-
-    request.onsuccess = () => {
-      db = request.result
-      resolve(db)
-    }
-
-    request.onupgradeneeded = (event) => {
-      const database = (event.target as IDBOpenDBRequest).result
-      const oldVersion = event.oldVersion
-
-      if (!database.objectStoreNames.contains('types')) {
-        database.createObjectStore('types', { keyPath: 'id' })
-      }
-      if (!database.objectStoreNames.contains('structures')) {
-        database.createObjectStore('structures', { keyPath: 'id' })
-      }
-      if (!database.objectStoreNames.contains('locations')) {
-        database.createObjectStore('locations', { keyPath: 'id' })
-      }
-      if (!database.objectStoreNames.contains('abyssals')) {
-        database.createObjectStore('abyssals', { keyPath: 'id' })
-      }
-      if (!database.objectStoreNames.contains('names')) {
-        database.createObjectStore('names', { keyPath: 'id' })
-      }
-      if (!database.objectStoreNames.contains('categories')) {
-        database.createObjectStore('categories', { keyPath: 'id' })
-      }
-      if (!database.objectStoreNames.contains('groups')) {
-        database.createObjectStore('groups', { keyPath: 'id' })
-      }
-      if (!database.objectStoreNames.contains('regions')) {
-        database.createObjectStore('regions', { keyPath: 'id' })
-      }
-      if (!database.objectStoreNames.contains('systems')) {
-        database.createObjectStore('systems', { keyPath: 'id' })
-      }
-      if (!database.objectStoreNames.contains('stations')) {
-        database.createObjectStore('stations', { keyPath: 'id' })
-      }
-      if (!database.objectStoreNames.contains('refStructures')) {
-        database.createObjectStore('refStructures', { keyPath: 'id' })
-      }
-      if (!database.objectStoreNames.contains('blueprints')) {
-        database.createObjectStore('blueprints', { keyPath: 'id' })
-      }
-
-      if (oldVersion < 4 && database.objectStoreNames.contains('locations')) {
-        const tx = (event.target as IDBOpenDBRequest).transaction!
+async function getDB(): Promise<IDBDatabase> {
+  return openDatabase(DB.CACHE, {
+    onUpgrade: (db, oldVersion, tx) => {
+      if (oldVersion < 4 && db.objectStoreNames.contains('locations')) {
         tx.objectStore('locations').clear()
         logger.info('Cleared locations cache for v4 upgrade', {
           module: 'ReferenceCache',
         })
       }
-    }
+
+      if (oldVersion < 11 && db.objectStoreNames.contains('types')) {
+        tx.objectStore('types').clear()
+        try {
+          localStorage.removeItem('ecteveassets-all-types-loaded')
+          localStorage.removeItem('ecteveassets-types-schema-version')
+        } catch (err) {
+          logger.warn('localStorage not available during v11 migration', {
+            module: 'ReferenceCache',
+            error: err instanceof Error ? err.message : String(err),
+          })
+        }
+        logger.info('Cleared types cache for v11 upgrade (prices merged)', {
+          module: 'ReferenceCache',
+        })
+      }
+
+      if (oldVersion < 12 && db.objectStoreNames.contains('blueprints')) {
+        db.deleteObjectStore('blueprints')
+        try {
+          localStorage.removeItem('ecteveassets-blueprints-loaded')
+        } catch (err) {
+          logger.warn('localStorage not available during v12 migration', {
+            module: 'ReferenceCache',
+            error: err instanceof Error ? err.message : String(err),
+          })
+        }
+        logger.info('Removed legacy blueprints store', {
+          module: 'ReferenceCache',
+        })
+      }
+    },
   })
 }
 
 export async function loadStore<T>(storeName: string): Promise<Map<number, T>> {
-  const database = await openDB()
+  const db = await getDB()
   const schema = cacheSchemas[storeName]
+  const items = await idbGetAll<unknown>(db, storeName)
+  const map = new Map<number, T>()
+  let invalidCount = 0
 
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction(storeName, 'readonly')
-    const store = tx.objectStore(storeName)
-    const request = store.getAll()
-
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => {
-      const map = new Map<number, T>()
-      let invalidCount = 0
-
-      for (const item of request.result as Array<unknown>) {
-        if (!schema) {
-          const typed = item as T & { id: number }
-          map.set(typed.id, typed)
-          continue
-        }
-
-        const result = schema.safeParse(item)
-        if (result.success) {
-          const validated = result.data as T & { id: number }
-          map.set(validated.id, validated)
-        } else {
-          invalidCount++
-        }
-      }
-
-      if (invalidCount > 0) {
-        logger.warn('Skipped invalid cache entries', {
-          module: 'ReferenceCache',
-          store: storeName,
-          invalidCount,
-          validCount: map.size,
-        })
-      }
-
-      resolve(map)
+  for (const item of items) {
+    if (!schema) {
+      const typed = item as T & { id: number }
+      map.set(typed.id, typed)
+      continue
     }
-  })
+
+    const result = schema.safeParse(item)
+    if (result.success) {
+      const validated = result.data as T & { id: number }
+      map.set(validated.id, validated)
+    } else {
+      invalidCount++
+    }
+  }
+
+  if (invalidCount > 0) {
+    logger.warn('Skipped invalid cache entries', {
+      module: 'ReferenceCache',
+      store: storeName,
+      invalidCount,
+      validCount: map.size,
+    })
+  }
+
+  return map
 }
 
 export async function writeBatch<T extends { id: number }>(
   storeName: string,
   items: T[],
   onComplete: () => void
-): Promise<void> {
-  if (items.length === 0) return
-
-  const database = await openDB()
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction(storeName, 'readwrite')
-    const store = tx.objectStore(storeName)
-
-    tx.onerror = () => reject(tx.error)
-    tx.oncomplete = () => {
-      onComplete()
-      resolve()
-    }
-
-    for (const item of items) {
-      store.put(item)
-    }
-  })
-}
-
-export async function clearStore(storeName: string): Promise<void> {
-  const database = await openDB()
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction(storeName, 'readwrite')
-    const store = tx.objectStore(storeName)
-    store.clear()
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
-export function closeDB(): void {
-  if (db) {
-    db.close()
-    db = null
+): Promise<boolean> {
+  if (items.length === 0) {
+    onComplete()
+    return true
+  }
+  try {
+    const db = await getDB()
+    await idbPutBatch(db, storeName, items)
+    onComplete()
+    return true
+  } catch (err) {
+    logger.error(
+      'Failed to write batch to IndexedDB',
+      err instanceof Error ? err : undefined,
+      { module: 'ReferenceCache', store: storeName, itemCount: items.length }
+    )
+    return false
   }
 }
 
+export async function clearStore(storeName: string): Promise<void> {
+  const db = await getDB()
+  await idbClear(db, storeName)
+}
+
+export function closeCacheDB(): void {
+  closeDatabase(DB.CACHE.name)
+}
+
 export async function deleteDatabase(): Promise<void> {
-  closeDB()
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.deleteDatabase(DB_NAME)
-    request.onerror = () => {
-      logger.error('Failed to delete cache DB', request.error, {
-        module: 'ReferenceCache',
-      })
-      reject(request.error)
-    }
-    request.onsuccess = () => {
-      logger.info('Reference cache cleared', { module: 'ReferenceCache' })
-      resolve()
-    }
-  })
+  await idbDeleteDatabase(DB.CACHE.name, DB.CACHE.module)
 }

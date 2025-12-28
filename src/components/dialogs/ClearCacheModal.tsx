@@ -8,13 +8,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import {
-  clearCoreReferenceCache,
-  clearLocationsCache,
-  clearStructuresCache,
-  clearAbyssalsCache,
-  clearUniverseCache,
-} from '@/store/reference-cache'
+import { useReferenceCacheStore } from '@/store/reference-cache'
 import {
   loadReferenceData,
   loadUniverseData,
@@ -22,7 +16,7 @@ import {
 } from '@/api/ref-client'
 import { useStoreRegistry } from '@/store/store-registry'
 import { useRegionalMarketStore } from '@/store/regional-market-store'
-import { useESIPricesStore } from '@/store/esi-prices-store'
+import { usePriceStore } from '@/store/price-store'
 import { useExpiryCacheStore } from '@/store/expiry-cache-store'
 import { useDivisionsStore } from '@/store/divisions-store'
 import { logger } from '@/lib/logger'
@@ -46,6 +40,7 @@ interface CacheOption {
 }
 
 const registry = () => useStoreRegistry.getState()
+const refCache = () => useReferenceCacheStore.getState()
 
 const CACHE_OPTIONS: CacheOption[] = [
   {
@@ -53,15 +48,17 @@ const CACHE_OPTIONS: CacheOption[] = [
     label: 'Core Reference Data (Types & Blueprints)',
     group: 'reference',
     requiresReload: false,
-    clear: clearCoreReferenceCache,
-    refetch: loadReferenceData,
+    clear: () => refCache().clearCoreReferenceCache(),
+    refetch: async () => {
+      await loadReferenceData()
+    },
   },
   {
     id: 'universe',
     label: 'Universe Data (Regions/Systems/Stations)',
     group: 'reference',
     requiresReload: false,
-    clear: clearUniverseCache,
+    clear: () => refCache().clearUniverseCache(),
     refetch: async () => {
       await loadUniverseData()
       await loadRefStructures()
@@ -72,21 +69,37 @@ const CACHE_OPTIONS: CacheOption[] = [
     label: 'Moon Names',
     group: 'reference',
     requiresReload: false,
-    clear: clearLocationsCache,
+    clear: () => refCache().clearLocationsCache(),
   },
   {
     id: 'playerStructures',
     label: 'Player Structure Names',
     group: 'reference',
     requiresReload: false,
-    clear: clearStructuresCache,
+    clear: () => refCache().clearStructuresCache(),
   },
   {
-    id: 'abyssals',
+    id: 'jitaPrices',
+    label: 'Jita Prices',
+    group: 'reference',
+    requiresReload: false,
+    clear: () => usePriceStore.getState().clearJita(),
+    refetch: () => usePriceStore.getState().init(),
+  },
+  {
+    id: 'esiPrices',
+    label: 'ESI Pricing (Average/Adjusted)',
+    group: 'reference',
+    requiresReload: false,
+    clear: () => usePriceStore.getState().clearEsi(),
+    refetch: () => usePriceStore.getState().refreshEsiPrices(),
+  },
+  {
+    id: 'abyssalPrices',
     label: 'Abyssal Prices',
     group: 'reference',
     requiresReload: false,
-    clear: clearAbyssalsCache,
+    clear: () => usePriceStore.getState().clearAbyssal(),
   },
   {
     id: 'assets',
@@ -108,12 +121,10 @@ const CACHE_OPTIONS: CacheOption[] = [
     clear: async () => {
       await registry().clearByNames(['market orders'])
       await useRegionalMarketStore.getState().clear()
-      await useESIPricesStore.getState().clear()
     },
     refetch: async () => {
       await registry().refetchByNames(['market orders'])
       await useRegionalMarketStore.getState().init()
-      await useESIPricesStore.getState().update(true)
     },
   },
   {

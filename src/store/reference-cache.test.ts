@@ -1,8 +1,7 @@
-import { describe, it, expect, beforeAll, vi } from 'vitest'
+import { describe, it, expect, beforeAll } from 'vitest'
 import {
   CategoryIds,
   LocationFlags,
-  initCache,
   getType,
   getTypeName,
   hasType,
@@ -11,14 +10,7 @@ import {
   getLocation,
   hasLocation,
   getLocationName,
-  getAbyssal,
-  hasAbyssal,
-  getAbyssalPrice,
-  saveTypes,
-  saveStructures,
-  saveLocations,
-  saveAbyssals,
-  subscribe,
+  useReferenceCacheStore,
 } from './reference-cache'
 
 describe('CategoryIds', () => {
@@ -47,14 +39,16 @@ describe('LocationFlags', () => {
   })
 })
 
+const store = () => useReferenceCacheStore.getState()
+
 describe('Reference Cache', () => {
   beforeAll(async () => {
-    await initCache()
+    await store().init()
   })
 
-  describe('initCache', () => {
+  describe('init', () => {
     it('is idempotent', async () => {
-      await expect(initCache()).resolves.not.toThrow()
+      await expect(store().init()).resolves.not.toThrow()
     })
   })
 
@@ -82,7 +76,7 @@ describe('Reference Cache', () => {
         volume: 0.01,
       }
 
-      await saveTypes([testType])
+      await store().saveTypes([testType])
 
       expect(hasType(34)).toBe(true)
       expect(getType(34)).toEqual(testType)
@@ -90,7 +84,7 @@ describe('Reference Cache', () => {
     })
 
     it('saveTypes with empty array does nothing', async () => {
-      await expect(saveTypes([])).resolves.not.toThrow()
+      await expect(store().saveTypes([])).resolves.not.toThrow()
     })
   })
 
@@ -112,14 +106,14 @@ describe('Reference Cache', () => {
         ownerId: 12345,
       }
 
-      await saveStructures([testStructure])
+      await store().saveStructures([testStructure])
 
       expect(hasStructure(1000000000001)).toBe(true)
       expect(getStructure(1000000000001)).toEqual(testStructure)
     })
 
     it('saveStructures with empty array does nothing', async () => {
-      await expect(saveStructures([])).resolves.not.toThrow()
+      await expect(store().saveStructures([])).resolves.not.toThrow()
     })
   })
 
@@ -143,14 +137,14 @@ describe('Reference Cache', () => {
         regionName: 'The Forge',
       }
 
-      await saveLocations([testLocation])
+      await store().saveLocations([testLocation])
 
       expect(hasLocation(60003760)).toBe(true)
       expect(getLocation(60003760)).toEqual(testLocation)
     })
 
     it('saveLocations with empty array does nothing', async () => {
-      await expect(saveLocations([])).resolves.not.toThrow()
+      await expect(store().saveLocations([])).resolves.not.toThrow()
     })
   })
 
@@ -174,44 +168,19 @@ describe('Reference Cache', () => {
     })
   })
 
-  describe('abyssals', () => {
-    it('getAbyssal returns undefined for unknown abyssal', () => {
-      expect(getAbyssal(99999999)).toBeUndefined()
+  describe('zustand store', () => {
+    it('exports useReferenceCacheStore hook', () => {
+      expect(useReferenceCacheStore).toBeDefined()
     })
 
-    it('hasAbyssal returns false for unknown abyssal', () => {
-      expect(hasAbyssal(99999999)).toBe(false)
+    it('store has types Map', () => {
+      const state = useReferenceCacheStore.getState()
+      expect(state.types).toBeInstanceOf(Map)
     })
 
-    it('getAbyssalPrice returns undefined for unknown abyssal', () => {
-      expect(getAbyssalPrice(99999999)).toBeUndefined()
-    })
-
-    it('saveAbyssals and getAbyssal work together', async () => {
-      const testAbyssal = {
-        id: 12345678,
-        price: 500000000,
-        fetchedAt: Date.now(),
-      }
-
-      await saveAbyssals([testAbyssal])
-
-      expect(hasAbyssal(12345678)).toBe(true)
-      expect(getAbyssal(12345678)).toEqual(testAbyssal)
-      expect(getAbyssalPrice(12345678)).toBe(500000000)
-    })
-
-    it('saveAbyssals with empty array does nothing', async () => {
-      await expect(saveAbyssals([])).resolves.not.toThrow()
-    })
-  })
-
-  describe('subscribe', () => {
-    it('notifies listeners on save', async () => {
-      const listener = vi.fn()
-      const unsubscribe = subscribe(listener)
-
-      await saveTypes([
+    it('store updates trigger state changes', async () => {
+      const initialTypes = useReferenceCacheStore.getState().types
+      await store().saveTypes([
         {
           id: 35,
           name: 'Pyerite',
@@ -222,29 +191,9 @@ describe('Reference Cache', () => {
           volume: 0.01,
         },
       ])
-
-      expect(listener).toHaveBeenCalled()
-      unsubscribe()
-    })
-
-    it('unsubscribe stops notifications', async () => {
-      const listener = vi.fn()
-      const unsubscribe = subscribe(listener)
-      unsubscribe()
-
-      await saveTypes([
-        {
-          id: 36,
-          name: 'Mexallon',
-          groupId: 18,
-          groupName: 'Mineral',
-          categoryId: 4,
-          categoryName: 'Material',
-          volume: 0.01,
-        },
-      ])
-
-      expect(listener).not.toHaveBeenCalled()
+      const newTypes = useReferenceCacheStore.getState().types
+      expect(newTypes).not.toBe(initialTypes)
+      expect(newTypes.get(35)?.name).toBe('Pyerite')
     })
   })
 })

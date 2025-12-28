@@ -114,7 +114,6 @@ describe('ESICache', () => {
     let testFilePath: string
 
     beforeEach(() => {
-      vi.useRealTimers()
       testFilePath = path.join(os.tmpdir(), `esi-cache-test-${Date.now()}.json`)
     })
 
@@ -126,12 +125,11 @@ describe('ESICache', () => {
       }
     })
 
-    it('saves and loads cache from file', async () => {
+    it('saves and loads cache from file', () => {
       const futureTime = Date.now() + 60000
       cache.setFilePath(testFilePath)
       cache.set('test:key', { foo: 'bar' }, 'abc', futureTime)
-
-      await new Promise((r) => setTimeout(r, 1100))
+      cache.saveImmediately()
 
       const newCache = new ESICache()
       newCache.setFilePath(testFilePath)
@@ -143,7 +141,7 @@ describe('ESICache', () => {
       expect(entry?.etag).toBe('abc')
     })
 
-    it('loads expired entries to preserve etags for conditional requests', async () => {
+    it('loads expired entries to preserve etags for conditional requests', () => {
       const pastTime = Date.now() - 1000
       const savedData = JSON.stringify({
         version: 1,
@@ -164,9 +162,9 @@ describe('ESICache', () => {
       expect(newCache.getEtag('expired:key')).toBe('xyz')
     })
 
-    it('does not save if no file path set', async () => {
+    it('does not save if no file path set', () => {
       cache.set('key', { data: 'value' }, 'etag', Date.now() + 60000)
-      await new Promise((r) => setTimeout(r, 1100))
+      cache.saveImmediately()
       expect(fs.existsSync(testFilePath)).toBe(false)
     })
   })

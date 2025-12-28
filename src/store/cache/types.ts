@@ -27,18 +27,24 @@ export interface CachedRefStructure {
 export interface CachedCategory {
   id: number
   name: string
+  published?: boolean
 }
 
 export interface CachedGroup {
   id: number
   name: string
   categoryId: number
+  published?: boolean
 }
 
-export interface CachedBlueprint {
-  id: number
-  productId: number
-  basePrice?: number
+export interface TypeSlots {
+  high: number
+  mid: number
+  low: number
+  rig: number
+  subsystem: number
+  launcher: number
+  turret: number
 }
 
 export interface CachedType {
@@ -48,11 +54,16 @@ export interface CachedType {
   groupName: string
   categoryId: number
   categoryName: string
+  marketGroupId?: number | null
   volume: number
   packagedVolume?: number
   implantSlot?: number
+  slots?: TypeSlots
   towerSize?: number
   fuelTier?: number
+  published?: boolean
+  productId?: number
+  basePrice?: number
 }
 
 export interface CachedStructure {
@@ -123,18 +134,24 @@ const CachedRefStructureSchema = z.object({
 const CachedCategorySchema = z.object({
   id: z.number(),
   name: z.string(),
+  published: z.boolean().optional(),
 })
 
 const CachedGroupSchema = z.object({
   id: z.number(),
   name: z.string(),
   categoryId: z.number(),
+  published: z.boolean().optional(),
 })
 
-const CachedBlueprintSchema = z.object({
-  id: z.number(),
-  productId: z.number(),
-  basePrice: z.number().optional(),
+const TypeSlotsSchema = z.object({
+  high: z.number(),
+  mid: z.number(),
+  low: z.number(),
+  rig: z.number(),
+  subsystem: z.number(),
+  launcher: z.number(),
+  turret: z.number(),
 })
 
 const CachedTypeSchema = z.object({
@@ -144,11 +161,16 @@ const CachedTypeSchema = z.object({
   groupName: z.string(),
   categoryId: z.number(),
   categoryName: z.string(),
+  marketGroupId: z.number().nullable().optional(),
   volume: z.number(),
   packagedVolume: z.number().optional(),
   implantSlot: z.number().optional(),
+  slots: TypeSlotsSchema.optional(),
   towerSize: z.number().optional(),
   fuelTier: z.number().optional(),
+  published: z.boolean().optional(),
+  productId: z.number().optional(),
+  basePrice: z.number().optional(),
 })
 
 const CachedStructureSchema = z.object({
@@ -205,5 +227,4 @@ export const cacheSchemas: Record<string, z.ZodType> = {
   names: CachedNameSchema,
   categories: CachedCategorySchema,
   groups: CachedGroupSchema,
-  blueprints: CachedBlueprintSchema,
 }

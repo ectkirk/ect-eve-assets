@@ -1,9 +1,15 @@
 import { create } from 'zustand'
 import { logger } from '@/lib/logger'
 import { useAuthStore } from '@/store/auth-store'
+import { DB } from '@/lib/db-constants'
+import {
+  openDatabase,
+  idbGetAll,
+  idbPut,
+  idbDeleteWhere,
+  idbClear,
+} from '@/lib/idb-utils'
 
-const DB_NAME = 'ecteveassets-expiry'
-const DB_VERSION = 1
 const STORE_EXPIRY = 'expiry'
 const POLL_INTERVAL_MS = 60_000
 const EMPTY_RESULT_CACHE_MS = 60 * 60 * 1000
@@ -60,8 +66,8 @@ interface ExpiryCacheActions {
 
 type ExpiryCacheStore = ExpiryCacheState & ExpiryCacheActions
 
-let db: IDBDatabase | null = null
 let sortedPatternsCache: string[] | null = null
+let initPromise: Promise<void> | null = null
 
 function makeKey(ownerKey: string, endpoint: string): string {
   return `${ownerKey}:${endpoint}`
@@ -80,106 +86,42 @@ function isPatternApplicable(pattern: string, ownerKey: string): boolean {
   return true
 }
 
-async function openDB(): Promise<IDBDatabase> {
-  if (db) return db
-
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION)
-
-    request.onerror = () => {
-      logger.error('Failed to open expiry cache DB', request.error, {
-        module: 'ExpiryCacheStore',
-      })
-      reject(request.error)
-    }
-
-    request.onsuccess = () => {
-      db = request.result
-      resolve(db)
-    }
-
-    request.onupgradeneeded = (event) => {
-      const database = (event.target as IDBOpenDBRequest).result
-      if (!database.objectStoreNames.contains(STORE_EXPIRY)) {
-        database.createObjectStore(STORE_EXPIRY, { keyPath: 'key' })
-      }
-    }
-  })
+async function getDB() {
+  return openDatabase(DB.EXPIRY)
 }
 
 async function loadFromDB(): Promise<Map<string, EndpointExpiry>> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_EXPIRY], 'readonly')
-    const store = tx.objectStore(STORE_EXPIRY)
-    const request = store.getAll()
-
-    tx.oncomplete = () => {
-      const endpoints = new Map<string, EndpointExpiry>()
-      for (const stored of request.result as StoredExpiry[]) {
-        endpoints.set(stored.key, {
-          expiresAt: stored.expiresAt,
-          etag: stored.etag,
-        })
-      }
-      resolve(endpoints)
-    }
-
-    tx.onerror = () => reject(tx.error)
-  })
+  const db = await getDB()
+  const records = await idbGetAll<StoredExpiry>(db, STORE_EXPIRY)
+  const endpoints = new Map<string, EndpointExpiry>()
+  for (const stored of records) {
+    endpoints.set(stored.key, {
+      expiresAt: stored.expiresAt,
+      etag: stored.etag,
+    })
+  }
+  return endpoints
 }
 
 async function saveToDB(key: string, expiry: EndpointExpiry): Promise<void> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_EXPIRY], 'readwrite')
-    const store = tx.objectStore(STORE_EXPIRY)
-    store.put({
-      key,
-      expiresAt: expiry.expiresAt,
-      etag: expiry.etag,
-    } as StoredExpiry)
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
+  const db = await getDB()
+  await idbPut(db, STORE_EXPIRY, {
+    key,
+    expiresAt: expiry.expiresAt,
+    etag: expiry.etag,
+  } as StoredExpiry)
 }
 
 async function deleteFromDBWhere(
-  predicate: (key: string) => boolean
+  predicate: (key: IDBValidKey) => boolean
 ): Promise<void> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_EXPIRY], 'readwrite')
-    const store = tx.objectStore(STORE_EXPIRY)
-    const request = store.openCursor()
-
-    request.onsuccess = () => {
-      const cursor = request.result
-      if (cursor) {
-        if (predicate(cursor.key as string)) {
-          cursor.delete()
-        }
-        cursor.continue()
-      }
-    }
-
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
+  const db = await getDB()
+  await idbDeleteWhere(db, STORE_EXPIRY, predicate)
 }
 
-async function clearDB(): Promise<void> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_EXPIRY], 'readwrite')
-    tx.objectStore(STORE_EXPIRY).clear()
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
+async function clearExpiryDB(): Promise<void> {
+  const db = await getDB()
+  await idbClear(db, STORE_EXPIRY)
 }
 
 function getSortedPatterns(callbacks: Map<string, RefreshCallback>): string[] {
@@ -329,42 +271,49 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
   isPaused: false,
 
   init: async () => {
-    const currentGen = get().pollingGeneration
-    const newGen = currentGen + 1
-    set({ pollingGeneration: newGen })
+    if (get().initialized) return
+    if (initPromise) return initPromise
 
-    try {
-      const endpoints = await loadFromDB()
-      set({ endpoints, initialized: true })
+    initPromise = (async () => {
+      const currentGen = get().pollingGeneration
+      const newGen = currentGen + 1
+      set({ pollingGeneration: newGen })
 
-      const now = Date.now()
-      const expired: Array<{ ownerKey: string; endpoint: string }> = []
+      try {
+        const endpoints = await loadFromDB()
+        set({ endpoints, initialized: true })
 
-      for (const [key, expiry] of endpoints) {
-        if (expiry.expiresAt <= now) {
-          const parsed = parseKey(key)
-          if (parsed) expired.push(parsed)
+        const now = Date.now()
+        const expired: Array<{ ownerKey: string; endpoint: string }> = []
+
+        for (const [key, expiry] of endpoints) {
+          if (expiry.expiresAt <= now) {
+            const parsed = parseKey(key)
+            if (parsed) expired.push(parsed)
+          }
         }
+
+        logger.info('Expiry cache initialized', {
+          module: 'ExpiryCacheStore',
+          total: endpoints.size,
+          expired: expired.length,
+        })
+
+        for (const item of expired) {
+          get().queueRefresh(item.ownerKey, item.endpoint)
+        }
+
+        schedulePoll(newGen)
+      } catch (error) {
+        logger.error('Failed to initialize expiry cache', error, {
+          module: 'ExpiryCacheStore',
+        })
+        set({ initialized: true })
+        schedulePoll(newGen)
       }
+    })()
 
-      logger.info('Expiry cache initialized', {
-        module: 'ExpiryCacheStore',
-        total: endpoints.size,
-        expired: expired.length,
-      })
-
-      for (const item of expired) {
-        get().queueRefresh(item.ownerKey, item.endpoint)
-      }
-
-      schedulePoll(newGen)
-    } catch (error) {
-      logger.error('Failed to initialize expiry cache', error, {
-        module: 'ExpiryCacheStore',
-      })
-      set({ initialized: true })
-      schedulePoll(newGen)
-    }
+    return initPromise
   },
 
   setExpiry: (ownerKey, endpoint, expiresAt, etag, isEmpty) => {
@@ -508,12 +457,14 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
       return { endpoints, refreshQueue }
     })
 
-    deleteFromDBWhere((key) => key.startsWith(prefix)).catch((error) => {
-      logger.error('Failed to clear expiry for owner', error, {
-        module: 'ExpiryCacheStore',
-        ownerKey,
-      })
-    })
+    deleteFromDBWhere((key) => (key as string).startsWith(prefix)).catch(
+      (error) => {
+        logger.error('Failed to clear expiry for owner', error, {
+          module: 'ExpiryCacheStore',
+          ownerKey,
+        })
+      }
+    )
   },
 
   clearByEndpoint: async (pattern) => {
@@ -529,7 +480,7 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
     })
 
     try {
-      await deleteFromDBWhere((key) => key.includes(pattern))
+      await deleteFromDBWhere((key) => (key as string).includes(pattern))
     } catch (error) {
       logger.error('Failed to clear expiry by endpoint', error, {
         module: 'ExpiryCacheStore',
@@ -571,7 +522,7 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
         ...new Set(orphanedKeys.map((k) => parseKey(k)!.ownerKey + ':')),
       ]
       await deleteFromDBWhere((key) =>
-        ownerPrefixes.some((prefix) => key.startsWith(prefix))
+        ownerPrefixes.some((prefix) => (key as string).startsWith(prefix))
       )
       logger.info('Pruned orphaned expiry entries', {
         module: 'ExpiryCacheStore',
@@ -587,14 +538,16 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
   },
 
   clear: async () => {
+    initPromise = null
     set({
       endpoints: new Map(),
       refreshQueue: [],
       pollingGeneration: get().pollingGeneration + 1,
+      initialized: false,
     })
 
     try {
-      await clearDB()
+      await clearExpiryDB()
       logger.info('Expiry cache cleared', { module: 'ExpiryCacheStore' })
     } catch (error) {
       logger.error('Failed to clear expiry cache', error, {
