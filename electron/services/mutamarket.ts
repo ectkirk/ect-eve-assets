@@ -1,5 +1,7 @@
 import { app, ipcMain } from 'electron'
 import { logger } from './logger.js'
+import { fetchWithTimeout, isAbortError } from './fetch-utils.js'
+import { isValidCharacterId } from './validation.js'
 
 const MUTAMARKET_API_BASE = 'https://mutamarket.com/api'
 const MUTAMARKET_TIMEOUT_MS = 5000
@@ -8,11 +10,7 @@ export function registerMutamarketHandlers(): void {
   ipcMain.handle(
     'mutamarket:module',
     async (_event, itemId: unknown, typeId?: unknown) => {
-      if (
-        typeof itemId !== 'number' ||
-        !Number.isInteger(itemId) ||
-        itemId <= 0
-      ) {
+      if (!isValidCharacterId(itemId)) {
         return { error: 'Invalid item ID' }
       }
 
@@ -22,20 +20,10 @@ export function registerMutamarketHandlers(): void {
       }
 
       try {
-        const controller = new AbortController()
-        const timeoutId = setTimeout(
-          () => controller.abort(),
-          MUTAMARKET_TIMEOUT_MS
-        )
-
-        const getResponse = await fetch(
+        const getResponse = await fetchWithTimeout(
           `${MUTAMARKET_API_BASE}/modules/${itemId}`,
-          {
-            signal: controller.signal,
-            headers,
-          }
+          { headers, timeoutMs: MUTAMARKET_TIMEOUT_MS }
         )
-        clearTimeout(timeoutId)
 
         if (getResponse.ok) {
           return await getResponse.json()
@@ -48,27 +36,19 @@ export function registerMutamarketHandlers(): void {
           }
         }
 
-        if (
-          typeof typeId !== 'number' ||
-          !Number.isInteger(typeId) ||
-          typeId <= 0
-        ) {
+        if (!isValidCharacterId(typeId)) {
           return { error: 'HTTP 404', status: 404 }
         }
 
-        const postController = new AbortController()
-        const postTimeoutId = setTimeout(
-          () => postController.abort(),
-          MUTAMARKET_TIMEOUT_MS
+        const postResponse = await fetchWithTimeout(
+          `${MUTAMARKET_API_BASE}/modules`,
+          {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ type_id: typeId, item_id: itemId }),
+            timeoutMs: MUTAMARKET_TIMEOUT_MS,
+          }
         )
-
-        const postResponse = await fetch(`${MUTAMARKET_API_BASE}/modules`, {
-          method: 'POST',
-          signal: postController.signal,
-          headers,
-          body: JSON.stringify({ type_id: typeId, item_id: itemId }),
-        })
-        clearTimeout(postTimeoutId)
 
         if (!postResponse.ok) {
           return {
@@ -78,7 +58,7 @@ export function registerMutamarketHandlers(): void {
         }
         return await postResponse.json()
       } catch (err) {
-        if (err instanceof Error && err.name === 'AbortError') {
+        if (isAbortError(err)) {
           return { error: 'Timeout' }
         }
         logger.error('mutamarket:module fetch failed', err, {
