@@ -1,6 +1,5 @@
 import type { StoreApi, UseBoundStore } from 'zustand'
 import { useAuthStore, type Owner, findOwnerByKey } from './auth-store'
-import { useToastStore } from './toast-store'
 import {
   getContractItems,
   getCorporationContractItems,
@@ -10,7 +9,6 @@ import {
 import { esi } from '@/api/esi'
 import { ESIContractSchema } from '@/api/schemas'
 import { logger } from '@/lib/logger'
-import { formatNumber } from '@/lib/utils'
 import { triggerResolution } from '@/lib/data-resolver'
 import {
   createVisibilityStore,
@@ -18,6 +16,15 @@ import {
   type SourceOwner,
   type VisibilityStore,
 } from './create-visibility-store'
+import { usePriceStore, isAbyssalTypeId } from './price-store'
+import { DB } from '@/lib/db-constants'
+import {
+  openDatabase,
+  idbGetAll,
+  idbPutBatch,
+  idbDeleteBatch,
+  idbClear,
+} from '@/lib/idb-utils'
 
 export interface StoredContract extends StoredItem<ESIContract> {
   item: ESIContract
@@ -40,7 +47,6 @@ interface ContractsExtraState {
 
 interface ContractsExtras {
   getTotal: (
-    prices: Map<number, number>,
     selectedOwnerIds: string[],
     state?: {
       itemsById: Map<number, StoredContract>
@@ -66,8 +72,8 @@ function isActiveItemExchange(contract: ESIContract): boolean {
 
 function getEndpoint(owner: Owner): string {
   return owner.type === 'corporation'
-    ? `/corporations/${owner.id}/contracts/`
-    : `/characters/${owner.characterId}/contracts/`
+    ? `/corporations/${owner.id}/contracts`
+    : `/characters/${owner.characterId}/contracts`
 }
 
 async function fetchItemsFromAPI(
@@ -83,40 +89,25 @@ async function fetchItemsFromAPI(
     : getContractItems(sourceOwner.characterId, contractId)
 }
 
-// Items DB with cached connection
-const ITEMS_DB_NAME = 'ecteveassets-contract-items-v1'
-let itemsDbConnection: IDBDatabase | null = null
+const ITEMS_STORE = 'items'
 
-async function getItemsDb(): Promise<IDBDatabase> {
-  if (itemsDbConnection) return itemsDbConnection
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(ITEMS_DB_NAME, 1)
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => {
-      itemsDbConnection = request.result
-      resolve(itemsDbConnection)
-    }
-    request.onupgradeneeded = (e) => {
-      const db = (e.target as IDBOpenDBRequest).result
-      if (!db.objectStoreNames.contains('items')) {
-        db.createObjectStore('items', { keyPath: 'contractId' })
-      }
-    }
-  })
+interface StoredContractItems {
+  contractId: number
+  items: ESIContractItem[]
+}
+
+async function getItemsDb() {
+  return openDatabase(DB.CONTRACT_ITEMS)
 }
 
 async function loadAllItems(): Promise<Map<number, ESIContractItem[]>> {
   const db = await getItemsDb()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(['items'], 'readonly')
-    const request = tx.objectStore('items').getAll()
-    tx.oncomplete = () => {
-      const map = new Map<number, ESIContractItem[]>()
-      for (const r of request.result) map.set(r.contractId, r.items)
-      resolve(map)
-    }
-    tx.onerror = () => reject(tx.error)
-  })
+  const records = await idbGetAll<StoredContractItems>(db, ITEMS_STORE)
+  const map = new Map<number, ESIContractItem[]>()
+  for (const r of records) {
+    map.set(r.contractId, r.items)
+  }
+  return map
 }
 
 async function saveItemsBatch(
@@ -124,37 +115,18 @@ async function saveItemsBatch(
 ): Promise<void> {
   if (items.length === 0) return
   const db = await getItemsDb()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(['items'], 'readwrite')
-    const store = tx.objectStore('items')
-    for (const { contractId, items: contractItems } of items) {
-      store.put({ contractId, items: contractItems })
-    }
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
+  await idbPutBatch(db, ITEMS_STORE, items)
 }
 
 async function deleteItems(contractIds: number[]): Promise<void> {
   if (contractIds.length === 0) return
   const db = await getItemsDb()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(['items'], 'readwrite')
-    const store = tx.objectStore('items')
-    for (const id of contractIds) store.delete(id)
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
+  await idbDeleteBatch(db, ITEMS_STORE, contractIds)
 }
 
 async function clearItemsDb(): Promise<void> {
   const db = await getItemsDb()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(['items'], 'readwrite')
-    tx.objectStore('items').clear()
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
+  await idbClear(db, ITEMS_STORE)
 }
 
 // Module state for hook coordination
@@ -242,12 +214,8 @@ async function fetchItemsForContracts(
       })
 
       if (typeIds.size > 0) {
-        const { fetchPrices } = await import('@/api/ref-client')
-        const { useAssetStore } = await import('./asset-store')
-        const prices = await fetchPrices(Array.from(typeIds))
-        if (prices.size > 0) {
-          await useAssetStore.getState().setPrices(prices)
-        }
+        const { usePriceStore } = await import('./price-store')
+        await usePriceStore.getState().ensureJitaPrices(Array.from(typeIds))
       }
 
       triggerResolution()
@@ -264,7 +232,7 @@ const baseStore = createVisibilityStore<
 >({
   name: 'contracts',
   moduleName: 'ContractsStore',
-  endpointPattern: '/contracts/',
+  endpointPattern: '/contracts',
   dbName: 'ecteveassets-contracts-v3',
   itemStoreName: 'contracts',
   itemKeyName: 'contractId',
@@ -299,21 +267,23 @@ const baseStore = createVisibilityStore<
     baseStore.setState({ itemsByContractId: loadedItems })
 
     const typeIds = new Set<number>()
+    const abyssalItemIds: number[] = []
     for (const items of loadedItems.values()) {
       if (items) {
         for (const item of items) {
           typeIds.add(item.type_id)
+          if (item.item_id && isAbyssalTypeId(item.type_id)) {
+            abyssalItemIds.push(item.item_id)
+          }
         }
       }
     }
 
-    if (typeIds.size > 0) {
-      const { fetchPrices } = await import('@/api/ref-client')
-      const { useAssetStore } = await import('./asset-store')
-      const prices = await fetchPrices(Array.from(typeIds))
-      if (prices.size > 0) {
-        await useAssetStore.getState().setPrices(prices)
-      }
+    if (typeIds.size > 0 || abyssalItemIds.length > 0) {
+      const { usePriceStore } = await import('./price-store')
+      await usePriceStore
+        .getState()
+        .ensureJitaPrices(Array.from(typeIds), abyssalItemIds)
       triggerResolution()
     }
   },
@@ -329,58 +299,10 @@ const baseStore = createVisibilityStore<
     previousContractsByOwner.set(ownerKey, prev)
   },
 
-  onAfterOwnerUpdate: ({ owner, newItems, itemsById }) => {
+  onAfterOwnerUpdate: ({ owner, itemsById }) => {
     const ownerKey = `${owner.type}-${owner.id}`
-    const prev = previousContractsByOwner.get(ownerKey) ?? new Map()
     previousContractsByOwner.delete(ownerKey)
 
-    const ownerId = owner.type === 'corporation' ? owner.id : owner.characterId
-    const allOwners = Object.values(useAuthStore.getState().owners).filter(
-      (o): o is Owner => !!o
-    )
-    const allOwnerIds = new Set(
-      allOwners.map((o) => (o.type === 'corporation' ? o.id : o.characterId))
-    )
-
-    const toastStore = useToastStore.getState()
-
-    for (const contract of newItems) {
-      const prevContract = prev.get(contract.contract_id)
-
-      if (!prevContract) {
-        if (
-          contract.assignee_id === ownerId &&
-          !allOwnerIds.has(contract.issuer_id) &&
-          contract.status === 'outstanding'
-        ) {
-          toastStore.addToast(
-            'contract-accepted',
-            'New Contract Assigned',
-            contract.price
-              ? `${formatNumber(contract.price)} ISK`
-              : 'Item exchange'
-          )
-        }
-      } else if (
-        (prevContract.status === 'outstanding' ||
-          prevContract.status === 'in_progress') &&
-        contract.status === 'finished' &&
-        (owner.type === 'corporation'
-          ? contract.issuer_corporation_id === owner.id
-          : contract.issuer_id === owner.characterId) &&
-        !allOwnerIds.has(contract.acceptor_id)
-      ) {
-        toastStore.addToast(
-          'contract-accepted',
-          'Contract Completed',
-          contract.price
-            ? `${formatNumber(contract.price)} ISK`
-            : 'Item exchange'
-        )
-      }
-    }
-
-    // Fetch items for single-owner updates (updateForOwner doesn't call onAfterBatchUpdate)
     fetchItemsForContracts(itemsById)
   },
 
@@ -429,12 +351,8 @@ const baseStore = createVisibilityStore<
         })
 
         if (typeIds.size > 0) {
-          const { fetchPrices } = await import('@/api/ref-client')
-          const { useAssetStore } = await import('./asset-store')
-          const prices = await fetchPrices(Array.from(typeIds))
-          if (prices.size > 0) {
-            await useAssetStore.getState().setPrices(prices)
-          }
+          const { usePriceStore } = await import('./price-store')
+          await usePriceStore.getState().ensureJitaPrices(Array.from(typeIds))
         }
 
         triggerResolution()
@@ -448,6 +366,8 @@ const baseStore = createVisibilityStore<
 const originalClear = baseStore.getState().clear
 baseStore.setState({
   clear: async () => {
+    previousContractsByOwner.clear()
+    pendingItemFetches.clear()
     await originalClear()
     await clearItemsDb()
   },
@@ -455,7 +375,6 @@ baseStore.setState({
 
 export const useContractsStore: ContractsStore = Object.assign(baseStore, {
   getTotal(
-    prices: Map<number, number>,
     selectedOwnerIds: string[],
     stateOverride?: {
       itemsById: Map<number, StoredContract>
@@ -481,6 +400,7 @@ export const useContractsStore: ContractsStore = Object.assign(baseStore, {
       }
     }
 
+    const priceStore = usePriceStore.getState()
     let total = 0
     for (const contractId of visibleIds) {
       const stored = itemsById.get(contractId)
@@ -496,7 +416,11 @@ export const useContractsStore: ContractsStore = Object.assign(baseStore, {
         if (isIssuer) {
           for (const item of items) {
             if (item.is_included) {
-              total += (prices.get(item.type_id) ?? 0) * item.quantity
+              const price = priceStore.getItemPrice(item.type_id, {
+                itemId: item.item_id,
+                isBlueprintCopy: item.is_blueprint_copy,
+              })
+              total += price * item.quantity
             }
           }
         }

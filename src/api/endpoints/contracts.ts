@@ -1,15 +1,20 @@
 import { esi } from '../esi'
-import { ESIContractSchema, ESIContractItemSchema } from '../schemas'
+import {
+  ESIContractSchema,
+  ESIContractItemSchema,
+  ESIContractBidSchema,
+} from '../schemas'
 import { z } from 'zod'
 
 export type ESIContract = z.infer<typeof ESIContractSchema>
 export type ESIContractItem = z.infer<typeof ESIContractItemSchema>
+export type ESIContractBid = z.infer<typeof ESIContractBidSchema>
 
 export async function getCharacterContracts(
   characterId: number
 ): Promise<ESIContract[]> {
   return esi.fetchPaginated<ESIContract>(
-    `/characters/${characterId}/contracts/`,
+    `/characters/${characterId}/contracts`,
     { characterId, schema: ESIContractSchema }
   )
 }
@@ -19,7 +24,7 @@ export async function getContractItems(
   contractId: number
 ): Promise<ESIContractItem[]> {
   return esi.fetch<ESIContractItem[]>(
-    `/characters/${characterId}/contracts/${contractId}/items/`,
+    `/characters/${characterId}/contracts/${contractId}/items`,
     { characterId, schema: z.array(ESIContractItemSchema) }
   )
 }
@@ -29,7 +34,7 @@ export async function getCorporationContracts(
   corporationId: number
 ): Promise<ESIContract[]> {
   return esi.fetchPaginated<ESIContract>(
-    `/corporations/${corporationId}/contracts/`,
+    `/corporations/${corporationId}/contracts`,
     { characterId, schema: ESIContractSchema }
   )
 }
@@ -40,7 +45,16 @@ export async function getCorporationContractItems(
   contractId: number
 ): Promise<ESIContractItem[]> {
   return esi.fetch<ESIContractItem[]>(
-    `/corporations/${corporationId}/contracts/${contractId}/items/`,
+    `/corporations/${corporationId}/contracts/${contractId}/items`,
     { characterId, schema: z.array(ESIContractItemSchema) }
+  )
+}
+
+export async function getPublicContractBids(
+  contractId: number
+): Promise<ESIContractBid[]> {
+  return esi.fetchPaginated<ESIContractBid>(
+    `/contracts/public/bids/${contractId}`,
+    { requiresAuth: false, schema: ESIContractBidSchema }
   )
 }

@@ -38,6 +38,21 @@ vi.mock('@/lib/logger', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
+vi.mock('./price-store', () => ({
+  usePriceStore: {
+    getState: vi.fn(() => ({
+      abyssalPrices: new Map<number, number>(),
+      marketPrices: new Map<number, number>(),
+      getItemPrice: vi.fn((typeId: number) => {
+        if (typeId === 34) return 10
+        return 0
+      }),
+      ensureJitaPrices: vi.fn(async () => new Map()),
+    })),
+  },
+  isAbyssalTypeId: vi.fn(() => false),
+}))
+
 describe('contracts-store', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -342,8 +357,7 @@ describe('contracts-store', () => {
         ]),
       })
 
-      const prices = new Map([[34, 10]])
-      const total = useContractsStore.getTotal(prices, [
+      const total = useContractsStore.getTotal([
         'character-12345',
         'character-67890',
       ])

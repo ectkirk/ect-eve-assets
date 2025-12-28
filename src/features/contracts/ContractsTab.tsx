@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { ChevronRight, ChevronDown, Truck } from 'lucide-react'
 import { useTabControls } from '@/context'
-import { useColumnSettings, useCacheVersion, type ColumnConfig } from '@/hooks'
+import { useColumnSettings, type ColumnConfig } from '@/hooks'
+import { useReferenceCacheStore } from '@/store/reference-cache'
 import { useAuthStore, ownerKey, findOwnerByKey } from '@/store/auth-store'
 import {
   useContractsStore,
@@ -10,7 +11,7 @@ import {
 } from '@/store/contracts-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
-import { useAssetStore } from '@/store/asset-store'
+import { usePriceStore } from '@/store/price-store'
 import { cn, formatNumber } from '@/lib/utils'
 import { ContractsTable } from './ContractsTable'
 import {
@@ -21,16 +22,26 @@ import {
   getContractValue,
 } from './contracts-utils'
 
+const CONTRACT_COLUMNS: ColumnConfig[] = [
+  { id: 'status', label: 'Status' },
+  { id: 'type', label: 'Type' },
+  { id: 'items', label: 'Items' },
+  { id: 'location', label: 'Location' },
+  { id: 'assignee', label: 'Assignee' },
+  { id: 'price', label: 'Price' },
+  { id: 'value', label: 'Value' },
+  { id: 'expires', label: 'Expires' },
+  { id: 'owner', label: 'Owner' },
+]
+
 function DirectionGroupRow({
   group,
   isExpanded,
   onToggle,
-  prices,
 }: {
   group: DirectionGroup
   isExpanded: boolean
   onToggle: () => void
-  prices: Map<number, number>
 }) {
   const colorClass =
     group.direction === 'in' ? 'text-status-positive' : 'text-status-warning'
@@ -57,7 +68,7 @@ function DirectionGroupRow({
       </button>
       {isExpanded && (
         <div className="border-t border-border/50 bg-surface/30 px-4 pb-2">
-          <ContractsTable contracts={group.contracts} prices={prices} />
+          <ContractsTable contracts={group.contracts} />
         </div>
       )}
     </div>
@@ -68,7 +79,7 @@ export function ContractsTab() {
   const ownersRecord = useAuthStore((s) => s.owners)
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
 
-  const prices = useAssetStore((s) => s.prices)
+  const priceVersion = usePriceStore((s) => s.priceVersion)
   const contractsUpdating = useContractsStore((s) => s.isUpdating)
   const updateError = useContractsStore((s) => s.updateError)
   const init = useContractsStore((s) => s.init)
@@ -104,7 +115,9 @@ export function ContractsTab() {
     init()
   }, [init])
 
-  const cacheVersion = useCacheVersion()
+  const types = useReferenceCacheStore((s) => s.types)
+  const structures = useReferenceCacheStore((s) => s.structures)
+  const names = useReferenceCacheStore((s) => s.names)
 
   const [expandedDirections, setExpandedDirections] = useState<Set<string>>(
     new Set(['in', 'out'])
@@ -124,28 +137,16 @@ export function ContractsTab() {
     [selectedOwnerIds]
   )
 
-  const CONTRACT_COLUMNS: ColumnConfig[] = useMemo(
-    () => [
-      { id: 'status', label: 'Status' },
-      { id: 'type', label: 'Type' },
-      { id: 'items', label: 'Items' },
-      { id: 'location', label: 'Location' },
-      { id: 'assignee', label: 'Assignee' },
-      { id: 'price', label: 'Price' },
-      { id: 'value', label: 'Value' },
-      { id: 'expires', label: 'Expires' },
-      { id: 'owner', label: 'Owner' },
-    ],
-    []
-  )
-
   const { getColumnsForDropdown } = useColumnSettings(
     'contracts',
     CONTRACT_COLUMNS
   )
 
   const { directionGroups, courierGroup } = useMemo(() => {
-    void cacheVersion
+    void types
+    void structures
+    void names
+    void priceVersion
 
     const filteredContractsByOwner = contractsByOwner.filter(({ owner }) =>
       selectedSet.has(ownerKey(owner.type, owner.id))
@@ -192,8 +193,7 @@ export function ContractsTab() {
           contractWithItems,
           owner.type,
           owner.id,
-          isIssuer,
-          prices
+          isIssuer
         )
 
         if (isCourier) {
@@ -255,7 +255,16 @@ export function ContractsTab() {
             }
           : null,
     }
-  }, [contractsByOwner, cacheVersion, owners, prices, search, selectedSet])
+  }, [
+    contractsByOwner,
+    types,
+    structures,
+    names,
+    owners,
+    priceVersion,
+    search,
+    selectedSet,
+  ])
 
   const toggleDirection = useCallback((direction: string) => {
     setExpandedDirections((prev) => {
@@ -381,7 +390,6 @@ export function ContractsTab() {
                   group={group}
                   isExpanded={expandedDirections.has(group.direction)}
                   onToggle={() => toggleDirection(group.direction)}
-                  prices={prices}
                 />
               ))}
             </div>
@@ -417,7 +425,6 @@ export function ContractsTab() {
                     <ContractsTable
                       contracts={courierGroup.contracts}
                       showCourierColumns
-                      prices={prices}
                     />
                   </div>
                 )}
