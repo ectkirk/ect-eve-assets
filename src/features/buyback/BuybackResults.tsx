@@ -1,5 +1,10 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import type { RuntimeSecurityConfig } from './config'
+
+function generateRef(): string {
+  const num = Math.floor(Math.random() * 900000) + 100000
+  return `EEA-${num}`
+}
 
 interface BuybackResultsProps {
   result: BuybackResult
@@ -70,6 +75,7 @@ function getItemImageUrl(
 export function BuybackResults({ result, config }: BuybackResultsProps) {
   const { items, totals } = result
   const [showExcluded, setShowExcluded] = useState(totals.buybackValue === 0)
+  const quoteRef = useMemo(() => generateRef(), [])
 
   const formatVolume = (value: number) =>
     value.toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' m³'
@@ -143,10 +149,7 @@ export function BuybackResults({ result, config }: BuybackResultsProps) {
                 />
               </p>
               <p className="mt-1 text-content-secondary">
-                Set the reason to:{' '}
-                <span className="font-semibold text-content">
-                  {config.name}
-                </span>
+                Set the reason to: <CopyButton text={quoteRef} label="ref" />
               </p>
             </div>
           </div>
@@ -347,10 +350,16 @@ export function BuybackResults({ result, config }: BuybackResultsProps) {
             <table className="w-full text-sm">
               <thead className="border-b border-border bg-surface-secondary">
                 <tr>
-                  <th className="px-4 py-3 text-left font-medium text-content-secondary">
+                  <th
+                    scope="col"
+                    className="px-4 py-3 text-left font-medium text-content-secondary"
+                  >
                     Item
                   </th>
-                  <th className="px-4 py-3 text-right font-medium text-content-secondary">
+                  <th
+                    scope="col"
+                    className="px-4 py-3 text-right font-medium text-content-secondary"
+                  >
                     Qty
                   </th>
                 </tr>

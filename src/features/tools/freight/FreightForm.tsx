@@ -1,24 +1,21 @@
 import { useState } from 'react'
+import { Loader2 } from 'lucide-react'
 
-interface BuybackFormProps {
+interface FreightFormProps {
   onSubmit: (text: string) => void
   isLoading?: boolean
-  hasQuote?: boolean
+  hasResult?: boolean
   onReset?: () => void
-  submitLabel?: string
-  resetLabel?: string
   defaultText?: string
 }
 
-export function BuybackForm({
+export function FreightForm({
   onSubmit,
   isLoading = false,
-  hasQuote = false,
+  hasResult = false,
   onReset,
-  submitLabel = 'Get Quote',
-  resetLabel = 'Create a new quote',
   defaultText = '',
-}: BuybackFormProps) {
+}: FreightFormProps) {
   const [text, setText] = useState(defaultText)
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -43,23 +40,23 @@ export function BuybackForm({
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <label
-          htmlFor="items-input"
+          htmlFor="freight-input"
           className="mb-2 block text-sm font-medium text-content-secondary"
         >
           Item list
         </label>
         <textarea
-          id="items-input"
+          id="freight-input"
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Paste items from EVE (inventory, contracts, fittings, etc.)"
-          rows={12}
+          rows={8}
           className={`w-full rounded-lg border px-4 py-3 font-mono text-sm transition-colors focus:outline-none ${
-            hasQuote
+            hasResult
               ? 'cursor-not-allowed border-border bg-surface text-content-muted'
               : 'border-border bg-surface-secondary text-content placeholder-content-muted focus:border-accent focus:ring-2 focus:ring-action/20'
           }`}
-          disabled={isLoading || hasQuote}
+          disabled={isLoading || hasResult}
         />
         <div className="mt-2 text-sm text-content-secondary">
           {lineCount > 0
@@ -69,13 +66,13 @@ export function BuybackForm({
       </div>
 
       <div className="flex gap-3">
-        {hasQuote ? (
+        {hasResult ? (
           <button
             type="button"
             onClick={handleReset}
             className="rounded-lg bg-action px-6 py-2.5 font-medium text-action-foreground transition-colors hover:bg-action-hover focus:ring-2 focus:ring-action focus:ring-offset-2 focus:ring-offset-surface focus:outline-none"
           >
-            {resetLabel}
+            Calculate new shipment
           </button>
         ) : (
           <>
@@ -86,26 +83,11 @@ export function BuybackForm({
             >
               {isLoading ? (
                 <span className="flex items-center gap-2">
-                  <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                      fill="none"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
+                  <Loader2 className="h-4 w-4 animate-spin" />
                   Calculating...
                 </span>
               ) : (
-                submitLabel
+                'Calculate Shipping'
               )}
             </button>
             {text.trim() && (

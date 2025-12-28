@@ -1,5 +1,18 @@
 import { useState } from 'react'
+import DOMPurify from 'dompurify'
 import { useBuybackInfoStore } from '@/store/buyback-info-store'
+
+function sanitizeUrl(url: string): string {
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+      return url
+    }
+  } catch {
+    // Invalid URL
+  }
+  return '#'
+}
 
 function parseMarkdown(md: string): string {
   const lines = md.split('\n')
@@ -14,10 +27,10 @@ function parseMarkdown(md: string): string {
         /\*\*([^*]+)\*\*/g,
         '<strong class="text-content font-semibold">$1</strong>'
       )
-      .replace(
-        /\[([^\]]+)\]\(([^)]+)\)/g,
-        '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">$1</a>'
-      )
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, linkText, url) => {
+        const safeUrl = sanitizeUrl(url)
+        return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">${linkText}</a>`
+      })
   }
 
   const flushList = () => {
@@ -40,7 +53,7 @@ function parseMarkdown(md: string): string {
       result.push('<tr class="border-b border-border">')
       headerRow.forEach((cell) => {
         result.push(
-          `<th class="px-3 py-2 text-left font-semibold text-content">${processInline(cell)}</th>`
+          `<th scope="col" class="px-3 py-2 text-left font-semibold text-content">${processInline(cell)}</th>`
         )
       })
       result.push('</tr>')
@@ -103,7 +116,23 @@ function parseMarkdown(md: string): string {
   flushList()
   flushTable()
 
-  return result.join('\n')
+  return DOMPurify.sanitize(result.join('\n'), {
+    ALLOWED_TAGS: [
+      'p',
+      'ul',
+      'li',
+      'strong',
+      'a',
+      'table',
+      'thead',
+      'tbody',
+      'tr',
+      'th',
+      'td',
+      'div',
+    ],
+    ALLOWED_ATTR: ['class', 'href', 'target', 'rel'],
+  })
 }
 
 function FAQItem({ question, answer }: { question: string; answer: string }) {

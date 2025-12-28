@@ -169,6 +169,7 @@ export function Calculator({ result }: CalculatorProps) {
             <thead>
               <tr className="border-b border-border text-xs uppercase text-content-secondary">
                 <th
+                  scope="col"
                   className="cursor-pointer pb-3 pr-4 hover:text-content"
                   onClick={() => handleSort('itemName')}
                 >
@@ -180,6 +181,7 @@ export function Calculator({ result }: CalculatorProps) {
                   />
                 </th>
                 <th
+                  scope="col"
                   className="cursor-pointer pb-3 pr-4 text-right hover:text-content"
                   onClick={() => handleSort('quantity')}
                 >
@@ -191,6 +193,7 @@ export function Calculator({ result }: CalculatorProps) {
                   />
                 </th>
                 <th
+                  scope="col"
                   className="cursor-pointer pb-3 pr-4 text-right hover:text-content"
                   onClick={() => handleSort('totalVolume')}
                 >
@@ -202,6 +205,7 @@ export function Calculator({ result }: CalculatorProps) {
                   />
                 </th>
                 <th
+                  scope="col"
                   className="cursor-pointer pb-3 pr-4 hover:text-content"
                   onClick={() => handleSort('groupName')}
                 >
@@ -213,6 +217,7 @@ export function Calculator({ result }: CalculatorProps) {
                   />
                 </th>
                 <th
+                  scope="col"
                   className="cursor-pointer pb-3 pr-4 text-right hover:text-content"
                   onClick={() => handleSort('totalJitaBuy')}
                 >
@@ -224,6 +229,7 @@ export function Calculator({ result }: CalculatorProps) {
                   />
                 </th>
                 <th
+                  scope="col"
                   className="cursor-pointer pb-3 text-right hover:text-content"
                   onClick={() => handleSort('totalJitaSell')}
                 >
