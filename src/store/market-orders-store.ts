@@ -1,12 +1,11 @@
 import type { StoreApi, UseBoundStore } from 'zustand'
 import { type Owner, findOwnerByKey } from './auth-store'
-import { useToastStore } from './toast-store'
+import { usePriceStore } from './price-store'
 import { esi } from '@/api/esi'
 import {
   ESIMarketOrderSchema,
   ESICorporationMarketOrderSchema,
 } from '@/api/schemas'
-import { getTypeName } from '@/store/reference-cache'
 import { useRegionalMarketStore } from '@/store/regional-market-store'
 import { logger } from '@/lib/logger'
 import {
@@ -97,8 +96,8 @@ function registerPricesFromOrders(ordersById: Map<number, StoredOrder>): void {
 
 function getEndpoint(owner: Owner): string {
   return owner.type === 'corporation'
-    ? `/corporations/${owner.id}/orders/`
-    : `/characters/${owner.characterId}/orders/`
+    ? `/corporations/${owner.id}/orders`
+    : `/characters/${owner.characterId}/orders`
 }
 
 const previousOrdersByOwner = new Map<string, Map<number, MarketOrder>>()
@@ -128,7 +127,7 @@ async function fetchOrdersForOwner(owner: Owner): Promise<{
 const baseStore = createVisibilityStore<MarketOrder, StoredOrder>({
   name: 'market orders',
   moduleName: 'MarketOrdersStore',
-  endpointPattern: '/orders/',
+  endpointPattern: '/orders',
   dbName: 'ecteveassets-market-orders-v2',
   itemStoreName: 'orders',
   itemKeyName: 'orderId',
@@ -143,7 +142,15 @@ const baseStore = createVisibilityStore<MarketOrder, StoredOrder>({
       characterId: owner.characterId,
     },
   }),
-  onAfterInit: registerPricesFromOrders,
+  onAfterInit: (itemsById) => {
+    registerPricesFromOrders(itemsById)
+
+    const activeTypeIds = new Set<number>()
+    for (const { item } of itemsById.values()) {
+      activeTypeIds.add(item.type_id)
+    }
+    useRegionalMarketStore.getState().syncTypesWithOrders(activeTypeIds)
+  },
   onBeforeOwnerUpdate: (owner, previousVisibility, itemsById) => {
     const ownerKey = `${owner.type}:${owner.id}`
     const previousOrders = new Map<number, MarketOrder>()
@@ -164,16 +171,6 @@ const baseStore = createVisibilityStore<MarketOrder, StoredOrder>({
     )
 
     if (completedOrders.length > 0) {
-      const toastStore = useToastStore.getState()
-      for (const order of completedOrders) {
-        const typeName = getTypeName(order.type_id)
-        const action = order.is_buy_order ? 'Buy' : 'Sell'
-        toastStore.addToast(
-          'order-filled',
-          `${action} Order Filled`,
-          `${order.volume_total.toLocaleString()}x ${typeName}`
-        )
-      }
       logger.info('Market orders completed', {
         module: 'MarketOrdersStore',
         owner: owner.name,
@@ -225,7 +222,6 @@ export const useMarketOrdersStore: MarketOrdersStore = Object.assign(
       const { itemsById, visibilityByOwner } =
         stateOverride ?? baseStore.getState()
       const selectedSet = new Set(selectedOwnerIds)
-      const regionalStore = useRegionalMarketStore.getState()
 
       const visibleOrderIds = new Set<number>()
       for (const [key, orderIds] of visibilityByOwner) {
@@ -234,6 +230,7 @@ export const useMarketOrdersStore: MarketOrdersStore = Object.assign(
         }
       }
 
+      const priceStore = usePriceStore.getState()
       let total = 0
       for (const orderId of visibleOrderIds) {
         const stored = itemsById.get(orderId)
@@ -243,8 +240,7 @@ export const useMarketOrdersStore: MarketOrdersStore = Object.assign(
         if (order.is_buy_order) {
           total += order.escrow ?? 0
         } else {
-          total +=
-            (regionalStore.getPrice(order.type_id) ?? 0) * order.volume_remain
+          total += priceStore.getItemPrice(order.type_id) * order.volume_remain
         }
       }
       return total

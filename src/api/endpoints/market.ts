@@ -40,21 +40,11 @@ export const EMPTY_PRICE_DATA: PriceData = {
 
 export const DEFAULT_REGION_ID = 10000002
 
-export const CAPITAL_GROUP_IDS = new Set([
-  30, // Titan
-  659, // Supercarrier
-  547, // Carrier
-  485, // Dreadnought
-  1538, // Force Auxiliary
-  4594, // Lancer Dreadnought
-  883, // Capital Industrial Ship (Rorqual)
-])
-
 export async function getCharacterOrders(
   characterId: number
 ): Promise<ESIMarketOrder[]> {
   return esi.fetchPaginated<ESIMarketOrder>(
-    `/characters/${characterId}/orders/`,
+    `/characters/${characterId}/orders`,
     {
       characterId,
       schema: ESIMarketOrderSchema,
@@ -67,7 +57,7 @@ export async function getCorporationOrders(
   corporationId: number
 ): Promise<ESICorporationMarketOrder[]> {
   return esi.fetchPaginated<ESICorporationMarketOrder>(
-    `/corporations/${corporationId}/orders/`,
+    `/corporations/${corporationId}/orders`,
     {
       characterId,
       schema: ESICorporationMarketOrderSchema,
@@ -76,7 +66,7 @@ export async function getCorporationOrders(
 }
 
 export async function getMarketPrices(): Promise<ESIMarketPrice[]> {
-  return esi.fetch<ESIMarketPrice[]>('/markets/prices/', {
+  return esi.fetch<ESIMarketPrice[]>('/markets/prices', {
     requiresAuth: false,
     schema: z.array(ESIMarketPriceSchema),
   })
@@ -165,7 +155,7 @@ async function fetchAllRegionOrders(
   regionId: number
 ): Promise<ESIRegionOrder[]> {
   return esi.fetchPaginated<ESIRegionOrder>(
-    `/markets/${regionId}/orders/?order_type=all`,
+    `/markets/${regionId}/orders?order_type=all`,
     { requiresAuth: false, schema: ESIRegionOrderSchema }
   )
 }
@@ -199,7 +189,7 @@ export async function getRegionalOrders(
   orderType: 'sell' | 'buy'
 ): Promise<ESIRegionOrder[]> {
   return esi.fetchPaginated<ESIRegionOrder>(
-    `/markets/${regionId}/orders/?order_type=${orderType}&type_id=${typeId}`,
+    `/markets/${regionId}/orders?order_type=${orderType}&type_id=${typeId}`,
     { requiresAuth: false, schema: ESIRegionOrderSchema }
   )
 }
@@ -209,7 +199,7 @@ export async function getStructureOrders(
   characterId: number
 ): Promise<ESIStructureOrder[]> {
   return esi.fetchPaginated<ESIStructureOrder>(
-    `/markets/structures/${structureId}/`,
+    `/markets/structures/${structureId}`,
     { characterId, schema: ESIStructureOrderSchema }
   )
 }

@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { DEFAULT_REGION_ID } from '@/api/endpoints/market'
 import { useExpiryCacheStore } from '@/store/expiry-cache-store'
 import { useStoreRegistry } from '@/store/store-registry'
+import { usePriceStore } from '@/store/price-store'
 import { logger } from '@/lib/logger'
 import {
   loadFromDB,
@@ -11,7 +12,6 @@ import {
   saveStructureToDB,
   deleteStructuresFromDB,
   clearDB,
-  type PriceRecord,
   type TrackedRecord,
   type TrackedStructureRecord,
 } from './regional-market-db'
@@ -19,24 +19,18 @@ import {
   cacheKey,
   deepClonePricesByLocation,
   executeUpdate,
-  type RegionalTask,
-  type StructureTask,
 } from './regional-market-update'
+import {
+  CACHE_TTL_MS,
+  hydrateFromRecords,
+  collectTasks,
+  cleanupLocationPrices,
+  type TrackedType,
+  type TrackedStructure,
+} from './regional-market-helpers'
 
-const CACHE_TTL_MS = 5 * 60 * 1000
 const OWNER_KEY = 'regional-market'
 const ENDPOINT_PATTERN = '/markets/regional/'
-
-interface TrackedType {
-  typeId: number
-  regionId: number
-}
-
-interface TrackedStructure {
-  characterId: number
-  typeIds: Set<number>
-  lastFetchAt: number
-}
 
 interface RegionalMarketState {
   pricesByType: Map<number, number>
@@ -75,127 +69,7 @@ interface RegionalMarketActions {
 
 type RegionalMarketStore = RegionalMarketState & RegionalMarketActions
 
-function hydrateFromRecords(
-  prices: PriceRecord[],
-  tracked: TrackedRecord[],
-  structures: TrackedStructureRecord[]
-): Omit<RegionalMarketState, 'isUpdating' | 'updateError' | 'initialized'> {
-  const pricesByType = new Map<number, number>()
-  const pricesByLocation = new Map<number, Map<number, number>>()
-  const buyPricesByType = new Map<number, number>()
-  const buyPricesByLocation = new Map<number, Map<number, number>>()
-  const lastFetchAt = new Map<string, number>()
-  const trackedTypes = new Map<string, TrackedType>()
-  const trackedStructures = new Map<number, TrackedStructure>()
-  const lastFetchByType = new Map<number, number>()
-
-  for (const record of prices) {
-    if (record.lowestPrice !== null)
-      pricesByType.set(record.typeId, record.lowestPrice)
-    if (record.highestBuyPrice !== null)
-      buyPricesByType.set(record.typeId, record.highestBuyPrice)
-
-    if (Object.keys(record.locationPrices).length > 0) {
-      const locationMap = new Map<number, number>()
-      for (const [locId, price] of Object.entries(record.locationPrices)) {
-        locationMap.set(Number(locId), price)
-      }
-      pricesByLocation.set(record.typeId, locationMap)
-    }
-
-    const buyLocPrices = record.buyLocationPrices ?? {}
-    if (Object.keys(buyLocPrices).length > 0) {
-      const locationMap = new Map<number, number>()
-      for (const [locId, price] of Object.entries(buyLocPrices)) {
-        locationMap.set(Number(locId), price)
-      }
-      buyPricesByLocation.set(record.typeId, locationMap)
-    }
-
-    lastFetchByType.set(record.typeId, record.lastFetchAt)
-  }
-
-  for (const record of tracked) {
-    trackedTypes.set(record.key, {
-      typeId: record.typeId,
-      regionId: record.regionId,
-    })
-    const fetchTime = lastFetchByType.get(record.typeId)
-    if (fetchTime !== undefined) lastFetchAt.set(record.key, fetchTime)
-  }
-
-  for (const record of structures) {
-    trackedStructures.set(record.structureId, {
-      characterId: record.characterId,
-      typeIds: new Set(record.typeIds),
-      lastFetchAt: record.lastFetchAt,
-    })
-  }
-
-  return {
-    pricesByType,
-    pricesByLocation,
-    buyPricesByType,
-    buyPricesByLocation,
-    lastFetchAt,
-    trackedTypes,
-    trackedStructures,
-  }
-}
-
-function collectTasks(
-  state: RegionalMarketState,
-  now: number
-): {
-  regionalTasks: RegionalTask[]
-  structureTasks: StructureTask[]
-  earliestExpiry: number
-} {
-  const regionalTasks: RegionalTask[] = []
-  const structureTasks: StructureTask[] = []
-  let earliestExpiry = Infinity
-
-  for (const [key, { typeId, regionId }] of state.trackedTypes) {
-    const lastFetch = state.lastFetchAt.get(key)
-    if (!lastFetch || now - lastFetch > CACHE_TTL_MS) {
-      regionalTasks.push({ regionId, typeId })
-    } else {
-      earliestExpiry = Math.min(earliestExpiry, lastFetch + CACHE_TTL_MS)
-    }
-  }
-
-  for (const [
-    structureId,
-    { characterId, typeIds, lastFetchAt },
-  ] of state.trackedStructures) {
-    if (!lastFetchAt || now - lastFetchAt > CACHE_TTL_MS) {
-      structureTasks.push({ structureId, characterId, typeIds })
-    } else {
-      earliestExpiry = Math.min(earliestExpiry, lastFetchAt + CACHE_TTL_MS)
-    }
-  }
-
-  return { regionalTasks, structureTasks, earliestExpiry }
-}
-
-function cleanupLocationPrices(
-  locationMap: Map<number, Map<number, number>>,
-  typeMap: Map<number, number>,
-  structureIds: Set<number>,
-  aggregateFn: (...values: number[]) => number
-): void {
-  const emptyTypeIds: number[] = []
-  for (const [typeId, locMap] of locationMap) {
-    for (const structureId of structureIds) locMap.delete(structureId)
-    if (locMap.size > 0) {
-      typeMap.set(typeId, aggregateFn(...locMap.values()))
-    } else {
-      typeMap.delete(typeId)
-      emptyTypeIds.push(typeId)
-    }
-  }
-  for (const typeId of emptyTypeIds) locationMap.delete(typeId)
-}
+let initPromise: Promise<void> | null = null
 
 export const useRegionalMarketStore = create<RegionalMarketStore>(
   (set, get) => ({
@@ -212,31 +86,40 @@ export const useRegionalMarketStore = create<RegionalMarketStore>(
 
     init: async () => {
       if (get().initialized) return
+      if (initPromise) return initPromise
 
-      try {
-        const { prices, tracked, structures } = await loadFromDB()
-        const hydrated = hydrateFromRecords(prices, tracked, structures)
+      initPromise = (async () => {
+        try {
+          const { prices, tracked, structures } = await loadFromDB()
+          const hydrated = hydrateFromRecords(prices, tracked, structures)
 
-        set({ ...hydrated, initialized: true })
+          set({ ...hydrated, initialized: true })
 
-        logger.info('Regional market store initialized', {
-          module: 'RegionalMarketStore',
-          types: hydrated.pricesByType.size,
-          tracked: hydrated.trackedTypes.size,
-          structures: hydrated.trackedStructures.size,
-        })
-
-        get().update()
-      } catch (err) {
-        logger.error(
-          'Failed to load regional market from DB',
-          err instanceof Error ? err : undefined,
-          {
-            module: 'RegionalMarketStore',
+          if (hydrated.pricesByType.size > 0) {
+            usePriceStore.getState().setMarketPrices(hydrated.pricesByType)
           }
-        )
-        set({ initialized: true })
-      }
+
+          logger.info('Regional market store initialized', {
+            module: 'RegionalMarketStore',
+            types: hydrated.pricesByType.size,
+            tracked: hydrated.trackedTypes.size,
+            structures: hydrated.trackedStructures.size,
+          })
+
+          get().update()
+        } catch (err) {
+          logger.error(
+            'Failed to load regional market from DB',
+            err instanceof Error ? err : undefined,
+            {
+              module: 'RegionalMarketStore',
+            }
+          )
+          set({ initialized: true })
+        }
+      })()
+
+      return initPromise
     },
 
     update: async () => {
@@ -288,6 +171,8 @@ export const useRegionalMarketStore = create<RegionalMarketStore>(
           trackedStructures: result.trackedStructures,
           isUpdating: false,
         })
+
+        usePriceStore.getState().setMarketPrices(result.sellPricesByType)
 
         if (get().trackedTypes.size > 0 || get().trackedStructures.size > 0) {
           useExpiryCacheStore
@@ -562,6 +447,7 @@ export const useRegionalMarketStore = create<RegionalMarketStore>(
 
     clear: async () => {
       await clearDB()
+      initPromise = null
       useExpiryCacheStore.getState().clearForOwner(OWNER_KEY)
       set({
         pricesByType: new Map(),

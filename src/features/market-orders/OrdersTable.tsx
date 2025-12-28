@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useRef } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { useSortable, SortableHeader, sortRows } from '@/hooks'
 import {
   Table,
@@ -7,8 +8,15 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu'
 import { TypeIcon, OwnerIcon } from '@/components/ui/type-icon'
-import { formatNumber } from '@/lib/utils'
+import { formatNumber, cn } from '@/lib/utils'
+import { useRegionalMarketActionStore } from '@/store/regional-market-action-store'
 import type { OrderRow, SortColumn, DiffSortMode } from './types'
 import {
   formatExpiry,
@@ -18,6 +26,186 @@ import {
   EVEEstCell,
   DiffHeader,
 } from './components'
+
+const VIRTUALIZATION_THRESHOLD = 100
+const ROW_HEIGHT = 36
+
+interface OrderRowCellsProps {
+  row: OrderRow
+  show: (col: string) => boolean
+}
+
+function OrderRowCells({ row, show }: OrderRowCellsProps) {
+  const isBuy = row.order.is_buy_order
+  const total = row.order.price * row.order.volume_remain
+  const compPrice = isBuy ? row.highestBuy : row.lowestSell
+
+  return (
+    <>
+      {show('item') && (
+        <TableCell className="py-1.5">
+          <div className="flex items-center gap-2 min-w-0">
+            <OwnerIcon
+              ownerId={row.ownerId}
+              ownerType={row.ownerType}
+              size="sm"
+            />
+            <TypeIcon typeId={row.typeId} categoryId={row.categoryId} />
+            <span className="truncate" title={row.typeName}>
+              {row.typeName}
+            </span>
+            <CopyButton text={row.typeName} />
+          </div>
+        </TableCell>
+      )}
+      {show('type') && (
+        <TableCell className="py-1.5">{isBuy ? 'Buy' : 'Sell'}</TableCell>
+      )}
+      {show('location') && (
+        <TableCell className="py-1.5 text-content-secondary">
+          <div
+            className="truncate"
+            title={`${row.locationName} • ${row.systemName} • ${row.regionName}`}
+          >
+            {row.locationName}
+          </div>
+        </TableCell>
+      )}
+      {show('price') && (
+        <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
+          {formatPrice(row.order.price)}
+        </TableCell>
+      )}
+      {show('lowest') && (
+        <TableCell className="py-1.5 text-right tabular-nums text-content-secondary whitespace-nowrap">
+          {compPrice !== null ? (
+            formatPrice(compPrice)
+          ) : (
+            <span className="text-content-muted">-</span>
+          )}
+        </TableCell>
+      )}
+      {show('diff') && (
+        <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
+          <DiffCell
+            price={row.order.price}
+            comparisonPrice={compPrice}
+            isBuyOrder={isBuy}
+          />
+        </TableCell>
+      )}
+      {show('eveEstimated') && (
+        <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
+          <EVEEstCell price={row.order.price} eveEstimated={row.eveEstimated} />
+        </TableCell>
+      )}
+      {show('quantity') && (
+        <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
+          {row.order.volume_remain.toLocaleString()}
+          {row.order.volume_remain !== row.order.volume_total && (
+            <span className="text-content-muted">
+              /{row.order.volume_total.toLocaleString()}
+            </span>
+          )}
+        </TableCell>
+      )}
+      {show('total') && (
+        <TableCell className="py-1.5 text-right tabular-nums text-status-highlight whitespace-nowrap">
+          {formatNumber(total)}
+        </TableCell>
+      )}
+      {show('expires') && (
+        <TableCell className="py-1.5 text-right tabular-nums text-content-secondary whitespace-nowrap">
+          {formatExpiry(row.order.issued, row.order.duration)}
+        </TableCell>
+      )}
+    </>
+  )
+}
+
+function VirtualizedTableBody({
+  sortedOrders,
+  show,
+  navigateToType,
+}: {
+  sortedOrders: OrderRow[]
+  show: (col: string) => boolean
+  navigateToType: (typeId: number) => void
+}) {
+  const containerRef = useRef<HTMLTableSectionElement>(null)
+
+  const virtualizer = useVirtualizer({
+    count: sortedOrders.length,
+    getScrollElement: () => containerRef.current?.parentElement ?? null,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 10,
+  })
+
+  const virtualRows = virtualizer.getVirtualItems()
+
+  return (
+    <TableBody
+      ref={containerRef}
+      style={{ height: virtualizer.getTotalSize(), position: 'relative' }}
+    >
+      {virtualRows.map((virtualRow) => {
+        const row = sortedOrders[virtualRow.index]!
+        return (
+          <ContextMenu key={row.order.order_id}>
+            <ContextMenuTrigger asChild>
+              <TableRow
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: ROW_HEIGHT,
+                  transform: `translateY(${virtualRow.start}px)`,
+                }}
+              >
+                <OrderRowCells row={row} show={show} />
+              </TableRow>
+            </ContextMenuTrigger>
+            <ContextMenuContent>
+              <ContextMenuItem onClick={() => navigateToType(row.typeId)}>
+                View in Regional Market
+              </ContextMenuItem>
+            </ContextMenuContent>
+          </ContextMenu>
+        )
+      })}
+    </TableBody>
+  )
+}
+
+function StandardTableBody({
+  sortedOrders,
+  show,
+  navigateToType,
+}: {
+  sortedOrders: OrderRow[]
+  show: (col: string) => boolean
+  navigateToType: (typeId: number) => void
+}) {
+  return (
+    <TableBody>
+      {sortedOrders.map((row) => (
+        <ContextMenu key={row.order.order_id}>
+          <ContextMenuTrigger asChild>
+            <TableRow>
+              <OrderRowCells row={row} show={show} />
+            </TableRow>
+          </ContextMenuTrigger>
+          <ContextMenuContent>
+            <ContextMenuItem onClick={() => navigateToType(row.typeId)}>
+              View in Regional Market
+            </ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
+      ))}
+    </TableBody>
+  )
+}
 
 export function OrdersTable({
   orders,
@@ -32,6 +220,7 @@ export function OrdersTable({
   )
   const [diffSortMode, setDiffSortMode] = useState<DiffSortMode>('number')
   const show = (col: string) => visibleColumns.has(col)
+  const navigateToType = useRegionalMarketActionStore((s) => s.navigateToType)
 
   const sortedOrders = useMemo(() => {
     return sortRows(orders, sortColumn, sortDirection, (row, column) => {
@@ -79,9 +268,11 @@ export function OrdersTable({
     })
   }, [orders, sortColumn, sortDirection, diffSortMode])
 
+  const useVirtualization = sortedOrders.length > VIRTUALIZATION_THRESHOLD
+
   return (
-    <Table>
-      <TableHeader>
+    <Table className={cn(useVirtualization && 'block')}>
+      <TableHeader className={cn(useVirtualization && 'table w-full')}>
         <TableRow className="hover:bg-transparent">
           {show('item') && (
             <SortableHeader
@@ -181,99 +372,19 @@ export function OrdersTable({
           )}
         </TableRow>
       </TableHeader>
-      <TableBody>
-        {sortedOrders.map((row) => {
-          const isBuy = row.order.is_buy_order
-          const total = row.order.price * row.order.volume_remain
-          const compPrice = isBuy ? row.highestBuy : row.lowestSell
-          return (
-            <TableRow key={row.order.order_id}>
-              {show('item') && (
-                <TableCell className="py-1.5">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <OwnerIcon
-                      ownerId={row.ownerId}
-                      ownerType={row.ownerType}
-                      size="sm"
-                    />
-                    <TypeIcon typeId={row.typeId} categoryId={row.categoryId} />
-                    <span className="truncate" title={row.typeName}>
-                      {row.typeName}
-                    </span>
-                    <CopyButton text={row.typeName} />
-                  </div>
-                </TableCell>
-              )}
-              {show('type') && (
-                <TableCell className="py-1.5">
-                  {isBuy ? 'Buy' : 'Sell'}
-                </TableCell>
-              )}
-              {show('location') && (
-                <TableCell className="py-1.5 text-content-secondary">
-                  <div
-                    className="truncate"
-                    title={`${row.locationName} • ${row.systemName} • ${row.regionName}`}
-                  >
-                    {row.locationName}
-                  </div>
-                </TableCell>
-              )}
-              {show('price') && (
-                <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
-                  {formatPrice(row.order.price)}
-                </TableCell>
-              )}
-              {show('lowest') && (
-                <TableCell className="py-1.5 text-right tabular-nums text-content-secondary whitespace-nowrap">
-                  {compPrice !== null ? (
-                    formatPrice(compPrice)
-                  ) : (
-                    <span className="text-content-muted">-</span>
-                  )}
-                </TableCell>
-              )}
-              {show('diff') && (
-                <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
-                  <DiffCell
-                    price={row.order.price}
-                    comparisonPrice={compPrice}
-                    isBuyOrder={isBuy}
-                  />
-                </TableCell>
-              )}
-              {show('eveEstimated') && (
-                <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
-                  <EVEEstCell
-                    price={row.order.price}
-                    eveEstimated={row.eveEstimated}
-                  />
-                </TableCell>
-              )}
-              {show('quantity') && (
-                <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
-                  {row.order.volume_remain.toLocaleString()}
-                  {row.order.volume_remain !== row.order.volume_total && (
-                    <span className="text-content-muted">
-                      /{row.order.volume_total.toLocaleString()}
-                    </span>
-                  )}
-                </TableCell>
-              )}
-              {show('total') && (
-                <TableCell className="py-1.5 text-right tabular-nums text-status-highlight whitespace-nowrap">
-                  {formatNumber(total)}
-                </TableCell>
-              )}
-              {show('expires') && (
-                <TableCell className="py-1.5 text-right tabular-nums text-content-secondary whitespace-nowrap">
-                  {formatExpiry(row.order.issued, row.order.duration)}
-                </TableCell>
-              )}
-            </TableRow>
-          )
-        })}
-      </TableBody>
+      {useVirtualization ? (
+        <VirtualizedTableBody
+          sortedOrders={sortedOrders}
+          show={show}
+          navigateToType={navigateToType}
+        />
+      ) : (
+        <StandardTableBody
+          sortedOrders={sortedOrders}
+          show={show}
+          navigateToType={navigateToType}
+        />
+      )}
     </Table>
   )
 }

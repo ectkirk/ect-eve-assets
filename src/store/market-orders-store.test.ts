@@ -39,6 +39,14 @@ vi.mock('./regional-market-store', () => ({
   },
 }))
 
+vi.mock('./price-store', () => ({
+  usePriceStore: {
+    getState: vi.fn(() => ({
+      getItemPrice: vi.fn((typeId: number) => (typeId === 34 ? 10 : 0)),
+    })),
+  },
+}))
+
 describe('market-orders-store', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -119,7 +127,7 @@ describe('market-orders-store', () => {
       useExpiryCacheStore.setState({
         endpoints: new Map([
           [
-            'character-12345:/characters/12345/orders/',
+            'character-12345:/characters/12345/orders',
             { expiresAt: Date.now() - 1000, etag: null },
           ],
         ]),
@@ -140,7 +148,7 @@ describe('market-orders-store', () => {
 
       const expiry = useExpiryCacheStore
         .getState()
-        .endpoints.get('character-12345:/characters/12345/orders/')
+        .endpoints.get('character-12345:/characters/12345/orders')
       expect(expiry?.expiresAt).toBeGreaterThanOrEqual(futureExpiry - 1000)
     })
 
@@ -160,7 +168,7 @@ describe('market-orders-store', () => {
       useExpiryCacheStore.setState({
         endpoints: new Map([
           [
-            'character-12345:/characters/12345/orders/',
+            'character-12345:/characters/12345/orders',
             { expiresAt: Date.now() + 60000, etag: null },
           ],
         ]),
@@ -195,7 +203,7 @@ describe('market-orders-store', () => {
       useExpiryCacheStore.setState({
         endpoints: new Map([
           [
-            'character-12345:/characters/12345/orders/',
+            'character-12345:/characters/12345/orders',
             { expiresAt: Date.now() + 60000, etag: null },
           ],
         ]),
