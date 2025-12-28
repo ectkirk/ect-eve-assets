@@ -2,18 +2,11 @@ import { logger } from '@/lib/logger'
 import {
   getType,
   getLocation,
-  saveLocations,
   getSystem,
   getRegion,
-  setRegions,
-  setSystems,
-  setStations,
-  setRefStructures,
   isUniverseDataLoaded,
-  setUniverseDataLoaded,
   isRefStructuresLoaded,
-  setRefStructuresLoaded,
-  notifyCacheListeners,
+  useReferenceCacheStore,
   type CachedType,
   type CachedLocation,
   type CachedRegion,
@@ -32,6 +25,7 @@ import {
   loadReferenceData,
   type ReferenceDataProgress,
 } from './ref-data-loader'
+import { PLAYER_STRUCTURE_ID_THRESHOLD } from '@/lib/eve-constants'
 
 let universeDataPromise: Promise<void> | null = null
 
@@ -51,8 +45,7 @@ export async function loadUniverseData(
       onProgress?.('Loading universe data...')
       await Promise.all([loadAllRegions(), loadAllSystems(), loadAllStations()])
 
-      setUniverseDataLoaded(true)
-      notifyCacheListeners()
+      useReferenceCacheStore.getState().setUniverseDataLoaded(true)
 
       const duration = Math.round(performance.now() - start)
       logger.info('Universe data loaded', { module: 'RefAPI', duration })
@@ -98,7 +91,7 @@ async function loadAllRegions(): Promise<void> {
     })
   )
 
-  await setRegions(regions)
+  await useReferenceCacheStore.getState().setRegions(regions)
 }
 
 async function loadAllSystems(): Promise<void> {
@@ -136,7 +129,7 @@ async function loadAllSystems(): Promise<void> {
     })
   )
 
-  await setSystems(systems)
+  await useReferenceCacheStore.getState().setSystems(systems)
 
   const duration = Math.round(performance.now() - start)
   logger.info('Systems loaded', {
@@ -180,7 +173,7 @@ async function loadAllStations(): Promise<void> {
     })
   )
 
-  await setStations(stations)
+  await useReferenceCacheStore.getState().setStations(stations)
 
   const duration = Math.round(performance.now() - start)
   logger.info('Stations loaded', {
@@ -262,9 +255,8 @@ export async function loadRefStructures(
         : undefined
     } while (cursor !== undefined)
 
-    await setRefStructures(allStructures)
-    setRefStructuresLoaded(true)
-    notifyCacheListeners()
+    await useReferenceCacheStore.getState().setRefStructures(allStructures)
+    useReferenceCacheStore.getState().setRefStructuresLoaded(true)
 
     const duration = Math.round(performance.now() - start)
     logger.info('RefStructures loaded', {
@@ -371,7 +363,7 @@ export async function resolveLocations(
   const fallbacks: CachedLocation[] = []
 
   for (const id of locationIds) {
-    if (id > 1_000_000_000_000) continue
+    if (id >= PLAYER_STRUCTURE_ID_THRESHOLD) continue
 
     const cached = getLocation(id)
     if (cached) {
@@ -393,7 +385,7 @@ export async function resolveLocations(
   }
 
   if (fallbacks.length > 0) {
-    await saveLocations(fallbacks)
+    await useReferenceCacheStore.getState().saveLocations(fallbacks)
   }
 
   if (moonIds.length === 0) return results
@@ -432,7 +424,7 @@ export async function resolveLocations(
   }
 
   if (toCache.length > 0) {
-    await saveLocations(toCache)
+    await useReferenceCacheStore.getState().saveLocations(toCache)
   }
 
   return results

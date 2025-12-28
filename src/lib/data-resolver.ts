@@ -15,11 +15,8 @@ import {
   getLocation,
   hasStructure,
   getStructure,
-  saveStructures,
-  saveTypes,
-  notifyCacheListeners,
+  useReferenceCacheStore,
   type CachedStructure,
-  type CachedType,
 } from '@/store/reference-cache'
 import { resolveTypes, resolveLocations } from '@/api/ref-client'
 import {
@@ -28,13 +25,13 @@ import {
   hasName,
 } from '@/api/endpoints/universe'
 import { logger } from './logger'
+import { PLAYER_STRUCTURE_ID_THRESHOLD } from './eve-constants'
 
 export interface ResolutionIds {
   typeIds: Set<number>
   locationIds: Set<number>
   structureToCharacter: Map<number, number>
   entityIds: Set<number>
-  implantIds: Set<number>
 }
 
 function needsTypeResolution(typeId: number): boolean {
@@ -66,7 +63,7 @@ function collectFromAssets(
       current = parent
       owner = itemIdToOwner.get(current.item_id)
     }
-    if (current.location_id > 1_000_000_000_000) {
+    if (current.location_id >= PLAYER_STRUCTURE_ID_THRESHOLD) {
       return { structureId: current.location_id, owner }
     }
     return { structureId: null, owner }
@@ -80,7 +77,7 @@ function collectFromAssets(
 
       if (
         asset.location_type !== 'item' &&
-        asset.location_id <= 1_000_000_000_000 &&
+        asset.location_id < PLAYER_STRUCTURE_ID_THRESHOLD &&
         !hasLocation(asset.location_id)
       ) {
         ids.locationIds.add(asset.location_id)
@@ -112,7 +109,7 @@ function collectFromContracts(
     characterId: number
   ) => {
     if (!locationId) return
-    if (locationId > 1_000_000_000_000) {
+    if (locationId >= PLAYER_STRUCTURE_ID_THRESHOLD) {
       if (!hasStructure(locationId)) {
         ids.structureToCharacter.set(locationId, characterId)
       }
@@ -153,7 +150,7 @@ function collectFromOrders(
       if (needsTypeResolution(order.type_id)) {
         ids.typeIds.add(order.type_id)
       }
-      if (order.location_id > 1_000_000_000_000) {
+      if (order.location_id >= PLAYER_STRUCTURE_ID_THRESHOLD) {
         if (!hasStructure(order.location_id)) {
           ids.structureToCharacter.set(order.location_id, owner.characterId)
         }
@@ -175,7 +172,7 @@ function collectFromJobs(jobsByOwner: OwnerJobs[], ids: ResolutionIds): void {
       }
 
       const locationId = job.location_id ?? job.facility_id
-      if (locationId > 1_000_000_000_000) {
+      if (locationId >= PLAYER_STRUCTURE_ID_THRESHOLD) {
         if (!hasStructure(locationId)) {
           ids.structureToCharacter.set(locationId, owner.characterId)
         }
@@ -221,11 +218,6 @@ function collectFromStarbases(
   }
 }
 
-function needsImplantSlot(typeId: number): boolean {
-  const type = getType(typeId)
-  return !type?.implantSlot
-}
-
 function collectFromClones(
   clonesByOwner: CharacterCloneData[],
   ids: ResolutionIds
@@ -234,9 +226,6 @@ function collectFromClones(
     for (const implantId of activeImplants) {
       if (needsTypeResolution(implantId)) {
         ids.typeIds.add(implantId)
-      }
-      if (needsImplantSlot(implantId)) {
-        ids.implantIds.add(implantId)
       }
     }
 
@@ -264,9 +253,6 @@ function collectFromClones(
       for (const implantId of jumpClone.implants) {
         if (needsTypeResolution(implantId)) {
           ids.typeIds.add(implantId)
-        }
-        if (needsImplantSlot(implantId)) {
-          ids.implantIds.add(implantId)
         }
       }
     }
@@ -301,7 +287,6 @@ export async function collectResolutionIds(
     locationIds: new Set(),
     structureToCharacter: new Map(),
     entityIds: new Set(),
-    implantIds: new Set(),
   }
 
   collectFromAssets(assetsByOwner, ids)
@@ -354,7 +339,6 @@ export async function resolveAllReferenceData(
     upwellStructures.size > 0 ||
     ids.locationIds.size > 0 ||
     ids.entityIds.size > 0 ||
-    ids.implantIds.size > 0 ||
     uncachedStarbases.length > 0
 
   if (!hasWork) return
@@ -366,21 +350,35 @@ export async function resolveAllReferenceData(
     starbases: uncachedStarbases.length,
     locations: ids.locationIds.size,
     entities: ids.entityIds.size,
-    implants: ids.implantIds.size,
   })
 
   const typesPromise =
     ids.typeIds.size > 0
-      ? resolveTypes(Array.from(ids.typeIds)).catch(() => {})
+      ? resolveTypes(Array.from(ids.typeIds)).catch((err) => {
+          logger.warn('Failed to resolve types', {
+            module: 'DataResolver',
+            error: err instanceof Error ? err.message : String(err),
+          })
+        })
       : Promise.resolve()
 
   const entitiesPromise =
     ids.entityIds.size > 0
-      ? resolveNames(Array.from(ids.entityIds)).catch(() => {})
+      ? resolveNames(Array.from(ids.entityIds)).catch((err) => {
+          logger.warn('Failed to resolve entity names', {
+            module: 'DataResolver',
+            error: err instanceof Error ? err.message : String(err),
+          })
+        })
       : Promise.resolve()
 
   if (upwellStructures.size > 0) {
-    await resolveStructures(upwellStructures).catch(() => {})
+    await resolveStructures(upwellStructures).catch((err) => {
+      logger.warn('Failed to resolve structures', {
+        module: 'DataResolver',
+        error: err instanceof Error ? err.message : String(err),
+      })
+    })
 
     for (const [structureId] of upwellStructures) {
       const structure = getStructure(structureId)
@@ -392,7 +390,12 @@ export async function resolveAllReferenceData(
 
   const locationsPromise =
     ids.locationIds.size > 0
-      ? resolveLocations(Array.from(ids.locationIds)).catch(() => {})
+      ? resolveLocations(Array.from(ids.locationIds)).catch((err) => {
+          logger.warn('Failed to resolve locations', {
+            module: 'DataResolver',
+            error: err instanceof Error ? err.message : String(err),
+          })
+        })
       : Promise.resolve()
 
   await Promise.all([typesPromise, entitiesPromise, locationsPromise])
@@ -427,7 +430,7 @@ export async function resolveAllReferenceData(
       })
     }
     if (starbaseStructures.length > 0) {
-      await saveStructures(starbaseStructures)
+      await useReferenceCacheStore.getState().saveStructures(starbaseStructures)
       logger.info('Cached starbase locations', {
         module: 'DataResolver',
         count: starbaseStructures.length,
@@ -436,29 +439,8 @@ export async function resolveAllReferenceData(
   }
 
   if (ids.typeIds.size > 0) {
-    const { fetchPrices } = await import('@/api/ref-client')
-    const { useAssetStore } = await import('@/store/asset-store')
-    const prices = await fetchPrices(Array.from(ids.typeIds))
-    if (prices.size > 0) {
-      await useAssetStore.getState().setPrices(prices)
-    }
-  }
-
-  if (ids.implantIds.size > 0) {
-    const { fetchImplantSlots } = await import('@/api/ref-client')
-    const slots = await fetchImplantSlots(Array.from(ids.implantIds))
-    if (slots.size > 0) {
-      const typesToUpdate: CachedType[] = []
-      for (const [typeId, slot] of slots) {
-        const existing = getType(typeId)
-        if (existing && existing.implantSlot !== slot) {
-          typesToUpdate.push({ ...existing, implantSlot: slot })
-        }
-      }
-      if (typesToUpdate.length > 0) {
-        await saveTypes(typesToUpdate)
-      }
-    }
+    const { usePriceStore } = await import('@/store/price-store')
+    await usePriceStore.getState().ensureJitaPrices(Array.from(ids.typeIds))
   }
 
   logger.info('Reference data resolution complete', { module: 'DataResolver' })
@@ -513,7 +495,6 @@ export async function triggerResolution(): Promise<void> {
       }
     } finally {
       resolutionPending = false
-      notifyCacheListeners()
     }
   }, 50)
 }

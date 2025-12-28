@@ -51,9 +51,22 @@ export function OwnerRow({
   const canAddCorporation =
     hasDirectorRole && !hasCorporation && onAddCorporation
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (disabled) return
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      onToggle()
+    }
+  }
+
   const rowContent = (
     <div
+      role="button"
+      tabIndex={disabled ? -1 : 0}
       onClick={disabled ? undefined : onToggle}
+      onKeyDown={handleKeyDown}
+      aria-pressed={isSelected}
+      aria-disabled={disabled}
       className={`flex cursor-pointer items-center justify-between rounded-md px-3 py-2 transition-colors ${
         disabled ? 'cursor-not-allowed opacity-50' : 'hover:bg-surface-tertiary'
       } ${owner.authFailed ? 'ring-1 ring-semantic-danger/50' : ''} ${owner.scopesOutdated && !owner.authFailed ? 'ring-1 ring-semantic-warning/50' : ''} ${indented ? 'ml-6' : ''}`}
@@ -88,7 +101,7 @@ export function OwnerRow({
               onAddCorporation?.()
             }}
             className="flex items-center gap-1 rounded bg-accent/10 px-1.5 py-0.5 text-xs text-accent hover:bg-accent/20"
-            title="You're a director — click to add your corporation"
+            aria-label="Add your corporation (you're a director)"
           >
             <Building2 className="h-3 w-3" />
             Add Corp
@@ -99,8 +112,8 @@ export function OwnerRow({
         {needsAttention && !disabled && (
           <button
             onClick={onReauth}
+            aria-label={owner.authFailed ? 'Re-authenticate' : 'Upgrade scopes'}
             className="rounded p-1 text-semantic-warning hover:bg-surface-tertiary"
-            title={owner.authFailed ? 'Re-authenticate' : 'Upgrade scopes'}
           >
             <RefreshCw className="h-4 w-4" />
           </button>
@@ -108,8 +121,8 @@ export function OwnerRow({
         {!disabled && (
           <button
             onClick={onRemove}
+            aria-label={`Remove ${owner.type}`}
             className="rounded p-1 text-content-secondary hover:bg-surface-tertiary hover:text-semantic-danger"
-            title={`Remove ${owner.type}`}
           >
             <X className="h-4 w-4" />
           </button>

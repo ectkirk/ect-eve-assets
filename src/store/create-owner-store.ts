@@ -134,6 +134,7 @@ export function createOwnerStore<
   }
 
   const updatingOwners = new Set<string>()
+  let initPromise: Promise<void> | null = null
 
   const storeCreator: StateCreator<
     OwnerStore<TOwnerData, TExtraState, TExtraActions>
@@ -163,33 +164,40 @@ export function createOwnerStore<
 
       init: async () => {
         if (get().initialized) return
+        if (initPromise) return initPromise
 
-        try {
-          const loaded = await db.loadAll()
-          const dataByOwner = loaded.map((d) => toOwnerData(d.owner, d.data))
-          const extra = rebuildExtraState ? rebuildExtraState(dataByOwner) : {}
-          set({ dataByOwner, initialized: true, ...extra } as Partial<
-            OwnerStore<TOwnerData, TExtraState, TExtraActions>
-          >)
-          if (dataByOwner.length > 0) {
-            triggerResolution()
-          }
-          logger.info(`${name} store initialized`, {
-            module: moduleName,
-            owners: dataByOwner.length,
-          })
-        } catch (err) {
-          logger.error(
-            `Failed to load ${name} from DB`,
-            err instanceof Error ? err : undefined,
-            {
-              module: moduleName,
+        initPromise = (async () => {
+          try {
+            const loaded = await db.loadAll()
+            const dataByOwner = loaded.map((d) => toOwnerData(d.owner, d.data))
+            const extra = rebuildExtraState
+              ? rebuildExtraState(dataByOwner)
+              : {}
+            set({ dataByOwner, initialized: true, ...extra } as Partial<
+              OwnerStore<TOwnerData, TExtraState, TExtraActions>
+            >)
+            if (dataByOwner.length > 0) {
+              triggerResolution()
             }
-          )
-          set({ initialized: true } as Partial<
-            OwnerStore<TOwnerData, TExtraState, TExtraActions>
-          >)
-        }
+            logger.info(`${name} store initialized`, {
+              module: moduleName,
+              owners: dataByOwner.length,
+            })
+          } catch (err) {
+            logger.error(
+              `Failed to load ${name} from DB`,
+              err instanceof Error ? err : undefined,
+              {
+                module: moduleName,
+              }
+            )
+            set({ initialized: true } as Partial<
+              OwnerStore<TOwnerData, TExtraState, TExtraActions>
+            >)
+          }
+        })()
+
+        return initPromise
       },
 
       update: async (force = false) => {
@@ -404,19 +412,23 @@ export function createOwnerStore<
       },
 
       removeForOwner: async (ownerType: string, ownerId: number) => {
-        const state = get()
         const ownerKey = `${ownerType}-${ownerId}`
-        const updated = (state.dataByOwner as TOwnerData[]).filter(
-          (d: TOwnerData) => `${d.owner.type}-${d.owner.id}` !== ownerKey
+        const hasOwner = get().dataByOwner.some(
+          (d: TOwnerData) => `${d.owner.type}-${d.owner.id}` === ownerKey
         )
-
-        if (updated.length === state.dataByOwner.length) return
+        if (!hasOwner) return
 
         await db.delete(ownerKey)
-        const extra = rebuildExtraState ? rebuildExtraState(updated) : {}
-        set({ dataByOwner: updated, ...extra } as Partial<
-          OwnerStore<TOwnerData, TExtraState, TExtraActions>
-        >)
+
+        set((current) => {
+          const updated = (current.dataByOwner as TOwnerData[]).filter(
+            (d: TOwnerData) => `${d.owner.type}-${d.owner.id}` !== ownerKey
+          )
+          const extra = rebuildExtraState ? rebuildExtraState(updated) : {}
+          return { dataByOwner: updated, ...extra } as Partial<
+            OwnerStore<TOwnerData, TExtraState, TExtraActions>
+          >
+        })
 
         useExpiryCacheStore.getState().clearForOwner(ownerKey)
         logger.info(`${name} removed for owner`, {
@@ -427,6 +439,7 @@ export function createOwnerStore<
 
       clear: async () => {
         await db.clear()
+        initPromise = null
         const extra = extraState ? { ...extraState } : {}
         set({
           dataByOwner: [],

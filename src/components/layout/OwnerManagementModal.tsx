@@ -5,6 +5,7 @@ import { useExpiryCacheStore } from '@/store/expiry-cache-store'
 import { useStoreRegistry } from '@/store/store-registry'
 import { esi } from '@/api/esi'
 import { getCharacterRoles } from '@/api/endpoints/corporation'
+import { logger } from '@/lib/logger'
 import {
   Dialog,
   DialogContent,
@@ -28,7 +29,12 @@ async function fetchCorpName(corpId: number): Promise<string> {
       requiresAuth: false,
     })
     return data.name
-  } catch {
+  } catch (error) {
+    logger.warn('Failed to fetch corporation name', {
+      module: 'ESI',
+      corpId,
+      error,
+    })
     return `Corporation ${corpId}`
   }
 }
@@ -345,7 +351,12 @@ export function OwnerManagementModal({
     try {
       const roles = await getCharacterRoles(owner.characterId)
       useAuthStore.getState().updateOwnerRoles(key, roles)
-    } catch {
+    } catch (error) {
+      logger.warn('Failed to refresh corporation roles', {
+        module: 'ESI',
+        characterId: owner.characterId,
+        error,
+      })
       dispatch({
         type: 'SET_ERROR',
         error: 'Failed to refresh corporation roles',

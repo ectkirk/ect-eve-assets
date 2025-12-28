@@ -9,9 +9,17 @@ import {
 } from '@/lib/structure-constants'
 import { useStoreRegistry } from './store-registry'
 import { logger } from '@/lib/logger'
+import { DB } from '@/lib/db-constants'
+import {
+  openDatabase,
+  idbGetAll,
+  idbPut,
+  idbDelete,
+  idbClear,
+  idbGetKeysByIndex,
+  idbDeleteBatch,
+} from '@/lib/idb-utils'
 
-const DB_NAME = 'ecteveassets-starbase-details'
-const DB_VERSION = 2
 const STORE_NAME = 'details'
 const STALE_THRESHOLD_MS = 5 * 60 * 1000
 
@@ -52,36 +60,13 @@ interface StarbaseDetailsActions {
 
 type StarbaseDetailsStore = StarbaseDetailsState & StarbaseDetailsActions
 
-let db: IDBDatabase | null = null
-
-async function openDB(): Promise<IDBDatabase> {
-  if (db) return db
-
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION)
-
-    request.onerror = () => {
-      logger.error('Failed to open starbase details DB', request.error, {
-        module: 'StarbaseDetailsStore',
-      })
-      reject(request.error)
-    }
-
-    request.onsuccess = () => {
-      db = request.result
-      resolve(db)
-    }
-
-    request.onupgradeneeded = (event) => {
-      const database = (event.target as IDBOpenDBRequest).result
-      if (database.objectStoreNames.contains(STORE_NAME)) {
-        database.deleteObjectStore(STORE_NAME)
+async function getDB() {
+  return openDatabase(DB.STARBASE_DETAILS, {
+    onUpgrade: (db, oldVersion) => {
+      if (oldVersion > 0 && db.objectStoreNames.contains(STORE_NAME)) {
+        db.deleteObjectStore(STORE_NAME)
       }
-      const store = database.createObjectStore(STORE_NAME, {
-        keyPath: 'starbaseId',
-      })
-      store.createIndex('corporationId', 'corporationId', { unique: false })
-    }
+    },
   })
 }
 
@@ -92,27 +77,17 @@ interface LoadedDetails {
 }
 
 async function loadAllFromDB(): Promise<LoadedDetails> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_NAME], 'readonly')
-    const store = tx.objectStore(STORE_NAME)
-    const request = store.getAll()
-
-    tx.oncomplete = () => {
-      const details = new Map<number, ESIStarbaseDetail>()
-      const corporationById = new Map<number, number>()
-      const fetchedAt = new Map<number, number>()
-      for (const stored of request.result as StoredDetail[]) {
-        details.set(stored.starbaseId, stored.detail)
-        corporationById.set(stored.starbaseId, stored.corporationId)
-        fetchedAt.set(stored.starbaseId, stored.fetchedAt)
-      }
-      resolve({ details, corporationById, fetchedAt })
-    }
-
-    tx.onerror = () => reject(tx.error)
-  })
+  const db = await getDB()
+  const records = await idbGetAll<StoredDetail>(db, STORE_NAME)
+  const details = new Map<number, ESIStarbaseDetail>()
+  const corporationById = new Map<number, number>()
+  const fetchedAt = new Map<number, number>()
+  for (const stored of records) {
+    details.set(stored.starbaseId, stored.detail)
+    corporationById.set(stored.starbaseId, stored.corporationId)
+    fetchedAt.set(stored.starbaseId, stored.fetchedAt)
+  }
+  return { details, corporationById, fetchedAt }
 }
 
 async function saveToDB(
@@ -120,64 +95,38 @@ async function saveToDB(
   corporationId: number,
   detail: ESIStarbaseDetail
 ): Promise<void> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_NAME], 'readwrite')
-    const store = tx.objectStore(STORE_NAME)
-    store.put({
-      starbaseId,
-      corporationId,
-      detail,
-      fetchedAt: Date.now(),
-    } as StoredDetail)
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
+  const db = await getDB()
+  await idbPut(db, STORE_NAME, {
+    starbaseId,
+    corporationId,
+    detail,
+    fetchedAt: Date.now(),
+  } as StoredDetail)
 }
 
 async function deleteFromDB(starbaseId: number): Promise<void> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_NAME], 'readwrite')
-    tx.objectStore(STORE_NAME).delete(starbaseId)
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
+  const db = await getDB()
+  await idbDelete(db, STORE_NAME, starbaseId)
 }
 
 async function deleteByCorpFromDB(corporationId: number): Promise<number[]> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_NAME], 'readwrite')
-    const store = tx.objectStore(STORE_NAME)
-    const index = store.index('corporationId')
-    const request = index.getAllKeys(corporationId)
-
-    request.onsuccess = () => {
-      const keys = request.result as number[]
-      for (const key of keys) {
-        store.delete(key)
-      }
-      tx.oncomplete = () => resolve(keys)
-    }
-
-    tx.onerror = () => reject(tx.error)
-  })
+  const db = await getDB()
+  const keys = (await idbGetKeysByIndex(
+    db,
+    STORE_NAME,
+    'corporationId',
+    corporationId
+  )) as number[]
+  await idbDeleteBatch(db, STORE_NAME, keys)
+  return keys
 }
 
-async function clearDB(): Promise<void> {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([STORE_NAME], 'readwrite')
-    tx.objectStore(STORE_NAME).clear()
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
+async function clearStarbaseDB(): Promise<void> {
+  const db = await getDB()
+  await idbClear(db, STORE_NAME)
 }
+
+let initPromise: Promise<void> | null = null
 
 export const useStarbaseDetailsStore = create<StarbaseDetailsStore>(
   (set, get) => ({
@@ -190,24 +139,29 @@ export const useStarbaseDetailsStore = create<StarbaseDetailsStore>(
 
     init: async () => {
       if (get().initialized) return
+      if (initPromise) return initPromise
 
-      try {
-        const { details, corporationById, fetchedAt } = await loadAllFromDB()
-        set({ details, corporationById, fetchedAt, initialized: true })
-        logger.info('Starbase details loaded from cache', {
-          module: 'StarbaseDetailsStore',
-          count: details.size,
-        })
-      } catch (err) {
-        logger.error(
-          'Failed to load starbase details from cache',
-          err instanceof Error ? err : undefined,
-          {
+      initPromise = (async () => {
+        try {
+          const { details, corporationById, fetchedAt } = await loadAllFromDB()
+          set({ details, corporationById, fetchedAt, initialized: true })
+          logger.info('Starbase details loaded from cache', {
             module: 'StarbaseDetailsStore',
-          }
-        )
-        set({ initialized: true })
-      }
+            count: details.size,
+          })
+        } catch (err) {
+          logger.error(
+            'Failed to load starbase details from cache',
+            err instanceof Error ? err : undefined,
+            {
+              module: 'StarbaseDetailsStore',
+            }
+          )
+          set({ initialized: true })
+        }
+      })()
+
+      return initPromise
     },
 
     fetchDetail: async (
@@ -391,15 +345,17 @@ export const useStarbaseDetailsStore = create<StarbaseDetailsStore>(
     },
 
     clear: async () => {
+      initPromise = null
       set({
         details: new Map(),
         corporationById: new Map(),
         fetchedAt: new Map(),
         loading: new Set(),
         failed: new Set(),
+        initialized: false,
       })
       try {
-        await clearDB()
+        await clearStarbaseDB()
         logger.info('Starbase details cache cleared', {
           module: 'StarbaseDetailsStore',
         })

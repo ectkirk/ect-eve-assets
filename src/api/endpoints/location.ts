@@ -9,7 +9,7 @@ export async function getCharacterLocation(
   characterId: number
 ): Promise<ESICharacterLocation> {
   return esi.fetch<ESICharacterLocation>(
-    `/characters/${characterId}/location/`,
+    `/characters/${characterId}/location`,
     {
       characterId,
       schema: ESICharacterLocationSchema,
@@ -20,7 +20,7 @@ export async function getCharacterLocation(
 export async function getCharacterShip(
   characterId: number
 ): Promise<ESICharacterShip> {
-  return esi.fetch<ESICharacterShip>(`/characters/${characterId}/ship/`, {
+  return esi.fetch<ESICharacterShip>(`/characters/${characterId}/ship`, {
     characterId,
     schema: ESICharacterShipSchema,
   })

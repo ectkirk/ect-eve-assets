@@ -1,12 +1,12 @@
 import { useMemo } from 'react'
 import { useAssetStore } from '@/store/asset-store'
+import { usePriceStore } from '@/store/price-store'
 import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { useContractsStore } from '@/store/contracts-store'
 import { useIndustryJobsStore } from '@/store/industry-jobs-store'
 import { useWalletStore } from '@/store/wallet-store'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
-import { isAbyssalTypeId, getCachedAbyssalPrice } from '@/api/mutamarket-client'
-import { getType } from '@/store/reference-cache'
+import { useReferenceCacheStore } from '@/store/reference-cache'
 import { CategoryIds } from '@/lib/tree-types'
 import { calculateStructureValues } from '@/lib/structure-constants'
 
@@ -22,7 +22,8 @@ export interface AssetTotals {
 
 export function useTotalAssets(): AssetTotals {
   const assetsByOwner = useAssetStore((s) => s.assetsByOwner)
-  const prices = useAssetStore((s) => s.prices)
+  const priceVersion = usePriceStore((s) => s.priceVersion)
+  const types = useReferenceCacheStore((s) => s.types)
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
 
   const ordersById = useMarketOrdersStore((s) => s.itemsById)
@@ -35,16 +36,18 @@ export function useTotalAssets(): AssetTotals {
   const walletsByOwner = useWalletStore((s) => s.dataByOwner)
 
   return useMemo(() => {
+    void priceVersion
+
     const selectedSet = new Set(selectedOwnerIds)
     const matchesOwner = (type: 'character' | 'corporation', id: number) =>
       selectedSet.has(ownerKey(type, id))
 
     const { structureRelatedIds, structuresTotal } = calculateStructureValues(
       assetsByOwner,
-      prices,
       selectedOwnerIds
     )
 
+    const priceStore = usePriceStore.getState()
     let assetsTotal = 0
     for (const { owner, assets } of assetsByOwner) {
       if (!matchesOwner(owner.type, owner.id)) continue
@@ -52,18 +55,17 @@ export function useTotalAssets(): AssetTotals {
         if (structureRelatedIds.has(asset.item_id)) continue
         if (asset.location_flag === 'SellOrder') continue
 
-        const type = getType(asset.type_id)
+        const type = types.get(asset.type_id)
         if (
           type?.categoryId === CategoryIds.OWNER ||
           type?.categoryId === CategoryIds.STATION
         )
           continue
-        if (asset.is_blueprint_copy) continue
 
-        const abyssalPrice = isAbyssalTypeId(asset.type_id)
-          ? getCachedAbyssalPrice(asset.item_id)
-          : undefined
-        const price = abyssalPrice ?? prices.get(asset.type_id) ?? 0
+        const price = priceStore.getItemPrice(asset.type_id, {
+          itemId: asset.item_id,
+          isBlueprintCopy: asset.is_blueprint_copy,
+        })
         assetsTotal += price * asset.quantity
       }
     }
@@ -72,23 +74,15 @@ export function useTotalAssets(): AssetTotals {
       itemsById: ordersById,
       visibilityByOwner: ordersVisibility,
     })
-    const contractsTotal = useContractsStore.getTotal(
-      prices,
-      selectedOwnerIds,
-      {
-        itemsById: contractsById,
-        visibilityByOwner: contractsVisibility,
-        itemsByContractId,
-      }
-    )
-    const industryTotal = useIndustryJobsStore.getTotal(
-      prices,
-      selectedOwnerIds,
-      {
-        itemsById: jobsById,
-        visibilityByOwner: jobsVisibility,
-      }
-    )
+    const contractsTotal = useContractsStore.getTotal(selectedOwnerIds, {
+      itemsById: contractsById,
+      visibilityByOwner: contractsVisibility,
+      itemsByContractId,
+    })
+    const industryTotal = useIndustryJobsStore.getTotal(selectedOwnerIds, {
+      itemsById: jobsById,
+      visibilityByOwner: jobsVisibility,
+    })
 
     let walletTotal = 0
     for (const wallet of walletsByOwner) {
@@ -121,7 +115,8 @@ export function useTotalAssets(): AssetTotals {
     }
   }, [
     assetsByOwner,
-    prices,
+    priceVersion,
+    types,
     selectedOwnerIds,
     ordersById,
     ordersVisibility,

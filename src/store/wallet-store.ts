@@ -63,12 +63,12 @@ export const useWalletStore = createOwnerStore<
   },
   getEndpoint: (owner) =>
     owner.type === 'corporation'
-      ? `/corporations/${owner.id}/wallets/`
-      : `/characters/${owner.characterId}/wallet/`,
+      ? `/corporations/${owner.id}/wallets`
+      : `/characters/${owner.characterId}/wallet`,
   fetchData: async (owner) => {
     if (owner.type === 'corporation') {
       const result = await esi.fetchWithMeta<ESICorporationWalletDivision[]>(
-        `/corporations/${owner.id}/wallets/`,
+        `/corporations/${owner.id}/wallets`,
         {
           characterId: owner.characterId,
           schema: z.array(ESICorporationWalletDivisionSchema),
@@ -81,7 +81,7 @@ export const useWalletStore = createOwnerStore<
       }
     }
     const result = await esi.fetchWithMeta<number>(
-      `/characters/${owner.characterId}/wallet/`,
+      `/characters/${owner.characterId}/wallet`,
       { characterId: owner.characterId, schema: z.number() }
     )
     return {

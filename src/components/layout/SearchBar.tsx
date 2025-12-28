@@ -44,6 +44,7 @@ function ExpandCollapseButton() {
       onClick={expandCollapse.toggle}
       className="flex items-center gap-1 rounded border border-border bg-surface-tertiary px-2.5 py-1 text-sm hover:bg-surface-tertiary/70"
       title={expandCollapse.isExpanded ? 'Collapse all' : 'Expand all'}
+      aria-expanded={expandCollapse.isExpanded}
     >
       {expandCollapse.isExpanded ? (
         <>
@@ -81,21 +82,48 @@ function ColumnsDropdown() {
 
   if (columns.length === 0) return null
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      setOpen(false)
+    } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault()
+      const items = dropdownRef.current?.querySelectorAll(
+        '[role="menuitemcheckbox"]'
+      )
+      if (!items?.length) return
+      const currentIndex = Array.from(items).findIndex(
+        (item) => item === document.activeElement
+      )
+      const nextIndex =
+        e.key === 'ArrowDown'
+          ? (currentIndex + 1) % items.length
+          : (currentIndex - 1 + items.length) % items.length
+      ;(items[nextIndex] as HTMLElement)?.focus()
+    }
+  }
+
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative" ref={dropdownRef} onKeyDown={handleKeyDown}>
       <button
         onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        aria-haspopup="menu"
         className="flex items-center gap-1 rounded border border-border bg-surface-tertiary px-2.5 py-1 text-sm hover:bg-surface-tertiary/70"
       >
         Columns <ChevronDown className="h-3.5 w-3.5" />
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-1 min-w-[160px] rounded border border-border bg-surface-secondary py-1 shadow-lg">
+        <div
+          role="menu"
+          className="absolute right-0 top-full z-50 mt-1 min-w-[160px] rounded border border-border bg-surface-secondary py-1 shadow-lg"
+        >
           {columns.map((col) => (
             <button
               key={col.id}
+              role="menuitemcheckbox"
+              aria-checked={col.visible}
               onClick={() => col.toggle()}
-              className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-surface-tertiary"
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-surface-tertiary focus:bg-surface-tertiary focus:outline-hidden"
             >
               <span className="flex h-4 w-4 items-center justify-center">
                 {col.visible && <Check className="h-4 w-4 text-accent" />}
@@ -166,11 +194,13 @@ export function SearchBar() {
           placeholder="Search name, group, location, system, region..."
           value={inputValue}
           onChange={(e) => handleChange(e.target.value)}
+          aria-label="Search assets"
           className="w-full rounded border border-border bg-surface-tertiary pl-9 pr-8 py-1.5 text-sm placeholder-content-muted focus:border-accent focus:outline-hidden"
         />
         {inputValue && (
           <button
             onClick={handleClear}
+            aria-label="Clear search"
             className="absolute right-2 top-1/2 -translate-y-1/2 text-content-muted hover:text-content-secondary"
           >
             <X className="h-4 w-4" />
@@ -182,6 +212,7 @@ export function SearchBar() {
         <select
           value={assetTypeFilter.value}
           onChange={(e) => assetTypeFilter.onChange(e.target.value)}
+          aria-label="Filter by asset type"
           className="w-36 rounded border border-border bg-surface-tertiary px-2 py-1.5 text-sm focus:border-accent focus:outline-hidden"
         >
           {filteredTypeOptions.map((opt) => (
@@ -196,6 +227,7 @@ export function SearchBar() {
         <select
           value={categoryFilter.value}
           onChange={(e) => categoryFilter.onChange(e.target.value)}
+          aria-label="Filter by category"
           className="w-40 rounded border border-border bg-surface-tertiary px-2 py-1.5 text-sm focus:border-accent focus:outline-hidden"
         >
           <option value="">All Categories</option>
@@ -241,7 +273,11 @@ export function SearchBar() {
       )}
 
       {resultCount && (
-        <span className="text-sm text-content-secondary">
+        <span
+          role="status"
+          aria-live="polite"
+          className="text-sm text-content-secondary"
+        >
           Showing {resultCount.showing.toLocaleString()} of{' '}
           {resultCount.total.toLocaleString()}
         </span>

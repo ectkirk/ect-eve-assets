@@ -2,6 +2,7 @@ export {
   loadReferenceData,
   _resetForTests,
   type ReferenceDataProgress,
+  type ReferenceDataResult,
 } from './ref-data-loader'
 
 export {
@@ -11,14 +12,7 @@ export {
   resolveLocations,
 } from './ref-universe-loader'
 
-export {
-  fetchPrices,
-  queuePriceRefresh,
-  fetchMarketComparison,
-  fetchImplantSlots,
-  type MarketBulkItem,
-  type MarketComparisonPrices,
-} from './ref-market'
+export { fetchPrices, queuePriceRefresh } from './ref-market'
 
 import { RefTypeSchema } from './schemas'
 import { z } from 'zod'

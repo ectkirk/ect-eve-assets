@@ -5,7 +5,7 @@ import { useWalletStore, isCorporationWallet } from '@/store/wallet-store'
 import { useDivisionsStore } from '@/store/divisions-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { OwnerIcon } from '@/components/ui/type-icon'
-import { cn, formatISK } from '@/lib/utils'
+import { cn, formatCompactISK } from '@/lib/utils'
 import { useTabControls } from '@/context'
 import {
   useColumnSettings,
@@ -225,7 +225,7 @@ export function WalletTab() {
               ownerTotal >= 0 ? 'text-status-positive' : 'text-status-negative'
             )}
           >
-            {formatISK(ownerTotal)}
+            {formatCompactISK(ownerTotal)}
           </span>
         </button>
 
@@ -257,7 +257,7 @@ export function WalletTab() {
                           : 'text-status-negative/80'
                       )}
                     >
-                      {formatISK(div.balance)}
+                      {formatCompactISK(div.balance)}
                     </span>
                   </div>
                 )

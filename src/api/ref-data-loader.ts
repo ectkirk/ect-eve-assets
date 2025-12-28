@@ -2,22 +2,19 @@ import { logger } from '@/lib/logger'
 import {
   getGroup,
   getCategory,
-  setCategories,
-  setGroups,
-  setBlueprints,
   isReferenceDataLoaded,
   isAllTypesLoaded,
-  setAllTypesLoaded,
-  isBlueprintsLoaded,
-  setBlueprintsLoaded,
-  notifyCacheListeners,
-  saveTypes,
+  useReferenceCacheStore,
   type CachedType,
-  type CachedBlueprint,
 } from '@/store/reference-cache'
 import { RefCategoriesResponseSchema, RefGroupsResponseSchema } from './schemas'
 
 export type ReferenceDataProgress = (status: string) => void
+
+export interface ReferenceDataResult {
+  success: boolean
+  errors: string[]
+}
 
 const CONTROL_TOWER_GROUP_ID = 365
 const TIER_2_TOWER_PREFIXES = [
@@ -52,12 +49,28 @@ function getTowerInfo(
   return { towerSize, fuelTier }
 }
 
+interface RawSlots {
+  high: number
+  mid: number
+  low: number
+  rig: number
+  subsystem: number
+  launcher: number
+  turret: number
+}
+
 interface RawType {
   id: number
   name: string
   groupId?: number | null
+  marketGroupId?: number | null
   volume?: number | null
   packagedVolume?: number | null
+  isPublished?: number
+  productId?: number | null
+  basePrice?: number | null
+  implantSlot?: number | null
+  slots?: RawSlots | null
 }
 
 function enrichType(raw: RawType): CachedType {
@@ -73,13 +86,19 @@ function enrichType(raw: RawType): CachedType {
     groupName: group?.name ?? '',
     categoryId: group?.categoryId ?? 0,
     categoryName: category?.name ?? '',
+    marketGroupId: raw.marketGroupId,
     volume: raw.volume ?? 0,
     packagedVolume: raw.packagedVolume ?? undefined,
+    published: raw.isPublished === 1,
+    productId: raw.productId ?? undefined,
+    basePrice: raw.basePrice ?? undefined,
+    implantSlot: raw.implantSlot ?? undefined,
+    slots: raw.slots ?? undefined,
     ...towerInfo,
   }
 }
 
-let referenceDataPromise: Promise<void> | null = null
+let referenceDataPromise: Promise<ReferenceDataResult> | null = null
 
 export function _resetForTests(): void {
   referenceDataPromise = null
@@ -87,16 +106,18 @@ export function _resetForTests(): void {
 
 export async function loadReferenceData(
   onProgress?: ReferenceDataProgress
-): Promise<void> {
-  if (isReferenceDataLoaded() && isAllTypesLoaded() && isBlueprintsLoaded())
-    return
+): Promise<ReferenceDataResult> {
+  if (isReferenceDataLoaded() && isAllTypesLoaded()) {
+    return { success: true, errors: [] }
+  }
 
   if (referenceDataPromise) {
     return referenceDataPromise
   }
 
-  referenceDataPromise = (async () => {
+  referenceDataPromise = (async (): Promise<ReferenceDataResult> => {
     const start = performance.now()
+    const errors: string[] = []
 
     if (!isReferenceDataLoaded()) {
       onProgress?.('Loading categories...')
@@ -109,38 +130,50 @@ export async function loadReferenceData(
       let groupsOk = false
 
       if (categoriesRaw && 'error' in categoriesRaw) {
+        const errorMsg = `Failed to load categories: ${categoriesRaw.error}`
         logger.error('Failed to load categories', undefined, {
           module: 'RefAPI',
           error: categoriesRaw.error,
         })
+        errors.push(errorMsg)
       } else {
         const categoriesResult =
           RefCategoriesResponseSchema.safeParse(categoriesRaw)
         if (!categoriesResult.success) {
+          const errorMsg = 'Categories validation failed'
           logger.error('Categories validation failed', undefined, {
             module: 'RefAPI',
             errors: categoriesResult.error.issues.slice(0, 3),
           })
+          errors.push(errorMsg)
         } else {
-          await setCategories(Object.values(categoriesResult.data.items))
+          await useReferenceCacheStore
+            .getState()
+            .setCategories(Object.values(categoriesResult.data.items))
           categoriesOk = true
         }
       }
 
       if (groupsRaw && 'error' in groupsRaw) {
+        const errorMsg = `Failed to load groups: ${groupsRaw.error}`
         logger.error('Failed to load groups', undefined, {
           module: 'RefAPI',
           error: groupsRaw.error,
         })
+        errors.push(errorMsg)
       } else {
         const groupsResult = RefGroupsResponseSchema.safeParse(groupsRaw)
         if (!groupsResult.success) {
+          const errorMsg = 'Groups validation failed'
           logger.error('Groups validation failed', undefined, {
             module: 'RefAPI',
             errors: groupsResult.error.issues.slice(0, 3),
           })
+          errors.push(errorMsg)
         } else {
-          await setGroups(Object.values(groupsResult.data.items))
+          await useReferenceCacheStore
+            .getState()
+            .setGroups(Object.values(groupsResult.data.items))
           groupsOk = true
         }
       }
@@ -154,10 +187,15 @@ export async function loadReferenceData(
       }
     }
 
-    await Promise.allSettled([loadAllTypes(onProgress), loadBlueprints()])
+    const typesResult = await loadAllTypes(onProgress)
+    if (typesResult.error) {
+      errors.push(typesResult.error)
+    }
 
     const duration = Math.round(performance.now() - start)
     logger.info('Reference data loaded', { module: 'RefAPI', duration })
+
+    return { success: errors.length === 0, errors }
   })().finally(() => {
     referenceDataPromise = null
   })
@@ -165,8 +203,14 @@ export async function loadReferenceData(
   return referenceDataPromise
 }
 
-async function loadAllTypes(onProgress?: ReferenceDataProgress): Promise<void> {
-  if (isAllTypesLoaded()) return
+interface TypesLoadResult {
+  error?: string
+}
+
+async function loadAllTypes(
+  onProgress?: ReferenceDataProgress
+): Promise<TypesLoadResult> {
+  if (isAllTypesLoaded()) return {}
 
   onProgress?.('Loading types...')
   const start = performance.now()
@@ -179,20 +223,22 @@ async function loadAllTypes(onProgress?: ReferenceDataProgress): Promise<void> {
     const result = await window.electronAPI!.refTypesPage({ after: cursor })
 
     if (result.error) {
+      const errorMsg = `Failed to load types: ${result.error}`
       logger.error('Failed to load types page', undefined, {
         module: 'RefAPI',
         error: result.error,
         cursor,
       })
-      return
+      return { error: errorMsg }
     }
 
     if (!result.items || !result.pagination) {
+      const errorMsg = 'Failed to load types: invalid response'
       logger.error('Invalid types page response', undefined, {
         module: 'RefAPI',
         cursor,
       })
-      return
+      return { error: errorMsg }
     }
 
     const rawTypes = Object.values(result.items) as RawType[]
@@ -202,7 +248,7 @@ async function loadAllTypes(onProgress?: ReferenceDataProgress): Promise<void> {
 
     if (rawTypes.length > 0) {
       const enrichedTypes = rawTypes.map(enrichType)
-      await saveTypes(enrichedTypes)
+      await useReferenceCacheStore.getState().saveTypes(enrichedTypes)
     }
 
     onProgress?.(
@@ -214,8 +260,7 @@ async function loadAllTypes(onProgress?: ReferenceDataProgress): Promise<void> {
       : undefined
   } while (cursor !== undefined)
 
-  setAllTypesLoaded(true)
-  notifyCacheListeners()
+  useReferenceCacheStore.getState().setAllTypesLoaded(true)
 
   const duration = Math.round(performance.now() - start)
   logger.info('All types loaded', {
@@ -224,39 +269,6 @@ async function loadAllTypes(onProgress?: ReferenceDataProgress): Promise<void> {
     pages: pageCount,
     duration,
   })
-}
 
-async function loadBlueprints(): Promise<void> {
-  if (isBlueprintsLoaded()) return
-
-  const start = performance.now()
-
-  const result = await window.electronAPI!.refBlueprints()
-
-  if ('error' in result) {
-    logger.error('Failed to load blueprints', undefined, {
-      module: 'RefAPI',
-      error: result.error,
-    })
-    return
-  }
-
-  const blueprints: CachedBlueprint[] = Object.entries(result.items).map(
-    ([bpId, [productId, basePrice]]) => ({
-      id: Number(bpId),
-      productId,
-      basePrice: basePrice ?? undefined,
-    })
-  )
-
-  await setBlueprints(blueprints)
-  setBlueprintsLoaded(true)
-  notifyCacheListeners()
-
-  const duration = Math.round(performance.now() - start)
-  logger.info('Blueprints loaded', {
-    module: 'RefAPI',
-    count: blueprints.length,
-    duration,
-  })
+  return {}
 }

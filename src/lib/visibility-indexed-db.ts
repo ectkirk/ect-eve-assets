@@ -1,4 +1,13 @@
-import { logger } from '@/lib/logger'
+import {
+  openDatabase,
+  idbGetAll,
+  idbPut,
+  idbPutBatch,
+  idbDelete,
+  idbDeleteBatch,
+  idbClearMultiple,
+  type DBConfig,
+} from '@/lib/idb-utils'
 
 export interface SourceOwner {
   type: 'character' | 'corporation'
@@ -44,38 +53,18 @@ export function createVisibilityDB<T, TStoredItem extends StoredItem<T>>(
   const { dbName, itemStoreName, itemKeyName, moduleName } = config
   const visibilityStoreName = 'visibility'
 
-  let db: IDBDatabase | null = null
+  const dbConfig: DBConfig = {
+    name: dbName,
+    version: 1,
+    stores: [
+      { name: itemStoreName, keyPath: itemKeyName },
+      { name: visibilityStoreName, keyPath: 'ownerKey' },
+    ],
+    module: moduleName,
+  }
 
-  const openDB = async (): Promise<IDBDatabase> => {
-    if (db) return db
-
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(dbName, 1)
-
-      request.onerror = () => {
-        logger.error(`Failed to open ${itemStoreName} DB`, request.error, {
-          module: moduleName,
-        })
-        reject(request.error)
-      }
-
-      request.onsuccess = () => {
-        db = request.result
-        resolve(db)
-      }
-
-      request.onupgradeneeded = (event) => {
-        const database = (event.target as IDBOpenDBRequest).result
-        if (!database.objectStoreNames.contains(itemStoreName)) {
-          database.createObjectStore(itemStoreName, { keyPath: itemKeyName })
-        }
-        if (!database.objectStoreNames.contains(visibilityStoreName)) {
-          database.createObjectStore(visibilityStoreName, {
-            keyPath: 'ownerKey',
-          })
-        }
-      }
-    })
+  async function getDB(): Promise<IDBDatabase> {
+    return openDatabase(dbConfig)
   }
 
   const toRecord = (
@@ -97,113 +86,60 @@ export function createVisibilityDB<T, TStoredItem extends StoredItem<T>>(
     items: Map<number, TStoredItem>
     visibility: Map<string, Set<number>>
   }> => {
-    const database = await openDB()
+    const db = await getDB()
+    const [itemRecords, visibilityRecords] = await Promise.all([
+      idbGetAll<Record<string, unknown>>(db, itemStoreName),
+      idbGetAll<VisibilityRecord>(db, visibilityStoreName),
+    ])
 
-    return new Promise((resolve, reject) => {
-      const tx = database.transaction(
-        [itemStoreName, visibilityStoreName],
-        'readonly'
-      )
-      const itemsStore = tx.objectStore(itemStoreName)
-      const visibilityStore = tx.objectStore(visibilityStoreName)
+    const items = new Map<number, TStoredItem>()
+    for (const record of itemRecords) {
+      const stored = fromRecord(record)
+      items.set(getItemId(stored), stored)
+    }
 
-      const itemsRequest = itemsStore.getAll()
-      const visibilityRequest = visibilityStore.getAll()
+    const visibility = new Map<string, Set<number>>()
+    for (const record of visibilityRecords) {
+      visibility.set(record.ownerKey, new Set(record.itemIds))
+    }
 
-      tx.oncomplete = () => {
-        const items = new Map<number, TStoredItem>()
-        for (const record of itemsRequest.result) {
-          const stored = fromRecord(record)
-          items.set(getItemId(stored), stored)
-        }
-
-        const visibility = new Map<string, Set<number>>()
-        for (const record of visibilityRequest.result as VisibilityRecord[]) {
-          visibility.set(record.ownerKey, new Set(record.itemIds))
-        }
-
-        resolve({ items, visibility })
-      }
-
-      tx.onerror = () => reject(tx.error)
-    })
+    return { items, visibility }
   }
 
   const saveItems = async (
     items: Array<{ id: number; stored: TStoredItem }>
   ): Promise<void> => {
     if (items.length === 0) return
-    const database = await openDB()
-
-    return new Promise((resolve, reject) => {
-      const tx = database.transaction([itemStoreName], 'readwrite')
-      const store = tx.objectStore(itemStoreName)
-      for (const { id, stored } of items) {
-        store.put(toRecord(id, stored))
-      }
-      tx.oncomplete = () => resolve()
-      tx.onerror = () => reject(tx.error)
-    })
+    const db = await getDB()
+    const records = items.map(({ id, stored }) => toRecord(id, stored))
+    await idbPutBatch(db, itemStoreName, records)
   }
 
   const deleteItems = async (itemIds: number[]): Promise<void> => {
     if (itemIds.length === 0) return
-    const database = await openDB()
-
-    return new Promise((resolve, reject) => {
-      const tx = database.transaction([itemStoreName], 'readwrite')
-      const store = tx.objectStore(itemStoreName)
-      for (const id of itemIds) {
-        store.delete(id)
-      }
-      tx.oncomplete = () => resolve()
-      tx.onerror = () => reject(tx.error)
-    })
+    const db = await getDB()
+    await idbDeleteBatch(db, itemStoreName, itemIds)
   }
 
   const saveVisibility = async (
     ownerKey: string,
     itemIds: Set<number>
   ): Promise<void> => {
-    const database = await openDB()
-
-    return new Promise((resolve, reject) => {
-      const tx = database.transaction([visibilityStoreName], 'readwrite')
-      const store = tx.objectStore(visibilityStoreName)
-      store.put({
-        ownerKey,
-        itemIds: [...itemIds],
-      } as VisibilityRecord)
-      tx.oncomplete = () => resolve()
-      tx.onerror = () => reject(tx.error)
-    })
+    const db = await getDB()
+    await idbPut(db, visibilityStoreName, {
+      ownerKey,
+      itemIds: [...itemIds],
+    } as VisibilityRecord)
   }
 
   const deleteVisibility = async (ownerKey: string): Promise<void> => {
-    const database = await openDB()
-
-    return new Promise((resolve, reject) => {
-      const tx = database.transaction([visibilityStoreName], 'readwrite')
-      const store = tx.objectStore(visibilityStoreName)
-      store.delete(ownerKey)
-      tx.oncomplete = () => resolve()
-      tx.onerror = () => reject(tx.error)
-    })
+    const db = await getDB()
+    await idbDelete(db, visibilityStoreName, ownerKey)
   }
 
   const clear = async (): Promise<void> => {
-    const database = await openDB()
-
-    return new Promise((resolve, reject) => {
-      const tx = database.transaction(
-        [itemStoreName, visibilityStoreName],
-        'readwrite'
-      )
-      tx.objectStore(itemStoreName).clear()
-      tx.objectStore(visibilityStoreName).clear()
-      tx.oncomplete = () => resolve()
-      tx.onerror = () => reject(tx.error)
-    })
+    const db = await getDB()
+    await idbClearMultiple(db, [itemStoreName, visibilityStoreName])
   }
 
   return {

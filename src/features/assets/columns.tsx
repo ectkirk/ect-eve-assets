@@ -1,6 +1,6 @@
 import type { ColumnDef } from '@tanstack/react-table'
 import { ArrowUpDown } from 'lucide-react'
-import { hasAbyssal } from '@/store/reference-cache'
+import { usePriceStore } from '@/store/price-store'
 import { TypeIcon, OwnerIcon } from '@/components/ui/type-icon'
 import { AbyssalPreview } from '@/components/ui/abyssal-preview'
 import { formatNumber, cn } from '@/lib/utils'
@@ -43,7 +43,8 @@ export const columns: ColumnDef<AssetRow>[] = [
       const categoryId = row.original.categoryId
       const modeFlags = row.original.modeFlags
       const isAbyssalResolved =
-        row.original.isAbyssal && hasAbyssal(row.original.itemId)
+        row.original.isAbyssal &&
+        usePriceStore.getState().hasAbyssalPrice(row.original.itemId)
       const nameSpan = (
         <span className={cn('truncate', isBpc && 'text-status-special')}>
           {typeName}

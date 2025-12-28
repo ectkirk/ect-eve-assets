@@ -1,6 +1,14 @@
-import { logger } from '@/lib/logger'
 import { ConfigurationError } from '@/lib/errors'
 import type { Owner } from '@/store/auth-store'
+import {
+  openDatabase,
+  idbGetAll,
+  idbPut,
+  idbDelete,
+  idbClearMultiple,
+  idbGet,
+  type DBConfig,
+} from '@/lib/idb-utils'
 
 export interface OwnerData<T> {
   owner: Owner
@@ -50,63 +58,40 @@ export function createOwnerDB<T>(config: OwnerDBConfig<T>): OwnerDB<T> {
     )
   }
 
-  let db: IDBDatabase | null = null
+  const dbConfig: DBConfig = {
+    name: dbName,
+    version,
+    stores: metaStoreName
+      ? [
+          { name: storeName, keyPath: 'ownerKey' },
+          { name: metaStoreName, keyPath: 'key' },
+        ]
+      : [{ name: storeName, keyPath: 'ownerKey' }],
+    module: moduleName,
+  }
 
-  const openDB = async (): Promise<IDBDatabase> => {
-    if (db) return db
-
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(dbName, version)
-
-      request.onerror = () => {
-        logger.error(`Failed to open ${storeName} DB`, request.error, {
-          module: moduleName,
-        })
-        reject(request.error)
-      }
-
-      request.onsuccess = () => {
-        db = request.result
-        resolve(db)
-      }
-
-      request.onupgradeneeded = (event) => {
-        const database = (event.target as IDBOpenDBRequest).result
-        if (!database.objectStoreNames.contains(storeName)) {
-          database.createObjectStore(storeName, { keyPath: 'ownerKey' })
-        }
-        if (
-          metaStoreName &&
-          !database.objectStoreNames.contains(metaStoreName)
-        ) {
-          database.createObjectStore(metaStoreName, { keyPath: 'key' })
-        }
-      }
-    })
+  async function getDB(): Promise<IDBDatabase> {
+    return openDatabase(dbConfig)
   }
 
   const loadAll = async (): Promise<OwnerData<T>[]> => {
-    const database = await openDB()
-
-    return new Promise((resolve, reject) => {
-      const tx = database.transaction([storeName], 'readonly')
-      const store = tx.objectStore(storeName)
-      const request = store.getAll()
-
-      tx.oncomplete = () => {
-        const results: OwnerData<T>[] = []
-        for (const stored of request.result) {
-          if (deserialize) {
-            results.push({ owner: stored.owner, data: deserialize(stored) })
-          } else if (dataKey) {
-            results.push({ owner: stored.owner, data: stored[dataKey] })
-          }
-        }
-        resolve(results)
+    const db = await getDB()
+    const records = await idbGetAll<Record<string, unknown>>(db, storeName)
+    const results: OwnerData<T>[] = []
+    for (const stored of records) {
+      if (deserialize) {
+        results.push({
+          owner: stored.owner as Owner,
+          data: deserialize(stored),
+        })
+      } else if (dataKey) {
+        results.push({
+          owner: stored.owner as Owner,
+          data: stored[dataKey] as T,
+        })
       }
-
-      tx.onerror = () => reject(tx.error)
-    })
+    }
+    return results
   }
 
   const save = async (
@@ -114,78 +99,39 @@ export function createOwnerDB<T>(config: OwnerDBConfig<T>): OwnerDB<T> {
     owner: Owner,
     data: T
   ): Promise<void> => {
-    const database = await openDB()
-
-    return new Promise((resolve, reject) => {
-      const tx = database.transaction([storeName], 'readwrite')
-      const store = tx.objectStore(storeName)
-
-      if (serialize) {
-        store.put({ ownerKey, owner, ...serialize(data) })
-      } else if (dataKey) {
-        store.put({ ownerKey, owner, [dataKey]: data })
-      }
-
-      tx.oncomplete = () => resolve()
-      tx.onerror = () => reject(tx.error)
-    })
+    const db = await getDB()
+    const record = serialize
+      ? { ownerKey, owner, ...serialize(data) }
+      : { ownerKey, owner, [dataKey!]: data }
+    await idbPut(db, storeName, record)
   }
 
   const deleteOwner = async (ownerKey: string): Promise<void> => {
-    const database = await openDB()
-
-    return new Promise((resolve, reject) => {
-      const tx = database.transaction([storeName], 'readwrite')
-      const store = tx.objectStore(storeName)
-
-      store.delete(ownerKey)
-
-      tx.oncomplete = () => resolve()
-      tx.onerror = () => reject(tx.error)
-    })
+    const db = await getDB()
+    await idbDelete(db, storeName, ownerKey)
   }
 
   const clear = async (): Promise<void> => {
-    const database = await openDB()
+    const db = await getDB()
     const storeNames = metaStoreName ? [storeName, metaStoreName] : [storeName]
-
-    return new Promise((resolve, reject) => {
-      const tx = database.transaction(storeNames, 'readwrite')
-      for (const name of storeNames) {
-        tx.objectStore(name).clear()
-      }
-      tx.oncomplete = () => resolve()
-      tx.onerror = () => reject(tx.error)
-    })
+    await idbClearMultiple(db, storeNames)
   }
 
   const loadMeta = async <M>(key: string): Promise<M | undefined> => {
     if (!metaStoreName) return undefined
-    const database = await openDB()
-
-    return new Promise((resolve, reject) => {
-      const tx = database.transaction([metaStoreName], 'readonly')
-      const store = tx.objectStore(metaStoreName)
-      const request = store.get(key)
-
-      tx.oncomplete = () => resolve(request.result?.value)
-      tx.onerror = () => reject(tx.error)
-    })
+    const db = await getDB()
+    const record = await idbGet<{ key: string; value: M }>(
+      db,
+      metaStoreName,
+      key
+    )
+    return record?.value
   }
 
   const saveMeta = async <M>(key: string, value: M): Promise<void> => {
     if (!metaStoreName) return
-    const database = await openDB()
-
-    return new Promise((resolve, reject) => {
-      const tx = database.transaction([metaStoreName], 'readwrite')
-      const store = tx.objectStore(metaStoreName)
-
-      store.put({ key, value })
-
-      tx.oncomplete = () => resolve()
-      tx.onerror = () => reject(tx.error)
-    })
+    const db = await getDB()
+    await idbPut(db, metaStoreName, { key, value })
   }
 
   return {

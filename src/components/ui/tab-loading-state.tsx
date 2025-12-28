@@ -40,9 +40,16 @@ export function TabLoadingState({
 
   if (!initialized || (isUpdating && !hasData)) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div
+        className="flex items-center justify-center h-64"
+        role="status"
+        aria-live="polite"
+      >
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-accent mx-auto" />
+          <Loader2
+            className="h-8 w-8 animate-spin text-accent mx-auto"
+            aria-hidden="true"
+          />
           <p className="mt-2 text-content-secondary">Loading {dataType}...</p>
         </div>
       </div>
@@ -54,12 +61,12 @@ export function TabLoadingState({
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           {updateError ? (
-            <>
+            <div role="alert" aria-live="assertive">
               <p className="text-semantic-danger">Failed to load {dataType}</p>
               <p className="text-sm text-content-secondary mb-4">
                 {updateError}
               </p>
-            </>
+            </div>
           ) : (
             <p className="text-content-secondary">No {dataType} found.</p>
           )}

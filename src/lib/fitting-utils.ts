@@ -13,6 +13,8 @@ export interface ShipSlots {
   low: number
   rig: number
   subsystem: number
+  launcher: number
+  turret: number
 }
 
 export interface ExtractedFitting {
@@ -301,24 +303,17 @@ export function extractFitting(shipNode: TreeNode): ExtractedFitting {
   }
 }
 
-export async function fetchShipSlots(
-  shipTypeId: number
-): Promise<ShipSlots | null> {
-  try {
-    const result = await window.electronAPI?.refShipSlots([shipTypeId])
-    if (!result || 'error' in result) return null
+export function getShipSlots(shipTypeId: number): ShipSlots | null {
+  const type = getType(shipTypeId)
+  if (!type?.slots) return null
 
-    const ship = result.ships?.[shipTypeId]
-    if (!ship?.slots) return null
-
-    return {
-      high: ship.slots.high ?? 0,
-      mid: ship.slots.mid ?? 0,
-      low: ship.slots.low ?? 0,
-      rig: ship.slots.rig ?? 0,
-      subsystem: ship.slots.subsystem ?? 0,
-    }
-  } catch {
-    return null
+  return {
+    high: type.slots.high,
+    mid: type.slots.mid,
+    low: type.slots.low,
+    rig: type.slots.rig,
+    subsystem: type.slots.subsystem,
+    launcher: type.slots.launcher,
+    turret: type.slots.turret,
   }
 }

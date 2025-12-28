@@ -1,7 +1,9 @@
 import { app } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
+import pLimit from 'p-limit'
 import { ESICache } from './cache'
+import { ESIHealthChecker } from './health'
 import {
   RateLimitTracker,
   guessRateLimitGroup,
@@ -11,33 +13,43 @@ import { logger } from '../logger.js'
 import {
   ESI_BASE_URL,
   ESI_COMPATIBILITY_DATE,
+  ESI_CONFIG,
   makeUserAgent,
   type ESIRequestOptions,
   type ESIResponse,
   type ESIResponseMeta,
+  type ESIHealthStatus,
 } from './types'
 import { ESIError } from '../../../shared/esi-types'
 
 const RATE_LIMIT_FILE = 'rate-limits.json'
 const CACHE_FILE = 'esi-cache.json'
 
+export type ProgressCallback = (progress: {
+  current: number
+  total: number
+}) => void
+
 type TokenProvider = (characterId: number) => Promise<string | null>
 
 export class MainESIService {
   private cache = new ESICache()
   private rateLimiter = new RateLimitTracker()
+  private healthChecker: ESIHealthChecker
   private tokenProvider: TokenProvider | null = null
   private rateLimitFilePath: string
   private userAgent: string
   private saveStateTimeout: NodeJS.Timeout | null = null
   private paused = false
   private activeRequests = 0
+  private inflightRequests = new Map<string, Promise<ESIResponse<unknown>>>()
 
   constructor() {
     const userData = app.getPath('userData')
     this.rateLimitFilePath = path.join(userData, RATE_LIMIT_FILE)
     this.cache.setFilePath(path.join(userData, CACHE_FILE))
     this.userAgent = makeUserAgent(app.getVersion())
+    this.healthChecker = new ESIHealthChecker(app.getVersion())
     this.loadState()
   }
 
@@ -94,8 +106,7 @@ export class MainESIService {
       notModified: result.meta.notModified ?? false,
     }
 
-    const xPages = (result as { xPages?: number }).xPages
-    if (xPages) response.xPages = xPages
+    if (result.xPages) response.xPages = result.xPages
 
     return response
   }
@@ -138,11 +149,88 @@ export class MainESIService {
 
       if (result.meta) {
         lastMeta = result.meta
-        const xPages = (result as { xPages?: number }).xPages
-        if (xPages) totalPages = xPages
+        if (result.xPages) totalPages = result.xPages
       }
 
       page++
+    }
+
+    if (!lastMeta?.expiresAt) {
+      const error = `ESI meta missing: expiresAt not returned for ${endpoint}`
+      logger.error(error, undefined, { module: 'ESI', endpoint })
+      throw new Error(error)
+    }
+
+    return {
+      data: results,
+      expiresAt: lastMeta.expiresAt,
+      etag: lastMeta.etag ?? null,
+      notModified: lastMeta.notModified ?? false,
+    }
+  }
+
+  async fetchPaginatedWithProgress<T>(
+    endpoint: string,
+    options: ESIRequestOptions = {},
+    onProgress?: ProgressCallback
+  ): Promise<ESIResponseMeta<T[]>> {
+    const separator = endpoint.includes('?') ? '&' : '?'
+
+    const firstResult = await this.executeWithRateLimit(
+      `${endpoint}${separator}page=1`,
+      options
+    )
+
+    if (!firstResult.success) {
+      throw new ESIError(
+        firstResult.error,
+        firstResult.status ?? 500,
+        firstResult.retryAfter
+      )
+    }
+
+    const totalPages = firstResult.xPages ?? 1
+    const results: T[] = [...(firstResult.data as T[])]
+    let lastMeta = firstResult.meta
+
+    onProgress?.({ current: 1, total: totalPages })
+
+    if (totalPages > 1) {
+      const limit = pLimit(ESI_CONFIG.maxConcurrentPages)
+      const pages = Array.from({ length: totalPages - 1 }, (_, i) => i + 2)
+      const completedPages = new Set<number>([1])
+
+      const pageResults = await Promise.all(
+        pages.map((page) =>
+          limit(async () => {
+            const result = await this.executeWithRateLimit(
+              `${endpoint}${separator}page=${page}`,
+              options
+            )
+
+            if (!result.success) {
+              throw new ESIError(
+                result.error,
+                result.status ?? 500,
+                result.retryAfter
+              )
+            }
+
+            completedPages.add(page)
+            onProgress?.({ current: completedPages.size, total: totalPages })
+
+            return {
+              data: result.data as T[],
+              meta: result.meta,
+            }
+          })
+        )
+      )
+
+      for (const { data, meta } of pageResults) {
+        results.push(...data)
+        if (meta) lastMeta = meta
+      }
     }
 
     if (!lastMeta?.expiresAt) {
@@ -167,7 +255,25 @@ export class MainESIService {
       await this.delay(100)
     }
 
+    const healthCheck = await this.healthChecker.ensureHealthy(endpoint)
+    if (!healthCheck.healthy) {
+      return {
+        success: false,
+        error: healthCheck.error ?? 'ESI service unavailable',
+        status: 503,
+        retryAfter: 60,
+      }
+    }
+
     const characterId = options.characterId ?? 0
+    const cacheKey = this.cache.makeKey(characterId, endpoint)
+
+    if (options.method !== 'POST') {
+      const inflight = this.inflightRequests.get(cacheKey)
+      if (inflight) {
+        return inflight
+      }
+    }
 
     if (isContractItemsEndpoint(endpoint)) {
       const contractDelay = this.rateLimiter.getContractItemsDelay(characterId)
@@ -183,12 +289,22 @@ export class MainESIService {
       await this.delay(delay)
     }
 
-    return this.executeRequest(endpoint, options)
+    const requestPromise = this.executeRequest(endpoint, options)
+
+    if (options.method !== 'POST') {
+      this.inflightRequests.set(cacheKey, requestPromise)
+      requestPromise.finally(() => {
+        this.inflightRequests.delete(cacheKey)
+      })
+    }
+
+    return requestPromise
   }
 
   private async executeRequest(
     endpoint: string,
-    options: ESIRequestOptions
+    options: ESIRequestOptions,
+    attempt = 0
   ): Promise<ESIResponse<unknown>> {
     const url = `${ESI_BASE_URL}${endpoint}`
     const cacheKey = this.cache.makeKey(options.characterId, endpoint)
@@ -223,13 +339,21 @@ export class MainESIService {
       headers['If-None-Match'] = options.etag
     }
 
+    const controller = new AbortController()
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      ESI_CONFIG.requestTimeoutMs
+    )
+
     this.activeRequests++
     try {
       const response = await fetch(url, {
         method: options.method ?? 'GET',
         headers,
         body: options.body,
+        signal: controller.signal,
       })
+      clearTimeout(timeoutId)
 
       this.rateLimiter.updateFromHeaders(
         options.characterId ?? 0,
@@ -241,6 +365,12 @@ export class MainESIService {
         const retryAfter = response.headers.get('Retry-After')
         const waitSec = retryAfter ? parseInt(retryAfter, 10) : 60
         this.rateLimiter.setGlobalRetryAfter(waitSec)
+
+        if (attempt < ESI_CONFIG.maxRetries) {
+          await this.delay(waitSec * 1000)
+          return this.executeRequest(endpoint, options, attempt + 1)
+        }
+
         return {
           success: false,
           error: 'Rate limited',
@@ -265,6 +395,17 @@ export class MainESIService {
             meta: { expiresAt, etag: etag ?? cached.etag, notModified: true },
           }
         }
+        if (options.etag) {
+          logger.debug('304 but cache miss, retrying without etag', {
+            module: 'ESI',
+            endpoint,
+          })
+          return this.executeRequest(
+            endpoint,
+            { ...options, etag: undefined },
+            attempt
+          )
+        }
       }
 
       if (!response.ok) {
@@ -272,8 +413,14 @@ export class MainESIService {
         try {
           const errorBody = (await response.json()) as { error?: string }
           if (errorBody.error) errorMessage = errorBody.error
-        } catch {
-          // Non-JSON response
+        } catch (parseErr) {
+          logger.debug('ESI error response was not JSON', {
+            module: 'ESI',
+            endpoint,
+            status: response.status,
+            parseError:
+              parseErr instanceof Error ? parseErr.message : String(parseErr),
+          })
         }
         return { success: false, error: errorMessage, status: response.status }
       }
@@ -284,23 +431,44 @@ export class MainESIService {
         this.cache.set(cacheKey, data, etag, expiresAt)
       }
 
-      const result: ESIResponse<unknown> = {
+      return {
         success: true,
         data,
         meta: expiresAt ? { expiresAt, etag, notModified: false } : undefined,
+        xPages: xPages ? parseInt(xPages, 10) : undefined,
       }
-
-      if (xPages) {
-        ;(result as { xPages?: number }).xPages = parseInt(xPages, 10)
-      }
-
-      return result
     } catch (error) {
+      clearTimeout(timeoutId)
+
       if (error instanceof ESIError) throw error
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Network error',
+
+      const isAbort = error instanceof Error && error.name === 'AbortError'
+      const message = isAbort
+        ? 'Request timeout'
+        : error instanceof Error
+          ? error.message
+          : 'Network error'
+
+      const maxAttempts = isAbort
+        ? ESI_CONFIG.maxTimeoutRetries
+        : ESI_CONFIG.maxRetries
+      if (attempt < maxAttempts) {
+        const backoffMs = Math.min(1000 * Math.pow(2, attempt), 10000)
+        logger.debug(
+          `Retrying after ${isAbort ? 'timeout' : 'network error'}`,
+          {
+            module: 'ESI',
+            endpoint,
+            attempt: attempt + 1,
+            error: message,
+            backoffMs,
+          }
+        )
+        await this.delay(backoffMs)
+        return this.executeRequest(endpoint, options, attempt + 1)
       }
+
+      return { success: false, error: message }
     } finally {
       this.activeRequests--
     }
@@ -328,6 +496,14 @@ export class MainESIService {
     }
   }
 
+  async getHealthStatus(): Promise<ESIHealthStatus> {
+    return this.healthChecker.getHealthStatus()
+  }
+
+  getCachedHealthStatus(): ESIHealthStatus | null {
+    return this.healthChecker.getCachedStatus()
+  }
+
   pause(): void {
     this.paused = true
   }
@@ -344,7 +520,7 @@ export class MainESIService {
         this.rateLimiter.loadState(states)
       }
     } catch (err) {
-      logger.debug('Failed to load rate limit state', {
+      logger.warn('Failed to load rate limit state', {
         module: 'ESI',
         error: err instanceof Error ? err.message : String(err),
       })
@@ -365,7 +541,7 @@ export class MainESIService {
       const states = this.rateLimiter.exportState()
       fs.writeFileSync(this.rateLimitFilePath, JSON.stringify(states, null, 2))
     } catch (err) {
-      logger.debug('Failed to save rate limit state', {
+      logger.warn('Failed to save rate limit state', {
         module: 'ESI',
         error: err instanceof Error ? err.message : String(err),
       })

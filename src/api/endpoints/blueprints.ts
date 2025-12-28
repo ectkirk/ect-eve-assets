@@ -9,7 +9,7 @@ export async function getCharacterBlueprints(
   authCharacterId?: number
 ): Promise<ESIBlueprint[]> {
   return esi.fetchPaginated<ESIBlueprint>(
-    `/characters/${characterId}/blueprints/`,
+    `/characters/${characterId}/blueprints`,
     { characterId: authCharacterId ?? characterId, schema: ESIBlueprintSchema }
   )
 }
@@ -19,7 +19,7 @@ export async function getCorporationBlueprints(
   characterId: number
 ): Promise<ESIBlueprint[]> {
   return esi.fetchPaginated<ESIBlueprint>(
-    `/corporations/${corporationId}/blueprints/`,
+    `/corporations/${corporationId}/blueprints`,
     { characterId, schema: ESIBlueprintSchema }
   )
 }

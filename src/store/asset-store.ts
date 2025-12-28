@@ -9,7 +9,7 @@ import {
 } from '@/api/endpoints/assets'
 import { esi, type ESIResponseMeta } from '@/api/esi'
 import { ESIAssetSchema } from '@/api/schemas'
-import { fetchPrices, queuePriceRefresh, resolveTypes } from '@/api/ref-client'
+import { resolveTypes } from '@/api/ref-client'
 import { getType } from '@/store/reference-cache'
 import { createOwnerDB } from '@/lib/owner-indexed-db'
 import { logger } from '@/lib/logger'
@@ -20,7 +20,8 @@ import { useMarketOrdersStore } from './market-orders-store'
 import { useIndustryJobsStore } from './industry-jobs-store'
 import { useStructuresStore } from './structures-store'
 import { detectAndInjectActiveShip } from './active-ship-detection'
-import { collectAllTypeIds } from './type-id-collector'
+import { collectOwnedIds } from './type-id-collector'
+import { isAbyssalTypeId } from '@/api/mutamarket-client'
 
 const NAMEABLE_CATEGORIES = new Set([6, 22, 65])
 const NAMEABLE_GROUPS = new Set([12, 14, 340, 448, 649])
@@ -34,8 +35,6 @@ export interface OwnerAssets {
 interface AssetState {
   assetsByOwner: OwnerAssets[]
   assetNames: Map<number, string>
-  prices: Map<number, number>
-  lastPriceRefreshAt: number | null
   isUpdating: boolean
   updateError: string | null
   updateProgress: { current: number; total: number } | null
@@ -47,8 +46,6 @@ interface AssetActions {
   update: (force?: boolean) => Promise<void>
   updateForOwner: (owner: Owner) => Promise<void>
   removeForOwner: (ownerType: string, ownerId: number) => Promise<void>
-  setPrices: (newPrices: Map<number, number>) => Promise<void>
-  refreshPrices: () => Promise<void>
   pruneStaleMetadata: () => Promise<void>
   clear: () => Promise<void>
 }
@@ -63,23 +60,15 @@ const db = createOwnerDB<ESIAsset[]>({
   moduleName: 'AssetStore',
 })
 
-async function saveMetaToDB(
-  assetNames: Map<number, string>,
-  prices: Map<number, number>,
-  lastPriceRefreshAt?: number | null
-): Promise<void> {
+async function saveNamesToDB(assetNames: Map<number, string>): Promise<void> {
   await db.saveMeta('assetNames', Array.from(assetNames.entries()))
-  await db.saveMeta('prices', Array.from(prices.entries()))
-  if (lastPriceRefreshAt !== undefined) {
-    await db.saveMeta('lastPriceRefreshAt', lastPriceRefreshAt)
-  }
 }
 
 function getAssetEndpoint(owner: Owner): string {
   if (owner.type === 'corporation') {
-    return `/corporations/${owner.id}/assets/`
+    return `/corporations/${owner.id}/assets`
   }
-  return `/characters/${owner.id}/assets/`
+  return `/characters/${owner.id}/assets`
 }
 
 async function fetchOwnerAssetsWithMeta(
@@ -129,13 +118,11 @@ async function fetchOwnerAssetNames(
   return getCharacterAssetNames(owner.id, owner.characterId, nameableIds)
 }
 
-const PRICE_REFRESH_INTERVAL_MS = 60 * 60 * 1000
+let initPromise: Promise<void> | null = null
 
 export const useAssetStore = create<AssetStore>((set, get) => ({
   assetsByOwner: [],
   assetNames: new Map(),
-  prices: new Map(),
-  lastPriceRefreshAt: null,
   isUpdating: false,
   updateError: null,
   updateProgress: null,
@@ -143,53 +130,55 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
 
   init: async () => {
     if (get().initialized) return
+    if (initPromise) return initPromise
 
-    try {
-      const loaded = await db.loadAll()
-      const assetsByOwner = loaded.map((d) => ({
-        owner: d.owner,
-        assets: d.data,
-      }))
+    initPromise = (async () => {
+      try {
+        const loaded = await db.loadAll()
+        const assetsByOwner = loaded.map((d) => ({
+          owner: d.owner,
+          assets: d.data,
+        }))
 
-      const assetNamesEntries =
-        await db.loadMeta<[number, string][]>('assetNames')
-      const pricesEntries = await db.loadMeta<[number, number][]>('prices')
-      const lastPriceRefreshAt = await db.loadMeta<number | null>(
-        'lastPriceRefreshAt'
-      )
-      const assetNames = new Map(assetNamesEntries ?? [])
-      const prices = new Map(pricesEntries ?? [])
+        const assetNamesEntries =
+          await db.loadMeta<[number, string][]>('assetNames')
+        const assetNames = new Map(assetNamesEntries ?? [])
 
-      set({
-        assetsByOwner,
-        assetNames,
-        prices,
-        lastPriceRefreshAt: lastPriceRefreshAt ?? null,
-        initialized: true,
-      })
-      logger.info('Asset store initialized from DB', {
-        module: 'AssetStore',
-        owners: assetsByOwner.length,
-        assets: assetsByOwner.reduce((sum, o) => sum + o.assets.length, 0),
-      })
-
-      const pricesAreStale =
-        !lastPriceRefreshAt ||
-        Date.now() - lastPriceRefreshAt > PRICE_REFRESH_INTERVAL_MS
-      if (pricesAreStale && prices.size > 0) {
-        logger.info('Prices are stale, triggering refresh', {
-          module: 'AssetStore',
+        set({
+          assetsByOwner,
+          assetNames,
+          initialized: true,
         })
-        get().refreshPrices()
+        logger.info('Asset store initialized from DB', {
+          module: 'AssetStore',
+          owners: assetsByOwner.length,
+          assets: assetsByOwner.reduce((sum, o) => sum + o.assets.length, 0),
+        })
+
+        const abyssalItemIds: number[] = []
+        for (const { assets } of assetsByOwner) {
+          for (const asset of assets) {
+            if (isAbyssalTypeId(asset.type_id)) {
+              abyssalItemIds.push(asset.item_id)
+            }
+          }
+        }
+
+        if (abyssalItemIds.length > 0) {
+          const { usePriceStore } = await import('./price-store')
+          usePriceStore.getState().ensureJitaPrices([], abyssalItemIds)
+        }
+      } catch (err) {
+        logger.error(
+          'Failed to load assets from DB',
+          err instanceof Error ? err : undefined,
+          { module: 'AssetStore' }
+        )
+        set({ initialized: true })
       }
-    } catch (err) {
-      logger.error(
-        'Failed to load assets from DB',
-        err instanceof Error ? err : undefined,
-        { module: 'AssetStore' }
-      )
-      set({ initialized: true })
-    }
+    })()
+
+    return initPromise
   },
 
   update: async (force = false) => {
@@ -271,7 +260,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
             .getState()
             .setExpiry(ownerKey, endpoint, expiresAt, etag)
 
-          resolveTypes(Array.from(new Set(assets.map((a) => a.type_id))))
+          await resolveTypes(Array.from(new Set(assets.map((a) => a.type_id))))
           const names = await fetchOwnerAssetNames(owner, assets)
           for (const n of names) {
             if (n.name && n.name !== 'None') {
@@ -292,7 +281,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
 
       const results = Array.from(existingAssets.values())
 
-      const typeIds = collectAllTypeIds(
+      const { typeIds, abyssalItemIds } = collectOwnedIds(
         results,
         useMarketOrdersStore.getOrdersByOwner(),
         useContractsStore.getContractsByOwner(),
@@ -300,37 +289,20 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         useStructuresStore.getState().dataByOwner
       )
 
-      const prices = new Map(state.prices)
-      let lastPriceRefreshAt = state.lastPriceRefreshAt
-      if (typeIds.size > 0) {
-        try {
-          const fetchedPrices = await fetchPrices(Array.from(typeIds))
-          for (const [id, price] of fetchedPrices) {
-            prices.set(id, price)
-          }
-          lastPriceRefreshAt = Date.now()
-          logger.info('Prices loaded', {
-            module: 'AssetStore',
-            count: prices.size,
-          })
-        } catch (err) {
-          logger.error(
-            'Failed to fetch prices',
-            err instanceof Error ? err : undefined,
-            { module: 'AssetStore' }
-          )
-        }
+      if (typeIds.size > 0 || abyssalItemIds.size > 0) {
+        const { usePriceStore } = await import('./price-store')
+        await usePriceStore
+          .getState()
+          .ensureJitaPrices(Array.from(typeIds), Array.from(abyssalItemIds))
       }
 
-      await saveMetaToDB(allNames, prices, lastPriceRefreshAt)
+      await saveNamesToDB(allNames)
 
       triggerResolution()
 
       set({
         assetsByOwner: results,
         assetNames: allNames,
-        prices,
-        lastPriceRefreshAt,
         isUpdating: false,
         updateProgress: null,
         updateError: results.length === 0 ? 'Failed to fetch any assets' : null,
@@ -396,7 +368,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         .getState()
         .setExpiry(ownerKey, endpoint, expiresAt, etag)
 
-      resolveTypes(Array.from(new Set(assets.map((a) => a.type_id))))
+      await resolveTypes(Array.from(new Set(assets.map((a) => a.type_id))))
       const names = await fetchOwnerAssetNames(owner, assets)
       for (const n of names) {
         if (n.name && n.name !== 'None') {
@@ -404,44 +376,43 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         }
       }
 
-      const newPrices = new Map(state.prices)
-      const ownerTypeIds = new Set(assets.map((a) => a.type_id))
-      const deltaTypeIds = Array.from(ownerTypeIds).filter(
-        (id) => !newPrices.has(id)
-      )
+      const { usePriceStore, getJitaPrice } = await import('./price-store')
+      const priceStore = usePriceStore.getState()
 
-      if (deltaTypeIds.length > 0) {
-        try {
-          const fetchedPrices = await queuePriceRefresh(deltaTypeIds)
-          for (const [id, price] of fetchedPrices) {
-            newPrices.set(id, price)
+      const missingTypeIds: number[] = []
+      const missingAbyssalIds: number[] = []
+
+      for (const asset of assets) {
+        if (getJitaPrice(asset.type_id) === undefined) {
+          missingTypeIds.push(asset.type_id)
+        }
+        if (isAbyssalTypeId(asset.type_id)) {
+          if (!priceStore.hasAbyssalPrice(asset.item_id)) {
+            missingAbyssalIds.push(asset.item_id)
           }
-        } catch (err) {
-          logger.error(
-            'Failed to fetch prices',
-            err instanceof Error ? err : undefined,
-            { module: 'AssetStore' }
-          )
         }
       }
 
-      await saveMetaToDB(newNames, newPrices)
+      if (missingTypeIds.length > 0 || missingAbyssalIds.length > 0) {
+        await priceStore.ensureJitaPrices(missingTypeIds, missingAbyssalIds)
+      }
+
+      await saveNamesToDB(newNames)
 
       triggerResolution()
 
-      const updatedAssets = state.assetsByOwner.filter(
-        (oa) => `${oa.owner.type}-${oa.owner.id}` !== ownerKey
-      )
-      updatedAssets.push({ owner, assets })
-
-      set({
-        assetsByOwner: updatedAssets,
+      set((current) => ({
+        assetsByOwner: [
+          ...current.assetsByOwner.filter(
+            (oa) => `${oa.owner.type}-${oa.owner.id}` !== ownerKey
+          ),
+          { owner, assets },
+        ],
         assetNames: newNames,
-        prices: newPrices,
         isUpdating: false,
         updateProgress: null,
         updateError: null,
-      })
+      }))
 
       logger.info('Assets updated for owner', {
         module: 'AssetStore',
@@ -460,16 +431,19 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
   },
 
   removeForOwner: async (ownerType: string, ownerId: number) => {
-    const state = get()
     const ownerKey = `${ownerType}-${ownerId}`
-    const updated = state.assetsByOwner.filter(
-      (oa) => `${oa.owner.type}-${oa.owner.id}` !== ownerKey
+    const hasOwner = get().assetsByOwner.some(
+      (oa) => `${oa.owner.type}-${oa.owner.id}` === ownerKey
     )
-
-    if (updated.length === state.assetsByOwner.length) return
+    if (!hasOwner) return
 
     await db.delete(ownerKey)
-    set({ assetsByOwner: updated })
+
+    set((current) => ({
+      assetsByOwner: current.assetsByOwner.filter(
+        (oa) => `${oa.owner.type}-${oa.owner.id}` !== ownerKey
+      ),
+    }))
 
     useExpiryCacheStore.getState().clearForOwner(ownerKey)
 
@@ -478,120 +452,47 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
     get().pruneStaleMetadata()
   },
 
-  setPrices: async (newPrices: Map<number, number>) => {
-    const state = get()
-    const merged = new Map(state.prices)
-    for (const [id, price] of newPrices) {
-      merged.set(id, price)
-    }
-    try {
-      await saveMetaToDB(state.assetNames, merged)
-      set({ prices: merged })
-    } catch (err) {
-      logger.error(
-        'Failed to persist prices',
-        err instanceof Error ? err : undefined,
-        { module: 'AssetStore' }
-      )
-    }
-  },
-
-  refreshPrices: async () => {
-    const state = get()
-    const typeIds = collectAllTypeIds(
-      state.assetsByOwner,
-      useMarketOrdersStore.getOrdersByOwner(),
-      useContractsStore.getContractsByOwner(),
-      useIndustryJobsStore.getJobsByOwner(),
-      useStructuresStore.getState().dataByOwner
-    )
-
-    if (typeIds.size === 0) {
-      logger.info('No assets to refresh prices for', { module: 'AssetStore' })
-      return
-    }
-
-    logger.info('Refreshing prices', {
-      module: 'AssetStore',
-      typeCount: typeIds.size,
-    })
-    try {
-      const fetchedPrices = await fetchPrices(Array.from(typeIds))
-      const now = Date.now()
-      const merged = new Map(get().prices)
-      for (const [id, price] of fetchedPrices) {
-        merged.set(id, price)
-      }
-      await saveMetaToDB(get().assetNames, merged, now)
-      set({ prices: merged, lastPriceRefreshAt: now })
-      logger.info('Prices refreshed', {
-        module: 'AssetStore',
-        count: merged.size,
-      })
-    } catch (err) {
-      logger.error(
-        'Failed to refresh prices',
-        err instanceof Error ? err : undefined,
-        { module: 'AssetStore' }
-      )
-    }
-  },
-
   pruneStaleMetadata: async () => {
-    const state = get()
+    const currentState = get()
     const currentItemIds = new Set<number>()
-    for (const { assets } of state.assetsByOwner) {
+    for (const { assets } of currentState.assetsByOwner) {
       for (const asset of assets) {
         currentItemIds.add(asset.item_id)
       }
     }
 
-    const currentTypeIds = collectAllTypeIds(
-      state.assetsByOwner,
-      useMarketOrdersStore.getOrdersByOwner(),
-      useContractsStore.getContractsByOwner(),
-      useIndustryJobsStore.getJobsByOwner(),
-      useStructuresStore.getState().dataByOwner
-    )
-
-    const prunedNames = new Map<number, string>()
-    let namesRemoved = 0
-    for (const [itemId, name] of state.assetNames) {
-      if (currentItemIds.has(itemId)) {
-        prunedNames.set(itemId, name)
-      } else {
-        namesRemoved++
+    const staleIds = new Set<number>()
+    for (const itemId of currentState.assetNames.keys()) {
+      if (!currentItemIds.has(itemId)) {
+        staleIds.add(itemId)
       }
     }
 
-    const prunedPrices = new Map<number, number>()
-    let pricesRemoved = 0
-    for (const [typeId, price] of state.prices) {
-      if (currentTypeIds.has(typeId)) {
-        prunedPrices.set(typeId, price)
-      } else {
-        pricesRemoved++
-      }
-    }
+    if (staleIds.size > 0) {
+      set((current) => {
+        const prunedNames = new Map<number, string>()
+        for (const [itemId, name] of current.assetNames) {
+          if (!staleIds.has(itemId)) {
+            prunedNames.set(itemId, name)
+          }
+        }
+        return { assetNames: prunedNames }
+      })
 
-    if (namesRemoved > 0 || pricesRemoved > 0) {
-      await saveMetaToDB(prunedNames, prunedPrices, state.lastPriceRefreshAt)
-      set({ assetNames: prunedNames, prices: prunedPrices })
-      logger.info('Pruned stale metadata', {
+      await saveNamesToDB(get().assetNames)
+      logger.info('Pruned stale asset names', {
         module: 'AssetStore',
-        namesRemoved,
-        pricesRemoved,
+        namesRemoved: staleIds.size,
       })
     }
   },
 
   clear: async () => {
     await db.clear()
+    initPromise = null
     set({
       assetsByOwner: [],
       assetNames: new Map(),
-      prices: new Map(),
-      lastPriceRefreshAt: null,
       updateError: null,
       updateProgress: null,
       initialized: false,
@@ -621,27 +522,3 @@ useStoreRegistry.getState().register({
   init: useAssetStore.getState().init,
   update: useAssetStore.getState().update,
 })
-
-let priceRefreshInterval: ReturnType<typeof setInterval> | null = null
-
-function startPriceRefreshTimer() {
-  if (priceRefreshInterval) return
-  priceRefreshInterval = setInterval(async () => {
-    const state = useAssetStore.getState()
-    if (!state.initialized || state.isUpdating) return
-
-    if (useExpiryCacheStore.getState().isPaused) return
-
-    logger.info('Hourly price refresh triggered', { module: 'AssetStore' })
-    await state.refreshPrices()
-  }, PRICE_REFRESH_INTERVAL_MS)
-}
-
-export function stopPriceRefreshTimer() {
-  if (priceRefreshInterval) {
-    clearInterval(priceRefreshInterval)
-    priceRefreshInterval = null
-  }
-}
-
-startPriceRefreshTimer()

@@ -46,7 +46,7 @@ export const useBlueprintsStore = createOwnerStore<
 >({
   name: 'blueprints',
   moduleName: 'BlueprintsStore',
-  endpointPattern: '/blueprints/',
+  endpointPattern: '/blueprints',
   dbConfig: {
     dbName: 'ecteveassets-blueprints',
     storeName: 'blueprints',
@@ -55,13 +55,13 @@ export const useBlueprintsStore = createOwnerStore<
   },
   getEndpoint: (owner) =>
     owner.type === 'corporation'
-      ? `/corporations/${owner.id}/blueprints/`
-      : `/characters/${owner.id}/blueprints/`,
+      ? `/corporations/${owner.id}/blueprints`
+      : `/characters/${owner.id}/blueprints`,
   fetchData: async (owner) => {
     const endpoint =
       owner.type === 'corporation'
-        ? `/corporations/${owner.id}/blueprints/`
-        : `/characters/${owner.id}/blueprints/`
+        ? `/corporations/${owner.id}/blueprints`
+        : `/characters/${owner.id}/blueprints`
     const result = await esi.fetchPaginatedWithMeta<ESIBlueprint>(endpoint, {
       characterId: owner.characterId,
       schema: ESIBlueprintSchema,

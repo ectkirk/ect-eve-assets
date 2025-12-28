@@ -87,26 +87,6 @@ export function SupportModal({ open, onOpenChange }: SupportModalProps) {
               </p>
               <CopyButton text="ECTrade" />
             </div>
-
-            <div className="rounded-lg border border-border bg-surface-tertiary/30 p-3">
-              <h3 className="font-medium text-content mb-1">
-                Express Delivery
-              </h3>
-              <p className="text-content-muted">
-                Load a shuttle with Large Skill Injectors and autopilot through
-                Ahbazon when <CopyButton text="EnatKinu" /> is online. We'll
-                take care of the rest. Don't forget to fill out the{' '}
-                <a
-                  href="https://edencom.net/survey"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-accent hover:underline"
-                >
-                  survey
-                </a>{' '}
-                once done.
-              </p>
-            </div>
           </div>
 
           <p className="text-center text-content-muted pt-2">

@@ -3,14 +3,21 @@ import { resolveLocations } from '../ref-client'
 import {
   hasStructure,
   getStructure as getCachedStructure,
-  saveStructures,
-  saveNames,
+  useReferenceCacheStore,
   type CachedStructure,
   type CachedName,
 } from '@/store/reference-cache'
 import { logger } from '@/lib/logger'
-import { ESIStructureSchema, ESINameSchema } from '../schemas'
+import { PLAYER_STRUCTURE_ID_THRESHOLD } from '@/lib/eve-constants'
+import { createLRUCache } from '@/lib/lru-cache'
+import {
+  ESIStructureSchema,
+  ESINameSchema,
+  ESITypeInfoSchema,
+} from '../schemas'
 import { z } from 'zod'
+
+export type ESITypeInfo = z.infer<typeof ESITypeInfoSchema>
 
 export type ESIStructure = z.infer<typeof ESIStructureSchema>
 
@@ -26,7 +33,7 @@ async function getStructureFromESI(
 ): Promise<StructureResult> {
   try {
     const data = await esi.fetch<ESIStructure>(
-      `/universe/structures/${structureId}/`,
+      `/universe/structures/${structureId}`,
       { characterId, schema: ESIStructureSchema }
     )
     return { status: 'success', data, characterId }
@@ -59,7 +66,7 @@ export async function resolveStructures(
 
   // NPC stations via ref API
   const npcIds = Array.from(uncached.keys()).filter(
-    (id) => id < 1_000_000_000_000
+    (id) => id < PLAYER_STRUCTURE_ID_THRESHOLD
   )
   if (npcIds.length > 0) {
     const resolved = await resolveLocations(npcIds)
@@ -81,7 +88,7 @@ export async function resolveStructures(
 
   // Player structures via ESI - only try the character who owns assets there
   const playerStructures = Array.from(uncached.entries()).filter(
-    ([id]) => id > 1_000_000_000_000
+    ([id]) => id >= PLAYER_STRUCTURE_ID_THRESHOLD
   )
 
   if (playerStructures.length > 0) {
@@ -91,14 +98,6 @@ export async function resolveStructures(
     })
 
     for (const [structureId, characterId] of playerStructures) {
-      const rateLimitInfo = await esi.getRateLimitInfo()
-      if (rateLimitInfo.globalRetryAfter !== null) {
-        logger.warn('Stopping structure resolution due to rate limit', {
-          module: 'ESI',
-        })
-        break
-      }
-
       const result = await getStructureFromESI(structureId, characterId)
 
       if (result.status === 'success') {
@@ -128,7 +127,7 @@ export async function resolveStructures(
   }
 
   if (toCache.length > 0) {
-    await saveStructures(toCache)
+    await useReferenceCacheStore.getState().saveStructures(toCache)
     logger.info('Cached structures', { module: 'ESI', count: toCache.length })
   }
 
@@ -138,14 +137,19 @@ export async function resolveStructures(
 export type ESIName = z.infer<typeof ESINameSchema>
 export type ESINameCategory = ESIName['category']
 
-const namesCache = new Map<number, ESIName>()
+const NAMES_CACHE_TTL_MS = 24 * 60 * 60 * 1000
+const NAMES_CACHE_MAX_SIZE = 10000
+const namesCache = createLRUCache<number, ESIName>(
+  NAMES_CACHE_TTL_MS,
+  NAMES_CACHE_MAX_SIZE
+)
 
 export function getName(id: number): ESIName | undefined {
-  return namesCache.get(id)
+  return namesCache.get(id) ?? undefined
 }
 
 export function hasName(id: number): boolean {
-  return namesCache.has(id)
+  return namesCache.get(id) !== null
 }
 
 export async function resolveNames(
@@ -157,8 +161,9 @@ export async function resolveNames(
   const uncached: number[] = []
 
   for (const id of ids) {
-    if (namesCache.has(id)) {
-      results.set(id, namesCache.get(id)!)
+    const cached = namesCache.get(id)
+    if (cached) {
+      results.set(id, cached)
     } else {
       uncached.push(id)
     }
@@ -171,7 +176,7 @@ export async function resolveNames(
   for (let i = 0; i < uncached.length; i += 1000) {
     const chunk = uncached.slice(i, i + 1000)
     try {
-      const names = await esi.fetch<ESIName[]>('/universe/names/', {
+      const names = await esi.fetch<ESIName[]>('/universe/names', {
         method: 'POST',
         body: JSON.stringify(chunk),
         requiresAuth: false,
@@ -191,8 +196,15 @@ export async function resolveNames(
   }
 
   if (toSave.length > 0) {
-    await saveNames(toSave)
+    await useReferenceCacheStore.getState().saveNames(toSave)
   }
 
   return results
+}
+
+export async function getTypeInfo(typeId: number): Promise<ESITypeInfo> {
+  return esi.fetch<ESITypeInfo>(`/universe/types/${typeId}`, {
+    requiresAuth: false,
+    schema: ESITypeInfoSchema,
+  })
 }

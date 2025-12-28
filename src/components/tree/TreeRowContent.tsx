@@ -4,7 +4,7 @@ import { TableCell } from '@/components/ui/table'
 import { TypeIcon, OwnerIcon } from '@/components/ui/type-icon'
 import { AbyssalPreview } from '@/components/ui/abyssal-preview'
 import { isAbyssalTypeId } from '@/api/mutamarket-client'
-import { hasAbyssal } from '@/store/reference-cache'
+import { usePriceStore } from '@/store/price-store'
 import { cn } from '@/lib/utils'
 import type { TreeNode, TreeNodeType } from '@/lib/tree-types'
 import {
@@ -67,6 +67,10 @@ export const TreeRowContent = memo(function TreeRowContent({
   onToggleExpand,
   visibleColumns,
 }: TreeRowContentProps) {
+  const itemId = node.asset?.item_id
+  const hasAbyssalPrice = usePriceStore((s) =>
+    itemId ? s.abyssalPrices.has(itemId) : false
+  )
   const hasChildren = node.children.length > 0
   const indentPx = node.depth * 20
 
@@ -100,6 +104,8 @@ export const TreeRowContent = memo(function TreeRowContent({
                   <button
                     onClick={handleToggleClick}
                     className="p-0.5 hover:bg-surface-tertiary rounded"
+                    aria-expanded={isExpanded}
+                    aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${node.name}`}
                   >
                     {isExpanded ? (
                       <ChevronDown className="h-4 w-4 text-content-secondary" />
@@ -166,12 +172,12 @@ export const TreeRowContent = memo(function TreeRowContent({
                   )
                   if (
                     node.typeId &&
-                    node.asset?.item_id &&
+                    itemId &&
                     isAbyssalTypeId(node.typeId) &&
-                    hasAbyssal(node.asset.item_id)
+                    hasAbyssalPrice
                   ) {
                     return (
-                      <AbyssalPreview itemId={node.asset.item_id}>
+                      <AbyssalPreview itemId={itemId}>
                         {nameSpan}
                       </AbyssalPreview>
                     )

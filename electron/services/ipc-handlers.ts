@@ -1,4 +1,4 @@
-import { ipcMain, shell, screen, BrowserWindow } from 'electron'
+import { ipcMain, shell, session, app, BrowserWindow } from 'electron'
 import {
   startAuth,
   refreshAccessToken,
@@ -14,13 +14,13 @@ const VALID_LOG_LEVELS = ['DEBUG', 'INFO', 'WARN', 'ERROR'] as const
 const MAX_LOG_MESSAGE_LENGTH = 10000
 const MAX_LOG_CONTEXT_SIZE = 50000
 const MAX_STORAGE_SIZE = 5 * 1024 * 1024
+const MAX_REFRESH_TOKEN_LENGTH = 4000
+const MAX_BUG_DESCRIPTION_LENGTH = 1024
 
 interface WindowContext {
   getMainWindow: () => BrowserWindow | null
-  getManualMaximized: () => boolean
-  setManualMaximized: (value: boolean) => void
-  getRestoreBounds: () => Electron.Rectangle | null
-  setRestoreBounds: (bounds: Electron.Rectangle | null) => void
+  toggleMaximize: () => void
+  isMaximized: () => boolean
   characterTokens: Map<number, string>
   readStorage: () => Record<string, unknown> | null
   writeStorage: (data: Record<string, unknown>) => void
@@ -52,7 +52,7 @@ export function registerAuthHandlers(ctx: WindowContext): void {
       if (
         typeof refreshToken !== 'string' ||
         refreshToken.length === 0 ||
-        refreshToken.length > 4000
+        refreshToken.length > MAX_REFRESH_TOKEN_LENGTH
       ) {
         return { success: false, error: 'Invalid refresh token' }
       }
@@ -86,10 +86,9 @@ export function registerAuthHandlers(ctx: WindowContext): void {
         ctx.characterTokens.delete(characterId)
       }
     } else {
-      for (const [id, token] of ctx.characterTokens) {
-        await revokeToken(token)
-        ctx.characterTokens.delete(id)
-      }
+      const tokens = [...ctx.characterTokens.entries()]
+      await Promise.all(tokens.map(([, token]) => revokeToken(token)))
+      ctx.characterTokens.clear()
     }
     return { success: true }
   })
@@ -220,7 +219,9 @@ export function registerBugReportHandler(): void {
                   },
                   {
                     name: 'Description',
-                    value: description.trim().substring(0, 1024),
+                    value: description
+                      .trim()
+                      .substring(0, MAX_BUG_DESCRIPTION_LENGTH),
                   },
                 ],
                 timestamp: new Date().toISOString(),
@@ -250,53 +251,13 @@ export function registerUpdaterHandler(): void {
   })
 }
 
-function getValidBounds(bounds: Electron.Rectangle): Electron.Rectangle {
-  const displays = screen.getAllDisplays()
-  for (const display of displays) {
-    const { x, y, width, height } = display.workArea
-    const centerX = bounds.x + bounds.width / 2
-    const centerY = bounds.y + bounds.height / 2
-    if (
-      centerX >= x &&
-      centerX < x + width &&
-      centerY >= y &&
-      centerY < y + height
-    ) {
-      return bounds
-    }
-  }
-  const primary = screen.getPrimaryDisplay().workArea
-  return {
-    x: primary.x + Math.round((primary.width - bounds.width) / 2),
-    y: primary.y + Math.round((primary.height - bounds.height) / 2),
-    width: Math.min(bounds.width, primary.width),
-    height: Math.min(bounds.height, primary.height),
-  }
-}
-
 export function registerWindowControlHandlers(ctx: WindowContext): void {
   ipcMain.handle('window:minimize', () => {
     ctx.getMainWindow()?.minimize()
   })
 
   ipcMain.handle('window:maximize', () => {
-    const mainWindow = ctx.getMainWindow()
-    if (!mainWindow) return
-
-    if (ctx.getManualMaximized()) {
-      const restoreBounds = ctx.getRestoreBounds()
-      if (restoreBounds) {
-        mainWindow.setBounds(getValidBounds(restoreBounds))
-      }
-      ctx.setManualMaximized(false)
-      mainWindow.webContents.send('window:maximizeChange', false)
-    } else {
-      ctx.setRestoreBounds(mainWindow.getBounds())
-      const display = screen.getDisplayMatching(mainWindow.getBounds())
-      mainWindow.setBounds(display.workArea)
-      ctx.setManualMaximized(true)
-      mainWindow.webContents.send('window:maximizeChange', true)
-    }
+    ctx.toggleMaximize()
   })
 
   ipcMain.handle('window:close', () => {
@@ -304,7 +265,7 @@ export function registerWindowControlHandlers(ctx: WindowContext): void {
   })
 
   ipcMain.handle('window:isMaximized', () => {
-    return ctx.getManualMaximized()
+    return ctx.isMaximized()
   })
 
   ipcMain.handle('window:getPlatform', () => {
@@ -322,5 +283,19 @@ export function registerWindowControlHandlers(ctx: WindowContext): void {
       overlayOptions.symbolColor = opts.symbolColor
     if (typeof opts.height === 'number') overlayOptions.height = opts.height
     mainWindow.setTitleBarOverlay(overlayOptions)
+  })
+
+  ipcMain.handle('window:clearStorageAndRestart', async () => {
+    logger.info('Clearing all storage data and restarting', {
+      module: 'Window',
+    })
+    try {
+      await session.defaultSession.clearStorageData()
+      app.relaunch()
+      app.exit(0)
+    } catch (err) {
+      logger.error('Failed to clear storage', err, { module: 'Window' })
+      throw err
+    }
   })
 }

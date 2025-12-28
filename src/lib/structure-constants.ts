@@ -2,6 +2,7 @@ import type { ESIAsset } from '@/api/endpoints/assets'
 import type { Owner } from '@/store/auth-store'
 import { ownerKey } from '@/store/auth-store'
 import { getType } from '@/store/reference-cache'
+import { usePriceStore } from '@/store/price-store'
 import { isFittedOrContentFlag } from '@/lib/tree-types'
 
 export const LOW_FUEL_THRESHOLD_HOURS = 72
@@ -35,7 +36,6 @@ function isOwnedStructureOrStarbase(asset: ESIAsset): boolean {
 
 export function calculateStructureValues(
   assetsByOwner: { owner: Owner; assets: ESIAsset[] }[],
-  prices: Map<number, number>,
   selectedOwnerIds?: string[]
 ): StructureValueResult {
   const selectedSet = selectedOwnerIds ? new Set(selectedOwnerIds) : null
@@ -58,14 +58,15 @@ export function calculateStructureValues(
     }
   }
 
+  const priceStore = usePriceStore.getState()
   const structureRelatedIds = new Set<number>()
   let structuresTotal = 0
   for (const { asset, children } of structureAssetMap.values()) {
     structureRelatedIds.add(asset.item_id)
-    structuresTotal += (prices.get(asset.type_id) ?? 0) * asset.quantity
+    structuresTotal += priceStore.getItemPrice(asset.type_id) * asset.quantity
     for (const child of children) {
       structureRelatedIds.add(child.item_id)
-      structuresTotal += (prices.get(child.type_id) ?? 0) * child.quantity
+      structuresTotal += priceStore.getItemPrice(child.type_id) * child.quantity
     }
   }
 

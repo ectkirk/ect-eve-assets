@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { useAssetStore } from '@/store/asset-store'
-import { hasAbyssal } from '@/store/reference-cache'
+import { usePriceStore } from '@/store/price-store'
 import {
   isAbyssalTypeId,
   fetchAbyssalPrices,
@@ -23,12 +23,16 @@ interface AbyssalSyncModalProps {
 
 function collectUnpricedAbyssalItems(): AbyssalItem[] {
   const assetsByOwner = useAssetStore.getState().assetsByOwner
+  const priceStore = usePriceStore.getState()
   const unpricedItems: AbyssalItem[] = []
 
   for (const { assets } of assetsByOwner) {
     for (const asset of assets) {
-      if (isAbyssalTypeId(asset.type_id) && !hasAbyssal(asset.item_id)) {
-        unpricedItems.push({ itemId: asset.item_id, typeId: asset.type_id })
+      if (isAbyssalTypeId(asset.type_id)) {
+        const price = priceStore.getAbyssalPrice(asset.item_id)
+        if (price === undefined || price === 0) {
+          unpricedItems.push({ itemId: asset.item_id, typeId: asset.type_id })
+        }
       }
     }
   }

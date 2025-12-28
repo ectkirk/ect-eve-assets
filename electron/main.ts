@@ -10,6 +10,7 @@ import {
   createWindow,
   readStorage,
   writeStorage,
+  toggleMaximize,
   type WindowManager,
 } from './services/window.js'
 import {
@@ -25,6 +26,7 @@ import { registerMutamarketHandlers } from './services/mutamarket.js'
 import {
   setupESIService,
   registerESIHandlers,
+  stopESIHandlers,
 } from './services/esi-handlers.js'
 import { getESIService } from './services/esi/index.js'
 
@@ -41,18 +43,14 @@ const windowManager: WindowManager = {
   mainWindow: null,
   manualMaximized: false,
   restoreBounds: null,
+  normalBounds: null,
+  isToggling: false,
 }
 
 const windowContext = {
   getMainWindow: () => windowManager.mainWindow,
-  getManualMaximized: () => windowManager.manualMaximized,
-  setManualMaximized: (value: boolean) => {
-    windowManager.manualMaximized = value
-  },
-  getRestoreBounds: () => windowManager.restoreBounds,
-  setRestoreBounds: (bounds: Electron.Rectangle | null) => {
-    windowManager.restoreBounds = bounds
-  },
+  toggleMaximize: () => toggleMaximize(windowManager),
+  isMaximized: () => windowManager.manualMaximized,
   characterTokens,
   readStorage,
   writeStorage,
@@ -68,48 +66,88 @@ function registerAllHandlers(): void {
   registerRefAPIHandlers()
   registerMutamarketHandlers()
   setupESIService(() => windowManager.mainWindow)
-  registerESIHandlers()
+  registerESIHandlers(() => windowManager.mainWindow)
 }
 
-app.whenReady().then(() => {
-  initLogger()
-  logger.info('App starting', { module: 'Main', version: app.getVersion() })
+const gotTheLock = app.requestSingleInstanceLock()
 
-  registerAllHandlers()
-
-  createWindow(
-    VITE_DEV_SERVER_URL,
-    RENDERER_DIST,
-    VITE_PUBLIC,
-    path.join(__dirname, 'preload.cjs'),
-    windowManager
-  )
-  logger.info('Main window created', { module: 'Main' })
-
-  if (app.isPackaged && windowManager.mainWindow) {
-    initUpdater(windowManager.mainWindow)
-  }
-
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow(
-        VITE_DEV_SERVER_URL,
-        RENDERER_DIST,
-        VITE_PUBLIC,
-        path.join(__dirname, 'preload.cjs'),
-        windowManager
-      )
+if (!gotTheLock) {
+  app.quit()
+} else {
+  let isShuttingDown = false
+  const handleShutdownSignal = (signal: string) => {
+    if (isShuttingDown) return
+    isShuttingDown = true
+    logger.info(`Received ${signal}, shutting down gracefully`, {
+      module: 'Main',
+    })
+    try {
+      getESIService().saveImmediately()
+    } catch (err) {
+      logger.error('Failed to save state on shutdown', err, { module: 'Main' })
     }
-  })
-})
-
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
     app.quit()
   }
-})
 
-app.on('before-quit', () => {
-  stopUpdater()
-  getESIService().saveImmediately()
-})
+  process.on('SIGTERM', () => handleShutdownSignal('SIGTERM'))
+  process.on('SIGINT', () => handleShutdownSignal('SIGINT'))
+  app.on('second-instance', () => {
+    if (windowManager.mainWindow) {
+      if (windowManager.mainWindow.isMinimized()) {
+        windowManager.mainWindow.restore()
+      }
+      windowManager.mainWindow.focus()
+    }
+  })
+
+  app.whenReady().then(() => {
+    initLogger()
+    logger.info('App starting', { module: 'Main', version: app.getVersion() })
+
+    registerAllHandlers()
+
+    createWindow(
+      VITE_DEV_SERVER_URL,
+      RENDERER_DIST,
+      VITE_PUBLIC,
+      path.join(__dirname, 'preload.cjs'),
+      windowManager
+    )
+    logger.info('Main window created', { module: 'Main' })
+
+    if (app.isPackaged && windowManager.mainWindow) {
+      initUpdater(windowManager.mainWindow)
+    }
+
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) {
+        createWindow(
+          VITE_DEV_SERVER_URL,
+          RENDERER_DIST,
+          VITE_PUBLIC,
+          path.join(__dirname, 'preload.cjs'),
+          windowManager
+        )
+      }
+    })
+  })
+
+  app.on('window-all-closed', () => {
+    logger.info('All windows closed', { module: 'Main' })
+    if (process.platform !== 'darwin') {
+      app.quit()
+    }
+  })
+
+  app.on('before-quit', () => {
+    logger.info('App quitting, cleaning up...', { module: 'Main' })
+    stopUpdater()
+    stopESIHandlers()
+    try {
+      getESIService().saveImmediately()
+      logger.info('State saved successfully', { module: 'Main' })
+    } catch (err) {
+      logger.error('Failed to save state on quit', err, { module: 'Main' })
+    }
+  })
+}

@@ -38,7 +38,7 @@ export async function getCharacterAssets(
   characterId: number,
   authCharacterId?: number
 ): Promise<ESIAsset[]> {
-  return esi.fetchPaginated<ESIAsset>(`/characters/${characterId}/assets/`, {
+  return esi.fetchPaginated<ESIAsset>(`/characters/${characterId}/assets`, {
     characterId: authCharacterId ?? characterId,
     schema: ESIAssetSchema,
   })
@@ -50,7 +50,7 @@ export async function getCharacterAssetNames(
   itemIds: number[]
 ): Promise<ESIAssetName[]> {
   return fetchAssetNames(
-    `/characters/${characterId}/assets/names/`,
+    `/characters/${characterId}/assets/names`,
     authCharacterId,
     itemIds
   )
@@ -62,7 +62,7 @@ export async function getCorporationAssetNames(
   itemIds: number[]
 ): Promise<ESIAssetName[]> {
   return fetchAssetNames(
-    `/corporations/${corporationId}/assets/names/`,
+    `/corporations/${corporationId}/assets/names`,
     characterId,
     itemIds
   )

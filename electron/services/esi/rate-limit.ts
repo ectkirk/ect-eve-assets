@@ -1,9 +1,5 @@
 import { logger } from '../logger.js'
-
-const ERROR_LIMIT_WARN_THRESHOLD = 50
-const ERROR_LIMIT_PAUSE_THRESHOLD = 20
-const CONTRACT_ITEMS_LIMIT = 20
-const CONTRACT_ITEMS_WINDOW_MS = 10_000
+import { RATE_LIMIT_CONFIG } from './types'
 
 interface RateLimitState {
   remaining: number
@@ -21,6 +17,7 @@ export interface RateLimitExportedState {
   groups: Record<string, RateLimitState>
   errorLimit: ErrorLimitState | null
   globalRetryAfter: number | null
+  contractItemsTimestamps?: Record<number, number[]>
 }
 
 export class RateLimitTracker {
@@ -72,11 +69,11 @@ export class RateLimitTracker {
       return 0
     }
 
-    if (this.errorLimit.remain <= ERROR_LIMIT_PAUSE_THRESHOLD) {
+    if (this.errorLimit.remain <= RATE_LIMIT_CONFIG.errorLimitPauseThreshold) {
       return this.errorLimit.resetAt - now
     }
 
-    if (this.errorLimit.remain <= ERROR_LIMIT_WARN_THRESHOLD) {
+    if (this.errorLimit.remain <= RATE_LIMIT_CONFIG.errorLimitWarnThreshold) {
       return 500 + Math.random() * 500
     }
 
@@ -94,10 +91,10 @@ export class RateLimitTracker {
         ? now + parseInt(errorReset, 10) * 1000
         : now + 60000
 
-      if (remain <= ERROR_LIMIT_WARN_THRESHOLD) {
+      if (remain <= RATE_LIMIT_CONFIG.errorLimitWarnThreshold) {
         if (
           !this.errorLimit ||
-          this.errorLimit.remain > ERROR_LIMIT_WARN_THRESHOLD
+          this.errorLimit.remain > RATE_LIMIT_CONFIG.errorLimitWarnThreshold
         ) {
           logger.warn('ESI error limit getting low', { module: 'ESI', remain })
         }
@@ -157,19 +154,19 @@ export class RateLimitTracker {
     const timestamps = this.contractItemsTimestamps.get(characterId)
     if (!timestamps || timestamps.length === 0) return 0
 
-    const cutoff = now - CONTRACT_ITEMS_WINDOW_MS
+    const cutoff = now - RATE_LIMIT_CONFIG.contractItemsWindowMs
     const recent = timestamps.filter((t) => t > cutoff)
 
-    if (recent.length < CONTRACT_ITEMS_LIMIT) return 0
+    if (recent.length < RATE_LIMIT_CONFIG.contractItemsLimit) return 0
 
     const oldest = recent[0]!
-    return oldest + CONTRACT_ITEMS_WINDOW_MS - now + 50
+    return oldest + RATE_LIMIT_CONFIG.contractItemsWindowMs - now + 50
   }
 
   recordContractItemsRequest(characterId: number): void {
     const now = Date.now()
     const timestamps = this.contractItemsTimestamps.get(characterId) ?? []
-    const cutoff = now - CONTRACT_ITEMS_WINDOW_MS
+    const cutoff = now - RATE_LIMIT_CONFIG.contractItemsWindowMs
     const filtered = timestamps.filter((t) => t > cutoff)
     filtered.push(now)
     this.contractItemsTimestamps.set(characterId, filtered)
@@ -195,10 +192,20 @@ export class RateLimitTracker {
     for (const [key, state] of this.groups) {
       groups[key] = state
     }
+    const now = Date.now()
+    const cutoff = now - RATE_LIMIT_CONFIG.contractItemsWindowMs
+    const contractItemsTimestamps: Record<number, number[]> = {}
+    for (const [charId, timestamps] of this.contractItemsTimestamps) {
+      const recent = timestamps.filter((t) => t > cutoff)
+      if (recent.length > 0) {
+        contractItemsTimestamps[charId] = recent
+      }
+    }
     return {
       groups,
       errorLimit: this.errorLimit,
       globalRetryAfter: this.globalRetryAfter,
+      contractItemsTimestamps,
     }
   }
 
@@ -225,6 +232,17 @@ export class RateLimitTracker {
       }
       if (fullState.globalRetryAfter && now < fullState.globalRetryAfter) {
         this.globalRetryAfter = fullState.globalRetryAfter
+      }
+      if (fullState.contractItemsTimestamps) {
+        const cutoff = now - RATE_LIMIT_CONFIG.contractItemsWindowMs
+        for (const [charIdStr, timestamps] of Object.entries(
+          fullState.contractItemsTimestamps
+        )) {
+          const recent = timestamps.filter((t) => t > cutoff)
+          if (recent.length > 0) {
+            this.contractItemsTimestamps.set(Number(charIdStr), recent)
+          }
+        }
       }
     }
   }

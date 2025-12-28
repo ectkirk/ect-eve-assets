@@ -6,6 +6,7 @@ import {
 } from '@/api/endpoints/corporation'
 import { logger } from '@/lib/logger'
 import { useStoreRegistry } from './store-registry'
+import { DB } from '@/lib/db-constants'
 import {
   openDatabase,
   idbGetAll,
@@ -38,16 +39,11 @@ interface DivisionsActions {
 
 type DivisionsStore = DivisionsState & DivisionsActions
 
-const DB_CONFIG = {
-  dbName: 'ecteveassets-divisions',
-  version: 1,
-  stores: [{ name: 'divisions', keyPath: 'corporationId' }],
-  module: 'DivisionsStore',
+async function getDB() {
+  return openDatabase(DB.DIVISIONS)
 }
 
-async function getDB() {
-  return openDatabase(DB_CONFIG)
-}
+let initPromise: Promise<void> | null = null
 
 export const useDivisionsStore = create<DivisionsStore>((set, get) => ({
   divisionsByCorp: new Map(),
@@ -56,27 +52,32 @@ export const useDivisionsStore = create<DivisionsStore>((set, get) => ({
 
   init: async () => {
     if (get().initialized) return
+    if (initPromise) return initPromise
 
-    try {
-      const db = await getDB()
-      const items = await idbGetAll<CorporationDivisions>(db, 'divisions')
-      const divisionsByCorp = new Map<number, CorporationDivisions>()
-      for (const item of items) {
-        divisionsByCorp.set(item.corporationId, item)
+    initPromise = (async () => {
+      try {
+        const db = await getDB()
+        const items = await idbGetAll<CorporationDivisions>(db, 'divisions')
+        const divisionsByCorp = new Map<number, CorporationDivisions>()
+        for (const item of items) {
+          divisionsByCorp.set(item.corporationId, item)
+        }
+        set({ divisionsByCorp, initialized: true })
+        logger.info('Divisions store initialized', {
+          module: 'DivisionsStore',
+          corps: divisionsByCorp.size,
+        })
+      } catch (err) {
+        logger.error(
+          'Failed to load divisions from DB',
+          err instanceof Error ? err : undefined,
+          { module: 'DivisionsStore' }
+        )
+        set({ initialized: true })
       }
-      set({ divisionsByCorp, initialized: true })
-      logger.info('Divisions store initialized', {
-        module: 'DivisionsStore',
-        corps: divisionsByCorp.size,
-      })
-    } catch (err) {
-      logger.error(
-        'Failed to load divisions from DB',
-        err instanceof Error ? err : undefined,
-        { module: 'DivisionsStore' }
-      )
-      set({ initialized: true })
-    }
+    })()
+
+    return initPromise
   },
 
   fetchForOwner: async (owner: Owner) => {
@@ -102,9 +103,11 @@ export const useDivisionsStore = create<DivisionsStore>((set, get) => ({
       const db = await getDB()
       await idbPut(db, 'divisions', divisions)
 
-      const updated = new Map(state.divisionsByCorp)
-      updated.set(owner.id, divisions)
-      set({ divisionsByCorp: updated, isLoading: false })
+      set((current) => {
+        const updated = new Map(current.divisionsByCorp)
+        updated.set(owner.id, divisions)
+        return { divisionsByCorp: updated, isLoading: false }
+      })
 
       logger.info('Fetched divisions', {
         module: 'DivisionsStore',
@@ -143,20 +146,23 @@ export const useDivisionsStore = create<DivisionsStore>((set, get) => ({
 
   removeForOwner: async (ownerType: string, ownerId: number) => {
     if (ownerType !== 'corporation') return
-    const state = get()
-    if (!state.divisionsByCorp.has(ownerId)) return
+    if (!get().divisionsByCorp.has(ownerId)) return
 
     const db = await getDB()
     await idbDelete(db, 'divisions', ownerId)
-    const updated = new Map(state.divisionsByCorp)
-    updated.delete(ownerId)
-    set({ divisionsByCorp: updated })
+
+    set((current) => {
+      const updated = new Map(current.divisionsByCorp)
+      updated.delete(ownerId)
+      return { divisionsByCorp: updated }
+    })
   },
 
   clear: async () => {
     const db = await getDB()
     await idbClear(db, 'divisions')
-    set({ divisionsByCorp: new Map() })
+    initPromise = null
+    set({ divisionsByCorp: new Map(), initialized: false })
   },
 }))
 
@@ -169,8 +175,10 @@ useStoreRegistry.getState().register({
 })
 
 export function useCorporationDivisions(owner: Owner | null) {
-  const { divisionsByCorp, fetchForOwner, initialized, init } =
-    useDivisionsStore()
+  const divisionsByCorp = useDivisionsStore((s) => s.divisionsByCorp)
+  const fetchForOwner = useDivisionsStore((s) => s.fetchForOwner)
+  const initialized = useDivisionsStore((s) => s.initialized)
+  const init = useDivisionsStore((s) => s.init)
 
   if (!initialized) {
     init()

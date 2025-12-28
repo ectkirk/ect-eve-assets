@@ -23,6 +23,14 @@ export function formatNumber(value: number): string {
   return value.toLocaleString()
 }
 
-export function formatISK(value: number): string {
+export function formatCompactISK(value: number): string {
   return formatNumber(value) + ' ISK'
+}
+
+export function formatVolume(value: number, decimals: 0 | 2 = 0): string {
+  return value.toLocaleString('en-US', { maximumFractionDigits: decimals })
+}
+
+export function formatFullNumber(value: number): string {
+  return value.toLocaleString('en-US', { maximumFractionDigits: 0 })
 }

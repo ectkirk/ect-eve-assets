@@ -68,6 +68,12 @@ export const ESIContractItemSchema = z.object({
   runs: z.number().optional(),
 })
 
+export const ESIContractBidSchema = z.object({
+  amount: z.number(),
+  bid_id: z.number(),
+  date_bid: z.string(),
+})
+
 // ESI Market
 export const ESIMarketOrderSchema = z.object({
   duration: z.number(),
@@ -374,6 +380,7 @@ export const RefTypeSchema = z.object({
 export const RefCategorySchema = z.object({
   id: z.number(),
   name: z.string(),
+  published: z.boolean(),
 })
 
 export const RefCategoriesResponseSchema = z.object({
@@ -384,6 +391,7 @@ export const RefGroupSchema = z.object({
   id: z.number(),
   name: z.string(),
   categoryId: z.number(),
+  published: z.boolean(),
 })
 
 export const RefGroupsResponseSchema = z.object({
@@ -436,14 +444,6 @@ export const RefStructuresPageResponseSchema = z.object({
   }),
 })
 
-export const RefImplantSchema = z.object({
-  slot: z.number(),
-})
-
-export const RefImplantsResponseSchema = z.object({
-  items: z.record(z.string(), RefImplantSchema),
-})
-
 export const RefMoonSchema = z.object({
   id: z.number(),
   name: z.string(),
@@ -454,29 +454,6 @@ export const RefMoonsResponseSchema = z.object({
   items: z.record(z.string(), RefMoonSchema),
 })
 
-export const MarketBulkItemSchema = z.object({
-  lowestSell: z.number().nullable(),
-  averagePrice: z.number().nullable().optional(),
-  avg30dPrice: z.number().nullable().optional(),
-  avg30dVolume: z.number().nullable().optional(),
-  highestBuy: z.number().nullable().optional(),
-})
-
-export const MarketBulkResponseSchema = z.object({
-  regionId: z.number(),
-  items: z.record(z.string(), MarketBulkItemSchema),
-})
-
-export const MarketJitaResponseSchema = z.object({
-  items: z.record(z.string(), z.number().nullable()),
-})
-
-export const MarketPlexResponseSchema = z.object({
-  typeId: z.number(),
-  lowestSell: z.number().nullable(),
-  highestBuy: z.number().nullable(),
-})
-
 export const MarketContractItemSchema = z.object({
   price: z.number().nullable(),
   salesCount: z.number(),
@@ -484,8 +461,49 @@ export const MarketContractItemSchema = z.object({
   hasSufficientData: z.boolean(),
 })
 
-export const MarketContractsResponseSchema = z.object({
-  items: z.record(z.string(), MarketContractItemSchema),
+export const MarketJitaResponseSchema = z.object({
+  items: z.record(z.string(), z.number().nullable()).optional(),
+  mutaItems: z.record(z.string(), z.number().nullable()).optional(),
+  contractItems: z
+    .record(z.string(), MarketContractItemSchema.nullable())
+    .optional(),
+  plex: z
+    .object({
+      typeId: z.number(),
+      lowestSell: z.number().nullable(),
+      highestBuy: z.number().nullable(),
+    })
+    .optional(),
+})
+
+// ESI Type Information
+export const ESIDogmaAttributeSchema = z.object({
+  attribute_id: z.number(),
+  value: z.number(),
+})
+
+export const ESIDogmaEffectSchema = z.object({
+  effect_id: z.number(),
+  is_default: z.boolean(),
+})
+
+export const ESITypeInfoSchema = z.object({
+  type_id: z.number(),
+  name: z.string(),
+  description: z.string(),
+  group_id: z.number(),
+  published: z.boolean(),
+  capacity: z.number().optional(),
+  dogma_attributes: z.array(ESIDogmaAttributeSchema).optional(),
+  dogma_effects: z.array(ESIDogmaEffectSchema).optional(),
+  graphic_id: z.number().optional(),
+  icon_id: z.number().optional(),
+  market_group_id: z.number().optional(),
+  mass: z.number().optional(),
+  packaged_volume: z.number().optional(),
+  portion_size: z.number().optional(),
+  radius: z.number().optional(),
+  volume: z.number().optional(),
 })
 
 // Mutamarket schemas

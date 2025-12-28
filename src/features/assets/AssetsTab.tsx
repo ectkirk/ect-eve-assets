@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useRef, Fragment } from 'react'
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react'
 import {
   useReactTable,
   getCoreRowModel,
@@ -11,8 +11,14 @@ import {
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { Loader2 } from 'lucide-react'
 import { isAbyssalTypeId, getMutamarketUrl } from '@/api/mutamarket-client'
-import { CategoryIds, hasAbyssal } from '@/store/reference-cache'
+import {
+  CategoryIds,
+  getType,
+  useReferenceCacheStore,
+} from '@/store/reference-cache'
+import { usePriceStore } from '@/store/price-store'
 import { useResolvedAssets } from '@/hooks/useResolvedAssets'
+import { useRowSelection } from '@/hooks'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -27,6 +33,8 @@ import {
   getAssetDisplayNames,
 } from '@/lib/resolved-asset'
 import { useBlueprintsStore } from '@/store/blueprints-store'
+import { useRegionalMarketActionStore } from '@/store/regional-market-action-store'
+import { useContractsSearchActionStore } from '@/store/contracts-search-action-store'
 import {
   type AssetRow,
   COLUMN_LABELS,
@@ -45,9 +53,9 @@ export function AssetsTab() {
     hasData,
     hasError,
     errorMessage,
-    cacheVersion,
     updateProgress,
   } = useResolvedAssets()
+  const types = useReferenceCacheStore((s) => s.types)
 
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'totalValue', desc: true },
@@ -72,9 +80,13 @@ export function AssetsTab() {
   }, [columnVisibility])
 
   const blueprintsByItemId = useBlueprintsStore((s) => s.blueprintsByItemId)
+  const navigateToType = useRegionalMarketActionStore((s) => s.navigateToType)
+  const navigateToContracts = useContractsSearchActionStore(
+    (s) => s.navigateToContracts
+  )
 
   const { data, categories } = useMemo(() => {
-    void cacheVersion
+    void types
 
     const aggregated = new Map<string, AssetRow>()
     const cats = new Set<string>()
@@ -123,7 +135,7 @@ export function AssetsTab() {
       data: Array.from(aggregated.values()),
       categories: Array.from(cats).sort(),
     }
-  }, [selectedResolvedAssets, cacheVersion, blueprintsByItemId])
+  }, [selectedResolvedAssets, types, blueprintsByItemId])
 
   const { filteredData, filteredTotalValue, sourceCount } = useMemo(() => {
     const searchLower = search.toLowerCase()
@@ -238,6 +250,26 @@ export function AssetsTab() {
   const tableContainerRef = useRef<HTMLDivElement>(null)
   const { rows } = table.getRowModel()
 
+  const sortedData = useMemo(() => rows.map((r) => r.original), [rows])
+  const getRowId = useCallback(
+    (row: AssetRow) => `${row.itemId}-${row.locationId}`,
+    []
+  )
+  const getCopyData = useCallback(
+    (row: AssetRow) => ({
+      name: getType(row.typeId)?.name ?? row.typeName,
+      quantity: row.quantity,
+      isItem: true,
+    }),
+    []
+  )
+  const { selectedIds, handleRowClick } = useRowSelection({
+    items: sortedData,
+    getId: getRowId,
+    getCopyData,
+    containerRef: tableContainerRef,
+  })
+
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => tableContainerRef.current,
@@ -307,17 +339,24 @@ export function AssetsTab() {
     <div className="flex flex-col h-full">
       <div
         ref={tableContainerRef}
-        className="flex-1 min-h-0 rounded-lg border border-border bg-surface-secondary/30 overflow-auto"
+        tabIndex={0}
+        className="flex-1 min-h-0 rounded-lg border border-border bg-surface-secondary/30 overflow-auto outline-none focus:ring-1 focus:ring-accent/50"
       >
-        <div className="grid" style={{ gridTemplateColumns }}>
-          <div className="contents">
+        <div
+          role="grid"
+          aria-label="Assets"
+          className="grid"
+          style={{ gridTemplateColumns }}
+        >
+          <div role="rowgroup" className="contents">
             {table.getHeaderGroups().map((headerGroup) => (
-              <Fragment key={headerGroup.id}>
+              <div role="row" className="contents" key={headerGroup.id}>
                 {headerGroup.headers
                   .filter((h) => h.column.getIsVisible())
                   .map((header) => (
                     <div
                       key={header.id}
+                      role="columnheader"
                       className={`sticky top-0 z-10 bg-surface-secondary py-3 text-left text-sm font-medium text-content-secondary border-b border-border ${header.column.id === 'ownerName' ? 'px-2' : 'px-4'}`}
                     >
                       {header.isPlaceholder
@@ -328,13 +367,14 @@ export function AssetsTab() {
                           )}
                     </div>
                   ))}
-              </Fragment>
+              </div>
             ))}
           </div>
           {rows.length ? (
-            <>
+            <div role="rowgroup" className="contents">
               {rowVirtualizer.getVirtualItems().length > 0 && (
                 <div
+                  aria-hidden="true"
                   style={{
                     height: rowVirtualizer.getVirtualItems()[0]?.start ?? 0,
                     gridColumn: `1 / -1`,
@@ -346,24 +386,44 @@ export function AssetsTab() {
                 if (!row) return null
                 const modeFlags = row.original.modeFlags
                 const isAbyssalResolved =
-                  row.original.isAbyssal && hasAbyssal(row.original.itemId)
+                  row.original.isAbyssal &&
+                  usePriceStore.getState().hasAbyssalPrice(row.original.itemId)
+                const isMarketItem = !!getType(row.original.typeId)
+                  ?.marketGroupId
+                const rowId = getRowId(row.original)
+                const isRowSelected = selectedIds.has(rowId)
                 const rowContent = (
                   <div
                     key={row.id}
+                    role="row"
+                    aria-selected={isRowSelected}
                     data-index={virtualRow.index}
-                    className="contents group"
+                    className="contents group cursor-pointer select-none"
+                    onClick={(e) => handleRowClick(rowId, e)}
                   >
                     {row.getVisibleCells().map((cell) => (
                       <div
                         key={cell.id}
+                        role="gridcell"
                         className={cn(
                           'py-2 text-sm border-b border-border/50 group-hover:bg-surface-tertiary/50 flex items-center',
                           cell.column.id === 'ownerName' ? 'px-2' : 'px-4',
-                          modeFlags.isActiveShip && 'bg-row-active-ship',
-                          modeFlags.isContract && 'bg-row-contract',
-                          modeFlags.isMarketOrder && 'bg-row-order',
-                          modeFlags.isIndustryJob && 'bg-row-industry',
-                          modeFlags.isOwnedStructure && 'bg-row-structure'
+                          isRowSelected && 'bg-accent/20',
+                          !isRowSelected &&
+                            modeFlags.isActiveShip &&
+                            'bg-row-active-ship',
+                          !isRowSelected &&
+                            modeFlags.isContract &&
+                            'bg-row-contract',
+                          !isRowSelected &&
+                            modeFlags.isMarketOrder &&
+                            'bg-row-order',
+                          !isRowSelected &&
+                            modeFlags.isIndustryJob &&
+                            'bg-row-industry',
+                          !isRowSelected &&
+                            modeFlags.isOwnedStructure &&
+                            'bg-row-structure'
                         )}
                       >
                         {flexRender(
@@ -374,13 +434,30 @@ export function AssetsTab() {
                     ))}
                   </div>
                 )
-                if (isAbyssalResolved) {
-                  return (
-                    <ContextMenu key={row.id}>
-                      <ContextMenuTrigger asChild>
-                        {rowContent}
-                      </ContextMenuTrigger>
-                      <ContextMenuContent>
+                return (
+                  <ContextMenu key={row.id}>
+                    <ContextMenuTrigger asChild>
+                      {rowContent}
+                    </ContextMenuTrigger>
+                    <ContextMenuContent>
+                      <ContextMenuItem
+                        onClick={() =>
+                          navigateToContracts(
+                            row.original.typeId,
+                            row.original.typeName
+                          )
+                        }
+                      >
+                        View in Contracts
+                      </ContextMenuItem>
+                      {isMarketItem && (
+                        <ContextMenuItem
+                          onClick={() => navigateToType(row.original.typeId)}
+                        >
+                          View in Regional Market
+                        </ContextMenuItem>
+                      )}
+                      {isAbyssalResolved && (
                         <ContextMenuItem
                           onClick={() =>
                             window.open(
@@ -394,14 +471,14 @@ export function AssetsTab() {
                         >
                           Open in Mutamarket
                         </ContextMenuItem>
-                      </ContextMenuContent>
-                    </ContextMenu>
-                  )
-                }
-                return rowContent
+                      )}
+                    </ContextMenuContent>
+                  </ContextMenu>
+                )
               })}
               {rowVirtualizer.getVirtualItems().length > 0 && (
                 <div
+                  aria-hidden="true"
                   style={{
                     height:
                       rowVirtualizer.getTotalSize() -
@@ -410,7 +487,7 @@ export function AssetsTab() {
                   }}
                 />
               )}
-            </>
+            </div>
           ) : (
             <div
               className="h-24 flex items-center justify-center text-content-secondary"

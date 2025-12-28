@@ -14,6 +14,7 @@ import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { useContractsStore } from '@/store/contracts-store'
 import { useIndustryJobsStore } from '@/store/industry-jobs-store'
 import { useAssetSettings } from '@/store/asset-settings-store'
+import { useReferenceCacheStore } from '@/store/reference-cache'
 
 export interface ResolvedAssetsResult {
   resolvedAssets: ResolvedAsset[]
@@ -24,12 +25,13 @@ export interface ResolvedAssetsResult {
   hasData: boolean
   hasError: boolean
   errorMessage: string | null
-  cacheVersion: number
   updateProgress: { current: number; total: number } | null
 }
 
 export function useResolvedAssets(): ResolvedAssetsResult {
   const assetData = useAssetData()
+  const types = useReferenceCacheStore((s) => s.types)
+  const structures = useReferenceCacheStore((s) => s.structures)
   const starbasesByOwner = useStarbasesStore((s) => s.dataByOwner)
   const structuresByOwner = useStructuresStore((s) => s.dataByOwner)
   const ordersById = useMarketOrdersStore((s) => s.itemsById)
@@ -71,10 +73,13 @@ export function useResolvedAssets(): ResolvedAssetsResult {
   }, [starbasesByOwner, structuresByOwner])
 
   const resolvedAssets = useMemo(() => {
+    void assetData.priceVersion
+    void types
+    void structures
+
     let assets =
       assetData.assetsByOwner.length > 0
         ? resolveAllAssets(assetData.assetsByOwner, {
-            prices: assetData.prices,
             assetNames: assetData.assetNames,
             ownedStructureIds,
             starbaseMoonIds,
@@ -97,9 +102,7 @@ export function useResolvedAssets(): ResolvedAssetsResult {
         for (const orderId of orderIds) {
           const stored = ordersById.get(orderId)
           if (stored && !stored.item.is_buy_order) {
-            assets.push(
-              resolveMarketOrder(stored.item, owner, assetData.prices)
-            )
+            assets.push(resolveMarketOrder(stored.item, owner))
           }
         }
       }
@@ -129,9 +132,7 @@ export function useResolvedAssets(): ResolvedAssetsResult {
 
           for (const item of items) {
             if (item.is_included) {
-              assets.push(
-                resolveContractItem(contract, item, owner, assetData.prices)
-              )
+              assets.push(resolveContractItem(contract, item, owner))
             }
           }
         }
@@ -150,7 +151,7 @@ export function useResolvedAssets(): ResolvedAssetsResult {
           const job = stored.item
           if (job.status !== 'active' && job.status !== 'ready') continue
 
-          assets.push(resolveIndustryJob(job, owner, assetData.prices))
+          assets.push(resolveIndustryJob(job, owner))
         }
       }
     }
@@ -158,7 +159,9 @@ export function useResolvedAssets(): ResolvedAssetsResult {
     return assets
   }, [
     assetData.assetsByOwner,
-    assetData.prices,
+    assetData.priceVersion,
+    types,
+    structures,
     assetData.assetNames,
     ownedStructureIds,
     starbaseMoonIds,
@@ -221,7 +224,6 @@ export function useResolvedAssets(): ResolvedAssetsResult {
     hasData: assetData.hasData,
     hasError: assetData.hasError,
     errorMessage: assetData.errorMessage,
-    cacheVersion: assetData.cacheVersion,
     updateProgress: assetData.updateProgress,
   }
 }

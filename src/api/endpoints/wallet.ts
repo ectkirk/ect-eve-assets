@@ -7,7 +7,7 @@ export type ESICorporationWalletDivision = z.infer<
 >
 
 export async function getCharacterWallet(characterId: number): Promise<number> {
-  return esi.fetch<number>(`/characters/${characterId}/wallet/`, {
+  return esi.fetch<number>(`/characters/${characterId}/wallet`, {
     characterId,
     schema: z.number(),
   })
@@ -18,7 +18,7 @@ export async function getCorporationWallets(
   corporationId: number
 ): Promise<ESICorporationWalletDivision[]> {
   return esi.fetch<ESICorporationWalletDivision[]>(
-    `/corporations/${corporationId}/wallets/`,
+    `/corporations/${corporationId}/wallets`,
     { characterId, schema: z.array(ESICorporationWalletDivisionSchema) }
   )
 }

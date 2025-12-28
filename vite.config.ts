@@ -46,6 +46,31 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom'],
+          'tanstack-vendor': [
+            '@tanstack/react-table',
+            '@tanstack/react-virtual',
+          ],
+          'radix-vendor': [
+            '@radix-ui/react-context-menu',
+            '@radix-ui/react-dialog',
+            '@radix-ui/react-hover-card',
+            '@radix-ui/react-scroll-area',
+          ],
+          'utils-vendor': [
+            'zustand',
+            'zod',
+            'jose',
+            'clsx',
+            'class-variance-authority',
+            'tailwind-merge',
+          ],
+        },
+      },
+    },
   },
   server: {
     port: 5173,

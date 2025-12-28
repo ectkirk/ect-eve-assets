@@ -6,6 +6,7 @@ import {
   ESICorporationDivisionsSchema,
 } from '../schemas'
 import { z } from 'zod'
+import { logger } from '@/lib/logger'
 
 export type ESICharacterRoles = z.infer<typeof ESICharacterRolesSchema>
 export type ESICorporationDivisions = z.infer<
@@ -18,16 +19,16 @@ export async function getCorporationAssets(
   corporationId: number,
   characterId: number
 ): Promise<ESIAsset[]> {
-  return esi.fetchPaginated<ESIAsset>(
-    `/corporations/${corporationId}/assets/`,
-    { characterId, schema: ESIAssetSchema }
-  )
+  return esi.fetchPaginated<ESIAsset>(`/corporations/${corporationId}/assets`, {
+    characterId,
+    schema: ESIAssetSchema,
+  })
 }
 
 export async function getCharacterRoles(
   characterId: number
 ): Promise<ESICharacterRoles> {
-  return esi.fetch<ESICharacterRoles>(`/characters/${characterId}/roles/`, {
+  return esi.fetch<ESICharacterRoles>(`/characters/${characterId}/roles`, {
     characterId,
     schema: ESICharacterRolesSchema,
   })
@@ -43,7 +44,12 @@ export async function getCharacterCorpRoles(
   try {
     const rolesResponse = await getCharacterRoles(characterId)
     return rolesResponse.roles ?? []
-  } catch {
+  } catch (error) {
+    logger.warn('Failed to fetch character corporation roles', {
+      module: 'ESI',
+      characterId,
+      error,
+    })
     return []
   }
 }
@@ -53,7 +59,7 @@ export async function getCorporationDivisions(
   characterId: number
 ): Promise<ESICorporationDivisions> {
   return esi.fetch<ESICorporationDivisions>(
-    `/corporations/${corporationId}/divisions/`,
+    `/corporations/${corporationId}/divisions`,
     { characterId, schema: ESICorporationDivisionsSchema }
   )
 }

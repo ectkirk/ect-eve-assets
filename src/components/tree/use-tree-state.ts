@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import type { TreeNode } from '@/lib/tree-types'
-import { getAllNodeIds } from '@/lib/tree-builder'
+import { getAllNodeIds } from '@/lib/tree'
 
 export function useTreeState(nodes: TreeNode[]) {
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set())

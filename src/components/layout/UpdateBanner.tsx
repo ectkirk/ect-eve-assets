@@ -36,8 +36,8 @@ export function UpdateBanner() {
         </button>
         <button
           onClick={() => setDismissed(true)}
+          aria-label="Dismiss update notification"
           className="rounded p-1 hover:bg-accent-hover"
-          title="Install later (on next restart)"
         >
           <X className="h-4 w-4" />
         </button>

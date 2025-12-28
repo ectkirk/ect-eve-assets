@@ -8,8 +8,11 @@ import { useStarbasesStore, type ESIStarbase } from '@/store/starbases-store'
 import { useStarbaseDetailsStore } from '@/store/starbase-details-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useTabControls } from '@/context'
-import { useCacheVersion } from '@/hooks'
-import { hasType, getType, getLocation } from '@/store/reference-cache'
+import {
+  getType,
+  getLocation,
+  useReferenceCacheStore,
+} from '@/store/reference-cache'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import { formatFuelExpiry } from '@/lib/timer-utils'
 import { calculateStructureValues } from '@/lib/structure-constants'
@@ -97,7 +100,7 @@ export function StructuresTab() {
   const updateError = structureError || starbaseError
   const initialized = structuresInitialized && starbasesInitialized
 
-  const { assetsByOwner, assetNames, prices } = useAssetData()
+  const { assetsByOwner, assetNames, priceVersion } = useAssetData()
 
   useEffect(() => {
     initStructures()
@@ -134,7 +137,9 @@ export function StructuresTab() {
     }
   }, [starbasesByOwner, removeOrphanDetails])
 
-  const cacheVersion = useCacheVersion()
+  const types = useReferenceCacheStore((s) => s.types)
+  const locations = useReferenceCacheStore((s) => s.locations)
+  const structures = useReferenceCacheStore((s) => s.structures)
   const { search, setResultCount, setTotalValue } = useTabControls()
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
   const selectedSet = useMemo(
@@ -144,9 +149,10 @@ export function StructuresTab() {
 
   const { structureAssetMap, structuresTotal: structureTotalValue } =
     useMemo(() => {
-      void cacheVersion
-      return calculateStructureValues(assetsByOwner, prices, selectedOwnerIds)
-    }, [assetsByOwner, prices, selectedOwnerIds, cacheVersion])
+      void types
+      void priceVersion
+      return calculateStructureValues(assetsByOwner, selectedOwnerIds)
+    }, [assetsByOwner, priceVersion, selectedOwnerIds, types])
 
   const [fittingDialogOpen, setFittingDialogOpen] = useState(false)
   const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null)
@@ -183,7 +189,8 @@ export function StructuresTab() {
   )
 
   const upwellRows = useMemo(() => {
-    void cacheVersion
+    void locations
+    void structures
 
     const rows: StructureRow[] = []
 
@@ -191,11 +198,9 @@ export function StructuresTab() {
       selectedSet.has(ownerKey(owner.type, owner.id))
     )
 
-    for (const { owner, structures } of filteredStructures) {
-      for (const structure of structures) {
-        const type = hasType(structure.type_id)
-          ? getType(structure.type_id)
-          : undefined
+    for (const { owner, structures: ownerStructures } of filteredStructures) {
+      for (const structure of ownerStructures) {
+        const type = types.get(structure.type_id)
         const location = getLocation(structure.system_id)
 
         const assetData = structureAssetMap.get(structure.structure_id)
@@ -231,7 +236,9 @@ export function StructuresTab() {
     )
   }, [
     structuresByOwner,
-    cacheVersion,
+    types,
+    locations,
+    structures,
     search,
     selectedSet,
     structureAssetMap,
@@ -239,7 +246,8 @@ export function StructuresTab() {
   ])
 
   const starbaseRows = useMemo(() => {
-    void cacheVersion
+    void types
+    void locations
 
     const rows: StarbaseRow[] = []
 
@@ -249,9 +257,7 @@ export function StructuresTab() {
 
     for (const { owner, starbases } of filteredStarbases) {
       for (const starbase of starbases) {
-        const type = hasType(starbase.type_id)
-          ? getType(starbase.type_id)
-          : undefined
+        const type = types.get(starbase.type_id)
         const location = getLocation(starbase.system_id)
         const moon = starbase.moon_id
           ? getLocation(starbase.moon_id)
@@ -283,7 +289,7 @@ export function StructuresTab() {
         row.regionName.toLowerCase().includes(searchLower) ||
         row.moonName?.toLowerCase().includes(searchLower)
     )
-  }, [starbasesByOwner, cacheVersion, search, selectedSet])
+  }, [starbasesByOwner, types, locations, search, selectedSet])
 
   const totalCount = useMemo(() => {
     let count = 0

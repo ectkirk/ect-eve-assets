@@ -12,13 +12,61 @@ import {
   OFFICE_TYPE_ID,
   isFittedOrContentFlag,
 } from './tree-types'
+import { getType, getStructure, getLocation } from '@/store/reference-cache'
+import { usePriceStore } from '@/store/price-store'
 import {
-  getType,
-  getStructure,
-  getLocation,
-  getAbyssalPrice,
-  getBlueprint,
-} from '@/store/reference-cache'
+  isIndustryJobBpcProduct,
+  PLAYER_STRUCTURE_ID_THRESHOLD,
+} from './eve-constants'
+
+interface SyntheticLocationInfo {
+  isStructure: boolean
+  systemId: number | undefined
+  regionId: number | undefined
+}
+
+function resolveSyntheticLocation(locationId: number): SyntheticLocationInfo {
+  const isStructure = locationId >= PLAYER_STRUCTURE_ID_THRESHOLD
+  let systemId: number | undefined
+  let regionId: number | undefined
+
+  if (isStructure) {
+    const structure = getStructure(locationId)
+    if (structure?.solarSystemId) {
+      const system = getLocation(structure.solarSystemId)
+      systemId = structure.solarSystemId
+      regionId = system?.regionId
+    }
+  } else if (locationId) {
+    const location = getLocation(locationId)
+    systemId = location?.solarSystemId
+    regionId = location?.regionId
+  }
+
+  return { isStructure, systemId, regionId }
+}
+
+type SyntheticAssetType = 'contract' | 'marketOrder' | 'industryJob'
+
+function createSyntheticModeFlags(
+  type: SyntheticAssetType,
+  isStructure: boolean
+): AssetModeFlags {
+  return {
+    inHangar: false,
+    inShipHangar: false,
+    inItemHangar: false,
+    inDeliveries: false,
+    inAssetSafety: false,
+    inOffice: false,
+    inStructure: isStructure,
+    isContract: type === 'contract',
+    isMarketOrder: type === 'marketOrder',
+    isIndustryJob: type === 'industryJob',
+    isOwnedStructure: false,
+    isActiveShip: false,
+  }
+}
 
 export interface AssetLookupMap {
   itemIdToAsset: Map<number, ESIAsset>
@@ -26,7 +74,6 @@ export interface AssetLookupMap {
 }
 
 export interface ResolutionContext {
-  prices: Map<number, number>
   assetNames: Map<number, string>
   ownedStructureIds: Set<number>
   starbaseMoonIds: Map<number, number>
@@ -94,7 +141,7 @@ export function resolveRootLocation(
   let systemId: number | undefined
   let regionId: number | undefined
 
-  if (rootLocationId > 1_000_000_000_000) {
+  if (rootLocationId >= PLAYER_STRUCTURE_ID_THRESHOLD) {
     locationId = rootLocationId
     locationType = 'structure'
     const structure = getStructure(rootLocationId)
@@ -198,7 +245,7 @@ export function resolveAsset(
   context: ResolutionContext
 ): ResolvedAsset {
   const { itemIdToAsset } = lookupMap
-  const { prices, assetNames, ownedStructureIds, starbaseMoonIds } = context
+  const { assetNames, ownedStructureIds, starbaseMoonIds } = context
 
   const parentChain = buildParentChain(asset, itemIdToAsset)
   const rootFlag = getRootFlag(asset, parentChain)
@@ -222,15 +269,12 @@ export function resolveAsset(
   const sdeType = getType(asset.type_id)
   const customName = assetNames.get(asset.item_id)
   const isBpc = asset.is_blueprint_copy ?? false
-  const blueprint = getBlueprint(asset.type_id)
 
   const volume = sdeType?.packagedVolume ?? sdeType?.volume ?? 0
-  const abyssalPrice = getAbyssalPrice(asset.item_id)
-  const price = isBpc
-    ? 0
-    : blueprint
-      ? (blueprint.basePrice ?? 0)
-      : (abyssalPrice ?? prices.get(asset.type_id) ?? 0)
+  const price = usePriceStore.getState().getItemPrice(asset.type_id, {
+    itemId: asset.item_id,
+    isBlueprintCopy: isBpc,
+  })
 
   return {
     asset,
@@ -286,80 +330,42 @@ export function resolveAllAssets(
 
 export function resolveMarketOrder(
   order: MarketOrder,
-  owner: Owner,
-  prices: Map<number, number>
+  owner: Owner
 ): ResolvedAsset {
-  const isStructure = order.location_id > 1_000_000_000_000
+  const loc = resolveSyntheticLocation(order.location_id)
 
   const syntheticAsset: ESIAsset = {
     item_id: order.order_id,
     type_id: order.type_id,
     location_id: order.location_id,
-    location_type: isStructure ? 'other' : 'station',
+    location_type: loc.isStructure ? 'other' : 'station',
     location_flag: 'SellOrder',
     quantity: order.volume_remain,
     is_singleton: false,
   }
 
-  let systemId: number | undefined
-  let regionId: number | undefined
-
-  if (isStructure) {
-    const structure = getStructure(order.location_id)
-    if (structure?.solarSystemId) {
-      const system = getLocation(structure.solarSystemId)
-      systemId = structure.solarSystemId
-      regionId = system?.regionId
-    }
-  } else {
-    const location = getLocation(order.location_id)
-    systemId = location?.solarSystemId
-    regionId = location?.regionId
-  }
-
   const sdeType = getType(order.type_id)
   const volume = sdeType?.packagedVolume ?? sdeType?.volume ?? 0
-  const price = prices.get(order.type_id) ?? 0
-
-  const modeFlags: AssetModeFlags = {
-    inHangar: false,
-    inShipHangar: false,
-    inItemHangar: false,
-    inDeliveries: false,
-    inAssetSafety: false,
-    inOffice: false,
-    inStructure: isStructure,
-    isContract: false,
-    isMarketOrder: true,
-    isIndustryJob: false,
-    isOwnedStructure: false,
-    isActiveShip: false,
-  }
+  const price = usePriceStore.getState().getItemPrice(order.type_id)
 
   return {
     asset: syntheticAsset,
     owner,
-
     rootLocationId: order.location_id,
-    rootLocationType: isStructure ? 'structure' : 'station',
+    rootLocationType: loc.isStructure ? 'structure' : 'station',
     parentChain: [],
     rootFlag: 'SellOrder',
     hasOrphanedParent: false,
-
-    systemId,
-    regionId,
-
+    systemId: loc.systemId,
+    regionId: loc.regionId,
     typeId: order.type_id,
     categoryId: sdeType?.categoryId ?? 0,
     groupId: sdeType?.groupId ?? 0,
     volume,
-
     price,
     totalValue: price * order.volume_remain,
     totalVolume: volume * order.volume_remain,
-
-    modeFlags,
-
+    modeFlags: createSyntheticModeFlags('marketOrder', loc.isStructure),
     customName: undefined,
     isBlueprintCopy: false,
   }
@@ -368,89 +374,48 @@ export function resolveMarketOrder(
 export function resolveContractItem(
   contract: ESIContract,
   item: ESIContractItem,
-  owner: Owner,
-  prices: Map<number, number>
+  owner: Owner
 ): ResolvedAsset {
   const locationId = contract.start_location_id ?? 0
-  const isStructure = locationId > 1_000_000_000_000
+  const loc = resolveSyntheticLocation(locationId)
+  const isBpc = item.is_blueprint_copy ?? false
 
   const syntheticAsset: ESIAsset = {
     item_id: contract.contract_id * 1_000_000 + item.record_id,
     type_id: item.type_id,
     location_id: locationId,
-    location_type: isStructure ? 'other' : 'station',
+    location_type: loc.isStructure ? 'other' : 'station',
     location_flag: 'InContract',
     quantity: item.quantity,
     is_singleton: item.is_singleton ?? false,
     is_blueprint_copy: item.is_blueprint_copy,
   }
 
-  let systemId: number | undefined
-  let regionId: number | undefined
-
-  if (isStructure) {
-    const structure = getStructure(locationId)
-    if (structure?.solarSystemId) {
-      const system = getLocation(structure.solarSystemId)
-      systemId = structure.solarSystemId
-      regionId = system?.regionId
-    }
-  } else if (locationId) {
-    const location = getLocation(locationId)
-    systemId = location?.solarSystemId
-    regionId = location?.regionId
-  }
-
   const sdeType = getType(item.type_id)
-  const isBpc = item.is_blueprint_copy ?? false
-  const blueprint = getBlueprint(item.type_id)
-
   const volume = sdeType?.packagedVolume ?? sdeType?.volume ?? 0
-  const price = isBpc
-    ? 0
-    : blueprint
-      ? (blueprint.basePrice ?? 0)
-      : (prices.get(item.type_id) ?? 0)
-
-  const modeFlags: AssetModeFlags = {
-    inHangar: false,
-    inShipHangar: false,
-    inItemHangar: false,
-    inDeliveries: false,
-    inAssetSafety: false,
-    inOffice: false,
-    inStructure: isStructure,
-    isContract: true,
-    isMarketOrder: false,
-    isIndustryJob: false,
-    isOwnedStructure: false,
-    isActiveShip: false,
-  }
+  const price = usePriceStore.getState().getItemPrice(item.type_id, {
+    itemId: item.item_id,
+    isBlueprintCopy: isBpc,
+  })
 
   return {
     asset: syntheticAsset,
     owner,
-
     rootLocationId: locationId,
-    rootLocationType: isStructure ? 'structure' : 'station',
+    rootLocationType: loc.isStructure ? 'structure' : 'station',
     parentChain: [],
     rootFlag: 'InContract',
     hasOrphanedParent: false,
-
-    systemId,
-    regionId,
-
+    systemId: loc.systemId,
+    regionId: loc.regionId,
     typeId: item.type_id,
     categoryId: sdeType?.categoryId ?? 0,
     groupId: sdeType?.groupId ?? 0,
     volume,
-
     price,
     totalValue: price * item.quantity,
     totalVolume: volume * item.quantity,
-
-    modeFlags,
-
+    modeFlags: createSyntheticModeFlags('contract', loc.isStructure),
     customName: undefined,
     isBlueprintCopy: isBpc,
   }
@@ -458,84 +423,48 @@ export function resolveContractItem(
 
 export function resolveIndustryJob(
   job: ESIIndustryJob,
-  owner: Owner,
-  prices: Map<number, number>
+  owner: Owner
 ): ResolvedAsset {
   const locationId = job.location_id ?? job.facility_id
-  const isStructure = locationId > 1_000_000_000_000
-
+  const loc = resolveSyntheticLocation(locationId)
   const productTypeId = job.product_type_id ?? job.blueprint_type_id
+  const isBpcProduct = isIndustryJobBpcProduct(job.activity_id)
 
   const syntheticAsset: ESIAsset = {
     item_id: job.job_id,
     type_id: productTypeId,
     location_id: locationId,
-    location_type: isStructure ? 'other' : 'station',
+    location_type: loc.isStructure ? 'other' : 'station',
     location_flag: 'IndustryJob',
     quantity: job.runs,
     is_singleton: false,
   }
 
-  let systemId: number | undefined
-  let regionId: number | undefined
-
-  if (isStructure) {
-    const structure = getStructure(locationId)
-    if (structure?.solarSystemId) {
-      const system = getLocation(structure.solarSystemId)
-      systemId = structure.solarSystemId
-      regionId = system?.regionId
-    }
-  } else if (locationId) {
-    const location = getLocation(locationId)
-    systemId = location?.solarSystemId
-    regionId = location?.regionId
-  }
-
   const sdeType = getType(productTypeId)
   const volume = sdeType?.packagedVolume ?? sdeType?.volume ?? 0
-  const price = prices.get(productTypeId) ?? 0
-
-  const modeFlags: AssetModeFlags = {
-    inHangar: false,
-    inShipHangar: false,
-    inItemHangar: false,
-    inDeliveries: false,
-    inAssetSafety: false,
-    inOffice: false,
-    inStructure: isStructure,
-    isContract: false,
-    isMarketOrder: false,
-    isIndustryJob: true,
-    isOwnedStructure: false,
-    isActiveShip: false,
-  }
+  const price = usePriceStore.getState().getItemPrice(productTypeId, {
+    isBlueprintCopy: isBpcProduct,
+  })
 
   return {
     asset: syntheticAsset,
     owner,
-
     rootLocationId: locationId,
-    rootLocationType: isStructure ? 'structure' : 'station',
+    rootLocationType: loc.isStructure ? 'structure' : 'station',
     parentChain: [],
     rootFlag: 'IndustryJob',
     hasOrphanedParent: false,
-
-    systemId,
-    regionId,
-
+    systemId: loc.systemId,
+    regionId: loc.regionId,
     typeId: productTypeId,
     categoryId: sdeType?.categoryId ?? 0,
     groupId: sdeType?.groupId ?? 0,
     volume,
-
     price,
     totalValue: price * job.runs,
     totalVolume: volume * job.runs,
-
-    modeFlags,
-
+    modeFlags: createSyntheticModeFlags('industryJob', loc.isStructure),
     customName: undefined,
-    isBlueprintCopy: false,
+    isBlueprintCopy: isBpcProduct,
   }
 }

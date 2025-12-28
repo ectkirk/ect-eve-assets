@@ -1,5 +1,6 @@
-import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { Copy, Check } from 'lucide-react'
+import { logger } from '@/lib/logger'
 import {
   Dialog,
   DialogContent,
@@ -11,7 +12,7 @@ import { FittingWheel } from '@/components/FittingWheel'
 import type { TreeNode } from '@/lib/tree-types'
 import {
   extractFitting,
-  fetchShipSlots,
+  getShipSlots,
   isStrategicCruiser,
   countFilledSlots,
   HOLD_LABELS,
@@ -121,39 +122,6 @@ function generateEFTFitting(fitting: ExtractedFitting): string {
   return sections.join('\n').trim()
 }
 
-function useShipSlots(shipTypeId: number | null) {
-  const [slots, setSlots] = useState<ShipSlots | null>(null)
-  const [loading, setLoading] = useState(false)
-  const fetchRef = useRef(0)
-
-  const doFetch = useCallback(async (typeId: number, fetchId: number) => {
-    setLoading(true)
-    try {
-      const result = await fetchShipSlots(typeId)
-      if (fetchRef.current === fetchId) {
-        setSlots(result)
-      }
-    } finally {
-      if (fetchRef.current === fetchId) {
-        setLoading(false)
-      }
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!shipTypeId) {
-      setSlots(null)
-      setLoading(false)
-      return
-    }
-
-    const fetchId = ++fetchRef.current
-    void doFetch(shipTypeId, fetchId)
-  }, [shipTypeId, doFetch])
-
-  return { slots, loading }
-}
-
 export function FittingDialog({
   open,
   onOpenChange,
@@ -166,7 +134,10 @@ export function FittingDialog({
     return extractFitting(shipNode)
   }, [open, shipNode])
 
-  const { slots, loading } = useShipSlots(fitting?.shipTypeId ?? null)
+  const slots = useMemo(
+    () => (fitting ? getShipSlots(fitting.shipTypeId) : null),
+    [fitting]
+  )
 
   const copyFitting = useCallback(async () => {
     if (!fitting) return
@@ -175,8 +146,11 @@ export function FittingDialog({
       await navigator.clipboard.writeText(eft)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
-    } catch {
-      // Clipboard API failed
+    } catch (error) {
+      logger.warn('Failed to copy fitting to clipboard', {
+        module: 'Fitting',
+        error,
+      })
     }
   }, [fitting])
 
@@ -190,6 +164,8 @@ export function FittingDialog({
     low: countFilledSlots(fitting.lowSlotModules),
     rig: countFilledSlots(fitting.rigModules),
     subsystem: Math.min(4, countFilledSlots(fitting.subsystemModules)),
+    launcher: 0,
+    turret: 0,
   }
 
   const displaySlots = isT3C ? countedSlots : (slots ?? countedSlots)
@@ -218,25 +194,16 @@ export function FittingDialog({
         </DialogHeader>
 
         <div className="flex flex-col items-center">
-          {loading ? (
-            <div
-              className="flex items-center justify-center"
-              style={{ width: 398, height: 398 }}
-            >
-              <span className="text-content-secondary">Loading...</span>
-            </div>
-          ) : (
-            <FittingWheel
-              highSlotModules={fitting.highSlotModules}
-              midSlotModules={fitting.midSlotModules}
-              lowSlotModules={fitting.lowSlotModules}
-              rigModules={fitting.rigModules}
-              subsystemModules={fitting.subsystemModules}
-              slots={displaySlots}
-              shipTypeId={fitting.shipTypeId}
-              shipName={fitting.shipName}
-            />
-          )}
+          <FittingWheel
+            highSlotModules={fitting.highSlotModules}
+            midSlotModules={fitting.midSlotModules}
+            lowSlotModules={fitting.lowSlotModules}
+            rigModules={fitting.rigModules}
+            subsystemModules={fitting.subsystemModules}
+            slots={displaySlots}
+            shipTypeId={fitting.shipTypeId}
+            shipName={fitting.shipName}
+          />
 
           <div className="w-full mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-left max-h-48 overflow-y-auto">
             <ModuleList title="High Slots" modules={fitting.highSlotModules} />

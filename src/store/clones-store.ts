@@ -20,7 +20,7 @@ export interface CharacterCloneData {
 export const useClonesStore = createOwnerStore<CloneData, CharacterCloneData>({
   name: 'clones',
   moduleName: 'ClonesStore',
-  endpointPattern: '/clones/',
+  endpointPattern: '/clones',
   dbConfig: {
     dbName: 'ecteveassets-clones',
     storeName: 'clones',
@@ -36,20 +36,17 @@ export const useClonesStore = createOwnerStore<CloneData, CharacterCloneData>({
   },
   ownerFilter: 'character',
   disableAutoRefresh: true,
-  getEndpoint: (owner) => `/characters/${owner.characterId}/clones/`,
+  getEndpoint: (owner) => `/characters/${owner.characterId}/clones`,
   fetchData: async (owner) => {
     const [clonesResult, implantsResult] = await Promise.all([
-      esi.fetchWithMeta<ESIClone>(`/characters/${owner.characterId}/clones/`, {
+      esi.fetchWithMeta<ESIClone>(`/characters/${owner.characterId}/clones`, {
         characterId: owner.characterId,
         schema: ESICloneSchema,
       }),
-      esi.fetchWithMeta<number[]>(
-        `/characters/${owner.characterId}/implants/`,
-        {
-          characterId: owner.characterId,
-          schema: z.array(z.number()),
-        }
-      ),
+      esi.fetchWithMeta<number[]>(`/characters/${owner.characterId}/implants`, {
+        characterId: owner.characterId,
+        schema: z.array(z.number()),
+      }),
     ])
     return {
       data: { clones: clonesResult.data, activeImplants: implantsResult.data },

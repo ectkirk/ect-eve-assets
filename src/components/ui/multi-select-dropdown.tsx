@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { ChevronDown, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -23,7 +23,15 @@ export function MultiSelectDropdown({
   className,
 }: MultiSelectDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [focusedIndex, setFocusedIndex] = useState(-1)
   const containerRef = useRef<HTMLDivElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+
+  const closeDropdown = useCallback(() => {
+    setIsOpen(false)
+    setFocusedIndex(-1)
+  }, [])
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -31,24 +39,79 @@ export function MultiSelectDropdown({
         containerRef.current &&
         !containerRef.current.contains(e.target as Node)
       ) {
-        setIsOpen(false)
+        closeDropdown()
       }
     }
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside)
       return () => document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [isOpen])
+  }, [isOpen, closeDropdown])
 
-  const toggleOption = (value: string) => {
-    const newSelected = new Set(selected)
-    if (newSelected.has(value)) {
-      newSelected.delete(value)
-    } else {
-      newSelected.add(value)
-    }
-    onChange(newSelected)
-  }
+  const toggleOption = useCallback(
+    (value: string) => {
+      const newSelected = new Set(selected)
+      if (newSelected.has(value)) {
+        newSelected.delete(value)
+      } else {
+        newSelected.add(value)
+      }
+      onChange(newSelected)
+    },
+    [selected, onChange]
+  )
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (!isOpen) {
+        if (
+          e.key === 'ArrowDown' ||
+          e.key === 'ArrowUp' ||
+          e.key === 'Enter' ||
+          e.key === ' '
+        ) {
+          e.preventDefault()
+          setIsOpen(true)
+          setFocusedIndex(0)
+        }
+        return
+      }
+
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault()
+          setFocusedIndex((prev) => Math.min(prev + 1, options.length - 1))
+          break
+        case 'ArrowUp':
+          e.preventDefault()
+          setFocusedIndex((prev) => Math.max(prev - 1, 0))
+          break
+        case 'Home':
+          e.preventDefault()
+          setFocusedIndex(0)
+          break
+        case 'End':
+          e.preventDefault()
+          setFocusedIndex(options.length - 1)
+          break
+        case 'Enter':
+        case ' ': {
+          e.preventDefault()
+          const focusedOption = options[focusedIndex]
+          if (focusedOption) {
+            toggleOption(focusedOption.value)
+          }
+          break
+        }
+        case 'Escape':
+          e.preventDefault()
+          closeDropdown()
+          buttonRef.current?.focus()
+          break
+      }
+    },
+    [isOpen, focusedIndex, options, toggleOption, closeDropdown]
+  )
 
   const selectAll = () => {
     onChange(new Set(options.map((o) => o.value)))
@@ -66,10 +129,17 @@ export function MultiSelectDropdown({
         : `${selected.size} selected`
 
   return (
-    <div ref={containerRef} className={cn('relative', className)}>
+    <div
+      ref={containerRef}
+      className={cn('relative', className)}
+      onKeyDown={handleKeyDown}
+    >
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => setIsOpen(!isOpen)}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
         className="flex items-center gap-1 text-xs bg-surface-secondary border border-border rounded px-2 py-1 hover:bg-surface-tertiary"
       >
         <span
@@ -90,7 +160,12 @@ export function MultiSelectDropdown({
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 mt-1 min-w-[180px] max-h-[240px] overflow-auto rounded border border-border bg-surface-secondary shadow-lg">
+        <div
+          ref={listRef}
+          role="listbox"
+          aria-multiselectable="true"
+          className="absolute z-50 mt-1 min-w-[180px] max-h-[240px] overflow-auto rounded border border-border bg-surface-secondary shadow-lg"
+        >
           <div className="flex items-center gap-2 px-2 py-1.5 border-b border-border/50 text-xs">
             <button
               type="button"
@@ -108,14 +183,22 @@ export function MultiSelectDropdown({
               None
             </button>
           </div>
-          {options.map((option) => {
+          {options.map((option, index) => {
             const isSelected = selected.has(option.value)
+            const isFocused = index === focusedIndex
             return (
-              <button
+              <div
                 key={option.value}
-                type="button"
+                role="option"
+                aria-selected={isSelected}
+                tabIndex={-1}
                 onClick={() => toggleOption(option.value)}
-                className="flex items-center gap-2 w-full px-2 py-1.5 text-left text-xs hover:bg-surface-tertiary"
+                className={cn(
+                  'flex items-center gap-2 w-full px-2 py-1.5 text-left text-xs cursor-pointer',
+                  isFocused
+                    ? 'bg-surface-tertiary'
+                    : 'hover:bg-surface-tertiary'
+                )}
               >
                 <div
                   className={cn(
@@ -126,7 +209,7 @@ export function MultiSelectDropdown({
                   {isSelected && <Check className="h-2.5 w-2.5 text-white" />}
                 </div>
                 <span className="truncate">{option.label}</span>
-              </button>
+              </div>
             )
           })}
         </div>

@@ -1,26 +1,37 @@
 import { app, ipcMain } from 'electron'
 import { logger } from './logger.js'
+import { isValidIdArray } from './validation.js'
 
 const REF_API_BASE = 'https://edencom.net/api/v1'
 const REF_API_KEY = process.env['REF_API_KEY'] || ''
 const REF_MAX_RETRIES = 3
 const REF_RETRY_BASE_DELAY_MS = 2000
 const REF_MIN_REQUEST_INTERVAL_MS = 250
+const REF_REQUEST_TIMEOUT_MS = 30000
 
 let refGlobalRetryAfter = 0
 let refLastRequestTime = 0
+let cachedBaseHeaders: Record<string, string> | null = null
+let cachedJsonHeaders: Record<string, string> | null = null
 
 function getRefHeaders(contentType?: 'json'): Record<string, string> {
-  const headers: Record<string, string> = {
-    'User-Agent': `ECTEVEAssets/${app.getVersion()} (ecteveassets@edencom.net; +https://github.com/ectkirk/ect-eve-assets)`,
-  }
-  if (REF_API_KEY) {
-    headers['X-App-Key'] = REF_API_KEY
-  }
   if (contentType === 'json') {
-    headers['Content-Type'] = 'application/json'
+    if (!cachedJsonHeaders) {
+      cachedJsonHeaders = {
+        'User-Agent': `ECTEVEAssets/${app.getVersion()} (ecteveassets@edencom.net; +https://github.com/ectkirk/ect-eve-assets)`,
+        'Content-Type': 'application/json',
+        ...(REF_API_KEY && { 'X-App-Key': REF_API_KEY }),
+      }
+    }
+    return cachedJsonHeaders
   }
-  return headers
+  if (!cachedBaseHeaders) {
+    cachedBaseHeaders = {
+      'User-Agent': `ECTEVEAssets/${app.getVersion()} (ecteveassets@edencom.net; +https://github.com/ectkirk/ect-eve-assets)`,
+      ...(REF_API_KEY && { 'X-App-Key': REF_API_KEY }),
+    }
+  }
+  return cachedBaseHeaders
 }
 
 function setRefGlobalBackoff(delayMs: number): void {
@@ -36,14 +47,14 @@ function setRefGlobalBackoff(delayMs: number): void {
 }
 
 async function waitForRefRateLimit(): Promise<void> {
-  const now = Date.now()
+  let now = Date.now()
 
   if (refGlobalRetryAfter > now) {
-    const waitMs = refGlobalRetryAfter - now
-    await new Promise((r) => setTimeout(r, waitMs))
+    await new Promise((r) => setTimeout(r, refGlobalRetryAfter - now))
+    now = Date.now()
   }
 
-  const timeSinceLastRequest = Date.now() - refLastRequestTime
+  const timeSinceLastRequest = now - refLastRequestTime
   if (timeSinceLastRequest < REF_MIN_REQUEST_INTERVAL_MS) {
     await new Promise((r) =>
       setTimeout(r, REF_MIN_REQUEST_INTERVAL_MS - timeSinceLastRequest)
@@ -60,8 +71,19 @@ async function fetchRefWithRetry(
   let lastError: Error | null = null
 
   for (let attempt = 0; attempt <= REF_MAX_RETRIES; attempt++) {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      REF_REQUEST_TIMEOUT_MS
+    )
+
     try {
-      const response = await fetch(url, options)
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+      })
+      clearTimeout(timeoutId)
+
       if (response.status === 429) {
         const retryAfterHeader = response.headers.get('Retry-After')
         const retryAfterMs = retryAfterHeader
@@ -82,13 +104,19 @@ async function fetchRefWithRetry(
       }
       return response
     } catch (err) {
-      lastError = err instanceof Error ? err : new Error(String(err))
+      clearTimeout(timeoutId)
+      if (err instanceof Error && err.name === 'AbortError') {
+        lastError = new Error('Request timeout')
+      } else {
+        lastError = err instanceof Error ? err : new Error(String(err))
+      }
       if (attempt < REF_MAX_RETRIES) {
         const delay = REF_RETRY_BASE_DELAY_MS * Math.pow(2, attempt)
         logger.warn('Ref API request failed, retrying', {
           module: 'RefAPI',
           attempt: attempt + 1,
           delay,
+          reason: lastError.message,
         })
         await new Promise((r) => setTimeout(r, delay))
       }
@@ -141,25 +169,13 @@ async function refPost<T>(
   }
 }
 
-function validateIds(ids: unknown, maxLength: number): ids is number[] {
-  return (
-    Array.isArray(ids) &&
-    ids.length > 0 &&
-    ids.length <= maxLength &&
-    ids.every((id) => typeof id === 'number' && Number.isInteger(id) && id > 0)
-  )
-}
-
 export function registerRefAPIHandlers(): void {
   ipcMain.handle('ref:categories', () =>
     refGet('/reference/categories', 'ref:categories')
   )
   ipcMain.handle('ref:groups', () => refGet('/reference/groups', 'ref:groups'))
-  ipcMain.handle('ref:blueprints', () =>
-    refGet('/reference/blueprints', 'ref:blueprints')
-  )
-  ipcMain.handle('ref:marketPlex', () =>
-    refGet('/market/plex', 'ref:marketPlex')
+  ipcMain.handle('ref:marketGroups', () =>
+    refGet('/reference/market-groups', 'ref:marketGroups')
   )
   ipcMain.handle('ref:buybackInfo', () =>
     refGet('/buyback/info', 'ref:buybackInfo')
@@ -249,59 +265,69 @@ export function registerRefAPIHandlers(): void {
   )
 
   const idsEndpoints = [
-    { channel: 'ref:implants', endpoint: '/reference/implants', max: 1000 },
     { channel: 'ref:moons', endpoint: '/reference/moons', max: 1000 },
-    { channel: 'ref:shipslots', endpoint: '/reference/shipslots', max: 500 },
   ]
 
   for (const { channel, endpoint, max } of idsEndpoints) {
     ipcMain.handle(channel, async (_event, ids: unknown) => {
-      if (!validateIds(ids, max)) {
+      if (!isValidIdArray(ids, max)) {
         return { error: `Invalid ids array (max ${max})` }
       }
       return refPost(endpoint, { ids }, channel)
     })
   }
 
-  ipcMain.handle('ref:marketJita', async (_event, typeIds: unknown) => {
-    if (!validateIds(typeIds, 1000)) {
-      return { error: 'Invalid typeIds array (max 1000)' }
-    }
-    return refPost('/market/jita', { typeIds }, 'ref:marketJita')
-  })
-
-  ipcMain.handle('ref:marketContracts', async (_event, typeIds: unknown) => {
-    if (!validateIds(typeIds, 100)) {
-      return { error: 'Invalid typeIds array (max 100)' }
-    }
-    return refPost('/market/contracts', { typeIds }, 'ref:marketContracts')
-  })
-
-  ipcMain.handle('ref:market', async (_event, params: unknown) => {
+  ipcMain.handle('ref:marketJita', async (_event, params: unknown) => {
     if (typeof params !== 'object' || params === null) {
       return { error: 'Invalid params' }
     }
     const p = params as Record<string, unknown>
+
+    const body: {
+      typeIds?: number[]
+      itemIds?: number[]
+      contractTypeIds?: number[]
+      includePlex?: boolean
+    } = {}
+
+    if (Array.isArray(p.typeIds) && p.typeIds.length > 0) {
+      if (!isValidIdArray(p.typeIds, 1000)) {
+        return { error: 'Invalid typeIds array (max 1000)' }
+      }
+      body.typeIds = p.typeIds
+    }
+
+    if (Array.isArray(p.itemIds) && p.itemIds.length > 0) {
+      if (!isValidIdArray(p.itemIds, 1000)) {
+        return { error: 'Invalid itemIds array (max 1000)' }
+      }
+      body.itemIds = p.itemIds
+    }
+
+    if (Array.isArray(p.contractTypeIds) && p.contractTypeIds.length > 0) {
+      if (!isValidIdArray(p.contractTypeIds, 100)) {
+        return { error: 'Invalid contractTypeIds array (max 100)' }
+      }
+      body.contractTypeIds = p.contractTypeIds
+    }
+
+    if (p.includePlex === true) {
+      body.includePlex = true
+    }
+
     if (
-      typeof p.regionId !== 'number' ||
-      !Number.isInteger(p.regionId) ||
-      p.regionId <= 0
+      !body.typeIds &&
+      !body.itemIds &&
+      !body.contractTypeIds &&
+      !body.includePlex
     ) {
-      return { error: 'Invalid regionId' }
-    }
-    if (!validateIds(p.typeIds, 100)) {
-      return { error: 'Invalid typeIds array (max 100)' }
+      return {
+        error:
+          'At least one of typeIds, itemIds, contractTypeIds, or includePlex required',
+      }
     }
 
-    const body: Record<string, unknown> = {
-      regionId: p.regionId,
-      typeIds: p.typeIds,
-    }
-    if (p.avg === true) body.avg = true
-    if (p.buy === true) body.buy = true
-    if (p.jita === true) body.jita = true
-
-    return refPost('/market/bulk', body, 'ref:market')
+    return refPost('/market/jita', body, 'ref:marketJita')
   })
 
   ipcMain.handle(
@@ -338,19 +364,37 @@ export function registerRefAPIHandlers(): void {
     }
   )
 
-  ipcMain.handle('ref:buybackCalculator', async (_event, text: unknown) => {
-    if (typeof text !== 'string' || !text.trim()) {
-      return { error: 'Text is required' }
+  ipcMain.handle('ref:shippingInfo', () =>
+    refGet('/shipping/info', 'ref:shippingInfo')
+  )
+
+  ipcMain.handle(
+    'ref:shippingCalculate',
+    async (_event, text: unknown, nullSec?: unknown) => {
+      if (typeof text !== 'string' || !text.trim()) {
+        return { error: 'Text is required' }
+      }
+      const body: { text: string; nullSec?: boolean } = { text }
+      if (nullSec === true) {
+        body.nullSec = true
+      }
+      return refPost('/shipping/calculate', body, 'ref:shippingCalculate')
+    }
+  )
+
+  ipcMain.handle('ref:contractsSearch', async (_event, params: unknown) => {
+    if (typeof params !== 'object' || params === null) {
+      return { error: 'Invalid params' }
     }
 
     await waitForRefRateLimit()
     try {
       const response = await fetchRefWithRetry(
-        'https://edencom.net/api/buyback/calculator',
+        `${REF_API_BASE}/contracts/search`,
         {
           method: 'POST',
           headers: getRefHeaders('json'),
-          body: JSON.stringify({ text }),
+          body: JSON.stringify(params),
         }
       )
       if (!response.ok) {
@@ -359,7 +403,7 @@ export function registerRefAPIHandlers(): void {
       }
       return await response.json()
     } catch (err) {
-      logger.error('ref:buybackCalculator fetch failed', err, {
+      logger.error('ref:contractsSearch fetch failed', err, {
         module: 'RefAPI',
       })
       return { error: String(err) }

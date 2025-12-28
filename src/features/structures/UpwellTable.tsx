@@ -7,6 +7,7 @@ import {
   getStructureTimer,
   getTimerColorClass,
 } from '@/lib/timer-utils'
+import { extractFitting } from '@/lib/fitting-utils'
 import type { ESICorporationStructure } from '@/store/structures-store'
 import type { TreeNode } from '@/lib/tree-types'
 import {
@@ -25,6 +26,12 @@ import {
 import { cn } from '@/lib/utils'
 import { TypeIcon } from '@/components/ui/type-icon'
 import type { StructureRow, UpwellSortColumn } from './types'
+
+function getRigNames(treeNode: TreeNode | null): string[] {
+  if (!treeNode) return []
+  const fitting = extractFitting(treeNode)
+  return fitting.rigModules.filter((m) => m.type_id > 0).map((m) => m.type_name)
+}
 
 interface UpwellTableProps {
   rows: StructureRow[]
@@ -58,6 +65,8 @@ export function UpwellTable({
           return row.structure.state
         case 'fuel':
           return row.fuelDays ?? -1
+        case 'rigs':
+          return getRigNames(row.treeNode).join(', ').toLowerCase()
         case 'details': {
           const timer = getStructureTimer(row.structure)
           if (timer.type === 'reinforcing') return timer.timestamp ?? Infinity
@@ -111,7 +120,7 @@ export function UpwellTable({
               sortColumn={sort.sortColumn}
               sortDirection={sort.sortDirection}
               onSort={sort.handleSort}
-              className="w-[35%]"
+              className="w-[22%]"
             />
             <SortableHeader
               column="type"
@@ -119,7 +128,7 @@ export function UpwellTable({
               sortColumn={sort.sortColumn}
               sortDirection={sort.sortDirection}
               onSort={sort.handleSort}
-              className="w-[20%]"
+              className="w-[15%]"
             />
             <SortableHeader
               column="region"
@@ -127,7 +136,7 @@ export function UpwellTable({
               sortColumn={sort.sortColumn}
               sortDirection={sort.sortDirection}
               onSort={sort.handleSort}
-              className="w-[15%]"
+              className="w-[12%]"
             />
             <SortableHeader
               column="state"
@@ -143,7 +152,15 @@ export function UpwellTable({
               sortColumn={sort.sortColumn}
               sortDirection={sort.sortDirection}
               onSort={sort.handleSort}
-              className="w-[10%] text-right"
+              className="w-[8%] text-right"
+            />
+            <SortableHeader
+              column="rigs"
+              label="Rigs"
+              sortColumn={sort.sortColumn}
+              sortDirection={sort.sortDirection}
+              onSort={sort.handleSort}
+              className="w-[23%]"
             />
             <SortableHeader
               column="details"
@@ -162,6 +179,7 @@ export function UpwellTable({
             const isReinforced = row.structure.state.includes('reinforce')
             const hasFitting = row.treeNode !== null
             const timerInfo = getStructureTimer(row.structure)
+            const rigNames = getRigNames(row.treeNode)
 
             const timerColorClass = getTimerColorClass(
               timerInfo.type,
@@ -216,6 +234,14 @@ export function UpwellTable({
                       {fuelInfo.text}
                     </span>
                   </div>
+                </TableCell>
+                <TableCell className="py-1.5">
+                  <span
+                    className="text-content-secondary truncate block"
+                    title={rigNames.join(', ')}
+                  >
+                    {rigNames.length > 0 ? rigNames.join(', ') : '—'}
+                  </span>
                 </TableCell>
                 <TableCell className="py-1.5 text-right">
                   <div className="flex items-center justify-end gap-1">

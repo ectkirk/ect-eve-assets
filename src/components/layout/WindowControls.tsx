@@ -15,6 +15,7 @@ import {
   Bug,
   FolderOpen,
   Package,
+  Users,
   type LucideIcon,
 } from 'lucide-react'
 import { useThemeStore, THEME_OPTIONS } from '@/store/theme-store'
@@ -23,6 +24,7 @@ import { CreditsModal } from './CreditsModal'
 import { SupportModal } from './SupportModal'
 import { BugReportModal } from './BugReportModal'
 import { ChangelogModal } from './ChangelogModal'
+import { SupportersModal } from './SupportersModal'
 import { ClearCacheModal } from '@/components/dialogs/ClearCacheModal'
 import { AbyssalSyncModal } from '@/components/dialogs/AbyssalSyncModal'
 import { AssetSettingsModal } from '@/components/dialogs/AssetSettingsModal'
@@ -30,6 +32,7 @@ import { AssetSettingsModal } from '@/components/dialogs/AssetSettingsModal'
 type SettingsModal =
   | 'credits'
   | 'support'
+  | 'supporters'
   | 'changelog'
   | 'clearCache'
   | 'abyssal'
@@ -120,8 +123,9 @@ export function WindowControls() {
       <div ref={settingsPanelRef} className="relative">
         <button
           onClick={() => setSettingsOpen(!settingsOpen)}
+          aria-label="Settings"
+          aria-expanded={settingsOpen}
           className="flex h-10 w-12 items-center justify-center text-content-secondary hover:bg-surface-tertiary hover:text-content"
-          title="Settings"
         >
           <Settings className="h-4 w-4" />
         </button>
@@ -156,6 +160,7 @@ export function WindowControls() {
               >
                 Asset View
               </MenuItem>
+              <div className="my-2 border-t border-border" />
               <MenuItem icon={Sparkles} onClick={() => openModal('abyssal')}>
                 Abyssal Pricing
               </MenuItem>
@@ -168,6 +173,9 @@ export function WindowControls() {
               </MenuItem>
               <MenuItem icon={Heart} onClick={() => openModal('support')}>
                 Support Us
+              </MenuItem>
+              <MenuItem icon={Users} onClick={() => openModal('supporters')}>
+                Supporters
               </MenuItem>
               <div className="my-2 border-t border-border" />
               <MenuItem
@@ -213,6 +221,10 @@ export function WindowControls() {
         open={modals.isOpen('support')}
         onOpenChange={(open) => modals.setOpen('support', open)}
       />
+      <SupportersModal
+        open={modals.isOpen('supporters')}
+        onOpenChange={(open) => modals.setOpen('supporters', open)}
+      />
       <ClearCacheModal
         open={modals.isOpen('clearCache')}
         onOpenChange={(open) => modals.setOpen('clearCache', open)}
@@ -231,12 +243,14 @@ export function WindowControls() {
       />
       <button
         onClick={() => window.electronAPI?.windowMinimize()}
+        aria-label="Minimize window"
         className="flex h-10 w-12 items-center justify-center text-content-secondary hover:bg-surface-tertiary hover:text-content"
       >
         <Minus className="h-4 w-4" />
       </button>
       <button
         onClick={() => window.electronAPI?.windowMaximize()}
+        aria-label={isMaximized ? 'Restore window' : 'Maximize window'}
         className="flex h-10 w-12 items-center justify-center text-content-secondary hover:bg-surface-tertiary hover:text-content"
       >
         {isMaximized ? (
@@ -247,6 +261,7 @@ export function WindowControls() {
       </button>
       <button
         onClick={() => window.electronAPI?.windowClose()}
+        aria-label="Close window"
         className="flex h-10 w-12 items-center justify-center text-content-secondary hover:bg-semantic-danger hover:text-content"
       >
         <X className="h-4 w-4" />

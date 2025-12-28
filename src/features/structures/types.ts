@@ -32,6 +32,7 @@ export type UpwellSortColumn =
   | 'region'
   | 'state'
   | 'fuel'
+  | 'rigs'
   | 'details'
 export type StarbaseSortColumn =
   | 'name'
