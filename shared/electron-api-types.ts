@@ -480,6 +480,270 @@ export interface ShippingCalculateResult {
   error?: string
 }
 
+export interface RefTypeDetailResult {
+  type?: {
+    _key: number
+    group_id: number | null
+    name: { en: string; [key: string]: string }
+    description?: { en: string; [key: string]: string } | null
+    mass?: number | null
+    volume?: number | null
+    packaged_volume?: number | null
+    capacity?: number | null
+    portion_size?: number | null
+    race_id?: number | null
+    base_price?: number | null
+    published?: boolean
+    market_group_id?: number | null
+    icon_id?: number | null
+    graphic_id?: number | null
+    meta_group_id?: number | null
+    variation_parent_type_id?: number | null
+  }
+  group?: {
+    _key: number
+    name: { en: string; [key: string]: string }
+    category_id: number
+    published?: boolean
+    anchorable?: boolean
+    anchored?: boolean
+    fittableNonSingleton?: boolean
+    useBasePrice?: boolean
+  }
+  category?: {
+    _key: number
+    name: { en: string; [key: string]: string }
+    published?: boolean
+  }
+  blueprint?: {
+    id: number
+    blueprintTypeId: number
+    maxProductionLimit?: number | null
+    activities?: {
+      manufacturing?: {
+        time?: number
+        materials?: Array<{ typeID: number; quantity: number }>
+        products?: Array<{ typeID: number; quantity: number }>
+      }
+      copying?: { time?: number }
+      research_time?: { time?: number }
+      research_material?: { time?: number }
+    }
+  } | null
+  blueprintTypes?: {
+    materials?: Array<{ id: number; name: string; categoryId: number }>
+    products?: Array<{ id: number; name: string; categoryId: number }>
+  }
+  producedBy?: Array<{ id: number; name: string; categoryId: number }>
+  materials?: Array<{
+    typeId: number
+    name: string
+    quantity: number
+    categoryId: number
+  }>
+  dogma?: {
+    attributes?: Array<{ value: number; attributeID: number }>
+    attributeDefinitions?: Record<
+      string,
+      {
+        name: string
+        displayName: string | null
+        unitId: number | null
+        categoryId: number | null
+        published: boolean
+      }
+    >
+    computedAttributes?: Record<string, number | null>
+  }
+  bonuses?: {
+    roleBonuses?: Array<{
+      bonus?: number
+      unitID?: number
+      bonusText: { en: string }
+      importance: number
+    }>
+    types?: Array<{
+      _key: number
+      _value: Array<{
+        bonus: number
+        bonusText: { en: string }
+        importance: number
+        unitID: number | null
+      }>
+    }>
+  } | null
+  market?: {
+    price?: { averagePrice: string; adjustedPrice: string } | null
+    groupPath?: Array<{ id: number; name: string }>
+  }
+  skills?: {
+    required?: Array<{
+      skillId: number
+      skillName: string
+      level: number
+      children: Array<{
+        skillId: number
+        skillName: string
+        level: number
+        children: unknown[]
+      }>
+    }>
+    blueprintRequired?: unknown[]
+  }
+  variations?: Array<{ id: number; name: string; metaGroupId: number | null }>
+  error?: string
+}
+
+export interface RefTypeCoreResult {
+  type?: {
+    _key: number
+    group_id: number | null
+    name: { en: string; [key: string]: string }
+    description?: { en: string; [key: string]: string } | null
+    mass?: number | null
+    volume?: number | null
+    capacity?: number | null
+    portion_size?: number | null
+    race_id?: number | null
+    base_price?: number | null
+    published?: boolean
+    market_group_id?: number | null
+    meta_group_id?: number | null
+    variation_parent_type_id?: number | null
+    icon_id?: number | null
+    sound_id?: number | null
+    graphic_id?: number | null
+    radius?: number | null
+  }
+  group?: {
+    id: number
+    name: { en: string; [key: string]: string }
+    categoryId: number
+  }
+  category?: {
+    id: number
+    name: { en: string; [key: string]: string }
+  }
+  error?: string
+}
+
+export interface RefTypeSkillNode {
+  skillId: number
+  skillName: string
+  level: number
+  children: RefTypeSkillNode[]
+}
+
+export interface RefTypeSkillsResult {
+  required?: RefTypeSkillNode[]
+  blueprintRequired?: RefTypeSkillNode[]
+  error?: string
+}
+
+export interface RefTypeBlueprintResult {
+  blueprint?: {
+    id: number
+    blueprintTypeId: number
+    maxProductionLimit?: number | null
+    activities?: {
+      manufacturing?: {
+        time?: number
+        materials?: Array<{ typeID: number; quantity: number }>
+        products?: Array<{ typeID: number; quantity: number }>
+        skills?: Array<{ typeID: number; level: number }>
+      }
+      copying?: { time?: number }
+      research_time?: { time?: number }
+      research_material?: { time?: number }
+    }
+  } | null
+  blueprintTypes?: {
+    materials?: Array<{ id: number; name: string; categoryId: number }>
+    products?: Array<{ id: number; name: string; categoryId: number }>
+  }
+  producedBy?: Array<{ id: number; name: string; categoryId: number }>
+  materials?: Array<{
+    typeId: number
+    name: string
+    quantity: number
+    categoryId: number
+  }>
+  error?: string
+}
+
+export interface RefTypeDogmaResult {
+  attributes?: Array<{ attributeID: number; value: number }>
+  attributeDefinitions?: Record<
+    string,
+    {
+      name: string
+      displayName: string | null
+      unitId: number | null
+      categoryId: number | null
+      published: boolean
+    }
+  >
+  computedAttributes?: Record<string, number | null>
+  bonuses?: {
+    _key?: number
+    roleBonuses?: Array<{
+      bonus?: number
+      unitID?: number
+      bonusText: { en: string }
+      importance: number
+    }>
+    types?: Array<{
+      _key: number
+      _value: Array<{
+        bonus: number
+        bonusText: { en: string }
+        importance: number
+        unitID: number | null
+      }>
+    }>
+  } | null
+  bonusSkillTypes?: Array<{ id: number; name: string }>
+  fuelTypeNames?: Record<string, string> | null
+  error?: string
+}
+
+export interface RefTypeMarketResult {
+  price?: {
+    averagePrice: number
+    adjustedPrice: number
+  } | null
+  groupPath?: Array<{ id: number; name: string }>
+  error?: string
+}
+
+export interface RefTypeVariationsResult {
+  variations?: Array<{ id: number; name: string; metaGroupId: number | null }>
+  error?: string
+}
+
+export interface DogmaUnit {
+  id: number
+  name: string
+  displayName: string | null
+  description: string | null
+}
+
+export interface DogmaUnitsResult {
+  items?: Record<string, DogmaUnit>
+  error?: string
+}
+
+export interface DogmaAttributeCategory {
+  id: number
+  name: string
+  description: string | null
+}
+
+export interface DogmaAttributeCategoriesResult {
+  items?: Record<string, DogmaAttributeCategory>
+  error?: string
+}
+
 export interface ESIRequestOptions {
   method?: 'GET' | 'POST'
   body?: string
@@ -577,6 +841,15 @@ export interface ElectronAPI {
   refContractsSearch: (
     params: ContractSearchParams
   ) => Promise<ContractSearchResult>
+  refTypeDetail: (typeId: number) => Promise<RefTypeDetailResult>
+  refTypeCore: (typeId: number) => Promise<RefTypeCoreResult>
+  refTypeDogma: (typeId: number) => Promise<RefTypeDogmaResult>
+  refTypeMarket: (typeId: number) => Promise<RefTypeMarketResult>
+  refTypeSkills: (typeId: number) => Promise<RefTypeSkillsResult>
+  refTypeVariations: (typeId: number) => Promise<RefTypeVariationsResult>
+  refTypeBlueprint: (typeId: number) => Promise<RefTypeBlueprintResult>
+  refDogmaUnits: () => Promise<DogmaUnitsResult>
+  refDogmaAttributeCategories: () => Promise<DogmaAttributeCategoriesResult>
   mutamarketModule: (
     itemId: number,
     typeId?: number

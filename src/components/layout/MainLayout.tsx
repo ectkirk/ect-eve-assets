@@ -65,9 +65,15 @@ const RegionalMarketPanel = lazy(() =>
     default: m.RegionalMarketPanel,
   }))
 )
+const ReferencePanel = lazy(() =>
+  import('@/features/tools/reference').then((m) => ({
+    default: m.ReferencePanel,
+  }))
+)
 import { useFreightActionStore } from '@/store/freight-action-store'
 import { useRegionalMarketActionStore } from '@/store/regional-market-action-store'
 import { useContractsSearchActionStore } from '@/store/contracts-search-action-store'
+import { useReferenceActionStore } from '@/store/reference-action-store'
 import { useTotalAssets, useNavigationAction } from '@/hooks'
 import { formatNumber } from '@/lib/utils'
 import { TabControlsProvider } from '@/context'
@@ -77,7 +83,11 @@ import { OwnerButton } from './OwnerButton'
 import { WindowControls } from './WindowControls'
 import { SearchBar } from './SearchBar'
 
-type AppMode = 'assets' | 'contracts' | 'market' | 'buyback' | 'freight'
+type AppMode = 'assets' | 'tools' | 'buyback' | 'freight'
+
+const TOOLS_TABS = ['Contracts', 'Market', 'Reference'] as const
+
+type ToolsTab = (typeof TOOLS_TABS)[number]
 
 function TabLoadingFallback() {
   return (
@@ -126,8 +136,7 @@ function AssetTabContent({ tab }: { tab: AssetTab }) {
 
 const APP_MODES: { id: AppMode; label: string }[] = [
   { id: 'assets', label: 'Assets' },
-  { id: 'contracts', label: 'Contracts' },
-  { id: 'market', label: 'Market' },
+  { id: 'tools', label: 'Tools' },
   { id: 'buyback', label: 'Buyback' },
   { id: 'freight', label: 'Freight' },
 ]
@@ -245,12 +254,14 @@ function MainLayoutInner() {
   const [activeBuybackTab, setActiveBuybackTab] = useState<BuybackTabType>(
     BUYBACK_TABS[1]
   )
+  const [activeToolsTab, setActiveToolsTab] = useState<ToolsTab>('Contracts')
   const [buybackPrefill, setBuybackPrefill] = useState<string | null>(null)
   const [freightPrefill, setFreightPrefill] = useState<{
     text: string
     nullSec: boolean
   } | null>(null)
   const [marketTypeId, setMarketTypeId] = useState<number | null>(null)
+  const [referenceTypeId, setReferenceTypeId] = useState<number | null>(null)
   const [contractsSearchType, setContractsSearchType] = useState<{
     typeId: number
     typeName: string
@@ -276,7 +287,8 @@ function MainLayoutInner() {
   useNavigationAction(
     useRegionalMarketActionStore,
     useCallback((action: { typeId: number }) => {
-      setMode('market')
+      setMode('tools')
+      setActiveToolsTab('Market')
       setMarketTypeId(action.typeId)
     }, [])
   )
@@ -284,7 +296,8 @@ function MainLayoutInner() {
   useNavigationAction(
     useContractsSearchActionStore,
     useCallback((action: { typeId: number; typeName: string }) => {
-      setMode('contracts')
+      setMode('tools')
+      setActiveToolsTab('Contracts')
       setContractsSearchType({
         typeId: action.typeId,
         typeName: action.typeName,
@@ -292,7 +305,17 @@ function MainLayoutInner() {
     }, [])
   )
 
+  useNavigationAction(
+    useReferenceActionStore,
+    useCallback((action: { typeId: number }) => {
+      setMode('tools')
+      setActiveToolsTab('Reference')
+      setReferenceTypeId(action.typeId)
+    }, [])
+  )
+
   const clearMarketTypeId = useCallback(() => setMarketTypeId(null), [])
+  const clearReferenceTypeId = useCallback(() => setReferenceTypeId(null), [])
   const clearContractsSearchType = useCallback(
     () => setContractsSearchType(null),
     []
@@ -439,6 +462,28 @@ function MainLayoutInner() {
                 </button>
               )
             })}
+          {mode === 'tools' &&
+            TOOLS_TABS.map((tab, index) => (
+              <button
+                key={tab}
+                ref={(el) => {
+                  tabRefs.current[index] = el
+                }}
+                onClick={() => setActiveToolsTab(tab)}
+                onKeyDown={(e) => handleTabKeyDown(e, TOOLS_TABS, index)}
+                role="tab"
+                aria-selected={activeToolsTab === tab}
+                aria-controls="main-content"
+                tabIndex={activeToolsTab === tab ? 0 : -1}
+                className={`px-3 py-2 text-sm transition-colors ${
+                  activeToolsTab === tab
+                    ? 'border-b-2 border-accent text-accent'
+                    : 'text-content-secondary hover:text-content'
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
         </div>
         <div className="flex-1" />
         <OwnerButton />
@@ -472,6 +517,22 @@ function MainLayoutInner() {
               </div>
             </FeatureErrorBoundary>
           )}
+          {mode === 'tools' && activeToolsTab === 'Contracts' && (
+            <FeatureErrorBoundary key="contracts" feature="Contracts Search">
+              <ContractsSearchPanel
+                initialType={contractsSearchType}
+                onInitialTypeConsumed={clearContractsSearchType}
+              />
+            </FeatureErrorBoundary>
+          )}
+          {mode === 'tools' && activeToolsTab === 'Market' && (
+            <FeatureErrorBoundary key="market" feature="Regional Market">
+              <RegionalMarketPanel
+                initialTypeId={marketTypeId}
+                onInitialTypeConsumed={clearMarketTypeId}
+              />
+            </FeatureErrorBoundary>
+          )}
           {mode === 'freight' && (
             <FeatureErrorBoundary key="freight" feature="Freight">
               <FreightPanel
@@ -481,19 +542,11 @@ function MainLayoutInner() {
               />
             </FeatureErrorBoundary>
           )}
-          {mode === 'contracts' && (
-            <FeatureErrorBoundary key="contracts" feature="Contracts">
-              <ContractsSearchPanel
-                initialType={contractsSearchType}
-                onInitialTypeConsumed={clearContractsSearchType}
-              />
-            </FeatureErrorBoundary>
-          )}
-          {mode === 'market' && (
-            <FeatureErrorBoundary key="market" feature="Market">
-              <RegionalMarketPanel
-                initialTypeId={marketTypeId}
-                onInitialTypeConsumed={clearMarketTypeId}
+          {mode === 'tools' && activeToolsTab === 'Reference' && (
+            <FeatureErrorBoundary key="reference" feature="Reference">
+              <ReferencePanel
+                initialTypeId={referenceTypeId}
+                onClearInitialTypeId={clearReferenceTypeId}
               />
             </FeatureErrorBoundary>
           )}

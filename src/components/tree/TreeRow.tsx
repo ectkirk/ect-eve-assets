@@ -11,6 +11,7 @@ import { usePriceStore } from '@/store/price-store'
 import { getType } from '@/store/reference-cache'
 import { useRegionalMarketActionStore } from '@/store/regional-market-action-store'
 import { useContractsSearchActionStore } from '@/store/contracts-search-action-store'
+import { useReferenceActionStore } from '@/store/reference-action-store'
 import { SERVICE_REGIONS } from '@/hooks'
 import { cn } from '@/lib/utils'
 import type { TreeNode } from '@/lib/tree-types'
@@ -88,6 +89,13 @@ export const TreeRow = memo(function TreeRow({
     }
   }, [node.typeId, node.typeName, navigateToContracts])
 
+  const navigateToReference = useReferenceActionStore((s) => s.navigateToType)
+  const handleViewDetails = useCallback(() => {
+    if (node.typeId) {
+      navigateToReference(node.typeId)
+    }
+  }, [node.typeId, navigateToReference])
+
   const isShip = node.nodeType === 'ship'
   const isAbyssalResolved =
     node.typeId && itemId && isAbyssalTypeId(node.typeId) && hasAbyssalPrice
@@ -128,13 +136,15 @@ export const TreeRow = memo(function TreeRow({
     (isSelected && showFreightOption) ||
     (hasChildren && isInServiceRegion && isStation)
   const canViewInContracts = node.typeId && node.typeName
+  const canViewDetails = !!node.typeId
   if (
     isShip ||
     isAbyssalResolved ||
     showBuyback ||
     showFreight ||
     isMarketItem ||
-    canViewInContracts
+    canViewInContracts ||
+    canViewDetails
   ) {
     return (
       <ContextMenu>
@@ -168,6 +178,11 @@ export const TreeRow = memo(function TreeRow({
           {isAbyssalResolved && (
             <ContextMenuItem onClick={handleOpenMutamarket}>
               Open in Mutamarket
+            </ContextMenuItem>
+          )}
+          {canViewDetails && (
+            <ContextMenuItem onClick={handleViewDetails}>
+              View Details
             </ContextMenuItem>
           )}
         </ContextMenuContent>

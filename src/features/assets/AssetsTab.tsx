@@ -35,6 +35,7 @@ import {
 import { useBlueprintsStore } from '@/store/blueprints-store'
 import { useRegionalMarketActionStore } from '@/store/regional-market-action-store'
 import { useContractsSearchActionStore } from '@/store/contracts-search-action-store'
+import { useReferenceActionStore } from '@/store/reference-action-store'
 import {
   type AssetRow,
   COLUMN_LABELS,
@@ -84,6 +85,7 @@ export function AssetsTab() {
   const navigateToContracts = useContractsSearchActionStore(
     (s) => s.navigateToContracts
   )
+  const navigateToReference = useReferenceActionStore((s) => s.navigateToType)
 
   const { data, categories } = useMemo(() => {
     void types
@@ -472,6 +474,11 @@ export function AssetsTab() {
                           Open in Mutamarket
                         </ContextMenuItem>
                       )}
+                      <ContextMenuItem
+                        onClick={() => navigateToReference(row.original.typeId)}
+                      >
+                        View Details
+                      </ContextMenuItem>
                     </ContextMenuContent>
                   </ContextMenu>
                 )
