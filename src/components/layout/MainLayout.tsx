@@ -73,6 +73,7 @@ const ReferencePanel = lazy(() =>
 import { useFreightActionStore } from '@/store/freight-action-store'
 import { useRegionalMarketActionStore } from '@/store/regional-market-action-store'
 import { useContractsSearchActionStore } from '@/store/contracts-search-action-store'
+import { useReferenceActionStore } from '@/store/reference-action-store'
 import { useTotalAssets, useNavigationAction } from '@/hooks'
 import { formatNumber } from '@/lib/utils'
 import { TabControlsProvider } from '@/context'
@@ -260,6 +261,7 @@ function MainLayoutInner() {
     nullSec: boolean
   } | null>(null)
   const [marketTypeId, setMarketTypeId] = useState<number | null>(null)
+  const [referenceTypeId, setReferenceTypeId] = useState<number | null>(null)
   const [contractsSearchType, setContractsSearchType] = useState<{
     typeId: number
     typeName: string
@@ -303,7 +305,17 @@ function MainLayoutInner() {
     }, [])
   )
 
+  useNavigationAction(
+    useReferenceActionStore,
+    useCallback((action: { typeId: number }) => {
+      setMode('tools')
+      setActiveToolsTab('Reference')
+      setReferenceTypeId(action.typeId)
+    }, [])
+  )
+
   const clearMarketTypeId = useCallback(() => setMarketTypeId(null), [])
+  const clearReferenceTypeId = useCallback(() => setReferenceTypeId(null), [])
   const clearContractsSearchType = useCallback(
     () => setContractsSearchType(null),
     []
@@ -532,7 +544,10 @@ function MainLayoutInner() {
           )}
           {mode === 'tools' && activeToolsTab === 'Reference' && (
             <FeatureErrorBoundary key="reference" feature="Reference">
-              <ReferencePanel />
+              <ReferencePanel
+                initialTypeId={referenceTypeId}
+                onClearInitialTypeId={clearReferenceTypeId}
+              />
             </FeatureErrorBoundary>
           )}
         </Suspense>

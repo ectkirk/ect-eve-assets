@@ -17,6 +17,7 @@ import {
 import { TypeIcon, OwnerIcon } from '@/components/ui/type-icon'
 import { formatNumber, cn } from '@/lib/utils'
 import { useRegionalMarketActionStore } from '@/store/regional-market-action-store'
+import { useReferenceActionStore } from '@/store/reference-action-store'
 import type { OrderRow, SortColumn, DiffSortMode } from './types'
 import {
   formatExpiry,
@@ -127,10 +128,12 @@ function VirtualizedTableBody({
   sortedOrders,
   show,
   navigateToType,
+  navigateToReference,
 }: {
   sortedOrders: OrderRow[]
   show: (col: string) => boolean
   navigateToType: (typeId: number) => void
+  navigateToReference: (typeId: number) => void
 }) {
   const containerRef = useRef<HTMLTableSectionElement>(null)
 
@@ -170,6 +173,9 @@ function VirtualizedTableBody({
               <ContextMenuItem onClick={() => navigateToType(row.typeId)}>
                 View in Regional Market
               </ContextMenuItem>
+              <ContextMenuItem onClick={() => navigateToReference(row.typeId)}>
+                View Details
+              </ContextMenuItem>
             </ContextMenuContent>
           </ContextMenu>
         )
@@ -182,10 +188,12 @@ function StandardTableBody({
   sortedOrders,
   show,
   navigateToType,
+  navigateToReference,
 }: {
   sortedOrders: OrderRow[]
   show: (col: string) => boolean
   navigateToType: (typeId: number) => void
+  navigateToReference: (typeId: number) => void
 }) {
   return (
     <TableBody>
@@ -199,6 +207,9 @@ function StandardTableBody({
           <ContextMenuContent>
             <ContextMenuItem onClick={() => navigateToType(row.typeId)}>
               View in Regional Market
+            </ContextMenuItem>
+            <ContextMenuItem onClick={() => navigateToReference(row.typeId)}>
+              View Details
             </ContextMenuItem>
           </ContextMenuContent>
         </ContextMenu>
@@ -221,6 +232,7 @@ export function OrdersTable({
   const [diffSortMode, setDiffSortMode] = useState<DiffSortMode>('number')
   const show = (col: string) => visibleColumns.has(col)
   const navigateToType = useRegionalMarketActionStore((s) => s.navigateToType)
+  const navigateToReference = useReferenceActionStore((s) => s.navigateToType)
 
   const sortedOrders = useMemo(() => {
     return sortRows(orders, sortColumn, sortDirection, (row, column) => {
@@ -377,12 +389,14 @@ export function OrdersTable({
           sortedOrders={sortedOrders}
           show={show}
           navigateToType={navigateToType}
+          navigateToReference={navigateToReference}
         />
       ) : (
         <StandardTableBody
           sortedOrders={sortedOrders}
           show={show}
           navigateToType={navigateToType}
+          navigateToReference={navigateToReference}
         />
       )}
     </Table>

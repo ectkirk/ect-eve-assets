@@ -1,4 +1,12 @@
-import { useState, useMemo, useCallback, lazy, Suspense, useRef } from 'react'
+import {
+  useState,
+  useMemo,
+  useCallback,
+  useEffect,
+  lazy,
+  Suspense,
+  useRef,
+} from 'react'
 import { ChevronRight, Loader2, Search, X } from 'lucide-react'
 import { useReferenceCacheStore } from '@/store/reference-cache'
 import { TypeIcon } from '@/components/ui/type-icon'
@@ -16,7 +24,15 @@ const ItemDetailPanel = lazy(() =>
   import('./ItemDetailPanel').then((m) => ({ default: m.ItemDetailPanel }))
 )
 
-export function ReferencePanel() {
+interface ReferencePanelProps {
+  initialTypeId?: number | null
+  onClearInitialTypeId?: () => void
+}
+
+export function ReferencePanel({
+  initialTypeId,
+  onClearInitialTypeId,
+}: ReferencePanelProps = {}) {
   const [searchQuery, setSearchQuery] = useState('')
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [showUnpublished, setShowUnpublished] = useState(false)
@@ -185,6 +201,18 @@ export function ReferencePanel() {
     },
     [types]
   )
+
+  const lastHandledTypeId = useRef<number | null>(null)
+  useEffect(() => {
+    if (!initialTypeId) return
+    if (lastHandledTypeId.current === initialTypeId) return
+    lastHandledTypeId.current = initialTypeId
+
+    queueMicrotask(() => {
+      handleSelectType(initialTypeId)
+      onClearInitialTypeId?.()
+    })
+  }, [initialTypeId, handleSelectType, onClearInitialTypeId])
 
   const handleSearchCategoryClick = useCallback(
     (categoryId: number) => {
