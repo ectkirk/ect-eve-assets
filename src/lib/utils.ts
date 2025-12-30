@@ -34,3 +34,20 @@ export function formatVolume(value: number, decimals: 0 | 2 = 0): string {
 export function formatFullNumber(value: number): string {
   return value.toLocaleString('en-US', { maximumFractionDigits: 0 })
 }
+
+export function formatDuration(totalSeconds: number): string {
+  if (totalSeconds < 60) return `${totalSeconds}s`
+  if (totalSeconds < 3600) {
+    const m = Math.floor(totalSeconds / 60)
+    const s = totalSeconds % 60
+    return s > 0 ? `${m}m ${s}s` : `${m}m`
+  }
+  if (totalSeconds < 86400) {
+    const h = Math.floor(totalSeconds / 3600)
+    const m = Math.floor((totalSeconds % 3600) / 60)
+    return m > 0 ? `${h}h ${m}m` : `${h}h`
+  }
+  const d = Math.floor(totalSeconds / 86400)
+  const h = Math.floor((totalSeconds % 86400) / 3600)
+  return h > 0 ? `${d}d ${h}h` : `${d}d`
+}

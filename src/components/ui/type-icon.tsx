@@ -2,6 +2,10 @@ import { cn } from '@/lib/utils'
 
 const SKIN_CATEGORY_ID = 91
 const BLUEPRINT_CATEGORY_ID = 9
+const SHIP_CATEGORY_ID = 6
+const ANCIENT_RELIC_CATEGORY_ID = 34
+
+type TypeVariation = 'icon' | 'render' | 'bp' | 'bpc' | 'relic'
 
 export interface TypeIconProps {
   typeId: number
@@ -17,6 +21,18 @@ const SIZE_CLASSES = {
   md: 'h-5 w-5',
   lg: 'h-6 w-6',
   xl: 'h-12 w-12',
+}
+
+export function getTypeVariation(
+  categoryId?: number,
+  isBlueprintCopy?: boolean,
+  isBlueprint?: boolean
+): TypeVariation {
+  if (isBlueprintCopy) return 'bpc'
+  if (isBlueprint || categoryId === BLUEPRINT_CATEGORY_ID) return 'bp'
+  if (categoryId === ANCIENT_RELIC_CATEGORY_ID) return 'relic'
+  if (categoryId === SHIP_CATEGORY_ID) return 'render'
+  return 'icon'
 }
 
 export function getTypeIconUrl(
@@ -39,17 +55,8 @@ export function getTypeIconUrl(
     return `https://images.evetech.net/types/81350/icon?size=${imageSize}`
   }
 
-  if (
-    categoryId === BLUEPRINT_CATEGORY_ID ||
-    isBlueprint ||
-    isBlueprintCopy === true
-  ) {
-    return isBlueprintCopy
-      ? `https://images.evetech.net/types/${typeId}/bpc?size=${imageSize}`
-      : `https://images.evetech.net/types/${typeId}/bp?size=${imageSize}`
-  }
-
-  return `https://images.evetech.net/types/${typeId}/icon?size=${imageSize}`
+  const variation = getTypeVariation(categoryId, isBlueprintCopy, isBlueprint)
+  return `https://images.evetech.net/types/${typeId}/${variation}?size=${imageSize}`
 }
 
 const IMAGE_SIZES: Record<string, number> = {

@@ -22,3 +22,4 @@ export {
 } from './useBuybackSelection'
 export { useFreightSelection, type FreightItem } from './useFreightSelection'
 export { useNavigationAction } from './useNavigationAction'
+export { useDebouncedValue } from './useDebouncedValue'

@@ -85,6 +85,10 @@ vi.mock('@/features/tools/regional-market', () => ({
   ),
 }))
 
+vi.mock('@/features/tools/reference', () => ({
+  ReferencePanel: () => <div data-testid="reference-panel">ReferencePanel</div>,
+}))
+
 vi.mock('@/hooks', () => ({
   useTotalAssets: () => ({
     total: 1000000000,
@@ -133,10 +137,8 @@ describe('MainLayout', () => {
         name: 'Application modes',
       })
       expect(within(modeTablist).getByText('Assets')).toBeInTheDocument()
-      expect(within(modeTablist).getByText('Contracts')).toBeInTheDocument()
-      expect(within(modeTablist).getByText('Market')).toBeInTheDocument()
+      expect(within(modeTablist).getByText('Tools')).toBeInTheDocument()
       expect(within(modeTablist).getByText('Buyback')).toBeInTheDocument()
-      expect(within(modeTablist).getByText('Freight')).toBeInTheDocument()
     })
 
     it('renders skip link for accessibility', () => {
@@ -259,26 +261,31 @@ describe('MainLayout', () => {
   })
 
   describe('mode switching', () => {
-    it('switches to Contracts mode', async () => {
+    it('switches to Tools mode and shows Contracts by default', async () => {
       render(<MainLayout />)
       const modeTablist = screen.getByRole('tablist', {
         name: 'Application modes',
       })
 
-      fireEvent.click(within(modeTablist).getByText('Contracts'))
+      fireEvent.click(within(modeTablist).getByText('Tools'))
 
       expect(
         await screen.findByTestId('contracts-search-panel')
       ).toBeInTheDocument()
     })
 
-    it('switches to Market mode', async () => {
+    it('switches to Tools mode Market tab', async () => {
       render(<MainLayout />)
       const modeTablist = screen.getByRole('tablist', {
         name: 'Application modes',
       })
 
-      fireEvent.click(within(modeTablist).getByText('Market'))
+      fireEvent.click(within(modeTablist).getByText('Tools'))
+
+      const toolsTablist = await screen.findByRole('tablist', {
+        name: 'Tools tabs',
+      })
+      fireEvent.click(within(toolsTablist).getByText('Market'))
 
       expect(
         await screen.findByTestId('regional-market-panel')
@@ -313,7 +320,7 @@ describe('MainLayout', () => {
         name: 'Application modes',
       })
 
-      fireEvent.click(within(modeTablist).getByText('Freight'))
+      fireEvent.click(within(modeTablist).getByText('Tools'))
 
       expect(screen.queryByTestId('search-bar')).not.toBeInTheDocument()
     })

@@ -382,6 +382,37 @@ export function registerRefAPIHandlers(): void {
     }
   )
 
+  const validateTypeId = (typeId: unknown): typeId is number =>
+    typeof typeId === 'number' && Number.isInteger(typeId) && typeId > 0
+
+  const typeDetailEndpoints = [
+    { channel: 'ref:type-detail', path: '' },
+    { channel: 'ref:type-core', path: '' },
+    { channel: 'ref:type-dogma', path: '/dogma' },
+    { channel: 'ref:type-market', path: '/market' },
+    { channel: 'ref:type-skills', path: '/skills' },
+    { channel: 'ref:type-variations', path: '/variations' },
+    { channel: 'ref:type-blueprint', path: '/blueprint' },
+  ]
+
+  for (const { channel, path } of typeDetailEndpoints) {
+    ipcMain.handle(channel, async (_event, typeId: unknown) => {
+      if (!validateTypeId(typeId)) return { error: 'Invalid type ID' }
+      return refGet(`/reference/types/${typeId}${path}`, channel)
+    })
+  }
+
+  ipcMain.handle('ref:dogma-units', async () => {
+    return refGet('/reference/dogma-units', 'ref:dogma-units')
+  })
+
+  ipcMain.handle('ref:dogma-attribute-categories', async () => {
+    return refGet(
+      '/reference/dogma-attribute-categories',
+      'ref:dogma-attribute-categories'
+    )
+  })
+
   ipcMain.handle('ref:contractsSearch', async (_event, params: unknown) => {
     if (typeof params !== 'object' || params === null) {
       return { error: 'Invalid params' }

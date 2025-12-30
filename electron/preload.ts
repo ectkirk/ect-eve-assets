@@ -150,6 +150,22 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.invoke('ref:shippingCalculate', text, nullSec),
   refContractsSearch: (params: ContractSearchParams) =>
     ipcRenderer.invoke('ref:contractsSearch', params),
+  refTypeDetail: (typeId: number) =>
+    ipcRenderer.invoke('ref:type-detail', typeId),
+  refTypeCore: (typeId: number) => ipcRenderer.invoke('ref:type-core', typeId),
+  refTypeDogma: (typeId: number) =>
+    ipcRenderer.invoke('ref:type-dogma', typeId),
+  refTypeMarket: (typeId: number) =>
+    ipcRenderer.invoke('ref:type-market', typeId),
+  refTypeSkills: (typeId: number) =>
+    ipcRenderer.invoke('ref:type-skills', typeId),
+  refTypeVariations: (typeId: number) =>
+    ipcRenderer.invoke('ref:type-variations', typeId),
+  refTypeBlueprint: (typeId: number) =>
+    ipcRenderer.invoke('ref:type-blueprint', typeId),
+  refDogmaUnits: () => ipcRenderer.invoke('ref:dogma-units'),
+  refDogmaAttributeCategories: () =>
+    ipcRenderer.invoke('ref:dogma-attribute-categories'),
   mutamarketModule: (itemId: number, typeId?: number) =>
     ipcRenderer.invoke('mutamarket:module', itemId, typeId),
   onUpdateAvailable: (callback: (version: string) => void) => {
