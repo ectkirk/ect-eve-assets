@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { AlertBox } from '@/components/ui/alert-box'
 import { useAssetStore } from '@/store/asset-store'
 import { usePriceStore } from '@/store/price-store'
 import {
@@ -14,7 +15,7 @@ import {
   fetchAbyssalPrices,
   type AbyssalItem,
 } from '@/api/mutamarket-client'
-import { AlertTriangle, ExternalLink } from 'lucide-react'
+import { ExternalLink } from 'lucide-react'
 
 interface AbyssalSyncModalProps {
   open: boolean
@@ -102,34 +103,27 @@ export function AbyssalSyncModal({
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="rounded-lg border border-semantic-warning/50 bg-semantic-warning/10 p-4">
-            <div className="flex gap-3">
-              <AlertTriangle className="h-5 w-5 shrink-0 text-semantic-warning" />
-              <div className="space-y-2 text-sm">
-                <p className="font-medium text-content">Privacy Notice</p>
-                <p className="text-content-secondary">
-                  By syncing your abyssal modules, you are sending your unique
-                  item IDs to{' '}
-                  <a
-                    href="https://mutamarket.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-accent hover:underline inline-flex items-center gap-1"
-                  >
-                    Mutamarket.com
-                    <ExternalLink className="h-3 w-3" />
-                  </a>{' '}
-                  for appraisal.
-                </p>
-                <p className="text-content-secondary">
-                  This will make your abyssal modules{' '}
-                  <strong>publicly searchable</strong> on Mutamarket. Other
-                  players will be able to see these modules exist and their
-                  stats.
-                </p>
-              </div>
-            </div>
-          </div>
+          <AlertBox variant="warning" title="Privacy Notice">
+            <p>
+              By syncing your abyssal modules, you are sending your unique item
+              IDs to{' '}
+              <a
+                href="https://mutamarket.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-accent hover:underline inline-flex items-center gap-1"
+              >
+                Mutamarket.com
+                <ExternalLink className="h-3 w-3" />
+              </a>{' '}
+              for appraisal.
+            </p>
+            <p className="mt-2">
+              This will make your abyssal modules{' '}
+              <strong>publicly searchable</strong> on Mutamarket. Other players
+              will be able to see these modules exist and their stats.
+            </p>
+          </AlertBox>
 
           <div className="rounded-lg border border-border bg-surface-tertiary/50 p-4">
             <div className="flex items-center justify-between">

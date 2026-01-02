@@ -75,7 +75,7 @@ export function FreightResults({ result }: FreightResultsProps) {
           <div className="rounded-lg bg-surface-tertiary p-4">
             <div className="text-xs text-content-secondary">Total Volume</div>
             <div className="text-lg font-semibold text-content">
-              {formatVolume(plan.summary.totalCargoVolume, 2)} m³
+              {formatVolume(plan.summary.totalCargoVolume, { suffix: true })}
             </div>
           </div>
           <div className="rounded-lg bg-surface-tertiary p-4">
@@ -137,7 +137,7 @@ export function FreightResults({ result }: FreightResultsProps) {
           items={plan.unshippableItems.map((item) => {
             const reason =
               item.reason === 'volume_exceeds_capacity'
-                ? `${formatVolume(item.totalVolume, 2)} m³ exceeds 360k m³ limit`
+                ? `${formatVolume(item.totalVolume, { suffix: true })} exceeds 360k m³ limit`
                 : `${formatNumber(item.totalValue)} exceeds 10B collateral limit`
             return `${item.itemName} × ${item.quantity.toLocaleString()} (${reason})`
           })}
@@ -224,7 +224,7 @@ export function FreightResults({ result }: FreightResultsProps) {
                           Volume
                         </div>
                         <div className="text-sm text-content">
-                          {formatVolume(pkg.totalVolume, 2)} m³
+                          {formatVolume(pkg.totalVolume, { suffix: true })}
                           <span className="ml-1 text-xs text-content-muted">
                             ({pkg.volumeUtilization.toFixed(1)}%)
                           </span>
@@ -326,7 +326,9 @@ export function FreightResults({ result }: FreightResultsProps) {
                                 {item.quantity.toLocaleString()}
                               </td>
                               <td className="py-2 text-right font-mono text-content-muted">
-                                {formatVolume(item.totalVolume, 2)} m³
+                                {formatVolume(item.totalVolume, {
+                                  suffix: true,
+                                })}
                               </td>
                               <td className="py-2 text-right font-mono text-status-info">
                                 {formatNumber(item.totalValue)}

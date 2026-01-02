@@ -2,6 +2,7 @@ import { type Owner } from './auth-store'
 import { createOwnerStore } from './create-owner-store'
 import { esi } from '@/api/esi'
 import { ESIBlueprintSchema } from '@/api/schemas'
+import { ownerEndpoint } from '@/lib/owner-utils'
 import { z } from 'zod'
 
 export type ESIBlueprint = z.infer<typeof ESIBlueprintSchema>
@@ -53,19 +54,12 @@ export const useBlueprintsStore = createOwnerStore<
     dataKey: 'blueprints',
     metaStoreName: 'meta',
   },
-  getEndpoint: (owner) =>
-    owner.type === 'corporation'
-      ? `/corporations/${owner.id}/blueprints`
-      : `/characters/${owner.id}/blueprints`,
+  getEndpoint: (owner) => ownerEndpoint(owner, 'blueprints'),
   fetchData: async (owner) => {
-    const endpoint =
-      owner.type === 'corporation'
-        ? `/corporations/${owner.id}/blueprints`
-        : `/characters/${owner.id}/blueprints`
-    const result = await esi.fetchPaginatedWithMeta<ESIBlueprint>(endpoint, {
-      characterId: owner.characterId,
-      schema: ESIBlueprintSchema,
-    })
+    const result = await esi.fetchPaginatedWithMeta<ESIBlueprint>(
+      ownerEndpoint(owner, 'blueprints'),
+      { characterId: owner.characterId, schema: ESIBlueprintSchema }
+    )
     return { data: result.data, expiresAt: result.expiresAt, etag: result.etag }
   },
   toOwnerData: (owner, data) => ({ owner, blueprints: data }),

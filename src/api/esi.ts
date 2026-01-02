@@ -2,6 +2,7 @@ import type { z } from 'zod'
 import type { ESIResponseMeta, ESIRequestOptions } from 'electron/preload'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { logger } from '@/lib/logger'
+import { chunkArray } from '@/lib/utils'
 import { ValidationError, ConfigurationError } from '@/lib/errors'
 import { ESIError } from '../../shared/esi-types'
 
@@ -122,8 +123,7 @@ export const esi = {
     const { batchSize = 20, onProgress } = options
     const results = new Map<T, R | null>()
 
-    for (let i = 0; i < items.length; i += batchSize) {
-      const batch = items.slice(i, i + batchSize)
+    for (const [i, batch] of chunkArray(items, batchSize).entries()) {
       const batchResults = await Promise.all(
         batch.map(async (item) => {
           try {
@@ -143,7 +143,7 @@ export const esi = {
         results.set(item, result)
       }
 
-      onProgress?.(Math.min(i + batchSize, items.length), items.length)
+      onProgress?.(Math.min((i + 1) * batchSize, items.length), items.length)
     }
 
     return results

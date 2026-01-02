@@ -2,6 +2,9 @@ import { URL } from 'node:url'
 import * as jose from 'jose'
 import { logger } from '../logger.js'
 import { EVE_SSO } from './config.js'
+import type { CorporationRoles } from '../../../shared/electron-api-types.js'
+
+export type { CorporationRoles }
 
 const JWKS = jose.createRemoteJWKSet(new URL(EVE_SSO.jwksUrl))
 
@@ -82,13 +85,6 @@ export async function fetchCharacterInfo(
     throw new Error('Failed to fetch character info')
   }
   return response.json() as Promise<ESICharacterInfo>
-}
-
-export interface CorporationRoles {
-  roles: string[]
-  roles_at_hq?: string[]
-  roles_at_base?: string[]
-  roles_at_other?: string[]
 }
 
 export async function fetchCharacterRoles(

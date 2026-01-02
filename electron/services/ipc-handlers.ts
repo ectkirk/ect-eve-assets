@@ -7,6 +7,7 @@ import {
 } from './auth.js'
 import { logger, type LogLevel, type LogContext } from './logger.js'
 import { installUpdate } from './updater.js'
+import { isValidCharacterId, isValidObject } from './validation.js'
 
 const BUG_REPORT_WEBHOOK = process.env.DISCORD_BUG_WEBHOOK || ''
 
@@ -56,11 +57,7 @@ export function registerAuthHandlers(ctx: WindowContext): void {
       ) {
         return { success: false, error: 'Invalid refresh token' }
       }
-      if (
-        typeof characterId !== 'number' ||
-        !Number.isInteger(characterId) ||
-        characterId <= 0
-      ) {
+      if (!isValidCharacterId(characterId)) {
         return { success: false, error: 'Invalid character ID' }
       }
       const result = await refreshAccessToken(refreshToken)
@@ -73,11 +70,7 @@ export function registerAuthHandlers(ctx: WindowContext): void {
 
   ipcMain.handle('auth:logout', async (_event, characterId: unknown) => {
     if (characterId !== undefined) {
-      if (
-        typeof characterId !== 'number' ||
-        !Number.isInteger(characterId) ||
-        characterId <= 0
-      ) {
+      if (!isValidCharacterId(characterId)) {
         return { success: false, error: 'Invalid character ID' }
       }
       const token = ctx.characterTokens.get(characterId)
@@ -100,7 +93,7 @@ export function registerStorageHandlers(ctx: WindowContext): void {
   })
 
   ipcMain.handle('storage:set', (_event, data: unknown) => {
-    if (typeof data !== 'object' || data === null || Array.isArray(data)) {
+    if (!isValidObject(data)) {
       logger.error('Invalid storage data type', undefined, {
         module: 'Storage',
       })
@@ -142,11 +135,7 @@ export function registerLoggingHandlers(): void {
 
       let validContext: LogContext | undefined
       if (context !== undefined) {
-        if (
-          typeof context !== 'object' ||
-          context === null ||
-          Array.isArray(context)
-        ) {
+        if (!isValidObject(context)) {
           return { success: false, error: 'Invalid context' }
         }
         try {

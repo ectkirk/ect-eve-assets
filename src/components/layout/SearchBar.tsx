@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useRef, useMemo, useCallback, useEffect } from 'react'
 import {
   ChevronDown,
   Check,
@@ -13,6 +13,7 @@ import {
   useAssetSettings,
   ASSET_SETTINGS_CONFIG,
 } from '@/store/asset-settings-store'
+import { useClickOutside } from '@/hooks'
 
 const ASSET_TYPE_OPTIONS = [
   { value: '', label: 'All Types' },
@@ -65,20 +66,9 @@ function ColumnsDropdown() {
   const { columns } = useTabControls()
   const [open, setOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const closeDropdown = useCallback(() => setOpen(false), [])
 
-  useEffect(() => {
-    if (!open) return
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(e.target as Node)
-      ) {
-        setOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [open])
+  useClickOutside(dropdownRef, open, closeDropdown)
 
   if (columns.length === 0) return null
 

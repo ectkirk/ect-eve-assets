@@ -1,3 +1,8 @@
+export type {
+  ESIRequestOptions,
+  ESIResponseMeta,
+} from '../../../shared/esi-types.js'
+
 export const ESI_BASE_URL = 'https://esi.evetech.net'
 export const ESI_COMPATIBILITY_DATE = '2025-11-06'
 
@@ -23,22 +28,6 @@ export const RATE_LIMIT_CONFIG = {
 
 export function makeUserAgent(version: string): string {
   return `ECTEVEAssets/${version} (ecteveassets@edencom.net; +https://github.com/ectkirk/ect-eve-assets)`
-}
-
-export interface ESIRequestOptions {
-  method?: 'GET' | 'POST'
-  body?: string
-  characterId?: number
-  requiresAuth?: boolean
-  etag?: string
-}
-
-export interface ESIResponseMeta<T> {
-  data: T
-  expiresAt: number
-  etag: string | null
-  notModified: boolean
-  xPages?: number
 }
 
 export interface ESISuccessResponse<T> {

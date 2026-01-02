@@ -2,6 +2,7 @@ import { app, ipcMain } from 'electron'
 import { logger } from './logger.js'
 import { fetchWithTimeout, isAbortError } from './fetch-utils.js'
 import { isValidCharacterId } from './validation.js'
+import { makeUserAgent } from './esi/types.js'
 
 const MUTAMARKET_API_BASE = 'https://mutamarket.com/api'
 const MUTAMARKET_TIMEOUT_MS = 5000
@@ -15,7 +16,7 @@ export function registerMutamarketHandlers(): void {
       }
 
       const headers = {
-        'User-Agent': `ECTEVEAssets/${app.getVersion()} (ecteveassets@edencom.net)`,
+        'User-Agent': makeUserAgent(app.getVersion()),
         'Content-Type': 'application/json',
       }
 

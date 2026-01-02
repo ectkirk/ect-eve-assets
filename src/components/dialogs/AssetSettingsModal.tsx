@@ -5,6 +5,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { CheckboxRow } from '@/components/ui/checkbox-row'
 import {
   useAssetSettings,
   ASSET_SETTINGS_CONFIG,
@@ -14,33 +15,6 @@ import {
 interface AssetSettingsModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-}
-
-function ToggleRow({
-  label,
-  description,
-  checked,
-  onChange,
-}: {
-  label: string
-  description: string
-  checked: boolean
-  onChange: (checked: boolean) => void
-}) {
-  return (
-    <label className="flex items-start gap-3 py-2 px-2 rounded hover:bg-surface-tertiary cursor-pointer">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="h-4 w-4 mt-0.5 rounded border-border text-accent focus:ring-accent"
-      />
-      <div className="flex-1">
-        <div className="text-sm text-content">{label}</div>
-        <div className="text-xs text-content-muted">{description}</div>
-      </div>
-    </label>
-  )
 }
 
 export function AssetSettingsModal({
@@ -61,7 +35,7 @@ export function AssetSettingsModal({
 
         <div className="space-y-1">
           {ASSET_SETTINGS_CONFIG.map((config) => (
-            <ToggleRow
+            <CheckboxRow
               key={config.key}
               label={config.label}
               description={config.description}

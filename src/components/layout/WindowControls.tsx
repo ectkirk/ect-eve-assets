@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type ReactNode } from 'react'
+import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react'
 import {
   Minus,
   Square,
@@ -16,10 +16,11 @@ import {
   FolderOpen,
   Package,
   Users,
+  Map,
   type LucideIcon,
 } from 'lucide-react'
 import { useThemeStore, THEME_OPTIONS } from '@/store/theme-store'
-import { useModalManager } from '@/hooks/use-modal-manager'
+import { useModalManager, useClickOutside } from '@/hooks'
 import { CreditsModal } from './CreditsModal'
 import { SupportModal } from './SupportModal'
 import { BugReportModal } from './BugReportModal'
@@ -28,6 +29,7 @@ import { SupportersModal } from './SupportersModal'
 import { ClearCacheModal } from '@/components/dialogs/ClearCacheModal'
 import { AbyssalSyncModal } from '@/components/dialogs/AbyssalSyncModal'
 import { AssetSettingsModal } from '@/components/dialogs/AssetSettingsModal'
+import { MapSettingsModal } from '@/components/dialogs/MapSettingsModal'
 
 type SettingsModal =
   | 'credits'
@@ -38,6 +40,7 @@ type SettingsModal =
   | 'abyssal'
   | 'bugReport'
   | 'assetSettings'
+  | 'mapSettings'
 
 const menuItemClass =
   'flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-content-secondary hover:bg-surface-tertiary'
@@ -95,25 +98,15 @@ export function WindowControls() {
     modals.open(modal)
   }
 
+  const closeSettings = useCallback(() => setSettingsOpen(false), [])
+
   useEffect(() => {
     if (!window.electronAPI) return
     window.electronAPI.windowIsMaximized().then(setIsMaximized)
     return window.electronAPI.onWindowMaximizeChange(setIsMaximized)
   }, [])
 
-  useEffect(() => {
-    if (!settingsOpen) return
-    function handleClickOutside(e: MouseEvent) {
-      if (
-        settingsPanelRef.current &&
-        !settingsPanelRef.current.contains(e.target as Node)
-      ) {
-        setSettingsOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [settingsOpen])
+  useClickOutside(settingsPanelRef, settingsOpen, closeSettings)
 
   return (
     <div
@@ -159,6 +152,9 @@ export function WindowControls() {
                 onClick={() => openModal('assetSettings')}
               >
                 Asset View
+              </MenuItem>
+              <MenuItem icon={Map} onClick={() => openModal('mapSettings')}>
+                Map & Routing
               </MenuItem>
               <div className="my-2 border-t border-border" />
               <MenuItem icon={Sparkles} onClick={() => openModal('abyssal')}>
@@ -240,6 +236,10 @@ export function WindowControls() {
       <AssetSettingsModal
         open={modals.isOpen('assetSettings')}
         onOpenChange={(open) => modals.setOpen('assetSettings', open)}
+      />
+      <MapSettingsModal
+        open={modals.isOpen('mapSettings')}
+        onOpenChange={(open) => modals.setOpen('mapSettings', open)}
       />
       <button
         onClick={() => window.electronAPI?.windowMinimize()}

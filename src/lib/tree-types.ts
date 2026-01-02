@@ -115,30 +115,6 @@ export const LocationFlagNumbers = {
   StructureServiceSlot7: 172,
 } as const
 
-export const LocationFlagToNumber: Record<string, number> = {
-  Hangar: 4,
-  Cargo: 5,
-  CorpSAG1: 116,
-  CorpSAG2: 117,
-  CorpSAG3: 118,
-  CorpSAG4: 119,
-  CorpSAG5: 120,
-  CorpSAG6: 121,
-  CorpSAG7: 122,
-  ShipHangar: 90,
-  FleetHangar: 155,
-  FighterBay: 158,
-  FighterTube0: 159,
-  FighterTube1: 160,
-  FighterTube2: 161,
-  FighterTube3: 162,
-  FighterTube4: 163,
-  Deliveries: 173,
-  CorpDeliveries: 62,
-  AssetSafety: 36,
-  CloneBay: 89,
-}
-
 export const CategoryIds = {
   OWNER: 1,
   STATION: 3,

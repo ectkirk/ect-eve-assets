@@ -8,6 +8,7 @@ import {
 } from '@/api/schemas'
 import { useRegionalMarketStore } from '@/store/regional-market-store'
 import { logger } from '@/lib/logger'
+import { ownerEndpoint } from '@/lib/owner-utils'
 import {
   createVisibilityStore,
   type StoredItem,
@@ -95,9 +96,7 @@ function registerPricesFromOrders(ordersById: Map<number, StoredOrder>): void {
 }
 
 function getEndpoint(owner: Owner): string {
-  return owner.type === 'corporation'
-    ? `/corporations/${owner.id}/orders`
-    : `/characters/${owner.characterId}/orders`
+  return ownerEndpoint(owner, 'orders')
 }
 
 const previousOrdersByOwner = new Map<string, Map<number, MarketOrder>>()

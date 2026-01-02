@@ -5,6 +5,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { InfoRow, InfoSection } from '@/components/ui/info-display'
 import type { ESIStarbase, ESIStarbaseDetail } from '@/api/endpoints/starbases'
 import { getType, getLocation } from '@/store/reference-cache'
 import {
@@ -20,7 +21,7 @@ import {
   formatElapsed,
   formatHoursAsTimer,
 } from '@/lib/timer-utils'
-import { cn } from '@/lib/utils'
+import { cn, formatDateTime } from '@/lib/utils'
 
 interface POSInfoDialogProps {
   open: boolean
@@ -43,23 +44,6 @@ const ROLE_LABELS: Record<StarbaseRole, string> = {
   starbase_fuel_technician_role: 'Fuel Technician Role',
 }
 
-function InfoRow({
-  label,
-  value,
-  className,
-}: {
-  label: string
-  value: React.ReactNode
-  className?: string
-}) {
-  return (
-    <div className="flex justify-between items-center py-1.5 border-b border-border/50 last:border-0">
-      <span className="text-content-secondary text-sm">{label}</span>
-      <span className={cn('text-sm font-medium', className)}>{value}</span>
-    </div>
-  )
-}
-
 function BooleanBadge({ value }: { value: boolean }) {
   return (
     <span
@@ -72,25 +56,6 @@ function BooleanBadge({ value }: { value: boolean }) {
     >
       {value ? 'Yes' : 'No'}
     </span>
-  )
-}
-
-function Section({
-  title,
-  children,
-}: {
-  title: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="space-y-1">
-      <h4 className="text-xs font-semibold text-content-secondary uppercase tracking-wider">
-        {title}
-      </h4>
-      <div className="bg-surface-secondary/50 rounded-lg px-3 py-1">
-        {children}
-      </div>
-    </div>
   )
 }
 
@@ -116,11 +81,6 @@ export function POSInfoDialog({
   const state = starbase.state ?? 'unknown'
   const stateInfo = getStateDisplay(state)
 
-  const formatDateTime = (dateStr: string | undefined) => {
-    if (!dateStr) return '-'
-    return new Date(dateStr).toLocaleString()
-  }
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
@@ -139,7 +99,7 @@ export function POSInfoDialog({
         </DialogHeader>
 
         <div className="space-y-4 mt-2">
-          <Section title="Location">
+          <InfoSection title="Location">
             <InfoRow
               label="System"
               value={systemName}
@@ -148,9 +108,9 @@ export function POSInfoDialog({
             <InfoRow label="Region" value={regionName} />
             <InfoRow label="Moon" value={moonName} />
             <InfoRow label="Owner" value={ownerName} />
-          </Section>
+          </InfoSection>
 
-          <Section title="Status">
+          <InfoSection title="Status">
             <InfoRow
               label="State"
               value={stateInfo.label}
@@ -197,10 +157,10 @@ export function POSInfoDialog({
                 />
               </>
             )}
-          </Section>
+          </InfoSection>
 
           {detail && (
-            <Section title="Fuel Timers">
+            <InfoSection title="Fuel Timers">
               {(() => {
                 const fuelHours = calculateFuelHours(
                   detail,
@@ -235,12 +195,12 @@ export function POSInfoDialog({
                   </>
                 )
               })()}
-            </Section>
+            </InfoSection>
           )}
 
           {detail && (
             <>
-              <Section title="Access Settings">
+              <InfoSection title="Access Settings">
                 <InfoRow
                   label="Allow Corp Members"
                   value={
@@ -255,9 +215,9 @@ export function POSInfoDialog({
                   label="Use Alliance Standings"
                   value={<BooleanBadge value={detail.use_alliance_standings} />}
                 />
-              </Section>
+              </InfoSection>
 
-              <Section title="Combat Settings">
+              <InfoSection title="Combat Settings">
                 <InfoRow
                   label="Attack If At War"
                   value={<BooleanBadge value={detail.attack_if_at_war} />}
@@ -282,9 +242,9 @@ export function POSInfoDialog({
                     value={detail.attack_standing_threshold.toFixed(1)}
                   />
                 )}
-              </Section>
+              </InfoSection>
 
-              <Section title="Role Permissions">
+              <InfoSection title="Role Permissions">
                 <InfoRow label="Anchor" value={ROLE_LABELS[detail.anchor]} />
                 <InfoRow
                   label="Unanchor"
@@ -300,10 +260,10 @@ export function POSInfoDialog({
                   label="Fuel Bay Take"
                   value={ROLE_LABELS[detail.fuel_bay_take]}
                 />
-              </Section>
+              </InfoSection>
 
               {detail.fuels && detail.fuels.length > 0 && (
-                <Section title="Fuel Bay">
+                <InfoSection title="Fuel Bay">
                   {detail.fuels.map((fuel) => {
                     const fuelType = getType(fuel.type_id)
                     return (
@@ -314,7 +274,7 @@ export function POSInfoDialog({
                       />
                     )
                   })}
-                </Section>
+                </InfoSection>
               )}
             </>
           )}

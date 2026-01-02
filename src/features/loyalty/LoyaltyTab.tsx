@@ -7,6 +7,7 @@ import { useReferenceCacheStore } from '@/store/reference-cache'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import { CharacterPortrait, CorporationLogo } from '@/components/ui/type-icon'
 import { formatNumber } from '@/lib/utils'
+import type { SortDirection } from '@/hooks'
 import {
   Table,
   TableBody,
@@ -25,7 +26,6 @@ interface LoyaltyRow {
 }
 
 type SortColumn = 'character' | 'corporation' | 'lp'
-type SortDirection = 'asc' | 'desc'
 
 export function LoyaltyTab() {
   const ownersRecord = useAuthStore((s) => s.owners)

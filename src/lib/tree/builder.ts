@@ -15,6 +15,30 @@ import {
   aggregateTotals,
   stackIdenticalItems,
 } from './node-factory'
+import type { ESIAsset } from '@/api/endpoints/assets'
+
+interface OfficeInfo {
+  index: number
+  divisionFlag: string | undefined
+}
+
+function findOfficeInChain(
+  parentChain: ESIAsset[],
+  currentAsset: { location_flag: string }
+): OfficeInfo | null {
+  for (let i = 0; i < parentChain.length; i++) {
+    const parent = parentChain[i]
+    if (!parent || !isOffice(parent.type_id)) continue
+
+    const flagSource = i === 0 ? currentAsset : parentChain[i - 1]
+    const flag = flagSource?.location_flag
+    const divisionFlag =
+      flag && OFFICE_DIVISION_FLAGS.has(flag) ? flag : undefined
+
+    return { index: i, divisionFlag }
+  }
+  return null
+}
 
 export interface TreeBuilderOptions {
   mode: TreeMode
@@ -125,24 +149,9 @@ export function buildTree(
       (p) => p.item_id !== ra.rootLocationId
     )
 
-    let officeIndex = -1
-    let divisionFlag: string | undefined
-    for (let i = 0; i < parentChain.length; i++) {
-      if (isOffice(parentChain[i]!.type_id)) {
-        officeIndex = i
-        if (i === 0) {
-          divisionFlag = OFFICE_DIVISION_FLAGS.has(ra.asset.location_flag)
-            ? ra.asset.location_flag
-            : undefined
-        } else {
-          const childOfOffice = parentChain[i - 1]!
-          divisionFlag = OFFICE_DIVISION_FLAGS.has(childOfOffice.location_flag)
-            ? childOfOffice.location_flag
-            : undefined
-        }
-        break
-      }
-    }
+    const officeInfo = findOfficeInChain(parentChain, ra.asset)
+    const officeIndex = officeInfo?.index ?? -1
+    const divisionFlag = officeInfo?.divisionFlag
 
     let currentParent: TreeNode = stationNode
     let currentDepth = 1

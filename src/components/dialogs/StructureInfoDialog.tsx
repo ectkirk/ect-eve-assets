@@ -5,51 +5,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { InfoRow, InfoSection } from '@/components/ui/info-display'
 import type { ESICorporationStructure } from '@/store/structures-store'
 import { getType, getLocation } from '@/store/reference-cache'
-import { cn } from '@/lib/utils'
+import { cn, formatDateTime } from '@/lib/utils'
 
 interface StructureInfoDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   structure: ESICorporationStructure | null
   ownerName: string
-}
-
-function InfoRow({
-  label,
-  value,
-  className,
-}: {
-  label: string
-  value: React.ReactNode
-  className?: string
-}) {
-  return (
-    <div className="flex justify-between items-center py-1.5 border-b border-border/50 last:border-0">
-      <span className="text-content-secondary text-sm">{label}</span>
-      <span className={cn('text-sm font-medium', className)}>{value}</span>
-    </div>
-  )
-}
-
-function Section({
-  title,
-  children,
-}: {
-  title: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="space-y-1">
-      <h4 className="text-xs font-semibold text-content-secondary uppercase tracking-wider">
-        {title}
-      </h4>
-      <div className="bg-surface-secondary/50 rounded-lg px-3 py-1">
-        {children}
-      </div>
-    </div>
-  )
 }
 
 function ServiceBadge({
@@ -125,11 +90,6 @@ export function StructureInfoDialog({
     color: 'text-content-muted',
   }
 
-  const formatDateTime = (dateStr: string | undefined) => {
-    if (!dateStr) return '-'
-    return new Date(dateStr).toLocaleString()
-  }
-
   const formatReinforceHour = (hour: number | undefined) => {
     if (hour === undefined) return '-'
     const start = (hour + 22) % 24
@@ -157,7 +117,7 @@ export function StructureInfoDialog({
         </DialogHeader>
 
         <div className="space-y-4 mt-2">
-          <Section title="Location">
+          <InfoSection title="Location">
             <InfoRow
               label="System"
               value={systemName}
@@ -165,9 +125,9 @@ export function StructureInfoDialog({
             />
             <InfoRow label="Region" value={regionName} />
             <InfoRow label="Owner" value={ownerName} />
-          </Section>
+          </InfoSection>
 
-          <Section title="Status">
+          <InfoSection title="Status">
             <InfoRow
               label="State"
               value={stateInfo.label}
@@ -197,9 +157,9 @@ export function StructureInfoDialog({
                 className="text-status-highlight"
               />
             )}
-          </Section>
+          </InfoSection>
 
-          <Section title="Reinforcement">
+          <InfoSection title="Reinforcement">
             <InfoRow
               label="Vulnerability Window"
               value={formatReinforceHour(structure.reinforce_hour)}
@@ -218,9 +178,9 @@ export function StructureInfoDialog({
                   />
                 </>
               )}
-          </Section>
+          </InfoSection>
 
-          <Section title="Fuel">
+          <InfoSection title="Fuel">
             <InfoRow
               label="Fuel Expires"
               value={
@@ -232,10 +192,10 @@ export function StructureInfoDialog({
                 structure.fuel_expires ? undefined : 'text-content-muted'
               }
             />
-          </Section>
+          </InfoSection>
 
           {structure.services && structure.services.length > 0 && (
-            <Section title="Services">
+            <InfoSection title="Services">
               <div className="flex flex-wrap gap-2 py-2">
                 {structure.services.map((service, idx) => (
                   <ServiceBadge
@@ -245,15 +205,15 @@ export function StructureInfoDialog({
                   />
                 ))}
               </div>
-            </Section>
+            </InfoSection>
           )}
 
           {(!structure.services || structure.services.length === 0) && (
-            <Section title="Services">
+            <InfoSection title="Services">
               <div className="py-2 text-content-muted text-sm">
                 No services installed
               </div>
-            </Section>
+            </InfoSection>
           )}
         </div>
       </DialogContent>
