@@ -6,6 +6,7 @@ import {
   findOwnerByKey,
 } from './auth-store'
 import { useExpiryCacheStore } from './expiry-cache-store'
+import { isNotInCorporationError } from '../../shared/esi-types'
 import { logger } from '@/lib/logger'
 import { triggerResolution } from '@/lib/data-resolver'
 import {
@@ -288,12 +289,22 @@ export function createVisibilityStore<
                   isDataEmpty
                 )
             } catch (err) {
-              failedOwners.push(currentOwnerKey)
-              logger.error(
-                `Failed to fetch ${name}`,
-                err instanceof Error ? err : undefined,
-                { module: moduleName, owner: owner.name }
-              )
+              if (
+                owner.type === 'corporation' &&
+                isNotInCorporationError(err)
+              ) {
+                logger.debug(`Skipping ${name} for removed corp`, {
+                  module: moduleName,
+                  owner: owner.name,
+                })
+              } else {
+                failedOwners.push(currentOwnerKey)
+                logger.error(
+                  `Failed to fetch ${name}`,
+                  err instanceof Error ? err : undefined,
+                  { module: moduleName, owner: owner.name }
+                )
+              }
             }
           }
 
@@ -436,11 +447,18 @@ export function createVisibilityStore<
             items: items.length,
           })
         } catch (err) {
-          logger.error(
-            `Failed to fetch ${name} for owner`,
-            err instanceof Error ? err : undefined,
-            { module: moduleName, owner: owner.name }
-          )
+          if (owner.type === 'corporation' && isNotInCorporationError(err)) {
+            logger.debug(`Skipping ${name} for removed corp`, {
+              module: moduleName,
+              owner: owner.name,
+            })
+          } else {
+            logger.error(
+              `Failed to fetch ${name} for owner`,
+              err instanceof Error ? err : undefined,
+              { module: moduleName, owner: owner.name }
+            )
+          }
         } finally {
           updatingOwners.delete(currentOwnerKey)
         }

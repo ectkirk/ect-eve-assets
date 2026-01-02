@@ -4,10 +4,12 @@ import {
   createJSONStorage,
   type StateStorage,
 } from 'zustand/middleware'
+import type { CorporationRoles } from '../../shared/electron-api-types'
+
+export type { CorporationRoles }
 
 const TOKEN_EXPIRY_BUFFER_MS = 60_000
 
-// Custom storage adapter using Electron IPC for reliable file-based persistence
 const electronStorage: StateStorage = {
   getItem: async (name: string): Promise<string | null> => {
     if (!window.electronAPI) {
@@ -40,13 +42,6 @@ const electronStorage: StateStorage = {
 }
 
 export type OwnerType = 'character' | 'corporation'
-
-export interface CorporationRoles {
-  roles: string[]
-  roles_at_hq?: string[]
-  roles_at_base?: string[]
-  roles_at_other?: string[]
-}
 
 export interface Owner {
   id: number // Character ID or Corporation ID
@@ -109,6 +104,7 @@ interface AuthState {
   setOwnerAuthFailed: (ownerId: string, failed: boolean) => void
   setOwnerScopesOutdated: (ownerId: string, outdated: boolean) => void
   updateOwnerRoles: (ownerId: string, roles: CorporationRoles) => void
+  updateOwnerCorporationId: (ownerId: string, corporationId: number) => void
   clearAuth: () => void
 
   // Helpers
@@ -289,6 +285,22 @@ export const useAuthStore = create<AuthState>()(
               [ownerId]: {
                 ...owner,
                 corporationRoles: roles,
+              },
+            },
+          }
+        })
+      },
+
+      updateOwnerCorporationId: (ownerId, corporationId) => {
+        set((state) => {
+          const owner = state.owners[ownerId]
+          if (!owner) return state
+          return {
+            owners: {
+              ...state.owners,
+              [ownerId]: {
+                ...owner,
+                corporationId,
               },
             },
           }
