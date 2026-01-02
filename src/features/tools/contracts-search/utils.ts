@@ -133,10 +133,23 @@ export function calculateContractDisplayValues(
   return { displayPrice, displayEstValue, diff, pct, diffIsGood, hasBids }
 }
 
+const SEC_TEXT_CLASSES: Record<number, string> = {
+  10: 'text-sec-10',
+  9: 'text-sec-9',
+  8: 'text-sec-8',
+  7: 'text-sec-7',
+  6: 'text-sec-6',
+  5: 'text-sec-5',
+  4: 'text-sec-4',
+  3: 'text-sec-3',
+  2: 'text-sec-2',
+  1: 'text-sec-1',
+  0: 'text-sec-0',
+}
+
 export function getSecurityColor(sec: number): string {
-  if (sec >= HIGHSEC_DISPLAY_THRESHOLD) return 'text-status-positive'
-  if (sec > 0) return 'text-status-warning'
-  return 'text-status-negative'
+  const rounded = Math.round(Math.max(0, Math.min(1, sec)) * 10)
+  return SEC_TEXT_CLASSES[rounded] ?? SEC_TEXT_CLASSES[0]!
 }
 
 const MS_PER_MINUTE = 1000 * 60

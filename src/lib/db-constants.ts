@@ -21,7 +21,7 @@ export interface DBConfig {
 export const DB = {
   CACHE: {
     name: 'ecteveassets-cache',
-    version: 12,
+    version: 13,
     stores: [
       { name: 'types', keyPath: 'id' },
       { name: 'structures', keyPath: 'id' },
@@ -33,6 +33,7 @@ export const DB = {
       { name: 'regions', keyPath: 'id' },
       { name: 'systems', keyPath: 'id' },
       { name: 'stations', keyPath: 'id' },
+      { name: 'stargates', keyPath: 'id' },
       { name: 'refStructures', keyPath: 'id' },
     ],
     module: 'ReferenceCache',
@@ -156,5 +157,12 @@ export const DB = {
     version: 1,
     stores: [{ name: 'items', keyPath: 'contractId' }],
     module: 'ContractsStore',
+  },
+
+  ANSIBLEX: {
+    name: 'ecteveassets-ansiblex',
+    version: 1,
+    stores: [{ name: 'ansiblexes', keyPath: 'characterId' }],
+    module: 'AnsiblexStore',
   },
 } as const satisfies Record<string, DBConfig>

@@ -7,6 +7,7 @@ import type {
   CachedName,
   CachedRefStructure,
   CachedRegion,
+  CachedStargate,
   CachedStation,
   CachedStructure,
   CachedSystem,
@@ -91,6 +92,14 @@ export function getRegion(id: number): CachedRegion | undefined {
 
 export function getSystem(id: number): CachedSystem | undefined {
   return useReferenceCacheStore.getState().systems.get(id)
+}
+
+export function getSystemByName(name: string): CachedSystem | undefined {
+  const lowerName = name.toLowerCase()
+  for (const system of useReferenceCacheStore.getState().systems.values()) {
+    if (system.name.toLowerCase() === lowerName) return system
+  }
+  return undefined
 }
 
 export function getStation(id: number): CachedStation | undefined {
@@ -233,4 +242,26 @@ export function getGroupsByCategory(
 
 export function getAllRegions(): CachedRegion[] {
   return Array.from(useReferenceCacheStore.getState().regions.values())
+}
+
+export function getAllSystems(): CachedSystem[] {
+  return Array.from(useReferenceCacheStore.getState().systems.values())
+}
+
+export function getAllStargates(): CachedStargate[] {
+  return Array.from(useReferenceCacheStore.getState().stargates.values())
+}
+
+export function getStationsBySystemId(systemId: number): CachedStation[] {
+  return Array.from(useReferenceCacheStore.getState().stations.values()).filter(
+    (s) => s.systemId === systemId
+  )
+}
+
+export function getRefStructuresBySystemId(
+  systemId: number
+): CachedRefStructure[] {
+  return Array.from(
+    useReferenceCacheStore.getState().refStructures.values()
+  ).filter((s) => s.systemId === systemId)
 }

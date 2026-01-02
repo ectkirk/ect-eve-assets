@@ -15,6 +15,7 @@ const mockSetGroups = vi.fn()
 const mockSetRegions = vi.fn()
 const mockSetSystems = vi.fn()
 const mockSetStations = vi.fn()
+const mockSetStargates = vi.fn()
 const mockSetRefStructures = vi.fn()
 const mockSetAllTypesLoaded = vi.fn()
 const mockSetUniverseDataLoaded = vi.fn()
@@ -42,6 +43,7 @@ vi.mock('@/store/reference-cache', () => ({
       setRegions: mockSetRegions,
       setSystems: mockSetSystems,
       setStations: mockSetStations,
+      setStargates: mockSetStargates,
       setRefStructures: mockSetRefStructures,
       setAllTypesLoaded: mockSetAllTypesLoaded,
       setUniverseDataLoaded: mockSetUniverseDataLoaded,
@@ -70,6 +72,7 @@ const mockRefGroups = vi.fn()
 const mockRefUniverseRegions = vi.fn()
 const mockRefUniverseSystems = vi.fn()
 const mockRefUniverseStations = vi.fn()
+const mockRefUniverseStargates = vi.fn()
 
 async function runWithTimers<T>(promise: Promise<T>): Promise<T> {
   await vi.advanceTimersByTimeAsync(2100)
@@ -127,6 +130,15 @@ describe('ref-client', () => {
         },
       },
     })
+    mockRefUniverseStargates.mockResolvedValue({
+      items: {
+        '5000000030000142': {
+          id: 5000000030000142,
+          from: 30000142,
+          to: 30000144,
+        },
+      },
+    })
 
     window.electronAPI = {
       refTypesPage: mockRefTypesPage,
@@ -137,6 +149,7 @@ describe('ref-client', () => {
       refUniverseRegions: mockRefUniverseRegions,
       refUniverseSystems: mockRefUniverseSystems,
       refUniverseStations: mockRefUniverseStations,
+      refUniverseStargates: mockRefUniverseStargates,
     } as unknown as typeof window.electronAPI
   })
 
@@ -531,7 +544,7 @@ describe('ref-client', () => {
       expect(mockRefUniverseStations).not.toHaveBeenCalled()
     })
 
-    it('loads regions, systems, and stations when not loaded', async () => {
+    it('loads regions, systems, stations, and stargates when not loaded', async () => {
       vi.mocked(isUniverseDataLoaded).mockReturnValue(false)
 
       await loadUniverseData()
@@ -539,11 +552,18 @@ describe('ref-client', () => {
       expect(mockRefUniverseRegions).toHaveBeenCalled()
       expect(mockRefUniverseSystems).toHaveBeenCalled()
       expect(mockRefUniverseStations).toHaveBeenCalled()
+      expect(mockRefUniverseStargates).toHaveBeenCalled()
       expect(mockSetRegions).toHaveBeenCalledWith([
         { id: 10000002, name: 'The Forge' },
       ])
       expect(mockSetSystems).toHaveBeenCalledWith([
-        { id: 30000142, name: 'Jita', regionId: 10000002, securityStatus: 0.9 },
+        {
+          id: 30000142,
+          name: 'Jita',
+          regionId: 10000002,
+          securityStatus: 0.9,
+          position2D: undefined,
+        },
       ])
       expect(mockSetStations).toHaveBeenCalledWith([
         {
@@ -551,6 +571,9 @@ describe('ref-client', () => {
           name: 'Jita IV - Moon 4 - Caldari Navy Assembly Plant',
           systemId: 30000142,
         },
+      ])
+      expect(mockSetStargates).toHaveBeenCalledWith([
+        { id: 5000000030000142, from: 30000142, to: 30000144 },
       ])
       expect(mockSetUniverseDataLoaded).toHaveBeenCalledWith(true)
     })

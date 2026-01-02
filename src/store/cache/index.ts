@@ -12,6 +12,7 @@ import type {
   CachedStructure,
   CachedLocation,
   CachedName,
+  CachedStargate,
 } from './types'
 
 export type {
@@ -25,6 +26,7 @@ export type {
   CachedStructure,
   CachedLocation,
   CachedName,
+  CachedStargate,
 }
 
 export { CategoryIds, LocationFlags } from './constants'
@@ -45,6 +47,7 @@ interface ReferenceCacheState {
   regions: Map<number, CachedRegion>
   systems: Map<number, CachedSystem>
   stations: Map<number, CachedStation>
+  stargates: Map<number, CachedStargate>
   refStructures: Map<number, CachedRefStructure>
   structures: Map<number, CachedStructure>
   locations: Map<number, CachedLocation>
@@ -66,6 +69,7 @@ interface ReferenceCacheActions {
   setRegions: (regions: CachedRegion[]) => Promise<void>
   setSystems: (systems: CachedSystem[]) => Promise<void>
   setStations: (stations: CachedStation[]) => Promise<void>
+  setStargates: (stargates: CachedStargate[]) => Promise<void>
   setRefStructures: (structures: CachedRefStructure[]) => Promise<void>
   saveStructures: (structures: CachedStructure[]) => Promise<void>
   saveLocations: (locations: CachedLocation[]) => Promise<void>
@@ -123,6 +127,7 @@ export const useReferenceCacheStore = create<ReferenceCacheStore>(
     regions: new Map(),
     systems: new Map(),
     stations: new Map(),
+    stargates: new Map(),
     refStructures: new Map(),
     structures: new Map(),
     locations: new Map(),
@@ -145,6 +150,7 @@ export const useReferenceCacheStore = create<ReferenceCacheStore>(
             regions,
             systems,
             stations,
+            stargates,
             refStructures,
             structures,
             locations,
@@ -156,6 +162,7 @@ export const useReferenceCacheStore = create<ReferenceCacheStore>(
             loadStore<CachedRegion>('regions'),
             loadStore<CachedSystem>('systems'),
             loadStore<CachedStation>('stations'),
+            loadStore<CachedStargate>('stargates'),
             loadStore<CachedRefStructure>('refStructures'),
             loadStore<CachedStructure>('structures'),
             loadStore<CachedLocation>('locations'),
@@ -207,7 +214,8 @@ export const useReferenceCacheStore = create<ReferenceCacheStore>(
             getLocalStorage(UNIVERSE_LOADED_KEY) === 'true' &&
             regions.size > 0 &&
             systems.size > 0 &&
-            stations.size > 0
+            stations.size > 0 &&
+            stargates.size > 0
           const refStructuresLoaded =
             getLocalStorage(REF_STRUCTURES_LOADED_KEY) === 'true' &&
             refStructures.size > 0
@@ -217,6 +225,7 @@ export const useReferenceCacheStore = create<ReferenceCacheStore>(
             regions,
             systems,
             stations,
+            stargates,
             refStructures,
             structures,
             locations,
@@ -238,6 +247,7 @@ export const useReferenceCacheStore = create<ReferenceCacheStore>(
             regions: regions.size,
             systems: systems.size,
             stations: stations.size,
+            stargates: stargates.size,
             refStructures: refStructures.size,
             refStructuresLoaded,
             universeDataLoaded,
@@ -322,6 +332,16 @@ export const useReferenceCacheStore = create<ReferenceCacheStore>(
         logger.info('Stations saved', {
           module: 'ReferenceCache',
           count: newStations.length,
+        })
+      })
+    },
+
+    setStargates: async (newStargates) => {
+      await writeBatch('stargates', newStargates, () => {
+        set({ stargates: new Map(newStargates.map((s) => [s.id, s])) })
+        logger.info('Stargates saved', {
+          module: 'ReferenceCache',
+          count: newStargates.length,
         })
       })
     },
@@ -436,12 +456,14 @@ export const useReferenceCacheStore = create<ReferenceCacheStore>(
         clearStore('regions'),
         clearStore('systems'),
         clearStore('stations'),
+        clearStore('stargates'),
         clearStore('refStructures'),
       ])
       set({
         regions: new Map(),
         systems: new Map(),
         stations: new Map(),
+        stargates: new Map(),
         refStructures: new Map(),
       })
     },
@@ -480,6 +502,7 @@ export const useReferenceCacheStore = create<ReferenceCacheStore>(
         regions: new Map(),
         systems: new Map(),
         stations: new Map(),
+        stargates: new Map(),
         refStructures: new Map(),
         structures: new Map(),
         locations: new Map(),
