@@ -91,6 +91,12 @@ if (!gotTheLock) {
 
   process.on('SIGTERM', () => handleShutdownSignal('SIGTERM'))
   process.on('SIGINT', () => handleShutdownSignal('SIGINT'))
+  process.on('uncaughtException', (err) => {
+    logger.error('Uncaught exception', err, { module: 'Main' })
+  })
+  process.on('unhandledRejection', (reason) => {
+    logger.error('Unhandled rejection', reason, { module: 'Main' })
+  })
   app.on('second-instance', () => {
     if (windowManager.mainWindow) {
       if (windowManager.mainWindow.isMinimized()) {
