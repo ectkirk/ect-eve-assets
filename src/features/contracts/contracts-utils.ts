@@ -6,6 +6,10 @@ import { getName } from '@/api/endpoints/universe'
 import { usePriceStore } from '@/store/price-store'
 import { getLocationName } from '@/lib/location-utils'
 
+function isContractItemBpc(item: ESIContractItem): boolean {
+  return item.is_blueprint_copy === true || item.raw_quantity === -2
+}
+
 export type ContractSortColumn =
   | 'type'
   | 'items'
@@ -141,7 +145,7 @@ export function buildContractRow(
   for (const item of items) {
     const price = priceStore.getItemPrice(item.type_id, {
       itemId: item.item_id,
-      isBlueprintCopy: item.is_blueprint_copy,
+      isBlueprintCopy: isContractItemBpc(item),
     })
     itemValue += price * item.quantity
   }

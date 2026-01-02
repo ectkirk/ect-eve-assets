@@ -9,6 +9,7 @@ import {
 import { esi } from '@/api/esi'
 import { ESIContractSchema } from '@/api/schemas'
 import { logger } from '@/lib/logger'
+import { ownerEndpoint } from '@/lib/owner-utils'
 import { triggerResolution } from '@/lib/data-resolver'
 import {
   createVisibilityStore,
@@ -25,6 +26,10 @@ import {
   idbDeleteBatch,
   idbClear,
 } from '@/lib/idb-utils'
+
+function isContractItemBpc(item: ESIContractItem): boolean {
+  return item.is_blueprint_copy === true || item.raw_quantity === -2
+}
 
 export interface StoredContract extends StoredItem<ESIContract> {
   item: ESIContract
@@ -71,9 +76,7 @@ function isActiveItemExchange(contract: ESIContract): boolean {
 }
 
 function getEndpoint(owner: Owner): string {
-  return owner.type === 'corporation'
-    ? `/corporations/${owner.id}/contracts`
-    : `/characters/${owner.characterId}/contracts`
+  return ownerEndpoint(owner, 'contracts')
 }
 
 async function fetchItemsFromAPI(
@@ -129,8 +132,6 @@ async function clearItemsDb(): Promise<void> {
   await idbClear(db, ITEMS_STORE)
 }
 
-// Module state for hook coordination
-const previousContractsByOwner = new Map<string, Map<number, ESIContract>>()
 const pendingItemFetches = new Set<number>()
 
 function collectContractsToFetch(
@@ -199,9 +200,11 @@ async function fetchItemsForContracts(
     const fetched = await fetchAndSaveItems(toFetch)
 
     if (fetched.length > 0) {
-      const currentItems = new Map(baseStore.getState().itemsByContractId)
+      const currentState = baseStore.getState()
+      const currentItems = new Map(currentState.itemsByContractId)
       const typeIds = new Set<number>()
       for (const { contractId, items } of fetched) {
+        if (!currentState.itemsById.has(contractId)) continue
         currentItems.set(contractId, items)
         if (items) {
           for (const item of items) {
@@ -288,21 +291,7 @@ const baseStore = createVisibilityStore<
     }
   },
 
-  onBeforeOwnerUpdate: (owner, previousVisibility, itemsById) => {
-    const ownerKey = `${owner.type}-${owner.id}`
-    previousContractsByOwner.delete(ownerKey)
-    const prev = new Map<number, ESIContract>()
-    for (const id of previousVisibility) {
-      const stored = itemsById.get(id)
-      if (stored) prev.set(id, stored.item)
-    }
-    previousContractsByOwner.set(ownerKey, prev)
-  },
-
-  onAfterOwnerUpdate: ({ owner, itemsById }) => {
-    const ownerKey = `${owner.type}-${owner.id}`
-    previousContractsByOwner.delete(ownerKey)
-
+  onAfterOwnerUpdate: ({ itemsById }) => {
     fetchItemsForContracts(itemsById)
   },
 
@@ -366,7 +355,6 @@ const baseStore = createVisibilityStore<
 const originalClear = baseStore.getState().clear
 baseStore.setState({
   clear: async () => {
-    previousContractsByOwner.clear()
     pendingItemFetches.clear()
     await originalClear()
     await clearItemsDb()
@@ -418,7 +406,7 @@ export const useContractsStore: ContractsStore = Object.assign(baseStore, {
             if (item.is_included) {
               const price = priceStore.getItemPrice(item.type_id, {
                 itemId: item.item_id,
-                isBlueprintCopy: item.is_blueprint_copy,
+                isBlueprintCopy: isContractItemBpc(item),
               })
               total += price * item.quantity
             }

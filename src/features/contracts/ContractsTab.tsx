@@ -152,9 +152,13 @@ export function ContractsTab() {
       selectedSet.has(ownerKey(owner.type, owner.id))
     )
 
-    const ownerIds = new Set<number>()
+    const ownerCharIds = new Set<number>()
+    const ownerCorpIds = new Set<number>()
     for (const owner of owners) {
-      ownerIds.add(owner.characterId)
+      ownerCharIds.add(owner.characterId)
+      if (owner.corporationId) {
+        ownerCorpIds.add(owner.corporationId)
+      }
     }
 
     const groups: Record<ContractDirection, DirectionGroup> = {
@@ -186,7 +190,9 @@ export function ContractsTab() {
           contract.status === 'outstanding' || contract.status === 'in_progress'
         if (!isActive) continue
 
-        const isIssuer = ownerIds.has(contract.issuer_id)
+        const isIssuer =
+          ownerCharIds.has(contract.issuer_id) ||
+          ownerCorpIds.has(contract.issuer_corporation_id)
         const isCourier = contract.type === 'courier'
 
         const row = buildContractRow(
