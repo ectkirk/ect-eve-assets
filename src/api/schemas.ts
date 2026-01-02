@@ -407,11 +407,17 @@ export const RefRegionsResponseSchema = z.object({
   items: z.record(z.string(), RefRegionSchema),
 })
 
+const Position2DSchema = z.object({
+  x: z.number(),
+  y: z.number(),
+})
+
 export const RefSystemSchema = z.object({
   id: z.number(),
   name: z.string(),
   regionId: z.number(),
   securityStatus: z.number().nullable().optional(),
+  position2D: Position2DSchema.nullable().optional(),
 })
 
 export const RefSystemsResponseSchema = z.object({
@@ -426,6 +432,16 @@ export const RefStationSchema = z.object({
 
 export const RefStationsResponseSchema = z.object({
   items: z.record(z.string(), RefStationSchema),
+})
+
+export const RefStargateSchema = z.object({
+  id: z.number(),
+  from: z.number(),
+  to: z.number(),
+})
+
+export const RefStargatesResponseSchema = z.object({
+  items: z.record(z.string(), RefStargateSchema),
 })
 
 export const RefStructureSchema = z.object({
@@ -538,4 +554,20 @@ export const MutamarketModuleSchema = z.object({
     })
     .nullable()
     .optional(),
+})
+
+export const ESIFWSystemSchema = z.object({
+  solar_system_id: z.number(),
+  owner_faction_id: z.number(),
+  occupier_faction_id: z.number(),
+  victory_points: z.number(),
+  victory_points_threshold: z.number(),
+  contested: z.enum(['captured', 'contested', 'uncontested', 'vulnerable']),
+})
+
+export const ESISovereigntyMapEntrySchema = z.object({
+  system_id: z.number(),
+  alliance_id: z.number().optional(),
+  corporation_id: z.number().optional(),
+  faction_id: z.number().optional(),
 })

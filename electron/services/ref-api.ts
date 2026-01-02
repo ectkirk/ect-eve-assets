@@ -1,6 +1,12 @@
 import { app, ipcMain } from 'electron'
 import { logger } from './logger.js'
-import { isValidIdArray } from './validation.js'
+import {
+  isValidIdArray,
+  isValidCharacterId,
+  isValidNonEmptyString,
+  isValidObject,
+} from './validation.js'
+import { makeUserAgent } from './esi/types.js'
 
 const REF_API_BASE = 'https://edencom.net/api/v1'
 const REF_API_KEY = process.env['REF_API_KEY'] || ''
@@ -15,10 +21,11 @@ let cachedBaseHeaders: Record<string, string> | null = null
 let cachedJsonHeaders: Record<string, string> | null = null
 
 function getRefHeaders(contentType?: 'json'): Record<string, string> {
+  const userAgent = makeUserAgent(app.getVersion())
   if (contentType === 'json') {
     if (!cachedJsonHeaders) {
       cachedJsonHeaders = {
-        'User-Agent': `ECTEVEAssets/${app.getVersion()} (ecteveassets@edencom.net; +https://github.com/ectkirk/ect-eve-assets)`,
+        'User-Agent': userAgent,
         'Content-Type': 'application/json',
         ...(REF_API_KEY && { 'X-App-Key': REF_API_KEY }),
       }
@@ -27,7 +34,7 @@ function getRefHeaders(contentType?: 'json'): Record<string, string> {
   }
   if (!cachedBaseHeaders) {
     cachedBaseHeaders = {
-      'User-Agent': `ECTEVEAssets/${app.getVersion()} (ecteveassets@edencom.net; +https://github.com/ectkirk/ect-eve-assets)`,
+      'User-Agent': userAgent,
       ...(REF_API_KEY && { 'X-App-Key': REF_API_KEY }),
     }
   }
@@ -128,6 +135,38 @@ async function fetchRefWithRetry(
 
 type RefResult<T> = T | { error: string }
 
+type PaginatedResult<T> = {
+  items: T[]
+  pagination: { hasMore: boolean; nextCursor: string | number | null }
+}
+
+async function refGetPaginated<T, C extends string | number>(
+  endpoint: string,
+  channel: string,
+  cursor?: C
+): Promise<RefResult<PaginatedResult<T>>> {
+  await waitForRefRateLimit()
+  try {
+    const url = cursor
+      ? `${REF_API_BASE}${endpoint}?after=${cursor}`
+      : `${REF_API_BASE}${endpoint}`
+
+    const response = await fetchRefWithRetry(url, {
+      headers: getRefHeaders(),
+    })
+
+    if (!response.ok) {
+      return { error: `HTTP ${response.status}` }
+    }
+
+    const data = await response.json()
+    return { items: data.items, pagination: data.pagination }
+  } catch (err) {
+    logger.error(`${channel} fetch failed`, err, { module: 'RefAPI' })
+    return { error: String(err) }
+  }
+}
+
 async function refGet<T>(
   endpoint: string,
   channel: string
@@ -170,21 +209,28 @@ async function refPost<T>(
 }
 
 export function registerRefAPIHandlers(): void {
-  ipcMain.handle('ref:categories', () =>
-    refGet('/reference/categories', 'ref:categories')
-  )
-  ipcMain.handle('ref:groups', () => refGet('/reference/groups', 'ref:groups'))
-  ipcMain.handle('ref:marketGroups', () =>
-    refGet('/reference/market-groups', 'ref:marketGroups')
-  )
-  ipcMain.handle('ref:buybackInfo', () =>
-    refGet('/buyback/info', 'ref:buybackInfo')
-  )
+  const simpleEndpoints = [
+    { channel: 'ref:categories', endpoint: '/reference/categories' },
+    { channel: 'ref:groups', endpoint: '/reference/groups' },
+    { channel: 'ref:marketGroups', endpoint: '/reference/market-groups' },
+    { channel: 'ref:buybackInfo', endpoint: '/buyback/info' },
+    { channel: 'ref:shippingInfo', endpoint: '/shipping/info' },
+    { channel: 'ref:dogma-units', endpoint: '/reference/dogma-units' },
+    {
+      channel: 'ref:dogma-attribute-categories',
+      endpoint: '/reference/dogma-attribute-categories',
+    },
+  ]
+
+  for (const { channel, endpoint } of simpleEndpoints) {
+    ipcMain.handle(channel, () => refGet(endpoint, channel))
+  }
 
   const universeEndpoints = [
     { channel: 'ref:universe-regions', endpoint: '/reference/regions' },
     { channel: 'ref:universe-systems', endpoint: '/reference/systems' },
     { channel: 'ref:universe-stations', endpoint: '/reference/stations' },
+    { channel: 'ref:universe-stargates', endpoint: '/reference/stargates' },
   ]
 
   for (const { channel, endpoint } of universeEndpoints) {
@@ -197,70 +243,24 @@ export function registerRefAPIHandlers(): void {
 
   ipcMain.handle('ref:types-page', async (_event, args: unknown) => {
     const { after } = (args ?? {}) as { after?: number }
-
-    if (
-      after !== undefined &&
-      (typeof after !== 'number' || !Number.isInteger(after) || after <= 0)
-    ) {
+    if (after !== undefined && !isValidCharacterId(after)) {
       return { error: 'Invalid after cursor' }
     }
-
-    await waitForRefRateLimit()
-    try {
-      const url = after
-        ? `${REF_API_BASE}/reference/types?after=${after}`
-        : `${REF_API_BASE}/reference/types`
-
-      const response = await fetchRefWithRetry(url, {
-        headers: getRefHeaders(),
-      })
-
-      if (!response.ok) {
-        return { error: `HTTP ${response.status}` }
-      }
-
-      const data = await response.json()
-      return { items: data.items, pagination: data.pagination }
-    } catch (err) {
-      logger.error('ref:types-page fetch failed', err, { module: 'RefAPI' })
-      return { error: String(err) }
-    }
+    return refGetPaginated('/reference/types', 'ref:types-page', after)
   })
 
   ipcMain.handle(
     'ref:universe-structures-page',
     async (_event, args: unknown) => {
       const { after } = (args ?? {}) as { after?: string }
-
-      if (
-        after !== undefined &&
-        (typeof after !== 'string' || after.length === 0)
-      ) {
+      if (after !== undefined && !isValidNonEmptyString(after)) {
         return { error: 'Invalid after cursor' }
       }
-
-      await waitForRefRateLimit()
-      try {
-        const url = after
-          ? `${REF_API_BASE}/reference/structures?after=${after}`
-          : `${REF_API_BASE}/reference/structures`
-
-        const response = await fetchRefWithRetry(url, {
-          headers: getRefHeaders(),
-        })
-
-        if (!response.ok) {
-          return { error: `HTTP ${response.status}` }
-        }
-
-        const data = await response.json()
-        return { items: data.items, pagination: data.pagination }
-      } catch (err) {
-        logger.error('ref:universe-structures-page fetch failed', err, {
-          module: 'RefAPI',
-        })
-        return { error: String(err) }
-      }
+      return refGetPaginated(
+        '/reference/structures',
+        'ref:universe-structures-page',
+        after
+      )
     }
   )
 
@@ -278,10 +278,10 @@ export function registerRefAPIHandlers(): void {
   }
 
   ipcMain.handle('ref:marketJita', async (_event, params: unknown) => {
-    if (typeof params !== 'object' || params === null) {
+    if (!isValidObject(params)) {
       return { error: 'Invalid params' }
     }
-    const p = params as Record<string, unknown>
+    const p = params
 
     const body: {
       typeIds?: number[]
@@ -333,10 +333,10 @@ export function registerRefAPIHandlers(): void {
   ipcMain.handle(
     'ref:buybackCalculate',
     async (_event, text: unknown, config: unknown) => {
-      if (typeof text !== 'string' || !text.trim()) {
+      if (!isValidNonEmptyString(text)) {
         return { error: 'Text is required' }
       }
-      if (typeof config !== 'object' || config === null) {
+      if (!isValidObject(config)) {
         return { error: 'Config is required' }
       }
 
@@ -364,26 +364,19 @@ export function registerRefAPIHandlers(): void {
     }
   )
 
-  ipcMain.handle('ref:shippingInfo', () =>
-    refGet('/shipping/info', 'ref:shippingInfo')
-  )
-
   ipcMain.handle(
     'ref:shippingCalculate',
     async (_event, text: unknown, nullSec?: unknown) => {
-      if (typeof text !== 'string' || !text.trim()) {
+      if (!isValidNonEmptyString(text)) {
         return { error: 'Text is required' }
       }
-      const body: { text: string; nullSec?: boolean } = { text }
+      const body: { text: string; nullSec?: boolean } = { text: text.trim() }
       if (nullSec === true) {
         body.nullSec = true
       }
       return refPost('/shipping/calculate', body, 'ref:shippingCalculate')
     }
   )
-
-  const validateTypeId = (typeId: unknown): typeId is number =>
-    typeof typeId === 'number' && Number.isInteger(typeId) && typeId > 0
 
   const typeDetailEndpoints = [
     { channel: 'ref:type-detail', path: '' },
@@ -397,24 +390,13 @@ export function registerRefAPIHandlers(): void {
 
   for (const { channel, path } of typeDetailEndpoints) {
     ipcMain.handle(channel, async (_event, typeId: unknown) => {
-      if (!validateTypeId(typeId)) return { error: 'Invalid type ID' }
+      if (!isValidCharacterId(typeId)) return { error: 'Invalid type ID' }
       return refGet(`/reference/types/${typeId}${path}`, channel)
     })
   }
 
-  ipcMain.handle('ref:dogma-units', async () => {
-    return refGet('/reference/dogma-units', 'ref:dogma-units')
-  })
-
-  ipcMain.handle('ref:dogma-attribute-categories', async () => {
-    return refGet(
-      '/reference/dogma-attribute-categories',
-      'ref:dogma-attribute-categories'
-    )
-  })
-
   ipcMain.handle('ref:contractsSearch', async (_event, params: unknown) => {
-    if (typeof params !== 'object' || params === null) {
+    if (!isValidObject(params)) {
       return { error: 'Invalid params' }
     }
 

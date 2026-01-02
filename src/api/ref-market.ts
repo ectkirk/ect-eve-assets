@@ -1,5 +1,6 @@
 import { logger } from '@/lib/logger'
 import { CONTRACT_PRICED_TYPE_IDS } from '@/lib/eve-constants'
+import { chunkArray } from '@/lib/utils'
 import { MarketJitaResponseSchema } from './schemas'
 import { z } from 'zod'
 import { isTypePublished, isTypeMarketable } from '@/store/reference-cache'
@@ -58,10 +59,7 @@ async function fetchJitaPricesFromAPI(
   const totalStart = performance.now()
   const results = new Map<number, number>()
 
-  const chunks: number[][] = []
-  for (let i = 0; i < typeIds.length; i += 1000) {
-    chunks.push(typeIds.slice(i, i + 1000))
-  }
+  const chunks = chunkArray(typeIds, 1000)
   if (chunks.length === 0) chunks.push([])
 
   let firstChunk = true
@@ -206,5 +204,3 @@ export async function fetchPrices(
 ): Promise<Map<number, number>> {
   return fetchPricesConsolidated(typeIds, itemIds)
 }
-
-export const queuePriceRefresh = fetchPrices

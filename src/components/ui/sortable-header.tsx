@@ -1,7 +1,8 @@
 import { ChevronUp, ChevronDown } from 'lucide-react'
 import { TableHead } from './table'
+import type { SortDirection } from '@/hooks'
 
-export type SortDirection = 'asc' | 'desc'
+export type { SortDirection }
 
 interface SortableHeaderProps<T extends string> {
   column: T

@@ -22,10 +22,15 @@ export interface ESIContractItemLike {
   quantity: number
   item_id?: number
   is_blueprint_copy?: boolean
+  raw_quantity?: number
   material_efficiency?: number
   time_efficiency?: number
   runs?: number
   is_included?: boolean
+}
+
+function isItemBpc(item: ESIContractItemLike): boolean {
+  return item.is_blueprint_copy === true || item.raw_quantity === -2
 }
 
 export function resolveContractItems(
@@ -42,12 +47,12 @@ export function resolveContractItems(
       groupName: typeInfo?.groupName ?? '',
       categoryId: typeInfo?.categoryId,
       categoryName: typeInfo?.categoryName ?? '',
-      quantity: item.quantity || 1,
+      quantity: item.quantity ?? 1,
       price: priceStore.getItemPrice(item.type_id, {
         itemId: item.item_id,
-        isBlueprintCopy: item.is_blueprint_copy,
+        isBlueprintCopy: isItemBpc(item),
       }),
-      isBlueprintCopy: item.is_blueprint_copy,
+      isBlueprintCopy: isItemBpc(item),
       materialEfficiency: item.material_efficiency,
       timeEfficiency: item.time_efficiency,
       runs: item.runs,

@@ -12,12 +12,14 @@ import {
   type CachedRegion,
   type CachedSystem,
   type CachedStation,
+  type CachedStargate,
   type CachedRefStructure,
 } from '@/store/reference-cache'
 import {
   RefRegionsResponseSchema,
   RefSystemsResponseSchema,
   RefStationsResponseSchema,
+  RefStargatesResponseSchema,
   RefStructuresPageResponseSchema,
   RefMoonsResponseSchema,
 } from './schemas'
@@ -43,7 +45,12 @@ export async function loadUniverseData(
 
     try {
       onProgress?.('Loading universe data...')
-      await Promise.all([loadAllRegions(), loadAllSystems(), loadAllStations()])
+      await Promise.all([
+        loadAllRegions(),
+        loadAllSystems(),
+        loadAllStations(),
+        loadAllStargates(),
+      ])
 
       useReferenceCacheStore.getState().setUniverseDataLoaded(true)
 
@@ -126,6 +133,7 @@ async function loadAllSystems(): Promise<void> {
       name: s.name,
       regionId: s.regionId,
       securityStatus: s.securityStatus,
+      position2D: s.position2D,
     })
   )
 
@@ -179,6 +187,50 @@ async function loadAllStations(): Promise<void> {
   logger.info('Stations loaded', {
     module: 'RefAPI',
     count: stations.length,
+    duration,
+  })
+}
+
+async function loadAllStargates(): Promise<void> {
+  const start = performance.now()
+  const result = await window.electronAPI!.refUniverseStargates()
+
+  if (result.error) {
+    logger.error('Failed to load stargates', undefined, {
+      module: 'RefAPI',
+      error: result.error,
+    })
+    return
+  }
+
+  if (!result.items) {
+    logger.warn('No stargates returned', { module: 'RefAPI' })
+    return
+  }
+
+  const parseResult = RefStargatesResponseSchema.safeParse(result)
+  if (!parseResult.success) {
+    logger.error('Stargates validation failed', undefined, {
+      module: 'RefAPI',
+      errors: parseResult.error.issues.slice(0, 3),
+    })
+    return
+  }
+
+  const stargates: CachedStargate[] = Object.values(parseResult.data.items).map(
+    (s) => ({
+      id: s.id,
+      from: s.from,
+      to: s.to,
+    })
+  )
+
+  await useReferenceCacheStore.getState().setStargates(stargates)
+
+  const duration = Math.round(performance.now() - start)
+  logger.info('Stargates loaded', {
+    module: 'RefAPI',
+    count: stargates.length,
     duration,
   })
 }

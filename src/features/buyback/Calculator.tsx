@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
-import { formatNumber } from '@/lib/utils'
+import { formatNumber, formatVolume } from '@/lib/utils'
+import type { SortDirection } from '@/hooks'
 
 type SortField =
   | 'itemName'
@@ -8,7 +9,6 @@ type SortField =
   | 'groupName'
   | 'totalJitaBuy'
   | 'totalJitaSell'
-type SortDirection = 'asc' | 'desc'
 
 interface CalculatorProps {
   result: BuybackCalculatorResult
@@ -16,10 +16,6 @@ interface CalculatorProps {
 
 function formatISKFull(value: number): string {
   return value.toLocaleString('en-US', { maximumFractionDigits: 0 })
-}
-
-function formatVolume(value: number): string {
-  return value.toLocaleString('en-US', { maximumFractionDigits: 2 })
 }
 
 function getItemImageUrl(typeId: number, itemName: string): string {

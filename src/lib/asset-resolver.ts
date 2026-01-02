@@ -100,9 +100,12 @@ export function buildParentChain(
   itemIdToAsset: Map<number, ESIAsset>
 ): ESIAsset[] {
   const chain: ESIAsset[] = []
+  const visited = new Set<number>()
   let current = asset
 
   while (current.location_type === 'item') {
+    if (visited.has(current.item_id)) break
+    visited.add(current.item_id)
     const parent = itemIdToAsset.get(current.location_id)
     if (!parent) break
     chain.push(parent)

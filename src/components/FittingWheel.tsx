@@ -1,4 +1,5 @@
 import type { ModuleItem, ShipSlots } from '@/lib/fitting-utils'
+import { getTypeIconUrl } from '@/components/ui/type-icon'
 
 interface FittingWheelProps {
   highSlotModules: ModuleItem[]
@@ -100,10 +101,6 @@ const PANEL_IMAGES = {
 
 const ICON_SIZE = 32
 
-function getTypeIconUrl(typeId: number): string {
-  return `https://images.evetech.net/types/${typeId}/icon?size=${ICON_SIZE}`
-}
-
 function getShipRenderUrl(typeId: number): string {
   return `https://images.evetech.net/types/${typeId}/render?size=256`
 }
@@ -146,7 +143,7 @@ function SlotIcon({
         title={module.type_name}
       >
         <img
-          src={getTypeIconUrl(module.type_id)}
+          src={getTypeIconUrl(module.type_id, { imageSize: ICON_SIZE }) ?? ''}
           alt={module.type_name}
           className="rounded"
           style={{ width: ICON_SIZE, height: ICON_SIZE }}
@@ -207,7 +204,8 @@ export function FittingWheel({
           className="block rounded"
           style={{ width: 256, height: 256 }}
           onError={(e) => {
-            ;(e.target as HTMLImageElement).src = getTypeIconUrl(shipTypeId)
+            ;(e.target as HTMLImageElement).src =
+              getTypeIconUrl(shipTypeId, { imageSize: ICON_SIZE }) ?? ''
           }}
         />
       </div>

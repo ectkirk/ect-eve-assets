@@ -69,6 +69,7 @@ export interface RefSystemsResult {
       name: string
       regionId: number
       securityStatus?: number | null
+      position2D?: { x: number; y: number } | null
     }
   >
   error?: string
@@ -76,6 +77,11 @@ export interface RefSystemsResult {
 
 export interface RefStationsResult {
   items?: Record<string, { id: number; name: string; systemId: number }>
+  error?: string
+}
+
+export interface RefStargatesResult {
+  items?: Record<string, { id: number; from: number; to: number }>
   error?: string
 }
 
@@ -744,26 +750,16 @@ export interface DogmaAttributeCategoriesResult {
   error?: string
 }
 
-export interface ESIRequestOptions {
-  method?: 'GET' | 'POST'
-  body?: string
-  characterId?: number
-  requiresAuth?: boolean
-  etag?: string
-}
-
-export interface ESIResponseMeta<T> {
-  data: T
-  expiresAt: number
-  etag: string | null
-  notModified: boolean
-  xPages?: number
-}
-
-export interface ESIRateLimitInfo {
-  globalRetryAfter: number | null
-  activeRequests: number
-}
+export type {
+  ESIRequestOptions,
+  ESIResponseMeta,
+  ESIRateLimitInfo,
+} from './esi-types.js'
+import type {
+  ESIRequestOptions,
+  ESIResponseMeta,
+  ESIRateLimitInfo,
+} from './esi-types.js'
 
 export interface ESIAPI {
   fetch: <T>(endpoint: string, options?: ESIRequestOptions) => Promise<T>
@@ -822,6 +818,7 @@ export interface ElectronAPI {
   refUniverseRegions: () => Promise<RefRegionsResult>
   refUniverseSystems: () => Promise<RefSystemsResult>
   refUniverseStations: () => Promise<RefStationsResult>
+  refUniverseStargates: () => Promise<RefStargatesResult>
   refUniverseStructuresPage: (
     params?: RefStructuresPageParams
   ) => Promise<RefStructuresPageResult>

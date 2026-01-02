@@ -23,3 +23,5 @@ export {
 export { useFreightSelection, type FreightItem } from './useFreightSelection'
 export { useNavigationAction } from './useNavigationAction'
 export { useDebouncedValue } from './useDebouncedValue'
+export { useClickOutside } from './useClickOutside'
+export { useModalManager } from './use-modal-manager'

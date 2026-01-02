@@ -9,8 +9,13 @@ import {
   Layers,
 } from 'lucide-react'
 import type { TreeNode, TreeNodeType } from '@/lib/tree-types'
-import type { SortDirection } from '@/hooks'
-import type { ColumnConfig } from '@/hooks'
+import type { SortDirection, ColumnConfig } from '@/hooks'
+import { formatNumber, formatVolume as formatVolumeBase } from '@/lib/utils'
+
+export { formatNumber }
+export function formatVolume(value: number): string {
+  return formatVolumeBase(value, { suffix: true })
+}
 
 export type TreeSortColumn = 'name' | 'region' | 'quantity' | 'value' | 'volume'
 
@@ -79,23 +84,6 @@ export interface TreeTableProps {
   onExpandAll: () => void
   onCollapseAll: () => void
   storageKey?: string
-}
-
-export function formatNumber(value: number): string {
-  if (value >= 1_000_000_000) {
-    return (value / 1_000_000_000).toFixed(2) + 'B'
-  }
-  if (value >= 1_000_000) {
-    return (value / 1_000_000).toFixed(2) + 'M'
-  }
-  if (value >= 1_000) {
-    return (value / 1_000).toFixed(2) + 'K'
-  }
-  return value.toLocaleString()
-}
-
-export function formatVolume(value: number): string {
-  return value.toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' m³'
 }
 
 export const NODE_TYPE_ICONS: Record<TreeNodeType, LucideIcon> = {

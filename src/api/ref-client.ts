@@ -12,7 +12,7 @@ export {
   resolveLocations,
 } from './ref-universe-loader'
 
-export { fetchPrices, queuePriceRefresh } from './ref-market'
+export { fetchPrices } from './ref-market'
 
 import { RefTypeSchema } from './schemas'
 import { z } from 'zod'

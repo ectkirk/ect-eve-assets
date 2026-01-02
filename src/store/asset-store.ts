@@ -1,5 +1,10 @@
 import { create } from 'zustand'
-import { useAuthStore, type Owner, findOwnerByKey } from './auth-store'
+import {
+  useAuthStore,
+  type Owner,
+  findOwnerByKey,
+  ownerKey,
+} from './auth-store'
 import { useExpiryCacheStore } from './expiry-cache-store'
 import {
   getCharacterAssetNames,
@@ -7,12 +12,18 @@ import {
   type ESIAsset,
   type ESIAssetName,
 } from '@/api/endpoints/assets'
+import {
+  getCharacterPublic,
+  getCharacterRoles,
+} from '@/api/endpoints/corporation'
 import { esi, type ESIResponseMeta } from '@/api/esi'
+import { isNotInCorporationError } from '../../shared/esi-types'
 import { ESIAssetSchema } from '@/api/schemas'
 import { resolveTypes } from '@/api/ref-client'
 import { getType } from '@/store/reference-cache'
 import { createOwnerDB } from '@/lib/owner-indexed-db'
 import { logger } from '@/lib/logger'
+import { ownerEndpoint } from '@/lib/owner-utils'
 import { triggerResolution } from '@/lib/data-resolver'
 import { useStoreRegistry } from './store-registry'
 import { useContractsStore } from './contracts-store'
@@ -65,10 +76,7 @@ async function saveNamesToDB(assetNames: Map<number, string>): Promise<void> {
 }
 
 function getAssetEndpoint(owner: Owner): string {
-  if (owner.type === 'corporation') {
-    return `/corporations/${owner.id}/assets`
-  }
-  return `/characters/${owner.id}/assets`
+  return ownerEndpoint(owner, 'assets')
 }
 
 async function fetchOwnerAssetsWithMeta(
@@ -88,6 +96,52 @@ function isNameable(typeId: number): boolean {
     NAMEABLE_CATEGORIES.has(type.categoryId) ||
     NAMEABLE_GROUPS.has(type.groupId)
   )
+}
+
+async function handleCharacterLeftCorporation(corpOwner: Owner): Promise<void> {
+  const corpKey = ownerKey('corporation', corpOwner.id)
+  const charKey = ownerKey('character', corpOwner.characterId)
+
+  if (!useAuthStore.getState().getOwner(corpKey)) {
+    return
+  }
+
+  logger.warn('Character no longer in corporation, removing corp', {
+    module: 'AssetStore',
+    characterId: corpOwner.characterId,
+    corporationId: corpOwner.id,
+    corporationName: corpOwner.name,
+  })
+
+  await useStoreRegistry
+    .getState()
+    .removeForOwnerAll('corporation', corpOwner.id)
+  useExpiryCacheStore.getState().clearForOwner(corpKey)
+  useAuthStore.getState().removeOwner(corpKey)
+
+  try {
+    const [charInfo, roles] = await Promise.all([
+      getCharacterPublic(corpOwner.characterId),
+      getCharacterRoles(corpOwner.characterId),
+    ])
+
+    const authStore = useAuthStore.getState()
+    authStore.updateOwnerCorporationId(charKey, charInfo.corporation_id)
+    authStore.updateOwnerRoles(charKey, roles)
+
+    logger.info('Updated character corporation info after corp removal', {
+      module: 'AssetStore',
+      characterId: corpOwner.characterId,
+      newCorporationId: charInfo.corporation_id,
+      hasDirector: roles.roles?.includes('Director') ?? false,
+    })
+  } catch (refreshErr) {
+    logger.warn('Failed to refresh character info after corp removal', {
+      module: 'AssetStore',
+      characterId: corpOwner.characterId,
+      error: refreshErr,
+    })
+  }
 }
 
 async function fetchOwnerAssetNames(
@@ -268,14 +322,19 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
             }
           }
         } catch (err) {
-          logger.error(
-            'Failed to fetch assets for owner',
-            err instanceof Error ? err : undefined,
-            {
-              module: 'AssetStore',
-              owner: owner.name,
-            }
-          )
+          if (owner.type === 'corporation' && isNotInCorporationError(err)) {
+            await handleCharacterLeftCorporation(owner)
+            existingAssets.delete(ownerKey)
+          } else {
+            logger.error(
+              'Failed to fetch assets for owner',
+              err instanceof Error ? err : undefined,
+              {
+                module: 'AssetStore',
+                owner: owner.name,
+              }
+            )
+          }
         }
       }
 
@@ -328,6 +387,8 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
     const state = get()
     if (state.isUpdating) return
 
+    const ownerKeyStr = `${owner.type}-${owner.id}`
+
     set({
       isUpdating: true,
       updateError: null,
@@ -335,7 +396,6 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
     })
 
     try {
-      const ownerKey = `${owner.type}-${owner.id}`
       const endpoint = getAssetEndpoint(owner)
 
       logger.info('Fetching assets for owner', {
@@ -354,7 +414,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
       const activeShipResult = await detectAndInjectActiveShip(
         owner,
         assets,
-        ownerKey
+        ownerKeyStr
       )
       if (activeShipResult.syntheticShip) {
         assets.push(activeShipResult.syntheticShip)
@@ -363,10 +423,10 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         }
       }
 
-      await db.save(ownerKey, owner, assets)
+      await db.save(ownerKeyStr, owner, assets)
       useExpiryCacheStore
         .getState()
-        .setExpiry(ownerKey, endpoint, expiresAt, etag)
+        .setExpiry(ownerKeyStr, endpoint, expiresAt, etag)
 
       await resolveTypes(Array.from(new Set(assets.map((a) => a.type_id))))
       const names = await fetchOwnerAssetNames(owner, assets)
@@ -404,7 +464,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
       set((current) => ({
         assetsByOwner: [
           ...current.assetsByOwner.filter(
-            (oa) => `${oa.owner.type}-${oa.owner.id}` !== ownerKey
+            (oa) => `${oa.owner.type}-${oa.owner.id}` !== ownerKeyStr
           ),
           { owner, assets },
         ],
@@ -420,13 +480,25 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         assets: assets.length,
       })
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown error'
-      set({ isUpdating: false, updateProgress: null, updateError: message })
-      logger.error(
-        'Asset update failed for owner',
-        err instanceof Error ? err : undefined,
-        { module: 'AssetStore' }
-      )
+      if (owner.type === 'corporation' && isNotInCorporationError(err)) {
+        await handleCharacterLeftCorporation(owner)
+        set((current) => ({
+          assetsByOwner: current.assetsByOwner.filter(
+            (oa) => `${oa.owner.type}-${oa.owner.id}` !== ownerKeyStr
+          ),
+          isUpdating: false,
+          updateProgress: null,
+          updateError: null,
+        }))
+      } else {
+        const message = err instanceof Error ? err.message : 'Unknown error'
+        set({ isUpdating: false, updateProgress: null, updateError: message })
+        logger.error(
+          'Asset update failed for owner',
+          err instanceof Error ? err : undefined,
+          { module: 'AssetStore' }
+        )
+      }
     }
   },
 

@@ -10,6 +10,7 @@ export interface CachedSystem {
   name: string
   regionId: number
   securityStatus?: number | null
+  position2D?: { x: number; y: number } | null
 }
 
 export interface CachedStation {
@@ -107,9 +108,20 @@ export interface CachedName {
     | 'faction'
 }
 
+export interface CachedStargate {
+  id: number
+  from: number
+  to: number
+}
+
 const CachedRegionSchema = z.object({
   id: z.number(),
   name: z.string(),
+})
+
+const Position2DSchema = z.object({
+  x: z.number(),
+  y: z.number(),
 })
 
 const CachedSystemSchema = z.object({
@@ -117,6 +129,7 @@ const CachedSystemSchema = z.object({
   name: z.string(),
   regionId: z.number(),
   securityStatus: z.number().nullable().optional(),
+  position2D: Position2DSchema.nullable().optional(),
 })
 
 const CachedStationSchema = z.object({
@@ -215,6 +228,12 @@ const CachedNameSchema = z.object({
   ]),
 })
 
+const CachedStargateSchema = z.object({
+  id: z.number(),
+  from: z.number(),
+  to: z.number(),
+})
+
 export const cacheSchemas: Record<string, z.ZodType> = {
   types: CachedTypeSchema,
   regions: CachedRegionSchema,
@@ -227,4 +246,5 @@ export const cacheSchemas: Record<string, z.ZodType> = {
   names: CachedNameSchema,
   categories: CachedCategorySchema,
   groups: CachedGroupSchema,
+  stargates: CachedStargateSchema,
 }

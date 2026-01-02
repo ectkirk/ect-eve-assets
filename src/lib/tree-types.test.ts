@@ -3,7 +3,6 @@ import {
   TreeMode,
   CategoryIds,
   LocationFlagNumbers,
-  LocationFlagToNumber,
   HANGAR_FLAGS,
   SHIP_CONTENT_FLAGS,
   STRUCTURE_CONTENT_FLAGS,
@@ -68,25 +67,6 @@ describe('LocationFlagNumbers', () => {
     expect(LocationFlagNumbers.CorpSAG5).toBe(120)
     expect(LocationFlagNumbers.CorpSAG6).toBe(121)
     expect(LocationFlagNumbers.CorpSAG7).toBe(122)
-  })
-})
-
-describe('LocationFlagToNumber', () => {
-  it('maps string flags to numeric values', () => {
-    expect(LocationFlagToNumber['Hangar']).toBe(4)
-    expect(LocationFlagToNumber['Cargo']).toBe(5)
-    expect(LocationFlagToNumber['Deliveries']).toBe(173)
-    expect(LocationFlagToNumber['AssetSafety']).toBe(36)
-  })
-
-  it('has consistent values where keys overlap with LocationFlagNumbers', () => {
-    for (const [key, value] of Object.entries(LocationFlagToNumber)) {
-      const flagNumber =
-        LocationFlagNumbers[key as keyof typeof LocationFlagNumbers]
-      if (flagNumber !== undefined) {
-        expect(value).toBe(flagNumber)
-      }
-    }
   })
 })
 

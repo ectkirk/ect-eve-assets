@@ -136,6 +136,7 @@ const electronAPI: ElectronAPI = {
   refUniverseRegions: () => ipcRenderer.invoke('ref:universe-regions'),
   refUniverseSystems: () => ipcRenderer.invoke('ref:universe-systems'),
   refUniverseStations: () => ipcRenderer.invoke('ref:universe-stations'),
+  refUniverseStargates: () => ipcRenderer.invoke('ref:universe-stargates'),
   refUniverseStructuresPage: (params?: RefStructuresPageParams) =>
     ipcRenderer.invoke('ref:universe-structures-page', params),
   refMoons: (ids: number[]) => ipcRenderer.invoke('ref:moons', ids),

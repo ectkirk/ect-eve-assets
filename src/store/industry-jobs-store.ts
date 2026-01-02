@@ -4,6 +4,7 @@ import { usePriceStore } from './price-store'
 import { esi } from '@/api/esi'
 import { ESIIndustryJobSchema } from '@/api/schemas'
 import { logger } from '@/lib/logger'
+import { ownerEndpoint } from '@/lib/owner-utils'
 import { isIndustryJobBpcProduct } from '@/lib/eve-constants'
 import {
   createVisibilityStore,
@@ -45,9 +46,7 @@ export type IndustryJobsStore = UseBoundStore<
   IndustryJobsExtras
 
 function getEndpoint(owner: Owner): string {
-  return owner.type === 'corporation'
-    ? `/corporations/${owner.id}/industry/jobs`
-    : `/characters/${owner.characterId}/industry/jobs`
+  return ownerEndpoint(owner, 'industry/jobs')
 }
 
 async function fetchJobsForOwner(owner: Owner): Promise<{

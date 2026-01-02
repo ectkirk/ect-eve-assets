@@ -1,16 +1,29 @@
 {
-  "version": "2.1.0",
-  "date": "2025-12-30",
+  "version": "2.2.0",
+  "date": "2026-01-01",
   "changes": [
     {
       "type": "feat",
-      "scope": "reference",
-      "description": "Add Reference Data Browser for browsing EVE item database"
+      "scope": "map",
+      "description": "Add interactive star map with route planning and ansiblex support"
     },
     {
-      "type": "feat",
-      "scope": "context-menu",
-      "description": "Add View Details option to navigate to reference from any item"
+      "type": "fix",
+      "scope": "contracts",
+      "description": "Correct direction detection and BPC pricing"
+    },
+    {
+      "type": "fix",
+      "scope": "corp",
+      "description": "Handle character leaving corporation gracefully"
+    },
+    {
+      "type": "refactor",
+      "description": "Apply DRY/KISS principles and extract reusable components"
+    },
+    {
+      "type": "fix",
+      "description": "Prevent infinite loops and handle edge cases"
     }
   ]
 }

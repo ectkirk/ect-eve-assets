@@ -1,17 +1,10 @@
 import { esi } from '../esi'
 import { ESIAssetSchema, ESIAssetNameSchema } from '../schemas'
 import { z } from 'zod'
+import { chunkArray } from '@/lib/utils'
 
 export type ESIAsset = z.infer<typeof ESIAssetSchema>
 export type ESIAssetName = z.infer<typeof ESIAssetNameSchema>
-
-function chunkArray<T>(array: T[], size: number): T[][] {
-  const chunks: T[][] = []
-  for (let i = 0; i < array.length; i += size) {
-    chunks.push(array.slice(i, i + size))
-  }
-  return chunks
-}
 
 async function fetchAssetNames(
   endpoint: string,

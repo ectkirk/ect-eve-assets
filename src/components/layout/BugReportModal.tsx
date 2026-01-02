@@ -5,7 +5,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { AlertTriangle, Send, Loader2 } from 'lucide-react'
+import { AlertBox } from '@/components/ui/alert-box'
+import { Send, Loader2 } from 'lucide-react'
 
 interface BugReportModalProps {
   open: boolean
@@ -80,21 +81,10 @@ export function BugReportModal({ open, onOpenChange }: BugReportModalProps) {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4 text-sm">
-            <div className="rounded-lg border border-semantic-warning/30 bg-semantic-warning/10 p-3">
-              <div className="flex gap-2">
-                <AlertTriangle className="h-4 w-4 text-semantic-warning shrink-0 mt-0.5" />
-                <div className="text-content-secondary">
-                  <p className="font-medium text-content mb-1">
-                    Privacy Notice
-                  </p>
-                  <p>
-                    This report will be posted to our Discord server. Please
-                    avoid including personal information you don't want shared
-                    publicly.
-                  </p>
-                </div>
-              </div>
-            </div>
+            <AlertBox variant="warning" title="Privacy Notice" className="p-3">
+              This report will be posted to our Discord server. Please avoid
+              including personal information you don't want shared publicly.
+            </AlertBox>
 
             <div>
               <label className="block text-content-secondary mb-1">
@@ -127,9 +117,9 @@ export function BugReportModal({ open, onOpenChange }: BugReportModalProps) {
             </div>
 
             {error && (
-              <div className="rounded-lg border border-semantic-danger/30 bg-semantic-danger/10 p-3 text-semantic-danger text-center">
-                {error}
-              </div>
+              <AlertBox variant="danger" showIcon={false} className="p-3">
+                <p className="text-semantic-danger text-center">{error}</p>
+              </AlertBox>
             )}
 
             <button

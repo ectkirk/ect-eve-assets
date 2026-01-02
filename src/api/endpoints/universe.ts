@@ -8,6 +8,7 @@ import {
   type CachedName,
 } from '@/store/reference-cache'
 import { logger } from '@/lib/logger'
+import { chunkArray } from '@/lib/utils'
 import { PLAYER_STRUCTURE_ID_THRESHOLD } from '@/lib/eve-constants'
 import { createLRUCache } from '@/lib/lru-cache'
 import {
@@ -173,8 +174,7 @@ export async function resolveNames(
 
   const toSave: CachedName[] = []
 
-  for (let i = 0; i < uncached.length; i += 1000) {
-    const chunk = uncached.slice(i, i + 1000)
+  for (const chunk of chunkArray(uncached, 1000)) {
     try {
       const names = await esi.fetch<ESIName[]>('/universe/names', {
         method: 'POST',

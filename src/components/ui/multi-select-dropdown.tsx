@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { ChevronDown, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useClickOutside } from '@/hooks'
 
 interface Option {
   value: string
@@ -33,20 +34,7 @@ export function MultiSelectDropdown({
     setFocusedIndex(-1)
   }, [])
 
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
-        closeDropdown()
-      }
-    }
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [isOpen, closeDropdown])
+  useClickOutside(containerRef, isOpen, closeDropdown)
 
   const toggleOption = useCallback(
     (value: string) => {

@@ -1,6 +1,7 @@
 import type { VisibilityState } from '@tanstack/react-table'
 import type { AssetModeFlags, ResolvedAsset } from '@/lib/resolved-asset'
 import { getAssetDisplayNames } from '@/lib/resolved-asset'
+import { formatVolume as formatVolumeBase } from '@/lib/utils'
 
 export interface AssetRow {
   itemId: number
@@ -32,7 +33,7 @@ export interface AssetRow {
 }
 
 export function formatVolume(value: number): string {
-  return value.toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' m³'
+  return formatVolumeBase(value, { suffix: true })
 }
 
 export const COLUMN_LABELS: Record<string, string> = {

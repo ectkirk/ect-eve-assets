@@ -1,5 +1,6 @@
 import { getRegionalOrders, getStructureOrders } from '@/api/endpoints/market'
 import { logger } from '@/lib/logger'
+import { chunkArray } from '@/lib/utils'
 import {
   savePricesToDB,
   saveStructuresToDB,
@@ -254,13 +255,11 @@ export async function executeUpdate(input: UpdateInput): Promise<UpdateResult> {
     priceUpdates,
   }
 
-  for (let i = 0; i < regionalTasks.length; i += PARALLEL_LIMIT) {
-    const batch = regionalTasks.slice(i, i + PARALLEL_LIMIT)
+  for (const batch of chunkArray(regionalTasks, PARALLEL_LIMIT)) {
     await processRegionalBatch(batch, ctx, lastFetchAt)
   }
 
-  for (let i = 0; i < structureTasks.length; i += PARALLEL_LIMIT) {
-    const batch = structureTasks.slice(i, i + PARALLEL_LIMIT)
+  for (const batch of chunkArray(structureTasks, PARALLEL_LIMIT)) {
     await Promise.all(
       batch.map((task) =>
         processStructure(task, ctx, trackedStructures, structureUpdates)

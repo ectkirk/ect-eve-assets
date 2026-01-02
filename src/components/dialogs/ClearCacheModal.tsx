@@ -8,6 +8,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { CheckboxRow } from '@/components/ui/checkbox-row'
 import { useReferenceCacheStore } from '@/store/reference-cache'
 import {
   loadReferenceData,
@@ -19,6 +20,7 @@ import { useRegionalMarketStore } from '@/store/regional-market-store'
 import { usePriceStore } from '@/store/price-store'
 import { useExpiryCacheStore } from '@/store/expiry-cache-store'
 import { useDivisionsStore } from '@/store/divisions-store'
+import { useAnsiblexStore } from '@/store/ansiblex-store'
 import { logger } from '@/lib/logger'
 
 interface ClearCacheModalProps {
@@ -100,6 +102,13 @@ const CACHE_OPTIONS: CacheOption[] = [
     group: 'reference',
     requiresReload: false,
     clear: () => usePriceStore.getState().clearAbyssal(),
+  },
+  {
+    id: 'ansiblex',
+    label: 'Ansiblexes',
+    group: 'reference',
+    requiresReload: false,
+    clear: () => useAnsiblexStore.getState().clear(),
   },
   {
     id: 'assets',
@@ -342,25 +351,19 @@ export function ClearCacheModal({ open, onOpenChange }: ClearCacheModalProps) {
                   </div>
                   <div className="space-y-1">
                     {options.map((option) => (
-                      <label
+                      <CheckboxRow
                         key={option.id}
-                        className="flex items-center gap-3 py-1.5 px-2 rounded hover:bg-surface-tertiary cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selected.has(option.id)}
-                          onChange={() => toggleOption(option.id)}
-                          className="h-4 w-4 rounded border-border text-accent focus:ring-accent"
-                        />
-                        <span className="text-sm text-content-secondary flex-1">
-                          {option.label}
-                        </span>
-                        {option.requiresReload && (
-                          <span className="text-xs text-semantic-warning">
-                            reload
-                          </span>
-                        )}
-                      </label>
+                        label={option.label}
+                        checked={selected.has(option.id)}
+                        onChange={() => toggleOption(option.id)}
+                        suffix={
+                          option.requiresReload && (
+                            <span className="text-xs text-semantic-warning">
+                              reload
+                            </span>
+                          )
+                        }
+                      />
                     ))}
                   </div>
                 </div>

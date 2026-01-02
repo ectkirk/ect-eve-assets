@@ -46,10 +46,6 @@ vi.mock('./asset-store', () => ({
   },
 }))
 
-vi.mock('@/api/ref-client', () => ({
-  queuePriceRefresh: vi.fn().mockResolvedValue(new Map()),
-}))
-
 describe('industry-jobs-store', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
