@@ -64,11 +64,14 @@ export function ContractTableRow({
   onSelectContract,
 }: ContractTableRowProps) {
   const contract = row.contractWithItems.contract
-  const items = row.items
   const TypeIcon = CONTRACT_TYPE_ICONS[contract.type]
   const expiry = formatExpiry(contract.date_expired)
   const value = getContractValue(contract)
-  const hasMultipleItems = items.length > 1
+
+  const displayItemCount = row.isWantToBuy
+    ? row.requestedItemCount
+    : row.includedItemCount
+  const hasMultipleItems = displayItemCount > 1
 
   return (
     <TableRow>
@@ -91,8 +94,8 @@ export function ContractTableRow({
       </TableCell>
       {!showCourierColumns && (
         <TableCell className="py-1.5">
-          <div className="flex items-center gap-2">
-            {hasMultipleItems ? (
+          {hasMultipleItems ? (
+            <div>
               <button
                 onClick={() => onSelectContract(toDisplayContract(row))}
                 className="flex items-center gap-1.5 hover:text-link text-accent"
@@ -100,9 +103,25 @@ export function ContractTableRow({
                 <Package className="h-4 w-4" />
                 <span>[Multiple Items]</span>
               </button>
-            ) : (
-              <>
-                {items.length === 1 && row.firstItemTypeId && (
+              {row.isWantToBuy && (
+                <div
+                  className={cn(
+                    'text-xs',
+                    row.direction === 'in'
+                      ? 'text-status-negative'
+                      : 'text-status-info'
+                  )}
+                >
+                  {row.direction === 'in' ? 'You Provide' : 'You Want'}
+                </div>
+              )}
+            </div>
+          ) : displayItemCount === 0 ? (
+            <span className="text-content-muted">-</span>
+          ) : (
+            <div>
+              <div className="flex items-center gap-2">
+                {row.firstItemTypeId && (
                   <ItemTypeIcon
                     typeId={row.firstItemTypeId}
                     categoryId={row.firstItemCategoryId}
@@ -116,11 +135,23 @@ export function ContractTableRow({
                   )}
                   title={row.typeName}
                 >
-                  {items.length === 0 ? '' : row.typeName}
+                  {row.typeName}
                 </span>
-              </>
-            )}
-          </div>
+              </div>
+              {row.isWantToBuy && (
+                <div
+                  className={cn(
+                    'text-xs',
+                    row.direction === 'in'
+                      ? 'text-status-negative'
+                      : 'text-status-info'
+                  )}
+                >
+                  {row.direction === 'in' ? 'You Provide' : 'You Want'}
+                </div>
+              )}
+            </div>
+          )}
         </TableCell>
       )}
       <TableCell className="py-1.5 text-content-secondary">
@@ -138,7 +169,16 @@ export function ContractTableRow({
         {row.assigneeName}
       </TableCell>
       <TableCell className="py-1.5 text-right tabular-nums text-status-highlight">
-        {value > 0 ? formatNumber(value) : '-'}
+        {value > 0 ? (
+          <div>
+            <div>{formatNumber(value)}</div>
+            {row.isWantToBuy && row.direction === 'in' && (
+              <div className="text-xs text-status-positive">You Receive</div>
+            )}
+          </div>
+        ) : (
+          '-'
+        )}
       </TableCell>
       {!showCourierColumns && (
         <TableCell className="py-1.5 text-right tabular-nums text-status-positive">

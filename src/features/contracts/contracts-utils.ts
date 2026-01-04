@@ -60,6 +60,9 @@ export interface ContractRow {
   assigneeName: string
   itemValue: number
   status: ESIContract['status']
+  isWantToBuy: boolean
+  includedItemCount: number
+  requestedItemCount: number
 }
 
 export interface DirectionGroup {
@@ -121,7 +124,12 @@ export function buildContractRow(
   const items = contractWithItems.items ?? []
   const direction: ContractDirection = isIssuer ? 'out' : 'in'
 
-  const firstItem = items[0]
+  const includedItems = items.filter((item) => item.is_included)
+  const requestedItems = items.filter((item) => !item.is_included)
+  const isWantToBuy = includedItems.length === 0 && requestedItems.length > 0
+
+  const displayItems = isWantToBuy ? requestedItems : includedItems
+  const firstItem = displayItems[0]
   const firstItemType =
     firstItem && hasType(firstItem.type_id)
       ? getType(firstItem.type_id)
@@ -142,7 +150,7 @@ export function buildContractRow(
 
   const priceStore = usePriceStore.getState()
   let itemValue = 0
-  for (const item of items) {
+  for (const item of includedItems) {
     const price = priceStore.getItemPrice(item.type_id, {
       itemId: item.item_id,
       isBlueprintCopy: isContractItemBpc(item),
@@ -170,5 +178,8 @@ export function buildContractRow(
     assigneeName,
     itemValue,
     status: contract.status,
+    isWantToBuy,
+    includedItemCount: includedItems.length,
+    requestedItemCount: requestedItems.length,
   }
 }
