@@ -17,10 +17,12 @@ import {
   Package,
   Users,
   Map,
+  Loader2,
   type LucideIcon,
 } from 'lucide-react'
 import { useThemeStore, THEME_OPTIONS } from '@/store/theme-store'
 import { useModalManager, useClickOutside } from '@/hooks'
+import { useAbyssalSyncStore } from '@/store/abyssal-sync-store'
 import { CreditsModal } from './CreditsModal'
 import { SupportModal } from './SupportModal'
 import { BugReportModal } from './BugReportModal'
@@ -92,6 +94,8 @@ export function WindowControls() {
   const settingsPanelRef = useRef<HTMLDivElement>(null)
   const theme = useThemeStore((s) => s.theme)
   const setTheme = useThemeStore((s) => s.setTheme)
+  const abyssalSyncing = useAbyssalSyncStore((s) => s.isSyncing)
+  const abyssalProgress = useAbyssalSyncStore((s) => s.progress)
 
   const openModal = (modal: SettingsModal) => {
     setSettingsOpen(false)
@@ -113,6 +117,20 @@ export function WindowControls() {
       className="flex items-center -mr-4"
       style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
     >
+      {abyssalSyncing && (
+        <button
+          onClick={() => modals.open('abyssal')}
+          aria-label="Abyssal sync in progress"
+          className="flex h-10 items-center gap-1.5 px-3 text-xs text-content-secondary hover:bg-surface-tertiary hover:text-content"
+        >
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-accent" />
+          <span>
+            {abyssalProgress
+              ? `${abyssalProgress.fetched}/${abyssalProgress.total}`
+              : 'Syncing...'}
+          </span>
+        </button>
+      )}
       <div ref={settingsPanelRef} className="relative">
         <button
           onClick={() => setSettingsOpen(!settingsOpen)}

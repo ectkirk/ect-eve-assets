@@ -38,7 +38,7 @@ export async function storeAndPersistPrices(
       const merged = new Map(state.abyssalPrices)
       for (const { itemId, price } of abyssalUpdates) {
         const existing = merged.get(itemId)
-        if (price > 0 || existing === undefined || existing <= 0) {
+        if (price > 0 || existing === undefined || existing === 0) {
           merged.set(itemId, price)
         }
       }
