@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import { Loader2 } from 'lucide-react'
+import { ESIErrorDisplay } from './esi-error-display'
 
 interface TabLoadingStateProps {
   dataType: string
@@ -61,12 +62,7 @@ export function TabLoadingState({
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           {updateError ? (
-            <div role="alert" aria-live="assertive">
-              <p className="text-semantic-danger">Failed to load {dataType}</p>
-              <p className="text-sm text-content-secondary mb-4">
-                {updateError}
-              </p>
-            </div>
+            <ESIErrorDisplay error={updateError} context={dataType} />
           ) : (
             <p className="text-content-secondary">No {dataType} found.</p>
           )}

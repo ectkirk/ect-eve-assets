@@ -49,6 +49,7 @@ import {
   registerESIHandlers,
   stopESIHandlers,
 } from './esi-handlers'
+import { ESIError } from '../../shared/esi-types'
 
 type IpcHandler = (event: IpcMainInvokeEvent, ...args: unknown[]) => unknown
 
@@ -166,6 +167,34 @@ describe('ESI Handlers', () => {
           requiresAuth: true,
           etag: '"abc123"',
         })
+      })
+
+      it('wraps ESIError in serializable envelope', async () => {
+        const esiError = new ESIError('Rate limited', 429, 60)
+        mocks.esiService.fetch.mockRejectedValue(esiError)
+
+        const handler = getRegisteredHandler('esi:fetch')
+        const result = await handler(mockEvent, '/test/', {})
+
+        expect(result).toEqual({
+          __esiError: {
+            name: 'ESIError',
+            message: 'Rate limited',
+            status: 429,
+            retryAfter: 60,
+          },
+        })
+      })
+
+      it('re-throws non-ESI errors', async () => {
+        const genericError = new Error('Network failure')
+        mocks.esiService.fetch.mockRejectedValue(genericError)
+
+        const handler = getRegisteredHandler('esi:fetch')
+
+        await expect(handler(mockEvent, '/test/', {})).rejects.toThrow(
+          'Network failure'
+        )
       })
     })
 

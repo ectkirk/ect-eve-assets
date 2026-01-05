@@ -7,6 +7,27 @@ import {
   isValidEndpoint,
   isValidString,
 } from './validation.js'
+import { ESIError, type SerializedESIError } from '../../shared/esi-types.js'
+
+function serializeESIError(error: ESIError): SerializedESIError {
+  return {
+    name: 'ESIError',
+    message: error.message,
+    status: error.status,
+    retryAfter: error.retryAfter,
+  }
+}
+
+function wrapESIHandler<T>(
+  handler: () => Promise<T>
+): Promise<T | { __esiError: SerializedESIError }> {
+  return handler().catch((error: unknown) => {
+    if (error instanceof ESIError) {
+      return { __esiError: serializeESIError(error) }
+    }
+    throw error
+  })
+}
 
 interface PendingTokenRequest {
   resolve: (token: string | null) => void
@@ -162,7 +183,9 @@ export function registerESIHandlers(
     'esi:fetch',
     async (_event, endpoint: unknown, options: unknown) => {
       if (!isValidEndpoint(endpoint)) throw new Error('Invalid endpoint')
-      return getESIService().fetch(endpoint, parseESIOptions(options))
+      return wrapESIHandler(() =>
+        getESIService().fetch(endpoint, parseESIOptions(options))
+      )
     }
   )
 
@@ -170,7 +193,9 @@ export function registerESIHandlers(
     'esi:fetchWithMeta',
     async (_event, endpoint: unknown, options: unknown) => {
       if (!isValidEndpoint(endpoint)) throw new Error('Invalid endpoint')
-      return getESIService().fetchWithMeta(endpoint, parseESIOptions(options))
+      return wrapESIHandler(() =>
+        getESIService().fetchWithMeta(endpoint, parseESIOptions(options))
+      )
     }
   )
 
@@ -178,7 +203,9 @@ export function registerESIHandlers(
     'esi:fetchPaginated',
     async (_event, endpoint: unknown, options: unknown) => {
       if (!isValidEndpoint(endpoint)) throw new Error('Invalid endpoint')
-      return getESIService().fetchPaginated(endpoint, parseESIOptions(options))
+      return wrapESIHandler(() =>
+        getESIService().fetchPaginated(endpoint, parseESIOptions(options))
+      )
     }
   )
 
@@ -186,9 +213,11 @@ export function registerESIHandlers(
     'esi:fetchPaginatedWithMeta',
     async (_event, endpoint: unknown, options: unknown) => {
       if (!isValidEndpoint(endpoint)) throw new Error('Invalid endpoint')
-      return getESIService().fetchPaginatedWithMeta(
-        endpoint,
-        parseESIOptions(options)
+      return wrapESIHandler(() =>
+        getESIService().fetchPaginatedWithMeta(
+          endpoint,
+          parseESIOptions(options)
+        )
       )
     }
   )
@@ -218,10 +247,12 @@ export function registerESIHandlers(
             }
           : undefined
 
-      return getESIService().fetchPaginatedWithProgress(
-        endpoint,
-        parseESIOptions(options),
-        onProgress
+      return wrapESIHandler(() =>
+        getESIService().fetchPaginatedWithProgress(
+          endpoint,
+          parseESIOptions(options),
+          onProgress
+        )
       )
     }
   )

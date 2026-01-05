@@ -17,6 +17,7 @@ import {
   type OwnerDB,
 } from '@/lib/owner-indexed-db'
 import { logger } from '@/lib/logger'
+import { getErrorForLog, getUserFriendlyMessage } from '@/lib/errors'
 import { triggerResolution } from '@/lib/data-resolver'
 import { useStoreRegistry } from './store-registry'
 
@@ -195,7 +196,7 @@ export function createOwnerStore<
           } catch (err) {
             logger.error(
               `Failed to load ${name} from DB`,
-              err instanceof Error ? err : undefined,
+              getErrorForLog(err),
               {
                 module: moduleName,
               }
@@ -275,14 +276,10 @@ export function createOwnerStore<
                 .getState()
                 .setExpiry(ownerKey, endpoint, expiresAt, etag, isDataEmpty)
             } catch (err) {
-              logger.error(
-                `Failed to fetch ${name}`,
-                err instanceof Error ? err : undefined,
-                {
-                  module: moduleName,
-                  owner: owner.name,
-                }
-              )
+              logger.error(`Failed to fetch ${name}`, getErrorForLog(err), {
+                module: moduleName,
+                owner: owner.name,
+              })
               if (isScopeError(err)) {
                 const ownerId = makeOwnerKey(owner.type, owner.id)
                 useAuthStore.getState().setOwnerScopesOutdated(ownerId, true)
@@ -318,17 +315,13 @@ export function createOwnerStore<
             owners: ownersToUpdate.length,
           })
         } catch (err) {
-          const message = err instanceof Error ? err.message : 'Unknown error'
-          set({ isUpdating: false, updateError: message } as Partial<
-            OwnerStore<TOwnerData, TExtraState, TExtraActions>
-          >)
-          logger.error(
-            `${name} update failed`,
-            err instanceof Error ? err : undefined,
-            {
-              module: moduleName,
-            }
-          )
+          set({
+            isUpdating: false,
+            updateError: getUserFriendlyMessage(err),
+          } as Partial<OwnerStore<TOwnerData, TExtraState, TExtraActions>>)
+          logger.error(`${name} update failed`, getErrorForLog(err), {
+            module: moduleName,
+          })
         }
       },
 
@@ -399,7 +392,7 @@ export function createOwnerStore<
         } catch (err) {
           logger.error(
             `Failed to fetch ${name} for owner`,
-            err instanceof Error ? err : undefined,
+            getErrorForLog(err),
             {
               module: moduleName,
               owner: owner.name,
@@ -410,9 +403,7 @@ export function createOwnerStore<
             useAuthStore.getState().setOwnerScopesOutdated(ownerId, true)
             logger.warn(
               `Owner ${owner.name} needs re-authentication for new scopes`,
-              {
-                module: moduleName,
-              }
+              { module: moduleName }
             )
           }
         } finally {

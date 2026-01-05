@@ -8,6 +8,7 @@ import {
 import { useExpiryCacheStore } from './expiry-cache-store'
 import { isNotInCorporationError } from '../../shared/esi-types'
 import { logger } from '@/lib/logger'
+import { getErrorForLog, getUserFriendlyMessage } from '@/lib/errors'
 import { triggerResolution } from '@/lib/data-resolver'
 import {
   createVisibilityDB,
@@ -206,8 +207,10 @@ export function createVisibilityStore<
           } catch (err) {
             logger.error(
               `Failed to load ${name} from DB`,
-              err instanceof Error ? err : undefined,
-              { module: moduleName }
+              getErrorForLog(err),
+              {
+                module: moduleName,
+              }
             )
             set({ initialized: true } as Partial<FullStore>)
           }
@@ -299,11 +302,10 @@ export function createVisibilityStore<
                 })
               } else {
                 failedOwners.push(currentOwnerKey)
-                logger.error(
-                  `Failed to fetch ${name}`,
-                  err instanceof Error ? err : undefined,
-                  { module: moduleName, owner: owner.name }
-                )
+                logger.error(`Failed to fetch ${name}`, getErrorForLog(err), {
+                  module: moduleName,
+                  owner: owner.name,
+                })
               }
             }
           }
@@ -349,13 +351,13 @@ export function createVisibilityStore<
             failedOwners: failedOwners.length,
           })
         } catch (err) {
-          const message = err instanceof Error ? err.message : 'Unknown error'
-          set({ isUpdating: false, updateError: message } as Partial<FullStore>)
-          logger.error(
-            `${name} update failed`,
-            err instanceof Error ? err : undefined,
-            { module: moduleName }
-          )
+          set({
+            isUpdating: false,
+            updateError: getUserFriendlyMessage(err),
+          } as Partial<FullStore>)
+          logger.error(`${name} update failed`, getErrorForLog(err), {
+            module: moduleName,
+          })
         }
       },
 
@@ -455,8 +457,11 @@ export function createVisibilityStore<
           } else {
             logger.error(
               `Failed to fetch ${name} for owner`,
-              err instanceof Error ? err : undefined,
-              { module: moduleName, owner: owner.name }
+              getErrorForLog(err),
+              {
+                module: moduleName,
+                owner: owner.name,
+              }
             )
           }
         } finally {
