@@ -2,9 +2,10 @@ import { useState, useMemo, useCallback } from 'react'
 import { ChevronRight, ChevronDown, Mail } from 'lucide-react'
 import { type ESIMailHeader } from '@/api/endpoints/mail'
 import { CharacterPortrait } from '@/components/ui/type-icon'
-import { formatRelativeTime, cn } from '@/lib/utils'
+import { formatRelativeTime, cn, matchesSearchLower } from '@/lib/utils'
 import { getName } from '@/api/endpoints/universe'
 import { type MailFilterType } from '@/context'
+import { MS_PER_DAY } from '@/lib/timer-utils'
 
 export const LABEL_INBOX = 1
 export const LABEL_SENT = 2
@@ -75,8 +76,8 @@ function getTimeGroupLabel(timestamp: string): string {
   const date = new Date(timestamp)
   const now = new Date()
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const yesterday = new Date(today.getTime() - 86400000)
-  const weekAgo = new Date(today.getTime() - 7 * 86400000)
+  const yesterday = new Date(today.getTime() - MS_PER_DAY)
+  const weekAgo = new Date(today.getTime() - 7 * MS_PER_DAY)
 
   if (date >= today) return 'Today'
   if (date >= yesterday) return 'Yesterday'
@@ -136,11 +137,8 @@ export function CharacterMailPanel({
 
     if (filter) {
       const filterLower = filter.toLowerCase()
-      filteredMails = filteredMails.filter(
-        (m) =>
-          m.mail.subject?.toLowerCase().includes(filterLower) ||
-          m.fromName.toLowerCase().includes(filterLower) ||
-          m.toNames.toLowerCase().includes(filterLower)
+      filteredMails = filteredMails.filter((m) =>
+        matchesSearchLower(filterLower, m.mail.subject, m.fromName, m.toNames)
       )
     }
 

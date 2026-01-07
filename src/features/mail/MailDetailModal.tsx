@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { X, Loader2 } from 'lucide-react'
 import { CharacterPortrait } from '@/components/ui/type-icon'
+import { ESIErrorDisplay } from '@/components/ui/esi-error-display'
 import { type ESIMailBody } from '@/api/endpoints/mail'
 import { useMailStore } from '@/store/mail-store'
 import { formatDateTime } from '@/lib/utils'
@@ -97,7 +98,9 @@ export function MailDetailModal({ mail, onClose }: MailDetailModalProps) {
               Loading mail content...
             </div>
           ) : error ? (
-            <div className="py-4 text-red-400">{error}</div>
+            <div className="py-4">
+              <ESIErrorDisplay error={error} context="mail content" />
+            </div>
           ) : body ? (
             <MailBodyContent body={body.body ?? ''} />
           ) : (

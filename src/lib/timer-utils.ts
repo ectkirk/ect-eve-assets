@@ -1,5 +1,9 @@
 import { LOW_FUEL_THRESHOLD_DAYS } from './structure-constants'
 
+export const MS_PER_MINUTE = 60 * 1000
+export const MS_PER_HOUR = 60 * MS_PER_MINUTE
+export const MS_PER_DAY = 24 * MS_PER_HOUR
+
 export interface FuelInfo {
   text: string
   days: number | null
@@ -15,7 +19,7 @@ export function formatFuelExpiry(fuelExpires: string | undefined): FuelInfo {
 
   if (remaining <= 0) return { text: 'Empty', days: 0, isLow: true }
 
-  const hours = Math.floor(remaining / (60 * 60 * 1000))
+  const hours = Math.floor(remaining / MS_PER_HOUR)
   const days = Math.floor(hours / 24)
 
   if (days >= 7) return { text: `${days}d`, days, isLow: false }
@@ -60,7 +64,7 @@ export function formatCountdown(dateStr: string | undefined): string | null {
   const now = Date.now()
   const remaining = target - now
   if (remaining <= 0) return 'Expired'
-  const hours = Math.floor(remaining / (60 * 60 * 1000))
+  const hours = Math.floor(remaining / MS_PER_HOUR)
   const days = Math.floor(hours / 24)
   if (days >= 1) return `${days}d ${hours % 24}h`
   return `${hours}h`
@@ -71,7 +75,7 @@ export function formatElapsed(dateStr: string | undefined): string | null {
   const since = new Date(dateStr).getTime()
   const elapsed = Date.now() - since
   if (elapsed < 0) return null
-  const days = Math.floor(elapsed / (24 * 60 * 60 * 1000))
+  const days = Math.floor(elapsed / MS_PER_DAY)
   if (days >= 1) return `${days}d`
   return '<1d'
 }
@@ -93,7 +97,7 @@ export interface TimerInfo {
 }
 
 function formatTimerRemaining(remaining: number): string {
-  const hours = Math.floor(remaining / (60 * 60 * 1000))
+  const hours = Math.floor(remaining / MS_PER_HOUR)
   const days = Math.floor(hours / 24)
   if (days >= 1) return `${days}d ${hours % 24}h`
   return `${hours}h`
@@ -127,7 +131,7 @@ export function getStarbaseTimer(starbase: StarbaseTimerInput): TimerInfo {
     const until = new Date(starbase.reinforced_until).getTime()
     const remaining = until - now
     if (remaining > 0) {
-      const hours = Math.floor(remaining / (60 * 60 * 1000))
+      const hours = Math.floor(remaining / MS_PER_HOUR)
       return {
         type: 'reinforced',
         text: `RF: ${formatTimerRemaining(remaining)}`,
@@ -179,7 +183,7 @@ export function getStructureTimer(structure: StructureTimerInput): TimerInfo {
     const until = new Date(structure.state_timer_end).getTime()
     const remaining = until - now
     if (remaining > 0) {
-      const hours = Math.floor(remaining / (60 * 60 * 1000))
+      const hours = Math.floor(remaining / MS_PER_HOUR)
       const label = structure.state === 'armor_reinforce' ? 'Armor' : 'Hull'
       return {
         type: 'reinforcing',
@@ -224,7 +228,7 @@ export function getStructureTimer(structure: StructureTimerInput): TimerInfo {
     const until = new Date(structure.state_timer_end).getTime()
     const remaining = until - now
     if (remaining > 0) {
-      const hours = Math.floor(remaining / (60 * 60 * 1000))
+      const hours = Math.floor(remaining / MS_PER_HOUR)
       const text = hours >= 1 ? `${hours}h` : '<1h'
       return {
         type: 'vulnerable',

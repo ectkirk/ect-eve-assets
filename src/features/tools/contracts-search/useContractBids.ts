@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { getErrorMessage } from '@/lib/errors'
 import { getPublicContractBids } from '@/api/endpoints'
 import { logger } from '@/lib/logger'
 import { createLRUCache } from '@/lib/lru-cache'
@@ -60,9 +61,7 @@ export function useContractBids() {
       setBids(resolved)
       return resolved
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Failed to fetch bids'
-      setError(message)
+      setError(getErrorMessage(err))
       setBids(null)
       throw err
     } finally {

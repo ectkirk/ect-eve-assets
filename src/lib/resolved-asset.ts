@@ -1,4 +1,5 @@
 import type { ESIAsset } from '@/api/endpoints/assets'
+import { matchesSearchLower } from './utils'
 import type { Owner } from '@/store/auth-store'
 import {
   getType,
@@ -133,13 +134,13 @@ export function matchesAssetTypeFilter(
 
 export function matchesSearch(ra: ResolvedAsset, search: string): boolean {
   if (!search) return true
-  const searchLower = search.toLowerCase()
   const names = getAssetDisplayNames(ra)
-  return (
-    names.typeName.toLowerCase().includes(searchLower) ||
-    names.groupName.toLowerCase().includes(searchLower) ||
-    names.locationName.toLowerCase().includes(searchLower) ||
-    names.systemName.toLowerCase().includes(searchLower) ||
-    names.regionName.toLowerCase().includes(searchLower)
+  return matchesSearchLower(
+    search.toLowerCase(),
+    names.typeName,
+    names.groupName,
+    names.locationName,
+    names.systemName,
+    names.regionName
   )
 }

@@ -1,4 +1,5 @@
 import { logger } from '@/lib/logger'
+import { getErrorMessage } from '@/lib/errors'
 
 const JITA_REFRESH_KEY = 'ecteveassets-jita-refresh-at'
 const ESI_REFRESH_KEY = 'ecteveassets-esi-refresh-at'
@@ -18,7 +19,7 @@ export function setLastJitaRefreshAt(timestamp: number): void {
   } catch (err) {
     logger.warn('localStorage not available for Jita refresh timestamp', {
       module: 'PriceStore',
-      error: err instanceof Error ? err.message : String(err),
+      error: getErrorMessage(err),
     })
   }
 }
@@ -38,7 +39,7 @@ export function setLastEsiRefreshAt(timestamp: number): void {
   } catch (err) {
     logger.warn('localStorage not available for ESI refresh timestamp', {
       module: 'PriceStore',
-      error: err instanceof Error ? err.message : String(err),
+      error: getErrorMessage(err),
     })
   }
 }
@@ -66,7 +67,7 @@ export function clearRefreshTimestamps(): void {
   } catch (err) {
     logger.warn('localStorage not available for clearing refresh timestamps', {
       module: 'PriceStore',
-      error: err instanceof Error ? err.message : String(err),
+      error: getErrorMessage(err),
     })
   }
 }

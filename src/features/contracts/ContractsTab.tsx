@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react'
+import { matchesSearchLower } from '@/lib/utils'
 import { useTabControls } from '@/context'
 import { useColumnSettings, type ColumnConfig } from '@/hooks'
 import { useReferenceCacheStore } from '@/store/reference-cache'
@@ -151,14 +152,17 @@ export function ContractsTab() {
     let collateral = 0
 
     const filtered = allContracts.filter((row) => {
-      if (search) {
-        const matches =
-          row.typeName.toLowerCase().includes(searchLower) ||
-          row.assignerName.toLowerCase().includes(searchLower) ||
-          row.locationName.toLowerCase().includes(searchLower) ||
-          row.assigneeName.toLowerCase().includes(searchLower)
-        if (!matches) return false
-      }
+      if (
+        search &&
+        !matchesSearchLower(
+          searchLower,
+          row.typeName,
+          row.assignerName,
+          row.locationName,
+          row.assigneeName
+        )
+      )
+        return false
       itemValue += row.itemValue
       const contract = row.contractWithItems.contract
       contractPrice += (contract.price ?? 0) + (contract.reward ?? 0)

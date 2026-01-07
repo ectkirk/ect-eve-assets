@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
+import { matchesSearchLower } from '@/lib/utils'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import {
   useStructuresStore,
@@ -301,12 +302,14 @@ export function StructuresTab() {
     if (!search) return rows
 
     const searchLower = search.toLowerCase()
-    return rows.filter(
-      (row) =>
-        row.name.toLowerCase().includes(searchLower) ||
-        row.typeName.toLowerCase().includes(searchLower) ||
-        row.owner.name.toLowerCase().includes(searchLower) ||
-        row.regionName.toLowerCase().includes(searchLower)
+    return rows.filter((row) =>
+      matchesSearchLower(
+        searchLower,
+        row.name,
+        row.typeName,
+        row.owner.name,
+        row.regionName
+      )
     )
   }, [
     structuresByOwner,

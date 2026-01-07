@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react'
+import { matchesSearchLower } from '@/lib/utils'
 import {
   useReactTable,
   getCoreRowModel,
@@ -164,15 +165,18 @@ export function AssetsTab() {
         return false
       if (categoryFilterValue && row.categoryName !== categoryFilterValue)
         return false
-      if (search) {
-        const matches =
-          row.typeName.toLowerCase().includes(searchLower) ||
-          row.groupName.toLowerCase().includes(searchLower) ||
-          row.locationName.toLowerCase().includes(searchLower) ||
-          row.systemName.toLowerCase().includes(searchLower) ||
-          row.regionName.toLowerCase().includes(searchLower)
-        if (!matches) return false
-      }
+      if (
+        search &&
+        !matchesSearchLower(
+          searchLower,
+          row.typeName,
+          row.groupName,
+          row.locationName,
+          row.systemName,
+          row.regionName
+        )
+      )
+        return false
       if (
         !row.modeFlags.isOwnedStructure &&
         !row.modeFlags.isMarketOrder &&

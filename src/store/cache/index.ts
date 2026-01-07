@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { logger } from '@/lib/logger'
+import { getErrorMessage } from '@/lib/errors'
 import { loadStore, writeBatch, clearStore, deleteDatabase } from './db'
 import type {
   CachedRegion,
@@ -103,7 +104,7 @@ function setLocalStorage(key: string, value: string | null): void {
     logger.warn('localStorage not available', {
       module: 'ReferenceCache',
       key,
-      error: err instanceof Error ? err.message : String(err),
+      error: getErrorMessage(err),
     })
   }
 }

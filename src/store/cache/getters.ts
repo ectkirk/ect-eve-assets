@@ -44,10 +44,6 @@ export function getTypeBasePrice(id: number): number | undefined {
   return useReferenceCacheStore.getState().types.get(id)?.basePrice
 }
 
-export function getTypeProductId(id: number): number | undefined {
-  return useReferenceCacheStore.getState().types.get(id)?.productId
-}
-
 export function isTypeBlueprint(id: number): boolean {
   return (
     useReferenceCacheStore.getState().types.get(id)?.productId !== undefined
@@ -82,10 +78,6 @@ export function getRefStructure(id: number): CachedRefStructure | undefined {
   return useReferenceCacheStore.getState().refStructures.get(id)
 }
 
-export function hasRefStructure(id: number): boolean {
-  return useReferenceCacheStore.getState().refStructures.has(id)
-}
-
 export function getRegion(id: number): CachedRegion | undefined {
   return useReferenceCacheStore.getState().regions.get(id)
 }
@@ -94,28 +86,8 @@ export function getSystem(id: number): CachedSystem | undefined {
   return useReferenceCacheStore.getState().systems.get(id)
 }
 
-export function getSystemByName(name: string): CachedSystem | undefined {
-  const lowerName = name.toLowerCase()
-  for (const system of useReferenceCacheStore.getState().systems.values()) {
-    if (system.name.toLowerCase() === lowerName) return system
-  }
-  return undefined
-}
-
 export function getStation(id: number): CachedStation | undefined {
   return useReferenceCacheStore.getState().stations.get(id)
-}
-
-export function hasRegion(id: number): boolean {
-  return useReferenceCacheStore.getState().regions.has(id)
-}
-
-export function hasSystem(id: number): boolean {
-  return useReferenceCacheStore.getState().systems.has(id)
-}
-
-export function hasStation(id: number): boolean {
-  return useReferenceCacheStore.getState().stations.has(id)
 }
 
 export function getStructure(id: number): CachedStructure | undefined {
@@ -223,11 +195,6 @@ export function hasName(id: number): boolean {
 export function getAllCategories(publishedOnly = false): CachedCategory[] {
   const all = Array.from(useReferenceCacheStore.getState().categories.values())
   return publishedOnly ? all.filter((c) => c.published === true) : all
-}
-
-export function getAllGroups(publishedOnly = false): CachedGroup[] {
-  const all = Array.from(useReferenceCacheStore.getState().groups.values())
-  return publishedOnly ? all.filter((g) => g.published === true) : all
 }
 
 export function getGroupsByCategory(

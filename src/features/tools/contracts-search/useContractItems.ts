@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { getErrorMessage } from '@/lib/errors'
 import { esi } from '@/api/esi'
 import { usePriceStore } from '@/store/price-store'
 import { isAbyssalTypeId } from '@/api/mutamarket-client'
@@ -59,9 +60,7 @@ export function useContractItems() {
       setItems(resolved)
       return resolved
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Failed to fetch items'
-      setError(message)
+      setError(getErrorMessage(err))
       setItems(null)
       throw err
     } finally {

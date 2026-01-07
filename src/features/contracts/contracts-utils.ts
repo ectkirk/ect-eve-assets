@@ -5,12 +5,11 @@ import { hasType, getType } from '@/store/reference-cache'
 import { getName } from '@/api/endpoints/universe'
 import { usePriceStore } from '@/store/price-store'
 import { getLocationName } from '@/lib/location-utils'
+import { MS_PER_HOUR, MS_PER_DAY } from '@/lib/timer-utils'
 
 function isContractItemBpc(item: ESIContractItem): boolean {
   return item.is_blueprint_copy === true || item.raw_quantity === -2
 }
-
-const MS_PER_DAY = 24 * 60 * 60 * 1000
 
 export type ContractSortColumn =
   | 'type'
@@ -95,7 +94,7 @@ export function formatExpiry(dateExpired: string): {
     return { text: 'Expired', isExpired: true }
   }
 
-  const hours = Math.floor(remaining / (60 * 60 * 1000))
+  const hours = Math.floor(remaining / MS_PER_HOUR)
   if (hours >= 24) {
     return { text: `${Math.floor(hours / 24)}d`, isExpired: false }
   }

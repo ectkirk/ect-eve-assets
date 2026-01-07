@@ -2,6 +2,7 @@ import path from 'node:path'
 import fs from 'node:fs'
 import { app, BrowserWindow, shell, safeStorage, screen } from 'electron'
 import { logger } from './logger.js'
+import { getErrorMessage } from './fetch-utils.js'
 import { getESIService } from './esi/index.js'
 
 const userDataPath = app.getPath('userData')
@@ -260,7 +261,7 @@ export function createWindow(
       logger.debug('Invalid URL in window open handler', {
         module: 'Window',
         url,
-        error: err instanceof Error ? err.message : String(err),
+        error: getErrorMessage(err),
       })
     }
     return { action: 'deny' }

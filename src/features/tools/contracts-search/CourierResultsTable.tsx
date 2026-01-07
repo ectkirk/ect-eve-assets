@@ -18,8 +18,8 @@ import {
   formatTimeLeft,
   PAGE_SIZE,
   HIGHSEC_THRESHOLD,
-  decodeHtmlEntities,
 } from './utils'
+import { decodeHtmlEntities } from '@/features/tools/reference/eve-text-utils'
 import type { CourierContract } from './types'
 
 type SortColumn =

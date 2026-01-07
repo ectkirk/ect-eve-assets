@@ -51,11 +51,11 @@ describe('Error Utilities', () => {
       expect(getErrorMessage(new Error('test error'))).toBe('test error')
     })
 
-    it('returns Unknown error for non-Error', () => {
-      expect(getErrorMessage('string')).toBe('Unknown error')
-      expect(getErrorMessage(123)).toBe('Unknown error')
-      expect(getErrorMessage(null)).toBe('Unknown error')
-      expect(getErrorMessage(undefined)).toBe('Unknown error')
+    it('returns stringified value for non-Error', () => {
+      expect(getErrorMessage('string')).toBe('string')
+      expect(getErrorMessage(123)).toBe('123')
+      expect(getErrorMessage(null)).toBe('null')
+      expect(getErrorMessage(undefined)).toBe('undefined')
     })
   })
 
@@ -139,8 +139,8 @@ describe('Error Utilities', () => {
       expect(getUserFriendlyMessage(err)).toBe('Regular error')
     })
 
-    it('returns Unknown error for non-Error', () => {
-      expect(getUserFriendlyMessage('string')).toBe('Unknown error')
+    it('returns stringified value for non-Error', () => {
+      expect(getUserFriendlyMessage('string')).toBe('string')
     })
   })
 })

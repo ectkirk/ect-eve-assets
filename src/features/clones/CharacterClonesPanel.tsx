@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import { ChevronRight, ChevronDown } from 'lucide-react'
 import { TypeIcon } from '@/components/ui/type-icon'
+import { matchesSearchLower } from '@/lib/utils'
 
 interface ImplantInfo {
   typeId: number
@@ -114,10 +115,11 @@ export function CharacterClonesPanel({
 
   const matchesFilter = (clone: CloneInfo) => {
     if (!filter) return true
-    return (
-      clone.locationName.toLowerCase().includes(filterLower) ||
-      clone.name.toLowerCase().includes(filterLower) ||
-      clone.implants.some((i) => i.name.toLowerCase().includes(filterLower))
+    return matchesSearchLower(
+      filterLower,
+      clone.locationName,
+      clone.name,
+      ...clone.implants.map((i) => i.name)
     )
   }
 

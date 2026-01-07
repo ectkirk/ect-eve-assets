@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { matchesSearchLower } from '@/lib/utils'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { usePriceStore, getJitaPrice } from '@/store/price-store'
 import { useIndustryJobsStore } from '@/store/industry-jobs-store'
@@ -434,13 +435,15 @@ export function IndustryJobsTab() {
 
     if (search) {
       const searchLower = search.toLowerCase()
-      const filtered = jobs.filter(
-        (j) =>
-          j.blueprintName.toLowerCase().includes(searchLower) ||
-          j.productName.toLowerCase().includes(searchLower) ||
-          j.ownerName.toLowerCase().includes(searchLower) ||
-          j.locationName.toLowerCase().includes(searchLower) ||
-          j.activityName.toLowerCase().includes(searchLower)
+      const filtered = jobs.filter((j) =>
+        matchesSearchLower(
+          searchLower,
+          j.blueprintName,
+          j.productName,
+          j.ownerName,
+          j.locationName,
+          j.activityName
+        )
       )
       return { allJobs: filtered, totalValue: value }
     }

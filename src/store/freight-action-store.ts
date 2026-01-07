@@ -1,18 +1,12 @@
-import { create } from 'zustand'
+import { createActionStore } from './create-action-store'
 
 export interface FreightAction {
   text: string
   nullSec: boolean
 }
 
-interface FreightActionStore {
-  pendingAction: FreightAction | null
-  triggerFreight: (action: FreightAction) => void
-  clearAction: () => void
-}
-
-export const useFreightActionStore = create<FreightActionStore>((set) => ({
-  pendingAction: null,
-  triggerFreight: (action) => set({ pendingAction: action }),
-  clearAction: () => set({ pendingAction: null }),
-}))
+export const useFreightActionStore = createActionStore<
+  FreightAction,
+  'triggerFreight',
+  [FreightAction]
+>('triggerFreight', (action) => action)

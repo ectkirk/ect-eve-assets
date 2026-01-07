@@ -33,8 +33,6 @@ export function useSortable<T extends string>(
     sortColumn,
     sortDirection,
     handleSort,
-    setSortColumn,
-    setSortDirection,
   }
 }
 

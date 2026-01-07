@@ -1,5 +1,10 @@
 import DOMPurify from 'dompurify'
 
+export function decodeHtmlEntities(text: string): string {
+  const doc = new DOMParser().parseFromString(text, 'text/html')
+  return doc.body.textContent ?? ''
+}
+
 export function sanitizeMailBody(html: string): string {
   const processed = html
     .replace(/<url=[^>]*>([^<]*)<\/url>/gi, '$1')

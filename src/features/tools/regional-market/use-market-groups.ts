@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { getErrorMessage } from '@/lib/errors'
 import type { CachedType } from '@/store/reference-cache'
 import type { MarketGroup, MarketGroupNode, TreeRow } from './types'
 
@@ -64,9 +65,7 @@ export function useMarketGroups(): UseMarketGroupsResult {
         setLoading(false)
       } catch (err) {
         if (cancelled) return
-        setError(
-          err instanceof Error ? err.message : 'Failed to load market groups'
-        )
+        setError(getErrorMessage(err))
         setLoading(false)
       }
     }

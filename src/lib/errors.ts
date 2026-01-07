@@ -30,7 +30,7 @@ export class TimeoutError extends Error {
 }
 
 export function getErrorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : 'Unknown error'
+  return err instanceof Error ? err.message : String(err)
 }
 
 export function getErrorForLog(err: unknown): Error | undefined {

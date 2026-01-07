@@ -2,9 +2,9 @@ import { forwardRef, useMemo } from 'react'
 import {
   getSecurityColor,
   formatBlueprintName,
-  decodeHtmlEntities,
   getContractTypeLabel,
 } from './utils'
+import { decodeHtmlEntities } from '@/features/tools/reference/eve-text-utils'
 import { usePriceStore } from '@/store/price-store'
 import type { SearchContract } from './types'
 

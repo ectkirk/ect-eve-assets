@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { matchesSearchLower } from '@/lib/utils'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { useAssetData } from '@/hooks/useAssetData'
@@ -119,13 +120,15 @@ export function MarketOrdersTab() {
 
     if (search) {
       const searchLower = search.toLowerCase()
-      filtered = filtered.filter(
-        (o) =>
-          o.typeName.toLowerCase().includes(searchLower) ||
-          o.ownerName.toLowerCase().includes(searchLower) ||
-          o.locationName.toLowerCase().includes(searchLower) ||
-          o.regionName.toLowerCase().includes(searchLower) ||
-          o.systemName.toLowerCase().includes(searchLower)
+      filtered = filtered.filter((o) =>
+        matchesSearchLower(
+          searchLower,
+          o.typeName,
+          o.ownerName,
+          o.locationName,
+          o.regionName,
+          o.systemName
+        )
       )
     }
 

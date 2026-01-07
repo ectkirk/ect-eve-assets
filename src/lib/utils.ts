@@ -86,3 +86,10 @@ export function formatRelativeTime(timestamp: string): string {
   if (diffDays < 7) return `${diffDays}d ago`
   return date.toLocaleDateString()
 }
+
+export function matchesSearchLower(
+  queryLower: string,
+  ...values: (string | undefined | null)[]
+): boolean {
+  return values.some((v) => v?.toLowerCase().includes(queryLower))
+}

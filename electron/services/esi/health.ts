@@ -8,6 +8,7 @@ import {
   type ESIRouteStatus,
   type ESIHealthStatus,
 } from './types'
+import { isAbortError } from '../fetch-utils.js'
 
 interface HealthApiResponse {
   routes: Array<{
@@ -130,12 +131,11 @@ export class ESIHealthChecker {
       return this.cache
     } catch (err) {
       clearTimeout(timeoutId)
-      const message =
-        err instanceof Error && err.name === 'AbortError'
-          ? 'Health check timeout'
-          : err instanceof Error
-            ? err.message
-            : 'Unknown error'
+      const message = isAbortError(err)
+        ? 'Health check timeout'
+        : err instanceof Error
+          ? err.message
+          : 'Unknown error'
       logger.warn('ESI health check error', { module: 'ESI', error: message })
       return this.createUnknownStatus()
     }

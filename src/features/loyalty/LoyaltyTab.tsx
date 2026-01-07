@@ -5,7 +5,7 @@ import { useTabControls } from '@/context'
 import { useReferenceCacheStore } from '@/store/reference-cache'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import { CharacterPortrait, CorporationLogo } from '@/components/ui/type-icon'
-import { formatNumber } from '@/lib/utils'
+import { formatNumber, matchesSearchLower } from '@/lib/utils'
 import { useSortable, SortableHeader, sortRows } from '@/hooks'
 import {
   Table,
@@ -97,10 +97,8 @@ export function LoyaltyTab() {
 
     if (search) {
       const searchLower = search.toLowerCase()
-      filtered = filtered.filter(
-        (row) =>
-          row.ownerName.toLowerCase().includes(searchLower) ||
-          row.corporationName.toLowerCase().includes(searchLower)
+      filtered = filtered.filter((row) =>
+        matchesSearchLower(searchLower, row.ownerName, row.corporationName)
       )
     }
 

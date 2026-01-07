@@ -10,10 +10,10 @@ import {
   formatBlueprintName,
   formatTimeLeft,
   formatContractDate,
-  decodeHtmlEntities,
   SCAM_THRESHOLD_PCT,
   calculateContractDisplayValues,
 } from './utils'
+import { decodeHtmlEntities } from '@/features/tools/reference/eve-text-utils'
 
 interface ContractRowProps {
   contract: SearchContract

@@ -8,6 +8,7 @@ import {
   isValidString,
 } from './validation.js'
 import { ESIError, type SerializedESIError } from '../../shared/esi-types.js'
+import { getErrorMessage } from './fetch-utils.js'
 
 function serializeESIError(error: ESIError): SerializedESIError {
   return {
@@ -112,7 +113,7 @@ export function setupESIService(
           logger.warn('Failed to send token request to renderer', {
             module: 'ESI',
             characterId,
-            error: err instanceof Error ? err.message : String(err),
+            error: getErrorMessage(err),
           })
           pendingTokenRequests.delete(characterId)
           clearTimeout(timeout)

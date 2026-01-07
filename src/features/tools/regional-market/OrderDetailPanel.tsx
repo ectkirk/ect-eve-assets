@@ -5,7 +5,7 @@ import type { ESIRegionOrder } from '@/api/endpoints/market'
 import { useReferenceCacheStore } from '@/store/reference-cache'
 import { useRegionalOrdersStore } from '@/store/regional-orders-store'
 import { formatNumber, cn } from '@/lib/utils'
-import { formatCountdown } from '@/lib/timer-utils'
+import { formatCountdown, MS_PER_DAY } from '@/lib/timer-utils'
 import { PLAYER_STRUCTURE_ID_THRESHOLD } from '@/lib/eve-constants'
 
 interface OrderDetailPanelProps {
@@ -13,7 +13,6 @@ interface OrderDetailPanelProps {
 }
 
 const ROW_HEIGHT = 32
-const MS_PER_DAY = 24 * 60 * 60 * 1000
 
 function formatOrderExpiry(issued: string, durationDays: number): string {
   const expiresAt = new Date(issued).getTime() + durationDays * MS_PER_DAY

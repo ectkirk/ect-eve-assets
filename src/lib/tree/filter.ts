@@ -1,13 +1,16 @@
 import type { TreeNode } from '../tree-types'
+import { matchesSearchLower } from '../utils'
 import { aggregateTotals } from './node-factory'
 
 function nodeMatchesSearch(node: TreeNode, searchLower: string): boolean {
-  if (node.name.toLowerCase().includes(searchLower)) return true
-  if (node.typeName?.toLowerCase().includes(searchLower)) return true
-  if (node.groupName?.toLowerCase().includes(searchLower)) return true
-  if (node.regionName?.toLowerCase().includes(searchLower)) return true
-  if (node.systemName?.toLowerCase().includes(searchLower)) return true
-  return false
+  return matchesSearchLower(
+    searchLower,
+    node.name,
+    node.typeName,
+    node.groupName,
+    node.regionName,
+    node.systemName
+  )
 }
 
 function nodeMatchesCategory(node: TreeNode, category: string): boolean {

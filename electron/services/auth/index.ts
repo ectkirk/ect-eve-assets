@@ -8,6 +8,7 @@ import {
 import { randomBytes } from 'node:crypto'
 import { URL } from 'node:url'
 import { logger } from '../logger.js'
+import { getErrorMessage } from '../fetch-utils.js'
 import {
   EVE_SSO,
   CALLBACK_PORT,
@@ -127,8 +128,7 @@ async function handleCallbackRequest(
     })
   } catch (err) {
     logger.error('Token exchange failed', err, { module: 'Auth' })
-    const errorMsg =
-      err instanceof Error ? err.message : 'Token exchange failed'
+    const errorMsg = getErrorMessage(err)
     sendHtmlResponse(res, 500, ERROR_HTML(errorMsg))
     resolve({ success: false, error: errorMsg })
   }
@@ -208,7 +208,7 @@ export async function startAuth(
   } catch (err) {
     return {
       success: false,
-      error: `Failed to start callback server: ${err instanceof Error ? err.message : 'Unknown error'}`,
+      error: `Failed to start callback server: ${getErrorMessage(err)}`,
     }
   }
 
