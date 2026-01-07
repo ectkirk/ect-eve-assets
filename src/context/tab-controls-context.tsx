@@ -56,6 +56,18 @@ export interface MailFilterConfig {
   onChange: (value: MailFilterType) => void
 }
 
+export interface LoyaltyCorporationsConfig {
+  corporations: { id: number; name: string; total: number }[]
+}
+
+export const ORDER_TYPE_OPTIONS = ['all', 'sell', 'buy'] as const
+export type OrderTypeValue = (typeof ORDER_TYPE_OPTIONS)[number]
+
+export interface OrderTypeFilterConfig {
+  value: OrderTypeValue
+  onChange: (value: OrderTypeValue) => void
+}
+
 interface TabControlsContextValue {
   columns: ColumnConfig[]
   setColumns: (columns: ColumnConfig[]) => void
@@ -77,6 +89,10 @@ interface TabControlsContextValue {
   setRefreshAction: (config: RefreshActionConfig | null) => void
   mailFilter: MailFilterConfig | null
   setMailFilter: (config: MailFilterConfig | null) => void
+  loyaltyCorporations: LoyaltyCorporationsConfig | null
+  setLoyaltyCorporations: (config: LoyaltyCorporationsConfig | null) => void
+  orderTypeFilter: OrderTypeFilterConfig | null
+  setOrderTypeFilter: (config: OrderTypeFilterConfig | null) => void
 }
 
 const TabControlsContext = createContext<TabControlsContextValue | null>(null)
@@ -98,6 +114,10 @@ export function TabControlsProvider({ children }: { children: ReactNode }) {
   const [refreshAction, setRefreshAction] =
     useState<RefreshActionConfig | null>(null)
   const [mailFilter, setMailFilter] = useState<MailFilterConfig | null>(null)
+  const [loyaltyCorporations, setLoyaltyCorporations] =
+    useState<LoyaltyCorporationsConfig | null>(null)
+  const [orderTypeFilter, setOrderTypeFilter] =
+    useState<OrderTypeFilterConfig | null>(null)
 
   const value = useMemo(
     () => ({
@@ -121,6 +141,10 @@ export function TabControlsProvider({ children }: { children: ReactNode }) {
       setRefreshAction,
       mailFilter,
       setMailFilter,
+      loyaltyCorporations,
+      setLoyaltyCorporations,
+      orderTypeFilter,
+      setOrderTypeFilter,
     }),
     [
       columns,
@@ -133,6 +157,8 @@ export function TabControlsProvider({ children }: { children: ReactNode }) {
       totalValue,
       refreshAction,
       mailFilter,
+      loyaltyCorporations,
+      orderTypeFilter,
     ]
   )
 

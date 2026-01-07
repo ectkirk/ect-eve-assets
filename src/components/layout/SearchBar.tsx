@@ -8,7 +8,13 @@ import {
   X,
   RefreshCw,
 } from 'lucide-react'
-import { useTabControls, MAIL_FILTER_OPTIONS } from '@/context'
+import {
+  useTabControls,
+  MAIL_FILTER_OPTIONS,
+  ORDER_TYPE_OPTIONS,
+  type OrderTypeValue,
+} from '@/context'
+import { CorporationLogo } from '@/components/ui/type-icon'
 import { cn, formatNumber } from '@/lib/utils'
 import {
   useAssetSettings,
@@ -35,6 +41,13 @@ const EXCLUDED_FILTER_VALUES = new Set(
 )
 
 const SEARCH_DEBOUNCE_MS = 250
+const MAX_LOYALTY_CORPS_DISPLAY = 6
+
+const ORDER_TYPE_LABELS: Record<OrderTypeValue, string> = {
+  all: 'All Orders',
+  sell: 'Sell Orders',
+  buy: 'Buy Orders',
+}
 
 function RefreshButton() {
   const { refreshAction } = useTabControls()
@@ -158,6 +171,8 @@ export function SearchBar() {
     resultCount,
     totalValue,
     mailFilter,
+    loyaltyCorporations,
+    orderTypeFilter,
   } = useTabControls()
   const [inputValue, setInputValue] = useState(search)
   const settings = useAssetSettings()
@@ -238,6 +253,53 @@ export function SearchBar() {
             </button>
           ))}
         </div>
+      )}
+
+      {loyaltyCorporations && loyaltyCorporations.corporations.length > 0 && (
+        <div className="flex items-center gap-3 overflow-x-auto">
+          {loyaltyCorporations.corporations
+            .slice(0, MAX_LOYALTY_CORPS_DISPLAY)
+            .map((corp) => (
+              <div key={corp.id} className="flex items-center gap-1.5 shrink-0">
+                <CorporationLogo corporationId={corp.id} size="sm" />
+                <span
+                  className="text-xs text-content-secondary truncate max-w-20"
+                  title={corp.name}
+                >
+                  {corp.name}
+                </span>
+                <span className="text-xs tabular-nums text-semantic-positive">
+                  {formatNumber(corp.total)}
+                </span>
+              </div>
+            ))}
+          {loyaltyCorporations.corporations.length >
+            MAX_LOYALTY_CORPS_DISPLAY && (
+            <span className="text-xs text-content-muted shrink-0">
+              +
+              {loyaltyCorporations.corporations.length -
+                MAX_LOYALTY_CORPS_DISPLAY}{' '}
+              more
+            </span>
+          )}
+        </div>
+      )}
+
+      {orderTypeFilter && (
+        <select
+          value={orderTypeFilter.value}
+          onChange={(e) =>
+            orderTypeFilter.onChange(e.target.value as OrderTypeValue)
+          }
+          aria-label="Filter by order type"
+          className="w-32 rounded border border-border bg-surface-tertiary px-2 py-1.5 text-sm focus:border-accent focus:outline-hidden"
+        >
+          {ORDER_TYPE_OPTIONS.map((opt) => (
+            <option key={opt} value={opt}>
+              {ORDER_TYPE_LABELS[opt]}
+            </option>
+          ))}
+        </select>
       )}
 
       {assetTypeFilter && (

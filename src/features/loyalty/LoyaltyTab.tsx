@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
-import { ChevronUp, ChevronDown } from 'lucide-react'
+import { useEffect, useMemo } from 'react'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useLoyaltyStore } from '@/store/loyalty-store'
 import { useTabControls } from '@/context'
@@ -7,13 +6,13 @@ import { useReferenceCacheStore } from '@/store/reference-cache'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import { CharacterPortrait, CorporationLogo } from '@/components/ui/type-icon'
 import { formatNumber } from '@/lib/utils'
-import type { SortDirection } from '@/hooks'
+import { useSortable, SortableHeader, sortRows } from '@/hooks'
 import {
   Table,
   TableBody,
   TableCell,
-  TableHeader,
   TableHead,
+  TableHeader,
   TableRow,
 } from '@/components/ui/table'
 
@@ -44,24 +43,18 @@ export function LoyaltyTab() {
 
   const names = useReferenceCacheStore((s) => s.names)
 
-  const { search, setResultCount } = useTabControls()
+  const { search, setSearchPlaceholder, setLoyaltyCorporations } =
+    useTabControls()
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
   const selectedSet = useMemo(
     () => new Set(selectedOwnerIds),
     [selectedOwnerIds]
   )
 
-  const [sortColumn, setSortColumn] = useState<SortColumn>('corporation')
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
-
-  const handleSort = (column: SortColumn) => {
-    if (sortColumn === column) {
-      setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'))
-    } else {
-      setSortColumn(column)
-      setSortDirection(column === 'lp' ? 'desc' : 'asc')
-    }
-  }
+  const { sortColumn, sortDirection, handleSort } = useSortable<SortColumn>(
+    'corporation',
+    'asc'
+  )
 
   const { rows, corpTotals } = useMemo(() => {
     void names
@@ -104,27 +97,30 @@ export function LoyaltyTab() {
 
     if (search) {
       const searchLower = search.toLowerCase()
-      filtered = result.filter(
+      filtered = filtered.filter(
         (row) =>
           row.ownerName.toLowerCase().includes(searchLower) ||
           row.corporationName.toLowerCase().includes(searchLower)
       )
     }
 
-    const mult = sortDirection === 'asc' ? 1 : -1
-    const sortedRows = filtered.sort((a, b) => {
-      switch (sortColumn) {
-        case 'character':
-          return mult * a.ownerName.localeCompare(b.ownerName)
-        case 'corporation': {
-          const corpCompare = a.corporationName.localeCompare(b.corporationName)
-          if (corpCompare !== 0) return mult * corpCompare
-          return b.loyaltyPoints - a.loyaltyPoints
+    const sortedRows = sortRows(
+      filtered,
+      sortColumn,
+      sortDirection,
+      (row, column) => {
+        switch (column) {
+          case 'character':
+            return row.ownerName.toLowerCase()
+          case 'corporation':
+            return row.corporationName.toLowerCase()
+          case 'lp':
+            return row.loyaltyPoints
+          default:
+            return 0
         }
-        case 'lp':
-          return mult * (a.loyaltyPoints - b.loyaltyPoints)
       }
-    })
+    )
 
     const corpTotals = Array.from(corpMap.entries())
       .map(([id, { name, total }]) => ({ id, name, total }))
@@ -133,20 +129,15 @@ export function LoyaltyTab() {
     return { rows: sortedRows, corpTotals }
   }, [loyaltyByOwner, names, search, selectedSet, sortColumn, sortDirection])
 
-  const totalRows = useMemo(
-    () =>
-      loyaltyByOwner.reduce(
-        (sum, o) =>
-          sum + o.loyaltyPoints.filter((lp) => lp.loyalty_points > 0).length,
-        0
-      ),
-    [loyaltyByOwner]
-  )
+  useEffect(() => {
+    setSearchPlaceholder('Search character, corporation...')
+    return () => setSearchPlaceholder(null)
+  }, [setSearchPlaceholder])
 
   useEffect(() => {
-    setResultCount({ showing: rows.length, total: totalRows })
-    return () => setResultCount(null)
-  }, [rows.length, totalRows, setResultCount])
+    setLoyaltyCorporations({ corporations: corpTotals })
+    return () => setLoyaltyCorporations(null)
+  }, [corpTotals, setLoyaltyCorporations])
 
   const charactersNeedingReauth = useMemo(
     () => owners.filter((o) => o.type === 'character' && o.scopesOutdated),
@@ -162,8 +153,6 @@ export function LoyaltyTab() {
     updateError,
   })
   if (loadingState) return loadingState
-
-  const totalLP = corpTotals.reduce((sum, c) => sum + c.total, 0)
 
   if (rows.length === 0 && charactersNeedingReauth.length > 0) {
     return (
@@ -194,97 +183,50 @@ export function LoyaltyTab() {
   }
 
   return (
-    <div className="h-full flex flex-col rounded-lg border border-border bg-surface-secondary/30">
-      <div className="flex items-center gap-4 px-4 py-2 border-b border-border/50 bg-surface-tertiary/30 overflow-x-auto">
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="text-xs text-content-secondary">Total:</span>
-          <span className="text-sm font-medium tabular-nums text-semantic-positive">
-            {formatNumber(totalLP)} LP
-          </span>
-        </div>
-        <div className="h-4 w-px bg-border/50" />
-        {corpTotals.slice(0, 6).map((corp) => (
-          <div key={corp.id} className="flex items-center gap-2 shrink-0">
-            <CorporationLogo corporationId={corp.id} size="sm" />
-            <span
-              className="text-xs text-content-secondary truncate max-w-24"
-              title={corp.name}
-            >
-              {corp.name}
-            </span>
-            <span className="text-xs tabular-nums text-semantic-positive">
-              {formatNumber(corp.total)}
-            </span>
-          </div>
-        ))}
-        {corpTotals.length > 6 && (
-          <span className="text-xs text-content-muted shrink-0">
-            +{corpTotals.length - 6} more
-          </span>
-        )}
-      </div>
-      <div className="flex-1 overflow-auto">
+    <div className="flex h-full flex-col">
+      <div className="flex-1 min-h-0 rounded-lg border border-border bg-surface-secondary/30 overflow-auto">
         <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead
-                className="w-12 cursor-pointer select-none hover:text-content"
-                onClick={() => handleSort('character')}
-              >
-                <div className="flex items-center gap-1">
-                  {sortColumn === 'character' &&
-                    (sortDirection === 'asc' ? (
-                      <ChevronUp className="h-3 w-3" />
-                    ) : (
-                      <ChevronDown className="h-3 w-3" />
-                    ))}
-                </div>
-              </TableHead>
-              <TableHead
-                className="cursor-pointer select-none hover:text-content"
-                onClick={() => handleSort('corporation')}
-              >
-                <div className="flex items-center gap-1">
-                  Corporation
-                  {sortColumn === 'corporation' &&
-                    (sortDirection === 'asc' ? (
-                      <ChevronUp className="h-3 w-3" />
-                    ) : (
-                      <ChevronDown className="h-3 w-3" />
-                    ))}
-                </div>
-              </TableHead>
-              <TableHead
-                className="text-right cursor-pointer select-none hover:text-content"
-                onClick={() => handleSort('lp')}
-              >
-                <div className="flex items-center justify-end gap-1">
-                  LP
-                  {sortColumn === 'lp' &&
-                    (sortDirection === 'asc' ? (
-                      <ChevronUp className="h-3 w-3" />
-                    ) : (
-                      <ChevronDown className="h-3 w-3" />
-                    ))}
-                </div>
-              </TableHead>
+          <TableHeader className="sticky top-0 z-10 bg-surface-secondary">
+            <TableRow className="hover:bg-transparent border-b border-border">
+              <TableHead className="w-8" />
+              <SortableHeader
+                column="corporation"
+                label="Corporation"
+                sortColumn={sortColumn}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+              />
+              <SortableHeader
+                column="lp"
+                label="LP"
+                sortColumn={sortColumn}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+                className="text-right"
+              />
             </TableRow>
           </TableHeader>
           <TableBody>
             {rows.map((row) => (
-              <TableRow key={`${row.ownerId}-${row.corporationId}`}>
-                <TableCell className="py-1.5 w-12">
-                  <CharacterPortrait characterId={row.ownerId} size="lg" />
+              <TableRow
+                key={`${row.ownerId}-${row.corporationId}`}
+                className="border-b border-border/50 hover:bg-surface-tertiary/50"
+              >
+                <TableCell className="py-1.5 w-8">
+                  <CharacterPortrait characterId={row.ownerId} size="sm" />
                 </TableCell>
                 <TableCell className="py-1.5">
                   <div className="flex items-center gap-2">
-                    <CorporationLogo corporationId={row.corporationId} />
+                    <CorporationLogo
+                      corporationId={row.corporationId}
+                      size="sm"
+                    />
                     <span className="truncate" title={row.corporationName}>
                       {row.corporationName}
                     </span>
                   </div>
                 </TableCell>
-                <TableCell className="py-1.5 text-right tabular-nums text-semantic-positive">
+                <TableCell className="py-1.5 text-right tabular-nums text-status-positive">
                   {formatNumber(row.loyaltyPoints)}
                 </TableCell>
               </TableRow>

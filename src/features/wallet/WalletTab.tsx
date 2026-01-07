@@ -1,18 +1,33 @@
-import { useEffect, useMemo } from 'react'
-import { ChevronRight, ChevronDown, Wallet, Building2 } from 'lucide-react'
+import { useEffect, useMemo, Fragment } from 'react'
+import { ChevronRight, ChevronDown, Building2 } from 'lucide-react'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
-import { useWalletStore, isCorporationWallet } from '@/store/wallet-store'
+import {
+  useWalletStore,
+  isCorporationWallet,
+  type CharacterWallet,
+  type CorporationWallet,
+} from '@/store/wallet-store'
 import { useDivisionsStore } from '@/store/divisions-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { OwnerIcon } from '@/components/ui/type-icon'
 import { cn, formatCompactISK } from '@/lib/utils'
 import { useTabControls } from '@/context'
 import {
-  useColumnSettings,
   useExpandCollapse,
-  type ColumnConfig,
+  useSortable,
+  SortableHeader,
+  sortRows,
 } from '@/hooks'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+
+type WalletSortColumn = 'owner' | 'balance'
 
 const DEFAULT_WALLET_NAMES = [
   'Master Wallet',
@@ -23,6 +38,12 @@ const DEFAULT_WALLET_NAMES = [
   'Wallet 6',
   'Wallet 7',
 ]
+
+function getWalletBalance(wallet: CharacterWallet | CorporationWallet): number {
+  return isCorporationWallet(wallet)
+    ? wallet.divisions.reduce((sum, d) => sum + d.balance, 0)
+    : wallet.balance
+}
 
 export function WalletTab() {
   const ownersRecord = useAuthStore((s) => s.owners)
@@ -56,23 +77,7 @@ export function WalletTab() {
     }
   }, [divisionsInitialized, owners, fetchDivisionsForOwner])
 
-  const {
-    setExpandCollapse,
-    search,
-    setResultCount,
-    setTotalValue,
-    setColumns,
-  } = useTabControls()
-
-  const WALLET_COLUMNS: ColumnConfig[] = useMemo(
-    () => [
-      { id: 'owner', label: 'Owner' },
-      { id: 'balance', label: 'Balance' },
-    ],
-    []
-  )
-
-  const { getColumnsForDropdown } = useColumnSettings('wallet', WALLET_COLUMNS)
+  const { setExpandCollapse, search, setTotalValue } = useTabControls()
 
   const expandableKeys = useMemo(
     () =>
@@ -87,19 +92,13 @@ export function WalletTab() {
     setExpandCollapse
   )
 
-  const totalBalance = useMemo(() => {
-    let total = 0
-    for (const wallet of walletsByOwner) {
-      if (isCorporationWallet(wallet)) {
-        for (const div of wallet.divisions) {
-          total += div.balance
-        }
-      } else {
-        total += wallet.balance
-      }
-    }
-    return total
-  }, [walletsByOwner])
+  const { sortColumn, sortDirection, handleSort } =
+    useSortable<WalletSortColumn>('balance', 'desc')
+
+  const totalBalance = useMemo(
+    () => walletsByOwner.reduce((sum, w) => sum + getWalletBalance(w), 0),
+    [walletsByOwner]
+  )
 
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
   const selectedSet = useMemo(
@@ -107,7 +106,7 @@ export function WalletTab() {
     [selectedOwnerIds]
   )
 
-  const { characterWallets, corporationWallets } = useMemo(() => {
+  const sortedWallets = useMemo(() => {
     let filtered = walletsByOwner.filter((w) =>
       selectedSet.has(ownerKey(w.owner.type, w.owner.id))
     )
@@ -119,53 +118,22 @@ export function WalletTab() {
       )
     }
 
-    const sortByBalance = (
-      a: (typeof filtered)[0],
-      b: (typeof filtered)[0]
-    ) => {
-      const aBalance =
-        'divisions' in a
-          ? a.divisions.reduce((sum, d) => sum + d.balance, 0)
-          : a.balance
-      const bBalance =
-        'divisions' in b
-          ? b.divisions.reduce((sum, d) => sum + d.balance, 0)
-          : b.balance
-      return bBalance - aBalance
-    }
-
-    const characters = filtered
-      .filter((w) => w.owner.type === 'character')
-      .sort(sortByBalance)
-    const corporations = filtered
-      .filter((w) => w.owner.type === 'corporation')
-      .sort(sortByBalance)
-
-    return { characterWallets: characters, corporationWallets: corporations }
-  }, [walletsByOwner, search, selectedSet])
-
-  const sortedWallets = useMemo(
-    () => [...characterWallets, ...corporationWallets],
-    [characterWallets, corporationWallets]
-  )
-
-  useEffect(() => {
-    setResultCount({
-      showing: sortedWallets.length,
-      total: walletsByOwner.length,
+    return sortRows(filtered, sortColumn, sortDirection, (wallet, column) => {
+      switch (column) {
+        case 'owner':
+          return wallet.owner.name.toLowerCase()
+        case 'balance':
+          return getWalletBalance(wallet)
+        default:
+          return 0
+      }
     })
-    return () => setResultCount(null)
-  }, [sortedWallets.length, walletsByOwner.length, setResultCount])
+  }, [walletsByOwner, search, selectedSet, sortColumn, sortDirection])
 
   useEffect(() => {
     setTotalValue({ value: totalBalance })
     return () => setTotalValue(null)
   }, [totalBalance, setTotalValue])
-
-  useEffect(() => {
-    setColumns(getColumnsForDropdown())
-    return () => setColumns([])
-  }, [getColumnsForDropdown, setColumns])
 
   const loadingState = TabLoadingState({
     dataType: 'wallets',
@@ -177,48 +145,102 @@ export function WalletTab() {
   })
   if (loadingState) return loadingState
 
-  const renderWalletRow = (wallet: (typeof sortedWallets)[0]) => {
-    const key = `${wallet.owner.type}-${wallet.owner.id}`
-    const isCorp = isCorporationWallet(wallet)
-    const expanded = isExpanded(key)
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex-1 min-h-0 rounded-lg border border-border bg-surface-secondary/30 overflow-auto">
+        <Table>
+          <TableHeader className="sticky top-0 z-10 bg-surface-secondary">
+            <TableRow className="hover:bg-transparent border-b border-border">
+              <SortableHeader
+                column="owner"
+                label="Owner"
+                sortColumn={sortColumn}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+              />
+              <SortableHeader
+                column="balance"
+                label="Balance"
+                sortColumn={sortColumn}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+                className="text-right w-40"
+              />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sortedWallets.map((wallet) => {
+              const key = `${wallet.owner.type}-${wallet.owner.id}`
+              const isCorp = isCorporationWallet(wallet)
+              const expanded = isExpanded(key)
+              const ownerTotal = getWalletBalance(wallet)
 
-    let ownerTotal = 0
-    if (isCorp) {
-      for (const div of wallet.divisions) {
-        ownerTotal += div.balance
-      }
-    } else {
-      ownerTotal = wallet.balance
-    }
-
-    return (
-      <div key={key} className="border-b border-border/50 last:border-b-0">
-        <button
-          onClick={() => isCorp && toggle(key)}
-          className={cn(
-            'w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm',
-            isCorp
-              ? 'hover:bg-surface-secondary/50 cursor-pointer'
-              : 'cursor-default'
-          )}
-        >
-          <div className="w-4 flex justify-center">
-            {isCorp ? (
-              expanded ? (
-                <ChevronDown className="h-4 w-4 text-content-secondary" />
-              ) : (
-                <ChevronRight className="h-4 w-4 text-content-secondary" />
+              return (
+                <WalletRow
+                  key={key}
+                  rowKey={key}
+                  wallet={wallet}
+                  isCorp={isCorp}
+                  expanded={expanded}
+                  ownerTotal={ownerTotal}
+                  toggle={toggle}
+                  getWalletName={getWalletName}
+                />
               )
+            })}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  )
+}
+
+interface WalletRowProps {
+  rowKey: string
+  wallet: CharacterWallet | CorporationWallet
+  isCorp: boolean
+  expanded: boolean
+  ownerTotal: number
+  toggle: (key: string) => void
+  getWalletName: (corporationId: number, division: number) => string | undefined
+}
+
+function WalletRow({
+  rowKey,
+  wallet,
+  isCorp,
+  expanded,
+  ownerTotal,
+  toggle,
+  getWalletName,
+}: WalletRowProps) {
+  const ChevronIcon = expanded ? ChevronDown : ChevronRight
+
+  return (
+    <Fragment>
+      <TableRow
+        onClick={() => isCorp && toggle(rowKey)}
+        className={cn(
+          'border-b border-border/50 hover:bg-surface-tertiary/50',
+          isCorp && 'cursor-pointer'
+        )}
+      >
+        <TableCell className="py-1.5 px-4">
+          <div className="flex items-center gap-3">
+            {isCorp ? (
+              <ChevronIcon className="h-4 w-4 shrink-0 text-content-secondary" />
             ) : (
-              <Wallet className="h-4 w-4 text-content-muted" />
+              <div className="w-4" />
             )}
+            <OwnerIcon
+              ownerId={wallet.owner.id}
+              ownerType={wallet.owner.type}
+              size="sm"
+            />
+            <span>{wallet.owner.name}</span>
           </div>
-          <OwnerIcon
-            ownerId={wallet.owner.id}
-            ownerType={wallet.owner.type}
-            size="md"
-          />
-          <span className="flex-1 text-content">{wallet.owner.name}</span>
+        </TableCell>
+        <TableCell className="py-1.5 px-4 text-right">
           <span
             className={cn(
               'tabular-nums',
@@ -227,74 +249,47 @@ export function WalletTab() {
           >
             {formatCompactISK(ownerTotal)}
           </span>
-        </button>
+        </TableCell>
+      </TableRow>
+      {isCorp &&
+        expanded &&
+        (wallet as CorporationWallet).divisions
+          .sort((a, b) => a.division - b.division)
+          .map((div) => {
+            const customName = getWalletName(wallet.owner.id, div.division)
+            const defaultName =
+              DEFAULT_WALLET_NAMES[div.division - 1] ??
+              `Division ${div.division}`
+            const displayName = customName || defaultName
 
-        {isCorp && expanded && (
-          <div className="pb-2">
-            {wallet.divisions
-              .sort((a, b) => a.division - b.division)
-              .map((div) => {
-                const customName = getWalletName(wallet.owner.id, div.division)
-                const defaultName =
-                  DEFAULT_WALLET_NAMES[div.division - 1] ??
-                  `Division ${div.division}`
-                const displayName = customName || defaultName
-
-                return (
-                  <div
-                    key={div.division}
-                    className="flex items-center gap-3 py-1.5 pl-12 pr-4 text-sm"
-                  >
+            return (
+              <TableRow
+                key={div.division}
+                className="border-b border-border/50 bg-surface-tertiary/50"
+              >
+                <TableCell className="py-1.5 pl-16 pr-4">
+                  <div className="flex items-center gap-2">
                     <Building2 className="h-3.5 w-3.5 text-content-muted" />
-                    <span className="text-content-secondary flex-1">
+                    <span className="text-content-secondary">
                       {displayName}
                     </span>
-                    <span
-                      className={cn(
-                        'tabular-nums',
-                        div.balance >= 0
-                          ? 'text-status-positive/80'
-                          : 'text-status-negative/80'
-                      )}
-                    >
-                      {formatCompactISK(div.balance)}
-                    </span>
                   </div>
-                )
-              })}
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  return (
-    <div className="h-full overflow-auto">
-      {characterWallets.length > 0 && (
-        <div className="rounded-lg border border-border bg-surface-secondary/30">
-          <div className="px-4 py-2 border-b border-border bg-surface-secondary/50">
-            <span className="text-xs font-medium uppercase tracking-wider text-content-secondary">
-              Characters
-            </span>
-          </div>
-          {characterWallets.map(renderWalletRow)}
-        </div>
-      )}
-
-      {characterWallets.length > 0 && corporationWallets.length > 0 && (
-        <div className="h-4" />
-      )}
-
-      {corporationWallets.length > 0 && (
-        <div className="rounded-lg border border-border bg-surface-secondary/30">
-          <div className="px-4 py-2 border-b border-border bg-surface-secondary/50">
-            <span className="text-xs font-medium uppercase tracking-wider text-content-secondary">
-              Corporations
-            </span>
-          </div>
-          {corporationWallets.map(renderWalletRow)}
-        </div>
-      )}
-    </div>
+                </TableCell>
+                <TableCell className="py-1.5 px-4 text-right">
+                  <span
+                    className={cn(
+                      'tabular-nums',
+                      div.balance >= 0
+                        ? 'text-status-positive/80'
+                        : 'text-status-negative/80'
+                    )}
+                  >
+                    {formatCompactISK(div.balance)}
+                  </span>
+                </TableCell>
+              </TableRow>
+            )
+          })}
+    </Fragment>
   )
 }

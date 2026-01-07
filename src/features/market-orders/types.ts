@@ -1,12 +1,6 @@
 import type { MarketOrder } from '@/store/market-orders-store'
 import type { ColumnConfig } from '@/hooks'
 
-export const ORDER_TYPE_OPTIONS = [
-  { value: 'all', label: 'All Orders' },
-  { value: 'sell', label: 'Sell Orders' },
-  { value: 'buy', label: 'Buy Orders' },
-] as const
-
 export const ORDER_COLUMNS: ColumnConfig[] = [
   { id: 'item', label: 'Item' },
   { id: 'type', label: 'Type' },

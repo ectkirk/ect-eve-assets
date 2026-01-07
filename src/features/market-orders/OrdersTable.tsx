@@ -30,6 +30,7 @@ import {
 
 const VIRTUALIZATION_THRESHOLD = 100
 const ROW_HEIGHT = 36
+const ROW_CLASS = 'border-b border-border/50 hover:bg-surface-tertiary/50'
 
 interface OrderRowCellsProps {
   row: OrderRow
@@ -124,6 +125,38 @@ function OrderRowCells({ row, show }: OrderRowCellsProps) {
   )
 }
 
+function OrderRowWithContext({
+  row,
+  show,
+  navigateToType,
+  navigateToReference,
+  style,
+}: {
+  row: OrderRow
+  show: (col: string) => boolean
+  navigateToType: (typeId: number) => void
+  navigateToReference: (typeId: number) => void
+  style?: React.CSSProperties
+}) {
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <TableRow className={ROW_CLASS} style={style}>
+          <OrderRowCells row={row} show={show} />
+        </TableRow>
+      </ContextMenuTrigger>
+      <ContextMenuContent>
+        <ContextMenuItem onClick={() => navigateToType(row.typeId)}>
+          View in Regional Market
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => navigateToReference(row.typeId)}>
+          View Details
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
+  )
+}
+
 function VirtualizedTableBody({
   sortedOrders,
   show,
@@ -154,30 +187,21 @@ function VirtualizedTableBody({
       {virtualRows.map((virtualRow) => {
         const row = sortedOrders[virtualRow.index]!
         return (
-          <ContextMenu key={row.order.order_id}>
-            <ContextMenuTrigger asChild>
-              <TableRow
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: ROW_HEIGHT,
-                  transform: `translateY(${virtualRow.start}px)`,
-                }}
-              >
-                <OrderRowCells row={row} show={show} />
-              </TableRow>
-            </ContextMenuTrigger>
-            <ContextMenuContent>
-              <ContextMenuItem onClick={() => navigateToType(row.typeId)}>
-                View in Regional Market
-              </ContextMenuItem>
-              <ContextMenuItem onClick={() => navigateToReference(row.typeId)}>
-                View Details
-              </ContextMenuItem>
-            </ContextMenuContent>
-          </ContextMenu>
+          <OrderRowWithContext
+            key={row.order.order_id}
+            row={row}
+            show={show}
+            navigateToType={navigateToType}
+            navigateToReference={navigateToReference}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: ROW_HEIGHT,
+              transform: `translateY(${virtualRow.start}px)`,
+            }}
+          />
         )
       })}
     </TableBody>
@@ -198,21 +222,13 @@ function StandardTableBody({
   return (
     <TableBody>
       {sortedOrders.map((row) => (
-        <ContextMenu key={row.order.order_id}>
-          <ContextMenuTrigger asChild>
-            <TableRow>
-              <OrderRowCells row={row} show={show} />
-            </TableRow>
-          </ContextMenuTrigger>
-          <ContextMenuContent>
-            <ContextMenuItem onClick={() => navigateToType(row.typeId)}>
-              View in Regional Market
-            </ContextMenuItem>
-            <ContextMenuItem onClick={() => navigateToReference(row.typeId)}>
-              View Details
-            </ContextMenuItem>
-          </ContextMenuContent>
-        </ContextMenu>
+        <OrderRowWithContext
+          key={row.order.order_id}
+          row={row}
+          show={show}
+          navigateToType={navigateToType}
+          navigateToReference={navigateToReference}
+        />
       ))}
     </TableBody>
   )
@@ -284,8 +300,13 @@ export function OrdersTable({
 
   return (
     <Table className={cn(useVirtualization && 'block')}>
-      <TableHeader className={cn(useVirtualization && 'table w-full')}>
-        <TableRow className="hover:bg-transparent">
+      <TableHeader
+        className={cn(
+          'sticky top-0 z-10 bg-surface-secondary',
+          useVirtualization && 'table w-full'
+        )}
+      >
+        <TableRow className="hover:bg-transparent border-b border-border">
           {show('item') && (
             <SortableHeader
               column="item"

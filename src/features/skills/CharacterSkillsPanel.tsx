@@ -113,7 +113,7 @@ export function CharacterSkillsPanel({
                 {group.skills.map((skill) => (
                   <div
                     key={skill.id}
-                    className="flex items-center gap-2 rounded bg-surface-tertiary p-2"
+                    className="flex items-center gap-2 rounded bg-surface-tertiary/50 p-2"
                   >
                     <TypeIcon typeId={skill.id} size="sm" />
                     <span className="flex-1 truncate text-sm">
