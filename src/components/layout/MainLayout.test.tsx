@@ -50,6 +50,14 @@ vi.mock('@/features/clones', () => ({
   ClonesTab: () => <div data-testid="clones-tab">ClonesTab</div>,
 }))
 
+vi.mock('@/features/mail', () => ({
+  MailTab: () => <div data-testid="mail-tab">MailTab</div>,
+}))
+
+vi.mock('@/features/skills', () => ({
+  SkillsTab: () => <div data-testid="skills-tab">SkillsTab</div>,
+}))
+
 vi.mock('@/features/loyalty', () => ({
   LoyaltyTab: () => <div data-testid="loyalty-tab">LoyaltyTab</div>,
 }))
@@ -137,6 +145,7 @@ describe('MainLayout', () => {
         name: 'Application modes',
       })
       expect(within(modeTablist).getByText('Assets')).toBeInTheDocument()
+      expect(within(modeTablist).getByText('Character')).toBeInTheDocument()
       expect(within(modeTablist).getByText('Tools')).toBeInTheDocument()
       expect(within(modeTablist).getByText('Buyback')).toBeInTheDocument()
     })
@@ -163,7 +172,6 @@ describe('MainLayout', () => {
       const tabs = [
         'Assets',
         'Assets Tree',
-        'Clones',
         'Contracts',
         'Industry Jobs',
         'Loyalty Points',
@@ -182,13 +190,64 @@ describe('MainLayout', () => {
 
       expect(await screen.findByTestId('assets-tab')).toBeInTheDocument()
 
-      fireEvent.click(within(tablist).getByText('Clones'))
+      fireEvent.click(within(tablist).getByText('Contracts'))
 
-      expect(await screen.findByTestId('clones-tab')).toBeInTheDocument()
+      expect(await screen.findByTestId('contracts-tab')).toBeInTheDocument()
     })
 
     it('shows search bar in assets mode', () => {
       render(<MainLayout />)
+      expect(screen.getByTestId('search-bar')).toBeInTheDocument()
+    })
+  })
+
+  describe('character tabs', () => {
+    it('renders all character tabs', async () => {
+      render(<MainLayout />)
+      const modeTablist = screen.getByRole('tablist', {
+        name: 'Application modes',
+      })
+
+      fireEvent.click(within(modeTablist).getByText('Character'))
+
+      const tablist = await screen.findByRole('tablist', {
+        name: 'Character tabs',
+      })
+      expect(tablist).toBeInTheDocument()
+
+      const tabs = ['Clones', 'Mail', 'Skills']
+      tabs.forEach((tab) => {
+        expect(within(tablist).getByText(tab)).toBeInTheDocument()
+      })
+    })
+
+    it('switches character tabs on click', async () => {
+      render(<MainLayout />)
+      const modeTablist = screen.getByRole('tablist', {
+        name: 'Application modes',
+      })
+
+      fireEvent.click(within(modeTablist).getByText('Character'))
+
+      const tablist = await screen.findByRole('tablist', {
+        name: 'Character tabs',
+      })
+
+      expect(await screen.findByTestId('clones-tab')).toBeInTheDocument()
+
+      fireEvent.click(within(tablist).getByText('Skills'))
+
+      expect(await screen.findByTestId('skills-tab')).toBeInTheDocument()
+    })
+
+    it('shows search bar in character mode', async () => {
+      render(<MainLayout />)
+      const modeTablist = screen.getByRole('tablist', {
+        name: 'Application modes',
+      })
+
+      fireEvent.click(within(modeTablist).getByText('Character'))
+
       expect(screen.getByTestId('search-bar')).toBeInTheDocument()
     })
   })
@@ -212,8 +271,8 @@ describe('MainLayout', () => {
       render(<MainLayout />)
       const tablist = screen.getByRole('tablist', { name: 'Assets tabs' })
 
-      const clonesTab = within(tablist).getByText('Clones')
-      clonesTab.focus()
+      const contractsTab = within(tablist).getByText('Contracts')
+      contractsTab.focus()
 
       await user.keyboard('{ArrowLeft}')
 

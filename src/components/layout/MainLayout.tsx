@@ -93,11 +93,13 @@ import { OwnerButton } from './OwnerButton'
 import { WindowControls } from './WindowControls'
 import { SearchBar } from './SearchBar'
 
-type AppMode = 'assets' | 'tools' | 'buyback' | 'freight'
+type AppMode = 'assets' | 'character' | 'tools' | 'buyback' | 'freight'
 
 const TOOLS_TABS = ['Contracts', 'Market', 'Reference', 'Map'] as const
+const CHARACTER_TABS = ['Clones', 'Mail', 'Skills'] as const
 
 type ToolsTab = (typeof TOOLS_TABS)[number]
+type CharacterTab = (typeof CHARACTER_TABS)[number]
 
 function TabLoadingFallback() {
   return (
@@ -110,13 +112,10 @@ function TabLoadingFallback() {
 const ASSET_TABS = [
   'Assets',
   'Assets Tree',
-  'Clones',
   'Contracts',
   'Industry Jobs',
   'Loyalty Points',
-  'Mail',
   'Market Orders',
-  'Skills',
   'Structures',
   'Wallet',
 ] as const
@@ -129,20 +128,14 @@ function AssetTabContent({ tab }: { tab: AssetTab }) {
       return <AssetsTab />
     case 'Assets Tree':
       return <AssetsTreeTab />
-    case 'Clones':
-      return <ClonesTab />
     case 'Contracts':
       return <ContractsTab />
     case 'Industry Jobs':
       return <IndustryJobsTab />
     case 'Loyalty Points':
       return <LoyaltyTab />
-    case 'Mail':
-      return <MailTab />
     case 'Market Orders':
       return <MarketOrdersTab />
-    case 'Skills':
-      return <SkillsTab />
     case 'Structures':
       return <StructuresTab />
     case 'Wallet':
@@ -150,12 +143,60 @@ function AssetTabContent({ tab }: { tab: AssetTab }) {
   }
 }
 
+function CharacterTabContent({ tab }: { tab: CharacterTab }) {
+  switch (tab) {
+    case 'Clones':
+      return <ClonesTab />
+    case 'Mail':
+      return <MailTab />
+    case 'Skills':
+      return <SkillsTab />
+  }
+}
+
 const APP_MODES: { id: AppMode; label: string }[] = [
   { id: 'assets', label: 'Assets' },
+  { id: 'character', label: 'Character' },
   { id: 'tools', label: 'Tools' },
   { id: 'buyback', label: 'Buyback' },
   { id: 'freight', label: 'Freight' },
 ]
+
+function TabButtons<T extends string>({
+  tabs,
+  activeTab,
+  onTabChange,
+  onKeyDown,
+  tabRefs,
+}: {
+  tabs: readonly T[]
+  activeTab: T
+  onTabChange: (tab: T) => void
+  onKeyDown: (e: KeyboardEvent, index: number) => void
+  tabRefs: React.MutableRefObject<(HTMLButtonElement | null)[]>
+}) {
+  return tabs.map((tab, index) => (
+    <button
+      key={tab}
+      ref={(el) => {
+        tabRefs.current[index] = el
+      }}
+      onClick={() => onTabChange(tab)}
+      onKeyDown={(e) => onKeyDown(e, index)}
+      role="tab"
+      aria-selected={activeTab === tab}
+      aria-controls="main-content"
+      tabIndex={activeTab === tab ? 0 : -1}
+      className={`px-3 py-2 text-sm transition-colors ${
+        activeTab === tab
+          ? 'border-b-2 border-accent text-accent'
+          : 'text-content-secondary hover:text-content'
+      }`}
+    >
+      {tab}
+    </button>
+  ))
+}
 
 function ModeSwitcher({
   mode,
@@ -267,6 +308,8 @@ function HeaderControls() {
 function MainLayoutInner() {
   const [mode, setMode] = useState<AppMode>('assets')
   const [activeAssetTab, setActiveAssetTab] = useState<AssetTab>('Assets')
+  const [activeCharacterTab, setActiveCharacterTab] =
+    useState<CharacterTab>('Clones')
   const [activeBuybackTab, setActiveBuybackTab] = useState<BuybackTabType>(
     BUYBACK_TABS[1]
   )
@@ -420,28 +463,24 @@ function MainLayoutInner() {
           role="tablist"
           aria-label={`${mode.charAt(0).toUpperCase() + mode.slice(1)} tabs`}
         >
-          {mode === 'assets' &&
-            ASSET_TABS.map((tab, index) => (
-              <button
-                key={tab}
-                ref={(el) => {
-                  tabRefs.current[index] = el
-                }}
-                onClick={() => setActiveAssetTab(tab)}
-                onKeyDown={(e) => handleTabKeyDown(e, ASSET_TABS, index)}
-                role="tab"
-                aria-selected={activeAssetTab === tab}
-                aria-controls="main-content"
-                tabIndex={activeAssetTab === tab ? 0 : -1}
-                className={`px-3 py-2 text-sm transition-colors ${
-                  activeAssetTab === tab
-                    ? 'border-b-2 border-accent text-accent'
-                    : 'text-content-secondary hover:text-content'
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
+          {mode === 'assets' && (
+            <TabButtons
+              tabs={ASSET_TABS}
+              activeTab={activeAssetTab}
+              onTabChange={setActiveAssetTab}
+              onKeyDown={(e, i) => handleTabKeyDown(e, ASSET_TABS, i)}
+              tabRefs={tabRefs}
+            />
+          )}
+          {mode === 'character' && (
+            <TabButtons
+              tabs={CHARACTER_TABS}
+              activeTab={activeCharacterTab}
+              onTabChange={setActiveCharacterTab}
+              onKeyDown={(e, i) => handleTabKeyDown(e, CHARACTER_TABS, i)}
+              tabRefs={tabRefs}
+            />
+          )}
           {mode === 'buyback' &&
             BUYBACK_TABS.map((tab, index) => {
               const styling = getStyling(tabToKey(tab))
@@ -471,35 +510,22 @@ function MainLayoutInner() {
                 </button>
               )
             })}
-          {mode === 'tools' &&
-            TOOLS_TABS.map((tab, index) => (
-              <button
-                key={tab}
-                ref={(el) => {
-                  tabRefs.current[index] = el
-                }}
-                onClick={() => setActiveToolsTab(tab)}
-                onKeyDown={(e) => handleTabKeyDown(e, TOOLS_TABS, index)}
-                role="tab"
-                aria-selected={activeToolsTab === tab}
-                aria-controls="main-content"
-                tabIndex={activeToolsTab === tab ? 0 : -1}
-                className={`px-3 py-2 text-sm transition-colors ${
-                  activeToolsTab === tab
-                    ? 'border-b-2 border-accent text-accent'
-                    : 'text-content-secondary hover:text-content'
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
+          {mode === 'tools' && (
+            <TabButtons
+              tabs={TOOLS_TABS}
+              activeTab={activeToolsTab}
+              onTabChange={setActiveToolsTab}
+              onKeyDown={(e, i) => handleTabKeyDown(e, TOOLS_TABS, i)}
+              tabRefs={tabRefs}
+            />
+          )}
         </div>
         <div className="flex-1" />
         <OwnerButton />
       </nav>
 
-      {/* Search Bar - only for assets mode */}
-      {mode === 'assets' && <SearchBar />}
+      {/* Search Bar - for assets and character modes */}
+      {(mode === 'assets' || mode === 'character') && <SearchBar />}
 
       {/* Content Area */}
       <main
@@ -512,6 +538,16 @@ function MainLayoutInner() {
             <FeatureErrorBoundary key={activeAssetTab} feature={activeAssetTab}>
               <div className="h-full overflow-auto p-4">
                 <AssetTabContent tab={activeAssetTab} />
+              </div>
+            </FeatureErrorBoundary>
+          )}
+          {mode === 'character' && (
+            <FeatureErrorBoundary
+              key={activeCharacterTab}
+              feature={activeCharacterTab}
+            >
+              <div className="h-full overflow-auto p-4">
+                <CharacterTabContent tab={activeCharacterTab} />
               </div>
             </FeatureErrorBoundary>
           )}
