@@ -1,29 +1,45 @@
 {
-  "version": "2.2.0",
-  "date": "2026-01-01",
+  "version": "2.3.0",
+  "date": "2026-01-07",
   "changes": [
     {
       "type": "feat",
-      "scope": "map",
-      "description": "Add interactive star map with route planning and ansiblex support"
+      "scope": "layout",
+      "description": "Add Character mode with Clones, Mail, and Skills tabs"
+    },
+    {
+      "type": "feat",
+      "scope": "mail",
+      "description": "Add Mail tab with conversation threading"
+    },
+    {
+      "type": "feat",
+      "scope": "skills",
+      "description": "Add Skills tab with per-character skill panels"
+    },
+    {
+      "type": "feat",
+      "scope": "abyssal",
+      "description": "Run abyssal item sync in background with progress indicator"
+    },
+    {
+      "type": "feat",
+      "scope": "errors",
+      "description": "Add user-friendly ESI error messages"
     },
     {
       "type": "fix",
       "scope": "contracts",
-      "description": "Correct direction detection and BPC pricing"
-    },
-    {
-      "type": "fix",
-      "scope": "corp",
-      "description": "Handle character leaving corporation gracefully"
+      "description": "Handle WTB contracts correctly in personal contracts"
     },
     {
       "type": "refactor",
-      "description": "Apply DRY/KISS principles and extract reusable components"
+      "scope": "ui",
+      "description": "Align table styling and controls across all tabs"
     },
     {
-      "type": "fix",
-      "description": "Prevent infinite loops and handle edge cases"
+      "type": "refactor",
+      "description": "Centralize helpers and remove unused code"
     }
   ]
 }
