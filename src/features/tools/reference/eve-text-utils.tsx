@@ -1,5 +1,23 @@
 import DOMPurify from 'dompurify'
 
+export function sanitizeMailBody(html: string): string {
+  const processed = html
+    .replace(/<url=[^>]*>([^<]*)<\/url>/gi, '$1')
+    .replace(
+      /<font[^>]*color="?#?([0-9a-fA-F]+)"?[^>]*>/gi,
+      '<span style="color:#$1">'
+    )
+    .replace(/<font[^>]*>/gi, '<span>')
+    .replace(/<\/font>/gi, '</span>')
+    .replace(/\n/g, '<br>')
+
+  return DOMPurify.sanitize(processed, {
+    ALLOWED_TAGS: ['p', 'br', 'b', 'i', 'u', 'strong', 'em', 'span', 'div'],
+    ALLOWED_ATTR: ['style'],
+    ALLOW_DATA_ATTR: false,
+  })
+}
+
 export function sanitizeDescription(html: string): string {
   const withEveLinks = html.replace(
     /<a href=showinfo:(\d+)>([^<]+)<\/a>/g,

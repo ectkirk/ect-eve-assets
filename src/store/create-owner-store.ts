@@ -11,7 +11,11 @@ import {
   ownerKey as makeOwnerKey,
 } from './auth-store'
 import { useExpiryCacheStore } from './expiry-cache-store'
-import { createOwnerDB, type OwnerDBConfig } from '@/lib/owner-indexed-db'
+import {
+  createOwnerDB,
+  type OwnerDBConfig,
+  type OwnerDB,
+} from '@/lib/owner-indexed-db'
 import { logger } from '@/lib/logger'
 import { triggerResolution } from '@/lib/data-resolver'
 import { useStoreRegistry } from './store-registry'
@@ -66,7 +70,11 @@ export interface OwnerStoreConfig<
   rebuildExtraState?: (dataByOwner: TOwnerData[]) => Partial<TExtraState>
   extraActions?: (
     set: (partial: Partial<BaseState<TOwnerData> & TExtraState>) => void,
-    get: () => BaseState<TOwnerData> & TExtraState & BaseActions & TExtraActions
+    get: () => BaseState<TOwnerData> &
+      TExtraState &
+      BaseActions &
+      TExtraActions,
+    db: OwnerDB<TDBData>
   ) => TExtraActions
   onAfterBatchUpdate?: (results: TOwnerData[]) => Promise<void>
   onBeforeOwnerUpdate?: (
@@ -150,7 +158,8 @@ export function createOwnerStore<
           get as () => BaseState<TOwnerData> &
             TExtraState &
             BaseActions &
-            TExtraActions
+            TExtraActions,
+          db
         )
       : ({} as TExtraActions)
 

@@ -8,8 +8,8 @@ import {
   X,
   RefreshCw,
 } from 'lucide-react'
-import { useTabControls } from '@/context'
-import { formatNumber } from '@/lib/utils'
+import { useTabControls, MAIL_FILTER_OPTIONS } from '@/context'
+import { cn, formatNumber } from '@/lib/utils'
 import {
   useAssetSettings,
   ASSET_SETTINGS_CONFIG,
@@ -157,6 +157,7 @@ export function SearchBar() {
     assetTypeFilter,
     resultCount,
     totalValue,
+    mailFilter,
   } = useTabControls()
   const [inputValue, setInputValue] = useState(search)
   const settings = useAssetSettings()
@@ -219,6 +220,25 @@ export function SearchBar() {
           </button>
         )}
       </div>
+
+      {mailFilter && (
+        <div className="flex gap-1">
+          {MAIL_FILTER_OPTIONS.map((type) => (
+            <button
+              key={type}
+              onClick={() => mailFilter.onChange(type)}
+              className={cn(
+                'rounded px-3 py-1 text-sm capitalize transition-colors',
+                mailFilter.value === type
+                  ? 'bg-accent text-white'
+                  : 'bg-surface-tertiary text-content-muted hover:bg-surface-tertiary/80'
+              )}
+            >
+              {type}
+            </button>
+          ))}
+        </div>
+      )}
 
       {assetTypeFilter && (
         <select

@@ -6,6 +6,7 @@ import {
   idbPut,
   idbDelete,
   idbClearMultiple,
+  idbClear,
   idbGet,
   type DBConfig,
 } from '@/lib/idb-utils'
@@ -15,11 +16,17 @@ export interface OwnerData<T> {
   data: T
 }
 
+export interface ExtraStoreConfig {
+  name: string
+  keyPath: string
+}
+
 export interface OwnerDBConfig<T> {
   dbName: string
   storeName: string
   dataKey?: string
   metaStoreName?: string
+  extraStores?: ExtraStoreConfig[]
   version?: number
   moduleName: string
   serialize?: (data: T) => Record<string, unknown>
@@ -33,6 +40,12 @@ export interface OwnerDB<T> {
   clear: () => Promise<void>
   loadMeta: <M>(key: string) => Promise<M | undefined>
   saveMeta: <M>(key: string, value: M) => Promise<void>
+  getFromExtra: <V>(
+    storeName: string,
+    key: IDBValidKey
+  ) => Promise<V | undefined>
+  putToExtra: <V>(storeName: string, item: V) => Promise<void>
+  clearExtra: (storeName: string) => Promise<void>
 }
 
 export function createOwnerDB<T>(config: OwnerDBConfig<T>): OwnerDB<T> {
@@ -41,6 +54,7 @@ export function createOwnerDB<T>(config: OwnerDBConfig<T>): OwnerDB<T> {
     storeName,
     dataKey,
     metaStoreName,
+    extraStores = [],
     version = 1,
     moduleName,
     serialize,
@@ -58,15 +72,18 @@ export function createOwnerDB<T>(config: OwnerDBConfig<T>): OwnerDB<T> {
     )
   }
 
+  const baseStores = [{ name: storeName, keyPath: 'ownerKey' }]
+  if (metaStoreName) {
+    baseStores.push({ name: metaStoreName, keyPath: 'key' })
+  }
+  for (const extra of extraStores) {
+    baseStores.push({ name: extra.name, keyPath: extra.keyPath })
+  }
+
   const dbConfig: DBConfig = {
     name: dbName,
     version,
-    stores: metaStoreName
-      ? [
-          { name: storeName, keyPath: 'ownerKey' },
-          { name: metaStoreName, keyPath: 'key' },
-        ]
-      : [{ name: storeName, keyPath: 'ownerKey' }],
+    stores: baseStores,
     module: moduleName,
   }
 
@@ -113,8 +130,10 @@ export function createOwnerDB<T>(config: OwnerDBConfig<T>): OwnerDB<T> {
 
   const clear = async (): Promise<void> => {
     const db = await getDB()
-    const storeNames = metaStoreName ? [storeName, metaStoreName] : [storeName]
-    await idbClearMultiple(db, storeNames)
+    const allStoreNames = [storeName]
+    if (metaStoreName) allStoreNames.push(metaStoreName)
+    for (const extra of extraStores) allStoreNames.push(extra.name)
+    await idbClearMultiple(db, allStoreNames)
   }
 
   const loadMeta = async <M>(key: string): Promise<M | undefined> => {
@@ -134,6 +153,27 @@ export function createOwnerDB<T>(config: OwnerDBConfig<T>): OwnerDB<T> {
     await idbPut(db, metaStoreName, { key, value })
   }
 
+  const getFromExtra = async <V>(
+    extraStoreName: string,
+    key: IDBValidKey
+  ): Promise<V | undefined> => {
+    const db = await getDB()
+    return idbGet<V>(db, extraStoreName, key)
+  }
+
+  const putToExtra = async <V>(
+    extraStoreName: string,
+    item: V
+  ): Promise<void> => {
+    const db = await getDB()
+    await idbPut(db, extraStoreName, item)
+  }
+
+  const clearExtra = async (extraStoreName: string): Promise<void> => {
+    const db = await getDB()
+    await idbClear(db, extraStoreName)
+  }
+
   return {
     loadAll,
     save,
@@ -141,5 +181,8 @@ export function createOwnerDB<T>(config: OwnerDBConfig<T>): OwnerDB<T> {
     clear,
     loadMeta,
     saveMeta,
+    getFromExtra,
+    putToExtra,
+    clearExtra,
   }
 }

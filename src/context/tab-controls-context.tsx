@@ -48,6 +48,14 @@ interface RefreshActionConfig {
   isRefreshing: boolean
 }
 
+export const MAIL_FILTER_OPTIONS = ['inbox', 'sent', 'all'] as const
+export type MailFilterType = (typeof MAIL_FILTER_OPTIONS)[number]
+
+export interface MailFilterConfig {
+  value: MailFilterType
+  onChange: (value: MailFilterType) => void
+}
+
 interface TabControlsContextValue {
   columns: ColumnConfig[]
   setColumns: (columns: ColumnConfig[]) => void
@@ -67,6 +75,8 @@ interface TabControlsContextValue {
   setTotalValue: (value: TotalValueConfig | null) => void
   refreshAction: RefreshActionConfig | null
   setRefreshAction: (config: RefreshActionConfig | null) => void
+  mailFilter: MailFilterConfig | null
+  setMailFilter: (config: MailFilterConfig | null) => void
 }
 
 const TabControlsContext = createContext<TabControlsContextValue | null>(null)
@@ -87,6 +97,7 @@ export function TabControlsProvider({ children }: { children: ReactNode }) {
   const [totalValue, setTotalValue] = useState<TotalValueConfig | null>(null)
   const [refreshAction, setRefreshAction] =
     useState<RefreshActionConfig | null>(null)
+  const [mailFilter, setMailFilter] = useState<MailFilterConfig | null>(null)
 
   const value = useMemo(
     () => ({
@@ -108,6 +119,8 @@ export function TabControlsProvider({ children }: { children: ReactNode }) {
       setTotalValue,
       refreshAction,
       setRefreshAction,
+      mailFilter,
+      setMailFilter,
     }),
     [
       columns,
@@ -119,6 +132,7 @@ export function TabControlsProvider({ children }: { children: ReactNode }) {
       resultCount,
       totalValue,
       refreshAction,
+      mailFilter,
     ]
   )
 
