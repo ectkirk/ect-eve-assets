@@ -6,6 +6,7 @@ import {
   ChevronsDownUp,
   Search,
   X,
+  RefreshCw,
 } from 'lucide-react'
 import { useTabControls } from '@/context'
 import { formatNumber } from '@/lib/utils'
@@ -34,6 +35,26 @@ const EXCLUDED_FILTER_VALUES = new Set(
 )
 
 const SEARCH_DEBOUNCE_MS = 250
+
+function RefreshButton() {
+  const { refreshAction } = useTabControls()
+
+  if (!refreshAction) return null
+
+  return (
+    <button
+      onClick={refreshAction.onRefresh}
+      disabled={refreshAction.isRefreshing}
+      className="flex items-center gap-1 rounded border border-border bg-surface-tertiary px-2.5 py-1 text-sm hover:bg-surface-tertiary/70 disabled:opacity-50"
+      title="Refresh"
+    >
+      <RefreshCw
+        className={`h-3.5 w-3.5 ${refreshAction.isRefreshing ? 'animate-spin' : ''}`}
+      />
+      Refresh
+    </button>
+  )
+}
 
 function ExpandCollapseButton() {
   const { expandCollapse } = useTabControls()
@@ -131,6 +152,7 @@ export function SearchBar() {
   const {
     search,
     setSearch,
+    searchPlaceholder,
     categoryFilter,
     assetTypeFilter,
     resultCount,
@@ -181,10 +203,10 @@ export function SearchBar() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-content-muted" />
         <input
           type="text"
-          placeholder="Search name, group, location, system, region..."
+          placeholder={searchPlaceholder ?? 'Search...'}
           value={inputValue}
           onChange={(e) => handleChange(e.target.value)}
-          aria-label="Search assets"
+          aria-label="Search"
           className="w-full rounded border border-border bg-surface-tertiary pl-9 pr-8 py-1.5 text-sm placeholder-content-muted focus:border-accent focus:outline-hidden"
         />
         {inputValue && (
@@ -275,6 +297,7 @@ export function SearchBar() {
 
       <div className="flex-1" />
 
+      <RefreshButton />
       <ExpandCollapseButton />
       <ColumnsDropdown />
     </div>

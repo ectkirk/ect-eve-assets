@@ -70,11 +70,17 @@ export function AssetsTab() {
   const {
     setColumns,
     search,
+    setSearchPlaceholder,
     setCategoryFilter,
     setAssetTypeFilter,
     setResultCount,
     setTotalValue,
   } = useTabControls()
+
+  useEffect(() => {
+    setSearchPlaceholder('Search name, group, location, system, region...')
+    return () => setSearchPlaceholder(null)
+  }, [setSearchPlaceholder])
 
   useEffect(() => {
     saveColumnVisibility(columnVisibility)

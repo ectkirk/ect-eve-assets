@@ -32,6 +32,9 @@ const MarketOrdersTab = lazy(() =>
     default: m.MarketOrdersTab,
   }))
 )
+const SkillsTab = lazy(() =>
+  import('@/features/skills').then((m) => ({ default: m.SkillsTab }))
+)
 const IndustryJobsTab = lazy(() =>
   import('@/features/industry-jobs').then((m) => ({
     default: m.IndustryJobsTab,
@@ -109,6 +112,7 @@ const ASSET_TABS = [
   'Industry Jobs',
   'Loyalty Points',
   'Market Orders',
+  'Skills',
   'Structures',
   'Wallet',
 ] as const
@@ -131,6 +135,8 @@ function AssetTabContent({ tab }: { tab: AssetTab }) {
       return <LoyaltyTab />
     case 'Market Orders':
       return <MarketOrdersTab />
+    case 'Skills':
+      return <SkillsTab />
     case 'Structures':
       return <StructuresTab />
     case 'Wallet':

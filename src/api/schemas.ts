@@ -200,6 +200,20 @@ export const ESICloneSchema = z.object({
   last_station_change_date: z.string().optional(),
 })
 
+// ESI Skills
+export const ESISkillSchema = z.object({
+  skill_id: z.number(),
+  active_skill_level: z.number(),
+  trained_skill_level: z.number(),
+  skillpoints_in_skill: z.number(),
+})
+
+export const ESICharacterSkillsSchema = z.object({
+  skills: z.array(ESISkillSchema),
+  total_sp: z.number(),
+  unallocated_sp: z.number().optional(),
+})
+
 // ESI Universe
 export const ESIStructureSchema = z.object({
   name: z.string(),
