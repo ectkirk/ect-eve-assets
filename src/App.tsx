@@ -13,6 +13,7 @@ import {
   loadRefStructures,
 } from './api/ref-client'
 import { logger } from './lib/logger'
+import { getErrorMessage } from './lib/errors'
 import { setupESITokenProvider } from './api/esi'
 import { initTheme } from './store/theme-store'
 
@@ -180,7 +181,7 @@ function App() {
       try {
         await window.electronAPI?.clearStorageAndRestart?.()
       } catch (err) {
-        setClearError(err instanceof Error ? err.message : 'Failed to clear')
+        setClearError(getErrorMessage(err))
         setIsClearing(false)
       }
     }

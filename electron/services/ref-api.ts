@@ -7,6 +7,7 @@ import {
   isValidObject,
 } from './validation.js'
 import { makeUserAgent } from './esi/types.js'
+import { isAbortError } from './fetch-utils.js'
 
 const REF_API_BASE = 'https://edencom.net/api/v1'
 const REF_API_KEY = process.env['REF_API_KEY'] || ''
@@ -112,7 +113,7 @@ async function fetchRefWithRetry(
       return response
     } catch (err) {
       clearTimeout(timeoutId)
-      if (err instanceof Error && err.name === 'AbortError') {
+      if (isAbortError(err)) {
         lastError = new Error('Request timeout')
       } else {
         lastError = err instanceof Error ? err : new Error(String(err))

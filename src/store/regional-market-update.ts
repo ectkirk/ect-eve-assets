@@ -1,5 +1,6 @@
 import { getRegionalOrders, getStructureOrders } from '@/api/endpoints/market'
 import { logger } from '@/lib/logger'
+import { getErrorMessage } from '@/lib/errors'
 import { chunkArray } from '@/lib/utils'
 import {
   savePricesToDB,
@@ -162,7 +163,7 @@ async function processRegionalBatch(
           module: 'RegionalMarketStore',
           regionId,
           typeId,
-          error: err instanceof Error ? err.message : String(err),
+          error: getErrorMessage(err),
         })
       }
     })
@@ -225,7 +226,7 @@ async function processStructure(
     logger.warn('Failed to fetch structure orders', {
       module: 'RegionalMarketStore',
       structureId,
-      error: err instanceof Error ? err.message : String(err),
+      error: getErrorMessage(err),
     })
   }
 }

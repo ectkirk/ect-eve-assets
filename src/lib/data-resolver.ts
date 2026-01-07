@@ -25,6 +25,7 @@ import {
   hasName,
 } from '@/api/endpoints/universe'
 import { logger } from './logger'
+import { getErrorMessage } from './errors'
 import { PLAYER_STRUCTURE_ID_THRESHOLD } from './eve-constants'
 
 export interface ResolutionIds {
@@ -357,7 +358,7 @@ export async function resolveAllReferenceData(
       ? resolveTypes(Array.from(ids.typeIds)).catch((err) => {
           logger.warn('Failed to resolve types', {
             module: 'DataResolver',
-            error: err instanceof Error ? err.message : String(err),
+            error: getErrorMessage(err),
           })
         })
       : Promise.resolve()
@@ -367,7 +368,7 @@ export async function resolveAllReferenceData(
       ? resolveNames(Array.from(ids.entityIds)).catch((err) => {
           logger.warn('Failed to resolve entity names', {
             module: 'DataResolver',
-            error: err instanceof Error ? err.message : String(err),
+            error: getErrorMessage(err),
           })
         })
       : Promise.resolve()
@@ -376,7 +377,7 @@ export async function resolveAllReferenceData(
     await resolveStructures(upwellStructures).catch((err) => {
       logger.warn('Failed to resolve structures', {
         module: 'DataResolver',
-        error: err instanceof Error ? err.message : String(err),
+        error: getErrorMessage(err),
       })
     })
 
@@ -393,7 +394,7 @@ export async function resolveAllReferenceData(
       ? resolveLocations(Array.from(ids.locationIds)).catch((err) => {
           logger.warn('Failed to resolve locations', {
             module: 'DataResolver',
-            error: err instanceof Error ? err.message : String(err),
+            error: getErrorMessage(err),
           })
         })
       : Promise.resolve()

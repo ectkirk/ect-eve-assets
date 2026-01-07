@@ -1,18 +1,20 @@
 import { useEffect, useMemo, useState } from 'react'
+import { matchesSearchLower } from '@/lib/utils'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { useAssetData } from '@/hooks/useAssetData'
-import { useTabControls } from '@/context'
+import { useTabControls, type OrderTypeValue } from '@/context'
 import { useColumnSettings } from '@/hooks'
 import { useReferenceCacheStore } from '@/store/reference-cache'
 import { useRegionalMarketStore } from '@/store/regional-market-store'
 import { getEsiAveragePrice } from '@/store/price-store'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
-import { MultiSelectDropdown } from '@/components/ui/multi-select-dropdown'
-import { formatNumber } from '@/lib/utils'
 import { getLocationInfo } from '@/lib/location-utils'
-import { ORDER_TYPE_OPTIONS, ORDER_COLUMNS, type OrderRow } from './types'
+import { ORDER_COLUMNS, type OrderRow } from './types'
 import { OrdersTable } from './OrdersTable'
+
+const CONTAINER_CLASS =
+  'h-full rounded-lg border border-border bg-surface-secondary/30'
 
 export function MarketOrdersTab() {
   const ownersRecord = useAuthStore((s) => s.owners)
@@ -43,17 +45,15 @@ export function MarketOrdersTab() {
 
   const regionalMarketStore = useRegionalMarketStore()
 
-  const { search, setResultCount, setTotalValue, setColumns } = useTabControls()
+  const { search, setTotalValue, setColumns, setOrderTypeFilter } =
+    useTabControls()
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
   const selectedSet = useMemo(
     () => new Set(selectedOwnerIds),
     [selectedOwnerIds]
   )
 
-  const [locationFilter, setLocationFilter] = useState<Set<string>>(new Set())
-  const [orderTypeFilter, setOrderTypeFilter] = useState<
-    'all' | 'sell' | 'buy'
-  >('all')
+  const [orderTypeValue, setOrderTypeValue] = useState<OrderTypeValue>('all')
 
   const { getColumnsForDropdown, getVisibleColumns } = useColumnSettings(
     'market-orders',
@@ -115,57 +115,29 @@ export function MarketOrdersTab() {
     return orders
   }, [ordersByOwner, types, structures, selectedSet, regionalMarketStore])
 
-  const availableLocations = useMemo(() => {
-    const locationMap = new Map<number, string>()
-    for (const order of allOrders) {
-      if (!locationMap.has(order.locationId)) {
-        locationMap.set(order.locationId, order.locationName)
-      }
-    }
-    return Array.from(locationMap.entries())
-      .map(([id, name]) => ({ value: String(id), label: name }))
-      .sort((a, b) => a.label.localeCompare(b.label))
-  }, [allOrders])
-
-  useEffect(() => {
-    if (locationFilter.size > 0) {
-      const validLocations = new Set(availableLocations.map((l) => l.value))
-      const validFilters = new Set(
-        [...locationFilter].filter((f) => validLocations.has(f))
-      )
-      if (validFilters.size !== locationFilter.size) {
-        setLocationFilter(validFilters)
-      }
-    }
-  }, [availableLocations, locationFilter])
-
   const filteredOrders = useMemo(() => {
     let filtered = allOrders
 
     if (search) {
       const searchLower = search.toLowerCase()
-      filtered = filtered.filter(
-        (o) =>
-          o.typeName.toLowerCase().includes(searchLower) ||
-          o.ownerName.toLowerCase().includes(searchLower) ||
-          o.locationName.toLowerCase().includes(searchLower) ||
-          o.regionName.toLowerCase().includes(searchLower) ||
-          o.systemName.toLowerCase().includes(searchLower)
-      )
-    }
-
-    if (locationFilter.size > 0) {
       filtered = filtered.filter((o) =>
-        locationFilter.has(String(o.locationId))
+        matchesSearchLower(
+          searchLower,
+          o.typeName,
+          o.ownerName,
+          o.locationName,
+          o.regionName,
+          o.systemName
+        )
       )
     }
 
-    if (orderTypeFilter === 'sell')
+    if (orderTypeValue === 'sell')
       return filtered.filter((o) => !o.order.is_buy_order)
-    if (orderTypeFilter === 'buy')
+    if (orderTypeValue === 'buy')
       return filtered.filter((o) => o.order.is_buy_order)
     return filtered
-  }, [allOrders, search, locationFilter, orderTypeFilter])
+  }, [allOrders, search, orderTypeValue])
 
   const totals = useMemo(() => {
     let sellValue = 0
@@ -180,21 +152,16 @@ export function MarketOrdersTab() {
       }
     }
 
-    return { sellValue, buyValue, totalCount: filteredOrders.length }
+    return { sellValue, buyValue }
   }, [filteredOrders])
 
-  const totalOrderCount = useMemo(() => {
-    let count = 0
-    for (const { orders } of ordersByOwner) {
-      count += orders.length
-    }
-    return count
-  }, [ordersByOwner])
-
   useEffect(() => {
-    setResultCount({ showing: totals.totalCount, total: totalOrderCount })
-    return () => setResultCount(null)
-  }, [totals.totalCount, totalOrderCount, setResultCount])
+    setOrderTypeFilter({
+      value: orderTypeValue,
+      onChange: setOrderTypeValue,
+    })
+    return () => setOrderTypeFilter(null)
+  }, [orderTypeValue, setOrderTypeFilter])
 
   useEffect(() => {
     setTotalValue({
@@ -221,67 +188,17 @@ export function MarketOrdersTab() {
   })
   if (loadingState) return loadingState
 
-  const headerLabel =
-    orderTypeFilter === 'sell'
-      ? 'Sell Orders'
-      : orderTypeFilter === 'buy'
-        ? 'Buy Orders'
-        : 'Market Orders'
+  if (filteredOrders.length === 0) {
+    return (
+      <div className={`${CONTAINER_CLASS} flex items-center justify-center`}>
+        <p className="text-content-secondary">No market orders.</p>
+      </div>
+    )
+  }
 
   return (
-    <div className="h-full overflow-auto">
-      <div className="flex items-center gap-2 mb-3">
-        <select
-          value={orderTypeFilter}
-          onChange={(e) =>
-            setOrderTypeFilter(e.target.value as 'all' | 'sell' | 'buy')
-          }
-          className="px-2 py-1 text-sm rounded border border-border bg-surface hover:bg-surface-secondary transition-colors"
-        >
-          {ORDER_TYPE_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-        {availableLocations.length > 1 && (
-          <MultiSelectDropdown
-            options={availableLocations}
-            selected={locationFilter}
-            onChange={setLocationFilter}
-            placeholder="All Locations"
-          />
-        )}
-      </div>
-
-      {filteredOrders.length === 0 ? (
-        <div className="flex items-center justify-center h-64">
-          <p className="text-content-secondary">
-            No {headerLabel.toLowerCase()}.
-          </p>
-        </div>
-      ) : (
-        <div className="rounded-lg border border-border bg-surface-secondary/30">
-          <div className="px-4 py-2 border-b border-border bg-surface-secondary/50 flex items-center justify-between">
-            <span className="text-xs font-medium uppercase tracking-wider text-content-secondary">
-              {headerLabel}
-            </span>
-            <div className="flex items-center gap-3 text-xs">
-              <span className="text-content-muted">
-                {filteredOrders.length} order
-                {filteredOrders.length !== 1 ? 's' : ''}
-              </span>
-              <span className="text-status-highlight tabular-nums">
-                {formatNumber(totals.sellValue + totals.buyValue)}
-              </span>
-            </div>
-          </div>
-          <OrdersTable
-            orders={filteredOrders}
-            visibleColumns={visibleColumns}
-          />
-        </div>
-      )}
+    <div className={`${CONTAINER_CLASS} overflow-auto`}>
+      <OrdersTable orders={filteredOrders} visibleColumns={visibleColumns} />
     </div>
   )
 }

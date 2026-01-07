@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { getErrorMessage } from '@/lib/errors'
 import type {
   ContractSearchFilters,
   SearchContract,
@@ -105,7 +106,7 @@ async function fetchPage<T>({
     callbacks.onResults(cacheEntry)
     callbacks.onPage(pageNum)
   } catch (err) {
-    setError(err instanceof Error ? err.message : 'Search failed')
+    setError(getErrorMessage(err))
     callbacks.onResults({ contracts: [], total: 0, totalPages: 0 })
   } finally {
     setLoading(false)

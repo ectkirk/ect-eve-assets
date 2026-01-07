@@ -66,7 +66,7 @@ export function createItemNode(
   }
 }
 
-export function getDivisionNumber(flag: string): number | undefined {
+function getDivisionNumber(flag: string): number | undefined {
   const match = flag.match(/^CorpSAG([1-7])$/)
   return match ? parseInt(match[1]!, 10) : undefined
 }

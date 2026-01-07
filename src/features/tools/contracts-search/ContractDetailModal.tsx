@@ -44,6 +44,7 @@ export interface DisplayContract {
   reward?: number
   collateral?: number
   volume?: number
+  daysToComplete?: number
   status?: string
   availability?: 'public' | 'personal' | 'corporation' | 'alliance'
   topItemName?: string
@@ -245,7 +246,7 @@ export function ContractDetailModal({
                 </span>
               )}
               {contract.systemName ?? contract.locationName}
-              {contract.endLocationName && (
+              {contract.type === 'courier' && contract.endLocationName && (
                 <span className="text-content-muted">
                   {' '}
                   → {contract.endLocationName}
@@ -283,6 +284,11 @@ export function ContractDetailModal({
                   {formatNumber(contract.collateral ?? 0)} ISK
                 </span>
               </InfoRow>
+              {contract.daysToComplete && (
+                <InfoRow label="Days to Complete">
+                  {contract.daysToComplete} days
+                </InfoRow>
+              )}
             </div>
           ) : contract.type === 'auction' ? (
             <div className="border-b border-border px-4 py-3 text-sm">

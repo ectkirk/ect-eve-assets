@@ -1,6 +1,7 @@
 import type { SearchContract, CourierContract } from './types'
 import type { DisplayContract } from './ContractDetailModal'
 import { PLAYER_STRUCTURE_ID_THRESHOLD } from '@/lib/eve-constants'
+import { MS_PER_MINUTE, MS_PER_HOUR, MS_PER_DAY } from '@/lib/timer-utils'
 
 /** Contracts priced 750%+ above market value are flagged as potential scams */
 export const SCAM_THRESHOLD_PCT = 750
@@ -152,10 +153,6 @@ export function getSecurityColor(sec: number): string {
   return SEC_TEXT_CLASSES[rounded] ?? SEC_TEXT_CLASSES[0]!
 }
 
-const MS_PER_MINUTE = 1000 * 60
-const MS_PER_HOUR = MS_PER_MINUTE * 60
-const MS_PER_DAY = MS_PER_HOUR * 24
-
 function formatTimeDiff(diff: number, style: 'compact' | 'verbose'): string {
   const days = Math.floor(diff / MS_PER_DAY)
   const hours = Math.floor((diff % MS_PER_DAY) / MS_PER_HOUR)
@@ -222,16 +219,6 @@ export function getContractTypeLabel(type: string): string {
     default:
       return type
   }
-}
-
-let cachedTextarea: HTMLTextAreaElement | null = null
-
-export function decodeHtmlEntities(text: string): string {
-  if (!cachedTextarea) {
-    cachedTextarea = document.createElement('textarea')
-  }
-  cachedTextarea.innerHTML = text
-  return cachedTextarea.value
 }
 
 export function formatContractDate(dateStr: string): string {

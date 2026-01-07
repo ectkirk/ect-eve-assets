@@ -1,5 +1,5 @@
 import type { ColumnDef } from '@tanstack/react-table'
-import { ArrowUpDown } from 'lucide-react'
+import { ChevronUp, ChevronDown } from 'lucide-react'
 import { usePriceStore } from '@/store/price-store'
 import { TypeIcon, OwnerIcon } from '@/components/ui/type-icon'
 import { AbyssalPreview } from '@/components/ui/abyssal-preview'
@@ -33,7 +33,8 @@ export const columns: ColumnDef<AssetRow>[] = [
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
       >
         Name
-        <ArrowUpDown className="h-4 w-4" />
+        {column.getIsSorted() === 'asc' && <ChevronUp className="h-4 w-4" />}
+        {column.getIsSorted() === 'desc' && <ChevronDown className="h-4 w-4" />}
       </button>
     ),
     cell: ({ row }) => {
@@ -112,7 +113,8 @@ export const columns: ColumnDef<AssetRow>[] = [
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
       >
         Quantity
-        <ArrowUpDown className="h-4 w-4" />
+        {column.getIsSorted() === 'asc' && <ChevronUp className="h-4 w-4" />}
+        {column.getIsSorted() === 'desc' && <ChevronDown className="h-4 w-4" />}
       </button>
     ),
     cell: ({ row }) => (
@@ -130,7 +132,8 @@ export const columns: ColumnDef<AssetRow>[] = [
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
       >
         Price
-        <ArrowUpDown className="h-4 w-4" />
+        {column.getIsSorted() === 'asc' && <ChevronUp className="h-4 w-4" />}
+        {column.getIsSorted() === 'desc' && <ChevronDown className="h-4 w-4" />}
       </button>
     ),
     cell: ({ row }) => {
@@ -151,7 +154,8 @@ export const columns: ColumnDef<AssetRow>[] = [
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
       >
         Value
-        <ArrowUpDown className="h-4 w-4" />
+        {column.getIsSorted() === 'asc' && <ChevronUp className="h-4 w-4" />}
+        {column.getIsSorted() === 'desc' && <ChevronDown className="h-4 w-4" />}
       </button>
     ),
     cell: ({ row }) => {
@@ -172,7 +176,8 @@ export const columns: ColumnDef<AssetRow>[] = [
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
       >
         Volume
-        <ArrowUpDown className="h-4 w-4" />
+        {column.getIsSorted() === 'asc' && <ChevronUp className="h-4 w-4" />}
+        {column.getIsSorted() === 'desc' && <ChevronDown className="h-4 w-4" />}
       </button>
     ),
     cell: ({ row }) => (
@@ -190,7 +195,8 @@ export const columns: ColumnDef<AssetRow>[] = [
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
       >
         Location
-        <ArrowUpDown className="h-4 w-4" />
+        {column.getIsSorted() === 'asc' && <ChevronUp className="h-4 w-4" />}
+        {column.getIsSorted() === 'desc' && <ChevronDown className="h-4 w-4" />}
       </button>
     ),
     cell: ({ row }) => (
@@ -209,7 +215,8 @@ export const columns: ColumnDef<AssetRow>[] = [
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
       >
         Flag
-        <ArrowUpDown className="h-4 w-4" />
+        {column.getIsSorted() === 'asc' && <ChevronUp className="h-4 w-4" />}
+        {column.getIsSorted() === 'desc' && <ChevronDown className="h-4 w-4" />}
       </button>
     ),
     cell: ({ row }) => (

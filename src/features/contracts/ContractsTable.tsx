@@ -1,6 +1,13 @@
 import { useMemo, useState } from 'react'
 import { useSortable, SortableHeader, sortRows } from '@/hooks'
-import { Table, TableBody, TableHeader, TableRow } from '@/components/ui/table'
+import {
+  Table,
+  TableBody,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Pagination } from '@/components/ui/pagination'
 import { ContractDetailModal } from '@/features/tools/contracts-search/ContractDetailModal'
 import { ContractTableRow, type SelectedContractData } from './ContractTableRow'
 import {
@@ -13,22 +20,20 @@ import {
 
 const PAGE_SIZE = 50
 
-function getDefaultSort(showCourierColumns: boolean): ContractSortColumn {
-  return showCourierColumns ? 'price' : 'value'
+interface ContractsTableProps {
+  contracts: ContractRow[]
+  visibleColumns: Set<string>
 }
 
 export function ContractsTable({
   contracts,
-  showCourierColumns = false,
-}: {
-  contracts: ContractRow[]
-  showCourierColumns?: boolean
-}) {
+  visibleColumns,
+}: ContractsTableProps) {
   const [page, setPage] = useState(0)
   const [selectedContract, setSelectedContract] =
     useState<SelectedContractData | null>(null)
   const { sortColumn, sortDirection, handleSort } =
-    useSortable<ContractSortColumn>(getDefaultSort(showCourierColumns), 'desc')
+    useSortable<ContractSortColumn>('value', 'desc')
 
   const sortedContracts = useMemo(() => {
     return sortRows(contracts, sortColumn, sortDirection, (row, column) => {
@@ -48,14 +53,14 @@ export function ContractsTable({
           return getContractValue(contract)
         case 'value':
           return row.itemValue
-        case 'expires':
-          return new Date(contract.date_expired).getTime()
         case 'volume':
           return contract.volume ?? 0
         case 'collateral':
           return contract.collateral ?? 0
         case 'days':
           return getDaysLeft(contract)
+        case 'expires':
+          return new Date(contract.date_expired).getTime()
         default:
           return 0
       }
@@ -69,20 +74,24 @@ export function ContractsTable({
     (clampedPage + 1) * PAGE_SIZE
   )
 
+  const show = (col: string) => visibleColumns.has(col)
+
   return (
     <>
       <Table>
-        <TableHeader>
-          <TableRow className="hover:bg-transparent">
-            <th scope="col" className="w-8"></th>
-            <SortableHeader
-              column="type"
-              label="Type"
-              sortColumn={sortColumn}
-              sortDirection={sortDirection}
-              onSort={handleSort}
-            />
-            {!showCourierColumns && (
+        <TableHeader className="sticky top-0 z-10 bg-surface-secondary">
+          <TableRow className="hover:bg-transparent border-b border-border">
+            {show('owner') && <TableHead className="w-8" />}
+            {show('type') && (
+              <SortableHeader
+                column="type"
+                label="Type"
+                sortColumn={sortColumn}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+              />
+            )}
+            {show('items') && (
               <SortableHeader
                 column="items"
                 label="Items"
@@ -91,36 +100,44 @@ export function ContractsTable({
                 onSort={handleSort}
               />
             )}
-            <SortableHeader
-              column="location"
-              label="Location"
-              sortColumn={sortColumn}
-              sortDirection={sortDirection}
-              onSort={handleSort}
-            />
-            <SortableHeader
-              column="assigner"
-              label="Assigner"
-              sortColumn={sortColumn}
-              sortDirection={sortDirection}
-              onSort={handleSort}
-            />
-            <SortableHeader
-              column="assignee"
-              label="Assignee"
-              sortColumn={sortColumn}
-              sortDirection={sortDirection}
-              onSort={handleSort}
-            />
-            <SortableHeader
-              column="price"
-              label="Price"
-              sortColumn={sortColumn}
-              sortDirection={sortDirection}
-              onSort={handleSort}
-              className="text-right"
-            />
-            {!showCourierColumns && (
+            {show('location') && (
+              <SortableHeader
+                column="location"
+                label="Location"
+                sortColumn={sortColumn}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+              />
+            )}
+            {show('assigner') && (
+              <SortableHeader
+                column="assigner"
+                label="Assigner"
+                sortColumn={sortColumn}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+              />
+            )}
+            {show('assignee') && (
+              <SortableHeader
+                column="assignee"
+                label="Assignee"
+                sortColumn={sortColumn}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+              />
+            )}
+            {show('price') && (
+              <SortableHeader
+                column="price"
+                label="Price"
+                sortColumn={sortColumn}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+                className="text-right"
+              />
+            )}
+            {show('value') && (
               <SortableHeader
                 column="value"
                 label="Value"
@@ -130,35 +147,37 @@ export function ContractsTable({
                 className="text-right"
               />
             )}
-            {showCourierColumns && (
-              <>
-                <SortableHeader
-                  column="volume"
-                  label="Volume"
-                  sortColumn={sortColumn}
-                  sortDirection={sortDirection}
-                  onSort={handleSort}
-                  className="text-right"
-                />
-                <SortableHeader
-                  column="collateral"
-                  label="Collateral"
-                  sortColumn={sortColumn}
-                  sortDirection={sortDirection}
-                  onSort={handleSort}
-                  className="text-right"
-                />
-                <SortableHeader
-                  column="days"
-                  label="Days Left"
-                  sortColumn={sortColumn}
-                  sortDirection={sortDirection}
-                  onSort={handleSort}
-                  className="text-right"
-                />
-              </>
+            {show('volume') && (
+              <SortableHeader
+                column="volume"
+                label="Volume"
+                sortColumn={sortColumn}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+                className="text-right"
+              />
             )}
-            {!showCourierColumns && (
+            {show('collateral') && (
+              <SortableHeader
+                column="collateral"
+                label="Collateral"
+                sortColumn={sortColumn}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+                className="text-right"
+              />
+            )}
+            {show('days') && (
+              <SortableHeader
+                column="days"
+                label="Days"
+                sortColumn={sortColumn}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+                className="text-right"
+              />
+            )}
+            {show('expires') && (
               <SortableHeader
                 column="expires"
                 label="Expires"
@@ -168,9 +187,9 @@ export function ContractsTable({
                 className="text-right"
               />
             )}
-            <th scope="col" className="text-right">
-              Status
-            </th>
+            {show('status') && (
+              <TableHead className="text-right">Status</TableHead>
+            )}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -178,7 +197,7 @@ export function ContractsTable({
             <ContractTableRow
               key={row.contractWithItems.contract.contract_id}
               row={row}
-              showCourierColumns={showCourierColumns}
+              visibleColumns={visibleColumns}
               onSelectContract={setSelectedContract}
             />
           ))}
@@ -201,61 +220,5 @@ export function ContractsTable({
         />
       )}
     </>
-  )
-}
-
-function Pagination({
-  page,
-  totalPages,
-  totalItems,
-  pageSize,
-  onPageChange,
-}: {
-  page: number
-  totalPages: number
-  totalItems: number
-  pageSize: number
-  onPageChange: (page: number) => void
-}) {
-  return (
-    <div className="flex items-center justify-between px-2 py-2 text-sm">
-      <span className="text-content-secondary">
-        {page * pageSize + 1}-{Math.min((page + 1) * pageSize, totalItems)} of{' '}
-        {totalItems}
-      </span>
-      <div className="flex gap-1">
-        <button
-          onClick={() => onPageChange(0)}
-          disabled={page === 0}
-          className="px-2 py-1 rounded hover:bg-surface-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          First
-        </button>
-        <button
-          onClick={() => onPageChange(page - 1)}
-          disabled={page === 0}
-          className="px-2 py-1 rounded hover:bg-surface-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Prev
-        </button>
-        <span className="px-2 py-1 text-content-secondary">
-          {page + 1} / {totalPages}
-        </span>
-        <button
-          onClick={() => onPageChange(page + 1)}
-          disabled={page >= totalPages - 1}
-          className="px-2 py-1 rounded hover:bg-surface-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Next
-        </button>
-        <button
-          onClick={() => onPageChange(totalPages - 1)}
-          disabled={page >= totalPages - 1}
-          className="px-2 py-1 rounded hover:bg-surface-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Last
-        </button>
-      </div>
-    </div>
   )
 }

@@ -2,6 +2,7 @@ import * as fs from 'fs'
 import * as fsPromises from 'fs/promises'
 import { ESI_CONFIG, type CacheEntry } from './types'
 import { logger } from '../logger.js'
+import { getErrorMessage } from '../fetch-utils.js'
 
 interface SerializedCache {
   version: 1
@@ -34,7 +35,7 @@ export class ESICache {
     } catch (err) {
       logger.debug('Failed to load ESI cache', {
         module: 'ESICache',
-        error: err instanceof Error ? err.message : String(err),
+        error: getErrorMessage(err),
       })
     }
   }
@@ -69,7 +70,7 @@ export class ESICache {
     } catch (err) {
       logger.debug('Failed to save ESI cache', {
         module: 'ESICache',
-        error: err instanceof Error ? err.message : String(err),
+        error: getErrorMessage(err),
       })
     } finally {
       this.saveInProgress = false
@@ -99,7 +100,7 @@ export class ESICache {
     } catch (err) {
       logger.debug('Failed to save ESI cache immediately', {
         module: 'ESICache',
-        error: err instanceof Error ? err.message : String(err),
+        error: getErrorMessage(err),
       })
     }
   }

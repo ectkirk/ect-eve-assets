@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { esi } from '@/api/esi'
 import { ESIRegionOrderSchema } from '@/api/schemas'
 import { logger } from '@/lib/logger'
+import { getErrorMessage } from '@/lib/errors'
 import { useStoreRegistry } from '@/store/store-registry'
 import {
   loadAllOrdersFromDB,
@@ -84,7 +85,7 @@ export const useRegionalOrdersStore = create<RegionalOrdersStore>(
               deleteExpiredFromDB(expiredKeys).catch((err) => {
                 logger.warn('Failed to delete expired orders from DB', {
                   module: MODULE,
-                  error: err instanceof Error ? err.message : String(err),
+                  error: getErrorMessage(err),
                   count: expiredKeys.length,
                 })
               })
@@ -198,11 +199,9 @@ export const useRegionalOrdersStore = create<RegionalOrdersStore>(
 
         return orders
       } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : 'Failed to load orders'
         set({
           loadingTypeId: null,
-          error: errorMessage,
+          error: getErrorMessage(err),
         })
         logger.error(
           'Failed to fetch type orders',

@@ -3,11 +3,31 @@ import type { ESIResponseMeta, ESIRequestOptions } from 'electron/preload'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { logger } from '@/lib/logger'
 import { chunkArray } from '@/lib/utils'
-import { ValidationError, ConfigurationError } from '@/lib/errors'
-import { ESIError } from '../../shared/esi-types'
+import {
+  ValidationError,
+  ConfigurationError,
+  getErrorForLog,
+} from '@/lib/errors'
+import {
+  ESIError,
+  isSerializedESIError,
+  type SerializedESIError,
+} from '../../shared/esi-types'
 
 export type { ESIResponseMeta, ESIRequestOptions }
 export { ESIError }
+
+function checkForESIError(result: unknown): void {
+  if (
+    typeof result === 'object' &&
+    result !== null &&
+    '__esiError' in result &&
+    isSerializedESIError((result as { __esiError: unknown }).__esiError)
+  ) {
+    const err = (result as { __esiError: SerializedESIError }).__esiError
+    throw new ESIError(err.message, err.status, err.retryAfter)
+  }
+}
 
 function validate<T>(data: unknown, schema: z.ZodType<T>, endpoint: string): T {
   const result = schema.safeParse(data)
@@ -35,6 +55,7 @@ export const esi = {
   ): Promise<T> {
     const { schema, ...esiOptions } = options
     const data = await getESI().fetch<T>(endpoint, esiOptions)
+    checkForESIError(data)
     return schema ? validate(data, schema, endpoint) : data
   },
 
@@ -44,6 +65,7 @@ export const esi = {
   ): Promise<ESIResponseMeta<T>> {
     const { schema, ...esiOptions } = options
     const result = await getESI().fetchWithMeta<T>(endpoint, esiOptions)
+    checkForESIError(result)
     if (schema && !result.notModified) {
       return { ...result, data: validate(result.data, schema, endpoint) }
     }
@@ -56,6 +78,7 @@ export const esi = {
   ): Promise<T[]> {
     const { schema, ...esiOptions } = options
     const data = await getESI().fetchPaginated<T>(endpoint, esiOptions)
+    checkForESIError(data)
     return schema ? validate(data, schema.array(), endpoint) : data
   },
 
@@ -68,6 +91,7 @@ export const esi = {
       endpoint,
       esiOptions
     )
+    checkForESIError(result)
     if (schema && !result.notModified) {
       return {
         ...result,
@@ -100,6 +124,7 @@ export const esi = {
         esiOptions,
         progressChannel
       )
+      checkForESIError(result)
       if (schema && !result.notModified) {
         return {
           ...result,
@@ -221,11 +246,10 @@ export function setupESITokenProvider(): () => void {
               success: result.success,
             })
           } catch (err) {
-            logger.error(
-              'Token refresh threw error',
-              err instanceof Error ? err : undefined,
-              { module: 'ESI', characterId }
-            )
+            logger.error('Token refresh threw error', getErrorForLog(err), {
+              module: 'ESI',
+              characterId,
+            })
           }
           store.setOwnerAuthFailed(ownerId, true)
           logger.warn('Owner auth failed, marking for re-authentication', {

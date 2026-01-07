@@ -3,41 +3,34 @@ import type { ESICorporationStructure } from '@/store/structures-store'
 import type { ESIStarbase } from '@/store/starbases-store'
 import type { TreeNode } from '@/lib/tree-types'
 
-export interface StructureRow {
-  kind: 'upwell'
-  structure: ESICorporationStructure
+export interface UnifiedStructureRow {
+  id: string
+  kind: 'upwell' | 'pos'
+  name: string
   owner: Owner
+  typeId: number
   typeName: string
   regionName: string
-  fuelDays: number | null
-  treeNode: TreeNode | null
+  state: string
+  fuelValue: number | null
+  fuelText: string
+  fuelIsLow: boolean
+  rigs: string[]
+  timerType: string
+  timerText: string
+  timerTimestamp: number | null
+  timerIsUrgent: boolean
+  isReinforced: boolean
+  structure?: ESICorporationStructure
+  starbase?: ESIStarbase
+  treeNode?: TreeNode | null
 }
 
-export interface StarbaseRow {
-  kind: 'pos'
-  starbase: ESIStarbase
-  owner: Owner
-  ownerName: string
-  typeName: string
-  systemName: string
-  regionName: string
-  moonName: string | null
-  towerSize: number | undefined
-  fuelTier: number | undefined
-}
-
-export type UpwellSortColumn =
+export type StructureSortColumn =
   | 'name'
   | 'type'
   | 'region'
   | 'state'
   | 'fuel'
   | 'rigs'
-  | 'details'
-export type StarbaseSortColumn =
-  | 'name'
-  | 'type'
-  | 'region'
-  | 'state'
-  | 'fuel'
   | 'details'

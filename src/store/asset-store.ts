@@ -23,6 +23,7 @@ import { resolveTypes } from '@/api/ref-client'
 import { getType } from '@/store/reference-cache'
 import { createOwnerDB } from '@/lib/owner-indexed-db'
 import { logger } from '@/lib/logger'
+import { getErrorForLog, getUserFriendlyMessage } from '@/lib/errors'
 import { ownerEndpoint } from '@/lib/owner-utils'
 import { triggerResolution } from '@/lib/data-resolver'
 import { useStoreRegistry } from './store-registry'
@@ -161,11 +162,9 @@ async function fetchOwnerAssetNames(
       )
       return names
     } catch (err) {
-      logger.error(
-        'Corp asset names failed',
-        err instanceof Error ? err : undefined,
-        { module: 'AssetStore' }
-      )
+      logger.error('Corp asset names failed', getErrorForLog(err), {
+        module: 'AssetStore',
+      })
       return []
     }
   }
@@ -223,11 +222,9 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
           usePriceStore.getState().ensureJitaPrices([], abyssalItemIds)
         }
       } catch (err) {
-        logger.error(
-          'Failed to load assets from DB',
-          err instanceof Error ? err : undefined,
-          { module: 'AssetStore' }
-        )
+        logger.error('Failed to load assets from DB', getErrorForLog(err), {
+          module: 'AssetStore',
+        })
         set({ initialized: true })
       }
     })()
@@ -328,7 +325,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
           } else {
             logger.error(
               'Failed to fetch assets for owner',
-              err instanceof Error ? err : undefined,
+              getErrorForLog(err),
               {
                 module: 'AssetStore',
                 owner: owner.name,
@@ -373,13 +370,14 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         totalAssets: results.reduce((sum, r) => sum + r.assets.length, 0),
       })
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown error'
-      set({ isUpdating: false, updateProgress: null, updateError: message })
-      logger.error(
-        'Asset update failed',
-        err instanceof Error ? err : undefined,
-        { module: 'AssetStore' }
-      )
+      set({
+        isUpdating: false,
+        updateProgress: null,
+        updateError: getUserFriendlyMessage(err),
+      })
+      logger.error('Asset update failed', getErrorForLog(err), {
+        module: 'AssetStore',
+      })
     }
   },
 
@@ -491,13 +489,14 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
           updateError: null,
         }))
       } else {
-        const message = err instanceof Error ? err.message : 'Unknown error'
-        set({ isUpdating: false, updateProgress: null, updateError: message })
-        logger.error(
-          'Asset update failed for owner',
-          err instanceof Error ? err : undefined,
-          { module: 'AssetStore' }
-        )
+        set({
+          isUpdating: false,
+          updateProgress: null,
+          updateError: getUserFriendlyMessage(err),
+        })
+        logger.error('Asset update failed for owner', getErrorForLog(err), {
+          module: 'AssetStore',
+        })
       }
     }
   },

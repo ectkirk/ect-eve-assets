@@ -21,6 +21,7 @@ import {
   type ESIHealthStatus,
 } from './types'
 import { ESIError } from '../../../shared/esi-types'
+import { isAbortError, getErrorMessage } from '../fetch-utils.js'
 
 const RATE_LIMIT_FILE = 'rate-limits.json'
 const CACHE_FILE = 'esi-cache.json'
@@ -442,7 +443,7 @@ export class MainESIService {
 
       if (error instanceof ESIError) throw error
 
-      const isAbort = error instanceof Error && error.name === 'AbortError'
+      const isAbort = isAbortError(error)
       const message = isAbort
         ? 'Request timeout'
         : error instanceof Error
@@ -522,7 +523,7 @@ export class MainESIService {
     } catch (err) {
       logger.warn('Failed to load rate limit state', {
         module: 'ESI',
-        error: err instanceof Error ? err.message : String(err),
+        error: getErrorMessage(err),
       })
     }
     this.cache.load()
@@ -543,7 +544,7 @@ export class MainESIService {
     } catch (err) {
       logger.warn('Failed to save rate limit state', {
         module: 'ESI',
-        error: err instanceof Error ? err.message : String(err),
+        error: getErrorMessage(err),
       })
     }
   }

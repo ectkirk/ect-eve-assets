@@ -5,6 +5,7 @@ import { hasType, getType } from '@/store/reference-cache'
 import { getName } from '@/api/endpoints/universe'
 import { usePriceStore } from '@/store/price-store'
 import { getLocationName } from '@/lib/location-utils'
+import { MS_PER_HOUR, MS_PER_DAY } from '@/lib/timer-utils'
 
 function isContractItemBpc(item: ESIContractItem): boolean {
   return item.is_blueprint_copy === true || item.raw_quantity === -2
@@ -18,10 +19,28 @@ export type ContractSortColumn =
   | 'assignee'
   | 'price'
   | 'value'
-  | 'expires'
   | 'volume'
   | 'collateral'
   | 'days'
+  | 'expires'
+
+export function getDaysLeft(contract: ESIContract): number {
+  if (contract.status === 'outstanding') {
+    const remaining = new Date(contract.date_expired).getTime() - Date.now()
+    return Math.ceil(remaining / MS_PER_DAY)
+  }
+  if (
+    contract.status === 'in_progress' &&
+    contract.date_accepted &&
+    contract.days_to_complete
+  ) {
+    const deadline =
+      new Date(contract.date_accepted).getTime() +
+      contract.days_to_complete * MS_PER_DAY
+    return Math.ceil((deadline - Date.now()) / MS_PER_DAY)
+  }
+  return 0
+}
 
 export const CONTRACT_TYPE_NAMES: Record<ESIContract['type'], string> = {
   unknown: 'Unknown',
@@ -60,31 +79,24 @@ export interface ContractRow {
   assigneeName: string
   itemValue: number
   status: ESIContract['status']
-}
-
-export interface DirectionGroup {
-  direction: ContractDirection
-  displayName: string
-  contracts: ContractRow[]
-  totalValue: number
+  isWantToBuy: boolean
+  includedItemCount: number
+  requestedItemCount: number
 }
 
 export function formatExpiry(dateExpired: string): {
   text: string
   isExpired: boolean
 } {
-  const expiry = new Date(dateExpired).getTime()
-  const now = Date.now()
-  const remaining = expiry - now
+  const remaining = new Date(dateExpired).getTime() - Date.now()
 
   if (remaining <= 0) {
     return { text: 'Expired', isExpired: true }
   }
 
-  const hours = Math.floor(remaining / (60 * 60 * 1000))
+  const hours = Math.floor(remaining / MS_PER_HOUR)
   if (hours >= 24) {
-    const days = Math.floor(hours / 24)
-    return { text: `${days}d`, isExpired: false }
+    return { text: `${Math.floor(hours / 24)}d`, isExpired: false }
   }
 
   return { text: `${hours}h`, isExpired: false }
@@ -92,23 +104,6 @@ export function formatExpiry(dateExpired: string): {
 
 export function getContractValue(contract: ESIContract): number {
   return (contract.price ?? 0) + (contract.reward ?? 0)
-}
-
-export function getDaysLeft(contract: ESIContract): number {
-  if (contract.status === 'outstanding') {
-    const expiryTime = new Date(contract.date_expired).getTime()
-    return Math.ceil((expiryTime - Date.now()) / (24 * 60 * 60 * 1000))
-  } else if (
-    contract.status === 'in_progress' &&
-    contract.date_accepted &&
-    contract.days_to_complete
-  ) {
-    const acceptedDate = new Date(contract.date_accepted).getTime()
-    const deadline =
-      acceptedDate + contract.days_to_complete * 24 * 60 * 60 * 1000
-    return Math.ceil((deadline - Date.now()) / (24 * 60 * 60 * 1000))
-  }
-  return 0
 }
 
 export function buildContractRow(
@@ -121,7 +116,12 @@ export function buildContractRow(
   const items = contractWithItems.items ?? []
   const direction: ContractDirection = isIssuer ? 'out' : 'in'
 
-  const firstItem = items[0]
+  const includedItems = items.filter((item) => item.is_included)
+  const requestedItems = items.filter((item) => !item.is_included)
+  const isWantToBuy = includedItems.length === 0 && requestedItems.length > 0
+
+  const displayItems = isWantToBuy ? requestedItems : includedItems
+  const firstItem = displayItems[0]
   const firstItemType =
     firstItem && hasType(firstItem.type_id)
       ? getType(firstItem.type_id)
@@ -142,7 +142,7 @@ export function buildContractRow(
 
   const priceStore = usePriceStore.getState()
   let itemValue = 0
-  for (const item of items) {
+  for (const item of includedItems) {
     const price = priceStore.getItemPrice(item.type_id, {
       itemId: item.item_id,
       isBlueprintCopy: isContractItemBpc(item),
@@ -170,5 +170,8 @@ export function buildContractRow(
     assigneeName,
     itemValue,
     status: contract.status,
+    isWantToBuy,
+    includedItemCount: includedItems.length,
+    requestedItemCount: requestedItems.length,
   }
 }

@@ -43,6 +43,31 @@ export interface TotalValueConfig {
   tertiaryLabel?: string
 }
 
+interface RefreshActionConfig {
+  onRefresh: () => void
+  isRefreshing: boolean
+}
+
+export const MAIL_FILTER_OPTIONS = ['inbox', 'sent', 'all'] as const
+export type MailFilterType = (typeof MAIL_FILTER_OPTIONS)[number]
+
+export interface MailFilterConfig {
+  value: MailFilterType
+  onChange: (value: MailFilterType) => void
+}
+
+export interface LoyaltyCorporationsConfig {
+  corporations: { id: number; name: string; total: number }[]
+}
+
+export const ORDER_TYPE_OPTIONS = ['all', 'sell', 'buy'] as const
+export type OrderTypeValue = (typeof ORDER_TYPE_OPTIONS)[number]
+
+export interface OrderTypeFilterConfig {
+  value: OrderTypeValue
+  onChange: (value: OrderTypeValue) => void
+}
+
 interface TabControlsContextValue {
   columns: ColumnConfig[]
   setColumns: (columns: ColumnConfig[]) => void
@@ -50,6 +75,8 @@ interface TabControlsContextValue {
   setExpandCollapse: (config: ExpandCollapseConfig | null) => void
   search: string
   setSearch: (value: string) => void
+  searchPlaceholder: string | null
+  setSearchPlaceholder: (placeholder: string | null) => void
   categoryFilter: CategoryFilterConfig | null
   setCategoryFilter: (config: CategoryFilterConfig | null) => void
   assetTypeFilter: AssetTypeFilterConfig | null
@@ -58,6 +85,14 @@ interface TabControlsContextValue {
   setResultCount: (count: ResultCount | null) => void
   totalValue: TotalValueConfig | null
   setTotalValue: (value: TotalValueConfig | null) => void
+  refreshAction: RefreshActionConfig | null
+  setRefreshAction: (config: RefreshActionConfig | null) => void
+  mailFilter: MailFilterConfig | null
+  setMailFilter: (config: MailFilterConfig | null) => void
+  loyaltyCorporations: LoyaltyCorporationsConfig | null
+  setLoyaltyCorporations: (config: LoyaltyCorporationsConfig | null) => void
+  orderTypeFilter: OrderTypeFilterConfig | null
+  setOrderTypeFilter: (config: OrderTypeFilterConfig | null) => void
 }
 
 const TabControlsContext = createContext<TabControlsContextValue | null>(null)
@@ -67,12 +102,22 @@ export function TabControlsProvider({ children }: { children: ReactNode }) {
   const [expandCollapse, setExpandCollapse] =
     useState<ExpandCollapseConfig | null>(null)
   const [search, setSearch] = useState('')
+  const [searchPlaceholder, setSearchPlaceholder] = useState<string | null>(
+    null
+  )
   const [categoryFilter, setCategoryFilter] =
     useState<CategoryFilterConfig | null>(null)
   const [assetTypeFilter, setAssetTypeFilter] =
     useState<AssetTypeFilterConfig | null>(null)
   const [resultCount, setResultCount] = useState<ResultCount | null>(null)
   const [totalValue, setTotalValue] = useState<TotalValueConfig | null>(null)
+  const [refreshAction, setRefreshAction] =
+    useState<RefreshActionConfig | null>(null)
+  const [mailFilter, setMailFilter] = useState<MailFilterConfig | null>(null)
+  const [loyaltyCorporations, setLoyaltyCorporations] =
+    useState<LoyaltyCorporationsConfig | null>(null)
+  const [orderTypeFilter, setOrderTypeFilter] =
+    useState<OrderTypeFilterConfig | null>(null)
 
   const value = useMemo(
     () => ({
@@ -82,6 +127,8 @@ export function TabControlsProvider({ children }: { children: ReactNode }) {
       setExpandCollapse,
       search,
       setSearch,
+      searchPlaceholder,
+      setSearchPlaceholder,
       categoryFilter,
       setCategoryFilter,
       assetTypeFilter,
@@ -90,15 +137,28 @@ export function TabControlsProvider({ children }: { children: ReactNode }) {
       setResultCount,
       totalValue,
       setTotalValue,
+      refreshAction,
+      setRefreshAction,
+      mailFilter,
+      setMailFilter,
+      loyaltyCorporations,
+      setLoyaltyCorporations,
+      orderTypeFilter,
+      setOrderTypeFilter,
     }),
     [
       columns,
       expandCollapse,
       search,
+      searchPlaceholder,
       categoryFilter,
       assetTypeFilter,
       resultCount,
       totalValue,
+      refreshAction,
+      mailFilter,
+      loyaltyCorporations,
+      orderTypeFilter,
     ]
   )
 

@@ -10,14 +10,14 @@ export type SkillNode = {
 
 const SKILL_LEVEL_BOXES = [0, 1, 2, 3, 4] as const
 
-function SkillLevelBars({ level }: { level: number }) {
+export function SkillLevelBars({ level }: { level: number }) {
   return (
     <div className="flex items-center gap-0.5">
       {SKILL_LEVEL_BOXES.map((i) => (
         <div
           key={i}
           className={`h-4 w-1.5 rounded-sm ${
-            i < level ? 'bg-accent' : 'bg-surface-tertiary'
+            i < level ? 'bg-accent' : 'bg-surface-secondary'
           }`}
         />
       ))}

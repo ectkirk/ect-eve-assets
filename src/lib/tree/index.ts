@@ -4,9 +4,4 @@ export {
   buildTree,
 } from './builder'
 export { filterTree, getTreeCategories } from './filter'
-export {
-  flattenTree,
-  collectDescendantItems,
-  getAllNodeIds,
-  countTreeItems,
-} from './traversal'
+export { flattenTree, collectDescendantItems, getAllNodeIds } from './traversal'

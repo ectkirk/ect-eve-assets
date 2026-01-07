@@ -6,9 +6,16 @@ import {
   ChevronsDownUp,
   Search,
   X,
+  RefreshCw,
 } from 'lucide-react'
-import { useTabControls } from '@/context'
-import { formatNumber } from '@/lib/utils'
+import {
+  useTabControls,
+  MAIL_FILTER_OPTIONS,
+  ORDER_TYPE_OPTIONS,
+  type OrderTypeValue,
+} from '@/context'
+import { CorporationLogo } from '@/components/ui/type-icon'
+import { cn, formatNumber } from '@/lib/utils'
 import {
   useAssetSettings,
   ASSET_SETTINGS_CONFIG,
@@ -34,6 +41,33 @@ const EXCLUDED_FILTER_VALUES = new Set(
 )
 
 const SEARCH_DEBOUNCE_MS = 250
+const MAX_LOYALTY_CORPS_DISPLAY = 6
+
+const ORDER_TYPE_LABELS: Record<OrderTypeValue, string> = {
+  all: 'All Orders',
+  sell: 'Sell Orders',
+  buy: 'Buy Orders',
+}
+
+function RefreshButton() {
+  const { refreshAction } = useTabControls()
+
+  if (!refreshAction) return null
+
+  return (
+    <button
+      onClick={refreshAction.onRefresh}
+      disabled={refreshAction.isRefreshing}
+      className="flex items-center gap-1 rounded border border-border bg-surface-tertiary px-2.5 py-1 text-sm hover:bg-surface-tertiary/70 disabled:opacity-50"
+      title="Refresh"
+    >
+      <RefreshCw
+        className={`h-3.5 w-3.5 ${refreshAction.isRefreshing ? 'animate-spin' : ''}`}
+      />
+      Refresh
+    </button>
+  )
+}
 
 function ExpandCollapseButton() {
   const { expandCollapse } = useTabControls()
@@ -131,10 +165,14 @@ export function SearchBar() {
   const {
     search,
     setSearch,
+    searchPlaceholder,
     categoryFilter,
     assetTypeFilter,
     resultCount,
     totalValue,
+    mailFilter,
+    loyaltyCorporations,
+    orderTypeFilter,
   } = useTabControls()
   const [inputValue, setInputValue] = useState(search)
   const settings = useAssetSettings()
@@ -181,10 +219,10 @@ export function SearchBar() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-content-muted" />
         <input
           type="text"
-          placeholder="Search name, group, location, system, region..."
+          placeholder={searchPlaceholder ?? 'Search...'}
           value={inputValue}
           onChange={(e) => handleChange(e.target.value)}
-          aria-label="Search assets"
+          aria-label="Search"
           className="w-full rounded border border-border bg-surface-tertiary pl-9 pr-8 py-1.5 text-sm placeholder-content-muted focus:border-accent focus:outline-hidden"
         />
         {inputValue && (
@@ -197,6 +235,72 @@ export function SearchBar() {
           </button>
         )}
       </div>
+
+      {mailFilter && (
+        <div className="flex gap-1">
+          {MAIL_FILTER_OPTIONS.map((type) => (
+            <button
+              key={type}
+              onClick={() => mailFilter.onChange(type)}
+              className={cn(
+                'rounded px-3 py-1 text-sm capitalize transition-colors',
+                mailFilter.value === type
+                  ? 'bg-accent text-white'
+                  : 'bg-surface-tertiary text-content-muted hover:bg-surface-tertiary/80'
+              )}
+            >
+              {type}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {loyaltyCorporations && loyaltyCorporations.corporations.length > 0 && (
+        <div className="flex items-center gap-3 overflow-x-auto">
+          {loyaltyCorporations.corporations
+            .slice(0, MAX_LOYALTY_CORPS_DISPLAY)
+            .map((corp) => (
+              <div key={corp.id} className="flex items-center gap-1.5 shrink-0">
+                <CorporationLogo corporationId={corp.id} size="sm" />
+                <span
+                  className="text-xs text-content-secondary truncate max-w-20"
+                  title={corp.name}
+                >
+                  {corp.name}
+                </span>
+                <span className="text-xs tabular-nums text-semantic-positive">
+                  {formatNumber(corp.total)}
+                </span>
+              </div>
+            ))}
+          {loyaltyCorporations.corporations.length >
+            MAX_LOYALTY_CORPS_DISPLAY && (
+            <span className="text-xs text-content-muted shrink-0">
+              +
+              {loyaltyCorporations.corporations.length -
+                MAX_LOYALTY_CORPS_DISPLAY}{' '}
+              more
+            </span>
+          )}
+        </div>
+      )}
+
+      {orderTypeFilter && (
+        <select
+          value={orderTypeFilter.value}
+          onChange={(e) =>
+            orderTypeFilter.onChange(e.target.value as OrderTypeValue)
+          }
+          aria-label="Filter by order type"
+          className="w-32 rounded border border-border bg-surface-tertiary px-2 py-1.5 text-sm focus:border-accent focus:outline-hidden"
+        >
+          {ORDER_TYPE_OPTIONS.map((opt) => (
+            <option key={opt} value={opt}>
+              {ORDER_TYPE_LABELS[opt]}
+            </option>
+          ))}
+        </select>
+      )}
 
       {assetTypeFilter && (
         <select
@@ -275,6 +379,7 @@ export function SearchBar() {
 
       <div className="flex-1" />
 
+      <RefreshButton />
       <ExpandCollapseButton />
       <ColumnsDropdown />
     </div>

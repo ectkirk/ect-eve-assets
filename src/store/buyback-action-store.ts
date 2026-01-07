@@ -1,4 +1,4 @@
-import { create } from 'zustand'
+import { createActionStore } from './create-action-store'
 import type { BuybackTabType } from '@/features/buyback'
 
 export interface BuybackAction {
@@ -6,17 +6,11 @@ export interface BuybackAction {
   securityTab: BuybackTabType
 }
 
-interface BuybackActionStore {
-  pendingAction: BuybackAction | null
-  triggerBuyback: (action: BuybackAction) => void
-  clearAction: () => void
-}
-
-export const useBuybackActionStore = create<BuybackActionStore>((set) => ({
-  pendingAction: null,
-  triggerBuyback: (action) => set({ pendingAction: action }),
-  clearAction: () => set({ pendingAction: null }),
-}))
+export const useBuybackActionStore = createActionStore<
+  BuybackAction,
+  'triggerBuyback',
+  [BuybackAction]
+>('triggerBuyback', (action) => action)
 
 export function getSecurityTab(
   securityStatus: number | null | undefined

@@ -4,6 +4,7 @@ import { useExpiryCacheStore } from '@/store/expiry-cache-store'
 import { useStoreRegistry } from '@/store/store-registry'
 import { usePriceStore } from '@/store/price-store'
 import { logger } from '@/lib/logger'
+import { getErrorMessage } from '@/lib/errors'
 import {
   loadFromDB,
   saveTrackedToDB,
@@ -182,7 +183,7 @@ export const useRegionalMarketStore = create<RegionalMarketStore>(
       } catch (err) {
         set({
           isUpdating: false,
-          updateError: err instanceof Error ? err.message : 'Unknown error',
+          updateError: getErrorMessage(err),
         })
       }
     },

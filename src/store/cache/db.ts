@@ -1,4 +1,5 @@
 import { logger } from '@/lib/logger'
+import { getErrorMessage } from '@/lib/errors'
 import { DB } from '@/lib/db-constants'
 import {
   openDatabase,
@@ -28,7 +29,7 @@ async function getDB(): Promise<IDBDatabase> {
         } catch (err) {
           logger.warn('localStorage not available during v11 migration', {
             module: 'ReferenceCache',
-            error: err instanceof Error ? err.message : String(err),
+            error: getErrorMessage(err),
           })
         }
         logger.info('Cleared types cache for v11 upgrade (prices merged)', {
@@ -43,7 +44,7 @@ async function getDB(): Promise<IDBDatabase> {
         } catch (err) {
           logger.warn('localStorage not available during v12 migration', {
             module: 'ReferenceCache',
-            error: err instanceof Error ? err.message : String(err),
+            error: getErrorMessage(err),
           })
         }
         logger.info('Removed legacy blueprints store', {

@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
+import { matchesSearchLower } from '@/lib/utils'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import {
   useStructuresStore,
   type ESICorporationStructure,
 } from '@/store/structures-store'
 import { useStarbasesStore, type ESIStarbase } from '@/store/starbases-store'
-import { useStarbaseDetailsStore } from '@/store/starbase-details-store'
+import {
+  useStarbaseDetailsStore,
+  calculateFuelHours,
+} from '@/store/starbase-details-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useTabControls } from '@/context'
 import {
@@ -14,16 +18,21 @@ import {
   useReferenceCacheStore,
 } from '@/store/reference-cache'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
-import { formatFuelExpiry } from '@/lib/timer-utils'
+import {
+  formatFuelExpiry,
+  formatFuelHours,
+  getStructureTimer,
+  getStarbaseTimer,
+} from '@/lib/timer-utils'
 import { calculateStructureValues } from '@/lib/structure-constants'
+import { extractFitting } from '@/lib/fitting-utils'
 import { FittingDialog } from '@/components/dialogs/FittingDialog'
 import { POSInfoDialog } from '@/components/dialogs/POSInfoDialog'
 import { StructureInfoDialog } from '@/components/dialogs/StructureInfoDialog'
-import { StarbaseTable } from './StarbaseTable'
-import { UpwellTable } from './UpwellTable'
+import { StructuresTable } from './StructuresTable'
 import type { TreeNode } from '@/lib/tree-types'
 import type { ESIAsset } from '@/api/endpoints/assets'
-import type { StructureRow, StarbaseRow } from './types'
+import type { UnifiedStructureRow } from './types'
 
 function buildStructureTreeNode(
   structureAsset: ESIAsset,
@@ -73,6 +82,12 @@ function buildStructureTreeNode(
     totalValue: 0,
     totalVolume: 0,
   }
+}
+
+function getRigNames(treeNode: TreeNode | null): string[] {
+  if (!treeNode) return []
+  const fitting = extractFitting(treeNode)
+  return fitting.rigModules.filter((m) => m.type_id > 0).map((m) => m.type_name)
 }
 
 export function StructuresTab() {
@@ -188,11 +203,11 @@ export function StructuresTab() {
     []
   )
 
-  const upwellRows = useMemo(() => {
+  const unifiedRows = useMemo(() => {
     void locations
     void structures
 
-    const rows: StructureRow[] = []
+    const rows: UnifiedStructureRow[] = []
 
     const filteredStructures = structuresByOwner.filter(({ owner }) =>
       selectedSet.has(ownerKey(owner.type, owner.id))
@@ -202,7 +217,6 @@ export function StructuresTab() {
       for (const structure of ownerStructures) {
         const type = types.get(structure.type_id)
         const location = getLocation(structure.system_id)
-
         const assetData = structureAssetMap.get(structure.structure_id)
         const treeNode = assetData
           ? buildStructureTreeNode(
@@ -211,45 +225,33 @@ export function StructuresTab() {
               assetNames
             )
           : null
+        const fuelInfo = formatFuelExpiry(structure.fuel_expires)
+        const timerInfo = getStructureTimer(structure)
+        const rigs = getRigNames(treeNode)
 
         rows.push({
+          id: `upwell-${structure.structure_id}`,
           kind: 'upwell',
-          structure,
+          name: structure.name || `Structure ${structure.structure_id}`,
           owner,
+          typeId: structure.type_id,
           typeName: type?.name ?? `Unknown Type ${structure.type_id}`,
           regionName: location?.regionName ?? 'Unknown Region',
-          fuelDays: formatFuelExpiry(structure.fuel_expires).days,
+          state: structure.state,
+          fuelValue: fuelInfo.days,
+          fuelText: fuelInfo.text,
+          fuelIsLow: fuelInfo.isLow,
+          rigs,
+          timerType: timerInfo.type,
+          timerText: timerInfo.text,
+          timerTimestamp: timerInfo.timestamp,
+          timerIsUrgent: timerInfo.isUrgent,
+          isReinforced: structure.state.includes('reinforce'),
+          structure,
           treeNode,
         })
       }
     }
-
-    if (!search) return rows
-
-    const searchLower = search.toLowerCase()
-    return rows.filter(
-      (row) =>
-        row.structure.name?.toLowerCase().includes(searchLower) ||
-        row.typeName.toLowerCase().includes(searchLower) ||
-        row.owner.name.toLowerCase().includes(searchLower) ||
-        row.regionName.toLowerCase().includes(searchLower)
-    )
-  }, [
-    structuresByOwner,
-    types,
-    locations,
-    structures,
-    search,
-    selectedSet,
-    structureAssetMap,
-    assetNames,
-  ])
-
-  const starbaseRows = useMemo(() => {
-    void types
-    void locations
-
-    const rows: StarbaseRow[] = []
 
     const filteredStarbases = starbasesByOwner.filter(({ owner }) =>
       selectedSet.has(ownerKey(owner.type, owner.id))
@@ -262,18 +264,37 @@ export function StructuresTab() {
         const moon = starbase.moon_id
           ? getLocation(starbase.moon_id)
           : undefined
+        const detail = starbaseDetails.get(starbase.starbase_id)
+        const fuelHours = calculateFuelHours(
+          detail,
+          type?.towerSize,
+          type?.fuelTier
+        )
+        const fuelInfo = formatFuelHours(fuelHours)
+        const timerInfo = getStarbaseTimer(starbase)
+        const state = starbase.state ?? 'unknown'
+        const moonName =
+          moon?.name ?? (starbase.moon_id ? `Moon ${starbase.moon_id}` : '-')
 
         rows.push({
+          id: `pos-${starbase.starbase_id}`,
           kind: 'pos',
-          starbase,
+          name: moonName,
           owner,
-          ownerName: owner.name,
+          typeId: starbase.type_id,
           typeName: type?.name ?? `Unknown Type ${starbase.type_id}`,
-          systemName: location?.name ?? `System ${starbase.system_id}`,
           regionName: location?.regionName ?? 'Unknown Region',
-          moonName: moon?.name ?? null,
-          towerSize: type?.towerSize,
-          fuelTier: type?.fuelTier,
+          state,
+          fuelValue: fuelHours,
+          fuelText: fuelInfo.text,
+          fuelIsLow: fuelInfo.isLow,
+          rigs: [],
+          timerType: timerInfo.type,
+          timerText: timerInfo.text,
+          timerTimestamp: timerInfo.timestamp,
+          timerIsUrgent: timerInfo.isUrgent,
+          isReinforced: state === 'reinforced',
+          starbase,
         })
       }
     }
@@ -281,15 +302,27 @@ export function StructuresTab() {
     if (!search) return rows
 
     const searchLower = search.toLowerCase()
-    return rows.filter(
-      (row) =>
-        row.typeName.toLowerCase().includes(searchLower) ||
-        row.ownerName.toLowerCase().includes(searchLower) ||
-        row.systemName.toLowerCase().includes(searchLower) ||
-        row.regionName.toLowerCase().includes(searchLower) ||
-        row.moonName?.toLowerCase().includes(searchLower)
+    return rows.filter((row) =>
+      matchesSearchLower(
+        searchLower,
+        row.name,
+        row.typeName,
+        row.owner.name,
+        row.regionName
+      )
     )
-  }, [starbasesByOwner, types, locations, search, selectedSet])
+  }, [
+    structuresByOwner,
+    starbasesByOwner,
+    types,
+    locations,
+    structures,
+    search,
+    selectedSet,
+    structureAssetMap,
+    assetNames,
+    starbaseDetails,
+  ])
 
   const totalCount = useMemo(() => {
     let count = 0
@@ -302,12 +335,10 @@ export function StructuresTab() {
     return count
   }, [structuresByOwner, starbasesByOwner])
 
-  const showingCount = upwellRows.length + starbaseRows.length
-
   useEffect(() => {
-    setResultCount({ showing: showingCount, total: totalCount })
+    setResultCount({ showing: unifiedRows.length, total: totalCount })
     return () => setResultCount(null)
-  }, [showingCount, totalCount, setResultCount])
+  }, [unifiedRows.length, totalCount, setResultCount])
 
   useEffect(() => {
     setTotalValue({ value: structureTotalValue })
@@ -334,35 +365,14 @@ export function StructuresTab() {
   })
   if (loadingState) return loadingState
 
-  const hasUpwell = upwellRows.length > 0
-  const hasStarbases = starbaseRows.length > 0
-  const hasAny = hasUpwell || hasStarbases
-
   return (
     <>
-      <div className="h-full overflow-auto flex flex-col gap-4">
-        {!hasAny && (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-content-secondary">No structures.</p>
-          </div>
-        )}
-
-        {hasUpwell && (
-          <UpwellTable
-            rows={upwellRows}
-            onViewStructureInfo={handleViewStructureInfo}
-            onViewFitting={handleViewFitting}
-          />
-        )}
-
-        {hasStarbases && (
-          <StarbaseTable
-            rows={starbaseRows}
-            starbaseDetails={starbaseDetails}
-            onViewPosInfo={handleViewPosInfo}
-          />
-        )}
-      </div>
+      <StructuresTable
+        rows={unifiedRows}
+        onViewStructureInfo={handleViewStructureInfo}
+        onViewPosInfo={handleViewPosInfo}
+        onViewFitting={handleViewFitting}
+      />
       <FittingDialog
         open={fittingDialogOpen}
         onOpenChange={setFittingDialogOpen}

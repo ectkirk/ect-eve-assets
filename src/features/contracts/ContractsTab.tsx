@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, useCallback } from 'react'
-import { ChevronRight, ChevronDown, Truck } from 'lucide-react'
+import { useEffect, useMemo } from 'react'
+import { matchesSearchLower } from '@/lib/utils'
 import { useTabControls } from '@/context'
 import { useColumnSettings, type ColumnConfig } from '@/hooks'
 import { useReferenceCacheStore } from '@/store/reference-cache'
@@ -12,68 +12,27 @@ import {
 import { useAssetData } from '@/hooks/useAssetData'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import { usePriceStore } from '@/store/price-store'
-import { cn, formatNumber } from '@/lib/utils'
 import { ContractsTable } from './ContractsTable'
-import {
-  type ContractDirection,
-  type ContractRow,
-  type DirectionGroup,
-  buildContractRow,
-  getContractValue,
-} from './contracts-utils'
+import { type ContractRow, buildContractRow } from './contracts-utils'
+
+const CONTAINER_CLASS =
+  'h-full rounded-lg border border-border bg-surface-secondary/30'
 
 const CONTRACT_COLUMNS: ColumnConfig[] = [
-  { id: 'status', label: 'Status' },
+  { id: 'owner', label: 'Owner' },
   { id: 'type', label: 'Type' },
   { id: 'items', label: 'Items' },
   { id: 'location', label: 'Location' },
+  { id: 'assigner', label: 'Assigner' },
   { id: 'assignee', label: 'Assignee' },
   { id: 'price', label: 'Price' },
   { id: 'value', label: 'Value' },
+  { id: 'volume', label: 'Volume' },
+  { id: 'collateral', label: 'Collateral' },
+  { id: 'days', label: 'Days' },
   { id: 'expires', label: 'Expires' },
-  { id: 'owner', label: 'Owner' },
+  { id: 'status', label: 'Status' },
 ]
-
-function DirectionGroupRow({
-  group,
-  isExpanded,
-  onToggle,
-}: {
-  group: DirectionGroup
-  isExpanded: boolean
-  onToggle: () => void
-}) {
-  const colorClass =
-    group.direction === 'in' ? 'text-status-positive' : 'text-status-warning'
-
-  return (
-    <div className="border-b border-border/50 last:border-b-0">
-      <button
-        onClick={onToggle}
-        className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-surface-secondary/50 text-left text-sm"
-      >
-        {isExpanded ? (
-          <ChevronDown className="h-4 w-4 text-content-secondary" />
-        ) : (
-          <ChevronRight className="h-4 w-4 text-content-secondary" />
-        )}
-        <span className={cn('flex-1', colorClass)}>{group.displayName}</span>
-        <span className="text-xs text-content-secondary">
-          {group.contracts.length} contract
-          {group.contracts.length !== 1 ? 's' : ''}
-        </span>
-        <span className="text-sm text-status-highlight tabular-nums">
-          {group.totalValue > 0 && formatNumber(group.totalValue)}
-        </span>
-      </button>
-      {isExpanded && (
-        <div className="border-t border-border/50 bg-surface/30 px-4 pb-2">
-          <ContractsTable contracts={group.contracts} />
-        </div>
-      )}
-    </div>
-  )
-}
 
 export function ContractsTab() {
   const ownersRecord = useAuthStore((s) => s.owners)
@@ -119,30 +78,28 @@ export function ContractsTab() {
   const structures = useReferenceCacheStore((s) => s.structures)
   const names = useReferenceCacheStore((s) => s.names)
 
-  const [expandedDirections, setExpandedDirections] = useState<Set<string>>(
-    new Set(['in', 'out'])
-  )
-  const [showCourier, setShowCourier] = useState(true)
-
-  const {
-    setExpandCollapse,
-    search,
-    setResultCount,
-    setTotalValue,
-    setColumns,
-  } = useTabControls()
+  const { search, setTotalValue, setColumns } = useTabControls()
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
   const selectedSet = useMemo(
     () => new Set(selectedOwnerIds),
     [selectedOwnerIds]
   )
 
-  const { getColumnsForDropdown } = useColumnSettings(
+  const { getColumnsForDropdown, getVisibleColumns } = useColumnSettings(
     'contracts',
     CONTRACT_COLUMNS
   )
+  const visibleColumns = useMemo(
+    () => new Set(getVisibleColumns()),
+    [getVisibleColumns]
+  )
 
-  const { directionGroups, courierGroup } = useMemo(() => {
+  const {
+    filteredContracts,
+    totalItemValue,
+    totalContractPrice,
+    totalCollateral,
+  } = useMemo(() => {
     void types
     void structures
     void names
@@ -161,22 +118,7 @@ export function ContractsTab() {
       }
     }
 
-    const groups: Record<ContractDirection, DirectionGroup> = {
-      in: {
-        direction: 'in',
-        displayName: 'Contracts Received',
-        contracts: [],
-        totalValue: 0,
-      },
-      out: {
-        direction: 'out',
-        displayName: 'Contracts Sent',
-        contracts: [],
-        totalValue: 0,
-      },
-    }
-
-    const courier: ContractRow[] = []
+    const allContracts: ContractRow[] = []
     const seenContracts = new Set<number>()
 
     for (const { owner, contracts } of filteredContractsByOwner) {
@@ -193,7 +135,6 @@ export function ContractsTab() {
         const isIssuer =
           ownerCharIds.has(contract.issuer_id) ||
           ownerCorpIds.has(contract.issuer_corporation_id)
-        const isCourier = contract.type === 'courier'
 
         const row = buildContractRow(
           contractWithItems,
@@ -201,65 +142,41 @@ export function ContractsTab() {
           owner.id,
           isIssuer
         )
-
-        if (isCourier) {
-          courier.push(row)
-        } else {
-          groups[row.direction].contracts.push(row)
-          groups[row.direction].totalValue += getContractValue(contract)
-        }
+        allContracts.push(row)
       }
     }
 
-    const filterAndSort = (
-      contracts: ContractRow[]
-    ): { filtered: ContractRow[]; totalValue: number } => {
-      const searchLower = search.toLowerCase()
-      let totalValue = 0
+    const searchLower = search.toLowerCase()
+    let itemValue = 0
+    let contractPrice = 0
+    let collateral = 0
 
-      const filtered = contracts.filter((row) => {
-        if (search) {
-          const matches =
-            row.typeName.toLowerCase().includes(searchLower) ||
-            row.assignerName.toLowerCase().includes(searchLower) ||
-            row.locationName.toLowerCase().includes(searchLower) ||
-            row.assigneeName.toLowerCase().includes(searchLower)
-          if (!matches) return false
-        }
-        totalValue += row.itemValue
-        return true
-      })
-
-      filtered.sort((a, b) => b.itemValue - a.itemValue)
-      return { filtered, totalValue }
-    }
-
-    const inResult = filterAndSort(groups.in.contracts)
-    const outResult = filterAndSort(groups.out.contracts)
-    const courierResult = filterAndSort(courier)
+    const filtered = allContracts.filter((row) => {
+      if (
+        search &&
+        !matchesSearchLower(
+          searchLower,
+          row.typeName,
+          row.assignerName,
+          row.locationName,
+          row.assigneeName
+        )
+      )
+        return false
+      itemValue += row.itemValue
+      const contract = row.contractWithItems.contract
+      contractPrice += (contract.price ?? 0) + (contract.reward ?? 0)
+      if (contract.type === 'courier') {
+        collateral += contract.collateral ?? 0
+      }
+      return true
+    })
 
     return {
-      directionGroups: [
-        {
-          ...groups.in,
-          contracts: inResult.filtered,
-          totalValue: inResult.totalValue,
-        },
-        {
-          ...groups.out,
-          contracts: outResult.filtered,
-          totalValue: outResult.totalValue,
-        },
-      ].filter((g) => g.contracts.length > 0),
-      courierGroup:
-        courierResult.filtered.length > 0
-          ? {
-              direction: 'out' as ContractDirection,
-              displayName: 'Active Couriers',
-              contracts: courierResult.filtered,
-              totalValue: courierResult.totalValue,
-            }
-          : null,
+      filteredContracts: filtered,
+      totalItemValue: itemValue,
+      totalContractPrice: contractPrice,
+      totalCollateral: collateral,
     }
   }, [
     contractsByOwner,
@@ -272,98 +189,17 @@ export function ContractsTab() {
     selectedSet,
   ])
 
-  const toggleDirection = useCallback((direction: string) => {
-    setExpandedDirections((prev) => {
-      const next = new Set(prev)
-      if (next.has(direction)) next.delete(direction)
-      else next.add(direction)
-      return next
-    })
-  }, [])
-
-  const expandAll = useCallback(() => {
-    setExpandedDirections(new Set(['in', 'out']))
-  }, [])
-
-  const collapseAll = useCallback(() => {
-    setExpandedDirections(new Set())
-  }, [])
-
-  const expandableDirections = ['in', 'out'] as const
-  const isAllExpanded = expandableDirections.every((d) =>
-    expandedDirections.has(d)
-  )
-
-  useEffect(() => {
-    setExpandCollapse({
-      isExpanded: isAllExpanded,
-      toggle: () => {
-        if (isAllExpanded) collapseAll()
-        else expandAll()
-      },
-    })
-    return () => setExpandCollapse(null)
-  }, [isAllExpanded, expandAll, collapseAll, setExpandCollapse])
-
-  const { totals, contractPrice, totalCollateral } = useMemo(() => {
-    let activeCount = 0
-    let valueIn = 0
-    let valueOut = 0
-    let contractPriceSum = 0
-
-    for (const group of directionGroups) {
-      activeCount += group.contracts.length
-      if (group.direction === 'in') {
-        valueIn = group.totalValue
-      } else {
-        valueOut = group.totalValue
-      }
-      for (const row of group.contracts) {
-        contractPriceSum +=
-          (row.contractWithItems.contract.price ?? 0) +
-          (row.contractWithItems.contract.reward ?? 0)
-      }
-    }
-
-    let collateralSum = 0
-    if (courierGroup) {
-      for (const row of courierGroup.contracts) {
-        collateralSum += row.contractWithItems.contract.collateral ?? 0
-      }
-    }
-
-    const courierCount = courierGroup?.contracts.length ?? 0
-
-    return {
-      totals: { activeCount, valueIn, valueOut, courierCount },
-      contractPrice: contractPriceSum,
-      totalCollateral: collateralSum,
-    }
-  }, [directionGroups, courierGroup])
-
-  useEffect(() => {
-    const showingCount = totals.activeCount + totals.courierCount
-    setResultCount({ showing: showingCount, total: showingCount })
-    return () => setResultCount(null)
-  }, [totals.activeCount, totals.courierCount, setResultCount])
-
   useEffect(() => {
     setTotalValue({
-      value: totals.valueIn + totals.valueOut,
-      label: 'Contract Items',
-      secondaryValue: contractPrice,
+      value: totalItemValue,
+      label: 'Item Value',
+      secondaryValue: totalContractPrice,
       secondaryLabel: 'Contract Price',
       tertiaryValue: totalCollateral > 0 ? totalCollateral : undefined,
       tertiaryLabel: 'Collateral',
     })
     return () => setTotalValue(null)
-  }, [
-    totals.valueIn,
-    totals.valueOut,
-    contractPrice,
-    totalCollateral,
-    setTotalValue,
-  ])
+  }, [totalItemValue, totalContractPrice, totalCollateral, setTotalValue])
 
   useEffect(() => {
     setColumns(getColumnsForDropdown())
@@ -380,65 +216,20 @@ export function ContractsTab() {
   })
   if (loadingState) return loadingState
 
+  if (filteredContracts.length === 0) {
+    return (
+      <div className={`${CONTAINER_CLASS} flex items-center justify-center`}>
+        <p className="text-content-secondary">No active contracts.</p>
+      </div>
+    )
+  }
+
   return (
-    <div className="h-full overflow-auto">
-      {directionGroups.length === 0 && !courierGroup ? (
-        <div className="flex items-center justify-center h-full">
-          <p className="text-content-secondary">No active contracts.</p>
-        </div>
-      ) : (
-        <>
-          {directionGroups.length > 0 && (
-            <div className="rounded-lg border border-border bg-surface-secondary/30">
-              {directionGroups.map((group) => (
-                <DirectionGroupRow
-                  key={group.direction}
-                  group={group}
-                  isExpanded={expandedDirections.has(group.direction)}
-                  onToggle={() => toggleDirection(group.direction)}
-                />
-              ))}
-            </div>
-          )}
-          {courierGroup && (
-            <>
-              {directionGroups.length > 0 && <div className="h-4" />}
-              <div className="rounded-lg border border-border bg-surface-secondary/30">
-                <button
-                  onClick={() => setShowCourier(!showCourier)}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-surface-secondary/50 text-left text-sm"
-                >
-                  {showCourier ? (
-                    <ChevronDown className="h-4 w-4 text-content-secondary" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4 text-content-secondary" />
-                  )}
-                  <Truck className="h-4 w-4 text-status-info" />
-                  <span className="text-status-info flex-1">
-                    {courierGroup.displayName}
-                  </span>
-                  <span className="text-xs text-content-secondary">
-                    {courierGroup.contracts.length} contract
-                    {courierGroup.contracts.length !== 1 ? 's' : ''}
-                  </span>
-                  <span className="text-sm text-status-highlight tabular-nums">
-                    {courierGroup.totalValue > 0 &&
-                      formatNumber(courierGroup.totalValue)}
-                  </span>
-                </button>
-                {showCourier && (
-                  <div className="border-t border-border/50 bg-surface/30 px-4 pb-2">
-                    <ContractsTable
-                      contracts={courierGroup.contracts}
-                      showCourierColumns
-                    />
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </>
-      )}
+    <div className={`${CONTAINER_CLASS} overflow-auto`}>
+      <ContractsTable
+        contracts={filteredContracts}
+        visibleColumns={visibleColumns}
+      />
     </div>
   )
 }

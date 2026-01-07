@@ -1,6 +1,7 @@
 import { URL } from 'node:url'
 import * as jose from 'jose'
 import { logger } from '../logger.js'
+import { getErrorMessage } from '../fetch-utils.js'
 import { EVE_SSO } from './config.js'
 import type { CorporationRoles } from '../../../shared/electron-api-types.js'
 
@@ -111,7 +112,7 @@ export async function fetchCharacterRoles(
     logger.debug('Error fetching character roles', {
       module: 'Auth',
       characterId,
-      error: err instanceof Error ? err.message : String(err),
+      error: getErrorMessage(err),
     })
     return null
   }

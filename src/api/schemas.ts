@@ -200,6 +200,51 @@ export const ESICloneSchema = z.object({
   last_station_change_date: z.string().optional(),
 })
 
+// ESI Skills
+export const ESISkillSchema = z.object({
+  skill_id: z.number(),
+  active_skill_level: z.number(),
+  trained_skill_level: z.number(),
+  skillpoints_in_skill: z.number(),
+})
+
+export const ESICharacterSkillsSchema = z.object({
+  skills: z.array(ESISkillSchema),
+  total_sp: z.number(),
+  unallocated_sp: z.number().optional(),
+})
+
+// ESI Mail
+export const ESIMailRecipientSchema = z.object({
+  recipient_id: z.number(),
+  recipient_type: z.enum([
+    'alliance',
+    'character',
+    'corporation',
+    'mailing_list',
+  ]),
+})
+
+export const ESIMailHeaderSchema = z.object({
+  from: z.number().optional(),
+  is_read: z.boolean().optional(),
+  labels: z.array(z.number()).optional(),
+  mail_id: z.number(),
+  recipients: z.array(ESIMailRecipientSchema).optional(),
+  subject: z.string().optional(),
+  timestamp: z.string(),
+})
+
+export const ESIMailBodySchema = z.object({
+  body: z.string().optional(),
+  from: z.number().optional(),
+  labels: z.array(z.number()).optional(),
+  read: z.boolean().optional(),
+  recipients: z.array(ESIMailRecipientSchema).optional(),
+  subject: z.string().optional(),
+  timestamp: z.string().optional(),
+})
+
 // ESI Universe
 export const ESIStructureSchema = z.object({
   name: z.string(),

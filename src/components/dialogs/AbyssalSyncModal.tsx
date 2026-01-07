@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -8,13 +8,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { AlertBox } from '@/components/ui/alert-box'
-import { useAssetStore } from '@/store/asset-store'
-import { usePriceStore } from '@/store/price-store'
-import {
-  isAbyssalTypeId,
-  fetchAbyssalPrices,
-  type AbyssalItem,
-} from '@/api/mutamarket-client'
+import { useAbyssalSyncStore } from '@/store/abyssal-sync-store'
 import { ExternalLink } from 'lucide-react'
 
 interface AbyssalSyncModalProps {
@@ -22,75 +16,24 @@ interface AbyssalSyncModalProps {
   onOpenChange: (open: boolean) => void
 }
 
-function collectUnpricedAbyssalItems(): AbyssalItem[] {
-  const assetsByOwner = useAssetStore.getState().assetsByOwner
-  const priceStore = usePriceStore.getState()
-  const unpricedItems: AbyssalItem[] = []
-
-  for (const { assets } of assetsByOwner) {
-    for (const asset of assets) {
-      if (isAbyssalTypeId(asset.type_id)) {
-        const price = priceStore.getAbyssalPrice(asset.item_id)
-        if (price === undefined || price === 0) {
-          unpricedItems.push({ itemId: asset.item_id, typeId: asset.type_id })
-        }
-      }
-    }
-  }
-
-  return unpricedItems
-}
-
 export function AbyssalSyncModal({
   open,
   onOpenChange,
 }: AbyssalSyncModalProps) {
-  const [unpricedCount, setUnpricedCount] = useState(0)
-  const [isSyncing, setIsSyncing] = useState(false)
-  const [progress, setProgress] = useState<{
-    fetched: number
-    total: number
-  } | null>(null)
-  const [syncResult, setSyncResult] = useState<{
-    success: number
-    failed: number
-  } | null>(null)
-
-  const refreshCount = useCallback(() => {
-    const items = collectUnpricedAbyssalItems()
-    setUnpricedCount(items.length)
-    setSyncResult(null)
-  }, [])
+  const {
+    isSyncing,
+    progress,
+    lastResult,
+    unpricedCount,
+    refreshUnpricedCount,
+    startSync,
+  } = useAbyssalSyncStore()
 
   useEffect(() => {
     if (open) {
-      refreshCount()
+      refreshUnpricedCount()
     }
-  }, [open, refreshCount])
-
-  const handleSync = async () => {
-    const items = collectUnpricedAbyssalItems()
-    if (items.length === 0) return
-
-    setIsSyncing(true)
-    setProgress({ fetched: 0, total: items.length })
-    setSyncResult(null)
-
-    try {
-      const results = await fetchAbyssalPrices(items, (fetched, total) => {
-        setProgress({ fetched, total })
-      })
-
-      const successCount = results.size
-      const failedCount = items.length - successCount
-
-      setSyncResult({ success: successCount, failed: failedCount })
-      refreshCount()
-    } finally {
-      setIsSyncing(false)
-      setProgress(null)
-    }
-  }
+  }, [open, refreshUnpricedCount])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -135,7 +78,7 @@ export function AbyssalSyncModal({
                   {unpricedCount}
                 </div>
               </div>
-              {unpricedCount === 0 && (
+              {unpricedCount === 0 && !isSyncing && (
                 <div className="text-sm text-semantic-positive">
                   All modules priced
                 </div>
@@ -159,19 +102,22 @@ export function AbyssalSyncModal({
                   }}
                 />
               </div>
+              <p className="text-xs text-content-muted">
+                You can close this dialog — sync will continue in the background
+              </p>
             </div>
           )}
 
-          {syncResult && (
+          {lastResult && (
             <div className="rounded-lg border border-border bg-surface-tertiary/50 p-3 text-sm">
               <span className="text-semantic-positive">
-                {syncResult.success} priced
+                {lastResult.success} priced
               </span>
-              {syncResult.failed > 0 && (
+              {lastResult.failed > 0 && (
                 <>
                   <span className="text-content-muted"> · </span>
                   <span className="text-semantic-warning">
-                    {syncResult.failed} not found on Mutamarket
+                    {lastResult.failed} not found on Mutamarket
                   </span>
                 </>
               )}
@@ -182,13 +128,12 @@ export function AbyssalSyncModal({
         <DialogFooter className="gap-2 sm:gap-2">
           <button
             onClick={() => onOpenChange(false)}
-            disabled={isSyncing}
-            className="rounded-md border border-border px-4 py-2 text-sm font-medium hover:bg-surface-tertiary disabled:opacity-50"
+            className="rounded-md border border-border px-4 py-2 text-sm font-medium hover:bg-surface-tertiary"
           >
-            {isSyncing ? 'Please wait...' : 'Close'}
+            Close
           </button>
           <button
-            onClick={handleSync}
+            onClick={startSync}
             disabled={unpricedCount === 0 || isSyncing}
             className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent/90 disabled:opacity-50"
           >

@@ -1,19 +1,11 @@
-import { create } from 'zustand'
+import { createActionStore } from './create-action-store'
 
 interface RegionalMarketAction {
   typeId: number
 }
 
-interface RegionalMarketActionStore {
-  pendingAction: RegionalMarketAction | null
-  navigateToType: (typeId: number) => void
-  clearAction: () => void
-}
-
-export const useRegionalMarketActionStore = create<RegionalMarketActionStore>(
-  (set) => ({
-    pendingAction: null,
-    navigateToType: (typeId) => set({ pendingAction: { typeId } }),
-    clearAction: () => set({ pendingAction: null }),
-  })
-)
+export const useRegionalMarketActionStore = createActionStore<
+  RegionalMarketAction,
+  'navigateToType',
+  [number]
+>('navigateToType', (typeId) => ({ typeId }))
