@@ -156,6 +156,7 @@
   "map.safer": "より安全",
   "map.lessSecure": "低セキュリティ",
   "map.useAnsiblexes": "アンシブレックスを使用",
+  "map.showCharacterLocations": "キャラクター位置を表示",
   "map.security": "セキュリティ",
   "map.regionLabel": "地域",
   "map.faction": "ファクション",

@@ -201,7 +201,7 @@
   "abyssalSync.allPriced": "Alle Module bewertet",
   "abyssalSync.syncing": "Synchronisiere...",
   "abyssalSync.progress": "{{fetched}} / {{total}}",
-  "abyssalSync.backgroundNote": "Sie können diesen Dialog schließen — die Synchronisierung wird im Hintergrund fortgesetzt",
+  "abyssalSync.backgroundNote": "Sie können diesen Dialog schließen - die Synchronisierung wird im Hintergrund fortgesetzt",
   "abyssalSync.resultSuccess": "{{count}} bewertet",
   "abyssalSync.resultFailed": "{{count}} nicht auf Mutamarket gefunden",
   "abyssalSync.syncButton": "{{count}} Module synchronisieren",

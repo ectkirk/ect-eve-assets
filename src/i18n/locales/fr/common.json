@@ -178,7 +178,6 @@
   "contextMenu.showPocoInfo": "Afficher info douane",
   "contextMenu.viewFitting": "Voir l'équipement",
   "contextMenu.openMarketIngame": "Ouvrir le marché en jeu",
-  "contextMenu.setAutopilotIngame": "Définir le pilote automatique en jeu",
   "contextMenu.openContractIngame": "Ouvrir le contrat en jeu",
   "contextMenu.setWaypoint": "Définir un point de passage",
   "contextMenu.setWaypointDestination": "Définir un point de passage vers la destination"

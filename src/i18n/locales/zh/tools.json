@@ -156,6 +156,7 @@
   "map.safer": "更安全",
   "map.lessSecure": "低安",
   "map.useAnsiblexes": "使用星门",
+  "map.showCharacterLocations": "显示角色位置",
   "map.security": "安全等级",
   "map.regionLabel": "区域",
   "map.faction": "势力",

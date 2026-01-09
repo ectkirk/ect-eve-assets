@@ -156,6 +156,7 @@
   "map.safer": "Plus sûr",
   "map.lessSecure": "Moins sûr",
   "map.useAnsiblexes": "Utiliser les Ansiblexes",
+  "map.showCharacterLocations": "Afficher les positions des personnages",
   "map.security": "Sécurité",
   "map.regionLabel": "Région",
   "map.faction": "Faction",

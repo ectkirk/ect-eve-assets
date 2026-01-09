@@ -32,7 +32,7 @@
   "clearCache.reload": "перезагрузить",
 
   "support.title": "Поддержать нас",
-  "support.intro": "ECT EVE Assets — бесплатное приложение с открытым исходным кодом. Вот как вы можете поддержать проект:",
+  "support.intro": "ECT EVE Assets - бесплатное приложение с открытым исходным кодом. Вот как вы можете поддержать проект:",
   "support.spreadWord": "Расскажите другим",
   "support.spreadWordDesc": "Расскажите своим согильдийцам и друзьям об ECT EVE Assets!",
   "support.joinCommunity": "Присоединяйтесь к сообществу",
@@ -201,7 +201,7 @@
   "abyssalSync.allPriced": "Все модули оценены",
   "abyssalSync.syncing": "Синхронизация...",
   "abyssalSync.progress": "{{fetched}} / {{total}}",
-  "abyssalSync.backgroundNote": "Вы можете закрыть этот диалог — синхронизация продолжится в фоновом режиме",
+  "abyssalSync.backgroundNote": "Вы можете закрыть этот диалог - синхронизация продолжится в фоновом режиме",
   "abyssalSync.resultSuccess": "{{count}} оценено",
   "abyssalSync.resultFailed": "{{count}} не найдено на Mutamarket",
   "abyssalSync.syncButton": "Синхронизировать {{count}} модулей",

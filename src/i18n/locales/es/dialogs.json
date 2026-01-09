@@ -201,7 +201,7 @@
   "abyssalSync.allPriced": "Todos los módulos con precio",
   "abyssalSync.syncing": "Sincronizando...",
   "abyssalSync.progress": "{{fetched}} / {{total}}",
-  "abyssalSync.backgroundNote": "Puedes cerrar este diálogo — la sincronización continuará en segundo plano",
+  "abyssalSync.backgroundNote": "Puedes cerrar este diálogo - la sincronización continuará en segundo plano",
   "abyssalSync.resultSuccess": "{{count}} con precio",
   "abyssalSync.resultFailed": "{{count}} no encontrados en Mutamarket",
   "abyssalSync.syncButton": "Sincronizar {{count}} módulos",

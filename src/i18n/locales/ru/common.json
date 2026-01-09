@@ -178,7 +178,6 @@
   "contextMenu.showPocoInfo": "Информация о таможне",
   "contextMenu.viewFitting": "Показать фит",
   "contextMenu.openMarketIngame": "Открыть рынок в игре",
-  "contextMenu.setAutopilotIngame": "Установить автопилот в игре",
   "contextMenu.openContractIngame": "Открыть контракт в игре",
   "contextMenu.setWaypoint": "Установить точку маршрута",
   "contextMenu.setWaypointDestination": "Установить точку маршрута к месту назначения"
