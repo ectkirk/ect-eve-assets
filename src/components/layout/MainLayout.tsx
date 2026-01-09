@@ -2,13 +2,15 @@ import {
   useState,
   useCallback,
   useRef,
+  useEffect,
   lazy,
   Suspense,
   type KeyboardEvent,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Pause, Play } from 'lucide-react'
 import { useAuthStore } from '@/store/auth-store'
+import { useESIPauseStore } from '@/store/esi-pause-store'
 import { useAssetStore } from '@/store/asset-store'
 import { useExpiryCacheStore } from '@/store/expiry-cache-store'
 import {
@@ -238,8 +240,9 @@ function RefreshStatus() {
   const { t } = useTranslation('layout')
   const currentlyRefreshing = useExpiryCacheStore((s) => s.currentlyRefreshing)
   const owners = useAuthStore((s) => s.owners)
+  const isPaused = useESIPauseStore((s) => s.isPaused)
 
-  if (!currentlyRefreshing) return null
+  if (!currentlyRefreshing || isPaused) return null
 
   const owner = owners[currentlyRefreshing.ownerKey]
   const ownerName = owner?.name ?? 'Unknown'
@@ -253,6 +256,31 @@ function RefreshStatus() {
       <Loader2 className="h-3.5 w-3.5 animate-spin" />
       <span>{t('header.updating', { name: ownerName })}</span>
     </div>
+  )
+}
+
+function ESIPausedIndicator() {
+  const { t } = useTranslation('layout')
+  const isPaused = useESIPauseStore((s) => s.isPaused)
+  const toggle = useESIPauseStore((s) => s.toggle)
+  const sync = useESIPauseStore((s) => s.sync)
+
+  useEffect(() => {
+    sync()
+  }, [sync])
+
+  if (!isPaused) return null
+
+  return (
+    <button
+      onClick={toggle}
+      className="flex items-center gap-2 rounded-md bg-semantic-warning/20 px-3 py-1.5 text-sm font-medium text-semantic-warning transition-colors hover:bg-semantic-warning/30"
+      style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+    >
+      <Pause className="h-3.5 w-3.5" />
+      <span>{t('header.paused')}</span>
+      <Play className="h-3.5 w-3.5" />
+    </button>
   )
 }
 
@@ -451,7 +479,11 @@ function MainLayoutInner() {
         >
           <DiscordIcon className="h-5 w-5" />
         </a>
-        <div className="mx-4">
+        <div
+          className="mx-4 flex items-center gap-3"
+          style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+        >
+          <ESIPausedIndicator />
           <RefreshStatus />
         </div>
         <div className="flex-1" />

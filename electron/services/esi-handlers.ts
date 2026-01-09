@@ -286,4 +286,16 @@ export function registerESIHandlers(
   ipcMain.handle('esi:getCachedHealth', () => {
     return getESIService().getCachedHealthStatus()
   })
+
+  ipcMain.handle('esi:pause', () => {
+    getESIService().pause()
+  })
+
+  ipcMain.handle('esi:resume', () => {
+    getESIService().resume()
+  })
+
+  ipcMain.handle('esi:isPaused', () => {
+    return getESIService().isPaused()
+  })
 }

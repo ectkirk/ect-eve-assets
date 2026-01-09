@@ -39,6 +39,7 @@
   "header.wallet": "Portefeuille :",
   "header.structures": "Structures :",
   "header.updating": "Mise à jour de {{name}}",
+  "header.paused": "ESI en pause",
 
   "accessibility.skipToContent": "Passer au contenu principal",
   "accessibility.discord": "Rejoindre notre serveur Discord",
@@ -58,6 +59,8 @@
   "ownerModal.removeConfirm": "Êtes-vous sûr de vouloir supprimer {{name}} ? Toutes les données en cache pour ce compte seront supprimées.",
   "ownerModal.logoutAllTitle": "Déconnecter tous les comptes ?",
   "ownerModal.logoutAllConfirm": "Êtes-vous sûr de vouloir déconnecter tous les comptes ? Toutes les données en cache seront supprimées et vous devrez réauthentifier chaque compte.",
+  "ownerModal.pauseESI": "Mettre en pause les mises à jour ESI",
+  "ownerModal.resumeESI": "Reprendre les mises à jour ESI",
   "ownerModal.errors.wrongCharacterForCorp": "Veuillez vous authentifier avec {{name}} pour ajouter leur corporation.",
   "ownerModal.errors.wrongCharacter": "Mauvais personnage authentifié. Attendu {{name}}, mais un autre personnage a été reçu. Veuillez réessayer.",
   "ownerModal.errors.failedRefreshRoles": "Échec de l'actualisation des rôles de la corporation",

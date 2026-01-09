@@ -508,21 +508,28 @@ export class MainESIService {
 
   pause(): void {
     this.paused = true
+    this.scheduleSaveState()
   }
 
   resume(): void {
     this.paused = false
+    this.scheduleSaveState()
+  }
+
+  isPaused(): boolean {
+    return this.paused
   }
 
   private loadState(): void {
     try {
       if (fs.existsSync(this.rateLimitFilePath)) {
         const data = fs.readFileSync(this.rateLimitFilePath, 'utf-8')
-        const states = JSON.parse(data)
-        this.rateLimiter.loadState(states)
+        const state = JSON.parse(data)
+        this.rateLimiter.loadState(state.rateLimiter)
+        this.paused = state.paused ?? false
       }
     } catch (err) {
-      logger.warn('Failed to load rate limit state', {
+      logger.warn('Failed to load ESI state', {
         module: 'ESI',
         error: getErrorMessage(err),
       })
@@ -540,8 +547,11 @@ export class MainESIService {
 
   private saveState(): void {
     try {
-      const states = this.rateLimiter.exportState()
-      fs.writeFileSync(this.rateLimitFilePath, JSON.stringify(states, null, 2))
+      const state = {
+        rateLimiter: this.rateLimiter.exportState(),
+        paused: this.paused,
+      }
+      fs.writeFileSync(this.rateLimitFilePath, JSON.stringify(state, null, 2))
     } catch (err) {
       logger.warn('Failed to save rate limit state', {
         module: 'ESI',

@@ -808,6 +808,9 @@ export interface ESIAPI {
   getRateLimitInfo: () => Promise<ESIRateLimitInfo>
   provideToken: (characterId: number, token: string | null) => Promise<void>
   onRequestToken: (callback: (characterId: number) => void) => () => void
+  pause: () => Promise<void>
+  resume: () => Promise<void>
+  isPaused: () => Promise<boolean>
 }
 
 export interface ElectronAPI {

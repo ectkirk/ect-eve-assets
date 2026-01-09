@@ -39,6 +39,7 @@
   "header.wallet": "Кошелёк:",
   "header.structures": "Структуры:",
   "header.updating": "Обновление {{name}}",
+  "header.paused": "ESI Приостановлен",
 
   "accessibility.skipToContent": "Перейти к основному содержимому",
   "accessibility.discord": "Присоединиться к нашему Discord серверу",
@@ -58,6 +59,8 @@
   "ownerModal.removeConfirm": "Вы уверены, что хотите удалить {{name}}? Все кэшированные данные этого аккаунта будут удалены.",
   "ownerModal.logoutAllTitle": "Выйти из всех аккаунтов?",
   "ownerModal.logoutAllConfirm": "Вы уверены, что хотите выйти из всех аккаунтов? Все кэшированные данные будут удалены, и вам потребуется повторная авторизация каждого аккаунта.",
+  "ownerModal.pauseESI": "Приостановить обновления ESI",
+  "ownerModal.resumeESI": "Возобновить обновления ESI",
   "ownerModal.errors.wrongCharacterForCorp": "Пожалуйста, авторизуйтесь как {{name}}, чтобы добавить их корпорацию.",
   "ownerModal.errors.wrongCharacter": "Авторизован неправильный персонаж. Ожидался {{name}}, но получен другой персонаж. Пожалуйста, попробуйте снова.",
   "ownerModal.errors.failedRefreshRoles": "Не удалось обновить роли корпорации",

@@ -111,6 +111,9 @@ const esi: ESIAPI = {
     ipcRenderer.on('esi:requestToken', handler)
     return () => ipcRenderer.removeListener('esi:requestToken', handler)
   },
+  pause: () => ipcRenderer.invoke('esi:pause'),
+  resume: () => ipcRenderer.invoke('esi:resume'),
+  isPaused: () => ipcRenderer.invoke('esi:isPaused') as Promise<boolean>,
 }
 
 const electronAPI: ElectronAPI = {

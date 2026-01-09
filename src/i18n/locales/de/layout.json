@@ -39,6 +39,7 @@
   "header.wallet": "Brieftasche:",
   "header.structures": "Strukturen:",
   "header.updating": "Aktualisiere {{name}}",
+  "header.paused": "ESI Pausiert",
 
   "accessibility.skipToContent": "Zum Hauptinhalt springen",
   "accessibility.discord": "Discord-Server beitreten",
@@ -58,6 +59,8 @@
   "ownerModal.removeConfirm": "Sind Sie sicher, dass Sie {{name}} entfernen möchten? Alle zwischengespeicherten Daten für dieses Konto werden gelöscht.",
   "ownerModal.logoutAllTitle": "Alle Konten abmelden?",
   "ownerModal.logoutAllConfirm": "Sind Sie sicher, dass Sie alle Konten abmelden möchten? Alle zwischengespeicherten Daten werden gelöscht und Sie müssen jedes Konto erneut authentifizieren.",
+  "ownerModal.pauseESI": "ESI-Updates pausieren",
+  "ownerModal.resumeESI": "ESI-Updates fortsetzen",
   "ownerModal.errors.wrongCharacterForCorp": "Bitte authentifizieren Sie sich mit {{name}}, um deren Corporation hinzuzufügen.",
   "ownerModal.errors.wrongCharacter": "Falscher Charakter authentifiziert. Erwartet war {{name}}, erhalten wurde ein anderer Charakter. Bitte versuchen Sie es erneut.",
   "ownerModal.errors.failedRefreshRoles": "Corporation-Rollen konnten nicht aktualisiert werden",

@@ -1,8 +1,9 @@
-import { useMemo, Fragment, useReducer } from 'react'
+import { useMemo, Fragment, useReducer, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore, type Owner, ownerKey } from '@/store/auth-store'
 import { ownerModalReducer, initialOwnerModalState } from './owner-modal-state'
 import { useExpiryCacheStore } from '@/store/expiry-cache-store'
+import { useESIPauseStore } from '@/store/esi-pause-store'
 import { useStoreRegistry } from '@/store/store-registry'
 import { esi } from '@/api/esi'
 import { getCharacterRoles } from '@/api/endpoints/corporation'
@@ -16,7 +17,7 @@ import {
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Loader2, User, Search } from 'lucide-react'
+import { Loader2, User, Search, Pause, Play } from 'lucide-react'
 import { OwnerRow } from './OwnerRow'
 
 interface OwnerManagementModalProps {
@@ -59,6 +60,14 @@ export function OwnerManagementModal({
     showLogoutAllConfirm,
     refreshingRolesOwner,
   } = state
+
+  const isPaused = useESIPauseStore((s) => s.isPaused)
+  const togglePause = useESIPauseStore((s) => s.toggle)
+  const syncPause = useESIPauseStore((s) => s.sync)
+
+  useEffect(() => {
+    if (open) syncPause()
+  }, [open, syncPause])
 
   const ownersRecord = useAuthStore((state) => state.owners)
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
@@ -512,6 +521,28 @@ export function OwnerManagementModal({
             >
               <User className="h-4 w-4" />
               {t('ownerModal.addCharacter')}
+            </button>
+          )}
+          {!isBusy && authFlow === 'idle' && (
+            <button
+              onClick={togglePause}
+              className={`flex w-full items-center justify-center gap-2 rounded-md border px-4 py-2 text-sm font-medium ${
+                isPaused
+                  ? 'border-semantic-positive/50 text-semantic-positive hover:bg-semantic-positive/10'
+                  : 'border-semantic-warning/50 text-semantic-warning hover:bg-semantic-warning/10'
+              }`}
+            >
+              {isPaused ? (
+                <>
+                  <Play className="h-4 w-4" />
+                  {t('ownerModal.resumeESI')}
+                </>
+              ) : (
+                <>
+                  <Pause className="h-4 w-4" />
+                  {t('ownerModal.pauseESI')}
+                </>
+              )}
             </button>
           )}
           {owners.length > 0 && !isBusy && authFlow === 'idle' && (

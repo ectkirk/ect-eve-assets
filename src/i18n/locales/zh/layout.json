@@ -39,6 +39,7 @@
   "header.wallet": "钱包：",
   "header.structures": "建筑：",
   "header.updating": "正在更新 {{name}}",
+  "header.paused": "ESI 已暂停",
 
   "accessibility.skipToContent": "跳转到主要内容",
   "accessibility.discord": "加入我们的 Discord 服务器",
@@ -58,6 +59,8 @@
   "ownerModal.removeConfirm": "确定要移除 {{name}} 吗？该账号的所有缓存数据将被删除。",
   "ownerModal.logoutAllTitle": "登出所有账号？",
   "ownerModal.logoutAllConfirm": "确定要登出所有账号吗？所有缓存数据将被删除，您需要重新验证每个账号。",
+  "ownerModal.pauseESI": "暂停 ESI 更新",
+  "ownerModal.resumeESI": "恢复 ESI 更新",
   "ownerModal.errors.wrongCharacterForCorp": "请使用{{name}}进行认证以添加其军团。",
   "ownerModal.errors.wrongCharacter": "认证了错误的角色。期望{{name}}，但获得了不同的角色。请重试。",
   "ownerModal.errors.failedRefreshRoles": "刷新军团角色失败",

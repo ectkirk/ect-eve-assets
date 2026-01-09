@@ -39,6 +39,7 @@
   "header.wallet": "ウォレット:",
   "header.structures": "ストラクチャ:",
   "header.updating": "{{name}}を更新中",
+  "header.paused": "ESI 一時停止中",
 
   "accessibility.skipToContent": "メインコンテンツへスキップ",
   "accessibility.discord": "Discordサーバーに参加",
@@ -58,6 +59,8 @@
   "ownerModal.removeConfirm": "{{name}}を削除してもよろしいですか？このアカウントのキャッシュデータはすべて削除されます。",
   "ownerModal.logoutAllTitle": "すべてのアカウントからログアウトしますか？",
   "ownerModal.logoutAllConfirm": "すべてのアカウントからログアウトしてもよろしいですか？すべてのキャッシュデータが削除され、各アカウントを再認証する必要があります。",
+  "ownerModal.pauseESI": "ESI更新を一時停止",
+  "ownerModal.resumeESI": "ESI更新を再開",
   "ownerModal.errors.wrongCharacterForCorp": "{{name}}で認証してコーポレーションを追加してください。",
   "ownerModal.errors.wrongCharacter": "誤ったキャラクターで認証されました。{{name}}を期待していましたが、別のキャラクターが取得されました。もう一度お試しください。",
   "ownerModal.errors.failedRefreshRoles": "コーポレーションロールの更新に失敗しました",
