@@ -1,45 +1,46 @@
 {
-  "version": "2.3.0",
-  "date": "2026-01-07",
+  "version": "2.4.0",
+  "date": "2026-01-09",
   "changes": [
     {
       "type": "feat",
-      "scope": "layout",
-      "description": "Add Character mode with Clones, Mail, and Skills tabs"
+      "scope": "map",
+      "description": "Add incursions and insurgencies overlay with corruption levels"
     },
     {
       "type": "feat",
-      "scope": "mail",
-      "description": "Add Mail tab with conversation threading"
+      "scope": "map",
+      "description": "Add route avoidance for high corruption systems"
     },
     {
       "type": "feat",
-      "scope": "skills",
-      "description": "Add Skills tab with per-character skill panels"
+      "scope": "structures",
+      "description": "Add customs offices (POCOs) support"
     },
     {
       "type": "feat",
-      "scope": "abyssal",
-      "description": "Run abyssal item sync in background with progress indicator"
+      "scope": "esi",
+      "description": "Add manual pause/resume for ESI operations"
     },
     {
       "type": "feat",
-      "scope": "errors",
-      "description": "Add user-friendly ESI error messages"
+      "scope": "ui",
+      "description": "Add in-game actions for contracts and assets"
+    },
+    {
+      "type": "feat",
+      "scope": "i18n",
+      "description": "Add multi-language support (8 languages)"
     },
     {
       "type": "fix",
-      "scope": "contracts",
-      "description": "Handle WTB contracts correctly in personal contracts"
+      "scope": "i18n",
+      "description": "Translate remaining hardcoded UI strings"
     },
     {
       "type": "refactor",
-      "scope": "ui",
-      "description": "Align table styling and controls across all tabs"
-    },
-    {
-      "type": "refactor",
-      "description": "Centralize helpers and remove unused code"
+      "scope": "map",
+      "description": "DRY/SOLID improvements and component extraction"
     }
   ]
 }
