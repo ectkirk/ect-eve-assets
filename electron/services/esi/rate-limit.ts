@@ -279,6 +279,11 @@ export function guessRateLimitGroup(endpoint: string): string {
     return 'corp-structure'
   if (endpoint.includes('/corporations/') && endpoint.includes('/structures'))
     return 'corp-structure'
+  if (
+    endpoint.includes('/corporations/') &&
+    endpoint.includes('/customs_offices')
+  )
+    return 'corp-industry'
   if (endpoint.includes('/markets/')) return 'market'
   if (endpoint.includes('/universe/')) return 'universe'
   return 'default'

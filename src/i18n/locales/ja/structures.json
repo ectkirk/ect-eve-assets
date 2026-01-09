@@ -6,6 +6,9 @@
   "fallback.structure": "ストラクチャ {{id}}",
   "fallback.unknownRegion": "不明なリージョン",
   "fallback.moon": "衛星 {{id}}",
+  "fallback.planet": "惑星 {{id}}",
+
+  "poco.typeName": "税関オフィス",
 
   "columns.structure": "ストラクチャ",
   "columns.system": "システム",

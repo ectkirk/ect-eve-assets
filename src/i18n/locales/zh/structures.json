@@ -6,6 +6,9 @@
   "fallback.structure": "建筑 {{id}}",
   "fallback.unknownRegion": "未知星域",
   "fallback.moon": "卫星 {{id}}",
+  "fallback.planet": "行星 {{id}}",
+
+  "poco.typeName": "海关办公室",
 
   "columns.structure": "建筑",
   "columns.system": "星系",

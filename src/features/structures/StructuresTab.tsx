@@ -8,6 +8,10 @@ import {
 } from '@/store/structures-store'
 import { useStarbasesStore, type ESIStarbase } from '@/store/starbases-store'
 import {
+  useCustomsOfficesStore,
+  type ESICustomsOffice,
+} from '@/store/customs-offices-store'
+import {
   useStarbaseDetailsStore,
   calculateFuelHours,
 } from '@/store/starbase-details-store'
@@ -31,6 +35,7 @@ import { extractFitting } from '@/lib/fitting-utils'
 import { FittingDialog } from '@/components/dialogs/FittingDialog'
 import { POSInfoDialog } from '@/components/dialogs/POSInfoDialog'
 import { StructureInfoDialog } from '@/components/dialogs/StructureInfoDialog'
+import { POCOInfoDialog } from '@/components/dialogs/POCOInfoDialog'
 import { StructuresTable } from './StructuresTable'
 import type { TreeNode } from '@/lib/tree-types'
 import type { ESIAsset } from '@/api/endpoints/assets'
@@ -109,14 +114,22 @@ export function StructuresTab() {
   const initStarbases = useStarbasesStore((s) => s.init)
   const starbasesInitialized = useStarbasesStore((s) => s.initialized)
 
+  const customsOfficesByOwner = useCustomsOfficesStore((s) => s.dataByOwner)
+  const isUpdatingCustomsOffices = useCustomsOfficesStore((s) => s.isUpdating)
+  const customsOfficeError = useCustomsOfficesStore((s) => s.updateError)
+  const initCustomsOffices = useCustomsOfficesStore((s) => s.init)
+  const customsOfficesInitialized = useCustomsOfficesStore((s) => s.initialized)
+
   const starbaseDetails = useStarbaseDetailsStore((s) => s.details)
   const fetchStarbaseDetail = useStarbaseDetailsStore((s) => s.fetchDetail)
   const initStarbaseDetails = useStarbaseDetailsStore((s) => s.init)
   const removeOrphanDetails = useStarbaseDetailsStore((s) => s.removeOrphans)
 
-  const isUpdating = isUpdatingStructures || isUpdatingStarbases
-  const updateError = structureError || starbaseError
-  const initialized = structuresInitialized && starbasesInitialized
+  const isUpdating =
+    isUpdatingStructures || isUpdatingStarbases || isUpdatingCustomsOffices
+  const updateError = structureError || starbaseError || customsOfficeError
+  const initialized =
+    structuresInitialized && starbasesInitialized && customsOfficesInitialized
 
   const { assetsByOwner, assetNames, priceVersion } = useAssetData()
 
@@ -124,7 +137,8 @@ export function StructuresTab() {
     initStructures()
     initStarbases()
     initStarbaseDetails()
-  }, [initStructures, initStarbases, initStarbaseDetails])
+    initCustomsOffices()
+  }, [initStructures, initStarbases, initStarbaseDetails, initCustomsOffices])
 
   useEffect(() => {
     const validStates = new Set(['online', 'onlining', 'reinforced'])
@@ -184,6 +198,11 @@ export function StructuresTab() {
     structure: ESICorporationStructure
     ownerName: string
   } | null>(null)
+  const [pocoInfoDialogOpen, setPocoInfoDialogOpen] = useState(false)
+  const [selectedPoco, setSelectedPoco] = useState<{
+    customsOffice: ESICustomsOffice
+    ownerName: string
+  } | null>(null)
 
   const handleViewFitting = useCallback((node: TreeNode) => {
     setSelectedNode(node)
@@ -202,6 +221,14 @@ export function StructuresTab() {
     (structure: ESICorporationStructure, ownerName: string) => {
       setSelectedStructure({ structure, ownerName })
       setStructureInfoDialogOpen(true)
+    },
+    []
+  )
+
+  const handleViewPocoInfo = useCallback(
+    (customsOffice: ESICustomsOffice, ownerName: string) => {
+      setSelectedPoco({ customsOffice, ownerName })
+      setPocoInfoDialogOpen(true)
     },
     []
   )
@@ -306,6 +333,40 @@ export function StructuresTab() {
       }
     }
 
+    const filteredCustomsOffices = customsOfficesByOwner.filter(({ owner }) =>
+      selectedSet.has(ownerKey(owner.type, owner.id))
+    )
+
+    for (const { owner, customsOffices } of filteredCustomsOffices) {
+      for (const poco of customsOffices) {
+        const location = getLocation(poco.system_id)
+        const planet = getLocation(poco.office_id)
+        const planetName =
+          planet?.name ?? t('fallback.planet', { id: poco.office_id })
+
+        rows.push({
+          id: `poco-${poco.office_id}`,
+          kind: 'poco',
+          name: planetName,
+          owner,
+          typeId: 2233,
+          typeName: t('poco.typeName'),
+          regionName: location?.regionName ?? t('fallback.unknownRegion'),
+          state: 'online',
+          fuelValue: null,
+          fuelText: '—',
+          fuelIsLow: false,
+          rigs: [],
+          timerType: 'none',
+          timerText: '',
+          timerTimestamp: null,
+          timerIsUrgent: false,
+          isReinforced: false,
+          customsOffice: poco,
+        })
+      }
+    }
+
     if (!search) return rows
 
     const searchLower = search.toLowerCase()
@@ -321,6 +382,7 @@ export function StructuresTab() {
   }, [
     structuresByOwner,
     starbasesByOwner,
+    customsOfficesByOwner,
     types,
     locations,
     structures,
@@ -340,8 +402,11 @@ export function StructuresTab() {
     for (const { starbases } of starbasesByOwner) {
       count += starbases.length
     }
+    for (const { customsOffices } of customsOfficesByOwner) {
+      count += customsOffices.length
+    }
     return count
-  }, [structuresByOwner, starbasesByOwner])
+  }, [structuresByOwner, starbasesByOwner, customsOfficesByOwner])
 
   useEffect(() => {
     setResultCount({ showing: unifiedRows.length, total: totalCount })
@@ -362,7 +427,10 @@ export function StructuresTab() {
     dataType: 'structures',
     initialized,
     isUpdating,
-    hasData: structuresByOwner.length > 0 || starbasesByOwner.length > 0,
+    hasData:
+      structuresByOwner.length > 0 ||
+      starbasesByOwner.length > 0 ||
+      customsOfficesByOwner.length > 0,
     hasOwners: owners.length > 0,
     updateError,
     customEmptyCheck: {
@@ -378,6 +446,7 @@ export function StructuresTab() {
         rows={unifiedRows}
         onViewStructureInfo={handleViewStructureInfo}
         onViewPosInfo={handleViewPosInfo}
+        onViewPocoInfo={handleViewPocoInfo}
         onViewFitting={handleViewFitting}
       />
       <FittingDialog
@@ -401,6 +470,12 @@ export function StructuresTab() {
         onOpenChange={setStructureInfoDialogOpen}
         structure={selectedStructure?.structure ?? null}
         ownerName={selectedStructure?.ownerName ?? ''}
+      />
+      <POCOInfoDialog
+        open={pocoInfoDialogOpen}
+        onOpenChange={setPocoInfoDialogOpen}
+        customsOffice={selectedPoco?.customsOffice ?? null}
+        ownerName={selectedPoco?.ownerName ?? ''}
       />
     </>
   )

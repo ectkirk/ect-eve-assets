@@ -175,5 +175,6 @@
   "contextMenu.viewDetails": "View Details",
   "contextMenu.showStructureInfo": "Show Structure Info",
   "contextMenu.showPosInfo": "Show POS Info",
+  "contextMenu.showPocoInfo": "Show Customs Office Info",
   "contextMenu.viewFitting": "View Fitting"
 }

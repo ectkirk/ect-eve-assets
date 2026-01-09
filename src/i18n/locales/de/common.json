@@ -175,5 +175,6 @@
   "contextMenu.viewDetails": "Details anzeigen",
   "contextMenu.showStructureInfo": "Strukturinfo anzeigen",
   "contextMenu.showPosInfo": "POS-Info anzeigen",
+  "contextMenu.showPocoInfo": "Zollamtinfo anzeigen",
   "contextMenu.viewFitting": "Fitting anzeigen"
 }

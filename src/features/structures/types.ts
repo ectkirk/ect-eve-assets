@@ -1,11 +1,12 @@
 import type { Owner } from '@/store/auth-store'
 import type { ESICorporationStructure } from '@/store/structures-store'
 import type { ESIStarbase } from '@/store/starbases-store'
+import type { ESICustomsOffice } from '@/store/customs-offices-store'
 import type { TreeNode } from '@/lib/tree-types'
 
 export interface UnifiedStructureRow {
   id: string
-  kind: 'upwell' | 'pos'
+  kind: 'upwell' | 'pos' | 'poco'
   name: string
   owner: Owner
   typeId: number
@@ -23,6 +24,7 @@ export interface UnifiedStructureRow {
   isReinforced: boolean
   structure?: ESICorporationStructure
   starbase?: ESIStarbase
+  customsOffice?: ESICustomsOffice
   treeNode?: TreeNode | null
 }
 

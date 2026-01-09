@@ -6,6 +6,9 @@
   "fallback.structure": "스트럭처 {{id}}",
   "fallback.unknownRegion": "알 수 없는 리전",
   "fallback.moon": "위성 {{id}}",
+  "fallback.planet": "행성 {{id}}",
+
+  "poco.typeName": "세관 오피스",
 
   "columns.structure": "스트럭처",
   "columns.system": "성계",

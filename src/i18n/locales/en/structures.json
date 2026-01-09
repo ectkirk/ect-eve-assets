@@ -6,6 +6,9 @@
   "fallback.structure": "Structure {{id}}",
   "fallback.unknownRegion": "Unknown Region",
   "fallback.moon": "Moon {{id}}",
+  "fallback.planet": "Planet {{id}}",
+
+  "poco.typeName": "Customs Office",
 
   "columns.structure": "Structure",
   "columns.system": "System",

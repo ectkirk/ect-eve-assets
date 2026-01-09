@@ -6,6 +6,9 @@
   "fallback.structure": "Struktur {{id}}",
   "fallback.unknownRegion": "Unbekannte Region",
   "fallback.moon": "Mond {{id}}",
+  "fallback.planet": "Planet {{id}}",
+
+  "poco.typeName": "Zollamt",
 
   "columns.structure": "Struktur",
   "columns.system": "System",

@@ -175,5 +175,6 @@
   "contextMenu.viewDetails": "Ver detalles",
   "contextMenu.showStructureInfo": "Mostrar info de estructura",
   "contextMenu.showPosInfo": "Mostrar info de POS",
+  "contextMenu.showPocoInfo": "Mostrar info de aduana",
   "contextMenu.viewFitting": "Ver equipamiento"
 }

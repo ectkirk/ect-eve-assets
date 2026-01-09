@@ -28,6 +28,7 @@ export const CORPORATION_SCOPES = [
   'esi-contracts.read_corporation_contracts.v1',
   'esi-industry.read_corporation_jobs.v1',
   'esi-markets.read_corporation_orders.v1',
+  'esi-planets.read_customs_offices.v1',
   'esi-wallet.read_corporation_wallets.v1',
 ]
 

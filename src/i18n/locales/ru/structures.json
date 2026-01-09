@@ -6,6 +6,9 @@
   "fallback.structure": "Структура {{id}}",
   "fallback.unknownRegion": "Неизвестный регион",
   "fallback.moon": "Луна {{id}}",
+  "fallback.planet": "Планета {{id}}",
+
+  "poco.typeName": "Таможенный офис",
 
   "columns.structure": "Структура",
   "columns.system": "Система",

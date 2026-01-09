@@ -175,5 +175,6 @@
   "contextMenu.viewDetails": "詳細を表示",
   "contextMenu.showStructureInfo": "ストラクチャ情報を表示",
   "contextMenu.showPosInfo": "POS情報を表示",
+  "contextMenu.showPocoInfo": "税関オフィス情報を表示",
   "contextMenu.viewFitting": "フィッティングを表示"
 }

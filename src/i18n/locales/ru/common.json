@@ -175,5 +175,6 @@
   "contextMenu.viewDetails": "Показать подробности",
   "contextMenu.showStructureInfo": "Информация о структуре",
   "contextMenu.showPosInfo": "Информация о POS",
+  "contextMenu.showPocoInfo": "Информация о таможне",
   "contextMenu.viewFitting": "Показать фит"
 }

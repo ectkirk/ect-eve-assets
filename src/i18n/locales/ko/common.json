@@ -175,5 +175,6 @@
   "contextMenu.viewDetails": "상세 정보 보기",
   "contextMenu.showStructureInfo": "스트럭처 정보 표시",
   "contextMenu.showPosInfo": "POS 정보 표시",
+  "contextMenu.showPocoInfo": "세관 오피스 정보 표시",
   "contextMenu.viewFitting": "피팅 보기"
 }

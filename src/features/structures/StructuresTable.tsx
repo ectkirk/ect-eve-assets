@@ -6,6 +6,7 @@ import { getStateDisplay } from '@/lib/structure-constants'
 import { getTimerColorClass, type TimerType } from '@/lib/timer-utils'
 import type { ESICorporationStructure } from '@/store/structures-store'
 import type { ESIStarbase } from '@/store/starbases-store'
+import type { ESICustomsOffice } from '@/store/customs-offices-store'
 import type { TreeNode } from '@/lib/tree-types'
 import {
   Table,
@@ -70,6 +71,7 @@ interface StructuresTableProps {
     ownerName: string
   ) => void
   onViewPosInfo: (starbase: ESIStarbase, ownerName: string) => void
+  onViewPocoInfo: (customsOffice: ESICustomsOffice, ownerName: string) => void
   onViewFitting: (node: TreeNode) => void
 }
 
@@ -77,6 +79,7 @@ export function StructuresTable({
   rows,
   onViewStructureInfo,
   onViewPosInfo,
+  onViewPocoInfo,
   onViewFitting,
 }: StructuresTableProps) {
   const { t } = useTranslation('structures')
@@ -170,6 +173,7 @@ export function StructuresTable({
                 show={show}
                 onViewStructureInfo={onViewStructureInfo}
                 onViewPosInfo={onViewPosInfo}
+                onViewPocoInfo={onViewPocoInfo}
                 onViewFitting={onViewFitting}
               />
             ))}
@@ -188,6 +192,7 @@ interface StructureRowProps {
     ownerName: string
   ) => void
   onViewPosInfo: (starbase: ESIStarbase, ownerName: string) => void
+  onViewPocoInfo: (customsOffice: ESICustomsOffice, ownerName: string) => void
   onViewFitting: (node: TreeNode) => void
 }
 
@@ -196,6 +201,7 @@ function StructureRowWithContext({
   show,
   onViewStructureInfo,
   onViewPosInfo,
+  onViewPocoInfo,
   onViewFitting,
 }: StructureRowProps) {
   const { t } = useTranslation('common')
@@ -301,6 +307,13 @@ function StructureRowWithContext({
             onClick={() => onViewPosInfo(row.starbase!, row.owner.name)}
           >
             {t('contextMenu.showPosInfo')}
+          </ContextMenuItem>
+        )}
+        {row.kind === 'poco' && row.customsOffice && (
+          <ContextMenuItem
+            onClick={() => onViewPocoInfo(row.customsOffice!, row.owner.name)}
+          >
+            {t('contextMenu.showPocoInfo')}
           </ContextMenuItem>
         )}
         {hasFitting && (

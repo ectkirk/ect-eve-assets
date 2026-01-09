@@ -627,3 +627,22 @@ export const ESISovereigntyMapEntrySchema = z.object({
   corporation_id: z.number().optional(),
   faction_id: z.number().optional(),
 })
+
+export const ESICustomsOfficeSchema = z.object({
+  office_id: z.number(),
+  system_id: z.number(),
+  reinforce_exit_start: z.number(),
+  reinforce_exit_end: z.number(),
+  allow_alliance_access: z.boolean(),
+  allow_access_with_standings: z.boolean(),
+  corporation_tax_rate: z.number().optional(),
+  alliance_tax_rate: z.number().optional(),
+  standing_level: z
+    .enum(['bad', 'excellent', 'good', 'neutral', 'terrible'])
+    .optional(),
+  bad_standing_tax_rate: z.number().optional(),
+  excellent_standing_tax_rate: z.number().optional(),
+  good_standing_tax_rate: z.number().optional(),
+  neutral_standing_tax_rate: z.number().optional(),
+  terrible_standing_tax_rate: z.number().optional(),
+})

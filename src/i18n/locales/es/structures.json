@@ -6,6 +6,9 @@
   "fallback.structure": "Estructura {{id}}",
   "fallback.unknownRegion": "Región desconocida",
   "fallback.moon": "Luna {{id}}",
+  "fallback.planet": "Planeta {{id}}",
+
+  "poco.typeName": "Oficina de Aduanas",
 
   "columns.structure": "Estructura",
   "columns.system": "Sistema",
