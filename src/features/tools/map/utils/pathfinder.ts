@@ -151,7 +151,8 @@ export function findRoute(
   origin: number,
   destination: number,
   preference: RoutePreference = 'shorter',
-  securityPenalty: number = 50
+  securityPenalty: number = 50,
+  ignoredSystems?: Set<number>
 ): RouteResult | null {
   if (origin === destination) {
     return { path: [origin], jumps: 0, ansiblexJumps: 0 }
@@ -202,6 +203,13 @@ export function findRoute(
 
     for (const neighbor of neighbors) {
       if (visited.has(neighbor)) continue
+      if (
+        ignoredSystems?.has(neighbor) &&
+        neighbor !== origin &&
+        neighbor !== destination
+      ) {
+        continue
+      }
 
       const edgeCost = costFn(current.system, neighbor)
       const newCost = current.cost + edgeCost

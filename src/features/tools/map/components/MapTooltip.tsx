@@ -83,15 +83,11 @@ export const MapTooltip = memo(function MapTooltip({
     (system.stationNames?.length ?? 0) > 5
       ? (system.stationNames?.length ?? 0) - 5
       : 0
-  const structureMoreCount =
-    (system.structureNames?.length ?? 0) > 5
-      ? (system.structureNames?.length ?? 0) - 5
-      : 0
 
   return (
     <div
       ref={measureRef}
-      className="pointer-events-none absolute z-20 rounded border border-border-secondary bg-surface-secondary px-3 py-2 shadow-lg"
+      className="pointer-events-none absolute z-40 rounded border border-border-secondary bg-surface-secondary px-3 py-2 shadow-lg"
       style={{
         left: `${left}px`,
         top: `${top}px`,
@@ -127,13 +123,6 @@ export const MapTooltip = memo(function MapTooltip({
           label={t('map.stations')}
           items={system.stationNames}
           moreText={t('map.more', { count: stationMoreCount })}
-        />
-      )}
-      {system.structureNames && (
-        <TooltipList
-          label={t('map.structures')}
-          items={system.structureNames}
-          moreText={t('map.more', { count: structureMoreCount })}
         />
       )}
     </div>

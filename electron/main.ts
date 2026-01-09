@@ -23,6 +23,7 @@ import {
 } from './services/ipc-handlers.js'
 import { registerRefAPIHandlers } from './services/ref-api.js'
 import { registerMutamarketHandlers } from './services/mutamarket.js'
+import { registerInsurgencyHandlers } from './services/insurgency.js'
 import {
   setupESIService,
   registerESIHandlers,
@@ -65,6 +66,7 @@ function registerAllHandlers(): void {
   registerWindowControlHandlers(windowContext)
   registerRefAPIHandlers()
   registerMutamarketHandlers()
+  registerInsurgencyHandlers()
   setupESIService(() => windowManager.mainWindow)
   registerESIHandlers(() => windowManager.mainWindow)
 }

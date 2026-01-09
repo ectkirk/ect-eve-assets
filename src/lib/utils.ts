@@ -100,7 +100,10 @@ export function formatPercent(value: number, decimals: number = 1): string {
 }
 
 export function roundSecurity(security: number): number {
-  if (security >= 0 && security <= 0.05) {
+  if (security <= 0) {
+    return 0.0
+  }
+  if (security <= 0.05) {
     return Math.ceil(security * 10) / 10
   }
   return Math.round(security * 10) / 10

@@ -1,7 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import {
   getStationsBySystemId,
-  getRefStructuresBySystemId,
   type CachedRegion,
 } from '@/store/reference-cache'
 import type { Camera, HoveredSystem } from '../types'
@@ -100,7 +99,6 @@ export function useMapHover({
       }
 
       const stations = getStationsBySystemId(nearest.id)
-      const structures = getRefStructuresBySystemId(nearest.id)
 
       setHoveredSystem({
         id: nearest.id,
@@ -113,8 +111,6 @@ export function useMapHover({
         allianceName,
         stationNames:
           stations.length > 0 ? stations.map((s) => s.name) : undefined,
-        structureNames:
-          structures.length > 0 ? structures.map((s) => s.name) : undefined,
       })
     },
     [

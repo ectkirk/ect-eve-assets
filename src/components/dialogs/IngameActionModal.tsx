@@ -123,7 +123,7 @@ export function IngameActionModal({
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
             {targetName
-              ? `${t('ingameAction.selectCharacter')} — ${targetName}`
+              ? `${t('ingameAction.selectCharacter')} - ${targetName}`
               : t('ingameAction.selectCharacter')}
           </DialogDescription>
         </DialogHeader>

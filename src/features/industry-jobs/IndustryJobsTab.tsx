@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { matchesSearchLower } from '@/lib/utils'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
@@ -24,6 +24,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu'
+import { IngameActionModal } from '@/components/dialogs/IngameActionModal'
 import { cn, formatNumber, formatFullNumber } from '@/lib/utils'
 import { getLocationName } from '@/lib/location-utils'
 import { TypeIcon, OwnerIcon } from '@/components/ui/type-icon'
@@ -63,6 +70,7 @@ interface JobRow {
   blueprintName: string
   productName: string
   productCategoryId?: number
+  locationId: number
   locationName: string
   activityName: string
   productValue: number
@@ -103,9 +111,10 @@ function getEndTime(endDate: string): number {
 interface JobsTableProps {
   jobs: JobRow[]
   visibleColumns: Set<string>
+  onSetWaypoint: (locationId: number, locationName: string) => void
 }
 
-function JobsTable({ jobs, visibleColumns }: JobsTableProps) {
+function JobsTable({ jobs, visibleColumns, onSetWaypoint }: JobsTableProps) {
   const { t: tc } = useTranslation('common')
   const [page, setPage] = useState(0)
   const { sortColumn, sortDirection, handleSort } = useSortable<JobSortColumn>(
@@ -247,86 +256,98 @@ function JobsTable({ jobs, visibleColumns }: JobsTableProps) {
                   })
 
             return (
-              <TableRow
-                key={`${row.ownerName}-${row.job.job_id}`}
-                className="border-b border-border/50 hover:bg-surface-tertiary/50"
-              >
-                {show('owner') && (
-                  <TableCell className="py-1.5 w-8">
-                    <OwnerIcon
-                      ownerId={row.ownerId}
-                      ownerType={row.ownerType}
-                      size="sm"
-                    />
-                  </TableCell>
-                )}
-                {show('activity') && (
-                  <TableCell className="py-1.5">{row.activityName}</TableCell>
-                )}
-                {show('blueprint') && (
-                  <TableCell className="py-1.5">
-                    <div className="flex items-center gap-2">
-                      <TypeIcon
-                        typeId={row.job.blueprint_type_id}
-                        categoryId={BLUEPRINT_CATEGORY_ID}
-                      />
-                      <span className="truncate" title={row.blueprintName}>
-                        {row.blueprintName}
-                      </span>
-                    </div>
-                  </TableCell>
-                )}
-                {show('product') && (
-                  <TableCell className="py-1.5">
-                    {row.job.product_type_id ? (
-                      <div className="flex items-center gap-2">
-                        <TypeIcon
-                          typeId={row.job.product_type_id}
-                          categoryId={row.productCategoryId}
+              <ContextMenu key={`${row.ownerName}-${row.job.job_id}`}>
+                <ContextMenuTrigger asChild>
+                  <TableRow className="border-b border-border/50 hover:bg-surface-tertiary/50">
+                    {show('owner') && (
+                      <TableCell className="py-1.5 w-8">
+                        <OwnerIcon
+                          ownerId={row.ownerId}
+                          ownerType={row.ownerType}
+                          size="sm"
                         />
-                        <span className="truncate" title={row.productName}>
-                          {row.productName}
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-content-muted">-</span>
+                      </TableCell>
                     )}
-                  </TableCell>
-                )}
-                {show('runs') && (
-                  <TableCell className="py-1.5 text-right tabular-nums">
-                    {formatFullNumber(row.job.runs)}
-                  </TableCell>
-                )}
-                {show('value') && (
-                  <TableCell className="py-1.5 text-right tabular-nums text-status-positive">
-                    {row.productValue > 0
-                      ? formatNumber(row.productValue)
-                      : '-'}
-                  </TableCell>
-                )}
-                {show('cost') && (
-                  <TableCell className="py-1.5 text-right tabular-nums text-status-highlight">
-                    {row.job.cost ? formatNumber(row.job.cost) : '-'}
-                  </TableCell>
-                )}
-                {show('time') && (
-                  <TableCell
-                    className={cn(
-                      'py-1.5 text-right tabular-nums',
-                      duration.isComplete && 'text-status-positive',
-                      !duration.isComplete && 'text-content-secondary'
+                    {show('activity') && (
+                      <TableCell className="py-1.5">
+                        {row.activityName}
+                      </TableCell>
                     )}
+                    {show('blueprint') && (
+                      <TableCell className="py-1.5">
+                        <div className="flex items-center gap-2">
+                          <TypeIcon
+                            typeId={row.job.blueprint_type_id}
+                            categoryId={BLUEPRINT_CATEGORY_ID}
+                          />
+                          <span className="truncate" title={row.blueprintName}>
+                            {row.blueprintName}
+                          </span>
+                        </div>
+                      </TableCell>
+                    )}
+                    {show('product') && (
+                      <TableCell className="py-1.5">
+                        {row.job.product_type_id ? (
+                          <div className="flex items-center gap-2">
+                            <TypeIcon
+                              typeId={row.job.product_type_id}
+                              categoryId={row.productCategoryId}
+                            />
+                            <span className="truncate" title={row.productName}>
+                              {row.productName}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-content-muted">-</span>
+                        )}
+                      </TableCell>
+                    )}
+                    {show('runs') && (
+                      <TableCell className="py-1.5 text-right tabular-nums">
+                        {formatFullNumber(row.job.runs)}
+                      </TableCell>
+                    )}
+                    {show('value') && (
+                      <TableCell className="py-1.5 text-right tabular-nums text-status-positive">
+                        {row.productValue > 0
+                          ? formatNumber(row.productValue)
+                          : '-'}
+                      </TableCell>
+                    )}
+                    {show('cost') && (
+                      <TableCell className="py-1.5 text-right tabular-nums text-status-highlight">
+                        {row.job.cost ? formatNumber(row.job.cost) : '-'}
+                      </TableCell>
+                    )}
+                    {show('time') && (
+                      <TableCell
+                        className={cn(
+                          'py-1.5 text-right tabular-nums',
+                          duration.isComplete && 'text-status-positive',
+                          !duration.isComplete && 'text-content-secondary'
+                        )}
+                      >
+                        {durationText}
+                      </TableCell>
+                    )}
+                    {show('location') && (
+                      <TableCell className="py-1.5 text-status-info">
+                        {row.locationName}
+                      </TableCell>
+                    )}
+                  </TableRow>
+                </ContextMenuTrigger>
+                <ContextMenuContent>
+                  <ContextMenuItem
+                    onClick={() =>
+                      onSetWaypoint(row.locationId, row.locationName)
+                    }
                   >
-                    {durationText}
-                  </TableCell>
-                )}
-                {show('location') && (
-                  <TableCell className="py-1.5 text-status-info">
-                    {row.locationName}
-                  </TableCell>
-                )}
-              </TableRow>
+                    {tc('contextMenu.setWaypoint')}
+                  </ContextMenuItem>
+                </ContextMenuContent>
+              </ContextMenu>
             )
           })}
         </TableBody>
@@ -406,6 +427,18 @@ export function IndustryJobsTab() {
     [getVisibleColumns]
   )
 
+  const [waypointAction, setWaypointAction] = useState<{
+    locationId: number
+    locationName: string
+  } | null>(null)
+
+  const handleSetWaypoint = useCallback(
+    (locationId: number, locationName: string) => {
+      setWaypointAction({ locationId, locationName })
+    },
+    []
+  )
+
   const { allJobs, totalValue } = useMemo(() => {
     void types
     void structures
@@ -429,6 +462,8 @@ export function IndustryJobsTab() {
           : 0
         const productValue = productPrice * job.runs
 
+        const locationId = job.location_id ?? job.facility_id
+
         jobs.push({
           job,
           ownerId: owner.id,
@@ -439,7 +474,8 @@ export function IndustryJobsTab() {
             ? getTypeName(job.product_type_id)
             : '',
           productCategoryId: productType?.categoryId,
-          locationName: getLocationName(job.location_id ?? job.facility_id),
+          locationId,
+          locationName: getLocationName(locationId),
           activityName: ACTIVITY_IDS[job.activity_id]
             ? t(`activities.${ACTIVITY_IDS[job.activity_id]}`)
             : t('activities.unknown', { id: job.activity_id }),
@@ -489,14 +525,27 @@ export function IndustryJobsTab() {
   if (loadingState) return loadingState
 
   return (
-    <div className={CONTAINER_CLASS}>
-      {allJobs.length === 0 ? (
-        <div className="flex items-center justify-center h-full">
-          <p className="text-content-secondary">{t('empty')}</p>
-        </div>
-      ) : (
-        <JobsTable jobs={allJobs} visibleColumns={visibleColumns} />
-      )}
-    </div>
+    <>
+      <div className={CONTAINER_CLASS}>
+        {allJobs.length === 0 ? (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-content-secondary">{t('empty')}</p>
+          </div>
+        ) : (
+          <JobsTable
+            jobs={allJobs}
+            visibleColumns={visibleColumns}
+            onSetWaypoint={handleSetWaypoint}
+          />
+        )}
+      </div>
+      <IngameActionModal
+        open={waypointAction !== null}
+        onOpenChange={(open) => !open && setWaypointAction(null)}
+        action="autopilot"
+        targetId={waypointAction?.locationId ?? 0}
+        targetName={waypointAction?.locationName}
+      />
+    </>
   )
 }

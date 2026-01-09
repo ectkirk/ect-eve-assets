@@ -42,7 +42,7 @@ function BooleanBadge({
 }
 
 function formatTaxRate(rate: number | undefined): string {
-  if (rate === undefined) return '—'
+  if (rate === undefined) return '-'
   return `${(rate * 100).toFixed(1)}%`
 }
 

@@ -73,6 +73,7 @@ interface StructuresTableProps {
   onViewPosInfo: (starbase: ESIStarbase, ownerName: string) => void
   onViewPocoInfo: (customsOffice: ESICustomsOffice, ownerName: string) => void
   onViewFitting: (node: TreeNode) => void
+  onSetWaypoint: (systemId: number, systemName: string) => void
 }
 
 export function StructuresTable({
@@ -81,6 +82,7 @@ export function StructuresTable({
   onViewPosInfo,
   onViewPocoInfo,
   onViewFitting,
+  onSetWaypoint,
 }: StructuresTableProps) {
   const { t } = useTranslation('structures')
   const { sortColumn, sortDirection, handleSort } =
@@ -175,6 +177,7 @@ export function StructuresTable({
                 onViewPosInfo={onViewPosInfo}
                 onViewPocoInfo={onViewPocoInfo}
                 onViewFitting={onViewFitting}
+                onSetWaypoint={onSetWaypoint}
               />
             ))}
           </TableBody>
@@ -194,6 +197,7 @@ interface StructureRowProps {
   onViewPosInfo: (starbase: ESIStarbase, ownerName: string) => void
   onViewPocoInfo: (customsOffice: ESICustomsOffice, ownerName: string) => void
   onViewFitting: (node: TreeNode) => void
+  onSetWaypoint: (systemId: number, systemName: string) => void
 }
 
 function StructureRowWithContext({
@@ -203,6 +207,7 @@ function StructureRowWithContext({
   onViewPosInfo,
   onViewPocoInfo,
   onViewFitting,
+  onSetWaypoint,
 }: StructureRowProps) {
   const { t } = useTranslation('common')
   const stateInfo = getStateDisplay(row.state)
@@ -278,7 +283,7 @@ function StructureRowWithContext({
                 className="text-content-secondary truncate block"
                 title={row.rigs.join(', ')}
               >
-                {row.rigs.length > 0 ? row.rigs.join(', ') : '—'}
+                {row.rigs.length > 0 ? row.rigs.join(', ') : '-'}
               </span>
             </TableCell>
           )}
@@ -321,6 +326,11 @@ function StructureRowWithContext({
             {t('contextMenu.viewFitting')}
           </ContextMenuItem>
         )}
+        <ContextMenuItem
+          onClick={() => onSetWaypoint(row.systemId, row.systemName)}
+        >
+          {t('contextMenu.setWaypoint')}
+        </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
   )

@@ -267,6 +267,35 @@ export function renderAnsiblexConnections(
   ctx.setLineDash([])
 }
 
+export function renderSystemRings(
+  rc: RenderContext,
+  systemIds: Set<number>,
+  systemMap: Map<number, IndexedSystem>,
+  color: string,
+  baseRadius: number
+): void {
+  if (systemIds.size === 0) return
+
+  const { ctx, camera, visibleBounds } = rc
+  const ringRadius = baseRadius / camera.zoom
+  const ringWidth = 2 / camera.zoom
+
+  ctx.strokeStyle = color
+  ctx.lineWidth = ringWidth
+
+  for (const systemId of systemIds) {
+    const system = systemMap.get(systemId)
+    if (!system) continue
+
+    const { canvasX: x, canvasY: y } = system
+    if (!isInVisibleBounds(x, y, visibleBounds)) continue
+
+    ctx.beginPath()
+    ctx.arc(x, y, ringRadius, 0, Math.PI * 2)
+    ctx.stroke()
+  }
+}
+
 export function renderHighlightedRegion(
   rc: RenderContext,
   regionId: number,

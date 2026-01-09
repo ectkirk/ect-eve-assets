@@ -25,6 +25,7 @@ export type {
   LogContext,
   LogLevel,
   MutamarketResult,
+  InsurgencyResult,
   RefApiResult,
   RefMarketContractItem,
   RefMarketGroupsResult,
@@ -186,6 +187,7 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.invoke('ref:dogma-attribute-categories', params),
   mutamarketModule: (itemId: number, typeId?: number) =>
     ipcRenderer.invoke('mutamarket:module', itemId, typeId),
+  insurgencyGet: () => ipcRenderer.invoke('insurgency:get'),
   onUpdateAvailable: (callback: (version: string) => void) => {
     const handler = (_event: unknown, version: string) => callback(version)
     ipcRenderer.on('updater:update-available', handler)

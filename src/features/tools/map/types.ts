@@ -10,7 +10,6 @@ export interface HoveredSystem {
   factionName?: string
   allianceName?: string
   stationNames?: string[]
-  structureNames?: string[]
 }
 
 export interface Camera {

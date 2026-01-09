@@ -62,6 +62,19 @@ export function screenToWorld(
   }
 }
 
+export function canvasToScreen(
+  canvasX: number,
+  canvasY: number,
+  camera: Camera,
+  width: number,
+  height: number
+): { x: number; y: number } {
+  return {
+    x: (canvasX - width / 2) * camera.zoom + width / 2 + camera.x,
+    y: (canvasY - height / 2) * camera.zoom + height / 2 + camera.y,
+  }
+}
+
 export interface VisibleBounds {
   left: number
   right: number
