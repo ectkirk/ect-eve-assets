@@ -80,6 +80,16 @@
   "time.fullDaysHours": "{{days}} days {{hours}} hours",
 
   "search.placeholder": "Search...",
+  "search.noItemsFound": "No items found",
+
+  "accessibility.search": "Search",
+  "accessibility.clearSearch": "Clear search",
+  "accessibility.filterByOrderType": "Filter by order type",
+  "accessibility.filterByAssetType": "Filter by asset type",
+  "accessibility.filterByCategory": "Filter by category",
+  "accessibility.clickToCopy": "Click to copy",
+
+  "buttons.copied": "Copied!",
 
   "errors.somethingWentWrong": "Something went wrong",
   "errors.failedToInitCache": "Failed to initialize cache",

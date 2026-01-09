@@ -141,12 +141,14 @@ function OrderRowWithContext({
   show,
   navigateToType,
   navigateToReference,
+  onSetWaypoint,
   style,
 }: {
   row: OrderRow
   show: (col: string) => boolean
   navigateToType: (typeId: number) => void
   navigateToReference: (typeId: number) => void
+  onSetWaypoint: (locationId: number, locationName: string) => void
   style?: React.CSSProperties
 }) {
   return (
@@ -163,6 +165,11 @@ function OrderRowWithContext({
         <ContextMenuItem onClick={() => navigateToReference(row.typeId)}>
           <TranslatedContextMenuText labelKey="contextMenu.viewDetails" />
         </ContextMenuItem>
+        <ContextMenuItem
+          onClick={() => onSetWaypoint(row.locationId, row.locationName)}
+        >
+          <TranslatedContextMenuText labelKey="contextMenu.setWaypoint" />
+        </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
   )
@@ -173,11 +180,13 @@ function VirtualizedTableBody({
   show,
   navigateToType,
   navigateToReference,
+  onSetWaypoint,
 }: {
   sortedOrders: OrderRow[]
   show: (col: string) => boolean
   navigateToType: (typeId: number) => void
   navigateToReference: (typeId: number) => void
+  onSetWaypoint: (locationId: number, locationName: string) => void
 }) {
   const containerRef = useRef<HTMLTableSectionElement>(null)
 
@@ -204,6 +213,7 @@ function VirtualizedTableBody({
             show={show}
             navigateToType={navigateToType}
             navigateToReference={navigateToReference}
+            onSetWaypoint={onSetWaypoint}
             style={{
               position: 'absolute',
               top: 0,
@@ -224,11 +234,13 @@ function StandardTableBody({
   show,
   navigateToType,
   navigateToReference,
+  onSetWaypoint,
 }: {
   sortedOrders: OrderRow[]
   show: (col: string) => boolean
   navigateToType: (typeId: number) => void
   navigateToReference: (typeId: number) => void
+  onSetWaypoint: (locationId: number, locationName: string) => void
 }) {
   return (
     <TableBody>
@@ -239,6 +251,7 @@ function StandardTableBody({
           show={show}
           navigateToType={navigateToType}
           navigateToReference={navigateToReference}
+          onSetWaypoint={onSetWaypoint}
         />
       ))}
     </TableBody>
@@ -248,9 +261,11 @@ function StandardTableBody({
 export function OrdersTable({
   orders,
   visibleColumns,
+  onSetWaypoint,
 }: {
   orders: OrderRow[]
   visibleColumns: Set<string>
+  onSetWaypoint: (locationId: number, locationName: string) => void
 }) {
   const { sortColumn, sortDirection, handleSort } = useSortable<SortColumn>(
     'total',
@@ -422,6 +437,7 @@ export function OrdersTable({
           show={show}
           navigateToType={navigateToType}
           navigateToReference={navigateToReference}
+          onSetWaypoint={onSetWaypoint}
         />
       ) : (
         <StandardTableBody
@@ -429,6 +445,7 @@ export function OrdersTable({
           show={show}
           navigateToType={navigateToType}
           navigateToReference={navigateToReference}
+          onSetWaypoint={onSetWaypoint}
         />
       )}
     </Table>

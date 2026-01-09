@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import type { Owner } from '@/store/auth-store'
 import {
   ContextMenu,
@@ -45,6 +46,7 @@ export function OwnerRow({
   onRefreshRoles,
   onAddCorporation,
 }: OwnerRowProps) {
+  const { t } = useTranslation('layout')
   const isCorp = owner.type === 'corporation'
   const needsAttention = owner.authFailed || owner.scopesOutdated
   const CheckIcon = isSelected ? CheckSquare : Square
@@ -85,13 +87,13 @@ export function OwnerRow({
         {owner.authFailed && (
           <span className="flex items-center gap-1 text-xs text-semantic-danger">
             <AlertCircle className="h-3 w-3" />
-            Re-auth needed
+            {t('ownerRow.reauthNeeded')}
           </span>
         )}
         {owner.scopesOutdated && !owner.authFailed && (
           <span className="flex items-center gap-1 text-xs text-semantic-warning">
             <AlertCircle className="h-3 w-3" />
-            Upgrade scopes
+            {t('ownerRow.upgradeScopes')}
           </span>
         )}
         {canAddCorporation && (
@@ -101,10 +103,10 @@ export function OwnerRow({
               onAddCorporation?.()
             }}
             className="flex items-center gap-1 rounded bg-accent/10 px-1.5 py-0.5 text-xs text-accent hover:bg-accent/20"
-            aria-label="Add your corporation (you're a director)"
+            aria-label={t('accessibility.addCorpAria')}
           >
             <Building2 className="h-3 w-3" />
-            Add Corp
+            {t('ownerRow.addCorp')}
           </button>
         )}
       </div>
@@ -140,11 +142,13 @@ export function OwnerRow({
             onClick={onRefreshRoles}
             disabled={isRefreshingRoles}
           >
-            {isRefreshingRoles ? 'Refreshing...' : 'Refresh Corporation Roles'}
+            {isRefreshingRoles
+              ? t('ownerRow.refreshing')
+              : t('ownerRow.refreshCorporationRoles')}
           </ContextMenuItem>
           {canAddCorporation && (
             <ContextMenuItem onClick={onAddCorporation}>
-              Add Corporation
+              {t('ownerRow.addCorporation')}
             </ContextMenuItem>
           )}
         </ContextMenuContent>

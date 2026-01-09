@@ -1,6 +1,7 @@
-import { useMemo, useRef, useEffect } from 'react'
+import { useMemo, useRef, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileText } from 'lucide-react'
+import { IngameActionModal } from '@/components/dialogs/IngameActionModal'
 import {
   Table,
   TableBody,
@@ -9,6 +10,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu'
 import { SortableHeader } from '@/components/ui/sortable-header'
 import { useSortToggle } from './useSortToggle'
 import { formatNumber, formatVolume, formatSecurity } from '@/lib/utils'
@@ -67,10 +74,18 @@ export function CourierResultsTable({
   isLoading,
 }: CourierResultsTableProps) {
   const { t } = useTranslation('tools')
+  const { t: tCommon } = useTranslation('common')
   const { sortColumn, sortDirection, handleSort } = useSortToggle(
     getDefaultSortDirection
   )
   const tableRef = useRef<HTMLDivElement>(null)
+  const [ingameAction, setIngameAction] = useState<{
+    contractId: number
+  } | null>(null)
+  const [waypointAction, setWaypointAction] = useState<{
+    systemId: number
+    systemName: string
+  } | null>(null)
 
   useEffect(() => {
     tableRef.current?.scrollTo({ top: 0 })
@@ -237,82 +252,121 @@ export function CourierResultsTable({
           </TableHeader>
           <TableBody>
             {sortedContracts.map((c) => (
-              <TableRow key={c.contractId}>
-                <TableCell>
-                  <div className="flex flex-col">
-                    <div className="flex items-center gap-1">
-                      <span className={getSecurityColor(c.originSecurity ?? 0)}>
-                        {formatSecurity(c.originSecurity ?? 0)}
-                      </span>
-                      <span>{c.originSystem}</span>
-                      <span className="text-content-muted">→</span>
-                      <span className={getSecurityColor(c.destSecurity ?? 0)}>
-                        {formatSecurity(c.destSecurity ?? 0)}
-                      </span>
-                      <span>{c.destSystem}</span>
-                    </div>
-                    <div className="text-xs text-content-muted">
-                      {c.originRegion} → {c.destRegion}
-                    </div>
-                    {(c.originStation || c.destStation) && (
-                      <div className="text-xs text-content-secondary">
-                        {c.originStation && c.destStation
-                          ? `${c.originStation} → ${c.destStation}`
-                          : (c.destStation ?? c.originStation)}
+              <ContextMenu key={c.contractId}>
+                <ContextMenuTrigger asChild>
+                  <TableRow>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-1">
+                          <span
+                            className={getSecurityColor(c.originSecurity ?? 0)}
+                          >
+                            {formatSecurity(c.originSecurity ?? 0)}
+                          </span>
+                          <span>{c.originSystem}</span>
+                          <span className="text-content-muted">→</span>
+                          <span
+                            className={getSecurityColor(c.destSecurity ?? 0)}
+                          >
+                            {formatSecurity(c.destSecurity ?? 0)}
+                          </span>
+                          <span>{c.destSystem}</span>
+                        </div>
+                        <div className="text-xs text-content-muted">
+                          {c.originRegion} → {c.destRegion}
+                        </div>
+                        {(c.originStation || c.destStation) && (
+                          <div className="text-xs text-content-secondary">
+                            {c.originStation && c.destStation
+                              ? `${c.originStation} → ${c.destStation}`
+                              : (c.destStation ?? c.originStation)}
+                          </div>
+                        )}
+                        {c.title && (
+                          <div className="text-xs text-content-muted italic">
+                            {decodeHtmlEntities(c.title)}
+                          </div>
+                        )}
                       </div>
-                    )}
-                    {c.title && (
-                      <div className="text-xs text-content-muted italic">
-                        {decodeHtmlEntities(c.title)}
-                      </div>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <CopyButton
-                    text={`<url=contract:${c.originSystemId}//${c.contractId}>${c.originSystem} >> ${c.destSystem} (${formatVolume(c.volume)} m³)</url>`}
-                    label=""
-                    className="border-0 bg-transparent px-1 py-0.5 hover:bg-surface-tertiary"
-                  />
-                </TableCell>
-                <TableCell className="text-center">
-                  {c.hasSafeData ? (
-                    c.safeJumps
-                  ) : (
-                    <span className="text-content-muted">-</span>
+                    </TableCell>
+                    <TableCell>
+                      <CopyButton
+                        text={`<url=contract:${c.originSystemId}//${c.contractId}>${c.originSystem} >> ${c.destSystem} (${formatVolume(c.volume)} m³)</url>`}
+                        label=""
+                        className="border-0 bg-transparent px-1 py-0.5 hover:bg-surface-tertiary"
+                      />
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {c.hasSafeData ? (
+                        c.safeJumps
+                      ) : (
+                        <span className="text-content-muted">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {c.directJumps > 0 && !c.safeMatchesDirect ? (
+                        c.directJumps
+                      ) : (
+                        <span className="text-content-muted">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="font-mono text-status-positive">
+                      {formatNumber(c.reward)}
+                    </TableCell>
+                    <TableCell className="font-mono text-status-warning">
+                      {formatNumber(c.collateral)}
+                    </TableCell>
+                    <TableCell className="font-mono">
+                      {formatVolume(c.volume)}
+                    </TableCell>
+                    <TableCell className="font-mono text-status-highlight">
+                      {c.iskPerJump > 0 ? (
+                        formatNumber(c.iskPerJump)
+                      ) : (
+                        <span className="text-content-muted">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="font-mono">
+                      {formatNumber(c.iskPerM3)}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {c.daysToComplete}
+                    </TableCell>
+                    <TableCell>{formatTimeLeft(c.dateExpired)}</TableCell>
+                  </TableRow>
+                </ContextMenuTrigger>
+                <ContextMenuContent>
+                  <ContextMenuItem
+                    onClick={() =>
+                      setWaypointAction({
+                        systemId: c.originSystemId,
+                        systemName: c.originSystem,
+                      })
+                    }
+                  >
+                    {tCommon('contextMenu.setWaypoint')}
+                  </ContextMenuItem>
+                  {c.destSystemId && (
+                    <ContextMenuItem
+                      onClick={() =>
+                        setWaypointAction({
+                          systemId: c.destSystemId!,
+                          systemName: c.destSystem,
+                        })
+                      }
+                    >
+                      {tCommon('contextMenu.setWaypointDestination')}
+                    </ContextMenuItem>
                   )}
-                </TableCell>
-                <TableCell className="text-center">
-                  {c.directJumps > 0 && !c.safeMatchesDirect ? (
-                    c.directJumps
-                  ) : (
-                    <span className="text-content-muted">-</span>
-                  )}
-                </TableCell>
-                <TableCell className="font-mono text-status-positive">
-                  {formatNumber(c.reward)}
-                </TableCell>
-                <TableCell className="font-mono text-status-warning">
-                  {formatNumber(c.collateral)}
-                </TableCell>
-                <TableCell className="font-mono">
-                  {formatVolume(c.volume)}
-                </TableCell>
-                <TableCell className="font-mono text-status-highlight">
-                  {c.iskPerJump > 0 ? (
-                    formatNumber(c.iskPerJump)
-                  ) : (
-                    <span className="text-content-muted">-</span>
-                  )}
-                </TableCell>
-                <TableCell className="font-mono">
-                  {formatNumber(c.iskPerM3)}
-                </TableCell>
-                <TableCell className="text-center">
-                  {c.daysToComplete}
-                </TableCell>
-                <TableCell>{formatTimeLeft(c.dateExpired)}</TableCell>
-              </TableRow>
+                  <ContextMenuItem
+                    onClick={() =>
+                      setIngameAction({ contractId: c.contractId })
+                    }
+                  >
+                    {tCommon('contextMenu.openContractIngame')}
+                  </ContextMenuItem>
+                </ContextMenuContent>
+              </ContextMenu>
             ))}
           </TableBody>
         </Table>
@@ -325,6 +379,20 @@ export function CourierResultsTable({
         pageSize={PAGE_SIZE}
         onPageChange={onPageChange}
         isLoading={isLoading}
+      />
+
+      <IngameActionModal
+        open={waypointAction !== null}
+        onOpenChange={(open) => !open && setWaypointAction(null)}
+        action="autopilot"
+        targetId={waypointAction?.systemId ?? 0}
+        targetName={waypointAction?.systemName}
+      />
+      <IngameActionModal
+        open={ingameAction !== null}
+        onOpenChange={(open) => !open && setIngameAction(null)}
+        action="contract"
+        targetId={ingameAction?.contractId ?? 0}
       />
     </div>
   )

@@ -1,8 +1,27 @@
-import { memo, useState, useCallback, useMemo } from 'react'
+import { memo, useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { IngameActionModal } from '@/components/dialogs/IngameActionModal'
+import { MapSystemContextMenu } from './MapSystemContextMenu'
+import { SystemInput } from './SystemInput'
+import { ToggleOption } from './ToggleOption'
+import { CorruptionBadge } from './MapInsurgencyPanel'
 import type { RoutePreference } from '../utils/pathfinder'
+import type { IndexedSystemItem } from '../types'
 import { formatSecurity, roundSecurity } from '@/lib/utils'
-import { useDebounce } from '../hooks/useDebounce'
+import { useSystemContextMenu } from '../hooks/useSystemContextMenu'
+
+function getSecurityClass(security: number): 'high' | 'low' | 'null' {
+  if (security >= 0.45) return 'high'
+  if (security > 0) return 'low'
+  return 'null'
+}
+
+function isBorderSystem(systems: RouteSystemInfo[], index: number): boolean {
+  if (index >= systems.length - 1) return false
+  const current = systems[index]!
+  const next = systems[index + 1]!
+  return getSecurityClass(current.security) !== getSecurityClass(next.security)
+}
 
 export interface RouteSystemInfo {
   id: number
@@ -16,16 +35,13 @@ export interface SystemSearchItem {
   security: number
 }
 
-interface IndexedSystemItem extends SystemSearchItem {
-  nameLower: string
-}
-
 interface MapRouteControlsProps {
   originName: string | null
   originSecurity: number | null
   destinationName: string | null
   destinationSecurity: number | null
   routeSystems: RouteSystemInfo[]
+  routeNotFound: boolean
   jumps: number | null
   ansiblexJumps: number | null
   routePreference: RoutePreference
@@ -33,8 +49,24 @@ interface MapRouteControlsProps {
   ansiblexRoutingEnabled: boolean
   useAnsiblexes: boolean
   ansiblexCount: number
+  showCharacterLocations: boolean
+  characterLocationCount: number
+  showIncursions: boolean
+  incursionSystemCount: number
+  showInsurgencies: boolean
+  insurgencySystemCount: number
+  ignoredSystemsCount: number
+  isSystemIgnored: (systemId: number) => boolean
+  isSystemInIncursion: (systemId: number) => boolean
+  getCorruptionLevel: (systemId: number) => number | null
   onRoutePreferenceChange: (pref: RoutePreference) => void
+  onOpenIgnoredSystems: () => void
+  onIgnoreSystem: (systemId: number) => void
+  onUnignoreSystem: (systemId: number) => void
   onUseAnsiblexesChange: (use: boolean) => void
+  onShowCharacterLocationsChange: (show: boolean) => void
+  onShowIncursionsChange: (show: boolean) => void
+  onShowInsurgenciesChange: (show: boolean) => void
   onSetOrigin: (systemId: number) => void
   onSetDestination: (systemId: number) => void
   onClear: () => void
@@ -63,7 +95,7 @@ const SEC_BG: Record<number, string> = {
   0: 'bg-sec-0',
 }
 
-function SecurityBadge({ security }: { security: number }) {
+export function SecurityBadge({ security }: { security: number }) {
   const rounded = roundSecurity(security)
   const secKey = Math.max(0, Math.min(10, Math.round(rounded * 10)))
   const bg = SEC_BG[secKey] ?? SEC_BG[0]
@@ -76,140 +108,13 @@ function SecurityBadge({ security }: { security: number }) {
   )
 }
 
-const DEBOUNCE_MS = 200
-const MAX_RESULTS = 8
-
-interface SystemInputProps {
-  placeholder: string
-  selectedName: string | null
-  selectedSecurity: number | null
-  dotColor: string
-  indexedSystems: IndexedSystemItem[]
-  onSelect: (systemId: number) => void
-}
-
-function SystemInput({
-  placeholder,
-  selectedName,
-  selectedSecurity,
-  dotColor,
-  indexedSystems,
-  onSelect,
-}: SystemInputProps) {
-  const [query, setQuery] = useState('')
-  const [results, setResults] = useState<SystemSearchItem[]>([])
-  const [showDropdown, setShowDropdown] = useState(false)
-  const [isEditing, setIsEditing] = useState(false)
-
-  const performSearch = useDebounce((searchQuery: string) => {
-    const lower = searchQuery.toLowerCase()
-    const matches: SystemSearchItem[] = []
-    for (const sys of indexedSystems) {
-      if (sys.nameLower.includes(lower)) {
-        matches.push(sys)
-        if (matches.length >= MAX_RESULTS) break
-      }
-    }
-    setResults(matches)
-    setShowDropdown(matches.length > 0)
-  }, DEBOUNCE_MS)
-
-  const handleChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const newQuery = e.target.value
-      setQuery(newQuery)
-
-      if (!newQuery.trim()) {
-        setResults([])
-        setShowDropdown(false)
-        return
-      }
-
-      performSearch(newQuery)
-    },
-    [performSearch]
-  )
-
-  const handleSelect = useCallback(
-    (sys: SystemSearchItem) => {
-      onSelect(sys.id)
-      setQuery('')
-      setResults([])
-      setShowDropdown(false)
-      setIsEditing(false)
-    },
-    [onSelect]
-  )
-
-  const handleFocus = useCallback(() => {
-    setIsEditing(true)
-    if (results.length > 0) setShowDropdown(true)
-  }, [results.length])
-
-  const handleBlur = useCallback(() => {
-    setTimeout(() => {
-      setShowDropdown(false)
-      setIsEditing(false)
-      setQuery('')
-    }, 150)
-  }, [])
-
-  return (
-    <div className="relative flex items-center gap-2">
-      <span
-        className="inline-block h-2 w-2 flex-shrink-0 rounded-full"
-        style={{ backgroundColor: dotColor }}
-      />
-      {isEditing || !selectedName ? (
-        <div className="relative flex-1">
-          <input
-            type="text"
-            value={query}
-            onChange={handleChange}
-            onFocus={handleFocus}
-            onBlur={handleBlur}
-            placeholder={placeholder}
-            className="w-full rounded border border-border-secondary bg-surface-tertiary px-2 py-1 text-xs text-content placeholder-content-muted focus:border-accent focus:outline-none"
-          />
-          {showDropdown && (
-            <div className="absolute left-0 top-full z-20 mt-1 max-h-48 w-full overflow-y-auto rounded border border-border-secondary bg-surface-secondary shadow-lg">
-              {results.map((sys) => (
-                <button
-                  key={sys.id}
-                  onMouseDown={(e) => {
-                    e.preventDefault()
-                    handleSelect(sys)
-                  }}
-                  className="flex w-full items-center justify-between px-2 py-1.5 text-left text-xs hover:bg-surface-tertiary"
-                >
-                  <span className="text-content-secondary">{sys.name}</span>
-                  <SecurityBadge security={sys.security} />
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      ) : (
-        <button
-          onClick={() => setIsEditing(true)}
-          className="flex-1 text-left text-sm text-content-secondary hover:text-content-primary"
-        >
-          {selectedName}
-          {selectedSecurity !== null && (
-            <SecurityBadge security={selectedSecurity} />
-          )}
-        </button>
-      )}
-    </div>
-  )
-}
-
 export const MapRouteControls = memo(function MapRouteControls({
   originName,
   originSecurity,
   destinationName,
   destinationSecurity,
   routeSystems,
+  routeNotFound,
   jumps,
   ansiblexJumps,
   routePreference,
@@ -217,14 +122,39 @@ export const MapRouteControls = memo(function MapRouteControls({
   ansiblexRoutingEnabled,
   useAnsiblexes,
   ansiblexCount,
+  showCharacterLocations,
+  characterLocationCount,
+  showIncursions,
+  incursionSystemCount,
+  showInsurgencies,
+  insurgencySystemCount,
+  ignoredSystemsCount,
+  isSystemIgnored,
+  isSystemInIncursion,
+  getCorruptionLevel,
   onRoutePreferenceChange,
+  onOpenIgnoredSystems,
+  onIgnoreSystem,
+  onUnignoreSystem,
   onUseAnsiblexesChange,
+  onShowCharacterLocationsChange,
+  onShowIncursionsChange,
+  onShowInsurgenciesChange,
   onSetOrigin,
   onSetDestination,
   onClear,
 }: MapRouteControlsProps) {
   const { t } = useTranslation('tools')
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(true)
+
+  const { contextMenuProps, waypointModalProps, openContextMenu } =
+    useSystemContextMenu({
+      isIgnored: isSystemIgnored,
+      onSetOrigin,
+      onSetDestination,
+      onIgnore: onIgnoreSystem,
+      onUnignore: onUnignoreSystem,
+    })
 
   const indexedSystems = useMemo<IndexedSystemItem[]>(
     () => systems.map((s) => ({ ...s, nameLower: s.name.toLowerCase() })),
@@ -238,14 +168,27 @@ export const MapRouteControls = memo(function MapRouteControls({
           <span className="text-sm font-medium text-content-primary">
             {t('map.route')}
           </span>
-          {(originName || destinationName) && (
+          <div className="flex items-center gap-2">
             <button
-              onClick={onClear}
-              className="text-xs text-content-muted hover:text-content-secondary"
+              onClick={onOpenIgnoredSystems}
+              className="text-xs text-content-secondary hover:text-content"
             >
-              {t('map.clear')}
+              {t('map.ignoredSystems.title')}
+              {ignoredSystemsCount > 0 && (
+                <span className="ml-1 text-semantic-warning">
+                  ({ignoredSystemsCount})
+                </span>
+              )}
             </button>
-          )}
+            {(originName || destinationName) && (
+              <button
+                onClick={onClear}
+                className="text-xs text-content-muted hover:text-content-secondary"
+              >
+                {t('map.clear')}
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="mb-3 space-y-2">
@@ -266,6 +209,12 @@ export const MapRouteControls = memo(function MapRouteControls({
             onSelect={onSetDestination}
           />
         </div>
+
+        {routeNotFound && (
+          <div className="mb-3 rounded bg-semantic-danger/10 px-3 py-2 text-sm text-semantic-danger">
+            {t('map.noRouteFound')}
+          </div>
+        )}
 
         {jumps !== null && (
           <div className="mb-3 flex items-center gap-2">
@@ -304,41 +253,82 @@ export const MapRouteControls = memo(function MapRouteControls({
           ))}
         </div>
 
-        {ansiblexRoutingEnabled && (
-          <label className="mt-2 flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={useAnsiblexes}
-              onChange={(e) => onUseAnsiblexesChange(e.target.checked)}
-              className="h-3.5 w-3.5 rounded border-border text-accent focus:ring-accent"
-            />
-            <span className="text-xs text-content-secondary">
-              {t('map.useAnsiblexes')}
-              {ansiblexCount > 0 && (
-                <span className="ml-1 text-content-muted">
-                  ({ansiblexCount})
-                </span>
-              )}
-            </span>
-          </label>
+        {ansiblexRoutingEnabled && ansiblexCount > 0 && (
+          <ToggleOption
+            checked={useAnsiblexes}
+            onChange={onUseAnsiblexesChange}
+            label={t('map.useAnsiblexes')}
+            count={ansiblexCount}
+          />
         )}
+
+        <ToggleOption
+          checked={showCharacterLocations}
+          onChange={onShowCharacterLocationsChange}
+          label={t('map.showCharacterLocations')}
+          count={characterLocationCount}
+        />
+
+        <ToggleOption
+          checked={showIncursions}
+          onChange={onShowIncursionsChange}
+          label={t('map.showIncursions')}
+          count={incursionSystemCount}
+          countColorClass="text-semantic-danger"
+        />
+
+        <ToggleOption
+          checked={showInsurgencies}
+          onChange={onShowInsurgenciesChange}
+          label={t('map.showInsurgencies')}
+          count={insurgencySystemCount}
+          countColorClass="text-semantic-warning"
+        />
       </div>
 
       {expanded && routeSystems.length > 0 && (
         <div className="max-h-[30vh] overflow-y-auto border-t border-border-secondary px-3 py-2">
           <div className="space-y-0.5 text-xs">
             {routeSystems.map((system, index) => (
-              <div key={system.id} className="flex items-center gap-2">
+              <div
+                key={system.id}
+                className="flex cursor-context-menu items-center gap-2 rounded px-1 hover:bg-surface-tertiary"
+                onContextMenu={(e) =>
+                  openContextMenu(e, system.id, system.name)
+                }
+              >
                 <span className="w-5 text-right text-content-muted">
                   {index}
                 </span>
                 <span className="text-content-secondary">{system.name}</span>
                 <SecurityBadge security={system.security} />
+                {isBorderSystem(routeSystems, index) && (
+                  <span className="text-semantic-warning">
+                    {t('map.border')}
+                  </span>
+                )}
+                {isSystemInIncursion(system.id) && (
+                  <span className="text-semantic-danger">
+                    {t('map.incursion')}
+                  </span>
+                )}
+                {(() => {
+                  const level = getCorruptionLevel(system.id)
+                  if (level === null) return null
+                  return (
+                    <span className="flex items-center gap-1 text-semantic-warning">
+                      {t('map.insurgency')} <CorruptionBadge level={level} />
+                    </span>
+                  )
+                })()}
               </div>
             ))}
           </div>
         </div>
       )}
+
+      {contextMenuProps && <MapSystemContextMenu {...contextMenuProps} />}
+      <IngameActionModal {...waypointModalProps} />
     </div>
   )
 })

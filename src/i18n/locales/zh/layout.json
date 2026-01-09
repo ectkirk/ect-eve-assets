@@ -44,6 +44,25 @@
   "accessibility.skipToContent": "跳转到主要内容",
   "accessibility.discord": "加入我们的 Discord 服务器",
   "accessibility.dismissWarning": "忽略警告",
+  "accessibility.applicationModes": "应用模式",
+  "accessibility.abyssalSyncInProgress": "深渊同步进行中",
+  "accessibility.minimizeWindow": "最小化窗口",
+  "accessibility.maximizeWindow": "最大化窗口",
+  "accessibility.restoreWindow": "还原窗口",
+  "accessibility.closeWindow": "关闭窗口",
+  "accessibility.dismissUpdateNotification": "关闭更新通知",
+  "accessibility.addCorpAria": "添加您的军团（您是董事）",
+
+  "ownerButton.loggingIn": "登录中...",
+  "ownerButton.authFailureTooltip": "认证失败 - 点击重新认证",
+  "ownerButton.scopesOutdatedTooltip": "权限已过期 - 点击更新",
+
+  "ownerRow.reauthNeeded": "需要重新认证",
+  "ownerRow.upgradeScopes": "更新权限",
+  "ownerRow.addCorp": "添加军团",
+  "ownerRow.addCorporation": "添加军团",
+  "ownerRow.refreshing": "刷新中...",
+  "ownerRow.refreshCorporationRoles": "刷新军团角色",
 
   "warnings.refDataPartialFail": "参考数据部分加载失败。某些物品名称可能缺失。",
 

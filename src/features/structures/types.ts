@@ -11,6 +11,8 @@ export interface UnifiedStructureRow {
   owner: Owner
   typeId: number
   typeName: string
+  systemId: number
+  systemName: string
   regionName: string
   state: string
   fuelValue: number | null

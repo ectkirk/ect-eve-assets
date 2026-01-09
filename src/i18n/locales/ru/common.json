@@ -80,6 +80,16 @@
   "time.fullDaysHours": "{{days}} дней {{hours}} часов",
 
   "search.placeholder": "Поиск...",
+  "search.noItemsFound": "Предметы не найдены",
+
+  "accessibility.search": "Поиск",
+  "accessibility.clearSearch": "Очистить поиск",
+  "accessibility.filterByOrderType": "Фильтр по типу ордера",
+  "accessibility.filterByAssetType": "Фильтр по типу актива",
+  "accessibility.filterByCategory": "Фильтр по категории",
+  "accessibility.clickToCopy": "Нажмите, чтобы скопировать",
+
+  "buttons.copied": "Скопировано!",
 
   "errors.somethingWentWrong": "Что-то пошло не так",
   "errors.failedToInitCache": "Не удалось инициализировать кэш",

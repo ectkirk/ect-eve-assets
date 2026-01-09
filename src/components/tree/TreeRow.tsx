@@ -190,7 +190,7 @@ export const TreeRow = memo(function TreeRow({
           )}
           {canSetAutopilotIngame && (
             <ContextMenuItem onClick={handleSetAutopilotIngame}>
-              {t('contextMenu.setAutopilotIngame')}
+              {t('contextMenu.setWaypoint')}
             </ContextMenuItem>
           )}
           {showBuyback && (

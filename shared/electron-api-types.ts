@@ -145,6 +145,43 @@ export interface MutamarketResult {
   status?: number
 }
 
+export interface InsurgencySolarSystem {
+  id: number
+  name: string
+  security: number
+  securityBand: string
+  occupierFactionId?: number | null
+  ownerFactionId?: number | null
+}
+
+export interface InsurgencySystem {
+  corruptionDate: string | null
+  corruptionPercentage: number
+  corruptionState: number
+  suppressionDate: string | null
+  suppressionPercentage: number
+  suppressionState: number
+  solarSystem: InsurgencySolarSystem
+}
+
+export interface InsurgencyCampaign {
+  campaignId: number
+  pirateFactionId: number
+  corruptionThresHold: number
+  suppressionThresHold: number
+  state: string
+  startDateTime: string
+  endDateTime: string | null
+  originSolarSystem: InsurgencySolarSystem
+  insurgencies: InsurgencySystem[]
+}
+
+export interface InsurgencyResult {
+  data?: InsurgencyCampaign[]
+  error?: string
+  status?: number
+}
+
 export interface RefMarketContractItem {
   price: number | null
   salesCount: number
@@ -897,6 +934,7 @@ export interface ElectronAPI {
     itemId: number,
     typeId?: number
   ) => Promise<MutamarketResult>
+  insurgencyGet: () => Promise<InsurgencyResult>
   onUpdateAvailable: (callback: (version: string) => void) => () => void
   onUpdateDownloadProgress: (callback: (percent: number) => void) => () => void
   onUpdateDownloaded: (callback: (version: string) => void) => () => void

@@ -127,6 +127,9 @@ describe('MainLayout', () => {
       value: {
         storageGet: vi.fn().mockResolvedValue({}),
         storageSet: vi.fn().mockResolvedValue(undefined),
+        esi: {
+          isPaused: vi.fn().mockResolvedValue(false),
+        },
       },
       writable: true,
     })

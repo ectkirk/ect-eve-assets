@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { matchesSearchLower } from '@/lib/utils'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
@@ -13,6 +13,7 @@ import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import { getLocationInfo } from '@/lib/location-utils'
 import { ORDER_COLUMNS, type OrderRow } from './types'
 import { OrdersTable } from './OrdersTable'
+import { IngameActionModal } from '@/components/dialogs/IngameActionModal'
 
 const CONTAINER_CLASS =
   'h-full rounded-lg border border-border bg-surface-secondary/30'
@@ -56,6 +57,17 @@ export function MarketOrdersTab() {
   )
 
   const [orderTypeValue, setOrderTypeValue] = useState<OrderTypeValue>('all')
+  const [waypointAction, setWaypointAction] = useState<{
+    locationId: number
+    locationName: string
+  } | null>(null)
+
+  const handleSetWaypoint = useCallback(
+    (locationId: number, locationName: string) => {
+      setWaypointAction({ locationId, locationName })
+    },
+    []
+  )
 
   const { getColumnsForDropdown, getVisibleColumns } = useColumnSettings(
     'market-orders',
@@ -199,8 +211,21 @@ export function MarketOrdersTab() {
   }
 
   return (
-    <div className={`${CONTAINER_CLASS} overflow-auto`}>
-      <OrdersTable orders={filteredOrders} visibleColumns={visibleColumns} />
-    </div>
+    <>
+      <div className={`${CONTAINER_CLASS} overflow-auto`}>
+        <OrdersTable
+          orders={filteredOrders}
+          visibleColumns={visibleColumns}
+          onSetWaypoint={handleSetWaypoint}
+        />
+      </div>
+      <IngameActionModal
+        open={waypointAction !== null}
+        onOpenChange={(open) => !open && setWaypointAction(null)}
+        action="autopilot"
+        targetId={waypointAction?.locationId ?? 0}
+        targetName={waypointAction?.locationName}
+      />
+    </>
   )
 }

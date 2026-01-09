@@ -44,6 +44,25 @@
   "accessibility.skipToContent": "Skip to main content",
   "accessibility.discord": "Join our Discord server",
   "accessibility.dismissWarning": "Dismiss warning",
+  "accessibility.applicationModes": "Application modes",
+  "accessibility.abyssalSyncInProgress": "Abyssal sync in progress",
+  "accessibility.minimizeWindow": "Minimize window",
+  "accessibility.maximizeWindow": "Maximize window",
+  "accessibility.restoreWindow": "Restore window",
+  "accessibility.closeWindow": "Close window",
+  "accessibility.dismissUpdateNotification": "Dismiss update notification",
+  "accessibility.addCorpAria": "Add your corporation (you're a director)",
+
+  "ownerButton.loggingIn": "Logging in...",
+  "ownerButton.authFailureTooltip": "Auth failure - click to re-authenticate",
+  "ownerButton.scopesOutdatedTooltip": "Scopes outdated - click to upgrade",
+
+  "ownerRow.reauthNeeded": "Re-auth needed",
+  "ownerRow.upgradeScopes": "Upgrade scopes",
+  "ownerRow.addCorp": "Add Corp",
+  "ownerRow.addCorporation": "Add Corporation",
+  "ownerRow.refreshing": "Refreshing...",
+  "ownerRow.refreshCorporationRoles": "Refresh Corporation Roles",
 
   "warnings.refDataPartialFail": "Reference data partially failed to load. Some item names may be missing.",
 

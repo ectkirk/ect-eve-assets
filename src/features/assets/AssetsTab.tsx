@@ -515,7 +515,7 @@ export function AssetsTab() {
                               })
                             }
                           >
-                            {tCommon('contextMenu.setAutopilotIngame')}
+                            {tCommon('contextMenu.setWaypoint')}
                           </ContextMenuItem>
                         )}
                         {row.original.contractInfo && (

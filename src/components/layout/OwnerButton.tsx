@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Loader2, AlertTriangle } from 'lucide-react'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useExpiryCacheStore } from '@/store/expiry-cache-store'
@@ -7,6 +8,7 @@ import { OwnerManagementModal } from './OwnerManagementModal'
 import eveSsoLoginWhite from '/eve-sso-login-white.png'
 
 export function OwnerButton() {
+  const { t } = useTranslation('layout')
   const [modalOpen, setModalOpen] = useState(false)
   const [isAddingOwner, setIsAddingOwner] = useState(false)
 
@@ -76,7 +78,7 @@ export function OwnerButton() {
         {isAddingOwner ? (
           <div className="flex items-center gap-2 text-sm text-content-secondary">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Logging in...
+            {t('ownerButton.loggingIn')}
           </div>
         ) : (
           <img
@@ -96,12 +98,12 @@ export function OwnerButton() {
         className="flex items-center gap-2 rounded px-2 py-1 hover:bg-surface-tertiary"
       >
         {hasAuthFailure && (
-          <span title="Auth failure - click to re-authenticate">
+          <span title={t('ownerButton.authFailureTooltip')}>
             <AlertTriangle className="h-4 w-4 text-semantic-danger" />
           </span>
         )}
         {hasScopesOutdated && !hasAuthFailure && (
-          <span title="Scopes outdated - click to upgrade">
+          <span title={t('ownerButton.scopesOutdatedTooltip')}>
             <AlertTriangle className="h-4 w-4 text-semantic-warning" />
           </span>
         )}

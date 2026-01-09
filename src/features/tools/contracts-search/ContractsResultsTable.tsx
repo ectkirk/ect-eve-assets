@@ -9,9 +9,9 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { SortableHeader } from '@/components/ui/sortable-header'
+import { IngameActionModal } from '@/components/dialogs/IngameActionModal'
 import { Pagination } from './Pagination'
 import { ContractTooltip } from './ContractTooltip'
-import { ContractContextMenu } from './ContractContextMenu'
 import { ContractRow } from './ContractRow'
 import { PAGE_SIZE } from './utils'
 import { useAuctionBids } from './useContractBids'
@@ -55,10 +55,12 @@ export function ContractsResultsTable({
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(
     null
   )
-  const [contextMenu, setContextMenu] = useState<{
-    x: number
-    y: number
-    contract: SearchContract
+  const [ingameAction, setIngameAction] = useState<{
+    contractId: number
+  } | null>(null)
+  const [waypointAction, setWaypointAction] = useState<{
+    systemId: number
+    systemName: string
   } | null>(null)
   const tableRef = useRef<HTMLDivElement>(null)
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -119,20 +121,19 @@ export function ContractsResultsTable({
     requestAnimationFrame(() => setTooltipPos({ x, y }))
   }, [cursorPos, hoveredContract])
 
-  const handleContextMenu = useCallback(
-    (e: React.MouseEvent, contract: SearchContract) => {
-      e.preventDefault()
-      setContextMenu({ x: e.clientX, y: e.clientY, contract })
-    },
-    []
-  )
-
   useEffect(() => {
     tableRef.current?.scrollTo({ top: 0 })
   }, [page])
 
-  const closeContextMenu = useCallback(() => {
-    setContextMenu(null)
+  const handleSetWaypoint = useCallback(
+    (systemId: number, systemName: string) => {
+      setWaypointAction({ systemId, systemName })
+    },
+    []
+  )
+
+  const handleOpenContractIngame = useCallback((contractId: number) => {
+    setIngameAction({ contractId })
   }, [])
 
   const sortedContracts = useMemo(() => {
@@ -272,7 +273,9 @@ export function ContractsResultsTable({
                 isHovered={hoveredContract?.contractId === contract.contractId}
                 onMouseEnter={handleRowHover}
                 onMouseLeave={handleRowLeave}
-                onContextMenu={handleContextMenu}
+                onViewContract={onViewContract}
+                onSetWaypoint={handleSetWaypoint}
+                onOpenContractIngame={handleOpenContractIngame}
               />
             ))}
           </TableBody>
@@ -286,16 +289,6 @@ export function ContractsResultsTable({
             visible={tooltipPos !== null}
           />
         )}
-
-        {contextMenu && (
-          <ContractContextMenu
-            x={contextMenu.x}
-            y={contextMenu.y}
-            contract={contextMenu.contract}
-            onViewContract={onViewContract}
-            onClose={closeContextMenu}
-          />
-        )}
       </div>
 
       <Pagination
@@ -305,6 +298,20 @@ export function ContractsResultsTable({
         pageSize={PAGE_SIZE}
         onPageChange={onPageChange}
         isLoading={isLoading}
+      />
+
+      <IngameActionModal
+        open={waypointAction !== null}
+        onOpenChange={(open) => !open && setWaypointAction(null)}
+        action="autopilot"
+        targetId={waypointAction?.systemId ?? 0}
+        targetName={waypointAction?.systemName}
+      />
+      <IngameActionModal
+        open={ingameAction !== null}
+        onOpenChange={(open) => !open && setIngameAction(null)}
+        action="contract"
+        targetId={ingameAction?.contractId ?? 0}
       />
     </div>
   )

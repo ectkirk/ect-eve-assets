@@ -1,5 +1,14 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { IngameActionModal } from '@/components/dialogs/IngameActionModal'
+import { useCharacterLocationsStore } from '@/store/character-locations-store'
+import { useIgnoredSystemsStore } from '@/store/ignored-systems-store'
+import { useIncursionsStore } from '@/store/incursions-store'
+import { useInsurgenciesStore } from '@/store/insurgencies-store'
+import {
+  startInsurgenciesRefreshTimer,
+  stopInsurgenciesRefreshTimer,
+} from '@/store/map-data-refresh-timers'
 import {
   getAllSystems,
   getAllRegions,
@@ -9,7 +18,12 @@ import {
   type CachedRegion,
   type CachedStargate,
 } from '@/store/reference-cache'
-import type { ColorMode, SearchResult } from './types'
+import {
+  CLICK_RADIUS,
+  EXCLUDED_REGION_NAMES,
+  type ColorMode,
+  type SearchResult,
+} from './types'
 import {
   buildGraph,
   findRoute,
@@ -32,6 +46,7 @@ import {
   renderRoute,
   renderRouteEndpoints,
   renderAnsiblexConnections,
+  renderSystemRings,
   renderSystemLabels,
   renderLabels,
 } from './utils/rendering'
@@ -52,6 +67,11 @@ import {
   type SystemSearchItem,
 } from './components/MapRouteControls'
 import { MapSearch } from './components/MapSearch'
+import { MapCharacterMarkers } from './components/MapCharacterMarkers'
+import { IgnoredSystemsModal } from './components/IgnoredSystemsModal'
+import { MapSystemContextMenu } from './components/MapSystemContextMenu'
+import { MapInsurgencyPanel } from './components/MapInsurgencyPanel'
+import { MapIncursionPanel } from './components/MapIncursionPanel'
 
 export function StarMap() {
   const { t } = useTranslation('tools')
@@ -70,6 +90,17 @@ export function StarMap() {
   const [routeDestination, setRouteDestination] = useState<number | null>(null)
   const [routePreference, setRoutePreference] =
     useState<RoutePreference>('shorter')
+  const [contextMenu, setContextMenu] = useState<{
+    x: number
+    y: number
+    systemId: number
+    systemName: string
+  } | null>(null)
+  const [ignoredSystemsModalOpen, setIgnoredSystemsModalOpen] = useState(false)
+  const [waypointAction, setWaypointAction] = useState<{
+    systemId: number
+    systemName: string
+  } | null>(null)
   const clickStartRef = useRef<{ x: number; y: number } | null>(null)
 
   const universeDataLoaded = useUniverseDataLoaded()
@@ -83,6 +114,45 @@ export function StarMap() {
     setUseAnsiblexes,
   } = useAnsiblexRouting()
 
+  const {
+    enabled: showCharacterLocations,
+    setEnabled: setShowCharacterLocations,
+    locations: characterLocations,
+    fetchLocations,
+  } = useCharacterLocationsStore()
+
+  const characterMarkers = useMemo(
+    () => Array.from(characterLocations.values()),
+    [characterLocations]
+  )
+
+  const {
+    ignoredSystems,
+    avoidIncursions,
+    avoidInsurgencies,
+    addIgnored,
+    removeIgnored,
+    isIgnored,
+  } = useIgnoredSystemsStore()
+
+  const {
+    enabled: showIncursions,
+    setEnabled: setShowIncursions,
+    infestedSystems,
+    incursions: incursionsList,
+    fetchIncursions,
+    isSystemInIncursion,
+  } = useIncursionsStore()
+
+  const {
+    enabled: showInsurgencies,
+    setEnabled: setShowInsurgencies,
+    affectedSystems: insurgencySystems,
+    systemsInfo: insurgencySystemsInfo,
+    fetchInsurgencies,
+    getCorruptionLevel,
+  } = useInsurgenciesStore()
+
   const { systems, regions, stargates } = useMemo(() => {
     if (!universeDataLoaded) {
       return {
@@ -91,10 +161,30 @@ export function StarMap() {
         stargates: [] as CachedStargate[],
       }
     }
+
+    const allRegions = getAllRegions()
+    const filteredRegions = allRegions.filter(
+      (r) => !EXCLUDED_REGION_NAMES.has(r.name)
+    )
+    const excludedRegionIds = new Set(
+      allRegions
+        .filter((r) => EXCLUDED_REGION_NAMES.has(r.name))
+        .map((r) => r.id)
+    )
+
+    const filteredSystems = getAllSystems().filter(
+      (s) => !excludedRegionIds.has(s.regionId)
+    )
+    const validSystemIds = new Set(filteredSystems.map((s) => s.id))
+
+    const filteredStargates = getAllStargates().filter(
+      (g) => validSystemIds.has(g.from) && validSystemIds.has(g.to)
+    )
+
     return {
-      systems: getAllSystems(),
-      regions: getAllRegions(),
-      stargates: getAllStargates(),
+      systems: filteredSystems,
+      regions: filteredRegions,
+      stargates: filteredStargates,
     }
   }, [universeDataLoaded])
 
@@ -136,6 +226,23 @@ export function StarMap() {
     ansiblexes,
   ])
 
+  const effectiveIgnoredSystems = useMemo(() => {
+    const merged = new Set(ignoredSystems)
+    if (avoidIncursions) {
+      for (const id of infestedSystems) merged.add(id)
+    }
+    if (avoidInsurgencies) {
+      for (const id of insurgencySystems) merged.add(id)
+    }
+    return merged
+  }, [
+    ignoredSystems,
+    avoidIncursions,
+    avoidInsurgencies,
+    infestedSystems,
+    insurgencySystems,
+  ])
+
   const calculatedRoute = useMemo(() => {
     if (!pathfinderGraph || routeOrigin === null || routeDestination === null) {
       return null
@@ -144,9 +251,17 @@ export function StarMap() {
       pathfinderGraph,
       routeOrigin,
       routeDestination,
-      routePreference
+      routePreference,
+      50,
+      effectiveIgnoredSystems
     )
-  }, [pathfinderGraph, routeOrigin, routeDestination, routePreference])
+  }, [
+    pathfinderGraph,
+    routeOrigin,
+    routeDestination,
+    routePreference,
+    effectiveIgnoredSystems,
+  ])
 
   const {
     camera,
@@ -188,7 +303,27 @@ export function StarMap() {
     allianceData,
     dimensions,
     isDragging,
+    isSystemInIncursion,
+    getCorruptionLevel,
   })
+
+  const getWorldCoordsFromEvent = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement>) => {
+      if (!canvasRef.current) return null
+      const rect = canvasRef.current.getBoundingClientRect()
+      const mouseX = e.clientX - rect.left
+      const mouseY = e.clientY - rect.top
+      const cam = cameraRef.current
+      return screenToWorld(
+        mouseX,
+        mouseY,
+        cam,
+        dimensions.width,
+        dimensions.height
+      )
+    },
+    [cameraRef, dimensions]
+  )
 
   const handleSelectResult = useCallback(
     (result: SearchResult) => {
@@ -242,21 +377,15 @@ export function StarMap() {
       const movedDistance = Math.sqrt(dx * dx + dy * dy)
 
       if (movedDistance < 5) {
-        const rect = canvasRef.current.getBoundingClientRect()
-        const mouseX = e.clientX - rect.left
-        const mouseY = e.clientY - rect.top
+        const coords = getWorldCoordsFromEvent(e)
+        if (!coords) return
 
-        const cam = cameraRef.current
-        const { x: worldX, y: worldY } = screenToWorld(
-          mouseX,
-          mouseY,
-          cam,
-          dimensions.width,
-          dimensions.height
+        const clickRadius = CLICK_RADIUS / cameraRef.current.zoom
+        const nearest = spatialIndex.findNearest(
+          coords.x,
+          coords.y,
+          clickRadius
         )
-
-        const clickRadius = 15 / cam.zoom
-        const nearest = spatialIndex.findNearest(worldX, worldY, clickRadius)
 
         if (e.shiftKey && nearest) {
           setRouteOrigin(nearest.id)
@@ -266,20 +395,14 @@ export function StarMap() {
           setHighlightedRegionId(null)
           setHighlightedSystemId(nearest.id)
         } else {
-          const regionRadius = 100 / cam.zoom
-          const nearestForRegion = spatialIndex.findNearest(
-            worldX,
-            worldY,
-            regionRadius
-          )
           setHighlightedSystemId(null)
-          setHighlightedRegionId(nearestForRegion?.regionId ?? null)
+          setHighlightedRegionId(null)
         }
       }
 
       clickStartRef.current = null
     },
-    [handleMouseUp, spatialIndex, cameraRef, dimensions]
+    [handleMouseUp, spatialIndex, getWorldCoordsFromEvent, cameraRef]
   )
 
   const handleClearRoute = useCallback(() => {
@@ -295,6 +418,24 @@ export function StarMap() {
     setRouteDestination(systemId)
   }, [])
 
+  const handleDoubleClick = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement>) => {
+      if (!spatialIndex) return
+
+      const coords = getWorldCoordsFromEvent(e)
+      if (!coords) return
+
+      const regionRadius = 100 / cameraRef.current.zoom
+      const nearest = spatialIndex.findNearest(coords.x, coords.y, regionRadius)
+
+      if (nearest) {
+        setHighlightedSystemId(null)
+        setHighlightedRegionId(nearest.regionId)
+      }
+    },
+    [spatialIndex, getWorldCoordsFromEvent, cameraRef]
+  )
+
   const systemSearchList = useMemo<SystemSearchItem[]>(
     () =>
       systems.map((s) => ({
@@ -305,11 +446,46 @@ export function StarMap() {
     [systems]
   )
 
+  const systemLookupMap = useMemo(
+    () => new Map(systemSearchList.map((s) => [s.id, s])),
+    [systemSearchList]
+  )
+
   const handleCanvasMouseLeave = useCallback(() => {
     handleCameraMouseLeave()
     clearHover()
     clickStartRef.current = null
   }, [handleCameraMouseLeave, clearHover])
+
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement>) => {
+      e.preventDefault()
+      if (!spatialIndex) return
+
+      const coords = getWorldCoordsFromEvent(e)
+      if (!coords) return
+
+      const clickRadius = CLICK_RADIUS / cameraRef.current.zoom
+      const nearest = spatialIndex.findNearest(coords.x, coords.y, clickRadius)
+
+      if (nearest) {
+        setContextMenu({
+          x: e.clientX,
+          y: e.clientY,
+          systemId: nearest.id,
+          systemName: nearest.name,
+        })
+      }
+    },
+    [spatialIndex, getWorldCoordsFromEvent, cameraRef]
+  )
+
+  useEffect(() => {
+    if (!contextMenu) return
+    const handler = () => setContextMenu(null)
+    window.addEventListener('click', handler)
+    return () => window.removeEventListener('click', handler)
+  }, [contextMenu])
 
   useEffect(() => {
     const updateDimensions = () => {
@@ -324,6 +500,29 @@ export function StarMap() {
     window.addEventListener('resize', updateDimensions)
     return () => window.removeEventListener('resize', updateDimensions)
   }, [])
+
+  useEffect(() => {
+    if (!showCharacterLocations) return
+    fetchLocations()
+    const interval = setInterval(fetchLocations, 30000)
+    return () => clearInterval(interval)
+  }, [fetchLocations, showCharacterLocations])
+
+  useEffect(() => {
+    if (!showIncursions) return
+    fetchIncursions()
+    const interval = setInterval(fetchIncursions, 300000)
+    return () => clearInterval(interval)
+  }, [fetchIncursions, showIncursions])
+
+  useEffect(() => {
+    if (!showInsurgencies) {
+      stopInsurgenciesRefreshTimer()
+      return
+    }
+    startInsurgenciesRefreshTimer(fetchInsurgencies)
+    return () => stopInsurgenciesRefreshTimer()
+  }, [fetchInsurgencies, showInsurgencies])
 
   useEffect(() => {
     if (!spatialIndex || !canvasRef.current || !isInitialized) return
@@ -383,29 +582,31 @@ export function StarMap() {
       }
     }
 
-    if (calculatedRoute) {
-      renderRoute(
-        renderContext,
-        calculatedRoute.path,
-        spatialIndex.getSystemMap()
-      )
-    }
-
-    const originSystem =
-      routeOrigin !== null ? spatialIndex.getSystemById(routeOrigin) : undefined
-    const destSystem =
-      routeDestination !== null
-        ? spatialIndex.getSystemById(routeDestination)
-        : undefined
-    if (originSystem || destSystem) {
-      renderRouteEndpoints(renderContext, originSystem, destSystem)
-    }
-
     if (ansiblexes.length > 0 && useAnsiblexes) {
       renderAnsiblexConnections(
         renderContext,
         ansiblexes,
         spatialIndex.getSystemMap()
+      )
+    }
+
+    if (showIncursions && infestedSystems.size > 0) {
+      renderSystemRings(
+        renderContext,
+        infestedSystems,
+        spatialIndex.getSystemMap(),
+        '#ff3333',
+        8
+      )
+    }
+
+    if (showInsurgencies && insurgencySystems.size > 0) {
+      renderSystemRings(
+        renderContext,
+        insurgencySystems,
+        spatialIndex.getSystemMap(),
+        '#ff8800',
+        10
       )
     }
 
@@ -429,6 +630,24 @@ export function StarMap() {
     }
     renderLabels(renderContext, labels)
 
+    if (calculatedRoute) {
+      renderRoute(
+        renderContext,
+        calculatedRoute.path,
+        spatialIndex.getSystemMap()
+      )
+    }
+
+    const originSystem =
+      routeOrigin !== null ? spatialIndex.getSystemById(routeOrigin) : undefined
+    const destSystem =
+      routeDestination !== null
+        ? spatialIndex.getSystemById(routeDestination)
+        : undefined
+    if (originSystem || destSystem) {
+      renderRouteEndpoints(renderContext, originSystem, destSystem)
+    }
+
     ctx.restore()
   }, [
     spatialIndex,
@@ -448,6 +667,10 @@ export function StarMap() {
     routeDestination,
     ansiblexes,
     useAnsiblexes,
+    showIncursions,
+    infestedSystems,
+    showInsurgencies,
+    insurgencySystems,
   ])
 
   if (systems.length === 0 || !isInitialized) {
@@ -472,7 +695,20 @@ export function StarMap() {
         onMouseMove={handleCanvasMouseMove}
         onMouseUp={handleCanvasMouseUp}
         onMouseLeave={handleCanvasMouseLeave}
+        onDoubleClick={handleDoubleClick}
+        onContextMenu={handleContextMenu}
       />
+
+      {showCharacterLocations && spatialIndex && (
+        <MapCharacterMarkers
+          markers={characterMarkers}
+          systemMap={spatialIndex.getSystemMap()}
+          camera={camera}
+          width={dimensions.width}
+          height={dimensions.height}
+          onSystemClick={handleSetOrigin}
+        />
+      )}
 
       {hoveredSystem && (
         <MapTooltip
@@ -527,6 +763,11 @@ export function StarMap() {
                 .filter((s): s is NonNullable<typeof s> => s !== null)
             : []
         }
+        routeNotFound={
+          routeOrigin !== null &&
+          routeDestination !== null &&
+          calculatedRoute === null
+        }
         jumps={calculatedRoute?.jumps ?? null}
         ansiblexJumps={calculatedRoute?.ansiblexJumps ?? null}
         routePreference={routePreference}
@@ -534,11 +775,96 @@ export function StarMap() {
         ansiblexRoutingEnabled={ansiblexRoutingEnabled}
         useAnsiblexes={useAnsiblexes}
         ansiblexCount={ansiblexConnectionCount}
+        showCharacterLocations={showCharacterLocations}
+        characterLocationCount={characterMarkers.length}
+        showIncursions={showIncursions}
+        incursionSystemCount={infestedSystems.size}
+        showInsurgencies={showInsurgencies}
+        insurgencySystemCount={insurgencySystems.size}
+        ignoredSystemsCount={ignoredSystems.size}
+        isSystemIgnored={isIgnored}
+        isSystemInIncursion={isSystemInIncursion}
+        getCorruptionLevel={getCorruptionLevel}
         onRoutePreferenceChange={setRoutePreference}
+        onOpenIgnoredSystems={() => setIgnoredSystemsModalOpen(true)}
+        onIgnoreSystem={addIgnored}
+        onUnignoreSystem={removeIgnored}
         onUseAnsiblexesChange={setUseAnsiblexes}
+        onShowCharacterLocationsChange={setShowCharacterLocations}
+        onShowIncursionsChange={setShowIncursions}
+        onShowInsurgenciesChange={setShowInsurgencies}
         onSetOrigin={handleSetOrigin}
         onSetDestination={handleSetDestination}
         onClear={handleClearRoute}
+      />
+
+      {contextMenu && (
+        <MapSystemContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          isIgnored={isIgnored(contextMenu.systemId)}
+          onSetOrigin={() => {
+            setRouteOrigin(contextMenu.systemId)
+            setContextMenu(null)
+          }}
+          onSetDestination={() => {
+            setRouteDestination(contextMenu.systemId)
+            setContextMenu(null)
+          }}
+          onIgnore={() => {
+            addIgnored(contextMenu.systemId)
+            setContextMenu(null)
+          }}
+          onUnignore={() => {
+            removeIgnored(contextMenu.systemId)
+            setContextMenu(null)
+          }}
+          onSetWaypoint={() => {
+            setWaypointAction({
+              systemId: contextMenu.systemId,
+              systemName: contextMenu.systemName,
+            })
+            setContextMenu(null)
+          }}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
+
+      <IngameActionModal
+        open={waypointAction !== null}
+        onOpenChange={(open) => !open && setWaypointAction(null)}
+        action="autopilot"
+        targetId={waypointAction?.systemId ?? 0}
+        targetName={waypointAction?.systemName}
+      />
+
+      {showIncursions && incursionsList.length > 0 && (
+        <MapIncursionPanel
+          incursions={incursionsList}
+          systemMap={systemLookupMap}
+          isIgnored={isIgnored}
+          onSetOrigin={handleSetOrigin}
+          onSetDestination={handleSetDestination}
+          onIgnore={addIgnored}
+          onUnignore={removeIgnored}
+        />
+      )}
+
+      {showInsurgencies && insurgencySystemsInfo.length > 0 && (
+        <MapInsurgencyPanel
+          systems={insurgencySystemsInfo}
+          isIgnored={isIgnored}
+          onSetOrigin={handleSetOrigin}
+          onSetDestination={handleSetDestination}
+          onIgnore={addIgnored}
+          onUnignore={removeIgnored}
+        />
+      )}
+
+      <IgnoredSystemsModal
+        open={ignoredSystemsModalOpen}
+        onOpenChange={setIgnoredSystemsModalOpen}
+        systems={systemSearchList}
       />
     </div>
   )

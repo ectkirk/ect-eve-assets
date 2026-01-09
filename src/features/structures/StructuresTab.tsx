@@ -36,6 +36,7 @@ import { FittingDialog } from '@/components/dialogs/FittingDialog'
 import { POSInfoDialog } from '@/components/dialogs/POSInfoDialog'
 import { StructureInfoDialog } from '@/components/dialogs/StructureInfoDialog'
 import { POCOInfoDialog } from '@/components/dialogs/POCOInfoDialog'
+import { IngameActionModal } from '@/components/dialogs/IngameActionModal'
 import { StructuresTable } from './StructuresTable'
 import type { TreeNode } from '@/lib/tree-types'
 import type { ESIAsset } from '@/api/endpoints/assets'
@@ -203,6 +204,10 @@ export function StructuresTab() {
     customsOffice: ESICustomsOffice
     ownerName: string
   } | null>(null)
+  const [waypointAction, setWaypointAction] = useState<{
+    systemId: number
+    systemName: string
+  } | null>(null)
 
   const handleViewFitting = useCallback((node: TreeNode) => {
     setSelectedNode(node)
@@ -229,6 +234,13 @@ export function StructuresTab() {
     (customsOffice: ESICustomsOffice, ownerName: string) => {
       setSelectedPoco({ customsOffice, ownerName })
       setPocoInfoDialogOpen(true)
+    },
+    []
+  )
+
+  const handleSetWaypoint = useCallback(
+    (systemId: number, systemName: string) => {
+      setWaypointAction({ systemId, systemName })
     },
     []
   )
@@ -267,6 +279,8 @@ export function StructuresTab() {
           owner,
           typeId: structure.type_id,
           typeName: getTypeName(structure.type_id),
+          systemId: structure.system_id,
+          systemName: location?.name ?? t('fallback.unknownSystem'),
           regionName: location?.regionName ?? t('fallback.unknownRegion'),
           state: structure.state,
           fuelValue: fuelInfo.days,
@@ -317,6 +331,8 @@ export function StructuresTab() {
           owner,
           typeId: starbase.type_id,
           typeName: getTypeName(starbase.type_id),
+          systemId: starbase.system_id,
+          systemName: location?.name ?? t('fallback.unknownSystem'),
           regionName: location?.regionName ?? t('fallback.unknownRegion'),
           state,
           fuelValue: fuelHours,
@@ -351,10 +367,12 @@ export function StructuresTab() {
           owner,
           typeId: 2233,
           typeName: t('poco.typeName'),
+          systemId: poco.system_id,
+          systemName: location?.name ?? t('fallback.unknownSystem'),
           regionName: location?.regionName ?? t('fallback.unknownRegion'),
           state: 'online',
           fuelValue: null,
-          fuelText: '—',
+          fuelText: '-',
           fuelIsLow: false,
           rigs: [],
           timerType: 'none',
@@ -448,6 +466,7 @@ export function StructuresTab() {
         onViewPosInfo={handleViewPosInfo}
         onViewPocoInfo={handleViewPocoInfo}
         onViewFitting={handleViewFitting}
+        onSetWaypoint={handleSetWaypoint}
       />
       <FittingDialog
         open={fittingDialogOpen}
@@ -476,6 +495,13 @@ export function StructuresTab() {
         onOpenChange={setPocoInfoDialogOpen}
         customsOffice={selectedPoco?.customsOffice ?? null}
         ownerName={selectedPoco?.ownerName ?? ''}
+      />
+      <IngameActionModal
+        open={waypointAction !== null}
+        onOpenChange={(open) => !open && setWaypointAction(null)}
+        action="autopilot"
+        targetId={waypointAction?.systemId ?? 0}
+        targetName={waypointAction?.systemName}
       />
     </>
   )

@@ -62,6 +62,19 @@ export function screenToWorld(
   }
 }
 
+export function canvasToScreen(
+  canvasX: number,
+  canvasY: number,
+  camera: Camera,
+  width: number,
+  height: number
+): { x: number; y: number } {
+  return {
+    x: (canvasX - width / 2) * camera.zoom + width / 2 + camera.x,
+    y: (canvasY - height / 2) * camera.zoom + height / 2 + camera.y,
+  }
+}
+
 export interface VisibleBounds {
   left: number
   right: number
@@ -104,4 +117,30 @@ export function isInVisibleBounds(
     y >= bounds.top &&
     y <= bounds.bottom
   )
+}
+
+const VIEWPORT_MARGIN = 8
+
+export function clampToViewport(
+  x: number,
+  y: number,
+  elementWidth: number,
+  elementHeight: number,
+  viewportWidth = window.innerWidth,
+  viewportHeight = window.innerHeight
+): { left: number; top: number } {
+  let left = x
+  let top = y
+
+  if (x + elementWidth > viewportWidth - VIEWPORT_MARGIN) {
+    left = x - elementWidth
+  }
+  if (y + elementHeight > viewportHeight - VIEWPORT_MARGIN) {
+    top = y - elementHeight
+  }
+
+  left = Math.max(VIEWPORT_MARGIN, left)
+  top = Math.max(VIEWPORT_MARGIN, top)
+
+  return { left, top }
 }

@@ -80,6 +80,16 @@
   "time.fullDaysHours": "{{days}}일 {{hours}}시간",
 
   "search.placeholder": "검색...",
+  "search.noItemsFound": "항목을 찾을 수 없습니다",
+
+  "accessibility.search": "검색",
+  "accessibility.clearSearch": "검색 지우기",
+  "accessibility.filterByOrderType": "주문 유형별 필터",
+  "accessibility.filterByAssetType": "자산 유형별 필터",
+  "accessibility.filterByCategory": "카테고리별 필터",
+  "accessibility.clickToCopy": "클릭하여 복사",
+
+  "buttons.copied": "복사됨!",
 
   "errors.somethingWentWrong": "문제가 발생했습니다",
   "errors.failedToInitCache": "캐시 초기화 실패",

@@ -125,7 +125,7 @@ export function WindowControls() {
       {abyssalSyncing && (
         <button
           onClick={() => modals.open('abyssal')}
-          aria-label="Abyssal sync in progress"
+          aria-label={t('accessibility.abyssalSyncInProgress')}
           className="flex h-10 items-center gap-1.5 px-3 text-xs text-content-secondary hover:bg-surface-tertiary hover:text-content"
         >
           <Loader2 className="h-3.5 w-3.5 animate-spin text-accent" />
@@ -139,7 +139,7 @@ export function WindowControls() {
       <div ref={settingsPanelRef} className="relative">
         <button
           onClick={() => setSettingsOpen(!settingsOpen)}
-          aria-label="Settings"
+          aria-label={t('settings.title')}
           aria-expanded={settingsOpen}
           className="flex h-10 w-12 items-center justify-center text-content-secondary hover:bg-surface-tertiary hover:text-content"
         >
@@ -284,14 +284,18 @@ export function WindowControls() {
       />
       <button
         onClick={() => window.electronAPI?.windowMinimize()}
-        aria-label="Minimize window"
+        aria-label={t('accessibility.minimizeWindow')}
         className="flex h-10 w-12 items-center justify-center text-content-secondary hover:bg-surface-tertiary hover:text-content"
       >
         <Minus className="h-4 w-4" />
       </button>
       <button
         onClick={() => window.electronAPI?.windowMaximize()}
-        aria-label={isMaximized ? 'Restore window' : 'Maximize window'}
+        aria-label={
+          isMaximized
+            ? t('accessibility.restoreWindow')
+            : t('accessibility.maximizeWindow')
+        }
         className="flex h-10 w-12 items-center justify-center text-content-secondary hover:bg-surface-tertiary hover:text-content"
       >
         {isMaximized ? (
@@ -302,7 +306,7 @@ export function WindowControls() {
       </button>
       <button
         onClick={() => window.electronAPI?.windowClose()}
-        aria-label="Close window"
+        aria-label={t('accessibility.closeWindow')}
         className="flex h-10 w-12 items-center justify-center text-content-secondary hover:bg-semantic-danger hover:text-content"
       >
         <X className="h-4 w-4" />
