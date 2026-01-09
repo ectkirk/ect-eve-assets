@@ -329,6 +329,7 @@ export function StructuresTab() {
     structureAssetMap,
     assetNames,
     starbaseDetails,
+    t,
   ])
 
   const totalCount = useMemo(() => {

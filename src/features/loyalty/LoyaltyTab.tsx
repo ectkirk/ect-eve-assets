@@ -136,6 +136,7 @@ export function LoyaltyTab() {
     selectedSet,
     sortColumn,
     sortDirection,
+    t,
   ])
 
   useEffect(() => {

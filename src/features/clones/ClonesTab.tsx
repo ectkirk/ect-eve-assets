@@ -82,7 +82,6 @@ export function ClonesTab() {
     return () => setRefreshAction(null)
   }, [setRefreshAction, handleRefresh, isUpdating])
 
-  const types = useReferenceCacheStore((s) => s.types)
   const structures = useReferenceCacheStore((s) => s.structures)
 
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
@@ -169,7 +168,7 @@ export function ClonesTab() {
     return result.sort((a, b) =>
       a.ownerName.localeCompare(b.ownerName, getLocale())
     )
-  }, [clonesByOwner, types, structures, selectedSet, t])
+  }, [clonesByOwner, structures, selectedSet, t])
 
   const loadingState = TabLoadingState({
     dataType: 'clones',

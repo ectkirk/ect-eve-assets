@@ -17,7 +17,10 @@ export { formatTimeLeft, formatTimeRemaining, formatDateTime }
 // Localization Helpers
 // =============================================================================
 
-export function localizeTypeName(typeId: number | undefined, fallback: string): string {
+export function localizeTypeName(
+  typeId: number | undefined,
+  fallback: string
+): string {
   if (!typeId) return fallback
   return getTypeName(typeId) ?? fallback
 }
@@ -30,18 +33,25 @@ export function localizeRegionName(regionId: number, fallback: string): string {
   return getRegion(regionId)?.name ?? fallback
 }
 
-export function localizeRegionFromSystem(systemId: number, fallback: string): string {
+export function localizeRegionFromSystem(
+  systemId: number,
+  fallback: string
+): string {
   const system = getSystem(systemId)
   if (!system) return fallback
   return getRegion(system.regionId)?.name ?? fallback
 }
 
-function localizeStationById(stationId: number | null | undefined): string | undefined {
+function localizeStationById(
+  stationId: number | null | undefined
+): string | undefined {
   if (stationId == null || isPlayerStructure(stationId)) return undefined
   return getStation(stationId)?.name
 }
 
-function localizeStationBySystem(systemId: number | null | undefined): string | undefined {
+function localizeStationBySystem(
+  systemId: number | null | undefined
+): string | undefined {
   if (systemId == null) return undefined
   const stations = getStationsBySystemId(systemId)
   return stations.length === 1 ? stations[0]?.name : undefined
@@ -52,7 +62,11 @@ function localizeStation(
   systemId: number | null | undefined,
   fallback?: string
 ): string | undefined {
-  return localizeStationById(locationId) ?? localizeStationBySystem(systemId) ?? fallback
+  return (
+    localizeStationById(locationId) ??
+    localizeStationBySystem(systemId) ??
+    fallback
+  )
 }
 
 // =============================================================================
@@ -105,7 +119,9 @@ export const HIGHSEC_DISPLAY_THRESHOLD = 0.5
 // Location Helpers
 // =============================================================================
 
-export function isPlayerStructure(locationId: number | null | undefined): boolean {
+export function isPlayerStructure(
+  locationId: number | null | undefined
+): boolean {
   return locationId != null && locationId >= PLAYER_STRUCTURE_ID_THRESHOLD
 }
 
@@ -135,7 +151,10 @@ export function getSecurityColor(sec: number): string {
 export function mapToCourierContract(
   c: ContractSearchContract
 ): CourierContract | null {
-  if (isPlayerStructure(c.startLocationId) || isPlayerStructure(c.endLocationId)) {
+  if (
+    isPlayerStructure(c.startLocationId) ||
+    isPlayerStructure(c.endLocationId)
+  ) {
     return null
   }
 
@@ -158,7 +177,10 @@ export function mapToCourierContract(
       : (c.destination?.systemName ?? 'Unknown'),
     destSystemId,
     destRegion: destSystemId
-      ? localizeRegionFromSystem(destSystemId, c.destination?.regionName ?? 'Unknown')
+      ? localizeRegionFromSystem(
+          destSystemId,
+          c.destination?.regionName ?? 'Unknown'
+        )
       : (c.destination?.regionName ?? 'Unknown'),
     destSecurity: c.destination?.securityStatus ?? null,
     destStation: localizeStation(
@@ -229,7 +251,8 @@ export function calculateContractDisplayValues(
   if (isWantToBuy) {
     const reward = contract.reward ?? 0
     const itemsValue = contract.estValue
-    const youGet = itemsValue != null ? reward + itemsValue : reward > 0 ? reward : null
+    const youGet =
+      itemsValue != null ? reward + itemsValue : reward > 0 ? reward : null
     const youGive = contract.estRequestedValue ?? null
     const diff = youGet != null && youGive != null ? youGet - youGive : null
     const pct = youGive && diff != null ? (diff / youGive) * 100 : null
@@ -248,7 +271,8 @@ export function calculateContractDisplayValues(
     const displayPrice = highestBid ?? contract.price
     const displayEstValue = contract.estValue
     const diff = displayEstValue != null ? displayPrice - displayEstValue : null
-    const pct = displayEstValue && diff != null ? (diff / displayEstValue) * 100 : null
+    const pct =
+      displayEstValue && diff != null ? (diff / displayEstValue) * 100 : null
     return {
       displayPrice,
       displayEstValue,
@@ -262,7 +286,8 @@ export function calculateContractDisplayValues(
   const displayPrice = contract.price
   const displayEstValue = contract.estValue
   const diff = displayEstValue != null ? displayPrice - displayEstValue : null
-  const pct = displayEstValue && diff != null ? (diff / displayEstValue) * 100 : null
+  const pct =
+    displayEstValue && diff != null ? (diff / displayEstValue) * 100 : null
   return {
     displayPrice,
     displayEstValue,

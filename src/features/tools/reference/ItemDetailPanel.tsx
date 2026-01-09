@@ -246,6 +246,7 @@ export function ItemDetailPanel({
     attrCategories,
     excludedAttrIds,
     showUnpublished,
+    t,
   ])
 
   const shipFittingData = useMemo(() => {

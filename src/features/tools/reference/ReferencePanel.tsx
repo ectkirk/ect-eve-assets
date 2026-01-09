@@ -144,6 +144,7 @@ export function ReferencePanel({
     types,
     allTypesLoaded,
     showUnpublished,
+    t,
   ])
 
   const handleToggleCategory = useCallback((categoryId: number) => {

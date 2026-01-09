@@ -12,7 +12,9 @@ interface BlueprintSourcesSectionProps {
 
 async function fetchBlueprint(typeId: number): Promise<RefTypeBlueprintResult> {
   if (!window.electronAPI) throw new Error('API not available')
-  return window.electronAPI.refTypeBlueprint(typeId, { language: getLanguage() })
+  return window.electronAPI.refTypeBlueprint(typeId, {
+    language: getLanguage(),
+  })
 }
 
 function hasBlueprintData(data: RefTypeBlueprintResult): boolean {
