@@ -1,0 +1,9 @@
+{
+  "empty": "マーケット注文がありません。",
+
+  "totals.sellOrders": "売り注文",
+  "totals.buyOrders": "買い注文",
+
+  "orderType.sell": "売却",
+  "orderType.buy": "購入"
+}

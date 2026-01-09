@@ -2,16 +2,16 @@ import type { MarketOrder } from '@/store/market-orders-store'
 import type { ColumnConfig } from '@/hooks'
 
 export const ORDER_COLUMNS: ColumnConfig[] = [
-  { id: 'item', label: 'Item' },
-  { id: 'type', label: 'Type' },
-  { id: 'location', label: 'Location' },
-  { id: 'price', label: 'Price' },
-  { id: 'lowest', label: 'Best Order' },
-  { id: 'diff', label: 'Difference' },
-  { id: 'eveEstimated', label: 'EVE Estimated' },
-  { id: 'quantity', label: 'Quantity' },
-  { id: 'total', label: 'Total' },
-  { id: 'expires', label: 'Expires' },
+  { id: 'item', label: 'columns.item' },
+  { id: 'type', label: 'columns.type' },
+  { id: 'location', label: 'columns.location' },
+  { id: 'price', label: 'columns.price' },
+  { id: 'lowest', label: 'columns.best' },
+  { id: 'diff', label: 'columns.diff' },
+  { id: 'eveEstimated', label: 'columns.eveEst' },
+  { id: 'quantity', label: 'columns.quantity' },
+  { id: 'total', label: 'columns.total' },
+  { id: 'expires', label: 'columns.exp' },
 ]
 
 export interface OrderRow {

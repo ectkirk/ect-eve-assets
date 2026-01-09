@@ -1,0 +1,8 @@
+{
+  "empty": "Aucune donnée de points de fidélité disponible.",
+
+  "fallback.corporation": "Corporation {{id}}",
+  "reauthRequired": "{{name}} nécessite une réauthentification pour accéder aux points de fidélité.",
+  "reauthRequiredMultiple": "{{count}} personnages nécessitent une réauthentification pour accéder aux points de fidélité.",
+  "reauthHint": "Utilisez le menu des personnages pour vous réauthentifier."
+}

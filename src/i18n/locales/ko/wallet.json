@@ -1,0 +1,10 @@
+{
+  "divisions.master": "마스터 지갑",
+  "divisions.wallet2": "지갑 2",
+  "divisions.wallet3": "지갑 3",
+  "divisions.wallet4": "지갑 4",
+  "divisions.wallet5": "지갑 5",
+  "divisions.wallet6": "지갑 6",
+  "divisions.wallet7": "지갑 7",
+  "divisions.division": "디비전 {{number}}"
+}

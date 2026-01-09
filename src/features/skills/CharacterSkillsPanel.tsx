@@ -1,9 +1,11 @@
 import { useMemo, useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ChevronRight, ChevronDown } from 'lucide-react'
 import { TypeIcon } from '@/components/ui/type-icon'
 import { SkillLevelBars } from '@/features/tools/reference/SkillTreeComponents'
 import { getType, getGroupsByCategory } from '@/store/cache/getters'
 import { CategoryIds } from '@/store/cache/constants'
+import { getLocale } from '@/lib/utils'
 import type { CharacterSkillsData } from '@/store/skills-store'
 
 interface SkillGroupData {
@@ -42,13 +44,14 @@ function buildCharacterSkillGroups(
     }
   }
 
+  const locale = getLocale()
   return Array.from(groupMap.values())
     .filter((g) => g.skills.length > 0)
     .map((g) => {
-      g.skills.sort((a, b) => a.name.localeCompare(b.name))
+      g.skills.sort((a, b) => a.name.localeCompare(b.name, locale))
       return g
     })
-    .sort((a, b) => a.name.localeCompare(b.name))
+    .sort((a, b) => a.name.localeCompare(b.name, locale))
 }
 
 interface CharacterSkillsPanelProps {
@@ -60,6 +63,7 @@ export function CharacterSkillsPanel({
   data,
   filter,
 }: CharacterSkillsPanelProps) {
+  const { t } = useTranslation('common')
   const [expandedGroups, setExpandedGroups] = useState<Set<number>>(new Set())
 
   const groups = useMemo(
@@ -82,7 +86,7 @@ export function CharacterSkillsPanel({
   if (groups.length === 0) {
     return (
       <div className="flex h-full items-center justify-center text-content-muted text-sm">
-        {filter ? 'No skills match' : 'No skills'}
+        {filter ? t('skills.noMatches') : t('skills.empty')}
       </div>
     )
   }

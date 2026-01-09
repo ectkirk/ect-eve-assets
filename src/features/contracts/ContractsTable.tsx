@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useSortable, SortableHeader, sortRows } from '@/hooks'
 import {
   Table,
@@ -13,7 +14,6 @@ import { ContractTableRow, type SelectedContractData } from './ContractTableRow'
 import {
   type ContractSortColumn,
   type ContractRow,
-  CONTRACT_TYPE_NAMES,
   getContractValue,
   getDaysLeft,
 } from './contracts-utils'
@@ -29,6 +29,7 @@ export function ContractsTable({
   contracts,
   visibleColumns,
 }: ContractsTableProps) {
+  const { t } = useTranslation('common')
   const [page, setPage] = useState(0)
   const [selectedContract, setSelectedContract] =
     useState<SelectedContractData | null>(null)
@@ -40,7 +41,7 @@ export function ContractsTable({
       const contract = row.contractWithItems.contract
       switch (column) {
         case 'type':
-          return CONTRACT_TYPE_NAMES[contract.type].toLowerCase()
+          return contract.type
         case 'items':
           return row.typeName.toLowerCase()
         case 'location':
@@ -85,7 +86,7 @@ export function ContractsTable({
             {show('type') && (
               <SortableHeader
                 column="type"
-                label="Type"
+                label="columns.type"
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
@@ -94,7 +95,7 @@ export function ContractsTable({
             {show('items') && (
               <SortableHeader
                 column="items"
-                label="Items"
+                label="columns.items"
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
@@ -103,7 +104,7 @@ export function ContractsTable({
             {show('location') && (
               <SortableHeader
                 column="location"
-                label="Location"
+                label="columns.location"
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
@@ -112,7 +113,7 @@ export function ContractsTable({
             {show('assigner') && (
               <SortableHeader
                 column="assigner"
-                label="Assigner"
+                label="columns.assigner"
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
@@ -121,7 +122,7 @@ export function ContractsTable({
             {show('assignee') && (
               <SortableHeader
                 column="assignee"
-                label="Assignee"
+                label="columns.assignee"
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
@@ -130,7 +131,7 @@ export function ContractsTable({
             {show('price') && (
               <SortableHeader
                 column="price"
-                label="Price"
+                label="columns.price"
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
@@ -140,7 +141,7 @@ export function ContractsTable({
             {show('value') && (
               <SortableHeader
                 column="value"
-                label="Value"
+                label="columns.value"
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
@@ -150,7 +151,7 @@ export function ContractsTable({
             {show('volume') && (
               <SortableHeader
                 column="volume"
-                label="Volume"
+                label="columns.volume"
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
@@ -160,7 +161,7 @@ export function ContractsTable({
             {show('collateral') && (
               <SortableHeader
                 column="collateral"
-                label="Collateral"
+                label="columns.collateral"
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
@@ -170,7 +171,7 @@ export function ContractsTable({
             {show('days') && (
               <SortableHeader
                 column="days"
-                label="Days"
+                label="columns.days"
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
@@ -180,7 +181,7 @@ export function ContractsTable({
             {show('expires') && (
               <SortableHeader
                 column="expires"
-                label="Expires"
+                label="columns.expires"
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
@@ -188,7 +189,9 @@ export function ContractsTable({
               />
             )}
             {show('status') && (
-              <TableHead className="text-right">Status</TableHead>
+              <TableHead className="text-right">
+                {t('columns.status')}
+              </TableHead>
             )}
           </TableRow>
         </TableHeader>

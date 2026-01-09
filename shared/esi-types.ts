@@ -26,6 +26,7 @@ export interface ESIRequestOptions {
   characterId?: number
   requiresAuth?: boolean
   etag?: string
+  language?: string
 }
 
 export interface ESIResponseMeta<T> {

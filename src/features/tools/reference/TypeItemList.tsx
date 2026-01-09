@@ -1,4 +1,5 @@
 import { TypeIcon } from '@/components/ui/type-icon'
+import { formatFullNumber } from '@/lib/utils'
 
 interface TypeItem {
   id: number
@@ -36,7 +37,7 @@ export function TypeItemList({
           <span className="flex-1 text-sm text-content">{item.name}</span>
           {showQuantity && item.quantity != null && (
             <span className="text-sm text-content-secondary">
-              x{item.quantity.toLocaleString()}
+              x{formatFullNumber(item.quantity)}
             </span>
           )}
         </button>

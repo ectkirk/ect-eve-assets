@@ -1,4 +1,5 @@
 import { useMemo, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { FileText } from 'lucide-react'
 import {
   Table,
@@ -10,7 +11,7 @@ import {
 } from '@/components/ui/table'
 import { SortableHeader } from '@/components/ui/sortable-header'
 import { useSortToggle } from './useSortToggle'
-import { formatNumber, formatVolume } from '@/lib/utils'
+import { formatNumber, formatVolume, formatSecurity } from '@/lib/utils'
 import { CopyButton } from '@/components/ui/copy-button'
 import { Pagination } from './Pagination'
 import {
@@ -65,6 +66,7 @@ export function CourierResultsTable({
   onPageChange,
   isLoading,
 }: CourierResultsTableProps) {
+  const { t } = useTranslation('tools')
   const { sortColumn, sortDirection, handleSort } = useSortToggle(
     getDefaultSortDirection
   )
@@ -143,8 +145,8 @@ export function CourierResultsTable({
     return (
       <div className="flex flex-1 flex-col items-center justify-center text-content-muted">
         <FileText className="mb-2 h-12 w-12 opacity-50" />
-        <p>No courier contracts found</p>
-        <p className="text-sm">Try adjusting your search filters</p>
+        <p>{t('contractsSearch.noCourierContracts')}</p>
+        <p className="text-sm">{t('contractsSearch.adjustFilters')}</p>
       </div>
     )
   }
@@ -160,15 +162,15 @@ export function CourierResultsTable({
             <TableRow className="hover:bg-transparent">
               <SortableHeader
                 column="route"
-                label="Route"
+                label={t('contractsSearch.columns.route')}
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
               />
-              <TableHead>Contract</TableHead>
+              <TableHead>{t('contractsSearch.columns.contract')}</TableHead>
               <SortableHeader
                 column="safeJumps"
-                label="Safe"
+                label={t('contractsSearch.columns.safe')}
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
@@ -176,7 +178,7 @@ export function CourierResultsTable({
               />
               <SortableHeader
                 column="directJumps"
-                label="Direct"
+                label={t('contractsSearch.columns.direct')}
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
@@ -184,49 +186,49 @@ export function CourierResultsTable({
               />
               <SortableHeader
                 column="reward"
-                label="Reward"
+                label={t('contractsSearch.columns.reward')}
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
               />
               <SortableHeader
                 column="collateral"
-                label="Collateral"
+                label={t('contractsSearch.columns.collateral')}
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
               />
               <SortableHeader
                 column="volume"
-                label="Volume"
+                label={t('contractsSearch.columns.volume')}
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
               />
               <SortableHeader
                 column="iskPerJump"
-                label="ISK/Jump"
+                label={t('contractsSearch.columns.iskPerJump')}
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
               />
               <SortableHeader
                 column="iskPerM3"
-                label="ISK/m³"
+                label={t('contractsSearch.columns.iskPerM3')}
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
               />
               <SortableHeader
                 column="days"
-                label="Days"
+                label={t('contractsSearch.columns.days')}
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
               />
               <SortableHeader
                 column="timeLeft"
-                label="Expires"
+                label={t('contractsSearch.columns.expires')}
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
@@ -240,21 +242,23 @@ export function CourierResultsTable({
                   <div className="flex flex-col">
                     <div className="flex items-center gap-1">
                       <span className={getSecurityColor(c.originSecurity ?? 0)}>
-                        {(c.originSecurity ?? 0).toFixed(1)}
+                        {formatSecurity(c.originSecurity ?? 0)}
                       </span>
                       <span>{c.originSystem}</span>
                       <span className="text-content-muted">→</span>
                       <span className={getSecurityColor(c.destSecurity ?? 0)}>
-                        {(c.destSecurity ?? 0).toFixed(1)}
+                        {formatSecurity(c.destSecurity ?? 0)}
                       </span>
                       <span>{c.destSystem}</span>
                     </div>
                     <div className="text-xs text-content-muted">
                       {c.originRegion} → {c.destRegion}
                     </div>
-                    {c.destStructure && (
+                    {(c.originStation || c.destStation) && (
                       <div className="text-xs text-content-secondary">
-                        {c.destStructure}
+                        {c.originStation && c.destStation
+                          ? `${c.originStation} → ${c.destStation}`
+                          : (c.destStation ?? c.originStation)}
                       </div>
                     )}
                     {c.title && (
@@ -286,12 +290,10 @@ export function CourierResultsTable({
                   )}
                 </TableCell>
                 <TableCell className="font-mono text-status-positive">
-                  {formatNumber(c.reward)}{' '}
-                  <span className="text-content-muted">ISK</span>
+                  {formatNumber(c.reward)}
                 </TableCell>
                 <TableCell className="font-mono text-status-warning">
-                  {formatNumber(c.collateral)}{' '}
-                  <span className="text-content-muted">ISK</span>
+                  {formatNumber(c.collateral)}
                 </TableCell>
                 <TableCell className="font-mono">
                   {formatVolume(c.volume)}

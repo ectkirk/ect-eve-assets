@@ -1,6 +1,8 @@
+import { useTranslation } from 'react-i18next'
 import { TypeIcon } from '@/components/ui/type-icon'
 import { LazySection } from './LazySection'
 import { META_GROUPS } from './item-detail-constants'
+import { getLanguage } from '@/store/settings-store'
 import type { RefTypeVariationsResult } from '../../../../shared/electron-api-types'
 
 interface ItemVariationsProps {
@@ -12,7 +14,9 @@ async function fetchVariations(
   typeId: number
 ): Promise<RefTypeVariationsResult> {
   if (!window.electronAPI) throw new Error('API not available')
-  return window.electronAPI.refTypeVariations(typeId)
+  return window.electronAPI.refTypeVariations(typeId, {
+    language: getLanguage(),
+  })
 }
 
 function hasVariationData(data: RefTypeVariationsResult): boolean {
@@ -20,9 +24,10 @@ function hasVariationData(data: RefTypeVariationsResult): boolean {
 }
 
 export function ItemVariations({ typeId, onNavigate }: ItemVariationsProps) {
+  const { t } = useTranslation('tools')
   return (
     <LazySection
-      title="Item Variations"
+      title={t('reference.itemVariations')}
       typeId={typeId}
       fetcher={fetchVariations}
       hasData={hasVariationData}

@@ -1,0 +1,9 @@
+{
+  "empty": "Нет рыночных ордеров.",
+
+  "totals.sellOrders": "Ордера на продажу",
+  "totals.buyOrders": "Ордера на покупку",
+
+  "orderType.sell": "Продажа",
+  "orderType.buy": "Покупка"
+}

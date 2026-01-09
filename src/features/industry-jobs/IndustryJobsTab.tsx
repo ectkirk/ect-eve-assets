@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { matchesSearchLower } from '@/lib/utils'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { usePriceStore, getJitaPrice } from '@/store/price-store'
@@ -13,7 +14,7 @@ import {
   type ColumnConfig,
 } from '@/hooks'
 import { type ESIIndustryJob } from '@/api/endpoints/industry'
-import { useReferenceCacheStore } from '@/store/reference-cache'
+import { useReferenceCacheStore, getTypeName } from '@/store/reference-cache'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import {
   Table,
@@ -23,7 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { cn, formatNumber } from '@/lib/utils'
+import { cn, formatNumber, formatFullNumber } from '@/lib/utils'
 import { getLocationName } from '@/lib/location-utils'
 import { TypeIcon, OwnerIcon } from '@/components/ui/type-icon'
 import { Pagination } from '@/components/ui/pagination'
@@ -43,15 +44,15 @@ const PAGE_SIZE = 50
 const CONTAINER_CLASS =
   'h-full rounded-lg border border-border bg-surface-secondary/30 overflow-auto'
 
-const ACTIVITY_NAMES: Record<number, string> = {
-  1: 'Manufacturing',
-  3: 'TE Research',
-  4: 'ME Research',
-  5: 'Copying',
-  7: 'Reverse Engineering',
-  8: 'Invention',
-  9: 'Reactions',
-  11: 'Reactions',
+const ACTIVITY_IDS: Record<number, string> = {
+  1: 'manufacturing',
+  3: 'teResearch',
+  4: 'meResearch',
+  5: 'copying',
+  7: 'reverseEngineering',
+  8: 'invention',
+  9: 'reactions',
+  11: 'reactions',
 }
 
 interface JobRow {
@@ -67,16 +68,20 @@ interface JobRow {
   productValue: number
 }
 
-function formatDuration(endDate: string): {
-  text: string
+interface DurationResult {
   isComplete: boolean
-} {
+  days?: number
+  hours?: number
+  minutes?: number
+}
+
+function getDuration(endDate: string): DurationResult {
   const end = new Date(endDate).getTime()
   const now = Date.now()
   const remaining = end - now
 
   if (remaining <= 0) {
-    return { text: 'Ready', isComplete: true }
+    return { isComplete: true }
   }
 
   const hours = Math.floor(remaining / (60 * 60 * 1000))
@@ -85,10 +90,10 @@ function formatDuration(endDate: string): {
   if (hours >= 24) {
     const days = Math.floor(hours / 24)
     const h = hours % 24
-    return { text: `${days}d ${h}h`, isComplete: false }
+    return { isComplete: false, days, hours: h }
   }
 
-  return { text: `${hours}h ${minutes}m`, isComplete: false }
+  return { isComplete: false, hours, minutes }
 }
 
 function getEndTime(endDate: string): number {
@@ -101,6 +106,7 @@ interface JobsTableProps {
 }
 
 function JobsTable({ jobs, visibleColumns }: JobsTableProps) {
+  const { t: tc } = useTranslation('common')
   const [page, setPage] = useState(0)
   const { sortColumn, sortDirection, handleSort } = useSortable<JobSortColumn>(
     'value',
@@ -150,7 +156,7 @@ function JobsTable({ jobs, visibleColumns }: JobsTableProps) {
             {show('activity') && (
               <SortableHeader
                 column="activity"
-                label="Activity"
+                label="columns.activity"
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
@@ -159,7 +165,7 @@ function JobsTable({ jobs, visibleColumns }: JobsTableProps) {
             {show('blueprint') && (
               <SortableHeader
                 column="blueprint"
-                label="Blueprint"
+                label="columns.blueprint"
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
@@ -168,7 +174,7 @@ function JobsTable({ jobs, visibleColumns }: JobsTableProps) {
             {show('product') && (
               <SortableHeader
                 column="product"
-                label="Product"
+                label="columns.product"
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
@@ -177,7 +183,7 @@ function JobsTable({ jobs, visibleColumns }: JobsTableProps) {
             {show('runs') && (
               <SortableHeader
                 column="runs"
-                label="Runs"
+                label="columns.runs"
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
@@ -187,7 +193,7 @@ function JobsTable({ jobs, visibleColumns }: JobsTableProps) {
             {show('value') && (
               <SortableHeader
                 column="value"
-                label="Value"
+                label="columns.value"
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
@@ -197,7 +203,7 @@ function JobsTable({ jobs, visibleColumns }: JobsTableProps) {
             {show('cost') && (
               <SortableHeader
                 column="cost"
-                label="Cost"
+                label="columns.cost"
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
@@ -207,7 +213,7 @@ function JobsTable({ jobs, visibleColumns }: JobsTableProps) {
             {show('time') && (
               <SortableHeader
                 column="time"
-                label="Time"
+                label="columns.time"
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
@@ -217,7 +223,7 @@ function JobsTable({ jobs, visibleColumns }: JobsTableProps) {
             {show('location') && (
               <SortableHeader
                 column="location"
-                label="Location"
+                label="columns.location"
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
@@ -227,7 +233,18 @@ function JobsTable({ jobs, visibleColumns }: JobsTableProps) {
         </TableHeader>
         <TableBody>
           {paginatedJobs.map((row) => {
-            const duration = formatDuration(row.job.end_date)
+            const duration = getDuration(row.job.end_date)
+            const durationText = duration.isComplete
+              ? tc('time.ready')
+              : duration.days !== undefined
+                ? tc('time.daysHours', {
+                    days: duration.days,
+                    hours: duration.hours,
+                  })
+                : tc('time.hoursMinutes', {
+                    hours: duration.hours,
+                    minutes: duration.minutes,
+                  })
 
             return (
               <TableRow
@@ -278,7 +295,7 @@ function JobsTable({ jobs, visibleColumns }: JobsTableProps) {
                 )}
                 {show('runs') && (
                   <TableCell className="py-1.5 text-right tabular-nums">
-                    {row.job.runs.toLocaleString()}
+                    {formatFullNumber(row.job.runs)}
                   </TableCell>
                 )}
                 {show('value') && (
@@ -301,7 +318,7 @@ function JobsTable({ jobs, visibleColumns }: JobsTableProps) {
                       !duration.isComplete && 'text-content-secondary'
                     )}
                   >
-                    {duration.text}
+                    {durationText}
                   </TableCell>
                 )}
                 {show('location') && (
@@ -328,6 +345,7 @@ function JobsTable({ jobs, visibleColumns }: JobsTableProps) {
 }
 
 export function IndustryJobsTab() {
+  const { t } = useTranslation('industry')
   const ownersRecord = useAuthStore((s) => s.owners)
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
 
@@ -366,15 +384,15 @@ export function IndustryJobsTab() {
 
   const JOB_COLUMNS: ColumnConfig[] = useMemo(
     () => [
-      { id: 'owner', label: 'Owner' },
-      { id: 'activity', label: 'Activity' },
-      { id: 'blueprint', label: 'Blueprint' },
-      { id: 'product', label: 'Product' },
-      { id: 'runs', label: 'Runs' },
-      { id: 'value', label: 'Value' },
-      { id: 'cost', label: 'Cost' },
-      { id: 'time', label: 'Time' },
-      { id: 'location', label: 'Location' },
+      { id: 'owner', label: 'columns.owner' },
+      { id: 'activity', label: 'columns.activity' },
+      { id: 'blueprint', label: 'columns.blueprint' },
+      { id: 'product', label: 'columns.product' },
+      { id: 'runs', label: 'columns.runs' },
+      { id: 'value', label: 'columns.value' },
+      { id: 'cost', label: 'columns.cost' },
+      { id: 'time', label: 'columns.time' },
+      { id: 'location', label: 'columns.location' },
     ],
     []
   )
@@ -402,7 +420,6 @@ export function IndustryJobsTab() {
 
     for (const { owner, jobs: ownerJobs } of filteredJobsByOwner) {
       for (const job of ownerJobs) {
-        const bpType = types.get(job.blueprint_type_id)
         const productType = job.product_type_id
           ? types.get(job.product_type_id)
           : undefined
@@ -417,15 +434,15 @@ export function IndustryJobsTab() {
           ownerId: owner.id,
           ownerType: owner.type,
           ownerName: owner.name,
-          blueprintName:
-            bpType?.name ?? `Unknown Type ${job.blueprint_type_id}`,
-          productName:
-            productType?.name ??
-            (job.product_type_id ? `Unknown Type ${job.product_type_id}` : ''),
+          blueprintName: getTypeName(job.blueprint_type_id),
+          productName: job.product_type_id
+            ? getTypeName(job.product_type_id)
+            : '',
           productCategoryId: productType?.categoryId,
           locationName: getLocationName(job.location_id ?? job.facility_id),
-          activityName:
-            ACTIVITY_NAMES[job.activity_id] ?? `Activity ${job.activity_id}`,
+          activityName: ACTIVITY_IDS[job.activity_id]
+            ? t(`activities.${ACTIVITY_IDS[job.activity_id]}`)
+            : t('activities.unknown', { id: job.activity_id }),
           productValue,
         })
 
@@ -449,7 +466,7 @@ export function IndustryJobsTab() {
     }
 
     return { allJobs: jobs, totalValue: value }
-  }, [jobsByOwner, types, structures, priceVersion, search, selectedSet])
+  }, [jobsByOwner, types, structures, priceVersion, search, selectedSet, t])
 
   useEffect(() => {
     setTotalValue({ value: totalValue })
@@ -475,7 +492,7 @@ export function IndustryJobsTab() {
     <div className={CONTAINER_CLASS}>
       {allJobs.length === 0 ? (
         <div className="flex items-center justify-center h-full">
-          <p className="text-content-secondary">No industry jobs.</p>
+          <p className="text-content-secondary">{t('empty')}</p>
         </div>
       ) : (
         <JobsTable jobs={allJobs} visibleColumns={visibleColumns} />

@@ -1,6 +1,12 @@
 import { useState, useMemo, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ChevronDown } from 'lucide-react'
-import { formatNumber, formatVolume, formatFullNumber } from '@/lib/utils'
+import {
+  formatNumber,
+  formatVolume,
+  formatFullNumber,
+  formatPercent,
+} from '@/lib/utils'
 import { CopyButton } from '@/components/ui/copy-button'
 import { useFreightInfoStore } from '@/store/freight-info-store'
 import { DEFAULT_CORPORATION, getTierColors } from './constants'
@@ -19,6 +25,8 @@ interface FreightResultsProps {
 }
 
 export function FreightResults({ result }: FreightResultsProps) {
+  const { t } = useTranslation('tools')
+  const { t: tc } = useTranslation('common')
   const { info } = useFreightInfoStore()
   const [expandedPackages, setExpandedPackages] = useState<Set<number>>(
     new Set()
@@ -54,39 +62,45 @@ export function FreightResults({ result }: FreightResultsProps) {
       {/* Summary */}
       <div className="rounded-lg border border-border bg-surface-secondary/50 p-6">
         <h2 className="mb-4 text-lg font-semibold text-content">
-          Shipping Summary
+          {t('freight.shippingSummary')}
         </h2>
         <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <div className="rounded-lg bg-surface-tertiary p-4">
-            <div className="text-xs text-content-secondary">Total Packages</div>
+            <div className="text-xs text-content-secondary">
+              {t('freight.totalPackages')}
+            </div>
             <div className="text-2xl font-bold text-content">
               {plan.summary.totalPackages}
             </div>
           </div>
           <div className="rounded-lg bg-semantic-asset-safety/20 p-4">
-            <div className="text-xs text-status-time">Total Shipping Cost</div>
+            <div className="text-xs text-status-time">
+              {t('freight.totalShippingCost')}
+            </div>
             <div className="text-2xl font-bold text-status-time">
               {formatNumber(plan.summary.totalShippingCost)}
             </div>
             <div className="text-xs text-content-muted">
-              {formatFullNumber(plan.summary.totalShippingCost)} ISK
+              {formatFullNumber(plan.summary.totalShippingCost)}
             </div>
           </div>
           <div className="rounded-lg bg-surface-tertiary p-4">
-            <div className="text-xs text-content-secondary">Total Volume</div>
+            <div className="text-xs text-content-secondary">
+              {t('freight.totalVolume')}
+            </div>
             <div className="text-lg font-semibold text-content">
               {formatVolume(plan.summary.totalCargoVolume, { suffix: true })}
             </div>
           </div>
           <div className="rounded-lg bg-surface-tertiary p-4">
             <div className="text-xs text-content-secondary">
-              Total Collateral
+              {t('freight.totalCollateral')}
             </div>
             <div className="text-lg font-semibold text-status-info">
               {formatNumber(plan.summary.totalCargoValue)}
             </div>
             <div className="text-xs text-content-muted">
-              {formatFullNumber(plan.summary.totalCargoValue)} ISK
+              {formatFullNumber(plan.summary.totalCargoValue)}
             </div>
           </div>
         </div>
@@ -94,7 +108,7 @@ export function FreightResults({ result }: FreightResultsProps) {
         {plan.summary.costBreakdown.length > 0 && (
           <div>
             <h3 className="mb-3 text-sm font-medium text-content-secondary">
-              Cost Breakdown
+              {t('freight.costBreakdown')}
             </h3>
             <div className="flex flex-wrap gap-3">
               {plan.summary.costBreakdown.map((b) => {
@@ -124,37 +138,41 @@ export function FreightResults({ result }: FreightResultsProps) {
       {/* Warnings */}
       {hasUnmatched && (
         <WarningSection
-          title="Unmatched Items"
+          title={t('freight.unmatchedItems')}
           items={result.unmatchedItems!}
           color="yellow"
-          footer="These items could not be found in the database."
+          footer={t('freight.unmatchedItemsFooter')}
         />
       )}
 
       {hasUnshippable && (
         <WarningSection
-          title="Cannot Ship"
+          title={t('freight.cannotShip')}
           items={plan.unshippableItems.map((item) => {
             const reason =
               item.reason === 'volume_exceeds_capacity'
-                ? `${formatVolume(item.totalVolume, { suffix: true })} exceeds 360k m³ limit`
-                : `${formatNumber(item.totalValue)} exceeds 10B collateral limit`
-            return `${item.itemName} × ${item.quantity.toLocaleString()} (${reason})`
+                ? t('freight.volumeExceeds', {
+                    volume: formatVolume(item.totalVolume, { suffix: true }),
+                  })
+                : t('freight.collateralExceeds', {
+                    value: formatNumber(item.totalValue),
+                  })
+            return `${item.itemName} × ${formatFullNumber(item.quantity)} (${reason})`
           })}
           color="red"
-          footer="These items exceed service limits and cannot be shipped."
+          footer={t('freight.cannotShipFooter')}
         />
       )}
 
       {hasManualCollateral && (
         <WarningSection
-          title="Manual Collateral Required"
+          title={t('freight.manualCollateral')}
           items={result.manualCollateralItems!.map(
             (item) =>
-              `${item.itemName} × ${item.quantity.toLocaleString()} - ${item.reason}`
+              `${item.itemName} × ${formatFullNumber(item.quantity)} - ${item.reason}`
           )}
           color="amber"
-          footer="Add these items to your contract manually with appropriate collateral."
+          footer={t('freight.manualCollateralFooter')}
         />
       )}
 
@@ -163,7 +181,7 @@ export function FreightResults({ result }: FreightResultsProps) {
         <div className="rounded-lg border border-border bg-surface-secondary/50 p-6">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-content">
-              Packages ({plan.packages.length})
+              {t('freight.packages', { count: plan.packages.length })}
             </h2>
             <div className="flex gap-2">
               <button
@@ -174,13 +192,13 @@ export function FreightResults({ result }: FreightResultsProps) {
                 }
                 className="rounded px-3 py-1 text-xs text-content-secondary hover:bg-surface-tertiary hover:text-content"
               >
-                Expand All
+                {t('freight.expandAll')}
               </button>
               <button
                 onClick={() => setExpandedPackages(new Set())}
                 className="rounded px-3 py-1 text-xs text-content-secondary hover:bg-surface-tertiary hover:text-content"
               >
-                Collapse All
+                {t('freight.collapseAll')}
               </button>
             </div>
           </div>
@@ -214,19 +232,19 @@ export function FreightResults({ result }: FreightResultsProps) {
                         </span>
                         <span className="ml-2 text-content-muted">·</span>
                         <span className="ml-2 text-content-secondary">
-                          {pkg.items.length} item(s)
+                          {t('freight.itemCount', { count: pkg.items.length })}
                         </span>
                       </div>
                     </div>
                     <div className="flex items-center gap-6">
                       <div className="text-right">
                         <div className="text-xs text-content-secondary">
-                          Volume
+                          {t('freight.volume')}
                         </div>
                         <div className="text-sm text-content">
                           {formatVolume(pkg.totalVolume, { suffix: true })}
                           <span className="ml-1 text-xs text-content-muted">
-                            ({pkg.volumeUtilization.toFixed(1)}%)
+                            ({formatPercent(pkg.volumeUtilization)})
                           </span>
                         </div>
                       </div>
@@ -238,7 +256,9 @@ export function FreightResults({ result }: FreightResultsProps) {
 
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border/50 px-4 py-2 text-xs">
                     <div className="flex items-center gap-1">
-                      <span className="text-content-muted">Ref:</span>
+                      <span className="text-content-muted">
+                        {t('freight.ref')}
+                      </span>
                       <CopyButton
                         text={ref}
                         className="text-accent"
@@ -246,7 +266,9 @@ export function FreightResults({ result }: FreightResultsProps) {
                       />
                     </div>
                     <div className="flex items-center gap-1">
-                      <span className="text-content-muted">Corp:</span>
+                      <span className="text-content-muted">
+                        {t('freight.corp')}
+                      </span>
                       <CopyButton
                         text={corporation}
                         className="text-status-info"
@@ -254,7 +276,9 @@ export function FreightResults({ result }: FreightResultsProps) {
                       />
                     </div>
                     <div className="flex items-center gap-1">
-                      <span className="text-content-muted">Collateral:</span>
+                      <span className="text-content-muted">
+                        {t('freight.collateral')}
+                      </span>
                       <CopyButton
                         text={formatFullNumber(pkg.totalValue)}
                         className="text-status-info"
@@ -262,7 +286,9 @@ export function FreightResults({ result }: FreightResultsProps) {
                       />
                     </div>
                     <div className="flex items-center gap-1">
-                      <span className="text-content-muted">Reward:</span>
+                      <span className="text-content-muted">
+                        {t('freight.reward')}
+                      </span>
                       <CopyButton
                         text={formatFullNumber(pkg.cost)}
                         className="text-status-highlight"
@@ -270,13 +296,17 @@ export function FreightResults({ result }: FreightResultsProps) {
                       />
                     </div>
                     <div className="flex items-center gap-1">
-                      <span className="text-content-muted">Expiry:</span>
+                      <span className="text-content-muted">
+                        {t('freight.expiry')}
+                      </span>
                       <span className="font-mono text-content-secondary">
                         {pkg.tier.expiration}
                       </span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <span className="text-content-muted">Delivery:</span>
+                      <span className="text-content-muted">
+                        {t('freight.delivery')}
+                      </span>
                       <span className="font-mono text-content-secondary">
                         {pkg.tier.delivery}
                       </span>
@@ -289,16 +319,16 @@ export function FreightResults({ result }: FreightResultsProps) {
                         <thead>
                           <tr className="text-left text-xs uppercase text-content-muted">
                             <th scope="col" className="pb-2">
-                              Item
+                              {t('freight.item')}
                             </th>
                             <th scope="col" className="pb-2 text-right">
-                              Qty
+                              {t('freight.qty')}
                             </th>
                             <th scope="col" className="pb-2 text-right">
-                              Volume
+                              {tc('columns.volume')}
                             </th>
                             <th scope="col" className="pb-2 text-right">
-                              Value
+                              {t('freight.value')}
                             </th>
                           </tr>
                         </thead>
@@ -323,7 +353,7 @@ export function FreightResults({ result }: FreightResultsProps) {
                                 </div>
                               </td>
                               <td className="py-2 text-right font-mono text-content-secondary">
-                                {item.quantity.toLocaleString()}
+                                {formatFullNumber(item.quantity)}
                               </td>
                               <td className="py-2 text-right font-mono text-content-muted">
                                 {formatVolume(item.totalVolume, {

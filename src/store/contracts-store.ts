@@ -3,6 +3,7 @@ import { useAuthStore, type Owner, findOwnerByKey } from './auth-store'
 import {
   getContractItems,
   getCorporationContractItems,
+  getPublicContractItems,
   type ESIContract,
   type ESIContractItem,
 } from '@/api/endpoints/contracts'
@@ -17,7 +18,8 @@ import {
   type SourceOwner,
   type VisibilityStore,
 } from './create-visibility-store'
-import { usePriceStore, isAbyssalTypeId } from './price-store'
+import { usePriceStore, extractPriceableIds } from './price-store'
+import { shouldValueBlueprintAtZero } from '@/lib/contract-items'
 import { DB } from '@/lib/db-constants'
 import {
   openDatabase,
@@ -26,10 +28,6 @@ import {
   idbDeleteBatch,
   idbClear,
 } from '@/lib/idb-utils'
-
-function isContractItemBpc(item: ESIContractItem): boolean {
-  return item.is_blueprint_copy === true || item.raw_quantity === -2
-}
 
 export interface StoredContract extends StoredItem<ESIContract> {
   item: ESIContract
@@ -69,6 +67,30 @@ export type ContractsStore = UseBoundStore<
 
 const ACTIVE_STATUSES = new Set(['outstanding', 'in_progress'])
 
+export function buildOwnerContracts(
+  visibilityByOwner: Map<string, Set<number>>,
+  itemsById: Map<number, StoredContract>,
+  itemsByContractId: Map<number, ESIContractItem[]>
+): OwnerContracts[] {
+  const result: OwnerContracts[] = []
+  for (const [key, contractIds] of visibilityByOwner) {
+    const owner = findOwnerByKey(key)
+    if (!owner) continue
+    const contracts: ContractWithItems[] = []
+    for (const contractId of contractIds) {
+      const stored = itemsById.get(contractId)
+      if (stored) {
+        contracts.push({
+          contract: stored.item,
+          items: itemsByContractId.get(contractId),
+        })
+      }
+    }
+    result.push({ owner, contracts })
+  }
+  return result
+}
+
 function isActiveItemExchange(contract: ESIContract): boolean {
   return (
     contract.type === 'item_exchange' && ACTIVE_STATUSES.has(contract.status)
@@ -81,8 +103,12 @@ function getEndpoint(owner: Owner): string {
 
 async function fetchItemsFromAPI(
   sourceOwner: SourceOwner,
-  contractId: number
+  contractId: number,
+  isPublic: boolean
 ): Promise<ESIContractItem[]> {
+  if (isPublic) {
+    return getPublicContractItems(contractId)
+  }
   return sourceOwner.type === 'corporation'
     ? getCorporationContractItems(
         sourceOwner.characterId,
@@ -134,18 +160,26 @@ async function clearItemsDb(): Promise<void> {
 
 const pendingItemFetches = new Set<number>()
 
+interface ContractFetchInfo {
+  sourceOwner: SourceOwner
+  isPublic: boolean
+}
+
 function collectContractsToFetch(
   contractsById: Map<number, StoredContract>,
   itemsState: Map<number, ESIContractItem[]>
-): Map<number, SourceOwner> {
-  const toFetch = new Map<number, SourceOwner>()
+): Map<number, ContractFetchInfo> {
+  const toFetch = new Map<number, ContractFetchInfo>()
   for (const [contractId, stored] of contractsById) {
     if (
       isActiveItemExchange(stored.item) &&
       !itemsState.has(contractId) &&
       !pendingItemFetches.has(contractId)
     ) {
-      toFetch.set(contractId, stored.sourceOwner)
+      toFetch.set(contractId, {
+        sourceOwner: stored.sourceOwner,
+        isPublic: stored.item.availability === 'public',
+      })
       pendingItemFetches.add(contractId)
     }
   }
@@ -153,13 +187,17 @@ function collectContractsToFetch(
 }
 
 async function fetchAndSaveItems(
-  toFetch: Map<number, SourceOwner>
+  toFetch: Map<number, ContractFetchInfo>
 ): Promise<Array<{ contractId: number; items: ESIContractItem[] }>> {
   if (toFetch.size === 0) return []
 
   const results = await Promise.allSettled(
-    Array.from(toFetch.entries()).map(async ([contractId, sourceOwner]) => {
-      const items = await fetchItemsFromAPI(sourceOwner, contractId)
+    Array.from(toFetch.entries()).map(async ([contractId, info]) => {
+      const items = await fetchItemsFromAPI(
+        info.sourceOwner,
+        contractId,
+        info.isPublic
+      )
       return { contractId, items }
     })
   )
@@ -182,7 +220,7 @@ async function fetchAndSaveItems(
   return fetched
 }
 
-function clearPendingFetches(toFetch: Map<number, SourceOwner>): void {
+function clearPendingFetches(toFetch: Map<number, ContractFetchInfo>): void {
   for (const contractId of toFetch.keys()) {
     pendingItemFetches.delete(contractId)
   }
@@ -269,24 +307,12 @@ const baseStore = createVisibilityStore<
     const loadedItems = await loadAllItems()
     baseStore.setState({ itemsByContractId: loadedItems })
 
-    const typeIds = new Set<number>()
-    const abyssalItemIds: number[] = []
-    for (const items of loadedItems.values()) {
-      if (items) {
-        for (const item of items) {
-          typeIds.add(item.type_id)
-          if (item.item_id && isAbyssalTypeId(item.type_id)) {
-            abyssalItemIds.push(item.item_id)
-          }
-        }
-      }
-    }
+    const allItems = Array.from(loadedItems.values()).flat().filter(Boolean)
+    const { typeIds, abyssalItemIds } = extractPriceableIds(allItems)
 
-    if (typeIds.size > 0 || abyssalItemIds.length > 0) {
+    if (typeIds.length > 0 || abyssalItemIds.length > 0) {
       const { usePriceStore } = await import('./price-store')
-      await usePriceStore
-        .getState()
-        .ensureJitaPrices(Array.from(typeIds), abyssalItemIds)
+      await usePriceStore.getState().ensureJitaPrices(typeIds, abyssalItemIds)
       triggerResolution()
     }
   },
@@ -406,7 +432,10 @@ export const useContractsStore: ContractsStore = Object.assign(baseStore, {
             if (item.is_included) {
               const price = priceStore.getItemPrice(item.type_id, {
                 itemId: item.item_id,
-                isBlueprintCopy: isContractItemBpc(item),
+                isBlueprintCopy: shouldValueBlueprintAtZero(
+                  item,
+                  stored.item.availability
+                ),
               })
               total += price * item.quantity
             }
@@ -419,24 +448,10 @@ export const useContractsStore: ContractsStore = Object.assign(baseStore, {
 
   getContractsByOwner(): OwnerContracts[] {
     const state = baseStore.getState()
-    const result: OwnerContracts[] = []
-
-    for (const [ownerKey, contractIds] of state.visibilityByOwner) {
-      const owner = findOwnerByKey(ownerKey)
-      if (!owner) continue
-
-      const contracts: ContractWithItems[] = []
-      for (const contractId of contractIds) {
-        const stored = state.itemsById.get(contractId)
-        if (stored) {
-          contracts.push({
-            contract: stored.item,
-            items: state.itemsByContractId.get(contractId),
-          })
-        }
-      }
-      result.push({ owner, contracts })
-    }
-    return result
+    return buildOwnerContracts(
+      state.visibilityByOwner,
+      state.itemsById,
+      state.itemsByContractId
+    )
   },
 })

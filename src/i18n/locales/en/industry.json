@@ -1,0 +1,15 @@
+{
+  "columns.blueprint": "Blueprint",
+  "columns.product": "Product",
+
+  "empty": "No industry jobs.",
+
+  "activities.manufacturing": "Manufacturing",
+  "activities.teResearch": "TE Research",
+  "activities.meResearch": "ME Research",
+  "activities.copying": "Copying",
+  "activities.reverseEngineering": "Reverse Engineering",
+  "activities.invention": "Invention",
+  "activities.reactions": "Reactions",
+  "activities.unknown": "Activity {{id}}"
+}

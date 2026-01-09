@@ -1,0 +1,43 @@
+{
+  "badges.activeShip": "当前舰船",
+  "badges.inContract": "合同中",
+  "badges.sellOrder": "出售订单",
+  "badges.inJob": "生产中",
+  "badges.structure": "建筑",
+
+  "empty": "未找到资产。",
+  "noCharacters": "没有登录的角色。添加角色以查看资产。",
+  "noData": "未加载资产数据。点击标题栏的更新按钮从ESI获取。",
+
+  "loading.assets": "加载资产中...",
+  "loading.fetching": "获取资产中 ({{current}}/{{total}})...",
+
+  "error.loadFailed": "加载资产失败",
+
+  "contextMenu.viewContracts": "在合同中查看",
+  "contextMenu.openMutamarket": "在Mutamarket中打开",
+
+  "settingsModal.title": "资产视图设置",
+  "settingsModal.description": "选择要包含在资产总计中的数据来源",
+  "settingsModal.marketOrders": "市场订单",
+  "settingsModal.marketOrdersDesc": "包含当前出售订单中的物品",
+  "settingsModal.contracts": "合同",
+  "settingsModal.contractsDesc": "包含您发布的未完成合同中的物品",
+  "settingsModal.industryJobs": "工业任务",
+  "settingsModal.industryJobsDesc": "包含进行中和已完成工业任务中的物品",
+  "settingsModal.activeShip": "当前舰船",
+  "settingsModal.activeShipDesc": "包含您当前驾驶的舰船及其装载物",
+  "settingsModal.structures": "建筑",
+  "settingsModal.structuresDesc": "包含拥有的建筑（堡垒、工程综合体等）",
+
+  "locations.assetSafety": "资产安全",
+  "locations.unknownParent": "未知来源",
+  "locations.unknownLocation": "未知位置",
+  "locations.unknownType": "未知类型 {{id}}",
+  "categories.abyssals": "深渊",
+
+  "flags.inContract": "合同中",
+  "flags.sellOrder": "出售订单",
+  "flags.industryJob": "生产中",
+  "flags.activeShip": "当前舰船"
+}

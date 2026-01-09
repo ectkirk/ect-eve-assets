@@ -1,5 +1,6 @@
 import { useMemo, useRef, useCallback, useState, useEffect } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
+import { useTranslation } from 'react-i18next'
 import {
   Table,
   TableBody,
@@ -37,6 +38,7 @@ import {
   type TreeTableProps,
   sortTreeNodes,
   formatNumber,
+  formatFullNumber,
   formatVolume,
   TREE_COLUMNS,
   COLUMN_STYLES,
@@ -51,6 +53,7 @@ export function TreeTable({
   onCollapseAll,
   storageKey = 'tree-table',
 }: TreeTableProps) {
+  const { t } = useTranslation('common')
   const tableContainerRef = useRef<HTMLDivElement>(null)
 
   const { getVisibleColumns, getColumnsForDropdown } = useColumnSettings(
@@ -90,8 +93,8 @@ export function TreeTable({
     const fullRowData = [
       node.name,
       node.regionName ?? '-',
-      node.totalCount.toLocaleString(),
-      node.totalValue > 0 ? formatNumber(node.totalValue) + ' ISK' : '-',
+      formatFullNumber(node.totalCount),
+      node.totalValue > 0 ? formatNumber(node.totalValue) : '-',
       node.totalVolume > 0 ? formatVolume(node.totalVolume) : '-',
     ].join('\t')
 
@@ -283,7 +286,7 @@ export function TreeTable({
   if (sortedNodes.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-content-secondary">No items to display.</p>
+        <p className="text-content-secondary">{t('tree.noItems')}</p>
       </div>
     )
   }
@@ -371,7 +374,7 @@ export function TreeTable({
                   colSpan={visibleColumns.length}
                   className="h-24 text-center"
                 >
-                  No items found.
+                  {t('tree.noItemsFound')}
                 </TableCell>
               </TableRow>
             )}

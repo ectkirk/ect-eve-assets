@@ -1,6 +1,7 @@
 import { memo, useState, useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { RoutePreference } from '../utils/pathfinder'
-import { roundSecurity } from '../utils/colors'
+import { formatSecurity, roundSecurity } from '@/lib/utils'
 import { useDebounce } from '../hooks/useDebounce'
 
 export interface RouteSystemInfo {
@@ -39,10 +40,13 @@ interface MapRouteControlsProps {
   onClear: () => void
 }
 
-const ROUTE_PREFERENCES: Array<{ pref: RoutePreference; label: string }> = [
-  { pref: 'shorter', label: 'Shortest' },
-  { pref: 'safer', label: 'Safer' },
-  { pref: 'less-secure', label: 'Less Secure' },
+const ROUTE_PREFERENCE_KEYS: Array<{
+  pref: RoutePreference
+  labelKey: string
+}> = [
+  { pref: 'shorter', labelKey: 'map.shortest' },
+  { pref: 'safer', labelKey: 'map.safer' },
+  { pref: 'less-secure', labelKey: 'map.lessSecure' },
 ]
 
 const SEC_BG: Record<number, string> = {
@@ -61,14 +65,13 @@ const SEC_BG: Record<number, string> = {
 
 function SecurityBadge({ security }: { security: number }) {
   const rounded = roundSecurity(security)
-  const display = rounded.toFixed(1)
   const secKey = Math.max(0, Math.min(10, Math.round(rounded * 10)))
   const bg = SEC_BG[secKey] ?? SEC_BG[0]
   return (
     <span
       className={`ml-1 rounded px-1 text-xs font-medium text-sec-foreground ${bg}`}
     >
-      {display}
+      {formatSecurity(security)}
     </span>
   )
 }
@@ -220,6 +223,7 @@ export const MapRouteControls = memo(function MapRouteControls({
   onSetDestination,
   onClear,
 }: MapRouteControlsProps) {
+  const { t } = useTranslation('tools')
   const [expanded, setExpanded] = useState(false)
 
   const indexedSystems = useMemo<IndexedSystemItem[]>(
@@ -232,21 +236,21 @@ export const MapRouteControls = memo(function MapRouteControls({
       <div className="p-3">
         <div className="mb-2 flex items-center justify-between gap-4">
           <span className="text-sm font-medium text-content-primary">
-            Route
+            {t('map.route')}
           </span>
           {(originName || destinationName) && (
             <button
               onClick={onClear}
               className="text-xs text-content-muted hover:text-content-secondary"
             >
-              Clear
+              {t('map.clear')}
             </button>
           )}
         </div>
 
         <div className="mb-3 space-y-2">
           <SystemInput
-            placeholder="Origin system..."
+            placeholder={t('map.originPlaceholder')}
             selectedName={originName}
             selectedSecurity={originSecurity}
             dotColor="#00ff88"
@@ -254,7 +258,7 @@ export const MapRouteControls = memo(function MapRouteControls({
             onSelect={onSetOrigin}
           />
           <SystemInput
-            placeholder="Destination system..."
+            placeholder={t('map.destinationPlaceholder')}
             selectedName={destinationName}
             selectedSecurity={destinationSecurity}
             dotColor="#ff4444"
@@ -266,10 +270,10 @@ export const MapRouteControls = memo(function MapRouteControls({
         {jumps !== null && (
           <div className="mb-3 flex items-center gap-2">
             <span className="text-sm font-medium text-content-primary">
-              {jumps} jump{jumps !== 1 ? 's' : ''}
+              {t('map.jump', { count: jumps })}
               {ansiblexJumps !== null && ansiblexJumps > 0 && (
                 <span className="ml-1 text-xs text-accent">
-                  ({ansiblexJumps} Ansiblex{ansiblexJumps !== 1 ? 'es' : ''})
+                  {t('map.ansiblexCount', { count: ansiblexJumps })}
                 </span>
               )}
             </span>
@@ -278,14 +282,14 @@ export const MapRouteControls = memo(function MapRouteControls({
                 onClick={() => setExpanded(!expanded)}
                 className="text-xs text-accent hover:text-accent/80"
               >
-                {expanded ? 'Hide route' : 'Show route'}
+                {expanded ? t('map.hideRoute') : t('map.showRoute')}
               </button>
             )}
           </div>
         )}
 
         <div className="flex items-center gap-2 flex-wrap">
-          {ROUTE_PREFERENCES.map(({ pref, label }) => (
+          {ROUTE_PREFERENCE_KEYS.map(({ pref, labelKey }) => (
             <button
               key={pref}
               onClick={() => onRoutePreferenceChange(pref)}
@@ -295,7 +299,7 @@ export const MapRouteControls = memo(function MapRouteControls({
                   : 'bg-surface-tertiary text-content-muted hover:bg-surface-tertiary/80'
               }`}
             >
-              {label}
+              {t(labelKey)}
             </button>
           ))}
         </div>
@@ -309,7 +313,7 @@ export const MapRouteControls = memo(function MapRouteControls({
               className="h-3.5 w-3.5 rounded border-border text-accent focus:ring-accent"
             />
             <span className="text-xs text-content-secondary">
-              Use Ansiblexes
+              {t('map.useAnsiblexes')}
               {ansiblexCount > 0 && (
                 <span className="ml-1 text-content-muted">
                   ({ansiblexCount})

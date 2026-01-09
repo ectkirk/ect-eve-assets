@@ -6,6 +6,7 @@ import {
   Suspense,
   type KeyboardEvent,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Loader2 } from 'lucide-react'
 import { useAuthStore } from '@/store/auth-store'
 import { useAssetStore } from '@/store/asset-store'
@@ -13,7 +14,6 @@ import { useExpiryCacheStore } from '@/store/expiry-cache-store'
 import {
   BUYBACK_TABS,
   getStyling,
-  tabToKey,
   type BuybackTabType,
 } from '@/features/buyback'
 import { useBuybackActionStore } from '@/store/buyback-action-store'
@@ -95,11 +95,11 @@ import { SearchBar } from './SearchBar'
 
 type AppMode = 'assets' | 'character' | 'tools' | 'buyback' | 'freight'
 
-const TOOLS_TABS = ['Contracts', 'Market', 'Reference', 'Map'] as const
-const CHARACTER_TABS = ['Clones', 'Mail', 'Skills'] as const
+const TOOLS_TAB_IDS = ['contracts', 'market', 'reference', 'map'] as const
+const CHARACTER_TAB_IDS = ['clones', 'mail', 'skills'] as const
 
-type ToolsTab = (typeof TOOLS_TABS)[number]
-type CharacterTab = (typeof CHARACTER_TABS)[number]
+type ToolsTabId = (typeof TOOLS_TAB_IDS)[number]
+type CharacterTabId = (typeof CHARACTER_TAB_IDS)[number]
 
 function TabLoadingFallback() {
   return (
@@ -109,57 +109,57 @@ function TabLoadingFallback() {
   )
 }
 
-const ASSET_TABS = [
-  'Assets',
-  'Assets Tree',
-  'Contracts',
-  'Industry Jobs',
-  'Loyalty Points',
-  'Market Orders',
-  'Structures',
-  'Wallet',
+const ASSET_TAB_IDS = [
+  'assets',
+  'assetsTree',
+  'contracts',
+  'industryJobs',
+  'loyaltyPoints',
+  'marketOrders',
+  'structures',
+  'wallet',
 ] as const
 
-type AssetTab = (typeof ASSET_TABS)[number]
+type AssetTabId = (typeof ASSET_TAB_IDS)[number]
 
-function AssetTabContent({ tab }: { tab: AssetTab }) {
+function AssetTabContent({ tab }: { tab: AssetTabId }) {
   switch (tab) {
-    case 'Assets':
+    case 'assets':
       return <AssetsTab />
-    case 'Assets Tree':
+    case 'assetsTree':
       return <AssetsTreeTab />
-    case 'Contracts':
+    case 'contracts':
       return <ContractsTab />
-    case 'Industry Jobs':
+    case 'industryJobs':
       return <IndustryJobsTab />
-    case 'Loyalty Points':
+    case 'loyaltyPoints':
       return <LoyaltyTab />
-    case 'Market Orders':
+    case 'marketOrders':
       return <MarketOrdersTab />
-    case 'Structures':
+    case 'structures':
       return <StructuresTab />
-    case 'Wallet':
+    case 'wallet':
       return <WalletTab />
   }
 }
 
-function CharacterTabContent({ tab }: { tab: CharacterTab }) {
+function CharacterTabContent({ tab }: { tab: CharacterTabId }) {
   switch (tab) {
-    case 'Clones':
+    case 'clones':
       return <ClonesTab />
-    case 'Mail':
+    case 'mail':
       return <MailTab />
-    case 'Skills':
+    case 'skills':
       return <SkillsTab />
   }
 }
 
-const APP_MODES: { id: AppMode; label: string }[] = [
-  { id: 'assets', label: 'Assets' },
-  { id: 'character', label: 'Character' },
-  { id: 'tools', label: 'Tools' },
-  { id: 'buyback', label: 'Buyback' },
-  { id: 'freight', label: 'Freight' },
+const APP_MODE_IDS: AppMode[] = [
+  'assets',
+  'character',
+  'tools',
+  'buyback',
+  'freight',
 ]
 
 function TabButtons<T extends string>({
@@ -168,12 +168,14 @@ function TabButtons<T extends string>({
   onTabChange,
   onKeyDown,
   tabRefs,
+  getLabel,
 }: {
   tabs: readonly T[]
   activeTab: T
   onTabChange: (tab: T) => void
   onKeyDown: (e: KeyboardEvent, index: number) => void
   tabRefs: React.MutableRefObject<(HTMLButtonElement | null)[]>
+  getLabel: (tab: T) => string
 }) {
   return tabs.map((tab, index) => (
     <button
@@ -193,7 +195,7 @@ function TabButtons<T extends string>({
           : 'text-content-secondary hover:text-content'
       }`}
     >
-      {tab}
+      {getLabel(tab)}
     </button>
   ))
 }
@@ -205,13 +207,15 @@ function ModeSwitcher({
   mode: AppMode
   onModeChange: (mode: AppMode) => void
 }) {
+  const { t } = useTranslation('layout')
+
   return (
     <div
       className="flex rounded-md bg-surface-tertiary/50 p-0.5"
       role="tablist"
       aria-label="Application modes"
     >
-      {APP_MODES.map(({ id, label }) => (
+      {APP_MODE_IDS.map((id) => (
         <button
           key={id}
           onClick={() => onModeChange(id)}
@@ -223,7 +227,7 @@ function ModeSwitcher({
               : 'text-content-muted hover:text-content-secondary'
           }`}
         >
-          {label}
+          {t(`modes.${id}`)}
         </button>
       ))}
     </div>
@@ -231,6 +235,7 @@ function ModeSwitcher({
 }
 
 function RefreshStatus() {
+  const { t } = useTranslation('layout')
   const currentlyRefreshing = useExpiryCacheStore((s) => s.currentlyRefreshing)
   const owners = useAuthStore((s) => s.owners)
 
@@ -246,12 +251,13 @@ function RefreshStatus() {
       className="flex items-center gap-2 text-sm text-content-secondary"
     >
       <Loader2 className="h-3.5 w-3.5 animate-spin" />
-      <span>Updating {ownerName}</span>
+      <span>{t('header.updating', { name: ownerName })}</span>
     </div>
   )
 }
 
 function HeaderControls() {
+  const { t } = useTranslation('layout')
   const totals = useTotalAssets()
   const hasData = useAssetStore((s) => s.assetsByOwner.length > 0)
 
@@ -260,43 +266,45 @@ function HeaderControls() {
   return (
     <div className="flex items-center gap-4 text-sm">
       <div>
-        <span className="text-content-secondary">Total: </span>
+        <span className="text-content-secondary">{t('header.total')} </span>
         <span className="font-medium text-semantic-positive">
-          {formatNumber(totals.total)} ISK
+          {formatNumber(totals.total)}
         </span>
       </div>
       <div>
-        <span className="text-content-secondary">Assets: </span>
+        <span className="text-content-secondary">{t('header.assets')} </span>
         <span className="font-medium text-accent">
           {formatNumber(totals.assetsTotal)}
         </span>
       </div>
       <div>
-        <span className="text-content-secondary">Market: </span>
+        <span className="text-content-secondary">{t('header.market')} </span>
         <span className="font-medium text-status-info">
           {formatNumber(totals.marketTotal)}
         </span>
       </div>
       <div>
-        <span className="text-content-secondary">Industry: </span>
+        <span className="text-content-secondary">{t('header.industry')} </span>
         <span className="font-medium text-semantic-warning">
           {formatNumber(totals.industryTotal)}
         </span>
       </div>
       <div>
-        <span className="text-content-secondary">Contracts: </span>
+        <span className="text-content-secondary">{t('header.contracts')} </span>
         <span className="font-medium text-status-corp">
           {formatNumber(totals.contractsTotal)}
         </span>
       </div>
       <div>
-        <span className="text-content-secondary">Wallet: </span>
+        <span className="text-content-secondary">{t('header.wallet')} </span>
         <span className="font-medium text-semantic-success">
           {formatNumber(totals.walletTotal)}
         </span>
       </div>
       <div>
-        <span className="text-content-secondary">Structures: </span>
+        <span className="text-content-secondary">
+          {t('header.structures')}{' '}
+        </span>
         <span className="font-medium text-status-special">
           {formatNumber(totals.structuresTotal)}
         </span>
@@ -306,14 +314,15 @@ function HeaderControls() {
 }
 
 function MainLayoutInner() {
+  const { t } = useTranslation('layout')
   const [mode, setMode] = useState<AppMode>('assets')
-  const [activeAssetTab, setActiveAssetTab] = useState<AssetTab>('Assets')
+  const [activeAssetTab, setActiveAssetTab] = useState<AssetTabId>('assets')
   const [activeCharacterTab, setActiveCharacterTab] =
-    useState<CharacterTab>('Clones')
+    useState<CharacterTabId>('clones')
   const [activeBuybackTab, setActiveBuybackTab] = useState<BuybackTabType>(
     BUYBACK_TABS[1]
   )
-  const [activeToolsTab, setActiveToolsTab] = useState<ToolsTab>('Contracts')
+  const [activeToolsTab, setActiveToolsTab] = useState<ToolsTabId>('contracts')
   const [buybackPrefill, setBuybackPrefill] = useState<string | null>(null)
   const [freightPrefill, setFreightPrefill] = useState<{
     text: string
@@ -347,7 +356,7 @@ function MainLayoutInner() {
     useRegionalMarketActionStore,
     useCallback((action: { typeId: number }) => {
       setMode('tools')
-      setActiveToolsTab('Market')
+      setActiveToolsTab('market')
       setMarketTypeId(action.typeId)
     }, [])
   )
@@ -356,7 +365,7 @@ function MainLayoutInner() {
     useContractsSearchActionStore,
     useCallback((action: { typeId: number; typeName: string }) => {
       setMode('tools')
-      setActiveToolsTab('Contracts')
+      setActiveToolsTab('contracts')
       setContractsSearchType({
         typeId: action.typeId,
         typeName: action.typeName,
@@ -368,7 +377,7 @@ function MainLayoutInner() {
     useReferenceActionStore,
     useCallback((action: { typeId: number }) => {
       setMode('tools')
-      setActiveToolsTab('Reference')
+      setActiveToolsTab('reference')
       setReferenceTypeId(action.typeId)
     }, [])
   )
@@ -402,13 +411,15 @@ function MainLayoutInner() {
     []
   )
 
+  const getTabLabel = (tab: string) => t(`tabs.${tab}`)
+
   return (
     <div className="flex h-full flex-col">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-accent focus:px-4 focus:py-2 focus:text-white"
       >
-        Skip to main content
+        {t('accessibility.skipToContent')}
       </a>
       <UpdateBanner />
       {/* Header */}
@@ -436,7 +447,7 @@ function MainLayoutInner() {
           rel="noopener noreferrer"
           className="rounded-md p-2 text-content-secondary transition-colors hover:text-[#5865F2]"
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
-          aria-label="Join our Discord server"
+          aria-label={t('accessibility.discord')}
         >
           <DiscordIcon className="h-5 w-5" />
         </a>
@@ -465,25 +476,27 @@ function MainLayoutInner() {
         >
           {mode === 'assets' && (
             <TabButtons
-              tabs={ASSET_TABS}
+              tabs={ASSET_TAB_IDS}
               activeTab={activeAssetTab}
               onTabChange={setActiveAssetTab}
-              onKeyDown={(e, i) => handleTabKeyDown(e, ASSET_TABS, i)}
+              onKeyDown={(e, i) => handleTabKeyDown(e, ASSET_TAB_IDS, i)}
               tabRefs={tabRefs}
+              getLabel={getTabLabel}
             />
           )}
           {mode === 'character' && (
             <TabButtons
-              tabs={CHARACTER_TABS}
+              tabs={CHARACTER_TAB_IDS}
               activeTab={activeCharacterTab}
               onTabChange={setActiveCharacterTab}
-              onKeyDown={(e, i) => handleTabKeyDown(e, CHARACTER_TABS, i)}
+              onKeyDown={(e, i) => handleTabKeyDown(e, CHARACTER_TAB_IDS, i)}
               tabRefs={tabRefs}
+              getLabel={getTabLabel}
             />
           )}
           {mode === 'buyback' &&
             BUYBACK_TABS.map((tab, index) => {
-              const styling = getStyling(tabToKey(tab))
+              const styling = getStyling(tab)
               return (
                 <button
                   key={tab}
@@ -506,17 +519,18 @@ function MainLayoutInner() {
                     className={`h-2 w-2 rounded-full ${styling.color}`}
                     aria-hidden="true"
                   />
-                  {tab}
+                  {t(`tools:buyback.tabs.${tab}`)}
                 </button>
               )
             })}
           {mode === 'tools' && (
             <TabButtons
-              tabs={TOOLS_TABS}
+              tabs={TOOLS_TAB_IDS}
               activeTab={activeToolsTab}
               onTabChange={setActiveToolsTab}
-              onKeyDown={(e, i) => handleTabKeyDown(e, TOOLS_TABS, i)}
+              onKeyDown={(e, i) => handleTabKeyDown(e, TOOLS_TAB_IDS, i)}
               tabRefs={tabRefs}
+              getLabel={getTabLabel}
             />
           )}
         </div>
@@ -562,7 +576,7 @@ function MainLayoutInner() {
               </div>
             </FeatureErrorBoundary>
           )}
-          {mode === 'tools' && activeToolsTab === 'Contracts' && (
+          {mode === 'tools' && activeToolsTab === 'contracts' && (
             <FeatureErrorBoundary key="contracts" feature="Contracts Search">
               <ContractsSearchPanel
                 initialType={contractsSearchType}
@@ -570,7 +584,7 @@ function MainLayoutInner() {
               />
             </FeatureErrorBoundary>
           )}
-          {mode === 'tools' && activeToolsTab === 'Market' && (
+          {mode === 'tools' && activeToolsTab === 'market' && (
             <FeatureErrorBoundary key="market" feature="Regional Market">
               <RegionalMarketPanel
                 initialTypeId={marketTypeId}
@@ -587,12 +601,12 @@ function MainLayoutInner() {
               />
             </FeatureErrorBoundary>
           )}
-          {mode === 'tools' && activeToolsTab === 'Map' && (
+          {mode === 'tools' && activeToolsTab === 'map' && (
             <FeatureErrorBoundary key="map" feature="Map">
               <MapPanel />
             </FeatureErrorBoundary>
           )}
-          {mode === 'tools' && activeToolsTab === 'Reference' && (
+          {mode === 'tools' && activeToolsTab === 'reference' && (
             <FeatureErrorBoundary key="reference" feature="Reference">
               <ReferencePanel
                 initialTypeId={referenceTypeId}

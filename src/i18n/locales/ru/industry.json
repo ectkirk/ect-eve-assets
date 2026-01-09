@@ -1,0 +1,15 @@
+{
+  "columns.blueprint": "Чертёж",
+  "columns.product": "Продукт",
+
+  "empty": "Нет производственных работ.",
+
+  "activities.manufacturing": "Производство",
+  "activities.teResearch": "Исследование TE",
+  "activities.meResearch": "Исследование ME",
+  "activities.copying": "Копирование",
+  "activities.reverseEngineering": "Обратная инженерия",
+  "activities.invention": "Изобретение",
+  "activities.reactions": "Реакции",
+  "activities.unknown": "Активность {{id}}"
+}

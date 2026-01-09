@@ -1,0 +1,43 @@
+{
+  "badges.activeShip": "Vaisseau actif",
+  "badges.inContract": "En contrat",
+  "badges.sellOrder": "Ordre de vente",
+  "badges.inJob": "En travail",
+  "badges.structure": "Structure",
+
+  "empty": "Aucun actif trouvé.",
+  "noCharacters": "Aucun personnage connecté. Ajoutez un personnage pour voir les actifs.",
+  "noData": "Aucune donnée d'actif chargée. Cliquez sur Actualiser dans l'en-tête pour récupérer depuis ESI.",
+
+  "loading.assets": "Chargement des actifs...",
+  "loading.fetching": "Récupération des actifs ({{current}}/{{total}})...",
+
+  "error.loadFailed": "Échec du chargement des actifs",
+
+  "contextMenu.viewContracts": "Voir dans Contrats",
+  "contextMenu.openMutamarket": "Ouvrir dans Mutamarket",
+
+  "settingsModal.title": "Paramètres de vue des actifs",
+  "settingsModal.description": "Choisissez les sources de données à inclure dans les totaux d'actifs",
+  "settingsModal.marketOrders": "Ordres de marché",
+  "settingsModal.marketOrdersDesc": "Inclure les objets des ordres de vente actifs",
+  "settingsModal.contracts": "Contrats",
+  "settingsModal.contractsDesc": "Inclure les objets des contrats en cours que vous avez émis",
+  "settingsModal.industryJobs": "Travaux industriels",
+  "settingsModal.industryJobsDesc": "Inclure les objets des travaux industriels actifs et terminés",
+  "settingsModal.activeShip": "Vaisseau actif",
+  "settingsModal.activeShipDesc": "Inclure votre vaisseau actuellement piloté et son contenu",
+  "settingsModal.structures": "Structures",
+  "settingsModal.structuresDesc": "Inclure les structures possédées (Citadelles, Complexes d'Ingénierie, etc.)",
+
+  "locations.assetSafety": "Sécurité des actifs",
+  "locations.unknownParent": "Origine inconnue",
+  "locations.unknownLocation": "Emplacement inconnu",
+  "locations.unknownType": "Type inconnu {{id}}",
+  "categories.abyssals": "Abyssaux",
+
+  "flags.inContract": "En contrat",
+  "flags.sellOrder": "Ordre de vente",
+  "flags.industryJob": "En travail",
+  "flags.activeShip": "Vaisseau actif"
+}

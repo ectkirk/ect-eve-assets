@@ -16,13 +16,13 @@ export function getSecurityTab(
   securityStatus: number | null | undefined
 ): BuybackTabType {
   if (securityStatus === null || securityStatus === undefined) {
-    return 'Null Sec'
+    return 'nullsec'
   }
   if (securityStatus >= 0.45) {
-    return 'High Sec'
+    return 'highsec'
   }
   if (securityStatus >= 0.0) {
-    return 'Low Sec'
+    return 'lowsec'
   }
-  return 'Null Sec'
+  return 'nullsec'
 }

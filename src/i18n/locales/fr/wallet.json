@@ -1,0 +1,10 @@
+{
+  "divisions.master": "Portefeuille principal",
+  "divisions.wallet2": "Portefeuille 2",
+  "divisions.wallet3": "Portefeuille 3",
+  "divisions.wallet4": "Portefeuille 4",
+  "divisions.wallet5": "Portefeuille 5",
+  "divisions.wallet6": "Portefeuille 6",
+  "divisions.wallet7": "Portefeuille 7",
+  "divisions.division": "Division {{number}}"
+}

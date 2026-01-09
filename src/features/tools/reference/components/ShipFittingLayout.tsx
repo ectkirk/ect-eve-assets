@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { FittingWheel } from '@/components/FittingWheel'
 import { ShipStatsPanel, FittingStats } from './ShipStatsPanel'
 import { extractShipSlots, buildAttrMap } from './ship-stat-utils'
@@ -27,6 +28,7 @@ interface ShipFittingLayoutProps {
 }
 
 export function ShipFittingLayout({ data }: ShipFittingLayoutProps) {
+  const { t } = useTranslation('tools')
   const attrMap = useMemo(
     () => buildAttrMap(data.dogma?.attributes),
     [data.dogma?.attributes]
@@ -48,7 +50,9 @@ export function ShipFittingLayout({ data }: ShipFittingLayoutProps) {
 
   return (
     <section className="rounded-lg border border-border bg-surface-secondary p-4">
-      <h3 className="mb-4 font-semibold text-content">Ship Fitting</h3>
+      <h3 className="mb-4 font-semibold text-content">
+        {t('reference.shipFitting')}
+      </h3>
       <div className="flex flex-col items-center gap-6 lg:flex-row lg:items-start">
         {hasAnySlots && (
           <div className="shrink-0">

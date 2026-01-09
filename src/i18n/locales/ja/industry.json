@@ -1,0 +1,15 @@
+{
+  "columns.blueprint": "ブループリント",
+  "columns.product": "製品",
+
+  "empty": "産業ジョブがありません。",
+
+  "activities.manufacturing": "製造",
+  "activities.teResearch": "TE研究",
+  "activities.meResearch": "ME研究",
+  "activities.copying": "コピー",
+  "activities.reverseEngineering": "リバースエンジニアリング",
+  "activities.invention": "発明",
+  "activities.reactions": "リアクション",
+  "activities.unknown": "アクティビティ {{id}}"
+}

@@ -54,6 +54,7 @@ import type {
   ESIAPI,
   ESIRequestOptions,
   ESIResponseMeta,
+  LanguageParams,
   LogContext,
   LogLevel,
   RefMarketJitaParams,
@@ -131,42 +132,55 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.invoke('bug:report', characterName, description),
   refTypesPage: (params?: RefTypesPageParams) =>
     ipcRenderer.invoke('ref:types-page', params),
-  refCategories: () => ipcRenderer.invoke('ref:categories'),
-  refGroups: () => ipcRenderer.invoke('ref:groups'),
-  refUniverseRegions: () => ipcRenderer.invoke('ref:universe-regions'),
-  refUniverseSystems: () => ipcRenderer.invoke('ref:universe-systems'),
-  refUniverseStations: () => ipcRenderer.invoke('ref:universe-stations'),
+  refCategories: (params?: LanguageParams) =>
+    ipcRenderer.invoke('ref:categories', params),
+  refGroups: (params?: LanguageParams) =>
+    ipcRenderer.invoke('ref:groups', params),
+  refUniverseRegions: (params?: LanguageParams) =>
+    ipcRenderer.invoke('ref:universe-regions', params),
+  refUniverseSystems: (params?: LanguageParams) =>
+    ipcRenderer.invoke('ref:universe-systems', params),
+  refUniverseStations: (params?: LanguageParams) =>
+    ipcRenderer.invoke('ref:universe-stations', params),
   refUniverseStargates: () => ipcRenderer.invoke('ref:universe-stargates'),
   refUniverseStructuresPage: (params?: RefStructuresPageParams) =>
     ipcRenderer.invoke('ref:universe-structures-page', params),
-  refMoons: (ids: number[]) => ipcRenderer.invoke('ref:moons', ids),
-  refMarketGroups: () => ipcRenderer.invoke('ref:marketGroups'),
+  refMoons: (ids: number[], params?: LanguageParams) =>
+    ipcRenderer.invoke('ref:moons', ids, params),
+  refMarketGroups: (params?: LanguageParams) =>
+    ipcRenderer.invoke('ref:marketGroups', params),
+  refCorporations: (params?: LanguageParams) =>
+    ipcRenderer.invoke('ref:corporations', params),
   refMarketJita: (params: RefMarketJitaParams) =>
     ipcRenderer.invoke('ref:marketJita', params),
   refBuybackCalculate: (text: string, config: BuybackConfig) =>
     ipcRenderer.invoke('ref:buybackCalculate', text, config),
-  refBuybackInfo: () => ipcRenderer.invoke('ref:buybackInfo'),
-  refShippingInfo: () => ipcRenderer.invoke('ref:shippingInfo'),
+  refBuybackInfo: (params?: LanguageParams) =>
+    ipcRenderer.invoke('ref:buybackInfo', params),
+  refShippingInfo: (params?: LanguageParams) =>
+    ipcRenderer.invoke('ref:shippingInfo', params),
   refShippingCalculate: (text: string, nullSec?: boolean) =>
     ipcRenderer.invoke('ref:shippingCalculate', text, nullSec),
   refContractsSearch: (params: ContractSearchParams) =>
     ipcRenderer.invoke('ref:contractsSearch', params),
-  refTypeDetail: (typeId: number) =>
-    ipcRenderer.invoke('ref:type-detail', typeId),
-  refTypeCore: (typeId: number) => ipcRenderer.invoke('ref:type-core', typeId),
-  refTypeDogma: (typeId: number) =>
-    ipcRenderer.invoke('ref:type-dogma', typeId),
-  refTypeMarket: (typeId: number) =>
-    ipcRenderer.invoke('ref:type-market', typeId),
-  refTypeSkills: (typeId: number) =>
-    ipcRenderer.invoke('ref:type-skills', typeId),
-  refTypeVariations: (typeId: number) =>
-    ipcRenderer.invoke('ref:type-variations', typeId),
-  refTypeBlueprint: (typeId: number) =>
-    ipcRenderer.invoke('ref:type-blueprint', typeId),
-  refDogmaUnits: () => ipcRenderer.invoke('ref:dogma-units'),
-  refDogmaAttributeCategories: () =>
-    ipcRenderer.invoke('ref:dogma-attribute-categories'),
+  refTypeDetail: (typeId: number, params?: LanguageParams) =>
+    ipcRenderer.invoke('ref:type-detail', typeId, params),
+  refTypeCore: (typeId: number, params?: LanguageParams) =>
+    ipcRenderer.invoke('ref:type-core', typeId, params),
+  refTypeDogma: (typeId: number, params?: LanguageParams) =>
+    ipcRenderer.invoke('ref:type-dogma', typeId, params),
+  refTypeMarket: (typeId: number, params?: LanguageParams) =>
+    ipcRenderer.invoke('ref:type-market', typeId, params),
+  refTypeSkills: (typeId: number, params?: LanguageParams) =>
+    ipcRenderer.invoke('ref:type-skills', typeId, params),
+  refTypeVariations: (typeId: number, params?: LanguageParams) =>
+    ipcRenderer.invoke('ref:type-variations', typeId, params),
+  refTypeBlueprint: (typeId: number, params?: LanguageParams) =>
+    ipcRenderer.invoke('ref:type-blueprint', typeId, params),
+  refDogmaUnits: (params?: LanguageParams) =>
+    ipcRenderer.invoke('ref:dogma-units', params),
+  refDogmaAttributeCategories: (params?: LanguageParams) =>
+    ipcRenderer.invoke('ref:dogma-attribute-categories', params),
   mutamarketModule: (itemId: number, typeId?: number) =>
     ipcRenderer.invoke('mutamarket:module', itemId, typeId),
   onUpdateAvailable: (callback: (version: string) => void) => {

@@ -1,13 +1,14 @@
+import { useTranslation } from 'react-i18next'
 import { TableCell, TableRow } from '@/components/ui/table'
-import { cn, formatNumber } from '@/lib/utils'
+import { cn, formatNumber, formatVolume } from '@/lib/utils'
 import { TypeIcon as ItemTypeIcon, OwnerIcon } from '@/components/ui/type-icon'
 import { resolveContractItems, type ContractItem } from '@/lib/contract-items'
 import type { DisplayContract } from '@/features/tools/contracts-search/ContractDetailModal'
 import {
   type ContractRow,
-  CONTRACT_TYPE_NAMES,
   formatExpiry,
   getContractValue,
+  getContractTypeName,
 } from './contracts-utils'
 
 export interface SelectedContractData {
@@ -15,18 +16,21 @@ export interface SelectedContractData {
   items: ContractItem[]
 }
 
-function toDisplayContract(row: ContractRow): SelectedContractData {
+function toDisplayContract(
+  row: ContractRow,
+  t: (key: string) => string
+): SelectedContractData {
   const contract = row.contractWithItems.contract
   const items = row.items
 
   const topItemName =
     contract.type === 'courier'
-      ? 'Courier Contract'
+      ? t('items.courierContract')
       : items.length > 1
-        ? '[Multiple Items]'
+        ? t('items.multipleItems')
         : items.length === 1
           ? row.typeName
-          : '[Empty]'
+          : t('items.empty')
 
   const display: DisplayContract = {
     contractId: contract.contract_id,
@@ -47,12 +51,13 @@ function toDisplayContract(row: ContractRow): SelectedContractData {
     topItemName,
   }
 
-  const resolvedItems = resolveContractItems(items)
+  const resolvedItems = resolveContractItems(items, contract.availability)
 
   return { display, items: resolvedItems }
 }
 
 function WantToBuyLabel({ direction }: { direction: 'in' | 'out' }) {
+  const { t } = useTranslation('contracts')
   return (
     <div
       className={cn(
@@ -60,7 +65,7 @@ function WantToBuyLabel({ direction }: { direction: 'in' | 'out' }) {
         direction === 'in' ? 'text-status-negative' : 'text-status-info'
       )}
     >
-      {direction === 'in' ? 'You Provide' : 'You Want'}
+      {direction === 'in' ? t('direction.youProvide') : t('direction.youWant')}
     </div>
   )
 }
@@ -76,6 +81,7 @@ export function ContractTableRow({
   visibleColumns,
   onSelectContract,
 }: ContractTableRowProps) {
+  const { t } = useTranslation('contracts')
   const contract = row.contractWithItems.contract
   const expiry = formatExpiry(contract.date_expired)
   const value = getContractValue(contract)
@@ -100,28 +106,28 @@ export function ContractTableRow({
       )}
       {show('type') && (
         <TableCell className="py-1.5">
-          {CONTRACT_TYPE_NAMES[contract.type]}
+          {getContractTypeName(contract.type, t)}
         </TableCell>
       )}
       {show('items') && (
         <TableCell className="py-1.5">
           {contract.type === 'courier' ? (
             <button
-              onClick={() => onSelectContract(toDisplayContract(row))}
+              onClick={() => onSelectContract(toDisplayContract(row, t))}
               className="hover:text-link text-accent"
             >
-              Courier
+              {t('types.courier')}
             </button>
           ) : displayItemCount === 0 ? (
             <span className="text-content-muted">-</span>
           ) : (
             <div>
               <button
-                onClick={() => onSelectContract(toDisplayContract(row))}
+                onClick={() => onSelectContract(toDisplayContract(row, t))}
                 className="flex items-center gap-2 hover:text-link text-accent"
               >
                 {hasMultipleItems ? (
-                  <span>[Multiple Items]</span>
+                  <span>{t('items.multipleItems')}</span>
                 ) : (
                   <>
                     {row.firstItemTypeId && (
@@ -174,7 +180,9 @@ export function ContractTableRow({
             <div>
               <div>{formatNumber(value)}</div>
               {row.isWantToBuy && row.direction === 'in' && (
-                <div className="text-xs text-status-positive">You Receive</div>
+                <div className="text-xs text-status-positive">
+                  {t('direction.youReceive')}
+                </div>
               )}
             </div>
           ) : (
@@ -189,7 +197,9 @@ export function ContractTableRow({
       )}
       {show('volume') && (
         <TableCell className="py-1.5 text-right tabular-nums text-content-secondary">
-          {contract.volume ? `${contract.volume.toLocaleString()} m³` : '-'}
+          {contract.volume
+            ? formatVolume(contract.volume, { suffix: true })
+            : '-'}
         </TableCell>
       )}
       {show('collateral') && (
@@ -222,6 +232,8 @@ function DaysCell({
 }: {
   contract: ContractRow['contractWithItems']['contract']
 }) {
+  const { t: tc } = useTranslation('common')
+
   if (contract.type !== 'courier' || !contract.days_to_complete) {
     return (
       <TableCell className="py-1.5 text-right tabular-nums text-content-muted">
@@ -232,32 +244,39 @@ function DaysCell({
 
   return (
     <TableCell className="py-1.5 text-right tabular-nums text-content-secondary">
-      {contract.days_to_complete}d
+      {tc('time.days', { count: contract.days_to_complete })}
     </TableCell>
   )
 }
 
+const STATUS_CONFIG: Record<
+  string,
+  { key: string; className: string } | undefined
+> = {
+  outstanding: {
+    key: 'status.outstanding',
+    className: 'text-status-highlight',
+  },
+  in_progress: { key: 'status.inProgress', className: 'text-status-info' },
+  finished: { key: 'status.finished', className: 'text-status-positive' },
+  finished_issuer: {
+    key: 'status.finished',
+    className: 'text-status-positive',
+  },
+  finished_contractor: {
+    key: 'status.finished',
+    className: 'text-status-positive',
+  },
+  cancelled: { key: 'status.cancelled', className: 'text-content-secondary' },
+  rejected: { key: 'status.rejected', className: 'text-status-negative' },
+  failed: { key: 'status.failed', className: 'text-status-negative' },
+  deleted: { key: 'status.deleted', className: 'text-content-muted' },
+  reversed: { key: 'status.reversed', className: 'text-status-warning' },
+}
+
 function ContractStatus({ status }: { status: ContractRow['status'] }) {
-  switch (status) {
-    case 'outstanding':
-      return <span className="text-status-highlight">Outstanding</span>
-    case 'in_progress':
-      return <span className="text-status-info">In Progress</span>
-    case 'finished':
-    case 'finished_issuer':
-    case 'finished_contractor':
-      return <span className="text-status-positive">Finished</span>
-    case 'cancelled':
-      return <span className="text-content-secondary">Cancelled</span>
-    case 'rejected':
-      return <span className="text-status-negative">Rejected</span>
-    case 'failed':
-      return <span className="text-status-negative">Failed</span>
-    case 'deleted':
-      return <span className="text-content-muted">Deleted</span>
-    case 'reversed':
-      return <span className="text-status-warning">Reversed</span>
-    default:
-      return null
-  }
+  const { t } = useTranslation('contracts')
+  const config = STATUS_CONFIG[status]
+  if (!config) return null
+  return <span className={config.className}>{t(config.key)}</span>
 }

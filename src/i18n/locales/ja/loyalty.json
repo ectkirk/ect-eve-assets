@@ -1,0 +1,8 @@
+{
+  "empty": "LPデータがありません。",
+
+  "fallback.corporation": "コーポレーション {{id}}",
+  "reauthRequired": "{{name}}はLPへのアクセスに再認証が必要です。",
+  "reauthRequiredMultiple": "{{count}}人のキャラクターがLPへのアクセスに再認証が必要です。",
+  "reauthHint": "キャラクターメニューから再認証してください。"
+}

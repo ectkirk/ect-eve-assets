@@ -1,0 +1,43 @@
+{
+  "badges.activeShip": "搭乗中の船",
+  "badges.inContract": "契約中",
+  "badges.sellOrder": "売り注文",
+  "badges.inJob": "ジョブ中",
+  "badges.structure": "ストラクチャ",
+
+  "empty": "アセットが見つかりません。",
+  "noCharacters": "ログインしているキャラクターがいません。アセットを表示するにはキャラクターを追加してください。",
+  "noData": "アセットデータがロードされていません。ヘッダーの更新をクリックしてESIから取得してください。",
+
+  "loading.assets": "アセットを読み込み中...",
+  "loading.fetching": "アセットを取得中 ({{current}}/{{total}})...",
+
+  "error.loadFailed": "アセットの読み込みに失敗しました",
+
+  "contextMenu.viewContracts": "契約で表示",
+  "contextMenu.openMutamarket": "Mutamarketで開く",
+
+  "settingsModal.title": "アセット表示設定",
+  "settingsModal.description": "アセット合計に含めるデータソースを選択",
+  "settingsModal.marketOrders": "マーケット注文",
+  "settingsModal.marketOrdersDesc": "有効な売り注文のアイテムを含める",
+  "settingsModal.contracts": "契約",
+  "settingsModal.contractsDesc": "発行した未処理の契約のアイテムを含める",
+  "settingsModal.industryJobs": "産業ジョブ",
+  "settingsModal.industryJobsDesc": "有効および完了した産業ジョブのアイテムを含める",
+  "settingsModal.activeShip": "搭乗中の船",
+  "settingsModal.activeShipDesc": "現在操縦中の船とその内容を含める",
+  "settingsModal.structures": "ストラクチャ",
+  "settingsModal.structuresDesc": "所有するストラクチャを含める（シタデル、エンジニアリング複合体など）",
+
+  "locations.assetSafety": "アセット保全",
+  "locations.unknownParent": "不明な親",
+  "locations.unknownLocation": "不明な場所",
+  "locations.unknownType": "不明なタイプ {{id}}",
+  "categories.abyssals": "アビサル",
+
+  "flags.inContract": "契約中",
+  "flags.sellOrder": "売り注文",
+  "flags.industryJob": "ジョブ中",
+  "flags.activeShip": "搭乗中の船"
+}

@@ -1,5 +1,6 @@
 import { PLAYER_STRUCTURE_ID_THRESHOLD } from '@/lib/eve-constants'
 import { useReferenceCacheStore } from '.'
+import { i18n } from '@/i18n'
 import type {
   CachedCategory,
   CachedGroup,
@@ -21,7 +22,7 @@ export function getType(id: number): CachedType | undefined {
 export function getTypeName(id: number): string {
   return (
     useReferenceCacheStore.getState().types.get(id)?.name ??
-    `Unknown Type ${id}`
+    i18n.t('assets:locations.unknownType', { id })
   )
 }
 

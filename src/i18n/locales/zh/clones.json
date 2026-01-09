@@ -1,0 +1,14 @@
+{
+  "subtitle": "{{count}} 个跳跃克隆体",
+  "empty": "未找到克隆体。",
+
+  "activeClone": "活动克隆体",
+  "noImplants": "无植入体",
+  "implantSlot": "槽位 {{slot}}",
+  "noMatches": "没有匹配的克隆体",
+  "noClones": "没有克隆体",
+
+  "fallback.structure": "建筑 {{id}}",
+  "fallback.location": "位置 {{id}}",
+  "fallback.unknown": "未知"
+}

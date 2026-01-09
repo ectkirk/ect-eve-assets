@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import {
   Dialog,
   DialogContent,
@@ -45,29 +46,59 @@ function ServiceBadge({
   )
 }
 
-const STATE_LABELS: Record<string, { label: string; color: string }> = {
+const STATE_LABEL_KEYS: Record<string, { labelKey: string; color: string }> = {
   anchor_vulnerable: {
-    label: 'Anchor Vulnerable',
+    labelKey: 'structureInfo.states.anchorVulnerable',
     color: 'text-status-highlight',
   },
-  anchoring: { label: 'Anchoring', color: 'text-status-info' },
-  armor_reinforce: { label: 'Armor Reinforced', color: 'text-status-negative' },
+  anchoring: {
+    labelKey: 'structureInfo.states.anchoring',
+    color: 'text-status-info',
+  },
+  armor_reinforce: {
+    labelKey: 'structureInfo.states.armorReinforce',
+    color: 'text-status-negative',
+  },
   armor_vulnerable: {
-    label: 'Armor Vulnerable',
+    labelKey: 'structureInfo.states.armorVulnerable',
     color: 'text-status-highlight',
   },
   deploy_vulnerable: {
-    label: 'Deploy Vulnerable',
+    labelKey: 'structureInfo.states.deployVulnerable',
     color: 'text-status-highlight',
   },
-  fitting_invulnerable: { label: 'Fitting', color: 'text-status-info' },
-  hull_reinforce: { label: 'Hull Reinforced', color: 'text-status-negative' },
-  hull_vulnerable: { label: 'Hull Vulnerable', color: 'text-status-negative' },
-  online_deprecated: { label: 'Online', color: 'text-status-positive' },
-  onlining_vulnerable: { label: 'Onlining', color: 'text-status-info' },
-  shield_vulnerable: { label: 'Online', color: 'text-status-positive' },
-  unanchored: { label: 'Unanchored', color: 'text-content-muted' },
-  unknown: { label: 'Unknown', color: 'text-content-muted' },
+  fitting_invulnerable: {
+    labelKey: 'structureInfo.states.fittingInvulnerable',
+    color: 'text-status-info',
+  },
+  hull_reinforce: {
+    labelKey: 'structureInfo.states.hullReinforce',
+    color: 'text-status-negative',
+  },
+  hull_vulnerable: {
+    labelKey: 'structureInfo.states.hullVulnerable',
+    color: 'text-status-negative',
+  },
+  online_deprecated: {
+    labelKey: 'structureInfo.states.onlineDeprecated',
+    color: 'text-status-positive',
+  },
+  onlining_vulnerable: {
+    labelKey: 'structureInfo.states.onliningVulnerable',
+    color: 'text-status-info',
+  },
+  shield_vulnerable: {
+    labelKey: 'structureInfo.states.shieldVulnerable',
+    color: 'text-status-positive',
+  },
+  unanchored: {
+    labelKey: 'structureInfo.states.unanchored',
+    color: 'text-content-muted',
+  },
+  unknown: {
+    labelKey: 'structureInfo.states.unknown',
+    color: 'text-content-muted',
+  },
 }
 
 export function StructureInfoDialog({
@@ -76,17 +107,22 @@ export function StructureInfoDialog({
   structure,
   ownerName,
 }: StructureInfoDialogProps) {
+  const { t } = useTranslation('dialogs')
+
   if (!structure) return null
 
   const type = getType(structure.type_id)
   const location = getLocation(structure.system_id)
 
-  const typeName = type?.name ?? `Unknown Type ${structure.type_id}`
-  const systemName = location?.name ?? `System ${structure.system_id}`
-  const regionName = location?.regionName ?? 'Unknown Region'
+  const typeName =
+    type?.name ?? t('structureInfo.unknownType', { id: structure.type_id })
+  const systemName =
+    location?.name ??
+    t('structureInfo.systemTemplate', { id: structure.system_id })
+  const regionName = location?.regionName ?? t('structureInfo.unknownRegion')
 
-  const stateInfo = STATE_LABELS[structure.state] ?? {
-    label: 'Unknown',
+  const stateInfo = STATE_LABEL_KEYS[structure.state] ?? {
+    labelKey: 'structureInfo.states.unknown',
     color: 'text-content-muted',
   }
 
@@ -109,7 +145,7 @@ export function StructureInfoDialog({
             />
             <div>
               <DialogTitle className="text-lg">
-                {structure.name || 'Unnamed Structure'}
+                {structure.name || t('structureInfo.unnamedStructure')}
               </DialogTitle>
               <DialogDescription>{typeName}</DialogDescription>
             </div>
@@ -117,31 +153,31 @@ export function StructureInfoDialog({
         </DialogHeader>
 
         <div className="space-y-4 mt-2">
-          <InfoSection title="Location">
+          <InfoSection title={t('structureInfo.location')}>
             <InfoRow
-              label="System"
+              label={t('structureInfo.system')}
               value={systemName}
               className="text-status-info"
             />
-            <InfoRow label="Region" value={regionName} />
-            <InfoRow label="Owner" value={ownerName} />
+            <InfoRow label={t('structureInfo.region')} value={regionName} />
+            <InfoRow label={t('structureInfo.owner')} value={ownerName} />
           </InfoSection>
 
-          <InfoSection title="Status">
+          <InfoSection title={t('structureInfo.status')}>
             <InfoRow
-              label="State"
-              value={stateInfo.label}
+              label={t('structureInfo.state')}
+              value={t(stateInfo.labelKey)}
               className={stateInfo.color}
             />
             {structure.state_timer_start && (
               <InfoRow
-                label="State Started"
+                label={t('structureInfo.stateStarted')}
                 value={formatDateTime(structure.state_timer_start)}
               />
             )}
             {structure.state_timer_end && (
               <InfoRow
-                label="State Ends"
+                label={t('structureInfo.stateEnds')}
                 value={formatDateTime(structure.state_timer_end)}
                 className={
                   structure.state.includes('reinforce')
@@ -152,41 +188,41 @@ export function StructureInfoDialog({
             )}
             {structure.unanchors_at && (
               <InfoRow
-                label="Unanchors At"
+                label={t('structureInfo.unanchorsAt')}
                 value={formatDateTime(structure.unanchors_at)}
                 className="text-status-highlight"
               />
             )}
           </InfoSection>
 
-          <InfoSection title="Reinforcement">
+          <InfoSection title={t('structureInfo.reinforcement')}>
             <InfoRow
-              label="Vulnerability Window"
+              label={t('structureInfo.vulnerabilityWindow')}
               value={formatReinforceHour(structure.reinforce_hour)}
             />
             {structure.next_reinforce_hour !== undefined &&
               structure.next_reinforce_apply && (
                 <>
                   <InfoRow
-                    label="Pending Window"
+                    label={t('structureInfo.pendingWindow')}
                     value={formatReinforceHour(structure.next_reinforce_hour)}
                     className="text-status-info"
                   />
                   <InfoRow
-                    label="Change Applies"
+                    label={t('structureInfo.changeApplies')}
                     value={formatDateTime(structure.next_reinforce_apply)}
                   />
                 </>
               )}
           </InfoSection>
 
-          <InfoSection title="Fuel">
+          <InfoSection title={t('structureInfo.fuel')}>
             <InfoRow
-              label="Fuel Expires"
+              label={t('structureInfo.fuelExpires')}
               value={
                 structure.fuel_expires
                   ? formatDateTime(structure.fuel_expires)
-                  : 'No fuel data'
+                  : t('structureInfo.noFuelData')
               }
               className={
                 structure.fuel_expires ? undefined : 'text-content-muted'
@@ -195,7 +231,7 @@ export function StructureInfoDialog({
           </InfoSection>
 
           {structure.services && structure.services.length > 0 && (
-            <InfoSection title="Services">
+            <InfoSection title={t('structureInfo.services')}>
               <div className="flex flex-wrap gap-2 py-2">
                 {structure.services.map((service, idx) => (
                   <ServiceBadge
@@ -209,9 +245,9 @@ export function StructureInfoDialog({
           )}
 
           {(!structure.services || structure.services.length === 0) && (
-            <InfoSection title="Services">
+            <InfoSection title={t('structureInfo.services')}>
               <div className="py-2 text-content-muted text-sm">
-                No services installed
+                {t('structureInfo.noServices')}
               </div>
             </InfoSection>
           )}

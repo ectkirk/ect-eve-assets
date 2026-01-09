@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import {
   Dialog,
   DialogContent,
@@ -13,29 +14,30 @@ interface SupportModalProps {
 }
 
 export function SupportModal({ open, onOpenChange }: SupportModalProps) {
+  const { t } = useTranslation('dialogs')
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Support Us</DialogTitle>
+          <DialogTitle>{t('support.title')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 text-sm">
-          <p className="text-content-secondary">
-            ECT EVE Assets is free and open source. Here's how you can support
-            the project:
-          </p>
+          <p className="text-content-secondary">{t('support.intro')}</p>
 
           <div className="space-y-3">
             <div className="rounded-lg border border-border bg-surface-tertiary/30 p-3">
-              <h3 className="font-medium text-content mb-1">Spread the Word</h3>
+              <h3 className="font-medium text-content mb-1">
+                {t('support.spreadWord')}
+              </h3>
               <p className="text-content-muted">
-                Tell your corp mates and friends about ECT EVE Assets!
+                {t('support.spreadWordDesc')}
               </p>
             </div>
 
             <div className="rounded-lg border border-border bg-surface-tertiary/30 p-3">
               <h3 className="font-medium text-content mb-1">
-                Join Our Community
+                {t('support.joinCommunity')}
               </h3>
               <a
                 href="https://discord.gg/dexSsJYYbv"
@@ -44,14 +46,16 @@ export function SupportModal({ open, onOpenChange }: SupportModalProps) {
                 className="inline-flex items-center gap-2 text-content-muted hover:text-[#5865F2] transition-colors"
               >
                 <DiscordIcon className="h-5 w-5" />
-                EC Trade Discord
+                {t('support.discord')}
               </a>
             </div>
 
             <div className="rounded-lg border border-border bg-surface-tertiary/30 p-3">
-              <h3 className="font-medium text-content mb-1">Send ISK</h3>
+              <h3 className="font-medium text-content mb-1">
+                {t('support.sendIsk')}
+              </h3>
               <p className="text-content-muted mb-2">
-                In-game donations are always appreciated:
+                {t('support.sendIskDesc')}
               </p>
               <CopyButton
                 text="ECTrade"
@@ -62,7 +66,7 @@ export function SupportModal({ open, onOpenChange }: SupportModalProps) {
           </div>
 
           <p className="text-center text-content-muted pt-2">
-            Thank you for using ECT EVE Assets! o7
+            {t('support.thanks')}
           </p>
         </div>
       </DialogContent>

@@ -10,6 +10,7 @@ import {
 } from '@/store/reference-cache'
 import { formatBlueprintName } from '@/store/blueprints-store'
 import { isAbyssalTypeId } from '@/api/mutamarket-client'
+import { i18n } from '@/i18n'
 
 export interface AssetModeFlags {
   inHangar: boolean
@@ -67,7 +68,8 @@ export function getAssetDisplayNames(ra: ResolvedAsset): AssetDisplayNames {
   const type = getType(ra.typeId)
   const isAbyssal = isAbyssalTypeId(ra.typeId)
 
-  let typeName = type?.name ?? `Unknown Type ${ra.typeId}`
+  let typeName =
+    type?.name ?? i18n.t('assets:locations.unknownType', { id: ra.typeId })
   if (ra.customName) {
     typeName = `${typeName} (${ra.customName})`
   }
@@ -79,16 +81,18 @@ export function getAssetDisplayNames(ra: ResolvedAsset): AssetDisplayNames {
 
   let locationName: string
   if (ra.modeFlags.inAssetSafety) {
-    locationName = 'Asset Safety'
+    locationName = i18n.t('assets:locations.assetSafety')
   } else if (ra.hasOrphanedParent) {
-    locationName = 'Unknown Parent'
+    locationName = i18n.t('assets:locations.unknownParent')
   } else {
     locationName = getLocationName(ra.rootLocationId)
   }
 
   return {
     typeName,
-    categoryName: isAbyssal ? 'Abyssals' : (type?.categoryName ?? ''),
+    categoryName: isAbyssal
+      ? i18n.t('assets:categories.abyssals')
+      : (type?.categoryName ?? ''),
     groupName: type?.groupName ?? '',
     locationName,
     systemName: systemLocation?.name ?? '',

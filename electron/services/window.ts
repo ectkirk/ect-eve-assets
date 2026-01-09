@@ -173,7 +173,26 @@ export function toggleMaximize(manager: WindowManager): void {
       manager.normalBounds = currentBounds
       manager.restoreBounds = currentBounds
       const display = screen.getDisplayMatching(currentBounds)
-      manager.mainWindow.setBounds(display.workArea)
+      const wa = display.workArea
+      // On Windows, frameless windows have an invisible ~7px border for shadows
+      // Compensate by expanding bounds slightly
+      const isWindows = process.platform === 'win32'
+      const offset = isWindows ? 7 : 0
+      const adjustedBounds = {
+        x: wa.x - offset,
+        y: wa.y - offset,
+        width: wa.width + offset * 2,
+        height: wa.height + offset * 2,
+      }
+      const targetBounds = isWindows ? adjustedBounds : wa
+      logger.debug('Maximize window', {
+        module: 'Window',
+        displayBounds: display.bounds,
+        workArea: wa,
+        targetBounds,
+        windowsOffset: offset,
+      })
+      manager.mainWindow.setBounds(targetBounds)
       manager.manualMaximized = true
       safeSend(manager, 'window:maximizeChange', true)
     }
@@ -214,8 +233,17 @@ export function createWindow(
 
   if (savedState.isMaximized) {
     const display = screen.getDisplayMatching(manager.mainWindow.getBounds())
+    const wa = display.workArea
+    const isWindows = process.platform === 'win32'
+    const offset = isWindows ? 7 : 0
+    const adjustedBounds = {
+      x: wa.x - offset,
+      y: wa.y - offset,
+      width: wa.width + offset * 2,
+      height: wa.height + offset * 2,
+    }
     manager.restoreBounds = manager.normalBounds
-    manager.mainWindow.setBounds(display.workArea)
+    manager.mainWindow.setBounds(isWindows ? adjustedBounds : wa)
     manager.manualMaximized = true
   }
 
@@ -349,21 +377,36 @@ function setupKeyboardShortcuts(mainWindow: BrowserWindow): void {
 function setupWindowEvents(manager: WindowManager): void {
   if (!manager.mainWindow) return
 
-  manager.mainWindow.on('maximize', () => {
-    if (manager.isToggling) return
-    if (!manager.mainWindow) return
+  // Intercept native maximize (double-click titlebar) and use our custom maximize instead
+  let ignoreNextUnmaximize = false
 
+  manager.mainWindow.on('maximize', () => {
+    if (manager.isToggling || !manager.mainWindow) return
+
+    logger.debug('Native maximize event', {
+      module: 'Window',
+      manualMaximized: manager.manualMaximized,
+    })
+
+    // Undo native maximize and use our custom toggle
     manager.isToggling = true
+    ignoreNextUnmaximize = true
     manager.mainWindow.unmaximize()
-    setTimeout(() => {
+    setImmediate(() => {
       manager.isToggling = false
       toggleMaximize(manager)
-    }, 50)
+      // Reset flag after a short delay to catch the async unmaximize event
+      setTimeout(() => {
+        ignoreNextUnmaximize = false
+      }, 100)
+    })
   })
 
   manager.mainWindow.on('unmaximize', () => {
-    if (manager.isToggling) return
+    if (manager.isToggling || ignoreNextUnmaximize) return
+    // User double-clicked while maximized - restore window
     if (manager.manualMaximized) {
+      logger.debug('Native unmaximize - restoring window', { module: 'Window' })
       toggleMaximize(manager)
     }
   })

@@ -21,21 +21,44 @@ let refLastRequestTime = 0
 let cachedBaseHeaders: Record<string, string> | null = null
 let cachedJsonHeaders: Record<string, string> | null = null
 
-function getRefHeaders(contentType?: 'json'): Record<string, string> {
+function getRefHeaders(
+  contentType?: 'json',
+  language?: string
+): Record<string, string> {
   const userAgent = makeUserAgent(app.getVersion())
+  const lang = language || 'en'
+
   if (contentType === 'json') {
+    if (language) {
+      return {
+        'User-Agent': userAgent,
+        'Content-Type': 'application/json',
+        'Accept-Language': lang,
+        ...(REF_API_KEY && { 'X-App-Key': REF_API_KEY }),
+      }
+    }
     if (!cachedJsonHeaders) {
       cachedJsonHeaders = {
         'User-Agent': userAgent,
         'Content-Type': 'application/json',
+        'Accept-Language': 'en',
         ...(REF_API_KEY && { 'X-App-Key': REF_API_KEY }),
       }
     }
     return cachedJsonHeaders
   }
+
+  if (language) {
+    return {
+      'User-Agent': userAgent,
+      'Accept-Language': lang,
+      ...(REF_API_KEY && { 'X-App-Key': REF_API_KEY }),
+    }
+  }
   if (!cachedBaseHeaders) {
     cachedBaseHeaders = {
       'User-Agent': userAgent,
+      'Accept-Language': 'en',
       ...(REF_API_KEY && { 'X-App-Key': REF_API_KEY }),
     }
   }
@@ -144,7 +167,8 @@ type PaginatedResult<T> = {
 async function refGetPaginated<T, C extends string | number>(
   endpoint: string,
   channel: string,
-  cursor?: C
+  cursor?: C,
+  language?: string
 ): Promise<RefResult<PaginatedResult<T>>> {
   await waitForRefRateLimit()
   try {
@@ -153,7 +177,7 @@ async function refGetPaginated<T, C extends string | number>(
       : `${REF_API_BASE}${endpoint}`
 
     const response = await fetchRefWithRetry(url, {
-      headers: getRefHeaders(),
+      headers: getRefHeaders(undefined, language),
     })
 
     if (!response.ok) {
@@ -170,12 +194,14 @@ async function refGetPaginated<T, C extends string | number>(
 
 async function refGet<T>(
   endpoint: string,
-  channel: string
+  channel: string,
+  language?: string
 ): Promise<RefResult<T>> {
   await waitForRefRateLimit()
   try {
+    const headers = getRefHeaders(undefined, language)
     const response = await fetchRefWithRetry(`${REF_API_BASE}${endpoint}`, {
-      headers: getRefHeaders(),
+      headers,
     })
     if (!response.ok) {
       return { error: `HTTP ${response.status}` }
@@ -190,13 +216,14 @@ async function refGet<T>(
 async function refPost<T>(
   endpoint: string,
   body: unknown,
-  channel: string
+  channel: string,
+  language?: string
 ): Promise<RefResult<T>> {
   await waitForRefRateLimit()
   try {
     const response = await fetchRefWithRetry(`${REF_API_BASE}${endpoint}`, {
       method: 'POST',
-      headers: getRefHeaders('json'),
+      headers: getRefHeaders('json', language),
       body: JSON.stringify(body),
     })
     if (!response.ok) {
@@ -210,12 +237,11 @@ async function refPost<T>(
 }
 
 export function registerRefAPIHandlers(): void {
-  const simpleEndpoints = [
+  const localizedEndpoints = [
     { channel: 'ref:categories', endpoint: '/reference/categories' },
     { channel: 'ref:groups', endpoint: '/reference/groups' },
     { channel: 'ref:marketGroups', endpoint: '/reference/market-groups' },
-    { channel: 'ref:buybackInfo', endpoint: '/buyback/info' },
-    { channel: 'ref:shippingInfo', endpoint: '/shipping/info' },
+    { channel: 'ref:corporations', endpoint: '/reference/corporations' },
     { channel: 'ref:dogma-units', endpoint: '/reference/dogma-units' },
     {
       channel: 'ref:dogma-attribute-categories',
@@ -223,31 +249,67 @@ export function registerRefAPIHandlers(): void {
     },
   ]
 
-  for (const { channel, endpoint } of simpleEndpoints) {
-    ipcMain.handle(channel, () => refGet(endpoint, channel))
+  for (const { channel, endpoint } of localizedEndpoints) {
+    ipcMain.handle(channel, (_event, args: unknown) => {
+      const { language } = (args ?? {}) as { language?: string }
+      return refGet(endpoint, channel, language)
+    })
   }
 
-  const universeEndpoints = [
+  const infoEndpoints = [
+    { channel: 'ref:buybackInfo', endpoint: '/buyback/info' },
+    { channel: 'ref:shippingInfo', endpoint: '/shipping/info' },
+  ]
+
+  for (const { channel, endpoint } of infoEndpoints) {
+    ipcMain.handle(channel, (_event, args: unknown) => {
+      const { language } = (args ?? {}) as { language?: string }
+      return refGet(endpoint, channel, language)
+    })
+  }
+
+  const localizedUniverseEndpoints = [
     { channel: 'ref:universe-regions', endpoint: '/reference/regions' },
     { channel: 'ref:universe-systems', endpoint: '/reference/systems' },
     { channel: 'ref:universe-stations', endpoint: '/reference/stations' },
-    { channel: 'ref:universe-stargates', endpoint: '/reference/stargates' },
   ]
 
-  for (const { channel, endpoint } of universeEndpoints) {
-    ipcMain.handle(channel, async () => {
-      const result = await refGet<{ items: unknown[] }>(endpoint, channel)
+  for (const { channel, endpoint } of localizedUniverseEndpoints) {
+    ipcMain.handle(channel, async (_event, args: unknown) => {
+      const { language } = (args ?? {}) as { language?: string }
+      const result = await refGet<{ items: unknown[] }>(
+        endpoint,
+        channel,
+        language
+      )
       if ('error' in result) return result
       return { items: result.items }
     })
   }
 
+  ipcMain.handle('ref:universe-stargates', async () => {
+    const result = await refGet<{ items: unknown[] }>(
+      '/reference/stargates',
+      'ref:universe-stargates'
+    )
+    if ('error' in result) return result
+    return { items: result.items }
+  })
+
   ipcMain.handle('ref:types-page', async (_event, args: unknown) => {
-    const { after } = (args ?? {}) as { after?: number }
+    const { after, language } = (args ?? {}) as {
+      after?: number
+      language?: string
+    }
     if (after !== undefined && !isValidCharacterId(after)) {
       return { error: 'Invalid after cursor' }
     }
-    return refGetPaginated('/reference/types', 'ref:types-page', after)
+    return refGetPaginated(
+      '/reference/types',
+      'ref:types-page',
+      after,
+      language
+    )
   })
 
   ipcMain.handle(
@@ -265,18 +327,13 @@ export function registerRefAPIHandlers(): void {
     }
   )
 
-  const idsEndpoints = [
-    { channel: 'ref:moons', endpoint: '/reference/moons', max: 1000 },
-  ]
-
-  for (const { channel, endpoint, max } of idsEndpoints) {
-    ipcMain.handle(channel, async (_event, ids: unknown) => {
-      if (!isValidIdArray(ids, max)) {
-        return { error: `Invalid ids array (max ${max})` }
-      }
-      return refPost(endpoint, { ids }, channel)
-    })
-  }
+  ipcMain.handle('ref:moons', async (_event, ids: unknown, params: unknown) => {
+    if (!isValidIdArray(ids, 1000)) {
+      return { error: 'Invalid ids array (max 1000)' }
+    }
+    const { language } = (params ?? {}) as { language?: string }
+    return refPost('/reference/moons', { ids }, 'ref:moons', language)
+  })
 
   ipcMain.handle('ref:marketJita', async (_event, params: unknown) => {
     if (!isValidObject(params)) {
@@ -390,9 +447,10 @@ export function registerRefAPIHandlers(): void {
   ]
 
   for (const { channel, path } of typeDetailEndpoints) {
-    ipcMain.handle(channel, async (_event, typeId: unknown) => {
+    ipcMain.handle(channel, async (_event, typeId: unknown, args?: unknown) => {
       if (!isValidCharacterId(typeId)) return { error: 'Invalid type ID' }
-      return refGet(`/reference/types/${typeId}${path}`, channel)
+      const { language } = (args ?? {}) as { language?: string }
+      return refGet(`/reference/types/${typeId}${path}`, channel, language)
     })
   }
 

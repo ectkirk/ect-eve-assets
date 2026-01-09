@@ -1,8 +1,7 @@
 import { useState, useCallback } from 'react'
 import { getErrorMessage } from '@/lib/errors'
 import { esi } from '@/api/esi'
-import { usePriceStore } from '@/store/price-store'
-import { isAbyssalTypeId } from '@/api/mutamarket-client'
+import { usePriceStore, extractPriceableIds } from '@/store/price-store'
 import {
   type ContractItem,
   type ESIContractItemLike,
@@ -47,14 +46,10 @@ export function useContractItems() {
         { requiresAuth: false }
       )
 
-      const typeIds = [...new Set(esiItems.map((i) => i.type_id))]
-      const abyssalItemIds = esiItems
-        .filter((i) => i.item_id && isAbyssalTypeId(i.type_id))
-        .map((i) => i.item_id!)
-
+      const { typeIds, abyssalItemIds } = extractPriceableIds(esiItems)
       await usePriceStore.getState().ensureJitaPrices(typeIds, abyssalItemIds)
 
-      const resolved = resolveContractItems(esiItems)
+      const resolved = resolveContractItems(esiItems, 'public')
 
       itemsCache.set(contractId, resolved)
       setItems(resolved)

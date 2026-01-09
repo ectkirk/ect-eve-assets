@@ -1,0 +1,10 @@
+{
+  "divisions.master": "Hauptbrieftasche",
+  "divisions.wallet2": "Brieftasche 2",
+  "divisions.wallet3": "Brieftasche 3",
+  "divisions.wallet4": "Brieftasche 4",
+  "divisions.wallet5": "Brieftasche 5",
+  "divisions.wallet6": "Brieftasche 6",
+  "divisions.wallet7": "Brieftasche 7",
+  "divisions.division": "Abteilung {{number}}"
+}

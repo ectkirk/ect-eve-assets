@@ -1,9 +1,11 @@
+import { formatDecimal, formatFullNumber } from '@/lib/utils'
+
 export function formatSP(sp: number): string {
   if (sp >= 1_000_000) {
-    return `${(sp / 1_000_000).toFixed(1)}M`
+    return `${formatDecimal(sp / 1_000_000, 1)}M`
   }
   if (sp >= 1_000) {
-    return `${(sp / 1_000).toFixed(0)}K`
+    return `${formatFullNumber(Math.round(sp / 1_000))}K`
   }
-  return String(sp)
+  return formatFullNumber(sp)
 }

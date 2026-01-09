@@ -1,5 +1,6 @@
 import { useMemo, useState, useRef } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
+import { useTranslation } from 'react-i18next'
 import { useSortable, SortableHeader, sortRows } from '@/hooks'
 import {
   Table,
@@ -15,7 +16,7 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
 import { TypeIcon, OwnerIcon } from '@/components/ui/type-icon'
-import { formatNumber, cn } from '@/lib/utils'
+import { formatNumber, formatFullNumber, cn } from '@/lib/utils'
 import { useRegionalMarketActionStore } from '@/store/regional-market-action-store'
 import { useReferenceActionStore } from '@/store/reference-action-store'
 import type { OrderRow, SortColumn, DiffSortMode } from './types'
@@ -32,12 +33,18 @@ const VIRTUALIZATION_THRESHOLD = 100
 const ROW_HEIGHT = 36
 const ROW_CLASS = 'border-b border-border/50 hover:bg-surface-tertiary/50'
 
+function TranslatedContextMenuText({ labelKey }: { labelKey: string }) {
+  const { t } = useTranslation('common')
+  return <>{t(labelKey)}</>
+}
+
 interface OrderRowCellsProps {
   row: OrderRow
   show: (col: string) => boolean
 }
 
 function OrderRowCells({ row, show }: OrderRowCellsProps) {
+  const { t } = useTranslation('common')
   const isBuy = row.order.is_buy_order
   const total = row.order.price * row.order.volume_remain
   const compPrice = isBuy ? row.highestBuy : row.lowestSell
@@ -61,7 +68,11 @@ function OrderRowCells({ row, show }: OrderRowCellsProps) {
         </TableCell>
       )}
       {show('type') && (
-        <TableCell className="py-1.5">{isBuy ? 'Buy' : 'Sell'}</TableCell>
+        <TableCell className="py-1.5">
+          {isBuy
+            ? t('searchBar.orderTypes.buy')
+            : t('searchBar.orderTypes.sell')}
+        </TableCell>
       )}
       {show('location') && (
         <TableCell className="py-1.5 text-content-secondary">
@@ -103,10 +114,10 @@ function OrderRowCells({ row, show }: OrderRowCellsProps) {
       )}
       {show('quantity') && (
         <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
-          {row.order.volume_remain.toLocaleString()}
+          {formatFullNumber(row.order.volume_remain)}
           {row.order.volume_remain !== row.order.volume_total && (
             <span className="text-content-muted">
-              /{row.order.volume_total.toLocaleString()}
+              /{formatFullNumber(row.order.volume_total)}
             </span>
           )}
         </TableCell>
@@ -147,10 +158,10 @@ function OrderRowWithContext({
       </ContextMenuTrigger>
       <ContextMenuContent>
         <ContextMenuItem onClick={() => navigateToType(row.typeId)}>
-          View in Regional Market
+          <TranslatedContextMenuText labelKey="contextMenu.viewInMarket" />
         </ContextMenuItem>
         <ContextMenuItem onClick={() => navigateToReference(row.typeId)}>
-          View Details
+          <TranslatedContextMenuText labelKey="contextMenu.viewDetails" />
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
@@ -310,7 +321,7 @@ export function OrdersTable({
           {show('item') && (
             <SortableHeader
               column="item"
-              label="Item"
+              label="columns.item"
               sortColumn={sortColumn}
               sortDirection={sortDirection}
               onSort={handleSort}
@@ -319,7 +330,7 @@ export function OrdersTable({
           {show('type') && (
             <SortableHeader
               column="type"
-              label="Type"
+              label="columns.type"
               sortColumn={sortColumn}
               sortDirection={sortDirection}
               onSort={handleSort}
@@ -328,7 +339,7 @@ export function OrdersTable({
           {show('location') && (
             <SortableHeader
               column="location"
-              label="Location"
+              label="columns.location"
               sortColumn={sortColumn}
               sortDirection={sortDirection}
               onSort={handleSort}
@@ -337,7 +348,7 @@ export function OrdersTable({
           {show('price') && (
             <SortableHeader
               column="price"
-              label="Price"
+              label="columns.price"
               sortColumn={sortColumn}
               sortDirection={sortDirection}
               onSort={handleSort}
@@ -347,7 +358,7 @@ export function OrdersTable({
           {show('lowest') && (
             <SortableHeader
               column="comparison"
-              label="Best"
+              label="columns.best"
               sortColumn={sortColumn}
               sortDirection={sortDirection}
               onSort={handleSort}
@@ -366,7 +377,7 @@ export function OrdersTable({
           {show('eveEstimated') && (
             <SortableHeader
               column="eveEstimated"
-              label="EVE Est"
+              label="columns.eveEst"
               sortColumn={sortColumn}
               sortDirection={sortDirection}
               onSort={handleSort}
@@ -376,7 +387,7 @@ export function OrdersTable({
           {show('quantity') && (
             <SortableHeader
               column="qty"
-              label="Qty"
+              label="columns.quantity"
               sortColumn={sortColumn}
               sortDirection={sortDirection}
               onSort={handleSort}
@@ -386,7 +397,7 @@ export function OrdersTable({
           {show('total') && (
             <SortableHeader
               column="total"
-              label="Total"
+              label="columns.total"
               sortColumn={sortColumn}
               sortDirection={sortDirection}
               onSort={handleSort}
@@ -396,7 +407,7 @@ export function OrdersTable({
           {show('expires') && (
             <SortableHeader
               column="expires"
-              label="Exp"
+              label="columns.exp"
               sortColumn={sortColumn}
               sortDirection={sortDirection}
               onSort={handleSort}

@@ -8,6 +8,7 @@ import type {
   CachedStation,
   CachedRefStructure,
   CachedCategory,
+  CachedCorporation,
   CachedGroup,
   CachedType,
   CachedStructure,
@@ -22,6 +23,7 @@ export type {
   CachedStation,
   CachedRefStructure,
   CachedCategory,
+  CachedCorporation,
   CachedGroup,
   CachedType,
   CachedStructure,
@@ -45,6 +47,7 @@ interface ReferenceCacheState {
   typesVersion: number
   categories: Map<number, CachedCategory>
   groups: Map<number, CachedGroup>
+  corporations: Map<number, CachedCorporation>
   regions: Map<number, CachedRegion>
   systems: Map<number, CachedSystem>
   stations: Map<number, CachedStation>
@@ -67,6 +70,7 @@ interface ReferenceCacheActions {
   saveTypes: (types: CachedType[]) => Promise<void>
   setCategories: (categories: CachedCategory[]) => Promise<void>
   setGroups: (groups: CachedGroup[]) => Promise<void>
+  setCorporations: (corporations: CachedCorporation[]) => Promise<void>
   setRegions: (regions: CachedRegion[]) => Promise<void>
   setSystems: (systems: CachedSystem[]) => Promise<void>
   setStations: (stations: CachedStation[]) => Promise<void>
@@ -125,6 +129,7 @@ export const useReferenceCacheStore = create<ReferenceCacheStore>(
     typesVersion: 0,
     categories: new Map(),
     groups: new Map(),
+    corporations: new Map(),
     regions: new Map(),
     systems: new Map(),
     stations: new Map(),
@@ -158,6 +163,7 @@ export const useReferenceCacheStore = create<ReferenceCacheStore>(
             names,
             categories,
             groups,
+            corporations,
           ] = await Promise.all([
             loadStore<CachedType>('types'),
             loadStore<CachedRegion>('regions'),
@@ -170,6 +176,7 @@ export const useReferenceCacheStore = create<ReferenceCacheStore>(
             loadStore<CachedName>('names'),
             loadStore<CachedCategory>('categories'),
             loadStore<CachedGroup>('groups'),
+            loadStore<CachedCorporation>('corporations'),
           ])
 
           let finalTypes = types
@@ -190,7 +197,8 @@ export const useReferenceCacheStore = create<ReferenceCacheStore>(
 
           let finalCategories = categories
           let finalGroups = groups
-          if (categories.size > 0 || groups.size > 0) {
+          let finalCorporations = corporations
+          if (categories.size > 0 || groups.size > 0 || corporations.size > 0) {
             const storedVersion = getLocalStorage(REFERENCE_SCHEMA_VERSION_KEY)
             if (storedVersion !== String(REFERENCE_SCHEMA_VERSION)) {
               logger.info('Reference schema version changed, clearing cache', {
@@ -200,9 +208,11 @@ export const useReferenceCacheStore = create<ReferenceCacheStore>(
               })
               finalCategories = new Map()
               finalGroups = new Map()
+              finalCorporations = new Map()
               await Promise.all([
                 clearStore('categories'),
                 clearStore('groups'),
+                clearStore('corporations'),
               ])
               setLocalStorage(REFERENCE_SCHEMA_VERSION_KEY, null)
             }
@@ -233,9 +243,12 @@ export const useReferenceCacheStore = create<ReferenceCacheStore>(
             names,
             categories: finalCategories,
             groups: finalGroups,
+            corporations: finalCorporations,
             initialized: true,
             referenceDataLoaded:
-              finalCategories.size > 0 && finalGroups.size > 0,
+              finalCategories.size > 0 &&
+              finalGroups.size > 0 &&
+              finalCorporations.size > 0,
             allTypesLoaded,
             universeDataLoaded,
             refStructuresLoaded,
@@ -294,7 +307,6 @@ export const useReferenceCacheStore = create<ReferenceCacheStore>(
       await writeBatch('groups', newGroups, () => {
         set({
           groups: new Map(newGroups.map((g) => [g.id, g])),
-          referenceDataLoaded: true,
         })
         setLocalStorage(
           REFERENCE_SCHEMA_VERSION_KEY,
@@ -303,6 +315,23 @@ export const useReferenceCacheStore = create<ReferenceCacheStore>(
         logger.info('Groups saved', {
           module: 'ReferenceCache',
           count: newGroups.length,
+        })
+      })
+    },
+
+    setCorporations: async (newCorporations) => {
+      await writeBatch('corporations', newCorporations, () => {
+        set({
+          corporations: new Map(newCorporations.map((c) => [c.id, c])),
+          referenceDataLoaded: true,
+        })
+        setLocalStorage(
+          REFERENCE_SCHEMA_VERSION_KEY,
+          String(REFERENCE_SCHEMA_VERSION)
+        )
+        logger.info('Corporations saved', {
+          module: 'ReferenceCache',
+          count: newCorporations.length,
         })
       })
     },
@@ -476,12 +505,14 @@ export const useReferenceCacheStore = create<ReferenceCacheStore>(
         clearStore('types'),
         clearStore('categories'),
         clearStore('groups'),
+        clearStore('corporations'),
       ])
       set({
         types: new Map(),
         typesVersion: 0,
         categories: new Map(),
         groups: new Map(),
+        corporations: new Map(),
         referenceDataLoaded: false,
       })
     },
@@ -500,6 +531,7 @@ export const useReferenceCacheStore = create<ReferenceCacheStore>(
         typesVersion: 0,
         categories: new Map(),
         groups: new Map(),
+        corporations: new Map(),
         regions: new Map(),
         systems: new Map(),
         stations: new Map(),

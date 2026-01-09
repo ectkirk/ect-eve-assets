@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import {
   Dialog,
   DialogContent,
@@ -21,15 +22,16 @@ export function AssetSettingsModal({
   open,
   onOpenChange,
 }: AssetSettingsModalProps) {
+  const { t } = useTranslation('dialogs')
   const settings = useAssetSettings()
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Asset View Settings</DialogTitle>
+          <DialogTitle>{t('assetSettings.title')}</DialogTitle>
           <DialogDescription>
-            Choose which data sources to include in asset totals
+            {t('assetSettings.description')}
           </DialogDescription>
         </DialogHeader>
 
@@ -37,8 +39,8 @@ export function AssetSettingsModal({
           {ASSET_SETTINGS_CONFIG.map((config) => (
             <CheckboxRow
               key={config.key}
-              label={config.label}
-              description={config.description}
+              label={t(config.labelKey)}
+              description={t(config.descriptionKey)}
               checked={settings[config.key]}
               onChange={(value) =>
                 settings.setSetting(config.key as AssetSettingKey, value)

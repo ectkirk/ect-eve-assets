@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { matchesSearchLower } from '@/lib/utils'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useTabControls, type OrderTypeValue } from '@/context'
 import { useColumnSettings } from '@/hooks'
-import { useReferenceCacheStore } from '@/store/reference-cache'
+import { useReferenceCacheStore, getTypeName } from '@/store/reference-cache'
 import { useRegionalMarketStore } from '@/store/regional-market-store'
 import { getEsiAveragePrice } from '@/store/price-store'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
@@ -17,6 +18,7 @@ const CONTAINER_CLASS =
   'h-full rounded-lg border border-border bg-surface-secondary/30'
 
 export function MarketOrdersTab() {
+  const { t } = useTranslation('market')
   const ownersRecord = useAuthStore((s) => s.owners)
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
 
@@ -98,7 +100,7 @@ export function MarketOrdersTab() {
           ownerType: owner.type,
           ownerName: owner.name,
           typeId: order.type_id,
-          typeName: type?.name ?? `Unknown Type ${order.type_id}`,
+          typeName: getTypeName(order.type_id),
           categoryId: type?.categoryId,
           locationId: order.location_id,
           locationName: locationInfo.name,
@@ -166,12 +168,12 @@ export function MarketOrdersTab() {
   useEffect(() => {
     setTotalValue({
       value: totals.sellValue,
-      label: 'Sell Orders',
+      label: t('totals.sellOrders'),
       secondaryValue: totals.buyValue,
-      secondaryLabel: 'Buy Orders',
+      secondaryLabel: t('totals.buyOrders'),
     })
     return () => setTotalValue(null)
-  }, [totals.sellValue, totals.buyValue, setTotalValue])
+  }, [totals.sellValue, totals.buyValue, setTotalValue, t])
 
   useEffect(() => {
     setColumns(getColumnsForDropdown())
@@ -191,7 +193,7 @@ export function MarketOrdersTab() {
   if (filteredOrders.length === 0) {
     return (
       <div className={`${CONTAINER_CLASS} flex items-center justify-center`}>
-        <p className="text-content-secondary">No market orders.</p>
+        <p className="text-content-secondary">{t('empty')}</p>
       </div>
     )
   }

@@ -1,0 +1,14 @@
+{
+  "subtitle": "ジャンプクローン {{count}}体",
+  "empty": "クローンが見つかりません。",
+
+  "activeClone": "アクティブクローン",
+  "noImplants": "インプラントなし",
+  "implantSlot": "スロット {{slot}}",
+  "noMatches": "一致するクローンがありません",
+  "noClones": "クローンなし",
+
+  "fallback.structure": "ストラクチャ {{id}}",
+  "fallback.location": "場所 {{id}}",
+  "fallback.unknown": "不明"
+}

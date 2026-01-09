@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { X, Loader2 } from 'lucide-react'
 import { CharacterPortrait } from '@/components/ui/type-icon'
 import { ESIErrorDisplay } from '@/components/ui/esi-error-display'
@@ -14,6 +15,7 @@ interface MailDetailModalProps {
 }
 
 export function MailDetailModal({ mail, onClose }: MailDetailModalProps) {
+  const { t } = useTranslation('common')
   const getMailBody = useMailStore((s) => s.getMailBody)
   const [result, setResult] = useState<{
     mailId: number
@@ -73,9 +75,9 @@ export function MailDetailModal({ mail, onClose }: MailDetailModalProps) {
                 {mail.mail.subject || NO_SUBJECT}
               </h2>
               <div className="text-sm text-content-secondary">
-                <span>From: {mail.fromName}</span>
+                <span>{t('mail.from', { name: mail.fromName })}</span>
                 <span className="mx-2 text-content-muted">→</span>
-                <span>To: {mail.toNames}</span>
+                <span>{t('mail.to', { name: mail.toNames })}</span>
               </div>
             </div>
           </div>
@@ -95,7 +97,7 @@ export function MailDetailModal({ mail, onClose }: MailDetailModalProps) {
           {loading ? (
             <div className="flex items-center gap-2 py-8 text-content-muted">
               <Loader2 className="h-5 w-5 animate-spin" />
-              Loading mail content...
+              {t('mail.loadingContent')}
             </div>
           ) : error ? (
             <div className="py-4">
@@ -104,7 +106,7 @@ export function MailDetailModal({ mail, onClose }: MailDetailModalProps) {
           ) : body ? (
             <MailBodyContent body={body.body ?? ''} />
           ) : (
-            <div className="py-4 text-content-muted">No content</div>
+            <div className="py-4 text-content-muted">{t('mail.noContent')}</div>
           )}
         </div>
       </div>

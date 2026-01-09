@@ -17,3 +17,31 @@ export const ABYSSAL_TYPE_IDS = new Set([
 export function isAbyssalTypeId(typeId: number): boolean {
   return ABYSSAL_TYPE_IDS.has(typeId)
 }
+
+export interface PriceableItem {
+  type_id?: number
+  typeId?: number
+  item_id?: number
+  itemId?: number
+}
+
+export function extractPriceableIds(items: PriceableItem[]): {
+  typeIds: number[]
+  abyssalItemIds: number[]
+} {
+  const typeIdSet = new Set<number>()
+  const abyssalItemIds: number[] = []
+
+  for (const item of items) {
+    const typeId = item.type_id ?? item.typeId
+    const itemId = item.item_id ?? item.itemId
+    if (typeId != null) {
+      typeIdSet.add(typeId)
+      if (itemId != null && isAbyssalTypeId(typeId)) {
+        abyssalItemIds.push(itemId)
+      }
+    }
+  }
+
+  return { typeIds: Array.from(typeIdSet), abyssalItemIds }
+}

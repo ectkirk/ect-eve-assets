@@ -8,6 +8,7 @@ import {
   useId,
   type KeyboardEvent,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Search, X } from 'lucide-react'
 import { TypeIcon } from '@/components/ui/type-icon'
 import {
@@ -18,7 +19,6 @@ import {
 interface TypeSearchInputProps {
   value: CachedType | null
   onChange: (type: CachedType | null) => void
-  placeholder?: string
   filterFn?: (type: CachedType) => boolean
 }
 
@@ -55,9 +55,9 @@ const SearchResult = memo(function SearchResult({
 export function TypeSearchInput({
   value,
   onChange,
-  placeholder = 'Search items...',
   filterFn,
 }: TypeSearchInputProps) {
+  const { t } = useTranslation('common')
   const [inputValue, setInputValue] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
@@ -234,7 +234,7 @@ export function TypeSearchInput({
               ? `${listboxId}-option-${highlightedIndex}`
               : undefined
           }
-          placeholder={placeholder}
+          placeholder={t('search.placeholder')}
           value={inputValue}
           onChange={(e) => handleChange(e.target.value)}
           onFocus={handleFocus}

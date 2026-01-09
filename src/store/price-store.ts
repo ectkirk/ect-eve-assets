@@ -31,7 +31,11 @@ import {
 } from './price-refresh-timers'
 import { storeAndPersistPrices } from './price-persistence'
 
-export { ABYSSAL_TYPE_IDS, isAbyssalTypeId } from './price-utils'
+export {
+  ABYSSAL_TYPE_IDS,
+  isAbyssalTypeId,
+  extractPriceableIds,
+} from './price-utils'
 export { stopPriceRefreshTimers } from './price-refresh-timers'
 
 export interface EsiPriceData {

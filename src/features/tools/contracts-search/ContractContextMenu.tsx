@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { SearchContract } from './types'
 
 interface ContractContextMenuProps {
@@ -16,6 +17,8 @@ export function ContractContextMenu({
   onViewContract,
   onClose,
 }: ContractContextMenuProps) {
+  const { t } = useTranslation('tools')
+
   useEffect(() => {
     const handler = () => onClose()
     window.addEventListener('click', handler)
@@ -34,7 +37,7 @@ export function ContractContextMenu({
           onClose()
         }}
       >
-        View Contract
+        {t('contractsSearch.viewContract')}
       </button>
     </div>
   )

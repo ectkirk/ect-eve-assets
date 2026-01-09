@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
-import { formatNumber, formatDuration } from '@/lib/utils'
+import { useTranslation } from 'react-i18next'
+import { formatNumber, formatDuration, getLocale } from '@/lib/utils'
 import { DefenseStats, extractDefenseStats } from './DefenseStats'
 import { SHIP_STAT_ATTRS } from './ship-stat-utils'
 
@@ -45,6 +46,7 @@ function StatSection({
 }
 
 export function FittingStats({ attrMap }: { attrMap: Map<number, number> }) {
+  const { t } = useTranslation('tools')
   const cpu = attrMap.get(SHIP_STAT_ATTRS.cpuOutput)
   const power = attrMap.get(SHIP_STAT_ATTRS.powerOutput)
   const calibration = attrMap.get(SHIP_STAT_ATTRS.calibration)
@@ -55,19 +57,21 @@ export function FittingStats({ attrMap }: { attrMap: Map<number, number> }) {
     <div className="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
       {cpu !== undefined && (
         <div>
-          <div className="text-content-secondary">CPU</div>
+          <div className="text-content-secondary">{t('reference.cpu')}</div>
           <div className="font-mono text-content">{formatNumber(cpu)} tf</div>
         </div>
       )}
       {power !== undefined && (
         <div>
-          <div className="text-content-secondary">Power</div>
+          <div className="text-content-secondary">{t('reference.power')}</div>
           <div className="font-mono text-content">{formatNumber(power)} MW</div>
         </div>
       )}
       {calibration !== undefined && (
         <div>
-          <div className="text-content-secondary">Calibration</div>
+          <div className="text-content-secondary">
+            {t('reference.calibration')}
+          </div>
           <div className="font-mono text-content">{calibration}</div>
         </div>
       )}
@@ -76,6 +80,7 @@ export function FittingStats({ attrMap }: { attrMap: Map<number, number> }) {
 }
 
 export function ShipStatsPanel({ attrMap, hideFitting }: ShipStatsPanelProps) {
+  const { t } = useTranslation('tools')
   const fitting = useMemo(() => {
     const cpu = attrMap.get(SHIP_STAT_ATTRS.cpuOutput)
     const power = attrMap.get(SHIP_STAT_ATTRS.powerOutput)
@@ -149,19 +154,34 @@ export function ShipStatsPanel({ attrMap, hideFitting }: ShipStatsPanelProps) {
   return (
     <div className="flex flex-col gap-3">
       {fitting && !hideFitting && (
-        <StatSection title="Fitting">
-          <StatRow label="CPU Output" value={fitting.cpu} unit="tf" />
-          <StatRow label="Power Grid" value={fitting.power} unit="MW" />
-          <StatRow label="Calibration" value={fitting.calibration} />
+        <StatSection title={t('reference.fitting')}>
+          <StatRow
+            label={t('reference.cpuOutput')}
+            value={fitting.cpu}
+            unit="tf"
+          />
+          <StatRow
+            label={t('reference.powerGrid')}
+            value={fitting.power}
+            unit="MW"
+          />
+          <StatRow
+            label={t('reference.calibration')}
+            value={fitting.calibration}
+          />
         </StatSection>
       )}
 
       {capacitor && (
-        <StatSection title="Capacitor">
-          <StatRow label="Capacity" value={capacitor.capacity} unit="GJ" />
+        <StatSection title={t('reference.capacitor')}>
+          <StatRow
+            label={t('reference.capacity')}
+            value={capacitor.capacity}
+            unit="GJ"
+          />
           {capacitor.rechargeMs && (
             <StatRow
-              label="Recharge"
+              label={t('reference.recharge')}
               value={formatDuration(Math.round(capacitor.rechargeMs / 1000))}
             />
           )}
@@ -169,41 +189,49 @@ export function ShipStatsPanel({ attrMap, hideFitting }: ShipStatsPanelProps) {
       )}
 
       {offense && (
-        <StatSection title="Offense">
-          <StatRow label="Turret Hardpoints" value={offense.turrets} />
-          <StatRow label="Launcher Hardpoints" value={offense.launchers} />
+        <StatSection title={t('reference.offense')}>
+          <StatRow
+            label={t('reference.turretHardpoints')}
+            value={offense.turrets}
+          />
+          <StatRow
+            label={t('reference.launcherHardpoints')}
+            value={offense.launchers}
+          />
         </StatSection>
       )}
 
       {defenseStats && (
-        <StatSection title="Defense">
+        <StatSection title={t('reference.defense')}>
           <DefenseStats stats={defenseStats} />
         </StatSection>
       )}
 
       {targeting && (
-        <StatSection title="Targeting">
+        <StatSection title={t('reference.targeting')}>
           {targeting.range && (
             <StatRow
-              label="Max Range"
+              label={t('reference.maxRange')}
               value={`${formatNumber(targeting.range / 1000)} km`}
             />
           )}
-          <StatRow label="Max Locked" value={targeting.locked} />
+          <StatRow label={t('reference.maxLocked')} value={targeting.locked} />
           <StatRow
-            label="Scan Resolution"
+            label={t('reference.scanResolution')}
             value={targeting.resolution}
             unit="mm"
           />
           {targeting.sensorType && targeting.sensorStrength && (
             <StatRow
-              label={`${targeting.sensorType} Strength`}
+              label={t('reference.sensorStrength', {
+                type: targeting.sensorType,
+              })}
               value={targeting.sensorStrength}
             />
           )}
           {targeting.signature && (
             <StatRow
-              label="Signature"
+              label={t('reference.signature')}
               value={`${formatNumber(targeting.signature)} m`}
             />
           )}
@@ -211,16 +239,16 @@ export function ShipStatsPanel({ attrMap, hideFitting }: ShipStatsPanelProps) {
       )}
 
       {navigation && (
-        <StatSection title="Navigation">
+        <StatSection title={t('reference.navigation')}>
           <StatRow
-            label="Max Velocity"
+            label={t('reference.maxVelocity')}
             value={navigation.velocity}
             unit="m/s"
           />
           {navigation.agility && (
             <StatRow
-              label="Inertia"
-              value={navigation.agility.toLocaleString('en-US', {
+              label={t('reference.inertia')}
+              value={navigation.agility.toLocaleString(getLocale(), {
                 maximumFractionDigits: 3,
               })}
               unit="x"
@@ -228,7 +256,7 @@ export function ShipStatsPanel({ attrMap, hideFitting }: ShipStatsPanelProps) {
           )}
           {navigation.warpSpeed && (
             <StatRow
-              label="Warp Speed"
+              label={t('reference.warpSpeed')}
               value={navigation.warpSpeed}
               unit="AU/s"
             />
@@ -237,9 +265,17 @@ export function ShipStatsPanel({ attrMap, hideFitting }: ShipStatsPanelProps) {
       )}
 
       {drones && (
-        <StatSection title="Drones">
-          <StatRow label="Drone Bay" value={drones.capacity} unit="m³" />
-          <StatRow label="Bandwidth" value={drones.bandwidth} unit="Mbit/s" />
+        <StatSection title={t('reference.drones')}>
+          <StatRow
+            label={t('reference.droneBay')}
+            value={drones.capacity}
+            unit="m³"
+          />
+          <StatRow
+            label={t('reference.bandwidth')}
+            value={drones.bandwidth}
+            unit="Mbit/s"
+          />
         </StatSection>
       )}
     </div>

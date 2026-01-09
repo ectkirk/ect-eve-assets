@@ -1,13 +1,14 @@
 import { useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { matchesSearchLower } from '@/lib/utils'
 import { useTabControls } from '@/context'
 import { useColumnSettings, type ColumnConfig } from '@/hooks'
 import { useReferenceCacheStore } from '@/store/reference-cache'
-import { useAuthStore, ownerKey, findOwnerByKey } from '@/store/auth-store'
+import { useAuthStore, ownerKey } from '@/store/auth-store'
 import {
   useContractsStore,
+  buildOwnerContracts,
   type OwnerContracts,
-  type ContractWithItems,
 } from '@/store/contracts-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
@@ -19,22 +20,23 @@ const CONTAINER_CLASS =
   'h-full rounded-lg border border-border bg-surface-secondary/30'
 
 const CONTRACT_COLUMNS: ColumnConfig[] = [
-  { id: 'owner', label: 'Owner' },
-  { id: 'type', label: 'Type' },
-  { id: 'items', label: 'Items' },
-  { id: 'location', label: 'Location' },
-  { id: 'assigner', label: 'Assigner' },
-  { id: 'assignee', label: 'Assignee' },
-  { id: 'price', label: 'Price' },
-  { id: 'value', label: 'Value' },
-  { id: 'volume', label: 'Volume' },
-  { id: 'collateral', label: 'Collateral' },
-  { id: 'days', label: 'Days' },
-  { id: 'expires', label: 'Expires' },
-  { id: 'status', label: 'Status' },
+  { id: 'owner', label: 'columns.owner' },
+  { id: 'type', label: 'columns.type' },
+  { id: 'items', label: 'columns.items' },
+  { id: 'location', label: 'columns.location' },
+  { id: 'assigner', label: 'columns.assigner' },
+  { id: 'assignee', label: 'columns.assignee' },
+  { id: 'price', label: 'columns.price' },
+  { id: 'value', label: 'columns.value' },
+  { id: 'volume', label: 'columns.volume' },
+  { id: 'collateral', label: 'columns.collateral' },
+  { id: 'days', label: 'columns.days' },
+  { id: 'expires', label: 'columns.expires' },
+  { id: 'status', label: 'columns.status' },
 ]
 
 export function ContractsTab() {
+  const { t } = useTranslation('contracts')
   const ownersRecord = useAuthStore((s) => s.owners)
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
 
@@ -47,25 +49,10 @@ export function ContractsTab() {
   const itemsByContractId = useContractsStore((s) => s.itemsByContractId)
   const visibilityByOwner = useContractsStore((s) => s.visibilityByOwner)
 
-  const contractsByOwner = useMemo<OwnerContracts[]>(() => {
-    const result: OwnerContracts[] = []
-    for (const [ownerKey, contractIds] of visibilityByOwner) {
-      const owner = findOwnerByKey(ownerKey)
-      if (!owner) continue
-      const contracts: ContractWithItems[] = []
-      for (const contractId of contractIds) {
-        const stored = itemsById.get(contractId)
-        if (stored) {
-          contracts.push({
-            contract: stored.item,
-            items: itemsByContractId.get(contractId),
-          })
-        }
-      }
-      result.push({ owner, contracts })
-    }
-    return result
-  }, [visibilityByOwner, itemsById, itemsByContractId])
+  const contractsByOwner = useMemo<OwnerContracts[]>(
+    () => buildOwnerContracts(visibilityByOwner, itemsById, itemsByContractId),
+    [visibilityByOwner, itemsById, itemsByContractId]
+  )
 
   const { isLoading: assetsUpdating } = useAssetData()
   const isUpdating = assetsUpdating || contractsUpdating
@@ -140,7 +127,8 @@ export function ContractsTab() {
           contractWithItems,
           owner.type,
           owner.id,
-          isIssuer
+          isIssuer,
+          t
         )
         allContracts.push(row)
       }
@@ -187,19 +175,20 @@ export function ContractsTab() {
     priceVersion,
     search,
     selectedSet,
+    t,
   ])
 
   useEffect(() => {
     setTotalValue({
       value: totalItemValue,
-      label: 'Item Value',
+      label: t('totals.itemValue'),
       secondaryValue: totalContractPrice,
-      secondaryLabel: 'Contract Price',
+      secondaryLabel: t('totals.contractPrice'),
       tertiaryValue: totalCollateral > 0 ? totalCollateral : undefined,
-      tertiaryLabel: 'Collateral',
+      tertiaryLabel: t('totals.collateral'),
     })
     return () => setTotalValue(null)
-  }, [totalItemValue, totalContractPrice, totalCollateral, setTotalValue])
+  }, [totalItemValue, totalContractPrice, totalCollateral, setTotalValue, t])
 
   useEffect(() => {
     setColumns(getColumnsForDropdown())
@@ -219,7 +208,7 @@ export function ContractsTab() {
   if (filteredContracts.length === 0) {
     return (
       <div className={`${CONTAINER_CLASS} flex items-center justify-center`}>
-        <p className="text-content-secondary">No active contracts.</p>
+        <p className="text-content-secondary">{t('empty')}</p>
       </div>
     )
   }

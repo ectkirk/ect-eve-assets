@@ -1,0 +1,8 @@
+{
+  "empty": "로열티 포인트 데이터가 없습니다.",
+
+  "fallback.corporation": "코퍼레이션 {{id}}",
+  "reauthRequired": "{{name}}의 로열티 포인트 접근을 위해 재인증이 필요합니다.",
+  "reauthRequiredMultiple": "{{count}}명의 캐릭터가 로열티 포인트 접근을 위해 재인증이 필요합니다.",
+  "reauthHint": "캐릭터 메뉴를 사용하여 재인증하세요."
+}

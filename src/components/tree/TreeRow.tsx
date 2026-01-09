@@ -1,4 +1,5 @@
 import { memo, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { TableRow } from '@/components/ui/table'
 import {
   ContextMenu,
@@ -46,6 +47,7 @@ export const TreeRow = memo(function TreeRow({
   onShipFreight,
   visibleColumns,
 }: TreeRowProps) {
+  const { t } = useTranslation('common')
   const itemId = node.asset?.item_id
   const hasAbyssalPrice = usePriceStore((s) =>
     itemId ? s.abyssalPrices.has(itemId) : false
@@ -152,37 +154,37 @@ export const TreeRow = memo(function TreeRow({
         <ContextMenuContent>
           {canViewInContracts && (
             <ContextMenuItem onClick={handleViewInContracts}>
-              View in Contracts
+              {t('contextMenu.viewInContracts')}
             </ContextMenuItem>
           )}
           {isMarketItem && (
             <ContextMenuItem onClick={handleViewInMarket}>
-              View in Regional Market
+              {t('contextMenu.viewInMarket')}
             </ContextMenuItem>
           )}
           {showBuyback && (
             <ContextMenuItem onClick={() => onSellToBuyback(node)}>
-              Sell to buyback
+              {t('contextMenu.sellToBuyback')}
             </ContextMenuItem>
           )}
           {showFreight && (
             <ContextMenuItem onClick={() => onShipFreight(node)}>
-              Ship items
+              {t('contextMenu.shipItems')}
             </ContextMenuItem>
           )}
           {isShip && (
             <ContextMenuItem onClick={handleViewFittingClick}>
-              View Fitting
+              {t('contextMenu.viewFitting')}
             </ContextMenuItem>
           )}
           {isAbyssalResolved && (
             <ContextMenuItem onClick={handleOpenMutamarket}>
-              Open in Mutamarket
+              {t('contextMenu.openMutamarket', { ns: 'assets' })}
             </ContextMenuItem>
           )}
           {canViewDetails && (
             <ContextMenuItem onClick={handleViewDetails}>
-              View Details
+              {t('contextMenu.viewDetails')}
             </ContextMenuItem>
           )}
         </ContextMenuContent>

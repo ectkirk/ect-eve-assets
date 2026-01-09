@@ -1,14 +1,21 @@
 import { memo, useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { HoveredSystem } from '../types'
-import { roundSecurity } from '../utils/colors'
+import { formatSecurity } from '@/lib/utils'
 
 interface TooltipListProps {
   label: string
   items: string[]
   maxVisible?: number
+  moreText: string
 }
 
-function TooltipList({ label, items, maxVisible = 5 }: TooltipListProps) {
+function TooltipList({
+  label,
+  items,
+  maxVisible = 5,
+  moreText,
+}: TooltipListProps) {
   if (items.length === 0) return null
 
   return (
@@ -23,9 +30,7 @@ function TooltipList({ label, items, maxVisible = 5 }: TooltipListProps) {
           </li>
         ))}
         {items.length > maxVisible && (
-          <li className="text-content-secondary">
-            +{items.length - maxVisible} more
-          </li>
+          <li className="text-content-secondary">{moreText}</li>
         )}
       </ul>
     </div>
@@ -48,6 +53,7 @@ export const MapTooltip = memo(function MapTooltip({
   containerWidth = 1200,
   containerHeight = 800,
 }: MapTooltipProps) {
+  const { t } = useTranslation('tools')
   const [measuredHeight, setMeasuredHeight] = useState(TOOLTIP_HEIGHT_ESTIMATE)
 
   const measureRef = useCallback((node: HTMLDivElement | null) => {
@@ -73,6 +79,15 @@ export const MapTooltip = memo(function MapTooltip({
   left = Math.max(VIEWPORT_MARGIN, left)
   top = Math.max(VIEWPORT_MARGIN, top)
 
+  const stationMoreCount =
+    (system.stationNames?.length ?? 0) > 5
+      ? (system.stationNames?.length ?? 0) - 5
+      : 0
+  const structureMoreCount =
+    (system.structureNames?.length ?? 0) > 5
+      ? (system.structureNames?.length ?? 0) - 5
+      : 0
+
   return (
     <div
       ref={measureRef}
@@ -85,33 +100,41 @@ export const MapTooltip = memo(function MapTooltip({
     >
       <div className="text-sm font-semibold text-content">{system.name}</div>
       <div className="text-xs text-content-secondary">
-        Security:{' '}
+        {t('map.security')}:{' '}
         <span
           className={`text-sec-${Math.max(0, Math.min(10, Math.round(system.security * 10)))}`}
         >
-          {roundSecurity(system.security).toFixed(1)}
+          {formatSecurity(system.security)}
         </span>
       </div>
       {system.regionName && (
         <div className="mt-1 text-xs text-accent">
-          Region: {system.regionName}
+          {t('map.regionLabel')}: {system.regionName}
         </div>
       )}
       {system.factionName && (
         <div className="mt-1 text-xs text-purple-400">
-          Faction: {system.factionName}
+          {t('map.faction')}: {system.factionName}
         </div>
       )}
       {system.allianceName && (
         <div className="mt-1 text-xs text-green-400">
-          Sovereignty: {system.allianceName}
+          {t('map.sovereignty')}: {system.allianceName}
         </div>
       )}
       {system.stationNames && (
-        <TooltipList label="Stations" items={system.stationNames} />
+        <TooltipList
+          label={t('map.stations')}
+          items={system.stationNames}
+          moreText={t('map.more', { count: stationMoreCount })}
+        />
       )}
       {system.structureNames && (
-        <TooltipList label="Structures" items={system.structureNames} />
+        <TooltipList
+          label={t('map.structures')}
+          items={system.structureNames}
+          moreText={t('map.more', { count: structureMoreCount })}
+        />
       )}
     </div>
   )

@@ -112,9 +112,10 @@ describe('ESI Token Provider Integration', () => {
       cleanup()
     })
 
-    it('marks auth failed on refresh failure', async () => {
+    it('marks auth failed on hard auth failure', async () => {
       mockRefreshToken.mockResolvedValue({
         success: false,
+        isAuthFailure: true,
       })
 
       const { setupESITokenProvider } = await import('./esi')
@@ -139,6 +140,38 @@ describe('ESI Token Provider Integration', () => {
       expect(
         useAuthStore.getState().hasOwnerAuthFailed('character-12345')
       ).toBe(true)
+
+      cleanup()
+    })
+
+    it('does not mark auth failed on transient failure', async () => {
+      mockRefreshToken.mockResolvedValue({
+        success: false,
+        isAuthFailure: false,
+      })
+
+      const { setupESITokenProvider } = await import('./esi')
+      const cleanup = setupESITokenProvider()
+
+      useAuthStore.getState().addOwner({
+        accessToken: 'expired-token',
+        refreshToken: 'valid-refresh',
+        expiresAt: Date.now() - 1000,
+        owner: {
+          id: 12345,
+          type: 'character',
+          name: 'Test',
+          characterId: 12345,
+          corporationId: 98000001,
+        },
+      })
+
+      await requestToken(12345)
+
+      expect(mockProvideToken).toHaveBeenCalledWith(12345, null)
+      expect(
+        useAuthStore.getState().hasOwnerAuthFailed('character-12345')
+      ).toBe(false)
 
       cleanup()
     })

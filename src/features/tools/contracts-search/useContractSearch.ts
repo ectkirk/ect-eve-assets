@@ -11,6 +11,7 @@ import type {
 import { filtersToApiParams, courierFiltersToApiParams } from './types'
 import { PAGE_SIZE, mapToCourierContract } from './utils'
 import { usePriceStore, isAbyssalTypeId } from '@/store/price-store'
+import { hasBlueprintResearchData } from '@/lib/contract-items'
 import { AT_SHIP_TYPE_IDS } from '@/lib/eve-constants'
 import { createLRUCache, type LRUCache } from '@/lib/lru-cache'
 
@@ -171,13 +172,9 @@ async function transformBuySellContracts(
   ): { value: number; hasUnpriceable: boolean } => {
     let total = 0
     let hasUnpriceableATShip = false
-    const hasBlueprint = items.some(
-      (item) =>
-        item.isBlueprintCopy === true ||
-        (item.materialEfficiency ?? 0) !== 0 ||
-        (item.timeEfficiency ?? 0) !== 0
-    )
-    if (hasBlueprint) return { value: 0, hasUnpriceable: true }
+    if (items.some(hasBlueprintResearchData)) {
+      return { value: 0, hasUnpriceable: true }
+    }
 
     for (const item of items) {
       if (!item.typeId) continue

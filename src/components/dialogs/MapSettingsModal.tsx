@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Dialog,
   DialogContent,
@@ -19,6 +20,7 @@ export function MapSettingsModal({
   open,
   onOpenChange,
 }: MapSettingsModalProps) {
+  const { t } = useTranslation('dialogs')
   const ansiblexCharacterIds = useMapSettingsStore(
     (s) => s.ansiblexCharacterIds
   )
@@ -48,25 +50,22 @@ export function MapSettingsModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Map Settings</DialogTitle>
-          <DialogDescription>
-            Configure map and routing features
-          </DialogDescription>
+          <DialogTitle>{t('mapSettings.title')}</DialogTitle>
+          <DialogDescription>{t('mapSettings.description')}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div>
             <h3 className="text-sm font-medium text-content-primary mb-2">
-              Ansiblex Routing
+              {t('mapSettings.ansiblexRouting')}
             </h3>
             <p className="text-xs text-content-muted mb-3">
-              Select characters to use for discovering Ansiblexes. Characters in
-              the same corporation share access, so only one per corp is needed.
+              {t('mapSettings.ansiblexDescription')}
             </p>
 
             {characters.length === 0 ? (
               <p className="text-xs text-content-muted italic">
-                No characters available
+                {t('mapSettings.noCharacters')}
               </p>
             ) : (
               <div className="space-y-1 max-h-48 overflow-y-auto">

@@ -1,4 +1,6 @@
+import { i18n } from '@/i18n'
 import { logger } from '@/lib/logger'
+import { formatFullNumber } from '@/lib/utils'
 import {
   getType,
   getLocation,
@@ -15,6 +17,7 @@ import {
   type CachedStargate,
   type CachedRefStructure,
 } from '@/store/reference-cache'
+import { getLanguage } from '@/store/settings-store'
 import {
   RefRegionsResponseSchema,
   RefSystemsResponseSchema,
@@ -44,7 +47,7 @@ export async function loadUniverseData(
     const start = performance.now()
 
     try {
-      onProgress?.('Loading universe data...')
+      onProgress?.(i18n.t('status.loadingUniverse'))
       await Promise.all([
         loadAllRegions(),
         loadAllSystems(),
@@ -67,7 +70,8 @@ export async function loadUniverseData(
 }
 
 async function loadAllRegions(): Promise<void> {
-  const result = await window.electronAPI!.refUniverseRegions()
+  const language = getLanguage()
+  const result = await window.electronAPI!.refUniverseRegions({ language })
 
   if (result.error) {
     logger.error('Failed to load regions', undefined, {
@@ -103,7 +107,8 @@ async function loadAllRegions(): Promise<void> {
 
 async function loadAllSystems(): Promise<void> {
   const start = performance.now()
-  const result = await window.electronAPI!.refUniverseSystems()
+  const language = getLanguage()
+  const result = await window.electronAPI!.refUniverseSystems({ language })
 
   if (result.error) {
     logger.error('Failed to load systems', undefined, {
@@ -149,7 +154,8 @@ async function loadAllSystems(): Promise<void> {
 
 async function loadAllStations(): Promise<void> {
   const start = performance.now()
-  const result = await window.electronAPI!.refUniverseStations()
+  const language = getLanguage()
+  const result = await window.electronAPI!.refUniverseStations({ language })
 
   if (result.error) {
     logger.error('Failed to load stations', undefined, {
@@ -247,7 +253,7 @@ export async function loadRefStructures(
   }
 
   refStructuresPromise = (async () => {
-    onProgress?.('Loading structures...')
+    onProgress?.(i18n.t('status.loadingStructures'))
     const start = performance.now()
     let cursor: string | undefined
     let total = 0
@@ -299,7 +305,10 @@ export async function loadRefStructures(
       pageCount++
 
       onProgress?.(
-        `Loading structures (${loaded.toLocaleString()}/${total.toLocaleString()})...`
+        i18n.t('status.loadingStructuresProgress', {
+          loaded: formatFullNumber(loaded),
+          total: formatFullNumber(total),
+        })
       )
 
       cursor = result.pagination.hasMore
@@ -335,9 +344,10 @@ async function fetchMoons(ids: number[]): Promise<Map<number, MoonData>> {
 
   const start = performance.now()
   const results = new Map<number, MoonData>()
+  const language = getLanguage()
 
   try {
-    const rawData = await window.electronAPI!.refMoons(ids)
+    const rawData = await window.electronAPI!.refMoons(ids, { language })
     const duration = Math.round(performance.now() - start)
 
     if (rawData && 'error' in rawData && rawData.error) {

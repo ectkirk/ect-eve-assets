@@ -1,0 +1,9 @@
+{
+  "empty": "마켓 주문이 없습니다.",
+
+  "totals.sellOrders": "판매 주문",
+  "totals.buyOrders": "구매 주문",
+
+  "orderType.sell": "판매",
+  "orderType.buy": "구매"
+}

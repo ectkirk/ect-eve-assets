@@ -1,0 +1,10 @@
+{
+  "divisions.master": "マスターウォレット",
+  "divisions.wallet2": "ウォレット2",
+  "divisions.wallet3": "ウォレット3",
+  "divisions.wallet4": "ウォレット4",
+  "divisions.wallet5": "ウォレット5",
+  "divisions.wallet6": "ウォレット6",
+  "divisions.wallet7": "ウォレット7",
+  "divisions.division": "部門 {{number}}"
+}

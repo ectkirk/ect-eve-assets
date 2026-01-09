@@ -1,0 +1,10 @@
+{
+  "divisions.master": "Master Wallet",
+  "divisions.wallet2": "Wallet 2",
+  "divisions.wallet3": "Wallet 3",
+  "divisions.wallet4": "Wallet 4",
+  "divisions.wallet5": "Wallet 5",
+  "divisions.wallet6": "Wallet 6",
+  "divisions.wallet7": "Wallet 7",
+  "divisions.division": "Division {{number}}"
+}

@@ -1,0 +1,9 @@
+{
+  "empty": "No market orders.",
+
+  "totals.sellOrders": "Sell Orders",
+  "totals.buyOrders": "Buy Orders",
+
+  "orderType.sell": "Sell",
+  "orderType.buy": "Buy"
+}

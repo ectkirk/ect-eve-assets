@@ -1,0 +1,34 @@
+{
+  "empty": "Нет активных контрактов.",
+
+  "fallback.id": "ID {{id}}",
+
+  "totals.itemValue": "Стоимость предметов",
+  "totals.contractPrice": "Цена контракта",
+  "totals.collateral": "Залог",
+
+  "types.itemExchange": "Обмен предметами",
+  "types.courier": "Курьерский",
+  "types.auction": "Аукцион",
+  "types.loan": "Заём",
+  "types.unknown": "Неизвестно",
+
+  "availability.public": "Публичный",
+
+  "items.courierContract": "Курьерский контракт",
+  "items.multipleItems": "[Несколько предметов]",
+  "items.empty": "[Пусто]",
+
+  "direction.youProvide": "Вы предоставляете",
+  "direction.youWant": "Вы хотите",
+  "direction.youReceive": "Вы получаете",
+
+  "status.outstanding": "Ожидает",
+  "status.inProgress": "Выполняется",
+  "status.finished": "Завершён",
+  "status.cancelled": "Отменён",
+  "status.rejected": "Отклонён",
+  "status.failed": "Провален",
+  "status.deleted": "Удалён",
+  "status.reversed": "Отменён"
+}

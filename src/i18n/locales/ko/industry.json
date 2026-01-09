@@ -1,0 +1,15 @@
+{
+  "columns.blueprint": "블루프린트",
+  "columns.product": "생산품",
+
+  "empty": "산업 작업이 없습니다.",
+
+  "activities.manufacturing": "제조",
+  "activities.teResearch": "TE 연구",
+  "activities.meResearch": "ME 연구",
+  "activities.copying": "복사",
+  "activities.reverseEngineering": "역공학",
+  "activities.invention": "발명",
+  "activities.reactions": "반응",
+  "activities.unknown": "활동 {{id}}"
+}

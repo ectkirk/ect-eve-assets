@@ -50,6 +50,15 @@ export async function getCorporationContractItems(
   )
 }
 
+export async function getPublicContractItems(
+  contractId: number
+): Promise<ESIContractItem[]> {
+  return esi.fetchPaginated<ESIContractItem>(
+    `/contracts/public/items/${contractId}`,
+    { requiresAuth: false, schema: ESIContractItemSchema }
+  )
+}
+
 export async function getPublicContractBids(
   contractId: number
 ): Promise<ESIContractBid[]> {

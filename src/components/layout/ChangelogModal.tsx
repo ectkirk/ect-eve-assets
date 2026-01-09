@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import {
   Dialog,
   DialogContent,
@@ -13,33 +14,47 @@ interface ChangelogModalProps {
   onOpenChange: (open: boolean) => void
 }
 
-const TYPE_STYLES: Record<string, { label: string; color: string }> = {
+const TYPE_STYLES: Record<string, { labelKey: string; color: string }> = {
   feat: {
-    label: 'Feature',
+    labelKey: 'changelog.types.feature',
     color: 'bg-semantic-positive/20 text-semantic-positive',
   },
-  fix: { label: 'Fix', color: 'bg-semantic-danger/20 text-semantic-danger' },
-  refactor: { label: 'Refactor', color: 'bg-status-info/20 text-status-info' },
+  fix: {
+    labelKey: 'changelog.types.fix',
+    color: 'bg-semantic-danger/20 text-semantic-danger',
+  },
+  refactor: {
+    labelKey: 'changelog.types.refactor',
+    color: 'bg-status-info/20 text-status-info',
+  },
   perf: {
-    label: 'Performance',
+    labelKey: 'changelog.types.performance',
     color: 'bg-semantic-warning/20 text-semantic-warning',
   },
-  docs: { label: 'Docs', color: 'bg-status-special/20 text-status-special' },
-  chore: { label: 'Chore', color: 'bg-content-muted/20 text-content-muted' },
+  docs: {
+    labelKey: 'changelog.types.docs',
+    color: 'bg-status-special/20 text-status-special',
+  },
+  chore: {
+    labelKey: 'changelog.types.chore',
+    color: 'bg-content-muted/20 text-content-muted',
+  },
 }
 
 const DEFAULT_STYLE = {
-  label: 'Change',
+  labelKey: 'changelog.types.change',
   color: 'bg-content-muted/20 text-content-muted',
 }
 
 export function ChangelogModal({ open, onOpenChange }: ChangelogModalProps) {
+  const { t } = useTranslation('dialogs')
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            Changelog
+            {t('changelog.title')}
             <span className="text-sm font-normal text-content-secondary">
               v{changelogData.version}
             </span>
@@ -48,7 +63,9 @@ export function ChangelogModal({ open, onOpenChange }: ChangelogModalProps) {
         <ScrollArea className="max-h-[60vh]">
           <div className="space-y-4 pr-4 text-sm">
             <div className="flex items-center justify-between text-content-secondary">
-              <span>Released {changelogData.date}</span>
+              <span>
+                {t('changelog.released', { date: changelogData.date })}
+              </span>
             </div>
 
             <ul className="space-y-2">
@@ -59,7 +76,7 @@ export function ChangelogModal({ open, onOpenChange }: ChangelogModalProps) {
                     <span
                       className={`shrink-0 rounded px-1.5 py-0.5 text-xs ${style.color}`}
                     >
-                      {style.label}
+                      {t(style.labelKey)}
                     </span>
                     <span className="text-content-secondary">
                       <span className="text-content-muted">
@@ -79,7 +96,7 @@ export function ChangelogModal({ open, onOpenChange }: ChangelogModalProps) {
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 text-accent hover:underline"
               >
-                View full changelog
+                {t('changelog.viewFull')}
                 <ExternalLink className="h-3.5 w-3.5" />
               </a>
             </div>

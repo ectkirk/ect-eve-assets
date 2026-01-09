@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ArrowUp, ArrowDown } from 'lucide-react'
 import { TableHead } from '@/components/ui/table'
 
@@ -51,8 +52,10 @@ export function SortableHeader<T extends string>({
   onSort: (column: T) => void
   className?: string
 }) {
+  const { t } = useTranslation('common')
   const isActive = sortColumn === column
   const isRightAligned = className.includes('text-right')
+  const displayLabel = label.includes('.') ? t(label) : label
 
   return (
     <TableHead
@@ -62,7 +65,7 @@ export function SortableHeader<T extends string>({
       <div
         className={`flex items-center gap-1 ${isRightAligned ? 'justify-end' : ''}`}
       >
-        {label}
+        {displayLabel}
         {isActive &&
           (sortDirection === 'asc' ? (
             <ArrowUp className="h-3 w-3" />

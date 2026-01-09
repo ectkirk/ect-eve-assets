@@ -1,0 +1,14 @@
+{
+  "subtitle": "점프 클론 {{count}}개",
+  "empty": "클론이 없습니다.",
+
+  "activeClone": "활성 클론",
+  "noImplants": "임플란트 없음",
+  "implantSlot": "슬롯 {{slot}}",
+  "noMatches": "일치하는 클론 없음",
+  "noClones": "클론 없음",
+
+  "fallback.structure": "스트럭처 {{id}}",
+  "fallback.location": "위치 {{id}}",
+  "fallback.unknown": "알 수 없음"
+}

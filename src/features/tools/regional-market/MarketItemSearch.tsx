@@ -23,7 +23,6 @@ export function MarketItemSearch({ onSelectType }: MarketItemSearchProps) {
       <TypeSearchInput
         value={null}
         onChange={handleChange}
-        placeholder="Search items..."
         filterFn={filterFn}
       />
     </div>

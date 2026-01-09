@@ -1,5 +1,13 @@
-import { useEffect, useState, Component, type ReactNode } from 'react'
+import {
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+  Component,
+  type ReactNode,
+} from 'react'
 import { AlertTriangle, X } from 'lucide-react'
+import { version } from '../package.json'
 import { useAuthStore } from './store/auth-store'
 import { useAssetStore } from './store/asset-store'
 import { useStoreRegistry } from './store/store-registry'
@@ -16,6 +24,14 @@ import { logger } from './lib/logger'
 import { getErrorMessage } from './lib/errors'
 import { setupESITokenProvider } from './api/esi'
 import { initTheme } from './store/theme-store'
+import { initI18n, i18n } from './i18n'
+import { LanguageSelectionModal } from './components/dialogs/LanguageSelectionModal'
+import {
+  useSettingsStore,
+  detectSystemLocale,
+  hasSelectedLanguage,
+  type SupportedLanguage,
+} from './store/settings-store'
 
 function RefDataWarningBanner({
   warnings,
@@ -106,8 +122,48 @@ class ErrorBoundary extends Component<
 function App() {
   const [cacheReady, setCacheReady] = useState(appInitComplete)
   const [cacheError, setCacheError] = useState<string | null>(null)
-  const [loadingStatus, setLoadingStatus] = useState('Initializing...')
+  const [loadingStatus, setLoadingStatus] = useState<string | null>(null)
   const [refDataWarnings, setRefDataWarnings] = useState<string[]>([])
+  const [showLanguageSelection, setShowLanguageSelection] = useState(false)
+  const setInitialLanguage = useSettingsStore((s) => s.setInitialLanguage)
+  const detectedLocale = useMemo(() => detectSystemLocale(), [])
+
+  const continueInitialization = useCallback(async () => {
+    await initI18n()
+    const refResult = await loadReferenceData(setLoadingStatus)
+    if (!refResult.success && refResult.errors.length > 0) {
+      setRefDataWarnings(refResult.errors)
+    }
+    await loadUniverseData(setLoadingStatus)
+    await loadRefStructures(setLoadingStatus)
+    setLoadingStatus(i18n.t('status.initializingStores'))
+    await useExpiryCacheStore.getState().init()
+    logger.info('Expiry cache initialized', { module: 'App' })
+    await useAssetStore.getState().init()
+    logger.info('Asset store initialized', { module: 'App' })
+    await useStoreRegistry.getState().initAll(['assets'])
+    logger.info('All stores initialized', { module: 'App' })
+    const ownerKeys = Object.keys(useAuthStore.getState().owners)
+    useExpiryCacheStore.getState().queueMissingEndpoints(ownerKeys)
+    appInitComplete = true
+    setCacheReady(true)
+  }, [])
+
+  const handleLanguageSelected = useCallback(
+    async (language: SupportedLanguage) => {
+      setInitialLanguage(language)
+      setShowLanguageSelection(false)
+      try {
+        await continueInitialization()
+      } catch (err) {
+        logger.error('Failed to initialize after language selection', err, {
+          module: 'App',
+        })
+        setCacheError(getErrorMessage(err))
+      }
+    },
+    [setInitialLanguage, continueInitialization]
+  )
 
   useEffect(() => {
     const cleanupTokenProvider = setupESITokenProvider()
@@ -140,35 +196,23 @@ function App() {
       .init()
       .then(async () => {
         logger.info('Cache initialized', { module: 'App' })
-        const refResult = await loadReferenceData(setLoadingStatus)
-        if (!refResult.success && refResult.errors.length > 0) {
-          setRefDataWarnings(refResult.errors)
+
+        if (!hasSelectedLanguage()) {
+          logger.info('First launch, showing language selection', {
+            module: 'App',
+            detectedLanguage: detectedLocale,
+          })
+          setShowLanguageSelection(true)
+          return
         }
-        await loadUniverseData(setLoadingStatus)
-        await loadRefStructures(setLoadingStatus)
-        setLoadingStatus('Initializing data stores...')
-        return useExpiryCacheStore.getState().init()
-      })
-      .then(() => {
-        logger.info('Expiry cache initialized', { module: 'App' })
-        return useAssetStore.getState().init()
-      })
-      .then(() => {
-        logger.info('Asset store initialized', { module: 'App' })
-        return useStoreRegistry.getState().initAll(['assets'])
-      })
-      .then(async () => {
-        logger.info('All stores initialized', { module: 'App' })
-        const ownerKeys = Object.keys(useAuthStore.getState().owners)
-        useExpiryCacheStore.getState().queueMissingEndpoints(ownerKeys)
-        appInitComplete = true
-        setCacheReady(true)
+
+        await continueInitialization()
       })
       .catch((err) => {
         logger.error('Failed to initialize cache', err, { module: 'App' })
-        setCacheError(err.message)
+        setCacheError(getErrorMessage(err))
       })
-  }, [])
+  }, [continueInitialization, detectedLocale])
 
   const [isClearing, setIsClearing] = useState(false)
   const [clearError, setClearError] = useState<string | null>(null)
@@ -211,10 +255,27 @@ function App() {
     )
   }
 
-  if (!cacheReady) {
+  if (showLanguageSelection) {
     return (
       <div className="flex h-screen items-center justify-center bg-surface text-content">
-        <p className="text-content-secondary">{loadingStatus}</p>
+        <LanguageSelectionModal
+          detectedLanguage={detectedLocale}
+          onSelect={handleLanguageSelected}
+        />
+      </div>
+    )
+  }
+
+  if (!cacheReady) {
+    return (
+      <div className="flex h-screen flex-col items-center justify-center gap-2 bg-surface text-content">
+        <span className="text-2xl font-bold tracking-tight">
+          <span className="text-accent">ECT</span> EVE Assets
+        </span>
+        <span className="text-xs text-content-muted">Beta {version}</span>
+        {loadingStatus && (
+          <p className="mt-2 text-content-secondary">{loadingStatus}</p>
+        )}
       </div>
     )
   }

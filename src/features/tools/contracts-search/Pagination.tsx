@@ -1,5 +1,7 @@
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ChevronsLeft, ChevronsRight } from 'lucide-react'
+import { formatFullNumber } from '@/lib/utils'
 
 const MAX_VISIBLE_PAGES = 10
 
@@ -40,6 +42,7 @@ export function Pagination({
   onPageChange,
   isLoading,
 }: PaginationProps) {
+  const { t } = useTranslation('tools')
   const visiblePages = useMemo(
     () => getVisiblePages(page, totalPages),
     [page, totalPages]
@@ -53,8 +56,11 @@ export function Pagination({
   return (
     <div className="flex items-center justify-between border-t border-border px-4 py-2">
       <span className="text-sm text-content-secondary">
-        Showing {startItem.toLocaleString()}-{endItem.toLocaleString()} of{' '}
-        {total.toLocaleString()}
+        {t('contractsSearch.pagination.showing', {
+          start: formatFullNumber(startItem),
+          end: formatFullNumber(endItem),
+          total: formatFullNumber(total),
+        })}
       </span>
       <div className="flex gap-1">
         <button

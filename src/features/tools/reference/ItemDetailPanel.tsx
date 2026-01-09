@@ -1,8 +1,10 @@
 import { useEffect, useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Loader2, ChevronRight } from 'lucide-react'
 import { formatNumber } from '@/lib/utils'
 import { TypeIcon, getTypeIconUrl } from '@/components/ui/type-icon'
 import { getTypeName } from '@/store/reference-cache'
+import { getLanguage, getLocalizedText } from '@/store/settings-store'
 import {
   ShipFittingLayout,
   SHIP_STAT_ATTRS,
@@ -24,7 +26,10 @@ import {
   ATTRIBUTE_CATEGORY_ORDER,
   UNIT_ID_TYPE_REF,
 } from './item-detail-constants'
-import { formatAttributeValue } from './attribute-formatters'
+import {
+  formatAttributeValue,
+  type AttributeTranslations,
+} from './attribute-formatters'
 import { sanitizeDescription } from './eve-text-utils'
 import { Section } from './Section'
 import { BonusSection } from './BonusSection'
@@ -58,6 +63,7 @@ export function ItemDetailPanel({
   onNavigate,
   showUnpublished = false,
 }: ItemDetailPanelProps) {
+  const { t } = useTranslation('tools')
   const [data, setData] = useState<CombinedTypeData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -69,6 +75,18 @@ export function ItemDetailPanel({
     string,
     DogmaAttributeCategory
   > | null>(null)
+
+  const attrTranslations: AttributeTranslations = useMemo(
+    () => ({
+      sizeSmall: t('reference.attribute.sizeSmall'),
+      sizeMedium: t('reference.attribute.sizeMedium'),
+      sizeLarge: t('reference.attribute.sizeLarge'),
+      sizeCapital: t('reference.attribute.sizeCapital'),
+      yes: t('reference.attribute.yes'),
+      no: t('reference.attribute.no'),
+    }),
+    [t]
+  )
 
   useEffect(() => {
     let mounted = true
@@ -103,10 +121,11 @@ export function ItemDetailPanel({
       }
 
       try {
+        const lang = { language: getLanguage() }
         const [coreResult, dogmaResult, marketResult] = await Promise.all([
-          window.electronAPI.refTypeCore(typeId),
-          window.electronAPI.refTypeDogma(typeId),
-          window.electronAPI.refTypeMarket(typeId),
+          window.electronAPI.refTypeCore(typeId, lang),
+          window.electronAPI.refTypeDogma(typeId, lang),
+          window.electronAPI.refTypeMarket(typeId, lang),
         ])
 
         if (cancelled) return
@@ -149,10 +168,11 @@ export function ItemDetailPanel({
   const dogma = data?.dogma
   const market = data?.market
 
+  const localizedDescription = getLocalizedText(type?.description)
   const sanitizedDescription = useMemo(
     () =>
-      type?.description?.en ? sanitizeDescription(type.description.en) : null,
-    [type?.description?.en]
+      localizedDescription ? sanitizeDescription(localizedDescription) : null,
+    [localizedDescription]
   )
 
   const categoryId = category?.id
@@ -212,7 +232,9 @@ export function ItemDetailPanel({
     return ATTRIBUTE_CATEGORY_ORDER.filter((id) => grouped.has(id)).map(
       (catId) => ({
         categoryId: catId,
-        categoryName: attrCategories?.[String(catId)]?.name ?? 'Other',
+        categoryName:
+          attrCategories?.[String(catId)]?.name ??
+          t('reference.fallback.other'),
         attributes: grouped
           .get(catId)!
           .sort((a, b) => a.displayName.localeCompare(b.displayName)),
@@ -257,7 +279,7 @@ export function ItemDetailPanel({
   if (!type) {
     return (
       <div className="flex h-full items-center justify-center p-4 text-center">
-        <p className="text-content-secondary">Item not found</p>
+        <p className="text-content-secondary">{t('reference.itemNotFound')}</p>
       </div>
     )
   }
@@ -280,22 +302,28 @@ export function ItemDetailPanel({
         )}
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-xl font-bold text-content">{type.name.en}</h2>
+            <h2 className="text-xl font-bold text-content">
+              {getLocalizedText(type.name)}
+            </h2>
             {metaBadge}
             {type.published === false && (
               <span className="rounded-full bg-surface-tertiary px-2 py-0.5 text-xs italic text-content-secondary">
-                Unpublished
+                {t('reference.unpublished')}
               </span>
             )}
           </div>
           <p className="mt-1 text-sm text-content-secondary">ID: {type._key}</p>
           <div className="mt-1 flex items-center gap-2 text-sm">
             {category && (
-              <span className="text-content-secondary">{category.name.en}</span>
+              <span className="text-content-secondary">
+                {getLocalizedText(category.name)}
+              </span>
             )}
             {category && group && <span className="text-content-muted">→</span>}
             {group && (
-              <span className="text-content-secondary">{group.name.en}</span>
+              <span className="text-content-secondary">
+                {getLocalizedText(group.name)}
+              </span>
             )}
           </div>
         </div>
@@ -303,7 +331,7 @@ export function ItemDetailPanel({
 
       <div className="space-y-4">
         {market?.groupPath && market.groupPath.length > 0 && (
-          <Section title="Market Group">
+          <Section title={t('reference.marketGroup')}>
             <div className="flex flex-wrap items-center gap-1 text-sm">
               {market.groupPath.map((g, i) => (
                 <span key={g.id} className="flex items-center gap-1">
@@ -318,7 +346,7 @@ export function ItemDetailPanel({
         )}
 
         {sanitizedDescription && (
-          <Section title="Description">
+          <Section title={t('reference.description')}>
             <div
               className="whitespace-pre-wrap text-sm text-content-secondary [&_i]:italic [&_b]:font-bold [&_u]:underline"
               dangerouslySetInnerHTML={{ __html: sanitizedDescription }}
@@ -331,33 +359,35 @@ export function ItemDetailPanel({
         )}
 
         {(type.base_price != null || market?.price) && (
-          <Section title="Prices">
+          <Section title={t('reference.prices')}>
             <div className="flex flex-wrap gap-6">
               {type.base_price != null && (
                 <div>
-                  <div className="text-xs text-content-muted">Base Price</div>
+                  <div className="text-xs text-content-muted">
+                    {t('reference.basePrice')}
+                  </div>
                   <div className="font-semibold text-content">
-                    {formatNumber(type.base_price)} ISK
+                    {formatNumber(type.base_price)}
                   </div>
                 </div>
               )}
               {market?.price?.averagePrice != null && (
                 <div>
                   <div className="text-xs text-content-muted">
-                    Market Average
+                    {t('reference.marketAverage')}
                   </div>
                   <div className="font-semibold text-status-success">
-                    {formatNumber(Math.round(market.price.averagePrice))} ISK
+                    {formatNumber(Math.round(market.price.averagePrice))}
                   </div>
                 </div>
               )}
               {market?.price?.adjustedPrice != null && (
                 <div>
                   <div className="text-xs text-content-muted">
-                    Adjusted Price
+                    {t('reference.adjustedPrice')}
                   </div>
                   <div className="font-semibold text-accent">
-                    {formatNumber(Math.round(market.price.adjustedPrice))} ISK
+                    {formatNumber(Math.round(market.price.adjustedPrice))}
                   </div>
                 </div>
               )}
@@ -401,7 +431,8 @@ export function ItemDetailPanel({
                       {formatAttributeValue(
                         attr.value,
                         attr.unitId,
-                        dogmaUnits
+                        dogmaUnits,
+                        attrTranslations
                       )}
                     </span>
                   </div>

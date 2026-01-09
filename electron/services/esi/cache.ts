@@ -40,6 +40,17 @@ export class ESICache {
     }
   }
 
+  private collectValidEntries(): Array<{ key: string; entry: CacheEntry }> {
+    const now = Date.now()
+    const entries: Array<{ key: string; entry: CacheEntry }> = []
+    for (const [key, entry] of this.cache) {
+      if (entry.expires > now) {
+        entries.push({ key, entry })
+      }
+    }
+    return entries
+  }
+
   private scheduleSave(): void {
     if (this.saveTimeout) return
     this.saveTimeout = setTimeout(() => {
@@ -58,14 +69,10 @@ export class ESICache {
 
     this.saveInProgress = true
     try {
-      const now = Date.now()
-      const entries: Array<{ key: string; entry: CacheEntry }> = []
-      for (const [key, entry] of this.cache) {
-        if (entry.expires > now) {
-          entries.push({ key, entry })
-        }
+      const serialized: SerializedCache = {
+        version: 1,
+        entries: this.collectValidEntries(),
       }
-      const serialized: SerializedCache = { version: 1, entries }
       await fsPromises.writeFile(this.filePath, JSON.stringify(serialized))
     } catch (err) {
       logger.debug('Failed to save ESI cache', {
@@ -88,14 +95,10 @@ export class ESICache {
     }
     if (!this.filePath) return
     try {
-      const now = Date.now()
-      const entries: Array<{ key: string; entry: CacheEntry }> = []
-      for (const [key, entry] of this.cache) {
-        if (entry.expires > now) {
-          entries.push({ key, entry })
-        }
+      const serialized: SerializedCache = {
+        version: 1,
+        entries: this.collectValidEntries(),
       }
-      const serialized: SerializedCache = { version: 1, entries }
       fs.writeFileSync(this.filePath, JSON.stringify(serialized))
     } catch (err) {
       logger.debug('Failed to save ESI cache immediately', {
@@ -166,11 +169,6 @@ export class ESICache {
     }
   }
 
-  delete(key: string): void {
-    this.cache.delete(key)
-    this.scheduleSave()
-  }
-
   clear(): void {
     this.cache.clear()
     this.scheduleSave()
@@ -194,7 +192,12 @@ export class ESICache {
     return this.cache.size
   }
 
-  makeKey(characterId: number | undefined, endpoint: string): string {
-    return `${characterId ?? 'public'}:${endpoint}`
+  makeKey(
+    characterId: number | undefined,
+    endpoint: string,
+    language?: string
+  ): string {
+    const lang = language || 'en'
+    return `${characterId ?? 'public'}:${lang}:${endpoint}`
   }
 }

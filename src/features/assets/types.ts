@@ -3,6 +3,24 @@ import type { AssetModeFlags, ResolvedAsset } from '@/lib/resolved-asset'
 import { getAssetDisplayNames } from '@/lib/resolved-asset'
 import { formatVolume as formatVolumeBase } from '@/lib/utils'
 
+export const DISPLAY_FLAGS = {
+  IN_CONTRACT: 'In Contract',
+  SELL_ORDER: 'Sell Order',
+  INDUSTRY_JOB: 'In Job',
+  ACTIVE_SHIP: 'Active Ship',
+} as const
+
+export function getDisplayFlag(
+  modeFlags: AssetModeFlags,
+  locationFlag: string
+): string {
+  if (modeFlags.isContract) return DISPLAY_FLAGS.IN_CONTRACT
+  if (modeFlags.isMarketOrder) return DISPLAY_FLAGS.SELL_ORDER
+  if (modeFlags.isIndustryJob) return DISPLAY_FLAGS.INDUSTRY_JOB
+  if (modeFlags.isActiveShip) return DISPLAY_FLAGS.ACTIVE_SHIP
+  return locationFlag
+}
+
 export interface AssetRow {
   itemId: number
   typeId: number
@@ -37,12 +55,12 @@ export function formatVolume(value: number): string {
 }
 
 export const COLUMN_LABELS: Record<string, string> = {
-  ownerName: 'Owner',
-  quantity: 'Quantity',
-  locationFlag: 'Flag',
-  price: 'Price',
-  totalValue: 'Value',
-  totalVolume: 'Volume',
+  ownerName: 'columns.owner',
+  quantity: 'columns.quantity',
+  locationFlag: 'columns.flag',
+  price: 'columns.price',
+  totalValue: 'columns.value',
+  totalVolume: 'columns.volume',
 }
 
 export const STORAGE_KEY_VISIBILITY = 'assets-column-visibility'

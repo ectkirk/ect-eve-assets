@@ -1,0 +1,34 @@
+{
+  "empty": "Aucun contrat actif.",
+
+  "fallback.id": "ID {{id}}",
+
+  "totals.itemValue": "Valeur des objets",
+  "totals.contractPrice": "Prix du contrat",
+  "totals.collateral": "Garantie",
+
+  "types.itemExchange": "Échange d'objets",
+  "types.courier": "Courrier",
+  "types.auction": "Enchère",
+  "types.loan": "Prêt",
+  "types.unknown": "Inconnu",
+
+  "availability.public": "Public",
+
+  "items.courierContract": "Contrat de courrier",
+  "items.multipleItems": "[Objets multiples]",
+  "items.empty": "[Vide]",
+
+  "direction.youProvide": "Vous fournissez",
+  "direction.youWant": "Vous voulez",
+  "direction.youReceive": "Vous recevez",
+
+  "status.outstanding": "En attente",
+  "status.inProgress": "En cours",
+  "status.finished": "Terminé",
+  "status.cancelled": "Annulé",
+  "status.rejected": "Rejeté",
+  "status.failed": "Échoué",
+  "status.deleted": "Supprimé",
+  "status.reversed": "Inversé"
+}

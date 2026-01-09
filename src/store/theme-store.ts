@@ -3,11 +3,11 @@ import { persist } from 'zustand/middleware'
 
 export type Theme = 'dark' | 'light' | 'dark-colorblind' | 'light-colorblind'
 
-export const THEME_OPTIONS: { value: Theme; label: string }[] = [
-  { value: 'dark', label: 'Dark' },
-  { value: 'light', label: 'Light' },
-  { value: 'dark-colorblind', label: 'Dark (Colorblind)' },
-  { value: 'light-colorblind', label: 'Light (Colorblind)' },
+export const THEME_OPTIONS: { value: Theme; labelKey: string }[] = [
+  { value: 'dark', labelKey: 'settings.themes.dark' },
+  { value: 'light', labelKey: 'settings.themes.light' },
+  { value: 'dark-colorblind', labelKey: 'settings.themes.darkColorblind' },
+  { value: 'light-colorblind', labelKey: 'settings.themes.lightColorblind' },
 ]
 
 interface ThemeState {

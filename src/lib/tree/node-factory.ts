@@ -7,6 +7,7 @@ import {
   DIVISION_FLAG_NAMES,
 } from '../tree-types'
 import { getType, type CachedType } from '@/store/reference-cache'
+import { i18n } from '@/i18n'
 
 export function isShip(type: CachedType | undefined): boolean {
   return type?.categoryId === CategoryIds.SHIP
@@ -29,7 +30,7 @@ export function createItemNode(
 
   if (isOffice(ra.typeId)) {
     nodeType = 'office'
-    displayName = stationName ?? 'Unknown Location'
+    displayName = stationName ?? i18n.t('assets:locations.unknownLocation')
   } else if (isShip(type)) {
     nodeType = 'ship'
   }

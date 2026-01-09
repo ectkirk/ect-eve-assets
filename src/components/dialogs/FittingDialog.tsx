@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Copy, Check } from 'lucide-react'
 import { logger } from '@/lib/logger'
 import {
@@ -15,7 +16,7 @@ import {
   getShipSlots,
   isStrategicCruiser,
   countFilledSlots,
-  HOLD_LABELS,
+  HOLD_LABEL_KEYS,
   type ShipSlots,
   type ExtractedFitting,
   type ModuleItem,
@@ -127,6 +128,7 @@ export function FittingDialog({
   onOpenChange,
   shipNode,
 }: FittingDialogProps) {
+  const { t } = useTranslation('dialogs')
   const [copied, setCopied] = useState(false)
 
   const fitting = useMemo(() => {
@@ -177,7 +179,7 @@ export function FittingDialog({
           <div>
             <DialogTitle>{fitting.shipName}</DialogTitle>
             <DialogDescription className="sr-only">
-              Ship fitting display showing modules and cargo
+              {t('fitting.title')}
             </DialogDescription>
           </div>
           <button
@@ -189,7 +191,7 @@ export function FittingDialog({
             ) : (
               <Copy className="w-4 h-4" />
             )}
-            {copied ? 'Copied!' : 'Copy Fitting'}
+            {copied ? t('fitting.copied') : t('fitting.copyFitting')}
           </button>
         </DialogHeader>
 
@@ -206,19 +208,37 @@ export function FittingDialog({
           />
 
           <div className="w-full mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-left max-h-48 overflow-y-auto">
-            <ModuleList title="High Slots" modules={fitting.highSlotModules} />
-            <ModuleList title="Mid Slots" modules={fitting.midSlotModules} />
-            <ModuleList title="Low Slots" modules={fitting.lowSlotModules} />
-            <ModuleList title="Rigs" modules={fitting.rigModules} />
+            <ModuleList
+              title={t('fitting.highSlots')}
+              modules={fitting.highSlotModules}
+            />
+            <ModuleList
+              title={t('fitting.midSlots')}
+              modules={fitting.midSlotModules}
+            />
+            <ModuleList
+              title={t('fitting.lowSlots')}
+              modules={fitting.lowSlotModules}
+            />
+            <ModuleList
+              title={t('fitting.rigs')}
+              modules={fitting.rigModules}
+            />
             {fitting.subsystemModules.some((m) => m.type_id > 0) && (
               <ModuleList
-                title="Subsystems"
+                title={t('fitting.subsystems')}
                 modules={fitting.subsystemModules}
               />
             )}
-            <ModuleList title="Drones" modules={fitting.drones} />
-            <ModuleList title="Fighter Tubes" modules={fitting.fighterTubes} />
-            <ModuleList title="Fighter Bay" modules={fitting.fighterBay} />
+            <ModuleList title={t('fitting.drones')} modules={fitting.drones} />
+            <ModuleList
+              title={t('fitting.fighterTubes')}
+              modules={fitting.fighterTubes}
+            />
+            <ModuleList
+              title={t('fitting.fighterBay')}
+              modules={fitting.fighterBay}
+            />
             {(
               Object.entries(fitting.holds) as [keyof ShipHolds, ModuleItem[]][]
             ).map(
@@ -226,7 +246,7 @@ export function FittingDialog({
                 items.length > 0 && (
                   <ModuleList
                     key={key}
-                    title={HOLD_LABELS[key]}
+                    title={t(HOLD_LABEL_KEYS[key])}
                     modules={items}
                   />
                 )

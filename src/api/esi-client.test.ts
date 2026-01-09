@@ -36,7 +36,9 @@ describe('ESI Client Integration', () => {
 
       const result = await esi.fetch('/test/endpoint')
 
-      expect(mockFetch).toHaveBeenCalledWith('/test/endpoint', {})
+      expect(mockFetch).toHaveBeenCalledWith('/test/endpoint', {
+        language: 'en',
+      })
       expect(result).toEqual({ id: 123, name: 'Test' })
     })
 
@@ -63,7 +65,10 @@ describe('ESI Client Integration', () => {
 
       await esi.fetch('/test', { characterId: 12345 })
 
-      expect(mockFetch).toHaveBeenCalledWith('/test', { characterId: 12345 })
+      expect(mockFetch).toHaveBeenCalledWith('/test', {
+        characterId: 12345,
+        language: 'en',
+      })
     })
   })
 
@@ -135,45 +140,6 @@ describe('ESI Client Integration', () => {
       await expect(esi.fetchPaginated('/test', { schema })).rejects.toThrow(
         ValidationError
       )
-    })
-  })
-
-  describe('fetchBatch', () => {
-    it('processes items in batches', async () => {
-      const items = [1, 2, 3, 4, 5]
-      const fetcher = vi
-        .fn()
-        .mockImplementation((id) => Promise.resolve({ id, name: `Item ${id}` }))
-
-      const results = await esi.fetchBatch(items, fetcher, { batchSize: 2 })
-
-      expect(results.size).toBe(5)
-      expect(results.get(1)).toEqual({ id: 1, name: 'Item 1' })
-    })
-
-    it('handles fetch failures gracefully', async () => {
-      const items = [1, 2, 3]
-      const fetcher = vi.fn().mockImplementation((id) => {
-        if (id === 2) return Promise.reject(new Error('Failed'))
-        return Promise.resolve({ id })
-      })
-
-      const results = await esi.fetchBatch(items, fetcher)
-
-      expect(results.get(1)).toEqual({ id: 1 })
-      expect(results.get(2)).toBeNull()
-      expect(results.get(3)).toEqual({ id: 3 })
-    })
-
-    it('reports progress', async () => {
-      const items = [1, 2, 3, 4]
-      const fetcher = vi.fn().mockResolvedValue({})
-      const onProgress = vi.fn()
-
-      await esi.fetchBatch(items, fetcher, { batchSize: 2, onProgress })
-
-      expect(onProgress).toHaveBeenCalledWith(2, 4)
-      expect(onProgress).toHaveBeenCalledWith(4, 4)
     })
   })
 

@@ -15,41 +15,40 @@ export type AssetSettingKey = (typeof ASSET_SETTING_KEYS)[number]
 export interface AssetSettingConfig {
   key: AssetSettingKey
   filterValue: string
-  label: string
-  description: string
+  labelKey: string
+  descriptionKey: string
 }
 
 export const ASSET_SETTINGS_CONFIG: AssetSettingConfig[] = [
   {
     key: 'includeMarketOrders',
     filterValue: 'MARKET_ORDERS',
-    label: 'Market Orders',
-    description: 'Include items from active sell orders',
+    labelKey: 'assetSettings.marketOrders',
+    descriptionKey: 'assetSettings.marketOrdersDesc',
   },
   {
     key: 'includeContracts',
     filterValue: 'CONTRACTS',
-    label: 'Contracts',
-    description: 'Include items from outstanding contracts you issued',
+    labelKey: 'assetSettings.contracts',
+    descriptionKey: 'assetSettings.contractsDesc',
   },
   {
     key: 'includeIndustryJobs',
     filterValue: 'INDUSTRY_JOBS',
-    label: 'Industry Jobs',
-    description: 'Include items from active and ready industry jobs',
+    labelKey: 'assetSettings.industryJobs',
+    descriptionKey: 'assetSettings.industryJobsDesc',
   },
   {
     key: 'includeActiveShip',
     filterValue: 'ACTIVE_SHIP',
-    label: 'Active Ship',
-    description: 'Include your currently piloted ship and its contents',
+    labelKey: 'assetSettings.activeShip',
+    descriptionKey: 'assetSettings.activeShipDesc',
   },
   {
     key: 'includeStructures',
     filterValue: 'STRUCTURES',
-    label: 'Structures',
-    description:
-      'Include owned structures (Citadels, Engineering Complexes, etc.)',
+    labelKey: 'assetSettings.structures',
+    descriptionKey: 'assetSettings.structuresDesc',
   },
 ]
 

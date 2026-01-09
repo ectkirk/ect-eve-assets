@@ -1,0 +1,34 @@
+{
+  "empty": "有効な契約がありません。",
+
+  "fallback.id": "ID {{id}}",
+
+  "totals.itemValue": "アイテム価値",
+  "totals.contractPrice": "契約価格",
+  "totals.collateral": "担保",
+
+  "types.itemExchange": "アイテム交換",
+  "types.courier": "配送",
+  "types.auction": "オークション",
+  "types.loan": "ローン",
+  "types.unknown": "不明",
+
+  "availability.public": "公開",
+
+  "items.courierContract": "配送契約",
+  "items.multipleItems": "[複数アイテム]",
+  "items.empty": "[空]",
+
+  "direction.youProvide": "提供するアイテム",
+  "direction.youWant": "欲しいアイテム",
+  "direction.youReceive": "受け取る",
+
+  "status.outstanding": "未処理",
+  "status.inProgress": "進行中",
+  "status.finished": "完了",
+  "status.cancelled": "キャンセル",
+  "status.rejected": "拒否",
+  "status.failed": "失敗",
+  "status.deleted": "削除済み",
+  "status.reversed": "取消"
+}

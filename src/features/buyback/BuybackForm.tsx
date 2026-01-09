@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 interface BuybackFormProps {
   onSubmit: (text: string) => void
@@ -15,11 +16,14 @@ export function BuybackForm({
   isLoading = false,
   hasQuote = false,
   onReset,
-  submitLabel = 'Get Quote',
-  resetLabel = 'Create a new quote',
+  submitLabel,
+  resetLabel,
   defaultText = '',
 }: BuybackFormProps) {
+  const { t } = useTranslation('tools')
   const [text, setText] = useState(defaultText)
+  const effectiveSubmitLabel = submitLabel ?? t('buyback.getQuote')
+  const effectiveResetLabel = resetLabel ?? t('buyback.newQuote')
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -46,13 +50,13 @@ export function BuybackForm({
           htmlFor="items-input"
           className="mb-2 block text-sm font-medium text-content-secondary"
         >
-          Item list
+          {t('buyback.itemList')}
         </label>
         <textarea
           id="items-input"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Paste items from EVE (inventory, contracts, fittings, etc.)"
+          placeholder={t('buyback.placeholder')}
           rows={12}
           className={`w-full rounded-lg border px-4 py-3 font-mono text-sm transition-colors focus:outline-none ${
             hasQuote
@@ -63,8 +67,8 @@ export function BuybackForm({
         />
         <div className="mt-2 text-sm text-content-secondary">
           {lineCount > 0
-            ? `${lineCount} line${lineCount !== 1 ? 's' : ''}`
-            : 'No items'}
+            ? t('buyback.lineCount', { count: lineCount })
+            : t('buyback.noItems')}
         </div>
       </div>
 
@@ -75,7 +79,7 @@ export function BuybackForm({
             onClick={handleReset}
             className="rounded-lg bg-action px-6 py-2.5 font-medium text-action-foreground transition-colors hover:bg-action-hover focus:ring-2 focus:ring-action focus:ring-offset-2 focus:ring-offset-surface focus:outline-none"
           >
-            {resetLabel}
+            {effectiveResetLabel}
           </button>
         ) : (
           <>
@@ -102,10 +106,10 @@ export function BuybackForm({
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     />
                   </svg>
-                  Calculating...
+                  {t('buyback.calculating')}
                 </span>
               ) : (
-                submitLabel
+                effectiveSubmitLabel
               )}
             </button>
             {text.trim() && (
@@ -115,7 +119,7 @@ export function BuybackForm({
                 disabled={isLoading}
                 className="rounded-lg border border-border px-4 py-2.5 font-medium text-content-secondary transition-colors hover:bg-surface-secondary focus:ring-2 focus:ring-border focus:ring-offset-2 focus:ring-offset-surface focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Clear
+                {t('buyback.clear')}
               </button>
             )}
           </>

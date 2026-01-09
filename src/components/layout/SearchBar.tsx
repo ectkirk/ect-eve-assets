@@ -8,6 +8,7 @@ import {
   X,
   RefreshCw,
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import {
   useTabControls,
   MAIL_FILTER_OPTIONS,
@@ -15,25 +16,25 @@ import {
   type OrderTypeValue,
 } from '@/context'
 import { CorporationLogo } from '@/components/ui/type-icon'
-import { cn, formatNumber } from '@/lib/utils'
+import { cn, formatNumber, formatFullNumber } from '@/lib/utils'
 import {
   useAssetSettings,
   ASSET_SETTINGS_CONFIG,
 } from '@/store/asset-settings-store'
 import { useClickOutside } from '@/hooks'
 
-const ASSET_TYPE_OPTIONS = [
-  { value: '', label: 'All Types' },
-  { value: 'ACTIVE_SHIP', label: 'Active Ship' },
-  { value: 'ASSET_SAFETY', label: 'Asset Safety' },
-  { value: 'CONTRACTS', label: 'Contracts' },
-  { value: 'DELIVERIES', label: 'Deliveries' },
-  { value: 'INDUSTRY_JOBS', label: 'Industry' },
-  { value: 'ITEM_HANGAR', label: 'Item Hangar' },
-  { value: 'MARKET_ORDERS', label: 'Market Orders' },
-  { value: 'OFFICE', label: 'Office' },
-  { value: 'SHIP_HANGAR', label: 'Ship Hangar' },
-  { value: 'STRUCTURES', label: 'Structures' },
+const ASSET_TYPE_KEYS: { value: string; key: string }[] = [
+  { value: '', key: 'searchBar.assetTypes.all' },
+  { value: 'ACTIVE_SHIP', key: 'searchBar.assetTypes.activeShip' },
+  { value: 'ASSET_SAFETY', key: 'searchBar.assetTypes.assetSafety' },
+  { value: 'CONTRACTS', key: 'searchBar.assetTypes.contracts' },
+  { value: 'DELIVERIES', key: 'searchBar.assetTypes.deliveries' },
+  { value: 'INDUSTRY_JOBS', key: 'searchBar.assetTypes.industry' },
+  { value: 'ITEM_HANGAR', key: 'searchBar.assetTypes.itemHangar' },
+  { value: 'MARKET_ORDERS', key: 'searchBar.assetTypes.marketOrders' },
+  { value: 'OFFICE', key: 'searchBar.assetTypes.office' },
+  { value: 'SHIP_HANGAR', key: 'searchBar.assetTypes.shipHangar' },
+  { value: 'STRUCTURES', key: 'searchBar.assetTypes.structures' },
 ]
 
 const EXCLUDED_FILTER_VALUES = new Set(
@@ -43,13 +44,14 @@ const EXCLUDED_FILTER_VALUES = new Set(
 const SEARCH_DEBOUNCE_MS = 250
 const MAX_LOYALTY_CORPS_DISPLAY = 6
 
-const ORDER_TYPE_LABELS: Record<OrderTypeValue, string> = {
-  all: 'All Orders',
-  sell: 'Sell Orders',
-  buy: 'Buy Orders',
+const ORDER_TYPE_KEYS: Record<OrderTypeValue, string> = {
+  all: 'searchBar.orderTypes.all',
+  sell: 'searchBar.orderTypes.sell',
+  buy: 'searchBar.orderTypes.buy',
 }
 
 function RefreshButton() {
+  const { t } = useTranslation('common')
   const { refreshAction } = useTabControls()
 
   if (!refreshAction) return null
@@ -59,17 +61,18 @@ function RefreshButton() {
       onClick={refreshAction.onRefresh}
       disabled={refreshAction.isRefreshing}
       className="flex items-center gap-1 rounded border border-border bg-surface-tertiary px-2.5 py-1 text-sm hover:bg-surface-tertiary/70 disabled:opacity-50"
-      title="Refresh"
+      title={t('searchBar.refresh')}
     >
       <RefreshCw
         className={`h-3.5 w-3.5 ${refreshAction.isRefreshing ? 'animate-spin' : ''}`}
       />
-      Refresh
+      {t('searchBar.refresh')}
     </button>
   )
 }
 
 function ExpandCollapseButton() {
+  const { t } = useTranslation('common')
   const { expandCollapse } = useTabControls()
 
   if (!expandCollapse) return null
@@ -78,18 +81,22 @@ function ExpandCollapseButton() {
     <button
       onClick={expandCollapse.toggle}
       className="flex items-center gap-1 rounded border border-border bg-surface-tertiary px-2.5 py-1 text-sm hover:bg-surface-tertiary/70"
-      title={expandCollapse.isExpanded ? 'Collapse all' : 'Expand all'}
+      title={
+        expandCollapse.isExpanded
+          ? t('searchBar.collapseAll')
+          : t('searchBar.expandAll')
+      }
       aria-expanded={expandCollapse.isExpanded}
     >
       {expandCollapse.isExpanded ? (
         <>
           <ChevronsDownUp className="h-3.5 w-3.5" />
-          Collapse
+          {t('searchBar.collapse')}
         </>
       ) : (
         <>
           <ChevronsUpDown className="h-3.5 w-3.5" />
-          Expand
+          {t('searchBar.expand')}
         </>
       )}
     </button>
@@ -97,6 +104,7 @@ function ExpandCollapseButton() {
 }
 
 function ColumnsDropdown() {
+  const { t } = useTranslation('common')
   const { columns } = useTabControls()
   const [open, setOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -134,7 +142,7 @@ function ColumnsDropdown() {
         aria-haspopup="menu"
         className="flex items-center gap-1 rounded border border-border bg-surface-tertiary px-2.5 py-1 text-sm hover:bg-surface-tertiary/70"
       >
-        Columns <ChevronDown className="h-3.5 w-3.5" />
+        {t('searchBar.columns')} <ChevronDown className="h-3.5 w-3.5" />
       </button>
       {open && (
         <div
@@ -152,7 +160,7 @@ function ColumnsDropdown() {
               <span className="flex h-4 w-4 items-center justify-center">
                 {col.visible && <Check className="h-4 w-4 text-accent" />}
               </span>
-              {col.label}
+              {t(col.label)}
             </button>
           ))}
         </div>
@@ -162,6 +170,7 @@ function ColumnsDropdown() {
 }
 
 export function SearchBar() {
+  const { t } = useTranslation('common')
   const {
     search,
     setSearch,
@@ -178,7 +187,7 @@ export function SearchBar() {
   const settings = useAssetSettings()
 
   const filteredTypeOptions = useMemo(() => {
-    return ASSET_TYPE_OPTIONS.filter((opt) => {
+    return ASSET_TYPE_KEYS.filter((opt) => {
       if (!EXCLUDED_FILTER_VALUES.has(opt.value)) return true
       const config = ASSET_SETTINGS_CONFIG.find(
         (c) => c.filterValue === opt.value
@@ -219,7 +228,7 @@ export function SearchBar() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-content-muted" />
         <input
           type="text"
-          placeholder={searchPlaceholder ?? 'Search...'}
+          placeholder={searchPlaceholder ?? t('search.placeholder')}
           value={inputValue}
           onChange={(e) => handleChange(e.target.value)}
           aria-label="Search"
@@ -276,10 +285,11 @@ export function SearchBar() {
           {loyaltyCorporations.corporations.length >
             MAX_LOYALTY_CORPS_DISPLAY && (
             <span className="text-xs text-content-muted shrink-0">
-              +
-              {loyaltyCorporations.corporations.length -
-                MAX_LOYALTY_CORPS_DISPLAY}{' '}
-              more
+              {t('searchBar.more', {
+                count:
+                  loyaltyCorporations.corporations.length -
+                  MAX_LOYALTY_CORPS_DISPLAY,
+              })}
             </span>
           )}
         </div>
@@ -296,7 +306,7 @@ export function SearchBar() {
         >
           {ORDER_TYPE_OPTIONS.map((opt) => (
             <option key={opt} value={opt}>
-              {ORDER_TYPE_LABELS[opt]}
+              {t(ORDER_TYPE_KEYS[opt])}
             </option>
           ))}
         </select>
@@ -311,7 +321,7 @@ export function SearchBar() {
         >
           {filteredTypeOptions.map((opt) => (
             <option key={opt.value} value={opt.value}>
-              {opt.label}
+              {t(opt.key)}
             </option>
           ))}
         </select>
@@ -324,7 +334,7 @@ export function SearchBar() {
           aria-label="Filter by category"
           className="w-40 rounded border border-border bg-surface-tertiary px-2 py-1.5 text-sm focus:border-accent focus:outline-hidden"
         >
-          <option value="">All Categories</option>
+          <option value="">{t('searchBar.allCategories')}</option>
           {categoryFilter.categories.map((cat) => (
             <option key={cat} value={cat}>
               {cat}
@@ -336,10 +346,10 @@ export function SearchBar() {
       {totalValue !== null && (
         <span className="text-sm">
           <span className="text-content-secondary">
-            {totalValue.label ?? 'Value'}:{' '}
+            {totalValue.label ?? t('columns.value')}:{' '}
           </span>
           <span className="text-semantic-positive">
-            {formatNumber(totalValue.value)} ISK
+            {formatNumber(totalValue.value)}
           </span>
           {totalValue.secondaryValue !== undefined && (
             <>
@@ -348,7 +358,7 @@ export function SearchBar() {
                 {totalValue.secondaryLabel ?? 'Secondary'}:{' '}
               </span>
               <span className="text-semantic-warning">
-                {formatNumber(totalValue.secondaryValue)} ISK
+                {formatNumber(totalValue.secondaryValue)}
               </span>
             </>
           )}
@@ -359,7 +369,7 @@ export function SearchBar() {
                 {totalValue.tertiaryLabel ?? 'Tertiary'}:{' '}
               </span>
               <span className="text-accent">
-                {formatNumber(totalValue.tertiaryValue)} ISK
+                {formatNumber(totalValue.tertiaryValue)}
               </span>
             </>
           )}
@@ -372,8 +382,10 @@ export function SearchBar() {
           aria-live="polite"
           className="text-sm text-content-secondary"
         >
-          Showing {resultCount.showing.toLocaleString()} of{' '}
-          {resultCount.total.toLocaleString()}
+          {t('searchBar.showing', {
+            showing: formatFullNumber(resultCount.showing),
+            total: formatFullNumber(resultCount.total),
+          })}
         </span>
       )}
 

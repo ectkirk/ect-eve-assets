@@ -133,6 +133,7 @@ export function stopESIHandlers(): void {
   for (const [, pending] of pendingTokenRequests) {
     for (const p of pending) {
       clearTimeout(p.timeout)
+      p.resolve(null)
     }
   }
   pendingTokenRequests.clear()
@@ -150,6 +151,7 @@ function parseESIOptions(options: unknown): ESIRequestOptions {
     if (typeof opts.requiresAuth === 'boolean')
       esiOptions.requiresAuth = opts.requiresAuth
     if (typeof opts.etag === 'string') esiOptions.etag = opts.etag
+    if (typeof opts.language === 'string') esiOptions.language = opts.language
   }
   return esiOptions
 }

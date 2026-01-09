@@ -8,8 +8,51 @@
       content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://images.evetech.net https://mutamarket.com; connect-src 'self' https://esi.evetech.net https://login.eveonline.com https://edencom.net https://mutamarket.com https://discord.com"
     />
     <title>ECT EVE Assets</title>
+    <style>
+      #initial-loader {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        background: #0f172a;
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        color: #f8fafc;
+      }
+      #initial-loader .logo {
+        font-size: 1.5rem;
+        font-weight: 700;
+        letter-spacing: -0.025em;
+      }
+      #initial-loader .accent {
+        color: #3b82f6;
+      }
+      #initial-loader .beta {
+        font-size: 0.75rem;
+        color: #94a3b8;
+      }
+      .light #initial-loader {
+        background: #f8fafc;
+        color: #0f172a;
+      }
+      .light #initial-loader .accent {
+        color: #2563eb;
+      }
+      .light #initial-loader .beta {
+        color: #64748b;
+      }
+    </style>
   </head>
   <body>
+    <div id="initial-loader">
+      <span class="logo"><span class="accent">ECT</span> EVE Assets</span>
+      <span class="beta">Beta 2.3.0</span>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

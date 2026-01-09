@@ -1,0 +1,10 @@
+{
+  "divisions.master": "Основной кошелёк",
+  "divisions.wallet2": "Кошелёк 2",
+  "divisions.wallet3": "Кошелёк 3",
+  "divisions.wallet4": "Кошелёк 4",
+  "divisions.wallet5": "Кошелёк 5",
+  "divisions.wallet6": "Кошелёк 6",
+  "divisions.wallet7": "Кошелёк 7",
+  "divisions.division": "Раздел {{number}}"
+}

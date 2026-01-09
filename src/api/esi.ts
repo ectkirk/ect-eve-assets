@@ -1,8 +1,8 @@
 import type { z } from 'zod'
 import type { ESIResponseMeta, ESIRequestOptions } from 'electron/preload'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
+import { getLanguage } from '@/store/settings-store'
 import { logger } from '@/lib/logger'
-import { chunkArray } from '@/lib/utils'
 import {
   ValidationError,
   ConfigurationError,
@@ -48,13 +48,18 @@ function getESI() {
   return window.electronAPI.esi
 }
 
+function withLanguage(options: ESIRequestOptions): ESIRequestOptions {
+  if (options.language) return options
+  return { ...options, language: getLanguage() }
+}
+
 export const esi = {
   async fetch<T>(
     endpoint: string,
     options: ESIRequestOptions & { schema?: z.ZodType<T> } = {}
   ): Promise<T> {
     const { schema, ...esiOptions } = options
-    const data = await getESI().fetch<T>(endpoint, esiOptions)
+    const data = await getESI().fetch<T>(endpoint, withLanguage(esiOptions))
     checkForESIError(data)
     return schema ? validate(data, schema, endpoint) : data
   },
@@ -64,7 +69,10 @@ export const esi = {
     options: ESIRequestOptions & { schema?: z.ZodType<T> } = {}
   ): Promise<ESIResponseMeta<T>> {
     const { schema, ...esiOptions } = options
-    const result = await getESI().fetchWithMeta<T>(endpoint, esiOptions)
+    const result = await getESI().fetchWithMeta<T>(
+      endpoint,
+      withLanguage(esiOptions)
+    )
     checkForESIError(result)
     if (schema && !result.notModified) {
       return { ...result, data: validate(result.data, schema, endpoint) }
@@ -77,7 +85,10 @@ export const esi = {
     options: ESIRequestOptions & { schema?: z.ZodType<T> } = {}
   ): Promise<T[]> {
     const { schema, ...esiOptions } = options
-    const data = await getESI().fetchPaginated<T>(endpoint, esiOptions)
+    const data = await getESI().fetchPaginated<T>(
+      endpoint,
+      withLanguage(esiOptions)
+    )
     checkForESIError(data)
     return schema ? validate(data, schema.array(), endpoint) : data
   },
@@ -89,7 +100,7 @@ export const esi = {
     const { schema, ...esiOptions } = options
     const result = await getESI().fetchPaginatedWithMeta<T>(
       endpoint,
-      esiOptions
+      withLanguage(esiOptions)
     )
     checkForESIError(result)
     if (schema && !result.notModified) {
@@ -121,7 +132,7 @@ export const esi = {
     try {
       const result = await getESI().fetchPaginatedWithProgress<T>(
         endpoint,
-        esiOptions,
+        withLanguage(esiOptions),
         progressChannel
       )
       checkForESIError(result)
@@ -135,43 +146,6 @@ export const esi = {
     } finally {
       cleanup?.()
     }
-  },
-
-  async fetchBatch<T, R>(
-    items: T[],
-    fetcher: (item: T) => Promise<R>,
-    options: {
-      batchSize?: number
-      onProgress?: (completed: number, total: number) => void
-    } = {}
-  ): Promise<Map<T, R | null>> {
-    const { batchSize = 20, onProgress } = options
-    const results = new Map<T, R | null>()
-
-    for (const [i, batch] of chunkArray(items, batchSize).entries()) {
-      const batchResults = await Promise.all(
-        batch.map(async (item) => {
-          try {
-            return { item, result: await fetcher(item) }
-          } catch (error) {
-            logger.warn('Batch fetch item failed', {
-              module: 'ESI',
-              item,
-              error,
-            })
-            return { item, result: null }
-          }
-        })
-      )
-
-      for (const { item, result } of batchResults) {
-        results.set(item, result)
-      }
-
-      onProgress?.(Math.min((i + 1) * batchSize, items.length), items.length)
-    }
-
-    return results
   },
 
   clearCache(): void {
@@ -244,18 +218,21 @@ export function setupESITokenProvider(): () => void {
               module: 'ESI',
               ownerId,
               success: result.success,
+              isAuthFailure: result.isAuthFailure,
             })
+            if (result.isAuthFailure) {
+              store.setOwnerAuthFailed(ownerId, true)
+              logger.warn('Owner auth failed, marking for re-authentication', {
+                module: 'ESI',
+                ownerId,
+              })
+            }
           } catch (err) {
             logger.error('Token refresh threw error', getErrorForLog(err), {
               module: 'ESI',
               characterId,
             })
           }
-          store.setOwnerAuthFailed(ownerId, true)
-          logger.warn('Owner auth failed, marking for re-authentication', {
-            module: 'ESI',
-            ownerId,
-          })
           return null
         })()
 

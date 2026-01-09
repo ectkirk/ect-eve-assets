@@ -1,4 +1,5 @@
 import { useMemo, Fragment, useReducer } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore, type Owner, ownerKey } from '@/store/auth-store'
 import { ownerModalReducer, initialOwnerModalState } from './owner-modal-state'
 import { useExpiryCacheStore } from '@/store/expiry-cache-store'
@@ -43,6 +44,8 @@ export function OwnerManagementModal({
   open,
   onOpenChange,
 }: OwnerManagementModalProps) {
+  const { t } = useTranslation('layout')
+  const { t: tc } = useTranslation('common')
   const [state, dispatch] = useReducer(
     ownerModalReducer,
     initialOwnerModalState
@@ -167,7 +170,9 @@ export function OwnerManagementModal({
         if (forCharacter && result.characterId !== forCharacter.characterId) {
           dispatch({
             type: 'SET_ERROR',
-            error: `Please authenticate with ${forCharacter.name} to add their corporation.`,
+            error: t('ownerModal.errors.wrongCharacterForCorp', {
+              name: forCharacter.name,
+            }),
           })
           return
         }
@@ -304,7 +309,7 @@ export function OwnerManagementModal({
         if (result.characterId !== owner.characterId) {
           dispatch({
             type: 'SET_ERROR',
-            error: `Wrong character authenticated. Expected ${owner.name}, got a different character. Please try again.`,
+            error: t('ownerModal.errors.wrongCharacter', { name: owner.name }),
           })
           return
         }
@@ -359,7 +364,7 @@ export function OwnerManagementModal({
       })
       dispatch({
         type: 'SET_ERROR',
-        error: 'Failed to refresh corporation roles',
+        error: t('ownerModal.errors.failedRefreshRoles'),
       })
     } finally {
       dispatch({ type: 'SET_REFRESHING_ROLES', ownerKey: null })
@@ -370,10 +375,8 @@ export function OwnerManagementModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Manage Accounts</DialogTitle>
-          <DialogDescription>
-            Add or remove characters and corporations to track their assets.
-          </DialogDescription>
+          <DialogTitle>{t('ownerModal.title')}</DialogTitle>
+          <DialogDescription>{t('ownerModal.description')}</DialogDescription>
         </DialogHeader>
 
         {error && (
@@ -387,7 +390,7 @@ export function OwnerManagementModal({
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-content-muted" />
             <input
               type="text"
-              placeholder="Search accounts..."
+              placeholder={tc('search.placeholder')}
               value={searchQuery}
               onChange={(e) =>
                 dispatch({ type: 'SET_SEARCH', query: e.target.value })
@@ -406,14 +409,14 @@ export function OwnerManagementModal({
                   disabled={isBusy}
                   className="flex-1 rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface-tertiary disabled:opacity-50"
                 >
-                  Select All
+                  {tc('buttons.selectAll')}
                 </button>
                 <button
                   onClick={handleDeselectAll}
                   disabled={isBusy}
                   className="flex-1 rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface-tertiary disabled:opacity-50"
                 >
-                  Deselect All
+                  {tc('buttons.deselectAll')}
                 </button>
               </div>
             )}
@@ -422,11 +425,11 @@ export function OwnerManagementModal({
             <div>
               <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-content-secondary">
                 <User className="h-3 w-3" />
-                Accounts ({filteredCharacters.length})
+                {t('ownerModal.accounts', { count: filteredCharacters.length })}
               </div>
               {filteredCharacters.length === 0 ? (
                 <p className="py-4 text-center text-sm text-content-muted">
-                  No characters added yet
+                  {t('ownerModal.noCharacters')}
                 </p>
               ) : (
                 <div className="space-y-1">
@@ -488,19 +491,19 @@ export function OwnerManagementModal({
             <div className="flex flex-col items-center gap-3 py-2">
               <div className="flex items-center gap-2 text-content-secondary">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Waiting for EVE login...</span>
+                <span>{tc('status.waitingForLogin')}</span>
               </div>
               <button
                 onClick={handleCancelAuth}
                 className="text-sm text-content-muted hover:text-content-secondary transition-colors"
               >
-                Cancel
+                {tc('buttons.cancel')}
               </button>
             </div>
           ) : isBusy ? (
             <div className="flex items-center justify-center gap-2 py-2 text-content-secondary">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span>Updating data...</span>
+              <span>{t('ownerModal.updatingData')}</span>
             </div>
           ) : (
             <button
@@ -508,7 +511,7 @@ export function OwnerManagementModal({
               className="flex w-full items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium hover:bg-accent-hover"
             >
               <User className="h-4 w-4" />
-              Add Character
+              {t('ownerModal.addCharacter')}
             </button>
           )}
           {owners.length > 0 && !isBusy && authFlow === 'idle' && (
@@ -516,7 +519,7 @@ export function OwnerManagementModal({
               onClick={handleLogoutAllClick}
               className="w-full rounded-md border border-semantic-danger/50 px-4 py-2 text-sm font-medium text-semantic-danger hover:bg-semantic-danger/10"
             >
-              Logout All
+              {t('ownerModal.logoutAll')}
             </button>
           )}
         </div>
@@ -524,9 +527,15 @@ export function OwnerManagementModal({
         <ConfirmDialog
           open={ownerToRemove !== null}
           onOpenChange={(open) => !open && dispatch({ type: 'CANCEL_REMOVE' })}
-          title={`Remove ${ownerToRemove?.type === 'corporation' ? 'Corporation' : 'Character'}?`}
-          description={`Are you sure you want to remove ${ownerToRemove?.name}? All cached data for this account will be deleted.`}
-          confirmLabel="Remove"
+          title={
+            ownerToRemove?.type === 'corporation'
+              ? t('ownerModal.removeCorporation')
+              : t('ownerModal.removeCharacter')
+          }
+          description={t('ownerModal.removeConfirm', {
+            name: ownerToRemove?.name,
+          })}
+          confirmLabel={tc('buttons.remove')}
           variant="danger"
           onConfirm={handleRemoveOwnerConfirm}
         />
@@ -536,9 +545,9 @@ export function OwnerManagementModal({
           onOpenChange={(open) =>
             dispatch({ type: open ? 'SHOW_LOGOUT_ALL' : 'HIDE_LOGOUT_ALL' })
           }
-          title="Logout All Accounts?"
-          description="Are you sure you want to logout all accounts? All cached data will be deleted and you will need to re-authenticate each account."
-          confirmLabel="Logout All"
+          title={t('ownerModal.logoutAllTitle')}
+          description={t('ownerModal.logoutAllConfirm')}
+          confirmLabel={t('ownerModal.logoutAll')}
           variant="danger"
           onConfirm={handleLogoutAllConfirm}
         />

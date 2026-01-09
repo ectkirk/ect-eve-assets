@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
 import { ChevronDown, Check } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { useClickOutside } from '@/hooks'
 
@@ -23,6 +24,7 @@ export function MultiSelectDropdown({
   placeholder,
   className,
 }: MultiSelectDropdownProps) {
+  const { t } = useTranslation('common')
   const [isOpen, setIsOpen] = useState(false)
   const [focusedIndex, setFocusedIndex] = useState(-1)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -160,7 +162,7 @@ export function MultiSelectDropdown({
               onClick={selectAll}
               className="text-content-secondary hover:text-content"
             >
-              All
+              {t('buttons.all')}
             </button>
             <span className="text-content-muted">|</span>
             <button
@@ -168,7 +170,7 @@ export function MultiSelectDropdown({
               onClick={clearAll}
               className="text-content-secondary hover:text-content"
             >
-              None
+              {t('buttons.none')}
             </button>
           </div>
           {options.map((option, index) => {

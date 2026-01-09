@@ -1,15 +1,18 @@
 import { useEffect, useMemo, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useClonesStore } from '@/store/clones-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useTabControls } from '@/context'
 import {
   getType,
+  getTypeName,
   getLocation,
   getStructure,
   useReferenceCacheStore,
 } from '@/store/reference-cache'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
+import { getLocale } from '@/lib/utils'
 import { CharacterPanel } from '@/components/ui/character-panel'
 import {
   CharacterClonesPanel,
@@ -44,6 +47,8 @@ function getImplantSlot(typeId: number): number {
 }
 
 export function ClonesTab() {
+  const { t } = useTranslation('clones')
+  const { t: tc } = useTranslation('common')
   const ownersRecord = useAuthStore((s) => s.owners)
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
 
@@ -68,9 +73,9 @@ export function ClonesTab() {
   }, [update])
 
   useEffect(() => {
-    setSearchPlaceholder('Search clones...')
+    setSearchPlaceholder(tc('search.placeholder'))
     return () => setSearchPlaceholder(null)
-  }, [setSearchPlaceholder])
+  }, [setSearchPlaceholder, tc])
 
   useEffect(() => {
     setRefreshAction({ onRefresh: handleRefresh, isRefreshing: isUpdating })
@@ -94,9 +99,15 @@ export function ClonesTab() {
       locationType: 'station' | 'structure'
     ): string => {
       if (locationType === 'structure') {
-        return getStructure(locationId)?.name ?? `Structure ${locationId}`
+        return (
+          getStructure(locationId)?.name ??
+          t('fallback.structure', { id: locationId })
+        )
       }
-      return getLocation(locationId)?.name ?? `Location ${locationId}`
+      return (
+        getLocation(locationId)?.name ??
+        t('fallback.location', { id: locationId })
+      )
     }
 
     const result: CharacterClones[] = []
@@ -110,20 +121,19 @@ export function ClonesTab() {
       const homeLocationType = clones.home_location?.location_type ?? 'station'
       const homeLocationName = homeLocationId
         ? getLocationName(homeLocationId, homeLocationType)
-        : 'Unknown'
+        : t('fallback.unknown')
 
-      const activeImplantInfos: ImplantInfo[] = activeImplants.map((typeId) => {
-        const type = types.get(typeId)
-        return {
+      const activeImplantInfos: ImplantInfo[] = activeImplants.map(
+        (typeId) => ({
           typeId,
-          name: type?.name ?? `Unknown Type ${typeId}`,
+          name: getTypeName(typeId),
           slot: getImplantSlot(typeId),
-        }
-      })
+        })
+      )
 
       const activeClone: CloneInfo = {
         id: 0,
-        name: 'Active Clone',
+        name: t('activeClone'),
         locationId: homeLocationId ?? 0,
         locationName: homeLocationName,
         locationType: homeLocationType,
@@ -132,14 +142,11 @@ export function ClonesTab() {
       }
 
       const jumpClones: CloneInfo[] = clones.jump_clones.map((jc) => {
-        const implants: ImplantInfo[] = jc.implants.map((typeId) => {
-          const type = types.get(typeId)
-          return {
-            typeId,
-            name: type?.name ?? `Unknown Type ${typeId}`,
-            slot: getImplantSlot(typeId),
-          }
-        })
+        const implants: ImplantInfo[] = jc.implants.map((typeId) => ({
+          typeId,
+          name: getTypeName(typeId),
+          slot: getImplantSlot(typeId),
+        }))
 
         return {
           id: jc.jump_clone_id,
@@ -159,8 +166,10 @@ export function ClonesTab() {
       })
     }
 
-    return result.sort((a, b) => a.ownerName.localeCompare(b.ownerName))
-  }, [clonesByOwner, types, structures, selectedSet])
+    return result.sort((a, b) =>
+      a.ownerName.localeCompare(b.ownerName, getLocale())
+    )
+  }, [clonesByOwner, types, structures, selectedSet, t])
 
   const loadingState = TabLoadingState({
     dataType: 'clones',
@@ -180,7 +189,7 @@ export function ClonesTab() {
           key={char.ownerId}
           characterId={char.ownerId}
           characterName={char.ownerName}
-          subtitle={`${char.jumpCloneCount} jump clone${char.jumpCloneCount !== 1 ? 's' : ''}`}
+          subtitle={t('subtitle', { count: char.jumpCloneCount })}
         >
           <CharacterClonesPanel data={char.clonesData} filter={search} />
         </CharacterPanel>

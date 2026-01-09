@@ -1,0 +1,43 @@
+{
+  "badges.activeShip": "Active Ship",
+  "badges.inContract": "In Contract",
+  "badges.sellOrder": "Sell Order",
+  "badges.inJob": "In Job",
+  "badges.structure": "Structure",
+
+  "empty": "No assets found.",
+  "noCharacters": "No characters logged in. Add a character to view assets.",
+  "noData": "No asset data loaded. Click Update in the header to fetch from ESI.",
+
+  "loading.assets": "Loading assets...",
+  "loading.fetching": "Fetching assets ({{current}}/{{total}})...",
+
+  "error.loadFailed": "Failed to load assets",
+
+  "contextMenu.viewContracts": "View in Contracts",
+  "contextMenu.openMutamarket": "Open in Mutamarket",
+
+  "settingsModal.title": "Asset View Settings",
+  "settingsModal.description": "Choose which data sources to include in asset totals",
+  "settingsModal.marketOrders": "Market Orders",
+  "settingsModal.marketOrdersDesc": "Include items from active sell orders",
+  "settingsModal.contracts": "Contracts",
+  "settingsModal.contractsDesc": "Include items from outstanding contracts you issued",
+  "settingsModal.industryJobs": "Industry Jobs",
+  "settingsModal.industryJobsDesc": "Include items from active and ready industry jobs",
+  "settingsModal.activeShip": "Active Ship",
+  "settingsModal.activeShipDesc": "Include your currently piloted ship and its contents",
+  "settingsModal.structures": "Structures",
+  "settingsModal.structuresDesc": "Include owned structures (Citadels, Engineering Complexes, etc.)",
+
+  "locations.assetSafety": "Asset Safety",
+  "locations.unknownParent": "Unknown Parent",
+  "locations.unknownLocation": "Unknown Location",
+  "locations.unknownType": "Unknown Type {{id}}",
+  "categories.abyssals": "Abyssals",
+
+  "flags.inContract": "In Contract",
+  "flags.sellOrder": "Sell Order",
+  "flags.industryJob": "In Job",
+  "flags.activeShip": "Active Ship"
+}

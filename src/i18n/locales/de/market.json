@@ -1,0 +1,9 @@
+{
+  "empty": "Keine Marktaufträge.",
+
+  "totals.sellOrders": "Verkaufsaufträge",
+  "totals.buyOrders": "Kaufaufträge",
+
+  "orderType.sell": "Verkaufen",
+  "orderType.buy": "Kaufen"
+}

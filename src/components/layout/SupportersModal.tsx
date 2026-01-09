@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import {
   Dialog,
   DialogContent,
@@ -30,17 +31,18 @@ const SUPPORTERS: SupporterRowProps[] = [
 ]
 
 export function SupportersModal({ open, onOpenChange }: SupportersModalProps) {
+  const { t } = useTranslation('dialogs')
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Supporters</DialogTitle>
+          <DialogTitle>{t('supporters.title')}</DialogTitle>
         </DialogHeader>
         <ScrollArea className="max-h-[60vh]">
           <div className="space-y-4 pr-4 text-sm">
             <p className="text-content-secondary">
-              These capsuleers showed their support for ECT EVE Assets. Their
-              generosity keeps morale high and the coffee flowing. o7
+              {t('supporters.description')}
             </p>
             <div className="divide-y divide-border">
               {SUPPORTERS.map((supporter) => (
@@ -48,7 +50,7 @@ export function SupportersModal({ open, onOpenChange }: SupportersModalProps) {
               ))}
             </div>
             <p className="text-center text-content-muted text-xs pt-2">
-              Want to see your name here? Check out Support Us in settings.
+              {t('supporters.cta')}
             </p>
           </div>
         </ScrollArea>

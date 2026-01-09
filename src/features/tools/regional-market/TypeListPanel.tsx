@@ -1,4 +1,5 @@
 import { memo, useMemo, useCallback, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { Folder, ChevronRight } from 'lucide-react'
 import { TypeIcon } from '@/components/ui/type-icon'
@@ -65,6 +66,7 @@ export function TypeListPanel({
   onSelectType,
   onSelectGroup,
 }: TypeListPanelProps) {
+  const { t } = useTranslation('tools')
   const containerRef = useRef<HTMLDivElement>(null)
   const allTypes = useReferenceCacheStore((s) => s.types)
 
@@ -106,13 +108,18 @@ export function TypeListPanel({
   if (!selectedGroup) {
     return (
       <div className="h-full flex flex-col items-center justify-center text-content-secondary">
-        <div className="text-lg font-medium mb-2">No Group Selected</div>
-        <div className="text-sm">Select a market group to browse items</div>
+        <div className="text-lg font-medium mb-2">
+          {t('regionalMarket.noGroupSelected')}
+        </div>
+        <div className="text-sm">{t('regionalMarket.selectGroupPrompt')}</div>
       </div>
     )
   }
 
-  const itemLabel = selectedGroup.children.length > 0 ? 'subgroup' : 'item'
+  const isSubgroupView = selectedGroup.children.length > 0
+  const countLabel = isSubgroupView
+    ? t('regionalMarket.subgroupCount', { count: rows.length })
+    : t('regionalMarket.itemCount', { count: rows.length })
 
   return (
     <div className="h-full flex flex-col p-4">
@@ -121,15 +128,12 @@ export function TypeListPanel({
           <span className="text-sm font-medium text-content">
             {selectedGroup.group.name}
           </span>
-          <span className="text-xs text-content-secondary">
-            {rows.length} {itemLabel}
-            {rows.length !== 1 ? 's' : ''}
-          </span>
+          <span className="text-xs text-content-secondary">{countLabel}</span>
         </div>
 
         {rows.length === 0 ? (
           <div className="h-24 flex items-center justify-center text-content-secondary text-sm">
-            No items in this group
+            {t('regionalMarket.noItemsInGroup')}
           </div>
         ) : (
           <div ref={containerRef} className="flex-1 overflow-auto">

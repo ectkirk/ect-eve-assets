@@ -1,0 +1,43 @@
+{
+  "badges.activeShip": "Активный корабль",
+  "badges.inContract": "В контракте",
+  "badges.sellOrder": "На продаже",
+  "badges.inJob": "В производстве",
+  "badges.structure": "Структура",
+
+  "empty": "Активы не найдены.",
+  "noCharacters": "Нет авторизованных персонажей. Добавьте персонажа для просмотра активов.",
+  "noData": "Данные об активах не загружены. Нажмите «Обновить» в заголовке для получения данных из ESI.",
+
+  "loading.assets": "Загрузка активов...",
+  "loading.fetching": "Получение активов ({{current}}/{{total}})...",
+
+  "error.loadFailed": "Не удалось загрузить активы",
+
+  "contextMenu.viewContracts": "Посмотреть в контрактах",
+  "contextMenu.openMutamarket": "Открыть в Mutamarket",
+
+  "settingsModal.title": "Настройки отображения активов",
+  "settingsModal.description": "Выберите, какие источники данных включить в подсчёт активов",
+  "settingsModal.marketOrders": "Рыночные ордера",
+  "settingsModal.marketOrdersDesc": "Включить предметы из активных ордеров на продажу",
+  "settingsModal.contracts": "Контракты",
+  "settingsModal.contractsDesc": "Включить предметы из ваших активных контрактов",
+  "settingsModal.industryJobs": "Производственные работы",
+  "settingsModal.industryJobsDesc": "Включить предметы из активных и готовых производственных работ",
+  "settingsModal.activeShip": "Активный корабль",
+  "settingsModal.activeShipDesc": "Включить текущий пилотируемый корабль и его содержимое",
+  "settingsModal.structures": "Структуры",
+  "settingsModal.structuresDesc": "Включить собственные структуры (Цитадели, Инженерные комплексы и т.д.)",
+
+  "locations.assetSafety": "Защита активов",
+  "locations.unknownParent": "Неизвестный источник",
+  "locations.unknownLocation": "Неизвестное местоположение",
+  "locations.unknownType": "Неизвестный тип {{id}}",
+  "categories.abyssals": "Бездна",
+
+  "flags.inContract": "В контракте",
+  "flags.sellOrder": "На продаже",
+  "flags.industryJob": "В производстве",
+  "flags.activeShip": "Активный корабль"
+}

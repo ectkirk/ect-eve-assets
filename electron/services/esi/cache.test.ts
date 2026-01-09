@@ -83,14 +83,6 @@ describe('ESICache', () => {
     })
   })
 
-  describe('delete', () => {
-    it('removes entry', () => {
-      cache.set('toDelete', { data: 'bye' }, 'etag', Date.now() + 60000)
-      cache.delete('toDelete')
-      expect(cache.get('toDelete')).toBeUndefined()
-    })
-  })
-
   describe('clear', () => {
     it('removes all entries', () => {
       cache.set('a', 1, 'e1', Date.now() + 60000)
@@ -101,12 +93,16 @@ describe('ESICache', () => {
   })
 
   describe('makeKey', () => {
-    it('creates key with characterId', () => {
-      expect(cache.makeKey(12345, '/endpoint')).toBe('12345:/endpoint')
+    it('creates key with characterId and default language', () => {
+      expect(cache.makeKey(12345, '/endpoint')).toBe('12345:en:/endpoint')
     })
 
     it('creates key with public for undefined characterId', () => {
-      expect(cache.makeKey(undefined, '/public')).toBe('public:/public')
+      expect(cache.makeKey(undefined, '/public')).toBe('public:en:/public')
+    })
+
+    it('creates key with specified language', () => {
+      expect(cache.makeKey(12345, '/endpoint', 'de')).toBe('12345:de:/endpoint')
     })
   })
 

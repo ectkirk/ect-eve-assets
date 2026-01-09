@@ -10,9 +10,10 @@ import {
 } from 'lucide-react'
 import type { TreeNode, TreeNodeType } from '@/lib/tree-types'
 import type { SortDirection, ColumnConfig } from '@/hooks'
-import { formatNumber, formatVolume as formatVolumeBase } from '@/lib/utils'
+import { formatVolume as formatVolumeBase } from '@/lib/utils'
 
-export { formatNumber }
+export { formatNumber, formatFullNumber } from '@/lib/utils'
+
 export function formatVolume(value: number): string {
   return formatVolumeBase(value, { suffix: true })
 }
@@ -117,11 +118,11 @@ export const DIVISION_COLORS = [
 ]
 
 export const TREE_COLUMNS: ColumnConfig[] = [
-  { id: 'name', label: 'Name' },
-  { id: 'region', label: 'Region' },
-  { id: 'quantity', label: 'Quantity' },
-  { id: 'value', label: 'Value' },
-  { id: 'volume', label: 'Volume', defaultVisible: false },
+  { id: 'name', label: 'columns.name' },
+  { id: 'region', label: 'columns.region' },
+  { id: 'quantity', label: 'columns.quantity' },
+  { id: 'value', label: 'columns.value' },
+  { id: 'volume', label: 'columns.volume', defaultVisible: false },
 ]
 
 export const COLUMN_STYLES: Record<string, { width: string; align: string }> = {

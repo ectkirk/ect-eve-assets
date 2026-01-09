@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Loader2 } from 'lucide-react'
 
 interface FreightFormProps {
@@ -16,6 +17,7 @@ export function FreightForm({
   onReset,
   defaultText = '',
 }: FreightFormProps) {
+  const { t } = useTranslation('tools')
   const [text, setText] = useState(defaultText)
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -43,13 +45,13 @@ export function FreightForm({
           htmlFor="freight-input"
           className="mb-2 block text-sm font-medium text-content-secondary"
         >
-          Item list
+          {t('freight.itemList')}
         </label>
         <textarea
           id="freight-input"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Paste items from EVE (inventory, contracts, fittings, etc.)"
+          placeholder={t('freight.placeholder')}
           rows={8}
           className={`w-full rounded-lg border px-4 py-3 font-mono text-sm transition-colors focus:outline-none ${
             hasResult
@@ -60,8 +62,8 @@ export function FreightForm({
         />
         <div className="mt-2 text-sm text-content-secondary">
           {lineCount > 0
-            ? `${lineCount} line${lineCount !== 1 ? 's' : ''}`
-            : 'No items'}
+            ? t('freight.lineCount', { count: lineCount })
+            : t('freight.noItems')}
         </div>
       </div>
 
@@ -72,7 +74,7 @@ export function FreightForm({
             onClick={handleReset}
             className="rounded-lg bg-action px-6 py-2.5 font-medium text-action-foreground transition-colors hover:bg-action-hover focus:ring-2 focus:ring-action focus:ring-offset-2 focus:ring-offset-surface focus:outline-none"
           >
-            Calculate new shipment
+            {t('freight.newShipment')}
           </button>
         ) : (
           <>
@@ -84,10 +86,10 @@ export function FreightForm({
               {isLoading ? (
                 <span className="flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Calculating...
+                  {t('freight.calculating')}
                 </span>
               ) : (
-                'Calculate Shipping'
+                t('freight.calculate')
               )}
             </button>
             {text.trim() && (
@@ -97,7 +99,7 @@ export function FreightForm({
                 disabled={isLoading}
                 className="rounded-lg border border-border px-4 py-2.5 font-medium text-content-secondary transition-colors hover:bg-surface-secondary focus:ring-2 focus:ring-border focus:ring-offset-2 focus:ring-offset-surface focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Clear
+                {t('freight.clear')}
               </button>
             )}
           </>

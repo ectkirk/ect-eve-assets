@@ -1,4 +1,5 @@
 import { useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/store/auth-store'
 import { useSkillsStore } from '@/store/skills-store'
 import { useTabControls } from '@/context'
@@ -8,6 +9,7 @@ import { CharacterSkillsPanel } from './CharacterSkillsPanel'
 import { formatSP } from './skill-utils'
 
 export function SkillsTab() {
+  const { t } = useTranslation('common')
   const hasCharacters = useAuthStore((s) =>
     Object.values(s.owners).some((o) => o.type === 'character')
   )
@@ -30,9 +32,9 @@ export function SkillsTab() {
   }, [update])
 
   useEffect(() => {
-    setSearchPlaceholder('Search skills...')
+    setSearchPlaceholder(t('search.placeholder'))
     return () => setSearchPlaceholder(null)
-  }, [setSearchPlaceholder])
+  }, [setSearchPlaceholder, t])
 
   useEffect(() => {
     setRefreshAction({ onRefresh: handleRefresh, isRefreshing: isUpdating })

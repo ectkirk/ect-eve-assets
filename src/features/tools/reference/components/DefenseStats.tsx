@@ -1,4 +1,5 @@
-import { formatNumber, formatDuration } from '@/lib/utils'
+import { useTranslation } from 'react-i18next'
+import { formatNumber, formatDuration, formatPercent } from '@/lib/utils'
 
 export const DAMAGE_COLORS = {
   em: { label: 'text-blue-400', bar: 'bg-blue-500' },
@@ -25,14 +26,26 @@ function ResistanceBar({
   resonance: number
   type: 'em' | 'thermal' | 'kinetic' | 'explosive'
 }) {
+  const { t } = useTranslation('tools')
   const resistance = (1 - resonance) * 100
   const colors = DAMAGE_COLORS[type]
+
+  const damageTypeLabels: Record<string, string> = {
+    em: t('reference.em'),
+    thermal: t('reference.thermal'),
+    kinetic: t('reference.kinetic'),
+    explosive: t('reference.explosive'),
+  }
 
   return (
     <div className="space-y-1">
       <div className="flex justify-between text-xs">
-        <span className={`${colors.label} font-medium`}>{label}</span>
-        <span className="font-mono text-content">{resistance.toFixed(1)}%</span>
+        <span className={`${colors.label} font-medium`}>
+          {damageTypeLabels[type] || label}
+        </span>
+        <span className="font-mono text-content">
+          {formatPercent(resistance)}
+        </span>
       </div>
       <div className="h-2 overflow-hidden rounded-full bg-surface-tertiary">
         <div
@@ -62,6 +75,7 @@ export function DefenseLayer({
   rechargeMs,
   resistances,
 }: DefenseLayerProps) {
+  const { t } = useTranslation('tools')
   const validResistances = Object.values(resistances).filter(
     (v): v is number => v !== undefined
   )
@@ -78,13 +92,17 @@ export function DefenseLayer({
         <div className="flex gap-4 text-xs">
           {hp !== undefined && hp > 0 && (
             <span>
-              <span className="text-content-secondary">HP: </span>
+              <span className="text-content-secondary">
+                {t('reference.hp')}:{' '}
+              </span>
               <span className="font-mono text-content">{formatNumber(hp)}</span>
             </span>
           )}
           {rechargeMs !== undefined && rechargeMs > 0 && (
             <span>
-              <span className="text-content-secondary">Recharge: </span>
+              <span className="text-content-secondary">
+                {t('reference.recharge')}:{' '}
+              </span>
               <span className="font-mono text-content">
                 {formatDuration(Math.round(rechargeMs / 1000))}
               </span>
@@ -92,7 +110,9 @@ export function DefenseLayer({
           )}
           {ehp !== undefined && (
             <span>
-              <span className="text-content-secondary">EHP: </span>
+              <span className="text-content-secondary">
+                {t('reference.ehp')}:{' '}
+              </span>
               <span className="font-mono text-content">
                 {formatNumber(Math.round(ehp))}
               </span>
@@ -207,11 +227,12 @@ export function extractDefenseStats(
 }
 
 export function DefenseStats({ stats }: { stats: DefenseStatsData }) {
+  const { t } = useTranslation('tools')
   return (
     <div className="space-y-4">
       {stats.shield && (
         <DefenseLayer
-          title="Shield"
+          title={t('reference.shield')}
           hp={stats.shield.hp}
           rechargeMs={stats.shield.rechargeMs}
           resistances={stats.shield.resistances}
@@ -219,14 +240,14 @@ export function DefenseStats({ stats }: { stats: DefenseStatsData }) {
       )}
       {stats.armor && (
         <DefenseLayer
-          title="Armor"
+          title={t('reference.armor')}
           hp={stats.armor.hp}
           resistances={stats.armor.resistances}
         />
       )}
       {stats.hull && (
         <DefenseLayer
-          title="Structure"
+          title={t('reference.structure')}
           hp={stats.hull.hp}
           resistances={stats.hull.resistances}
         />

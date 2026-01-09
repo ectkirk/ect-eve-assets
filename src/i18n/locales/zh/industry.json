@@ -1,0 +1,15 @@
+{
+  "columns.blueprint": "蓝图",
+  "columns.product": "产品",
+
+  "empty": "没有工业任务。",
+
+  "activities.manufacturing": "制造",
+  "activities.teResearch": "时间效率研究",
+  "activities.meResearch": "材料效率研究",
+  "activities.copying": "复制",
+  "activities.reverseEngineering": "逆向工程",
+  "activities.invention": "发明",
+  "activities.reactions": "反应",
+  "activities.unknown": "活动 {{id}}"
+}

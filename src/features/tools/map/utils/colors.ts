@@ -1,15 +1,12 @@
+import { roundSecurity } from '@/lib/utils'
+
+export { roundSecurity }
+
 const FACTION_COLORS: Record<number, string> = {
   500001: 'hsl(210, 100%, 50%)',
   500002: 'hsl(0, 100%, 50%)',
   500003: 'hsl(45, 100%, 50%)',
   500004: 'hsl(120, 60%, 45%)',
-}
-
-export function roundSecurity(security: number): number {
-  if (security >= 0 && security <= 0.05) {
-    return Math.ceil(security * 10) / 10
-  }
-  return Math.round(security * 10) / 10
 }
 
 export function getSecurityColor(security: number): string {

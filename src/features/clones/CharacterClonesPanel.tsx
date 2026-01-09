@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ChevronRight, ChevronDown } from 'lucide-react'
 import { TypeIcon } from '@/components/ui/type-icon'
 import { matchesSearchLower } from '@/lib/utils'
@@ -38,6 +39,7 @@ function CloneRow({
   isExpanded: boolean
   onToggle: () => void
 }) {
+  const { t } = useTranslation('clones')
   const sortedImplants = [...clone.implants].sort((a, b) => a.slot - b.slot)
   const ChevronIcon = isExpanded ? ChevronDown : ChevronRight
 
@@ -50,7 +52,7 @@ function CloneRow({
         <ChevronIcon className="h-4 w-4 shrink-0 text-content-secondary" />
         {clone.isActive ? (
           <span className="flex-1 truncate text-sm">
-            <span className="font-medium">Active Clone</span>
+            <span className="font-medium">{t('activeClone')}</span>
             <span className="ml-2 text-xs text-content-muted">
               {clone.locationName}
             </span>
@@ -69,7 +71,7 @@ function CloneRow({
         <div className="mt-1 space-y-1 pl-4">
           {sortedImplants.length === 0 ? (
             <div className="px-2 py-1 text-sm italic text-content-muted">
-              No implants
+              {t('noImplants')}
             </div>
           ) : (
             sortedImplants.map((implant) => (
@@ -80,7 +82,9 @@ function CloneRow({
                 <TypeIcon typeId={implant.typeId} size="sm" />
                 <span className="flex-1 truncate text-sm">{implant.name}</span>
                 <span className="text-xs tabular-nums text-content-muted">
-                  {implant.slot <= 10 ? `Slot ${implant.slot}` : ''}
+                  {implant.slot <= 10
+                    ? t('implantSlot', { slot: implant.slot })
+                    : ''}
                 </span>
               </div>
             ))
@@ -95,6 +99,7 @@ export function CharacterClonesPanel({
   data,
   filter,
 }: CharacterClonesPanelProps) {
+  const { t } = useTranslation('clones')
   const [expandedClones, setExpandedClones] = useState<Set<number>>(() => {
     return new Set([0])
   })
@@ -129,7 +134,7 @@ export function CharacterClonesPanel({
   if (!activeMatches && filteredJumpClones.length === 0) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-content-muted">
-        {filter ? 'No clones match' : 'No clones'}
+        {filter ? t('noMatches') : t('noClones')}
       </div>
     )
   }

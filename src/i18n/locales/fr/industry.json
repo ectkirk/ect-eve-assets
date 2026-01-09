@@ -1,0 +1,15 @@
+{
+  "columns.blueprint": "Plan",
+  "columns.product": "Produit",
+
+  "empty": "Aucun travail industriel.",
+
+  "activities.manufacturing": "Fabrication",
+  "activities.teResearch": "Recherche TE",
+  "activities.meResearch": "Recherche ME",
+  "activities.copying": "Copie",
+  "activities.reverseEngineering": "Rétro-ingénierie",
+  "activities.invention": "Invention",
+  "activities.reactions": "Réactions",
+  "activities.unknown": "Activité {{id}}"
+}

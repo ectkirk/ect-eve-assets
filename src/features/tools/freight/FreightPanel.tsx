@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useTranslation, Trans } from 'react-i18next'
 import { Loader2 } from 'lucide-react'
 import { formatNumber, formatVolume } from '@/lib/utils'
 import { CopyButton } from '@/components/ui/copy-button'
@@ -18,6 +19,7 @@ export function FreightPanel({
   prefillNullSec,
   onPrefillConsumed,
 }: FreightPanelProps) {
+  const { t } = useTranslation('tools')
   const {
     info,
     isLoading: isLoadingInfo,
@@ -95,7 +97,7 @@ export function FreightPanel({
       <div className="h-full overflow-auto p-4">
         <div className="mx-auto max-w-5xl">
           <div className="rounded-lg border border-semantic-danger/30 bg-semantic-danger/10 p-4 text-status-negative">
-            Failed to load shipping configuration: {infoError}
+            {t('freight.loadError', { error: infoError })}
           </div>
         </div>
       </div>
@@ -115,34 +117,59 @@ export function FreightPanel({
             {serviceName}
           </h1>
           <p className="text-content-secondary">
-            Calculate optimal shipping packages for{' '}
-            <span className="font-semibold text-accent">{corporation}</span>
-            {info?.service?.ticker && ` (${info.service.ticker})`}.
+            <Trans
+              i18nKey="freight.calculateDescription"
+              t={t}
+              values={{
+                corp: corporation,
+                ticker: info?.service?.ticker
+                  ? ` (${info.service.ticker})`
+                  : '',
+              }}
+              components={{
+                corp: (
+                  <span className="font-semibold text-accent">
+                    {corporation}
+                  </span>
+                ),
+              }}
+            />
           </p>
           {info?.service?.forumUrl && (
             <p className="mt-2 text-sm text-content-muted">
-              Check out their{' '}
-              <a
-                href={info.service.forumUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-accent hover:underline"
-              >
-                feedback
-              </a>
+              <Trans
+                i18nKey="freight.checkFeedback"
+                t={t}
+                components={{
+                  feedback: (
+                    <a
+                      href={info.service.forumUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-accent hover:underline"
+                    >
+                      feedback
+                    </a>
+                  ),
+                }}
+              />
               {info?.service?.deliveryTimesUrl && (
-                <>
-                  {' '}
-                  and{' '}
-                  <a
-                    href={info.service.deliveryTimesUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-accent hover:underline"
-                  >
-                    average delivery times
-                  </a>
-                </>
+                <Trans
+                  i18nKey="freight.andDeliveryTimes"
+                  t={t}
+                  components={{
+                    times: (
+                      <a
+                        href={info.service.deliveryTimesUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-accent hover:underline"
+                      >
+                        average delivery times
+                      </a>
+                    ),
+                  }}
+                />
               )}
               .
             </p>
@@ -153,7 +180,7 @@ export function FreightPanel({
         {tiers.length > 0 && (
           <div className="mb-6 rounded-lg border border-border bg-surface-secondary/50 p-4">
             <h2 className="mb-3 text-sm font-semibold text-content-secondary">
-              Service Tiers
+              {t('freight.serviceTiers')}
             </h2>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               {tiers.map((tier) => {
@@ -165,19 +192,24 @@ export function FreightPanel({
                   >
                     <div className={`text-sm font-medium ${colors.text}`}>
                       {tier.nullSecAllowed
-                        ? `${tier.name} / Null Sec`
+                        ? t('freight.nullSecTier', { name: tier.name })
                         : tier.name}
                     </div>
                     <div className="text-xs text-content-muted">
-                      Up to {formatNumber(tier.maxCollateral)} collateral
+                      {t('freight.upToCollateral', {
+                        amount: formatNumber(tier.maxCollateral),
+                      })}
                     </div>
                     <div
                       className={`mt-1 text-lg font-semibold ${colors.textLight}`}
                     >
-                      {formatNumber(tier.cost)} ISK
+                      {formatNumber(tier.cost)}
                     </div>
                     <div className="mt-1 text-xs text-content-muted">
-                      {tier.delivery} delivery · {tier.description}
+                      {t('freight.deliveryDescription', {
+                        delivery: tier.delivery,
+                        description: tier.description,
+                      })}
                     </div>
                   </div>
                 )
@@ -186,23 +218,36 @@ export function FreightPanel({
             {info?.limits && (
               <div className="mt-4 rounded-lg bg-surface-tertiary/50 p-3 text-xs text-content-muted">
                 <p className="font-medium text-content-secondary">
-                  Contract Settings:
+                  {t('freight.contractSettings')}
                 </p>
                 <ul className="mt-1 list-inside list-disc space-y-0.5">
                   <li>
-                    Private to{' '}
-                    <CopyButton
-                      text={corporation}
-                      className="font-mono text-accent"
-                      showValue
+                    <Trans
+                      i18nKey="freight.privateTo"
+                      t={t}
+                      values={{ corp: corporation }}
+                      components={{
+                        corp: (
+                          <CopyButton
+                            text={corporation}
+                            className="font-mono text-accent"
+                            showValue
+                          />
+                        ),
+                      }}
                     />
                   </li>
                   <li>
-                    {info.contractSettings?.expiration ?? '7 days'} expiration
+                    {t('freight.expirationDays', {
+                      days:
+                        info.contractSettings?.expiration ??
+                        t('freight.defaultExpiration'),
+                    })}
                   </li>
                   <li>
-                    Up to {formatVolume(info.limits.maxVolumePerPackage)} m³
-                    cargo per contract
+                    {t('freight.cargoPerContract', {
+                      volume: formatVolume(info.limits.maxVolumePerPackage),
+                    })}
                   </li>
                 </ul>
               </div>
@@ -231,10 +276,10 @@ export function FreightPanel({
             </button>
             <label className="text-sm text-content-secondary">
               <span className="font-medium text-accent">
-                Null Sec Destination
+                {t('freight.nullSecDestination')}
               </span>
               <span className="ml-2 text-content-muted">
-                (NPC stations only, Priority tier, 7-day delivery)
+                {t('freight.nullSecDescription')}
               </span>
             </label>
           </div>

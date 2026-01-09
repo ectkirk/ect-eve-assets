@@ -153,6 +153,10 @@ export function hasName(id: number): boolean {
   return namesCache.get(id) !== null
 }
 
+export function clearNamesLRUCache(): void {
+  namesCache.clear()
+}
+
 export async function resolveNames(
   ids: number[]
 ): Promise<Map<number, ESIName>> {

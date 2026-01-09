@@ -174,28 +174,15 @@ function schedulePoll(generation: number) {
     }
 
     const now = Date.now()
-    const toQueue: Array<{ ownerKey: string; endpoint: string }> = []
 
     for (const [key, expiry] of state.endpoints) {
       if (expiry.expiresAt <= now) {
         const parsed = parseKey(key)
         if (parsed) {
-          const alreadyQueued = state.refreshQueue.some(
-            (q) =>
-              q.ownerKey === parsed.ownerKey && q.endpoint === parsed.endpoint
-          )
-          if (!alreadyQueued) {
-            toQueue.push(parsed)
-          }
+          useExpiryCacheStore
+            .getState()
+            .queueRefresh(parsed.ownerKey, parsed.endpoint)
         }
-      }
-    }
-
-    if (toQueue.length > 0) {
-      for (const item of toQueue) {
-        useExpiryCacheStore
-          .getState()
-          .queueRefresh(item.ownerKey, item.endpoint)
       }
     }
 
@@ -239,7 +226,7 @@ function processQueue() {
     useExpiryCacheStore.setState({ refreshQueue: refreshQueue.slice(1) })
 
     if (!item || skippedOwners.has(item.ownerKey)) {
-      processNext()
+      queueMicrotask(processNext)
       return
     }
 
@@ -250,7 +237,7 @@ function processQueue() {
         module: 'ExpiryCacheStore',
         ownerKey: item.ownerKey,
       })
-      processNext()
+      queueMicrotask(processNext)
       return
     }
 
@@ -274,10 +261,10 @@ function processQueue() {
       }
     }
 
-    processNext()
+    queueMicrotask(processNext)
   }
 
-  processNext()
+  queueMicrotask(processNext)
 }
 
 export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({

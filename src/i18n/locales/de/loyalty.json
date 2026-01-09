@@ -1,0 +1,8 @@
+{
+  "empty": "Keine Treuepunkte-Daten verfügbar.",
+
+  "fallback.corporation": "Corporation {{id}}",
+  "reauthRequired": "{{name}} erfordert eine erneute Authentifizierung für den Zugriff auf Treuepunkte.",
+  "reauthRequiredMultiple": "{{count}} Charaktere erfordern eine erneute Authentifizierung für den Zugriff auf Treuepunkte.",
+  "reauthHint": "Verwenden Sie das Charaktermenü zur erneuten Authentifizierung."
+}

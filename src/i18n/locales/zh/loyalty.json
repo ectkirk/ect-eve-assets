@@ -1,0 +1,8 @@
+{
+  "empty": "没有可用的忠诚点数据。",
+
+  "fallback.corporation": "公司 {{id}}",
+  "reauthRequired": "{{name}} 需要重新验证以访问忠诚点。",
+  "reauthRequiredMultiple": "{{count}} 个角色需要重新验证以访问忠诚点。",
+  "reauthHint": "使用角色菜单进行重新验证。"
+}

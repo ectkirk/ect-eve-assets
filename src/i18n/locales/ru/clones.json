@@ -1,0 +1,14 @@
+{
+  "subtitle": "{{count}} прыжковых клонов",
+  "empty": "Клоны не найдены.",
+
+  "activeClone": "Активный клон",
+  "noImplants": "Нет имплантов",
+  "implantSlot": "Слот {{slot}}",
+  "noMatches": "Клоны не найдены",
+  "noClones": "Нет клонов",
+
+  "fallback.structure": "Структура {{id}}",
+  "fallback.location": "Местоположение {{id}}",
+  "fallback.unknown": "Неизвестно"
+}

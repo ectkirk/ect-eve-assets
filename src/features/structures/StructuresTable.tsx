@@ -1,5 +1,6 @@
 import { useMemo, useEffect, useState } from 'react'
 import { Fuel, AlertTriangle, Clock } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useSortable, SortableHeader, sortRows } from '@/hooks'
 import { getStateDisplay } from '@/lib/structure-constants'
 import { getTimerColorClass, type TimerType } from '@/lib/timer-utils'
@@ -31,13 +32,13 @@ const COLUMNS: {
   label: string
   align?: 'right'
 }[] = [
-  { id: 'name', label: 'Name' },
-  { id: 'type', label: 'Type' },
-  { id: 'region', label: 'Region' },
-  { id: 'state', label: 'State' },
-  { id: 'fuel', label: 'Fuel', align: 'right' },
-  { id: 'rigs', label: 'Rigs' },
-  { id: 'details', label: 'Details', align: 'right' },
+  { id: 'name', label: 'columns.name' },
+  { id: 'type', label: 'columns.type' },
+  { id: 'region', label: 'columns.region' },
+  { id: 'state', label: 'columns.state' },
+  { id: 'fuel', label: 'columns.fuel', align: 'right' },
+  { id: 'rigs', label: 'columns.rigs' },
+  { id: 'details', label: 'columns.details', align: 'right' },
 ]
 
 const DEFAULT_VISIBILITY: Record<string, boolean> = Object.fromEntries(
@@ -78,6 +79,7 @@ export function StructuresTable({
   onViewPosInfo,
   onViewFitting,
 }: StructuresTableProps) {
+  const { t } = useTranslation('structures')
   const { sortColumn, sortDirection, handleSort } =
     useSortable<StructureSortColumn>('region', 'asc')
   const [columnVisibility, setColumnVisibility] = useState(loadColumnVisibility)
@@ -136,7 +138,7 @@ export function StructuresTable({
   if (sortedRows.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-content-secondary">No structures.</p>
+        <p className="text-content-secondary">{t('noStructures')}</p>
       </div>
     )
   }
@@ -196,6 +198,7 @@ function StructureRowWithContext({
   onViewPosInfo,
   onViewFitting,
 }: StructureRowProps) {
+  const { t } = useTranslation('common')
   const stateInfo = getStateDisplay(row.state)
   const timerColorClass = getTimerColorClass(
     row.timerType as TimerType,
@@ -290,19 +293,19 @@ function StructureRowWithContext({
           <ContextMenuItem
             onClick={() => onViewStructureInfo(row.structure!, row.owner.name)}
           >
-            Show Structure Info
+            {t('contextMenu.showStructureInfo')}
           </ContextMenuItem>
         )}
         {row.kind === 'pos' && row.starbase && (
           <ContextMenuItem
             onClick={() => onViewPosInfo(row.starbase!, row.owner.name)}
           >
-            Show POS Info
+            {t('contextMenu.showPosInfo')}
           </ContextMenuItem>
         )}
         {hasFitting && (
           <ContextMenuItem onClick={() => onViewFitting(row.treeNode!)}>
-            View Fitting
+            {t('contextMenu.viewFitting')}
           </ContextMenuItem>
         )}
       </ContextMenuContent>

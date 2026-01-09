@@ -1,0 +1,43 @@
+{
+  "badges.activeShip": "Nave activa",
+  "badges.inContract": "En contrato",
+  "badges.sellOrder": "Orden de venta",
+  "badges.inJob": "En trabajo",
+  "badges.structure": "Estructura",
+
+  "empty": "No se encontraron activos.",
+  "noCharacters": "No hay personajes conectados. Añade un personaje para ver activos.",
+  "noData": "No hay datos de activos cargados. Haz clic en Actualizar en el encabezado para obtenerlos de ESI.",
+
+  "loading.assets": "Cargando activos...",
+  "loading.fetching": "Obteniendo activos ({{current}}/{{total}})...",
+
+  "error.loadFailed": "Error al cargar activos",
+
+  "contextMenu.viewContracts": "Ver en Contratos",
+  "contextMenu.openMutamarket": "Abrir en Mutamarket",
+
+  "settingsModal.title": "Configuración de vista de activos",
+  "settingsModal.description": "Elige qué fuentes de datos incluir en los totales de activos",
+  "settingsModal.marketOrders": "Órdenes de mercado",
+  "settingsModal.marketOrdersDesc": "Incluir objetos de órdenes de venta activas",
+  "settingsModal.contracts": "Contratos",
+  "settingsModal.contractsDesc": "Incluir objetos de contratos pendientes que emitiste",
+  "settingsModal.industryJobs": "Trabajos industriales",
+  "settingsModal.industryJobsDesc": "Incluir objetos de trabajos industriales activos y listos",
+  "settingsModal.activeShip": "Nave activa",
+  "settingsModal.activeShipDesc": "Incluir tu nave actualmente pilotada y su contenido",
+  "settingsModal.structures": "Estructuras",
+  "settingsModal.structuresDesc": "Incluir estructuras propias (Ciudadelas, Complejos de Ingeniería, etc.)",
+
+  "locations.assetSafety": "Seguridad de activos",
+  "locations.unknownParent": "Origen desconocido",
+  "locations.unknownLocation": "Ubicación desconocida",
+  "locations.unknownType": "Tipo desconocido {{id}}",
+  "categories.abyssals": "Abisales",
+
+  "flags.inContract": "En contrato",
+  "flags.sellOrder": "Orden de venta",
+  "flags.industryJob": "En trabajo",
+  "flags.activeShip": "Nave activa"
+}

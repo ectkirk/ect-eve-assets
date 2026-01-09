@@ -1,5 +1,9 @@
-import { describe, it, expect } from 'vitest'
-import { cn, formatNumber, formatCompactISK } from './utils'
+import { describe, it, expect, vi } from 'vitest'
+import { cn, formatNumber, formatFullNumber, formatVolume } from './utils'
+
+vi.mock('@/store/settings-store', () => ({
+  getLanguage: vi.fn(() => 'en'),
+}))
 
 describe('cn', () => {
   it('merges class names', () => {
@@ -78,15 +82,28 @@ describe('formatNumber', () => {
   })
 })
 
-describe('formatCompactISK', () => {
-  it('appends ISK suffix', () => {
-    expect(formatCompactISK(1_500_000_000)).toBe('1.50B ISK')
-    expect(formatCompactISK(1_500_000)).toBe('1.50M ISK')
-    expect(formatCompactISK(1_500)).toBe('1.50K ISK')
-    expect(formatCompactISK(500)).toBe('500 ISK')
+describe('formatFullNumber', () => {
+  it('formats with thousand separators', () => {
+    expect(formatFullNumber(1234567)).toBe('1,234,567')
+    expect(formatFullNumber(1000)).toBe('1,000')
   })
 
-  it('handles negative values', () => {
-    expect(formatCompactISK(-1_500_000)).toBe('-1.50M ISK')
+  it('respects decimal parameter', () => {
+    expect(formatFullNumber(1234.567, 2)).toBe('1,234.57')
+    expect(formatFullNumber(1234.5, 0)).toBe('1,235')
+  })
+})
+
+describe('formatVolume', () => {
+  it('formats without suffix by default', () => {
+    expect(formatVolume(1234.56)).toBe('1,234.56')
+  })
+
+  it('adds suffix when requested', () => {
+    expect(formatVolume(1234.56, { suffix: true })).toBe('1,234.56 m³')
+  })
+
+  it('respects decimal parameter', () => {
+    expect(formatVolume(1234.56, { decimals: 0 })).toBe('1,235')
   })
 })

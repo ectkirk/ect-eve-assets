@@ -1,4 +1,6 @@
+import { i18n } from '@/i18n'
 import { logger } from '@/lib/logger'
+import { formatFullNumber } from '@/lib/utils'
 import {
   getGroup,
   getCategory,
@@ -7,7 +9,12 @@ import {
   useReferenceCacheStore,
   type CachedType,
 } from '@/store/reference-cache'
-import { RefCategoriesResponseSchema, RefGroupsResponseSchema } from './schemas'
+import { getLanguage } from '@/store/settings-store'
+import {
+  RefCategoriesResponseSchema,
+  RefGroupsResponseSchema,
+  RefCorporationsResponseSchema,
+} from './schemas'
 
 export type ReferenceDataProgress = (status: string) => void
 
@@ -120,14 +127,17 @@ export async function loadReferenceData(
     const errors: string[] = []
 
     if (!isReferenceDataLoaded()) {
-      onProgress?.('Loading categories...')
-      const [categoriesRaw, groupsRaw] = await Promise.all([
-        window.electronAPI!.refCategories(),
-        window.electronAPI!.refGroups(),
+      onProgress?.(i18n.t('status.loadingCategories'))
+      const language = getLanguage()
+      const [categoriesRaw, groupsRaw, corporationsRaw] = await Promise.all([
+        window.electronAPI!.refCategories({ language }),
+        window.electronAPI!.refGroups({ language }),
+        window.electronAPI!.refCorporations({ language }),
       ])
 
       let categoriesOk = false
       let groupsOk = false
+      let corporationsOk = false
 
       if (categoriesRaw && 'error' in categoriesRaw) {
         const errorMsg = `Failed to load categories: ${categoriesRaw.error}`
@@ -178,9 +188,34 @@ export async function loadReferenceData(
         }
       }
 
-      if (categoriesOk && groupsOk) {
+      if (corporationsRaw && 'error' in corporationsRaw) {
+        const errorMsg = `Failed to load corporations: ${corporationsRaw.error}`
+        logger.error('Failed to load corporations', undefined, {
+          module: 'RefAPI',
+          error: corporationsRaw.error,
+        })
+        errors.push(errorMsg)
+      } else {
+        const corporationsResult =
+          RefCorporationsResponseSchema.safeParse(corporationsRaw)
+        if (!corporationsResult.success) {
+          const errorMsg = 'Corporations validation failed'
+          logger.error('Corporations validation failed', undefined, {
+            module: 'RefAPI',
+            errors: corporationsResult.error.issues.slice(0, 3),
+          })
+          errors.push(errorMsg)
+        } else {
+          await useReferenceCacheStore
+            .getState()
+            .setCorporations(Object.values(corporationsResult.data.items))
+          corporationsOk = true
+        }
+      }
+
+      if (categoriesOk && groupsOk && corporationsOk) {
         const catGroupDuration = Math.round(performance.now() - start)
-        logger.info('Categories and groups loaded', {
+        logger.info('Categories, groups and corporations loaded', {
           module: 'RefAPI',
           duration: catGroupDuration,
         })
@@ -212,15 +247,19 @@ async function loadAllTypes(
 ): Promise<TypesLoadResult> {
   if (isAllTypesLoaded()) return {}
 
-  onProgress?.('Loading types...')
+  onProgress?.(i18n.t('status.loadingTypes'))
   const start = performance.now()
+  const language = getLanguage()
   let cursor: number | undefined
   let total = 0
   let loaded = 0
   let pageCount = 0
 
   do {
-    const result = await window.electronAPI!.refTypesPage({ after: cursor })
+    const result = await window.electronAPI!.refTypesPage({
+      after: cursor,
+      language,
+    })
 
     if (result.error) {
       const errorMsg = `Failed to load types: ${result.error}`
@@ -252,7 +291,10 @@ async function loadAllTypes(
     }
 
     onProgress?.(
-      `Loading types (${loaded.toLocaleString()}/${total.toLocaleString()})...`
+      i18n.t('status.loadingTypesProgress', {
+        loaded: formatFullNumber(loaded),
+        total: formatFullNumber(total),
+      })
     )
 
     cursor = result.pagination.hasMore

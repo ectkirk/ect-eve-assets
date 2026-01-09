@@ -1,3 +1,5 @@
+import { formatDecimal } from '@/lib/utils'
+
 export interface SecurityStyling {
   color: string
   colorForeground: string
@@ -40,23 +42,19 @@ const SECURITY_STYLING: Record<SecurityKey, SecurityStyling> = {
 }
 
 export const BUYBACK_TABS = [
-  'High Sec',
-  'Low Sec',
-  'Null Sec',
-  'Asset Safety',
+  'highsec',
+  'lowsec',
+  'nullsec',
+  'assetsafety',
 ] as const
 
 export type BuybackTabType = (typeof BUYBACK_TABS)[number]
 
 export type AssetSafetySecurityLevel = 'highsec' | 'lowsec' | 'nullsec'
 
-export function tabToKey(tab: BuybackTabType): string {
-  return tab.toLowerCase().replace(' ', '')
-}
-
-export function formatPercent(rate: number): string {
+export function formatRate(rate: number): string {
   const pct = rate * 100
-  return pct % 1 === 0 ? `${pct}%` : `${pct.toFixed(1)}%`
+  return pct % 1 === 0 ? `${pct}%` : `${formatDecimal(pct, 1)}%`
 }
 
 export interface RuntimeSecurityConfig {

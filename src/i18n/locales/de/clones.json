@@ -1,0 +1,14 @@
+{
+  "subtitle": "{{count}} Sprungklon(e)",
+  "empty": "Keine Klone gefunden.",
+
+  "activeClone": "Aktiver Klon",
+  "noImplants": "Keine Implantate",
+  "implantSlot": "Slot {{slot}}",
+  "noMatches": "Keine Klone gefunden",
+  "noClones": "Keine Klone",
+
+  "fallback.structure": "Struktur {{id}}",
+  "fallback.location": "Standort {{id}}",
+  "fallback.unknown": "Unbekannt"
+}

@@ -1,5 +1,6 @@
 import { memo, useCallback } from 'react'
 import { ChevronRight, ChevronDown } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { TableCell } from '@/components/ui/table'
 import { TypeIcon, OwnerIcon } from '@/components/ui/type-icon'
 import { AbyssalPreview } from '@/components/ui/abyssal-preview'
@@ -12,6 +13,7 @@ import {
   NODE_TYPE_COLORS,
   DIVISION_COLORS,
   formatNumber,
+  formatFullNumber,
   formatVolume,
 } from './types'
 
@@ -67,6 +69,7 @@ export const TreeRowContent = memo(function TreeRowContent({
   onToggleExpand,
   visibleColumns,
 }: TreeRowContentProps) {
+  const { t } = useTranslation('common')
   const itemId = node.asset?.item_id
   const hasAbyssalPrice = usePriceStore((s) =>
     itemId ? s.abyssalPrices.has(itemId) : false
@@ -105,7 +108,11 @@ export const TreeRowContent = memo(function TreeRowContent({
                     onClick={handleToggleClick}
                     className="p-0.5 hover:bg-surface-tertiary rounded"
                     aria-expanded={isExpanded}
-                    aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${node.name}`}
+                    aria-label={
+                      isExpanded
+                        ? t('tree.ariaCollapse', { name: node.name })
+                        : t('tree.ariaExpand', { name: node.name })
+                    }
                   >
                     {isExpanded ? (
                       <ChevronDown className="h-4 w-4 text-content-secondary" />
@@ -162,7 +169,7 @@ export const TreeRowContent = memo(function TreeRowContent({
                             {node.name}
                           </span>
                           <span className="text-content-muted italic ml-1">
-                            Office
+                            {t('tree.office')}
                           </span>
                         </>
                       ) : (
@@ -192,27 +199,27 @@ export const TreeRowContent = memo(function TreeRowContent({
                   <span className="shrink-0 inline-flex items-center gap-1 ml-2 whitespace-nowrap">
                     {node.isActiveShip && (
                       <span className="text-xs text-status-time bg-status-time/20 px-1.5 py-0.5 rounded whitespace-nowrap">
-                        Active Ship
+                        {t('badges.activeShip', { ns: 'assets' })}
                       </span>
                     )}
                     {node.isInContract && (
                       <span className="text-xs text-status-corp bg-semantic-warning/20 px-1.5 py-0.5 rounded whitespace-nowrap">
-                        In Contract
+                        {t('badges.inContract', { ns: 'assets' })}
                       </span>
                     )}
                     {node.isInMarketOrder && (
                       <span className="text-xs text-status-info bg-accent/20 px-1.5 py-0.5 rounded whitespace-nowrap">
-                        Sell Order
+                        {t('badges.sellOrder', { ns: 'assets' })}
                       </span>
                     )}
                     {node.isInIndustryJob && (
                       <span className="text-xs text-status-positive bg-status-positive/20 px-1.5 py-0.5 rounded whitespace-nowrap">
-                        In Job
+                        {t('badges.inJob', { ns: 'assets' })}
                       </span>
                     )}
                     {node.isOwnedStructure && (
                       <span className="text-xs text-status-special bg-status-special/20 px-1.5 py-0.5 rounded whitespace-nowrap">
-                        Structure
+                        {t('badges.structure', { ns: 'assets' })}
                       </span>
                     )}
                   </span>
@@ -239,7 +246,7 @@ export const TreeRowContent = memo(function TreeRowContent({
               key={colId}
               className="py-1.5 text-right tabular-nums w-24"
             >
-              {node.totalCount > 0 ? node.totalCount.toLocaleString() : '-'}
+              {node.totalCount > 0 ? formatFullNumber(node.totalCount) : '-'}
             </TableCell>
           )
         }
@@ -249,9 +256,7 @@ export const TreeRowContent = memo(function TreeRowContent({
               key={colId}
               className="py-1.5 text-right tabular-nums text-status-positive w-32"
             >
-              {node.totalValue > 0
-                ? formatNumber(node.totalValue) + ' ISK'
-                : '-'}
+              {node.totalValue > 0 ? formatNumber(node.totalValue) : '-'}
             </TableCell>
           )
         }

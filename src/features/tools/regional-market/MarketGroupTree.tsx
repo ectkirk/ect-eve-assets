@@ -1,4 +1,5 @@
 import { memo, useRef, useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { ChevronRight, ChevronDown, Folder, FolderOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -35,6 +36,7 @@ const MarketGroupRow = memo(function MarketGroupRow({
   onToggleExpand: (groupId: number) => void
   onSelectGroup: (groupId: number) => void
 }) {
+  const { t } = useTranslation('tools')
   const hasChildren = node.children.length > 0
   const indentPx = node.depth * 16
 
@@ -64,7 +66,11 @@ const MarketGroupRow = memo(function MarketGroupRow({
         onClick={handleChevronClick}
         className="p-0.5 hover:bg-surface-secondary rounded flex-shrink-0"
         aria-expanded={isExpanded}
-        aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${node.group.name}`}
+        aria-label={
+          isExpanded
+            ? t('regionalMarket.collapseGroup', { name: node.group.name })
+            : t('regionalMarket.expandGroup', { name: node.group.name })
+        }
       >
         {isExpanded ? (
           <ChevronDown className="h-3.5 w-3.5 text-content-secondary" />

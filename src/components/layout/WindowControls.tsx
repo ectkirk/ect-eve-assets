@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Minus,
   Square,
@@ -21,6 +22,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useThemeStore, THEME_OPTIONS } from '@/store/theme-store'
+import { useSettingsStore, LANGUAGE_OPTIONS } from '@/store/settings-store'
 import { useModalManager, useClickOutside } from '@/hooks'
 import { useAbyssalSyncStore } from '@/store/abyssal-sync-store'
 import { CreditsModal } from './CreditsModal'
@@ -88,12 +90,15 @@ function MenuItem({
 }
 
 export function WindowControls() {
+  const { t } = useTranslation('layout')
   const [isMaximized, setIsMaximized] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const modals = useModalManager<SettingsModal>()
   const settingsPanelRef = useRef<HTMLDivElement>(null)
   const theme = useThemeStore((s) => s.theme)
   const setTheme = useThemeStore((s) => s.setTheme)
+  const language = useSettingsStore((s) => s.language)
+  const setLanguage = useSettingsStore((s) => s.setLanguage)
   const abyssalSyncing = useAbyssalSyncStore((s) => s.isSyncing)
   const abyssalProgress = useAbyssalSyncStore((s) => s.progress)
 
@@ -127,7 +132,7 @@ export function WindowControls() {
           <span>
             {abyssalProgress
               ? `${abyssalProgress.fetched}/${abyssalProgress.total}`
-              : 'Syncing...'}
+              : t('settings.syncing')}
           </span>
         </button>
       )}
@@ -144,13 +149,13 @@ export function WindowControls() {
           <div className="absolute right-0 top-full mt-1 w-64 rounded-lg border border-border bg-surface-secondary shadow-lg z-50">
             <div className="p-3 border-b border-border">
               <span className="text-sm font-medium text-content-secondary">
-                Settings
+                {t('settings.title')}
               </span>
             </div>
             <div className="p-2">
               <div className="px-2 py-1.5">
                 <label className="text-xs text-content-muted mb-1 block">
-                  Theme
+                  {t('settings.theme')}
                 </label>
                 <select
                   value={theme}
@@ -158,6 +163,24 @@ export function WindowControls() {
                   className="w-full rounded border border-border bg-surface-tertiary px-2 py-1.5 text-sm text-content-secondary focus:border-accent focus:outline-hidden"
                 >
                   {THEME_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {t(opt.labelKey)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="px-2 py-1.5">
+                <label className="text-xs text-content-muted mb-1 block">
+                  {t('settings.language')}
+                </label>
+                <select
+                  value={language}
+                  onChange={(e) =>
+                    setLanguage(e.target.value as typeof language)
+                  }
+                  className="w-full rounded border border-border bg-surface-tertiary px-2 py-1.5 text-sm text-content-secondary focus:border-accent focus:outline-hidden"
+                >
+                  {LANGUAGE_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
                       {opt.label}
                     </option>
@@ -169,47 +192,47 @@ export function WindowControls() {
                 icon={Package}
                 onClick={() => openModal('assetSettings')}
               >
-                Asset View
+                {t('settings.assetView')}
               </MenuItem>
               <MenuItem icon={Map} onClick={() => openModal('mapSettings')}>
-                Map & Routing
+                {t('settings.mapRouting')}
               </MenuItem>
               <div className="my-2 border-t border-border" />
               <MenuItem icon={Sparkles} onClick={() => openModal('abyssal')}>
-                Abyssal Pricing
+                {t('settings.abyssalPricing')}
               </MenuItem>
               <div className="my-2 border-t border-border" />
               <MenuItem icon={History} onClick={() => openModal('changelog')}>
-                Changelog
+                {t('settings.changelog')}
               </MenuItem>
               <MenuItem icon={Info} onClick={() => openModal('credits')}>
-                Credits
+                {t('settings.credits')}
               </MenuItem>
               <MenuItem icon={Heart} onClick={() => openModal('support')}>
-                Support Us
+                {t('settings.supportUs')}
               </MenuItem>
               <MenuItem icon={Users} onClick={() => openModal('supporters')}>
-                Supporters
+                {t('settings.supporters')}
               </MenuItem>
               <div className="my-2 border-t border-border" />
               <MenuItem
                 icon={FolderOpen}
                 onClick={() => window.electronAPI?.openLogsFolder()}
               >
-                Open Logs Folder
+                {t('settings.openLogsFolder')}
               </MenuItem>
               <MenuItem icon={Bug} onClick={() => openModal('bugReport')}>
-                Report A Bug
+                {t('settings.reportBug')}
               </MenuItem>
               <div className="my-2 border-t border-border" />
               <MenuItem icon={Shield} href="https://edencom.net/privacy-policy">
-                Privacy Policy
+                {t('settings.privacyPolicy')}
               </MenuItem>
               <MenuItem
                 icon={FileText}
                 href="https://edencom.net/terms-of-service"
               >
-                Terms of Service
+                {t('settings.termsOfService')}
               </MenuItem>
               <div className="my-2 border-t border-semantic-danger/30" />
               <MenuItem
@@ -217,7 +240,7 @@ export function WindowControls() {
                 variant="danger"
                 onClick={() => openModal('clearCache')}
               >
-                Clear Cache...
+                {t('settings.clearCache')}
               </MenuItem>
             </div>
           </div>

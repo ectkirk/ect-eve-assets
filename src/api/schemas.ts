@@ -443,6 +443,17 @@ export const RefGroupsResponseSchema = z.object({
   items: z.record(z.string(), RefGroupSchema),
 })
 
+export const RefCorporationSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  tickerName: z.string(),
+  factionId: z.number().nullable().optional(),
+})
+
+export const RefCorporationsResponseSchema = z.object({
+  items: z.record(z.string(), RefCorporationSchema),
+})
+
 export const RefRegionSchema = z.object({
   id: z.number(),
   name: z.string(),

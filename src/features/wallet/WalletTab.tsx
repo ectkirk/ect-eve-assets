@@ -1,4 +1,5 @@
 import { useEffect, useMemo, Fragment } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ChevronRight, ChevronDown, Building2 } from 'lucide-react'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import {
@@ -10,7 +11,7 @@ import {
 import { useDivisionsStore } from '@/store/divisions-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { OwnerIcon } from '@/components/ui/type-icon'
-import { cn, formatCompactISK } from '@/lib/utils'
+import { cn, formatNumber } from '@/lib/utils'
 import { useTabControls } from '@/context'
 import {
   useExpandCollapse,
@@ -29,14 +30,14 @@ import {
 
 type WalletSortColumn = 'owner' | 'balance'
 
-const DEFAULT_WALLET_NAMES = [
-  'Master Wallet',
-  'Wallet 2',
-  'Wallet 3',
-  'Wallet 4',
-  'Wallet 5',
-  'Wallet 6',
-  'Wallet 7',
+const WALLET_DIVISION_KEYS = [
+  'master',
+  'wallet2',
+  'wallet3',
+  'wallet4',
+  'wallet5',
+  'wallet6',
+  'wallet7',
 ]
 
 function getWalletBalance(wallet: CharacterWallet | CorporationWallet): number {
@@ -46,6 +47,7 @@ function getWalletBalance(wallet: CharacterWallet | CorporationWallet): number {
 }
 
 export function WalletTab() {
+  const { t } = useTranslation('wallet')
   const ownersRecord = useAuthStore((s) => s.owners)
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
 
@@ -153,14 +155,14 @@ export function WalletTab() {
             <TableRow className="hover:bg-transparent border-b border-border">
               <SortableHeader
                 column="owner"
-                label="Owner"
+                label="columns.owner"
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
               />
               <SortableHeader
                 column="balance"
-                label="Balance"
+                label="columns.balance"
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
@@ -185,6 +187,7 @@ export function WalletTab() {
                   ownerTotal={ownerTotal}
                   toggle={toggle}
                   getWalletName={getWalletName}
+                  t={t}
                 />
               )
             })}
@@ -203,6 +206,7 @@ interface WalletRowProps {
   ownerTotal: number
   toggle: (key: string) => void
   getWalletName: (corporationId: number, division: number) => string | undefined
+  t: (key: string, options?: Record<string, unknown>) => string
 }
 
 function WalletRow({
@@ -213,6 +217,7 @@ function WalletRow({
   ownerTotal,
   toggle,
   getWalletName,
+  t,
 }: WalletRowProps) {
   const ChevronIcon = expanded ? ChevronDown : ChevronRight
 
@@ -247,7 +252,7 @@ function WalletRow({
               ownerTotal >= 0 ? 'text-status-positive' : 'text-status-negative'
             )}
           >
-            {formatCompactISK(ownerTotal)}
+            {formatNumber(ownerTotal)}
           </span>
         </TableCell>
       </TableRow>
@@ -257,9 +262,10 @@ function WalletRow({
           .sort((a, b) => a.division - b.division)
           .map((div) => {
             const customName = getWalletName(wallet.owner.id, div.division)
-            const defaultName =
-              DEFAULT_WALLET_NAMES[div.division - 1] ??
-              `Division ${div.division}`
+            const divKey = WALLET_DIVISION_KEYS[div.division - 1]
+            const defaultName = divKey
+              ? t(`divisions.${divKey}`)
+              : t('divisions.division', { number: div.division })
             const displayName = customName || defaultName
 
             return (
@@ -284,7 +290,7 @@ function WalletRow({
                         : 'text-status-negative/80'
                     )}
                   >
-                    {formatCompactISK(div.balance)}
+                    {formatNumber(div.balance)}
                   </span>
                 </TableCell>
               </TableRow>

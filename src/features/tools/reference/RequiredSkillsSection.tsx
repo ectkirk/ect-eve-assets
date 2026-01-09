@@ -1,5 +1,7 @@
+import { useTranslation } from 'react-i18next'
 import { LazySection } from './LazySection'
 import { SkillTreeNode } from './SkillTreeComponents'
+import { getLanguage } from '@/store/settings-store'
 import type { RefTypeSkillsResult } from '../../../../shared/electron-api-types'
 
 interface RequiredSkillsSectionProps {
@@ -8,7 +10,7 @@ interface RequiredSkillsSectionProps {
 
 async function fetchSkills(typeId: number): Promise<RefTypeSkillsResult> {
   if (!window.electronAPI) throw new Error('API not available')
-  return window.electronAPI.refTypeSkills(typeId)
+  return window.electronAPI.refTypeSkills(typeId, { language: getLanguage() })
 }
 
 function hasSkillData(data: RefTypeSkillsResult): boolean {
@@ -16,9 +18,10 @@ function hasSkillData(data: RefTypeSkillsResult): boolean {
 }
 
 export function RequiredSkillsSection({ typeId }: RequiredSkillsSectionProps) {
+  const { t } = useTranslation('tools')
   return (
     <LazySection
-      title="Required Skills"
+      title={t('reference.requiredSkills')}
       typeId={typeId}
       fetcher={fetchSkills}
       hasData={hasSkillData}

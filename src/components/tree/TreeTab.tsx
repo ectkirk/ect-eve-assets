@@ -1,4 +1,5 @@
 import { useMemo, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Loader2 } from 'lucide-react'
 import { useResolvedAssets } from '@/hooks/useResolvedAssets'
 import { useDivisionsStore } from '@/store/divisions-store'
@@ -19,6 +20,7 @@ interface TreeTabProps {
 }
 
 export function TreeTab({ mode }: TreeTabProps) {
+  const { t } = useTranslation('common')
   const {
     selectedResolvedAssets,
     owners,
@@ -155,7 +157,9 @@ export function TreeTab({ mode }: TreeTabProps) {
     return (
       <div className="flex items-center justify-center h-64">
         <p className="text-content-secondary">
-          No characters logged in. Add a character to view assets.
+          {t('tab.noCharacters', {
+            dataType: t('dataTypes.assets', { ns: 'layout' }),
+          })}
         </p>
       </div>
     )
@@ -168,8 +172,14 @@ export function TreeTab({ mode }: TreeTabProps) {
           <Loader2 className="h-8 w-8 animate-spin text-accent mx-auto" />
           <p className="mt-2 text-content-secondary">
             {updateProgress
-              ? `Fetching assets (${updateProgress.current + 1}/${updateProgress.total})...`
-              : 'Loading assets...'}
+              ? t('tab.fetchingProgress', {
+                  dataType: t('dataTypes.assets', { ns: 'layout' }),
+                  current: updateProgress.current + 1,
+                  total: updateProgress.total,
+                })
+              : t('tab.loading', {
+                  dataType: t('dataTypes.assets', { ns: 'layout' }),
+                })}
           </p>
         </div>
       </div>
@@ -182,14 +192,22 @@ export function TreeTab({ mode }: TreeTabProps) {
         <div className="text-center">
           {hasError && (
             <>
-              <p className="text-semantic-negative">Failed to load assets</p>
+              <p className="text-semantic-negative">
+                {t('tab.failedToLoad', {
+                  dataType: t('dataTypes.assets', { ns: 'layout' }),
+                })}
+              </p>
               <p className="text-sm text-content-secondary mb-4">
                 {errorMessage}
               </p>
             </>
           )}
           {!hasError && (
-            <p className="text-content-secondary">No asset data loaded yet.</p>
+            <p className="text-content-secondary">
+              {t('tab.noData', {
+                dataType: t('dataTypes.assets', { ns: 'layout' }),
+              })}
+            </p>
           )}
         </div>
       </div>

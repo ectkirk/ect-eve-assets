@@ -30,7 +30,6 @@ vi.mock('@/api/endpoints/contracts', () => ({
 vi.mock('@/api/esi', () => ({
   esi: {
     fetchPaginatedWithMeta: vi.fn(),
-    fetchBatch: vi.fn(),
   },
 }))
 

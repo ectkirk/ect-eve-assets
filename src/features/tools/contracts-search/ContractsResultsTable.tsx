@@ -1,4 +1,5 @@
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { FileText } from 'lucide-react'
 import {
   Table,
@@ -46,6 +47,7 @@ export function ContractsResultsTable({
   onViewContract,
   isLoading,
 }: ContractsResultsTableProps) {
+  const { t } = useTranslation('tools')
   const { sortColumn, sortDirection, handleSort } = useSortToggle<SortColumn>()
   const [hoveredContract, setHoveredContract] = useState<SearchContract | null>(
     null
@@ -187,8 +189,8 @@ export function ContractsResultsTable({
     return (
       <div className="flex flex-1 flex-col items-center justify-center text-content-muted">
         <FileText className="mb-2 h-12 w-12 opacity-50" />
-        <p>No contracts found</p>
-        <p className="text-sm">Try adjusting your search filters</p>
+        <p>{t('contractsSearch.noContracts')}</p>
+        <p className="text-sm">{t('contractsSearch.adjustFilters')}</p>
       </div>
     )
   }
@@ -204,7 +206,7 @@ export function ContractsResultsTable({
             <TableRow className="hover:bg-transparent">
               <SortableHeader
                 column="contract"
-                label="Contract"
+                label={t('contractsSearch.columns.contract')}
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
@@ -212,49 +214,49 @@ export function ContractsResultsTable({
               <TableHead className="w-10"></TableHead>
               <SortableHeader
                 column="location"
-                label="Location"
+                label={t('contractsSearch.columns.location')}
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
               />
               <SortableHeader
                 column="price"
-                label="Price"
+                label={t('contractsSearch.columns.price')}
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
               />
               <SortableHeader
                 column="estValue"
-                label="Est. Value"
+                label={t('contractsSearch.columns.estValue')}
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
               />
               <SortableHeader
                 column="difference"
-                label="Difference"
+                label={t('contractsSearch.columns.difference')}
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
               />
               <SortableHeader
                 column="timeLeft"
-                label="Time Left"
+                label={t('contractsSearch.columns.timeLeft')}
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
               />
               <SortableHeader
                 column="created"
-                label="Created"
+                label={t('contractsSearch.columns.created')}
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
               />
               <SortableHeader
                 column="description"
-                label="Description"
+                label={t('contractsSearch.columns.description')}
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}

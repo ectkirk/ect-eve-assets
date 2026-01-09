@@ -1,0 +1,14 @@
+{
+  "subtitle": "{{count}} clon(es) de salto",
+  "empty": "No se encontraron clones.",
+
+  "activeClone": "Clon activo",
+  "noImplants": "Sin implantes",
+  "implantSlot": "Ranura {{slot}}",
+  "noMatches": "No hay clones coincidentes",
+  "noClones": "Sin clones",
+
+  "fallback.structure": "Estructura {{id}}",
+  "fallback.location": "Ubicación {{id}}",
+  "fallback.unknown": "Desconocido"
+}

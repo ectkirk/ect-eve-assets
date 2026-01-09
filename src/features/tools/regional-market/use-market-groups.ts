@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { getErrorMessage } from '@/lib/errors'
 import type { CachedType } from '@/store/reference-cache'
+import { getLanguage } from '@/store/settings-store'
 import type { MarketGroup, MarketGroupNode, TreeRow } from './types'
 
 interface UseMarketGroupsResult {
@@ -46,7 +47,9 @@ export function useMarketGroups(): UseMarketGroupsResult {
 
     async function load() {
       try {
-        const result = await window.electronAPI!.refMarketGroups()
+        const result = await window.electronAPI!.refMarketGroups({
+          language: getLanguage(),
+        })
         if (cancelled) return
 
         if (result.error) {

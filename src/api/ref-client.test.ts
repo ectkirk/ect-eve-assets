@@ -12,6 +12,7 @@ const mockSaveTypes = vi.fn()
 const mockSaveLocations = vi.fn()
 const mockSetCategories = vi.fn()
 const mockSetGroups = vi.fn()
+const mockSetCorporations = vi.fn()
 const mockSetRegions = vi.fn()
 const mockSetSystems = vi.fn()
 const mockSetStations = vi.fn()
@@ -40,6 +41,7 @@ vi.mock('@/store/reference-cache', () => ({
       saveLocations: mockSaveLocations,
       setCategories: mockSetCategories,
       setGroups: mockSetGroups,
+      setCorporations: mockSetCorporations,
       setRegions: mockSetRegions,
       setSystems: mockSetSystems,
       setStations: mockSetStations,
@@ -69,6 +71,7 @@ const mockRefMoons = vi.fn()
 const mockRefMarketJita = vi.fn()
 const mockRefCategories = vi.fn()
 const mockRefGroups = vi.fn()
+const mockRefCorporations = vi.fn()
 const mockRefUniverseRegions = vi.fn()
 const mockRefUniverseSystems = vi.fn()
 const mockRefUniverseStations = vi.fn()
@@ -100,6 +103,16 @@ describe('ref-client', () => {
     mockRefGroups.mockResolvedValue({
       items: {
         '18': { id: 18, name: 'Mineral', categoryId: 4, published: true },
+      },
+    })
+    mockRefCorporations.mockResolvedValue({
+      items: {
+        '1000182': {
+          id: 1000182,
+          name: 'Tribal Liberation Force',
+          tickerName: 'TLIB',
+          factionId: 500002,
+        },
       },
     })
     mockRefTypesPage.mockResolvedValue({
@@ -146,6 +159,7 @@ describe('ref-client', () => {
       refMarketJita: mockRefMarketJita,
       refCategories: mockRefCategories,
       refGroups: mockRefGroups,
+      refCorporations: mockRefCorporations,
       refUniverseRegions: mockRefUniverseRegions,
       refUniverseSystems: mockRefUniverseSystems,
       refUniverseStations: mockRefUniverseStations,
@@ -431,8 +445,14 @@ describe('ref-client', () => {
       await loadReferenceData()
 
       expect(mockRefTypesPage).toHaveBeenCalledTimes(2)
-      expect(mockRefTypesPage).toHaveBeenNthCalledWith(1, {})
-      expect(mockRefTypesPage).toHaveBeenNthCalledWith(2, { after: 34 })
+      expect(mockRefTypesPage).toHaveBeenNthCalledWith(1, {
+        after: undefined,
+        language: 'en',
+      })
+      expect(mockRefTypesPage).toHaveBeenNthCalledWith(2, {
+        after: 34,
+        language: 'en',
+      })
       expect(mockSaveTypes).toHaveBeenCalledTimes(2)
       expect(mockSetAllTypesLoaded).toHaveBeenCalledWith(true)
     })

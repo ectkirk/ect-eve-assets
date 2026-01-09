@@ -17,6 +17,7 @@ import {
   makeUserAgent,
   type ESIRequestOptions,
   type ESIResponse,
+  type ESISuccessResponse,
   type ESIResponseMeta,
   type ESIHealthStatus,
 } from './types'
@@ -45,6 +46,27 @@ export class MainESIService {
   private activeRequests = 0
   private inflightRequests = new Map<string, Promise<ESIResponse<unknown>>>()
 
+  private assertSuccess(
+    result: ESIResponse<unknown>
+  ): asserts result is ESISuccessResponse<unknown> {
+    if (!result.success) {
+      throw new ESIError(result.error, result.status ?? 500, result.retryAfter)
+    }
+  }
+
+  private assertHasMeta(
+    result: ESISuccessResponse<unknown>,
+    endpoint: string
+  ): asserts result is ESISuccessResponse<unknown> & {
+    meta: { expiresAt: number; etag: string | null; notModified: boolean }
+  } {
+    if (!result.meta?.expiresAt) {
+      const error = `ESI meta missing: expiresAt not returned for ${endpoint}`
+      logger.error(error, undefined, { module: 'ESI', endpoint })
+      throw new Error(error)
+    }
+  }
+
   constructor() {
     const userData = app.getPath('userData')
     this.rateLimitFilePath = path.join(userData, RATE_LIMIT_FILE)
@@ -63,9 +85,7 @@ export class MainESIService {
     options: ESIRequestOptions = {}
   ): Promise<T> {
     const result = await this.executeWithRateLimit(endpoint, options)
-    if (!result.success) {
-      throw new ESIError(result.error, result.status ?? 500, result.retryAfter)
-    }
+    this.assertSuccess(result)
     return result.data as T
   }
 
@@ -73,7 +93,11 @@ export class MainESIService {
     endpoint: string,
     options: ESIRequestOptions = {}
   ): Promise<ESIResponseMeta<T>> {
-    const cacheKey = this.cache.makeKey(options.characterId, endpoint)
+    const cacheKey = this.cache.makeKey(
+      options.characterId,
+      endpoint,
+      options.language
+    )
     const cached = this.cache.get(cacheKey)
 
     if (cached && !options.etag) {
@@ -90,15 +114,8 @@ export class MainESIService {
       etag: options.etag ?? this.cache.getEtag(cacheKey),
     })
 
-    if (!result.success) {
-      throw new ESIError(result.error, result.status ?? 500, result.retryAfter)
-    }
-
-    if (!result.meta?.expiresAt) {
-      const error = `ESI meta missing: expiresAt not returned for ${endpoint}`
-      logger.error(error, undefined, { module: 'ESI', endpoint })
-      throw new Error(error)
-    }
+    this.assertSuccess(result)
+    this.assertHasMeta(result, endpoint)
 
     const response: ESIResponseMeta<T> = {
       data: result.data as T,
@@ -136,14 +153,7 @@ export class MainESIService {
       const pagedEndpoint = `${endpoint}${separator}page=${page}`
 
       const result = await this.executeWithRateLimit(pagedEndpoint, options)
-
-      if (!result.success) {
-        throw new ESIError(
-          result.error,
-          result.status ?? 500,
-          result.retryAfter
-        )
-      }
+      this.assertSuccess(result)
 
       const pageData = result.data as T[]
       results.push(...pageData)
@@ -181,14 +191,7 @@ export class MainESIService {
       `${endpoint}${separator}page=1`,
       options
     )
-
-    if (!firstResult.success) {
-      throw new ESIError(
-        firstResult.error,
-        firstResult.status ?? 500,
-        firstResult.retryAfter
-      )
-    }
+    this.assertSuccess(firstResult)
 
     const totalPages = firstResult.xPages ?? 1
     const results: T[] = [...(firstResult.data as T[])]
@@ -208,14 +211,7 @@ export class MainESIService {
               `${endpoint}${separator}page=${page}`,
               options
             )
-
-            if (!result.success) {
-              throw new ESIError(
-                result.error,
-                result.status ?? 500,
-                result.retryAfter
-              )
-            }
+            this.assertSuccess(result)
 
             completedPages.add(page)
             onProgress?.({ current: completedPages.size, total: totalPages })
@@ -267,7 +263,7 @@ export class MainESIService {
     }
 
     const characterId = options.characterId ?? 0
-    const cacheKey = this.cache.makeKey(characterId, endpoint)
+    const cacheKey = this.cache.makeKey(characterId, endpoint, options.language)
 
     if (options.method !== 'POST') {
       const inflight = this.inflightRequests.get(cacheKey)
@@ -308,12 +304,17 @@ export class MainESIService {
     attempt = 0
   ): Promise<ESIResponse<unknown>> {
     const url = `${ESI_BASE_URL}${endpoint}`
-    const cacheKey = this.cache.makeKey(options.characterId, endpoint)
+    const cacheKey = this.cache.makeKey(
+      options.characterId,
+      endpoint,
+      options.language
+    )
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'X-Compatibility-Date': ESI_COMPATIBILITY_DATE,
       'User-Agent': this.userAgent,
+      'Accept-Language': options.language || 'en',
     }
 
     if (options.requiresAuth !== false && options.characterId) {

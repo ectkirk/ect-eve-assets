@@ -21,7 +21,7 @@ export interface DBConfig {
 export const DB = {
   CACHE: {
     name: 'ecteveassets-cache',
-    version: 13,
+    version: 14,
     stores: [
       { name: 'types', keyPath: 'id' },
       { name: 'structures', keyPath: 'id' },
@@ -30,6 +30,7 @@ export const DB = {
       { name: 'names', keyPath: 'id' },
       { name: 'categories', keyPath: 'id' },
       { name: 'groups', keyPath: 'id' },
+      { name: 'corporations', keyPath: 'id' },
       { name: 'regions', keyPath: 'id' },
       { name: 'systems', keyPath: 'id' },
       { name: 'stations', keyPath: 'id' },

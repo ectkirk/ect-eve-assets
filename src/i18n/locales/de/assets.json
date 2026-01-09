@@ -1,0 +1,43 @@
+{
+  "badges.activeShip": "Aktives Schiff",
+  "badges.inContract": "Im Vertrag",
+  "badges.sellOrder": "Verkaufsauftrag",
+  "badges.inJob": "Im Auftrag",
+  "badges.structure": "Struktur",
+
+  "empty": "Keine Vermögenswerte gefunden.",
+  "noCharacters": "Keine Charaktere angemeldet. Fügen Sie einen Charakter hinzu, um Vermögenswerte anzuzeigen.",
+  "noData": "Keine Vermögensdaten geladen. Klicken Sie auf Aktualisieren in der Kopfzeile, um von ESI abzurufen.",
+
+  "loading.assets": "Lade Vermögenswerte...",
+  "loading.fetching": "Rufe Vermögenswerte ab ({{current}}/{{total}})...",
+
+  "error.loadFailed": "Vermögenswerte konnten nicht geladen werden",
+
+  "contextMenu.viewContracts": "In Verträgen anzeigen",
+  "contextMenu.openMutamarket": "In Mutamarket öffnen",
+
+  "settingsModal.title": "Vermögensansicht-Einstellungen",
+  "settingsModal.description": "Wählen Sie, welche Datenquellen in die Vermögenssummen einbezogen werden sollen",
+  "settingsModal.marketOrders": "Marktaufträge",
+  "settingsModal.marketOrdersDesc": "Gegenstände aus aktiven Verkaufsaufträgen einbeziehen",
+  "settingsModal.contracts": "Verträge",
+  "settingsModal.contractsDesc": "Gegenstände aus ausstehenden Verträgen einbeziehen, die Sie erstellt haben",
+  "settingsModal.industryJobs": "Industrieaufträge",
+  "settingsModal.industryJobsDesc": "Gegenstände aus aktiven und fertigen Industrieaufträgen einbeziehen",
+  "settingsModal.activeShip": "Aktives Schiff",
+  "settingsModal.activeShipDesc": "Ihr derzeit gesteuertes Schiff und dessen Inhalt einbeziehen",
+  "settingsModal.structures": "Strukturen",
+  "settingsModal.structuresDesc": "Eigene Strukturen einbeziehen (Zitadellen, Ingenieurkomplexe usw.)",
+
+  "locations.assetSafety": "Vermögenssicherheit",
+  "locations.unknownParent": "Unbekannter Ursprung",
+  "locations.unknownLocation": "Unbekannter Standort",
+  "locations.unknownType": "Unbekannter Typ {{id}}",
+  "categories.abyssals": "Abyssale",
+
+  "flags.inContract": "Im Vertrag",
+  "flags.sellOrder": "Verkaufsauftrag",
+  "flags.industryJob": "Im Auftrag",
+  "flags.activeShip": "Aktives Schiff"
+}

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   getAllSystems,
   getAllRegions,
@@ -53,6 +54,7 @@ import {
 import { MapSearch } from './components/MapSearch'
 
 export function StarMap() {
+  const { t } = useTranslation('tools')
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [dimensions, setDimensions] = useState({ width: 1200, height: 800 })
@@ -454,7 +456,7 @@ export function StarMap() {
         ref={containerRef}
         className="flex h-full w-full items-center justify-center"
       >
-        <p className="text-content-secondary">Loading map data...</p>
+        <p className="text-content-secondary">{t('map.loadingMapData')}</p>
       </div>
     )
   }

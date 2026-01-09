@@ -1,0 +1,14 @@
+{
+  "subtitle": "{{count}} clone(s) de saut",
+  "empty": "Aucun clone trouvé.",
+
+  "activeClone": "Clone actif",
+  "noImplants": "Pas d'implants",
+  "implantSlot": "Emplacement {{slot}}",
+  "noMatches": "Aucun clone trouvé",
+  "noClones": "Pas de clones",
+
+  "fallback.structure": "Structure {{id}}",
+  "fallback.location": "Emplacement {{id}}",
+  "fallback.unknown": "Inconnu"
+}

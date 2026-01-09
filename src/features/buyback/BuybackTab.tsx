@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { BuybackForm } from './BuybackForm'
 import { BuybackResults } from './BuybackResults'
 import { BuybackFAQ } from './BuybackFAQ'
 import { useBuybackInfoStore } from '@/store/buyback-info-store'
 import {
   getStyling,
-  tabToKey,
-  formatPercent,
+  formatRate,
   type BuybackTabType,
   type RuntimeSecurityConfig,
   type AssetSafetySecurityLevel,
@@ -14,12 +14,6 @@ import {
 import { Loader2 } from 'lucide-react'
 
 type NPCStationOption = 'yes' | 'no'
-
-const SECURITY_LABELS: Record<AssetSafetySecurityLevel, string> = {
-  highsec: 'High-sec',
-  lowsec: 'Low-sec',
-  nullsec: 'Null-sec',
-}
 
 interface ToggleGroupProps<T extends string> {
   label: string
@@ -73,6 +67,7 @@ export function BuybackTab({
   prefillText,
   onPrefillConsumed,
 }: BuybackTabProps) {
+  const { t } = useTranslation('tools')
   const {
     info,
     isLoading: isLoadingInfo,
@@ -107,18 +102,16 @@ export function BuybackTab({
   const config: RuntimeSecurityConfig | null = useMemo(() => {
     if (!info?.securityConfigs || !info?.assetSafetyRates) return null
 
-    const key = tabToKey(activeTab)
-
-    if (activeTab !== 'Asset Safety') {
-      const apiConfig = info.securityConfigs[key]
+    if (activeTab !== 'assetsafety') {
+      const apiConfig = info.securityConfigs[activeTab]
       if (!apiConfig) return null
       return {
         name: apiConfig.name,
-        key,
+        key: activeTab,
         buyRate: apiConfig.buyRate,
         iskPerM3: apiConfig.iskPerM3,
         acceptCapitals: apiConfig.acceptCapitals,
-        styling: getStyling(key),
+        styling: getStyling(activeTab),
       }
     }
 
@@ -133,7 +126,7 @@ export function BuybackTab({
         : info.assetSafetyRates.feeRate
 
     return {
-      name: 'Asset Safety',
+      name: t('buyback.tabs.assetsafety'),
       key: 'assetsafety',
       buyRate,
       iskPerM3: assetSafetyRates.iskPerM3,
@@ -141,7 +134,7 @@ export function BuybackTab({
       assetSafetyRate: feeRate,
       styling: getStyling('assetsafety'),
     }
-  }, [info, activeTab, assetSafetySecLevel, npcStation])
+  }, [info, activeTab, assetSafetySecLevel, npcStation, t])
 
   useEffect(() => {
     if (prevTabRef.current !== activeTab) {
@@ -158,7 +151,7 @@ export function BuybackTab({
   useEffect(() => {
     const prev = prevAssetSafetyOptions.current
     if (
-      activeTab === 'Asset Safety' &&
+      activeTab === 'assetsafety' &&
       (prev.secLevel !== assetSafetySecLevel || prev.npc !== npcStation)
     ) {
       setResult(null)
@@ -227,7 +220,7 @@ export function BuybackTab({
     return (
       <div className="mx-auto max-w-5xl">
         <div className="rounded-lg border border-semantic-danger/30 bg-semantic-danger/10 p-4 text-status-negative">
-          Failed to load buyback configuration: {infoError}
+          {t('buyback.loadError', { error: infoError })}
         </div>
       </div>
     )
@@ -254,31 +247,39 @@ export function BuybackTab({
           )}
         </h1>
         <p className="text-content-secondary">
-          {activeTab === 'Asset Safety'
-            ? `${SECURITY_LABELS[assetSafetySecLevel]} at ${formatPercent(config?.buyRate ?? 0)} with ${formatPercent(feeRate)} asset safety fee.`
-            : `${config?.name} buyback. General buyback for items${config?.acceptCapitals ? ' and capitals' : ''}.`}
+          {activeTab === 'assetsafety'
+            ? t('buyback.assetSafetyDescription', {
+                secLevel: t(
+                  `buyback.${assetSafetySecLevel === 'highsec' ? 'highSec' : assetSafetySecLevel === 'lowsec' ? 'lowSec' : 'nullSec'}`
+                ),
+                buyRate: formatRate(config?.buyRate ?? 0),
+                feeRate: formatRate(feeRate),
+              })
+            : config?.acceptCapitals
+              ? t('buyback.descriptionWithCapitals', { name: config?.name })
+              : t('buyback.description', { name: config?.name })}
         </p>
       </div>
 
       <div className="space-y-6">
-        {activeTab === 'Asset Safety' && (
+        {activeTab === 'assetsafety' && (
           <div className="flex flex-wrap items-center gap-6 rounded-lg border border-border bg-surface-secondary/50 p-4">
             <ToggleGroup
-              label="Security Level"
+              label={t('buyback.securityLevel')}
               options={[
-                { value: 'nullsec', label: 'Null-sec' },
-                { value: 'lowsec', label: 'Low-sec' },
-                { value: 'highsec', label: 'High-sec' },
+                { value: 'nullsec', label: t('buyback.nullSec') },
+                { value: 'lowsec', label: t('buyback.lowSec') },
+                { value: 'highsec', label: t('buyback.highSec') },
               ]}
               value={assetSafetySecLevel}
               onChange={setAssetSafetySecLevel}
               disabled={isLoading}
             />
             <ToggleGroup
-              label="NPC Station in System"
+              label={t('buyback.npcStation')}
               options={[
-                { value: 'no', label: 'No' },
-                { value: 'yes', label: 'Yes' },
+                { value: 'no', label: t('buyback.no') },
+                { value: 'yes', label: t('buyback.yes') },
               ]}
               value={npcStation}
               onChange={setNpcStation}

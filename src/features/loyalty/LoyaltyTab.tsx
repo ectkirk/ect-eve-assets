@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useLoyaltyStore } from '@/store/loyalty-store'
 import { useTabControls } from '@/context'
@@ -27,6 +28,8 @@ interface LoyaltyRow {
 type SortColumn = 'character' | 'corporation' | 'lp'
 
 export function LoyaltyTab() {
+  const { t } = useTranslation('loyalty')
+  const { t: tc } = useTranslation('common')
   const ownersRecord = useAuthStore((s) => s.owners)
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
 
@@ -41,7 +44,7 @@ export function LoyaltyTab() {
     init().then(() => update())
   }, [init, update])
 
-  const names = useReferenceCacheStore((s) => s.names)
+  const corporations = useReferenceCacheStore((s) => s.corporations)
 
   const { search, setSearchPlaceholder, setLoyaltyCorporations } =
     useTabControls()
@@ -57,7 +60,7 @@ export function LoyaltyTab() {
   )
 
   const { rows, corpTotals } = useMemo(() => {
-    void names
+    void corporations
 
     const result: LoyaltyRow[] = []
     const corpMap = new Map<number, { name: string; total: number }>()
@@ -70,8 +73,9 @@ export function LoyaltyTab() {
       for (const lp of loyaltyPoints) {
         if (lp.loyalty_points <= 0) continue
 
-        const name = names.get(lp.corporation_id)
-        const corpName = name?.name ?? `Corporation ${lp.corporation_id}`
+        const corp = corporations.get(lp.corporation_id)
+        const corpName =
+          corp?.name ?? t('fallback.corporation', { id: lp.corporation_id })
 
         result.push({
           ownerId: owner.characterId,
@@ -125,12 +129,19 @@ export function LoyaltyTab() {
       .sort((a, b) => b.total - a.total)
 
     return { rows: sortedRows, corpTotals }
-  }, [loyaltyByOwner, names, search, selectedSet, sortColumn, sortDirection])
+  }, [
+    loyaltyByOwner,
+    corporations,
+    search,
+    selectedSet,
+    sortColumn,
+    sortDirection,
+  ])
 
   useEffect(() => {
-    setSearchPlaceholder('Search character, corporation...')
+    setSearchPlaceholder(tc('search.placeholder'))
     return () => setSearchPlaceholder(null)
-  }, [setSearchPlaceholder])
+  }, [setSearchPlaceholder, tc])
 
   useEffect(() => {
     setLoyaltyCorporations({ corporations: corpTotals })
@@ -158,13 +169,12 @@ export function LoyaltyTab() {
         <div className="text-center">
           <p className="text-content-secondary">
             {charactersNeedingReauth.length === 1
-              ? `${charactersNeedingReauth[0]?.name} requires`
-              : `${charactersNeedingReauth.length} characters require`}{' '}
-            re-authentication for loyalty points access.
+              ? t('reauthRequired', { name: charactersNeedingReauth[0]?.name })
+              : t('reauthRequiredMultiple', {
+                  count: charactersNeedingReauth.length,
+                })}
           </p>
-          <p className="text-content-muted text-sm mt-1">
-            Use the character menu to re-authenticate.
-          </p>
+          <p className="text-content-muted text-sm mt-1">{t('reauthHint')}</p>
         </div>
       </div>
     )
@@ -173,9 +183,7 @@ export function LoyaltyTab() {
   if (rows.length === 0) {
     return (
       <div className="h-full rounded-lg border border-border bg-surface-secondary/30 flex items-center justify-center">
-        <p className="text-content-secondary">
-          No loyalty points data available.
-        </p>
+        <p className="text-content-secondary">{t('empty')}</p>
       </div>
     )
   }
@@ -189,14 +197,14 @@ export function LoyaltyTab() {
               <TableHead className="w-8" />
               <SortableHeader
                 column="corporation"
-                label="Corporation"
+                label="columns.corporation"
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}
               />
               <SortableHeader
                 column="lp"
-                label="LP"
+                label="columns.lp"
                 sortColumn={sortColumn}
                 sortDirection={sortDirection}
                 onSort={handleSort}

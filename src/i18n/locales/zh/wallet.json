@@ -1,0 +1,10 @@
+{
+  "divisions.master": "主钱包",
+  "divisions.wallet2": "钱包 2",
+  "divisions.wallet3": "钱包 3",
+  "divisions.wallet4": "钱包 4",
+  "divisions.wallet5": "钱包 5",
+  "divisions.wallet6": "钱包 6",
+  "divisions.wallet7": "钱包 7",
+  "divisions.division": "分部 {{number}}"
+}

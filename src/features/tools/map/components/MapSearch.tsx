@@ -1,4 +1,5 @@
 import { memo, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { SearchResult } from '../types'
 
 interface MapSearchProps {
@@ -20,6 +21,7 @@ export const MapSearch = memo(function MapSearch({
   onBlur,
   onSelectResult,
 }: MapSearchProps) {
+  const { t } = useTranslation(['tools', 'common'])
   const handleResultMouseDown = useCallback(
     (e: React.MouseEvent, result: SearchResult) => {
       e.preventDefault()
@@ -37,7 +39,7 @@ export const MapSearch = memo(function MapSearch({
           onChange={onChange}
           onFocus={onFocus}
           onBlur={onBlur}
-          placeholder="Search systems or regions..."
+          placeholder={t('common:search.placeholder')}
           className="w-full rounded-lg border border-border-secondary bg-surface-secondary px-4 py-2 text-sm text-content placeholder-content-muted focus:border-accent focus:outline-none"
         />
 
@@ -57,7 +59,7 @@ export const MapSearch = memo(function MapSearch({
                       : 'bg-purple-900/50 text-purple-300'
                   }`}
                 >
-                  {result.type}
+                  {result.type === 'system' ? t('map.system') : t('map.region')}
                 </span>
               </button>
             ))}

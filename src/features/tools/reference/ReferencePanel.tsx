@@ -7,6 +7,7 @@ import {
   Suspense,
   useRef,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ChevronRight, Loader2, Search, X } from 'lucide-react'
 import { useReferenceCacheStore } from '@/store/reference-cache'
 import { TypeIcon } from '@/components/ui/type-icon'
@@ -33,6 +34,7 @@ export function ReferencePanel({
   initialTypeId,
   onClearInitialTypeId,
 }: ReferencePanelProps = {}) {
+  const { t } = useTranslation(['tools', 'common'])
   const [searchQuery, setSearchQuery] = useState('')
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [showUnpublished, setShowUnpublished] = useState(false)
@@ -106,7 +108,7 @@ export function ReferencePanel({
         matchedGroups.push({
           id: grp.id,
           name: grp.name,
-          categoryName: cat?.name ?? 'Unknown',
+          categoryName: cat?.name ?? t('reference.fallback.unknown'),
           published: grp.published,
         })
         if (matchedGroups.length >= SEARCH_LIMIT_GROUPS) break
@@ -301,7 +303,7 @@ export function ReferencePanel({
             className="h-4 w-4 rounded border-border text-accent focus:ring-accent"
           />
           <span className="text-sm text-content-secondary">
-            Show unpublished
+            {t('reference.showUnpublished')}
           </span>
         </label>
         <div className="flex-1" />
@@ -309,13 +311,13 @@ export function ReferencePanel({
           onClick={handleExpandAll}
           className="px-2 py-1 text-xs text-content-secondary hover:text-content"
         >
-          Expand All
+          {t('reference.expandAll')}
         </button>
         <button
           onClick={handleCollapseAll}
           className="px-2 py-1 text-xs text-content-secondary hover:text-content"
         >
-          Collapse All
+          {t('reference.collapseAll')}
         </button>
       </div>
 
@@ -335,7 +337,9 @@ export function ReferencePanel({
                   }
                 }}
                 placeholder={
-                  allTypesLoaded ? 'Search...' : 'Search (load types first)'
+                  allTypesLoaded
+                    ? t('common:search.placeholder')
+                    : t('reference.searchLoadTypesFirst')
                 }
                 className="w-full rounded border border-border bg-surface-tertiary py-1.5 pl-8 pr-8 text-sm placeholder:text-content-muted focus:border-accent focus:outline-hidden"
               />
@@ -352,7 +356,7 @@ export function ReferencePanel({
                   {searchResults.categories.length > 0 && (
                     <div>
                       <div className="px-3 py-1.5 text-xs font-semibold uppercase text-content-muted">
-                        Categories
+                        {t('reference.categories')}
                       </div>
                       {searchResults.categories.map((cat) => (
                         <button
@@ -372,7 +376,7 @@ export function ReferencePanel({
                   {searchResults.groups.length > 0 && (
                     <div>
                       <div className="px-3 py-1.5 text-xs font-semibold uppercase text-content-muted">
-                        Groups
+                        {t('reference.groups')}
                       </div>
                       {searchResults.groups.map((grp) => (
                         <button
@@ -397,7 +401,7 @@ export function ReferencePanel({
                   {searchResults.types.length > 0 && (
                     <div>
                       <div className="px-3 py-1.5 text-xs font-semibold uppercase text-content-muted">
-                        Items
+                        {t('reference.items')}
                       </div>
                       {searchResults.types.map((type) => (
                         <button
@@ -434,7 +438,9 @@ export function ReferencePanel({
                 disabled={loadingTypes}
                 className="mt-2 w-full rounded bg-accent/20 py-1 text-xs text-accent hover:bg-accent/30 disabled:opacity-50"
               >
-                {loadingTypes ? 'Loading...' : 'Load All Types for Search'}
+                {loadingTypes
+                  ? t('reference.loading')
+                  : t('reference.loadAllTypes')}
               </button>
             )}
           </div>
@@ -501,7 +507,7 @@ export function ReferencePanel({
               </FeatureErrorBoundary>
             ) : (
               <div className="flex h-full items-center justify-center text-content-secondary">
-                <p>Select an item from the tree to view details</p>
+                <p>{t('reference.selectItemPrompt')}</p>
               </div>
             )}
           </div>

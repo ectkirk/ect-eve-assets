@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { matchesSearchLower } from '@/lib/utils'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import {
@@ -14,6 +15,7 @@ import { useAssetData } from '@/hooks/useAssetData'
 import { useTabControls } from '@/context'
 import {
   getType,
+  getTypeName,
   getLocation,
   useReferenceCacheStore,
 } from '@/store/reference-cache'
@@ -41,7 +43,7 @@ function buildStructureTreeNode(
 ): TreeNode {
   const type = getType(structureAsset.type_id)
   const customName = assetNames.get(structureAsset.item_id)
-  const typeName = type?.name ?? `Unknown Type ${structureAsset.type_id}`
+  const typeName = getTypeName(structureAsset.type_id)
 
   const children: TreeNode[] = childAssets.map((child) => {
     const childType = getType(child.type_id)
@@ -49,12 +51,12 @@ function buildStructureTreeNode(
     return {
       id: `asset-${child.item_id}`,
       nodeType: 'item',
-      name: childName ?? childType?.name ?? `Unknown Type ${child.type_id}`,
+      name: childName ?? getTypeName(child.type_id),
       depth: 1,
       children: [],
       asset: child,
       typeId: child.type_id,
-      typeName: childType?.name ?? `Unknown Type ${child.type_id}`,
+      typeName: getTypeName(child.type_id),
       categoryId: childType?.categoryId,
       categoryName: childType?.categoryName,
       groupName: childType?.groupName,
@@ -91,6 +93,7 @@ function getRigNames(treeNode: TreeNode | null): string[] {
 }
 
 export function StructuresTab() {
+  const { t } = useTranslation('structures')
   const ownersRecord = useAuthStore((s) => s.owners)
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
 
@@ -215,7 +218,6 @@ export function StructuresTab() {
 
     for (const { owner, structures: ownerStructures } of filteredStructures) {
       for (const structure of ownerStructures) {
-        const type = types.get(structure.type_id)
         const location = getLocation(structure.system_id)
         const assetData = structureAssetMap.get(structure.structure_id)
         const treeNode = assetData
@@ -232,11 +234,13 @@ export function StructuresTab() {
         rows.push({
           id: `upwell-${structure.structure_id}`,
           kind: 'upwell',
-          name: structure.name || `Structure ${structure.structure_id}`,
+          name:
+            structure.name ||
+            t('fallback.structure', { id: structure.structure_id }),
           owner,
           typeId: structure.type_id,
-          typeName: type?.name ?? `Unknown Type ${structure.type_id}`,
-          regionName: location?.regionName ?? 'Unknown Region',
+          typeName: getTypeName(structure.type_id),
+          regionName: location?.regionName ?? t('fallback.unknownRegion'),
           state: structure.state,
           fuelValue: fuelInfo.days,
           fuelText: fuelInfo.text,
@@ -274,7 +278,10 @@ export function StructuresTab() {
         const timerInfo = getStarbaseTimer(starbase)
         const state = starbase.state ?? 'unknown'
         const moonName =
-          moon?.name ?? (starbase.moon_id ? `Moon ${starbase.moon_id}` : '-')
+          moon?.name ??
+          (starbase.moon_id
+            ? t('fallback.moon', { id: starbase.moon_id })
+            : '-')
 
         rows.push({
           id: `pos-${starbase.starbase_id}`,
@@ -282,8 +289,8 @@ export function StructuresTab() {
           name: moonName,
           owner,
           typeId: starbase.type_id,
-          typeName: type?.name ?? `Unknown Type ${starbase.type_id}`,
-          regionName: location?.regionName ?? 'Unknown Region',
+          typeName: getTypeName(starbase.type_id),
+          regionName: location?.regionName ?? t('fallback.unknownRegion'),
           state,
           fuelValue: fuelHours,
           fuelText: fuelInfo.text,
@@ -359,8 +366,7 @@ export function StructuresTab() {
     updateError,
     customEmptyCheck: {
       condition: corpOwners.length === 0,
-      message:
-        'No corporation owners. Add a corporation to view structure data.',
+      message: t('noCorpOwners'),
     },
   })
   if (loadingState) return loadingState

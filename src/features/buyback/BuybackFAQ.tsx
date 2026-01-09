@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import DOMPurify from 'dompurify'
 import { useBuybackInfoStore } from '@/store/buyback-info-store'
 
@@ -170,6 +171,7 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
 }
 
 export function BuybackFAQ() {
+  const { t } = useTranslation('tools')
   const { info } = useBuybackInfoStore()
   const faq = info?.faq
 
@@ -180,7 +182,7 @@ export function BuybackFAQ() {
   return (
     <div className="rounded-lg border border-border bg-surface-secondary/50 p-6">
       <h2 className="mb-4 text-xl font-semibold text-content">
-        Frequently Asked Questions
+        {t('buyback.faq')}
       </h2>
       <div className="divide-y divide-border">
         {faq.map((item, index) => (

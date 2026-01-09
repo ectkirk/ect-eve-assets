@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/shallow'
 import {
   useReferenceCacheStore,
@@ -92,6 +93,7 @@ export function RegionalMarketPanel({
     }))
   )
 
+  const { t } = useTranslation('tools')
   const { tree, loading, error } = useMarketGroups()
   const regions = useReferenceCacheStore((s) => s.regions)
   const types = useReferenceCacheStore((s) => s.types)
@@ -204,7 +206,7 @@ export function RegionalMarketPanel({
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center text-content-secondary">
-        Loading market groups...
+        {t('regionalMarket.loading')}
       </div>
     )
   }
@@ -234,7 +236,9 @@ export function RegionalMarketPanel({
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center gap-4 px-4 py-2 border-b border-border">
-        <label className="text-sm text-content-secondary">Region:</label>
+        <label className="text-sm text-content-secondary">
+          {t('regionalMarket.region')}
+        </label>
         <select
           value={selectedRegionId}
           onChange={handleRegionChange}
@@ -251,13 +255,13 @@ export function RegionalMarketPanel({
           onClick={handleExpandAll}
           className="text-xs text-content-secondary hover:text-content px-2 py-1"
         >
-          Expand All
+          {t('regionalMarket.expandAll')}
         </button>
         <button
           onClick={handleCollapseAll}
           className="text-xs text-content-secondary hover:text-content px-2 py-1"
         >
-          Collapse All
+          {t('regionalMarket.collapseAll')}
         </button>
       </div>
 

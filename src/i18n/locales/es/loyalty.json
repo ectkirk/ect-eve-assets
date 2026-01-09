@@ -1,0 +1,8 @@
+{
+  "empty": "No hay datos de puntos de lealtad disponibles.",
+
+  "fallback.corporation": "Corporación {{id}}",
+  "reauthRequired": "{{name}} requiere reautenticación para acceder a los puntos de lealtad.",
+  "reauthRequiredMultiple": "{{count}} personajes requieren reautenticación para acceder a los puntos de lealtad.",
+  "reauthHint": "Usa el menú de personajes para reautenticar."
+}

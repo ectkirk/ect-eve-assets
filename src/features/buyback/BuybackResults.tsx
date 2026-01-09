@@ -1,4 +1,6 @@
 import { useState, useMemo } from 'react'
+import { useTranslation, Trans } from 'react-i18next'
+import { formatFullNumber, formatVolume } from '@/lib/utils'
 import type { RuntimeSecurityConfig } from './config'
 
 function generateRef(): string {
@@ -11,7 +13,15 @@ interface BuybackResultsProps {
   config: RuntimeSecurityConfig
 }
 
-function CopyButton({ text, label }: { text: string; label: string }) {
+function CopyButton({
+  text,
+  label,
+  t,
+}: {
+  text: string
+  label: string
+  t: (key: string) => string
+}) {
   const [copied, setCopied] = useState(false)
 
   const handleCopy = () => {
@@ -25,7 +35,7 @@ function CopyButton({ text, label }: { text: string; label: string }) {
       type="button"
       onClick={handleCopy}
       className={`inline-flex items-center gap-1 font-semibold ${label === 'corp' ? 'text-status-info hover:opacity-80' : 'text-status-positive hover:opacity-80'}`}
-      title="Click to copy"
+      title={t('buyback.clickToCopy')}
     >
       {text}
       {copied ? (
@@ -73,17 +83,11 @@ function getItemImageUrl(
 }
 
 export function BuybackResults({ result, config }: BuybackResultsProps) {
+  const { t } = useTranslation('tools')
+  const { t: tc } = useTranslation('common')
   const { items, totals } = result
   const [showExcluded, setShowExcluded] = useState(totals.buybackValue === 0)
   const quoteRef = useMemo(() => generateRef(), [])
-
-  const formatVolume = (value: number) =>
-    value.toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' m³'
-
-  const formatISK = (value: number) =>
-    value.toLocaleString('en-US', { maximumFractionDigits: 0 })
-
-  const formatISKFull = (value: number) => formatISK(value) + ' ISK'
 
   const excludedFromList = new Set([
     ...result.unmatchedItems,
@@ -116,10 +120,10 @@ export function BuybackResults({ result, config }: BuybackResultsProps) {
       {totals.buybackValue === 0 && (
         <div className="rounded-lg border border-semantic-danger/30 bg-semantic-danger/10 p-6 text-center">
           <div className="text-lg font-medium text-status-negative">
-            No valid items for buyback
+            {t('buyback.noValidItems')}
           </div>
           <div className="mt-1 text-sm text-status-negative/80">
-            There are no valid items to offer a buyback value.
+            {t('buyback.noValidItemsDescription')}
           </div>
         </div>
       )}
@@ -128,28 +132,44 @@ export function BuybackResults({ result, config }: BuybackResultsProps) {
         <div className="rounded-lg border border-semantic-success/30 bg-semantic-success/10 p-6">
           <div className="mb-4 text-center">
             <div className="text-3xl font-bold text-status-positive">
-              {formatISKFull(totals.buybackValue)}
+              {formatFullNumber(totals.buybackValue)}
             </div>
             <div className="text-sm text-status-positive/80">
-              Total Buyback Value
+              {t('buyback.totalBuybackValue')}
             </div>
           </div>
           <div className="rounded-lg border border-semantic-success/20 bg-surface-secondary/50 p-4">
             <div className="text-sm text-content-secondary">
               <p>
-                Send an{' '}
-                <span className="font-semibold text-content">
-                  Item Exchange
-                </span>{' '}
-                contract to corporation{' '}
-                <CopyButton text="ECTrade" label="corp" /> for{' '}
-                <CopyButton
-                  text={formatISKFull(totals.buybackValue)}
-                  label="value"
+                <Trans
+                  i18nKey="buyback.sendContract"
+                  t={t}
+                  values={{
+                    corp: 'ECTrade',
+                    value: formatFullNumber(totals.buybackValue),
+                  }}
+                  components={{
+                    bold: <span className="font-semibold text-content" />,
+                    corp: <CopyButton text="ECTrade" label="corp" t={t} />,
+                    value: (
+                      <CopyButton
+                        text={formatFullNumber(totals.buybackValue)}
+                        label="value"
+                        t={t}
+                      />
+                    ),
+                  }}
                 />
               </p>
               <p className="mt-1 text-content-secondary">
-                Set the reason to: <CopyButton text={quoteRef} label="ref" />
+                <Trans
+                  i18nKey="buyback.setReason"
+                  t={t}
+                  values={{ ref: quoteRef }}
+                  components={{
+                    ref: <CopyButton text={quoteRef} label="ref" t={t} />,
+                  }}
+                />
               </p>
             </div>
           </div>
@@ -178,9 +198,9 @@ export function BuybackResults({ result, config }: BuybackResultsProps) {
                 />
               </svg>
               <span className="text-status-highlight/80">
-                We have excluded some items from your offer.{' '}
+                {t('buyback.excludedItemsWarning')}{' '}
                 <span className="text-status-highlight underline">
-                  Click here for more information
+                  {t('buyback.clickForInfo')}
                 </span>
               </span>
             </span>
@@ -202,93 +222,92 @@ export function BuybackResults({ result, config }: BuybackResultsProps) {
           {showExcluded && (
             <div className="space-y-4 border-t border-semantic-warning/30 p-4">
               <div className="text-sm text-content-secondary">
-                The following items have not been included in the shown
-                appraisal and can be safely removed from your buyback contract.
+                {t('buyback.excludedItemsDescription')}
               </div>
 
               {result.excludedItems.length > 0 && (
                 <ExcludedSection
-                  title="We are not accepting Apparel or SKINs"
+                  title={t('buyback.excludedApparel')}
                   items={result.excludedItems}
                   color="orange"
-                  description="Please exclude these items from your contract"
-                  footer="If you believe this is an error, please contact us."
+                  description={t('buyback.excludedApparelDescription')}
+                  footer={t('buyback.excludedApparelFooter')}
                 />
               )}
 
               {result.unmatchedItems.length > 0 && (
                 <ExcludedSection
-                  title="We're unable to recognize some of your items"
+                  title={t('buyback.unmatchedItems')}
                   items={result.unmatchedItems}
                   color="red"
-                  footer="If you believe this is an error, please let us know."
+                  footer={t('buyback.unmatchedItemsFooter')}
                 />
               )}
 
               {result.lowVolumeItems.length > 0 && (
                 <ExcludedSection
-                  title="Some items have low volume or unreliable price history"
+                  title={t('buyback.lowVolumeItems')}
                   items={result.lowVolumeItems}
                   color="pink"
-                  footer="We're unable to offer an appropriate quote for these items due to insufficient market data."
+                  footer={t('buyback.lowVolumeItemsFooter')}
                 />
               )}
 
               {result.unprofitableItems.length > 0 && (
                 <ExcludedSection
-                  title="m³/Value Exclusions"
+                  title={t('buyback.unprofitableItems')}
                   items={result.unprofitableItems}
                   color="purple"
-                  footer="Due to the high m³/low value, these items are not profitable to transport."
+                  footer={t('buyback.unprofitableItemsFooter')}
                 />
               )}
 
               {result.excludedCrystals.length > 0 && (
                 <ExcludedSection
-                  title="Crystal Ammunition Not Accepted"
+                  title={t('buyback.excludedCrystals')}
                   items={result.excludedCrystals}
                   color="gray"
-                  footer="We cannot determine from all paste formats whether crystals are tradeable, so we do not buy crystal ammunition."
+                  footer={t('buyback.excludedCrystalsFooter')}
                 />
               )}
 
               {result.excludedRigs.length > 0 && (
                 <ExcludedSection
-                  title="Rigs have been excluded"
+                  title={t('buyback.excludedRigs')}
                   items={result.excludedRigs}
                   color="blue"
-                  footer="Rigs are generally destroyed on repackage. If you believe this is a mistake (rigs not applied to hull/T3C), please contact us."
+                  footer={t('buyback.excludedRigsFooter')}
                 />
               )}
 
               {result.excludedCapitals.length > 0 && (
                 <ExcludedSection
-                  title="Capital ships are not accepted"
+                  title={t('buyback.excludedCapitals')}
                   items={result.excludedCapitals}
                   color="cyan"
                   footer={
                     config.name.toLowerCase().includes('high')
-                      ? 'We do not purchase capitals in high security space.'
-                      : 'We are not accepting capitals at this time.'
+                      ? t('buyback.excludedCapitalsHighSec')
+                      : t('buyback.excludedCapitalsGeneral')
                   }
                 />
               )}
 
               {result.blueprintCopies.length > 0 && (
                 <ExcludedSection
-                  title="Blueprint copies cannot be valued"
+                  title={t('buyback.blueprintCopies')}
                   items={result.blueprintCopies}
                   color="indigo"
-                  footer="We are unable to determine the value of blueprint copies. Please do not include them in your contract."
+                  footer={t('buyback.blueprintCopiesFooter')}
                 />
               )}
 
               {(result.unpricedCapitals?.length || 0) > 0 && (
                 <ExcludedSection
-                  title="Unable to price some capital ships"
+                  title={t('buyback.unpricedCapitals')}
                   items={result.unpricedCapitals || []}
                   color="amber"
-                  footer="These capitals do not have at least 5 completed sales in the last 60 days. We are unable to offer a price without sufficient market data."
+                  footer={t('buyback.unpricedCapitalsFooter')}
                 />
               )}
             </div>
@@ -298,46 +317,54 @@ export function BuybackResults({ result, config }: BuybackResultsProps) {
 
       <div className="rounded-lg border border-border bg-surface-secondary/50 p-6">
         <h2 className="mb-4 text-lg font-semibold text-content">
-          Accepted Items Summary
+          {t('buyback.acceptedItemsSummary')}
         </h2>
         <div className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
           <div>
-            <div className="text-content-secondary">Items</div>
+            <div className="text-content-secondary">{tc('columns.items')}</div>
             <div className="font-medium text-content">
-              {totals.profitableCount} accepted
+              {t('buyback.itemsAccepted', { count: totals.profitableCount })}
             </div>
           </div>
           <div>
-            <div className="text-content-secondary">Total Volume</div>
+            <div className="text-content-secondary">
+              {t('buyback.totalVolume')}
+            </div>
             <div className="font-medium text-content">
-              {formatVolume(totals.totalVolume)}
+              {formatVolume(totals.totalVolume, { suffix: true })}
             </div>
           </div>
           <div>
-            <div className="text-content-secondary">Jita Buy</div>
+            <div className="text-content-secondary">{t('buyback.jitaBuy')}</div>
             <div className="font-medium text-content">
-              {formatISKFull(totals.jitaBuyTotal)}
+              {formatFullNumber(totals.jitaBuyTotal)}
             </div>
           </div>
           <div>
-            <div className="text-content-secondary">Jita Sell</div>
+            <div className="text-content-secondary">
+              {t('buyback.jitaSell')}
+            </div>
             <div className="font-medium text-content">
-              {formatISKFull(totals.jitaSellTotal)}
+              {formatFullNumber(totals.jitaSellTotal)}
             </div>
           </div>
           {totals.capitalValue > 0 && (
             <div>
-              <div className="text-content-secondary">Capital Value</div>
+              <div className="text-content-secondary">
+                {t('buyback.capitalValue')}
+              </div>
               <div className="font-medium text-content">
-                {formatISKFull(totals.capitalValue)}
+                {formatFullNumber(totals.capitalValue)}
               </div>
             </div>
           )}
           {totals.assetSafetyCost > 0 && (
             <div>
-              <div className="text-content-secondary">Asset Safety Fee</div>
+              <div className="text-content-secondary">
+                {t('buyback.assetSafetyFee')}
+              </div>
               <div className="font-medium text-status-warning">
-                -{formatISKFull(totals.assetSafetyCost)}
+                -{formatFullNumber(totals.assetSafetyCost)}
               </div>
             </div>
           )}
@@ -354,13 +381,13 @@ export function BuybackResults({ result, config }: BuybackResultsProps) {
                     scope="col"
                     className="px-4 py-3 text-left font-medium text-content-secondary"
                   >
-                    Item
+                    {tc('columns.item')}
                   </th>
                   <th
                     scope="col"
                     className="px-4 py-3 text-right font-medium text-content-secondary"
                   >
-                    Qty
+                    {tc('columns.qty')}
                   </th>
                 </tr>
               </thead>
@@ -389,7 +416,7 @@ export function BuybackResults({ result, config }: BuybackResultsProps) {
                       </div>
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums">
-                      {item.quantity.toLocaleString()}
+                      {formatFullNumber(item.quantity)}
                     </td>
                   </tr>
                 ))}

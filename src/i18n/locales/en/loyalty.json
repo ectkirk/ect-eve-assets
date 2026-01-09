@@ -1,0 +1,8 @@
+{
+  "empty": "No loyalty points data available.",
+
+  "fallback.corporation": "Corporation {{id}}",
+  "reauthRequired": "{{name}} requires re-authentication for loyalty points access.",
+  "reauthRequiredMultiple": "{{count}} characters require re-authentication for loyalty points access.",
+  "reauthHint": "Use the character menu to re-authenticate."
+}

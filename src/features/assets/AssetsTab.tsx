@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { matchesSearchLower } from '@/lib/utils'
 import {
   useReactTable,
@@ -6,7 +7,6 @@ import {
   getSortedRowModel,
   flexRender,
   type SortingState,
-  type ColumnFiltersState,
   type VisibilityState,
 } from '@tanstack/react-table'
 import { useVirtualizer } from '@tanstack/react-virtual'
@@ -41,6 +41,7 @@ import {
   type AssetRow,
   COLUMN_LABELS,
   TOGGLEABLE_COLUMNS,
+  getDisplayFlag,
   loadColumnVisibility,
   saveColumnVisibility,
   createAssetRow,
@@ -48,6 +49,8 @@ import {
 import { columns } from './columns'
 
 export function AssetsTab() {
+  const { t } = useTranslation('assets')
+  const { t: tCommon } = useTranslation('common')
   const {
     selectedResolvedAssets,
     owners,
@@ -62,7 +65,6 @@ export function AssetsTab() {
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'totalValue', desc: true },
   ])
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] =
     useState<VisibilityState>(loadColumnVisibility)
   const [categoryFilterValue, setCategoryFilterValue] = useState('')
@@ -79,9 +81,9 @@ export function AssetsTab() {
   } = useTabControls()
 
   useEffect(() => {
-    setSearchPlaceholder('Search name, group, location, system, region...')
+    setSearchPlaceholder(tCommon('search.placeholder'))
     return () => setSearchPlaceholder(null)
-  }, [setSearchPlaceholder])
+  }, [setSearchPlaceholder, tCommon])
 
   useEffect(() => {
     saveColumnVisibility(columnVisibility)
@@ -101,11 +103,7 @@ export function AssetsTab() {
     const cats = new Set<string>()
 
     for (const ra of selectedResolvedAssets) {
-      const displayFlag = ra.modeFlags.isContract
-        ? 'In Contract'
-        : ra.modeFlags.isMarketOrder
-          ? 'Sell Order'
-          : ra.asset.location_flag
+      const displayFlag = getDisplayFlag(ra.modeFlags, ra.asset.location_flag)
 
       const isBlueprint = ra.categoryId === CategoryIds.BLUEPRINT
       const isAbyssal = isAbyssalTypeId(ra.typeId)
@@ -209,11 +207,9 @@ export function AssetsTab() {
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
     state: {
       sorting,
-      columnFilters,
       columnVisibility,
     },
   })
@@ -304,9 +300,7 @@ export function AssetsTab() {
   if (owners.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-content-secondary">
-          No characters logged in. Add a character to view assets.
-        </p>
+        <p className="text-content-secondary">{t('noCharacters')}</p>
       </div>
     )
   }
@@ -318,8 +312,11 @@ export function AssetsTab() {
           <Loader2 className="h-8 w-8 animate-spin text-accent mx-auto" />
           <p className="mt-2 text-content-secondary">
             {updateProgress
-              ? `Fetching assets (${updateProgress.current + 1}/${updateProgress.total})...`
-              : 'Loading assets...'}
+              ? t('loading.fetching', {
+                  current: updateProgress.current + 1,
+                  total: updateProgress.total,
+                })
+              : t('loading.assets')}
           </p>
         </div>
       </div>
@@ -332,16 +329,11 @@ export function AssetsTab() {
         <div className="text-center">
           {hasError && (
             <>
-              <p className="text-semantic-danger">Failed to load assets</p>
+              <p className="text-semantic-danger">{t('error.loadFailed')}</p>
               <p className="text-sm text-content-secondary">{errorMessage}</p>
             </>
           )}
-          {!hasError && (
-            <p className="text-content-secondary">
-              No asset data loaded. Click Update in the header to fetch from
-              ESI.
-            </p>
-          )}
+          {!hasError && <p className="text-content-secondary">{t('noData')}</p>}
         </div>
       </div>
     )
@@ -460,13 +452,13 @@ export function AssetsTab() {
                           )
                         }
                       >
-                        View in Contracts
+                        {t('contextMenu.viewContracts')}
                       </ContextMenuItem>
                       {isMarketItem && (
                         <ContextMenuItem
                           onClick={() => navigateToType(row.original.typeId)}
                         >
-                          View in Regional Market
+                          {tCommon('contextMenu.viewInMarket')}
                         </ContextMenuItem>
                       )}
                       {isAbyssalResolved && (
@@ -481,13 +473,13 @@ export function AssetsTab() {
                             )
                           }
                         >
-                          Open in Mutamarket
+                          {t('contextMenu.openMutamarket')}
                         </ContextMenuItem>
                       )}
                       <ContextMenuItem
                         onClick={() => navigateToReference(row.original.typeId)}
                       >
-                        View Details
+                        {tCommon('contextMenu.viewDetails')}
                       </ContextMenuItem>
                     </ContextMenuContent>
                   </ContextMenu>
@@ -510,7 +502,7 @@ export function AssetsTab() {
               className="h-24 flex items-center justify-center text-content-secondary"
               style={{ gridColumn: `1 / -1` }}
             >
-              No assets found.
+              {t('empty')}
             </div>
           )}
         </div>

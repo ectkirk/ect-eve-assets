@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Loader2 } from 'lucide-react'
 import { ESIErrorDisplay } from './esi-error-display'
 
@@ -21,11 +22,13 @@ export function TabLoadingState({
   updateError,
   customEmptyCheck,
 }: TabLoadingStateProps): ReactElement | null {
+  const { t } = useTranslation('common')
+
   if (!hasOwners) {
     return (
       <div className="flex items-center justify-center h-64">
         <p className="text-content-secondary">
-          No characters logged in. Add a character to view {dataType}.
+          {t('tab.noCharacters', { dataType })}
         </p>
       </div>
     )
@@ -51,7 +54,9 @@ export function TabLoadingState({
             className="h-8 w-8 animate-spin text-accent mx-auto"
             aria-hidden="true"
           />
-          <p className="mt-2 text-content-secondary">Loading {dataType}...</p>
+          <p className="mt-2 text-content-secondary">
+            {t('tab.loading', { dataType })}
+          </p>
         </div>
       </div>
     )
@@ -64,7 +69,9 @@ export function TabLoadingState({
           {updateError ? (
             <ESIErrorDisplay error={updateError} context={dataType} />
           ) : (
-            <p className="text-content-secondary">No {dataType} found.</p>
+            <p className="text-content-secondary">
+              {t('tab.noData', { dataType })}
+            </p>
           )}
         </div>
       </div>

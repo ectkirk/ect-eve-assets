@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { X, Loader2 } from 'lucide-react'
 import {
   Table,
@@ -11,7 +12,13 @@ import {
 import { TypeIcon } from '@/components/ui/type-icon'
 import { AbyssalPreview } from '@/components/ui/abyssal-preview'
 import { isAbyssalTypeId } from '@/api/mutamarket-client'
-import { cn, formatNumber } from '@/lib/utils'
+import {
+  cn,
+  formatNumber,
+  formatFullNumber,
+  formatSecurity,
+  formatVolume,
+} from '@/lib/utils'
 import { CopyButton } from '@/components/ui/copy-button'
 import { useContractItems } from './useContractItems'
 import { useContractBids } from './useContractBids'
@@ -20,7 +27,8 @@ import {
   formatBlueprintName,
   formatDateTime,
   formatTimeRemaining,
-  getContractTypeLabel,
+  localizeSystemName,
+  localizeRegionName,
 } from './utils'
 import type { ContractItem } from '@/lib/contract-items'
 
@@ -34,6 +42,7 @@ export interface DisplayContract {
   locationName: string
   endLocationName?: string
   regionName?: string
+  regionId?: number
   systemName?: string
   systemId?: number
   securityStatus?: number | null
@@ -66,7 +75,13 @@ function InfoRow({
   )
 }
 
-function ItemsTable({ items }: { items: ContractItem[] }) {
+function ItemsTable({
+  items,
+  t,
+}: {
+  items: ContractItem[]
+  t: (key: string) => string
+}) {
   const totalValue = items.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
@@ -78,11 +93,17 @@ function ItemsTable({ items }: { items: ContractItem[] }) {
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>Name</TableHead>
-              <TableHead className="w-20 text-right">Qty</TableHead>
-              <TableHead>Group</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead className="text-right">Est. Value</TableHead>
+              <TableHead>{t('contractsSearch.modal.columns.name')}</TableHead>
+              <TableHead className="w-20 text-right">
+                {t('contractsSearch.modal.columns.qty')}
+              </TableHead>
+              <TableHead>{t('contractsSearch.modal.columns.group')}</TableHead>
+              <TableHead>
+                {t('contractsSearch.modal.columns.category')}
+              </TableHead>
+              <TableHead className="text-right">
+                {t('contractsSearch.modal.columns.estValue')}
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -120,7 +141,7 @@ function ItemsTable({ items }: { items: ContractItem[] }) {
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    {item.quantity.toLocaleString()}
+                    {formatFullNumber(item.quantity)}
                   </TableCell>
                   <TableCell className="text-content-secondary">
                     {item.groupName}
@@ -141,9 +162,11 @@ function ItemsTable({ items }: { items: ContractItem[] }) {
       </div>
       {totalValue > 0 && (
         <div className="flex justify-end border-t border-border px-4 py-2 text-sm">
-          <span className="text-content-secondary">Est. Value:</span>
+          <span className="text-content-secondary">
+            {t('contractsSearch.modal.estValueTotal')}
+          </span>
           <span className="ml-2 font-mono text-content">
-            {formatNumber(totalValue)} ISK
+            {formatNumber(totalValue)}
           </span>
         </div>
       )}
@@ -162,6 +185,7 @@ export function ContractDetailModal({
   preloadedItems,
   onClose,
 }: ContractDetailModalProps) {
+  const { t } = useTranslation('tools')
   const { items: fetchedItems, loading, error, fetchItems } = useContractItems()
   const { bids, loading: bidsLoading, fetchBids } = useContractBids()
   const items = preloadedItems ?? fetchedItems
@@ -191,11 +215,29 @@ export function ContractDetailModal({
     return () => window.removeEventListener('keydown', handler)
   }, [onClose])
 
-  const title = contract.topItemName ?? '[Multiple Items]'
+  const title = contract.topItemName ?? t('contractsSearch.row.multipleItems')
+  const getContractTypeLabel = (type: string) => {
+    const typeMap: Record<string, string> = {
+      item_exchange: t('contractsSearch.types.itemExchange'),
+      auction: t('contractsSearch.types.auction'),
+      courier: t('contractsSearch.types.courier'),
+      loan: t('contractsSearch.types.loan'),
+      unknown: t('contractsSearch.types.unknown'),
+    }
+    return typeMap[type] ?? type
+  }
+  const localizedRegion =
+    contract.regionId && contract.regionName
+      ? localizeRegionName(contract.regionId, contract.regionName)
+      : contract.regionName
   const availabilityText =
     contract.availability === 'public'
-      ? `Public${contract.regionName ? ` - Region: ${contract.regionName}` : ''}`
-      : (contract.assigneeName ?? 'Private')
+      ? localizedRegion
+        ? t('contractsSearch.modal.publicRegion', {
+            region: localizedRegion,
+          })
+        : t('contractsSearch.modal.public')
+      : (contract.assigneeName ?? t('contractsSearch.modal.private'))
 
   return (
     <div
@@ -233,19 +275,25 @@ export function ContractDetailModal({
         <div className="flex-1 overflow-auto">
           <div className="border-b border-border px-4 py-3 text-sm">
             {contract.title && (
-              <InfoRow label="Info by Issuer">{contract.title}</InfoRow>
+              <InfoRow label={t('contractsSearch.modal.infoByIssuer')}>
+                {contract.title}
+              </InfoRow>
             )}
-            <InfoRow label="Type">
+            <InfoRow label={t('contractsSearch.modal.type')}>
               {getContractTypeLabel(contract.type)}
             </InfoRow>
-            <InfoRow label="Availability">{availabilityText}</InfoRow>
-            <InfoRow label="Location">
+            <InfoRow label={t('contractsSearch.modal.availability')}>
+              {availabilityText}
+            </InfoRow>
+            <InfoRow label={t('contractsSearch.modal.location')}>
               {contract.securityStatus != null && (
                 <span className={getSecurityColor(contract.securityStatus)}>
-                  {contract.securityStatus.toFixed(1)}{' '}
+                  {formatSecurity(contract.securityStatus)}{' '}
                 </span>
               )}
-              {contract.systemName ?? contract.locationName}
+              {contract.systemId && contract.systemName
+                ? localizeSystemName(contract.systemId, contract.systemName)
+                : (contract.systemName ?? contract.locationName)}
               {contract.type === 'courier' && contract.endLocationName && (
                 <span className="text-content-muted">
                   {' '}
@@ -253,17 +301,19 @@ export function ContractDetailModal({
                 </span>
               )}
             </InfoRow>
-            <InfoRow label="Date Issued">
+            <InfoRow label={t('contractsSearch.modal.dateIssued')}>
               {formatDateTime(contract.dateIssued)}
             </InfoRow>
-            <InfoRow label="Expiration">
+            <InfoRow label={t('contractsSearch.modal.expiration')}>
               {formatDateTime(contract.dateExpired)} (
               {formatTimeRemaining(contract.dateExpired)})
             </InfoRow>
             {contract.status && (
-              <InfoRow label="Status">
+              <InfoRow label={t('contractsSearch.modal.status')}>
                 <span className="capitalize">
-                  {contract.status.replace('_', ' ')}
+                  {t(`contractsSearch.status.${contract.status}`, {
+                    defaultValue: contract.status.replace('_', ' '),
+                  })}
                 </span>
               </InfoRow>
             )}
@@ -271,47 +321,58 @@ export function ContractDetailModal({
 
           {contract.type === 'courier' ? (
             <div className="border-b border-border px-4 py-3 text-sm">
-              <InfoRow label="Volume">
-                {contract.volume?.toLocaleString() ?? '-'} m³
+              <InfoRow label={t('contractsSearch.modal.volume')}>
+                {contract.volume != null
+                  ? formatVolume(contract.volume, { suffix: true })
+                  : '-'}
               </InfoRow>
-              <InfoRow label="Reward">
+              <InfoRow label={t('contractsSearch.modal.reward')}>
                 <span className="text-status-positive">
-                  {formatNumber(contract.reward ?? 0)} ISK
+                  {formatNumber(contract.reward ?? 0)}
                 </span>
               </InfoRow>
-              <InfoRow label="Collateral">
+              <InfoRow label={t('contractsSearch.modal.collateral')}>
                 <span className="text-status-highlight">
-                  {formatNumber(contract.collateral ?? 0)} ISK
+                  {formatNumber(contract.collateral ?? 0)}
                 </span>
               </InfoRow>
               {contract.daysToComplete && (
-                <InfoRow label="Days to Complete">
-                  {contract.daysToComplete} days
+                <InfoRow label={t('contractsSearch.modal.daysToComplete')}>
+                  {t('contractsSearch.modal.daysValue', {
+                    days: contract.daysToComplete,
+                  })}
                 </InfoRow>
               )}
             </div>
           ) : contract.type === 'auction' ? (
             <div className="border-b border-border px-4 py-3 text-sm">
-              <InfoRow label="Starting Bid">
+              <InfoRow label={t('contractsSearch.modal.startingBid')}>
                 <span className="text-content-muted">
-                  {formatNumber(contract.price)} ISK
+                  {formatNumber(contract.price)}
                 </span>
               </InfoRow>
-              <InfoRow label="Current Bid">
+              <InfoRow label={t('contractsSearch.modal.currentBid')}>
                 {bidsLoading ? (
-                  <span className="text-content-muted">Loading...</span>
+                  <span className="text-content-muted">
+                    {t('contractsSearch.modal.loadingItems').replace(
+                      'items...',
+                      '...'
+                    )}
+                  </span>
                 ) : currentBid != null ? (
                   <span className="text-status-highlight">
-                    {formatNumber(currentBid)} ISK
+                    {formatNumber(currentBid)}
                   </span>
                 ) : (
-                  <span className="text-content-muted">No bids</span>
+                  <span className="text-content-muted">
+                    {t('contractsSearch.modal.noBids')}
+                  </span>
                 )}
               </InfoRow>
               {contract.buyout != null && contract.buyout > 0 && (
-                <InfoRow label="Buyout">
+                <InfoRow label={t('contractsSearch.modal.buyout')}>
                   <span className="text-status-positive">
-                    {formatNumber(contract.buyout)} ISK
+                    {formatNumber(contract.buyout)}
                   </span>
                 </InfoRow>
               )}
@@ -320,19 +381,21 @@ export function ContractDetailModal({
             <div className="border-b border-border px-4 py-3">
               <div className="flex items-baseline gap-4">
                 <span className="text-sm font-medium text-content">
-                  You Receive
+                  {t('contractsSearch.row.youReceive')}
                 </span>
                 <span className="text-lg font-bold text-status-positive">
-                  {formatNumber(contract.reward ?? 0)} ISK
+                  {formatNumber(contract.reward ?? 0)}
                 </span>
               </div>
             </div>
           ) : (
             <div className="border-b border-border px-4 py-3">
               <div className="flex items-baseline gap-4">
-                <span className="text-sm font-medium text-content">Price</span>
+                <span className="text-sm font-medium text-content">
+                  {t('contractsSearch.modal.price')}
+                </span>
                 <span className="text-lg font-bold text-status-highlight">
-                  {formatNumber(contract.price)} ISK
+                  {formatNumber(contract.price)}
                 </span>
               </div>
             </div>
@@ -343,7 +406,7 @@ export function ContractDetailModal({
               {isLoading ? (
                 <div className="flex items-center gap-2 py-8 text-content-muted">
                   <Loader2 className="h-5 w-5 animate-spin" />
-                  Loading items...
+                  {t('contractsSearch.modal.loadingItems')}
                 </div>
               ) : error ? (
                 <div className="py-4 text-red-400">{error}</div>
@@ -363,25 +426,27 @@ export function ContractDetailModal({
                         >
                           <h3 className="mb-2 text-sm font-medium text-status-positive">
                             {requestedItems.length > 0
-                              ? 'What You Get'
-                              : 'Items'}
+                              ? t('contractsSearch.modal.whatYouGet')
+                              : t('contractsSearch.modal.items')}
                           </h3>
-                          <ItemsTable items={includedItems} />
+                          <ItemsTable items={includedItems} t={t} />
                         </div>
                       )}
                       {requestedItems.length > 0 && (
                         <div>
                           <h3 className="mb-2 text-sm font-medium text-status-negative">
-                            What They Want
+                            {t('contractsSearch.modal.whatTheyWant')}
                           </h3>
-                          <ItemsTable items={requestedItems} />
+                          <ItemsTable items={requestedItems} t={t} />
                         </div>
                       )}
                     </>
                   )
                 })()
               ) : (
-                <div className="py-4 text-content-muted">No items</div>
+                <div className="py-4 text-content-muted">
+                  {t('contractsSearch.modal.noItems')}
+                </div>
               )}
             </div>
           )}

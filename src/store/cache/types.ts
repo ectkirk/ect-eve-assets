@@ -31,6 +31,13 @@ export interface CachedCategory {
   published?: boolean
 }
 
+export interface CachedCorporation {
+  id: number
+  name: string
+  tickerName: string
+  factionId?: number | null
+}
+
 export interface CachedGroup {
   id: number
   name: string
@@ -157,6 +164,13 @@ const CachedGroupSchema = z.object({
   published: z.boolean().optional(),
 })
 
+const CachedCorporationSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  tickerName: z.string(),
+  factionId: z.number().nullable().optional(),
+})
+
 const TypeSlotsSchema = z.object({
   high: z.number(),
   mid: z.number(),
@@ -246,5 +260,6 @@ export const cacheSchemas: Record<string, z.ZodType> = {
   names: CachedNameSchema,
   categories: CachedCategorySchema,
   groups: CachedGroupSchema,
+  corporations: CachedCorporationSchema,
   stargates: CachedStargateSchema,
 }

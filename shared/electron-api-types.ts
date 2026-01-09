@@ -16,6 +16,7 @@ export interface AuthResult {
   scopes?: string[]
   corporationRoles?: CorporationRoles | null
   error?: string
+  isAuthFailure?: boolean
 }
 
 export type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR'
@@ -30,8 +31,13 @@ export interface RefApiResult {
   error?: string
 }
 
+export interface LanguageParams {
+  language?: string
+}
+
 export interface RefTypesPageParams {
   after?: number
+  language?: string
 }
 
 export interface RefTypesPageResult {
@@ -117,6 +123,19 @@ export interface RefMarketGroupsResult {
     }
   >
   total?: number
+  error?: string
+}
+
+export interface RefCorporationsResult {
+  items?: Record<
+    string,
+    {
+      id: number
+      name: string
+      tickerName: string
+      factionId?: number | null
+    }
+  >
   error?: string
 }
 
@@ -813,24 +832,25 @@ export interface ElectronAPI {
     description: string
   ) => Promise<{ success: boolean; error?: string }>
   refTypesPage: (params?: RefTypesPageParams) => Promise<RefTypesPageResult>
-  refCategories: () => Promise<RefApiResult>
-  refGroups: () => Promise<RefApiResult>
-  refUniverseRegions: () => Promise<RefRegionsResult>
-  refUniverseSystems: () => Promise<RefSystemsResult>
-  refUniverseStations: () => Promise<RefStationsResult>
+  refCategories: (params?: LanguageParams) => Promise<RefApiResult>
+  refGroups: (params?: LanguageParams) => Promise<RefApiResult>
+  refUniverseRegions: (params?: LanguageParams) => Promise<RefRegionsResult>
+  refUniverseSystems: (params?: LanguageParams) => Promise<RefSystemsResult>
+  refUniverseStations: (params?: LanguageParams) => Promise<RefStationsResult>
   refUniverseStargates: () => Promise<RefStargatesResult>
   refUniverseStructuresPage: (
     params?: RefStructuresPageParams
   ) => Promise<RefStructuresPageResult>
-  refMoons: (ids: number[]) => Promise<RefMoonsResult>
-  refMarketGroups: () => Promise<RefMarketGroupsResult>
+  refMoons: (ids: number[], params?: LanguageParams) => Promise<RefMoonsResult>
+  refMarketGroups: (params?: LanguageParams) => Promise<RefMarketGroupsResult>
+  refCorporations: (params?: LanguageParams) => Promise<RefCorporationsResult>
   refMarketJita: (params: RefMarketJitaParams) => Promise<RefMarketJitaResult>
   refBuybackCalculate: (
     text: string,
     config: BuybackConfig
   ) => Promise<BuybackResult>
-  refBuybackInfo: () => Promise<BuybackInfoResult>
-  refShippingInfo: () => Promise<ShippingInfoResult>
+  refBuybackInfo: (params?: LanguageParams) => Promise<BuybackInfoResult>
+  refShippingInfo: (params?: LanguageParams) => Promise<ShippingInfoResult>
   refShippingCalculate: (
     text: string,
     nullSec?: boolean
@@ -838,15 +858,38 @@ export interface ElectronAPI {
   refContractsSearch: (
     params: ContractSearchParams
   ) => Promise<ContractSearchResult>
-  refTypeDetail: (typeId: number) => Promise<RefTypeDetailResult>
-  refTypeCore: (typeId: number) => Promise<RefTypeCoreResult>
-  refTypeDogma: (typeId: number) => Promise<RefTypeDogmaResult>
-  refTypeMarket: (typeId: number) => Promise<RefTypeMarketResult>
-  refTypeSkills: (typeId: number) => Promise<RefTypeSkillsResult>
-  refTypeVariations: (typeId: number) => Promise<RefTypeVariationsResult>
-  refTypeBlueprint: (typeId: number) => Promise<RefTypeBlueprintResult>
-  refDogmaUnits: () => Promise<DogmaUnitsResult>
-  refDogmaAttributeCategories: () => Promise<DogmaAttributeCategoriesResult>
+  refTypeDetail: (
+    typeId: number,
+    params?: LanguageParams
+  ) => Promise<RefTypeDetailResult>
+  refTypeCore: (
+    typeId: number,
+    params?: LanguageParams
+  ) => Promise<RefTypeCoreResult>
+  refTypeDogma: (
+    typeId: number,
+    params?: LanguageParams
+  ) => Promise<RefTypeDogmaResult>
+  refTypeMarket: (
+    typeId: number,
+    params?: LanguageParams
+  ) => Promise<RefTypeMarketResult>
+  refTypeSkills: (
+    typeId: number,
+    params?: LanguageParams
+  ) => Promise<RefTypeSkillsResult>
+  refTypeVariations: (
+    typeId: number,
+    params?: LanguageParams
+  ) => Promise<RefTypeVariationsResult>
+  refTypeBlueprint: (
+    typeId: number,
+    params?: LanguageParams
+  ) => Promise<RefTypeBlueprintResult>
+  refDogmaUnits: (params?: LanguageParams) => Promise<DogmaUnitsResult>
+  refDogmaAttributeCategories: (
+    params?: LanguageParams
+  ) => Promise<DogmaAttributeCategoriesResult>
   mutamarketModule: (
     itemId: number,
     typeId?: number

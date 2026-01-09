@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import {
   Dialog,
   DialogContent,
@@ -62,11 +63,13 @@ function CreditRow({
 }
 
 export function CreditsModal({ open, onOpenChange }: CreditsModalProps) {
+  const { t } = useTranslation('dialogs')
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Credits</DialogTitle>
+          <DialogTitle>{t('credits.title')}</DialogTitle>
         </DialogHeader>
         <ScrollArea className="max-h-[60vh]">
           <div className="space-y-4 pr-4 text-sm">
@@ -74,28 +77,28 @@ export function CreditsModal({ open, onOpenChange }: CreditsModalProps) {
               <CreditRow
                 name="Kirk"
                 nameHref="https://edencom.net"
-                role="Author"
+                role={t('credits.author')}
                 discordHref="https://discord.gg/dexSsJYYbv"
                 discordTitle="EC Trade Discord"
               />
               <CreditRow
                 name="Ahbazon Prime"
                 nameHref="https://ahbazon.com/"
-                role="Infrastructure & Emotional Support"
+                role={t('credits.infrastructure')}
                 discordHref="https://discord.gg/q8Q6dN9MDF"
                 discordTitle="Ahbazon Prime Discord"
               />
               <CreditRow
                 name="Nicolas Kion"
                 nameHref="https://mutamarket.com"
-                role="Abyssal Module Pricing"
+                role={t('credits.abyssalPricing')}
                 discordHref="https://discord.gg/FuwdBZ5cXq"
                 discordTitle="Abyssal Trading Discord"
               />
               <CreditRow
                 name="EVE Online"
                 nameHref="https://www.eveonline.com/"
-                role="Game & ESI API"
+                role={t('credits.gameApi')}
                 discordHref="https://discord.com/invite/eveonline"
                 discordTitle="EVE Online Discord"
               />
@@ -103,10 +106,10 @@ export function CreditsModal({ open, onOpenChange }: CreditsModalProps) {
 
             <div className="border-t border-border pt-4">
               <h3 className="font-medium text-content mb-2">
-                Special Mentions
+                {t('credits.specialMentions')}
               </h3>
               <p className="text-content-muted mb-2">
-                Community contributors that made this project possible:
+                {t('credits.specialMentionsDesc')}
               </p>
               <div className="divide-y divide-border">
                 <CreditRow
@@ -134,9 +137,11 @@ export function CreditsModal({ open, onOpenChange }: CreditsModalProps) {
             </div>
 
             <div className="border-t border-border pt-4">
-              <h3 className="font-medium text-content mb-2">Data Sources</h3>
+              <h3 className="font-medium text-content mb-2">
+                {t('credits.dataSources')}
+              </h3>
               <p className="text-content-muted">
-                Character and asset data from{' '}
+                {t('credits.dataSourcesPrefix')}{' '}
                 <a
                   href="https://developers.eveonline.com/api-explorer"
                   target="_blank"
@@ -145,7 +150,7 @@ export function CreditsModal({ open, onOpenChange }: CreditsModalProps) {
                 >
                   ESI
                 </a>
-                . Market prices and reference data from{' '}
+                . {t('credits.dataSourcesMarket')}{' '}
                 <a
                   href="https://edencom.net"
                   target="_blank"
@@ -163,7 +168,7 @@ export function CreditsModal({ open, onOpenChange }: CreditsModalProps) {
                 >
                   SDE
                 </a>
-                ). Abyssal module data from{' '}
+                ). {t('credits.dataSourcesAbyssal')}{' '}
                 <a
                   href="https://mutamarket.com"
                   target="_blank"
@@ -172,14 +177,16 @@ export function CreditsModal({ open, onOpenChange }: CreditsModalProps) {
                 >
                   mutamarket.com
                 </a>{' '}
-                (ESI). No other external sources.
+                (ESI). {t('credits.dataSourcesNoOther')}
               </p>
             </div>
 
             <div className="border-t border-border pt-4">
-              <h3 className="font-medium text-content mb-2">Open Source</h3>
+              <h3 className="font-medium text-content mb-2">
+                {t('credits.openSource')}
+              </h3>
               <p className="text-content-muted">
-                This project is open source on{' '}
+                {t('credits.openSourcePrefix')}{' '}
                 <a
                   href="https://github.com/ectkirk/ect-eve-assets"
                   target="_blank"
@@ -188,13 +195,12 @@ export function CreditsModal({ open, onOpenChange }: CreditsModalProps) {
                 >
                   GitHub
                 </a>
-                . Built with Electron, React, TypeScript, Vite, Tailwind CSS,
-                shadcn/ui, Radix UI, Zustand, TanStack Table, TanStack Query.
+                . {t('credits.openSourceBuiltWith')}
               </p>
             </div>
 
             <p className="text-xs text-content-muted pt-2">
-              EVE Online and the EVE logo are trademarks of{' '}
+              {t('credits.legalPrefix')}{' '}
               <a
                 href="https://www.ccpgames.com/"
                 target="_blank"
@@ -203,7 +209,7 @@ export function CreditsModal({ open, onOpenChange }: CreditsModalProps) {
               >
                 CCP hf
               </a>
-              . CCP does not endorse this project.
+              . {t('credits.legalSuffix')}
             </p>
           </div>
         </ScrollArea>

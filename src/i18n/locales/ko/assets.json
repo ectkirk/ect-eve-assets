@@ -1,0 +1,43 @@
+{
+  "badges.activeShip": "현재 탑승함",
+  "badges.inContract": "계약 중",
+  "badges.sellOrder": "판매 주문",
+  "badges.inJob": "작업 중",
+  "badges.structure": "스트럭처",
+
+  "empty": "자산이 없습니다.",
+  "noCharacters": "로그인한 캐릭터가 없습니다. 자산을 보려면 캐릭터를 추가하세요.",
+  "noData": "자산 데이터가 로드되지 않았습니다. 헤더의 업데이트를 클릭하여 ESI에서 가져오세요.",
+
+  "loading.assets": "자산 로딩 중...",
+  "loading.fetching": "자산 가져오는 중 ({{current}}/{{total}})...",
+
+  "error.loadFailed": "자산 로드 실패",
+
+  "contextMenu.viewContracts": "계약에서 보기",
+  "contextMenu.openMutamarket": "Mutamarket에서 열기",
+
+  "settingsModal.title": "자산 보기 설정",
+  "settingsModal.description": "자산 총합에 포함할 데이터 소스를 선택하세요",
+  "settingsModal.marketOrders": "마켓 주문",
+  "settingsModal.marketOrdersDesc": "활성 판매 주문의 아이템 포함",
+  "settingsModal.contracts": "계약",
+  "settingsModal.contractsDesc": "발행한 진행 중인 계약의 아이템 포함",
+  "settingsModal.industryJobs": "산업 작업",
+  "settingsModal.industryJobsDesc": "활성 및 완료된 산업 작업의 아이템 포함",
+  "settingsModal.activeShip": "현재 탑승함",
+  "settingsModal.activeShipDesc": "현재 조종 중인 함선과 그 내용물 포함",
+  "settingsModal.structures": "스트럭처",
+  "settingsModal.structuresDesc": "보유한 스트럭처 포함 (시타델, 엔지니어링 컴플렉스 등)",
+
+  "locations.assetSafety": "자산 안전",
+  "locations.unknownParent": "알 수 없는 출처",
+  "locations.unknownLocation": "알 수 없는 위치",
+  "locations.unknownType": "알 수 없는 유형 {{id}}",
+  "categories.abyssals": "어비셜",
+
+  "flags.inContract": "계약 중",
+  "flags.sellOrder": "판매 주문",
+  "flags.industryJob": "작업 중",
+  "flags.activeShip": "현재 탑승함"
+}

@@ -1,6 +1,8 @@
+import { useTranslation } from 'react-i18next'
 import { LazySection } from './LazySection'
 import { TypeItemList } from './TypeItemList'
-import { formatDuration } from '@/lib/utils'
+import { formatDuration, formatFullNumber } from '@/lib/utils'
+import { getLanguage } from '@/store/settings-store'
 import type { RefTypeBlueprintResult } from '../../../../shared/electron-api-types'
 
 interface BlueprintSourcesSectionProps {
@@ -10,7 +12,7 @@ interface BlueprintSourcesSectionProps {
 
 async function fetchBlueprint(typeId: number): Promise<RefTypeBlueprintResult> {
   if (!window.electronAPI) throw new Error('API not available')
-  return window.electronAPI.refTypeBlueprint(typeId)
+  return window.electronAPI.refTypeBlueprint(typeId, { language: getLanguage() })
 }
 
 function hasBlueprintData(data: RefTypeBlueprintResult): boolean {
@@ -41,9 +43,10 @@ export function BlueprintSourcesSection({
   typeId,
   onNavigate,
 }: BlueprintSourcesSectionProps) {
+  const { t } = useTranslation('tools')
   return (
     <LazySection
-      title="Blueprint & Sources"
+      title={t('reference.blueprintSources')}
       typeId={typeId}
       fetcher={fetchBlueprint}
       hasData={hasBlueprintData}
@@ -53,13 +56,13 @@ export function BlueprintSourcesSection({
           {data.blueprint?.activities?.manufacturing && (
             <div>
               <div className="mb-2 text-sm font-medium text-content">
-                Manufacturing
+                {t('reference.manufacturing')}
               </div>
               <div className="flex flex-wrap gap-6">
                 {data.blueprint.activities.manufacturing.time != null && (
                   <div>
                     <div className="text-xs text-content-muted">
-                      Production Time
+                      {t('reference.productionTime')}
                     </div>
                     <div className="font-semibold text-content">
                       {formatDuration(
@@ -70,9 +73,11 @@ export function BlueprintSourcesSection({
                 )}
                 {data.blueprint.maxProductionLimit != null && (
                   <div>
-                    <div className="text-xs text-content-muted">Max Runs</div>
+                    <div className="text-xs text-content-muted">
+                      {t('reference.maxRuns')}
+                    </div>
                     <div className="font-semibold text-content">
-                      {data.blueprint.maxProductionLimit.toLocaleString()}
+                      {formatFullNumber(data.blueprint.maxProductionLimit)}
                     </div>
                   </div>
                 )}
@@ -84,7 +89,7 @@ export function BlueprintSourcesSection({
             data.blueprintTypes.materials.length > 0 && (
               <div>
                 <div className="mb-2 text-sm font-medium text-content">
-                  Required Materials
+                  {t('reference.requiredMaterials')}
                 </div>
                 <TypeItemList
                   items={data.blueprintTypes.materials.map((mat) => ({
@@ -107,7 +112,7 @@ export function BlueprintSourcesSection({
             data.blueprintTypes.products.length > 0 && (
               <div>
                 <div className="mb-2 text-sm font-medium text-content">
-                  Produces
+                  {t('reference.produces')}
                 </div>
                 <TypeItemList
                   items={data.blueprintTypes.products.map((prod) => ({
@@ -130,7 +135,7 @@ export function BlueprintSourcesSection({
           {data.producedBy && data.producedBy.length > 0 && (
             <div>
               <div className="mb-2 text-sm font-medium text-content">
-                Produced By
+                {t('reference.producedBy')}
               </div>
               <TypeItemList
                 items={data.producedBy.map((bp) => ({
@@ -146,7 +151,7 @@ export function BlueprintSourcesSection({
           {data.materials && data.materials.length > 0 && (
             <div>
               <div className="mb-2 text-sm font-medium text-content">
-                Materials
+                {t('reference.materials')}
               </div>
               <TypeItemList
                 items={data.materials.map((m) => ({

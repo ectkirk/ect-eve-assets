@@ -1,35 +1,23 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Copy, Check, ArrowUp, ArrowDown } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { TableHead } from '@/components/ui/table'
+import { formatDecimal, formatPrice } from '@/lib/utils'
+import { formatExpiry as formatExpiryInfo, MS_PER_DAY } from '@/lib/timer-utils'
 import type { SortColumn, DiffSortMode } from './types'
 
 export function formatExpiry(issued: string, duration: number): string {
-  const issuedDate = new Date(issued)
   const expiryDate = new Date(
-    issuedDate.getTime() + duration * 24 * 60 * 60 * 1000
+    new Date(issued).getTime() + duration * MS_PER_DAY
   )
-  const now = Date.now()
-  const remaining = expiryDate.getTime() - now
-
-  if (remaining <= 0) return 'Expired'
-
-  const days = Math.floor(remaining / (24 * 60 * 60 * 1000))
-  if (days > 0) return `${days}d`
-
-  const hours = Math.floor(remaining / (60 * 60 * 1000))
-  return `${hours}h`
+  return formatExpiryInfo(expiryDate.toISOString()).text
 }
 
-export function formatPrice(value: number): string {
-  const formatted = value.toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })
-  return formatted.endsWith('.00') ? formatted.slice(0, -3) : formatted
-}
+export { formatPrice }
 
 export function CopyButton({ text }: { text: string }) {
+  const { t } = useTranslation('common')
   const [copied, setCopied] = useState(false)
 
   const handleCopy = (e: React.MouseEvent) => {
@@ -43,7 +31,7 @@ export function CopyButton({ text }: { text: string }) {
     <button
       onClick={handleCopy}
       className="shrink-0 p-0.5 rounded hover:bg-surface-secondary/50 text-content-muted hover:text-content-secondary transition-colors"
-      title="Copy name"
+      title={t('buttons.copyName')}
     >
       {copied ? (
         <Check className="h-3 w-3 text-status-positive" />
@@ -72,7 +60,7 @@ export function DiffCell({
   const isGood = isBuyOrder ? diff > 0 : diff < 0
   const formattedDiff = formatPrice(Math.abs(diff))
   const pct = comparisonPrice > 0 ? Math.abs((diff / comparisonPrice) * 100) : 0
-  const pctStr = pct.toFixed(1).replace(/\.0$/, '')
+  const pctStr = formatDecimal(pct, 1).replace(/[,.]0$/, '')
   return (
     <span>
       {diff < 0 ? '-' : '+'}
@@ -116,6 +104,7 @@ export function DiffHeader({
   diffSortMode: DiffSortMode
   onDiffSortModeChange: (mode: DiffSortMode) => void
 }) {
+  const { t } = useTranslation('common')
   const [menuOpen, setMenuOpen] = useState(false)
   const [menuPos, setMenuPos] = useState({ x: 0, y: 0 })
   const isActive = sortColumn === 'diff'
@@ -143,7 +132,7 @@ export function DiffHeader({
       onContextMenu={handleContextMenu}
     >
       <div className="flex items-center gap-1 justify-end">
-        Diff {diffSortMode === 'percent' ? '(%)' : ''}
+        {t('columns.diff')} {diffSortMode === 'percent' ? '(%)' : ''}
         {isActive &&
           (sortDirection === 'asc' ? (
             <ArrowUp className="h-3 w-3" />
@@ -164,7 +153,7 @@ export function DiffHeader({
                 setMenuOpen(false)
               }}
             >
-              Sort by ISK
+              {t('marketOrders.sortByIsk')}
             </button>
             <button
               className={`w-full px-3 py-1 text-left hover:bg-surface-secondary ${diffSortMode === 'percent' ? 'text-accent' : ''}`}
@@ -173,7 +162,7 @@ export function DiffHeader({
                 setMenuOpen(false)
               }}
             >
-              Sort by %
+              {t('marketOrders.sortByPercent')}
             </button>
           </div>,
           document.body

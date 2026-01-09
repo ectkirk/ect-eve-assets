@@ -1,10 +1,12 @@
 import { useMemo, useRef, useCallback, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
+import i18next from 'i18next'
 import { useShallow } from 'zustand/shallow'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import type { ESIRegionOrder } from '@/api/endpoints/market'
 import { useReferenceCacheStore } from '@/store/reference-cache'
 import { useRegionalOrdersStore } from '@/store/regional-orders-store'
-import { formatNumber, cn } from '@/lib/utils'
+import { formatNumber, formatPrice, cn } from '@/lib/utils'
 import { formatCountdown, MS_PER_DAY } from '@/lib/timer-utils'
 import { PLAYER_STRUCTURE_ID_THRESHOLD } from '@/lib/eve-constants'
 
@@ -16,14 +18,10 @@ const ROW_HEIGHT = 32
 
 function formatOrderExpiry(issued: string, durationDays: number): string {
   const expiresAt = new Date(issued).getTime() + durationDays * MS_PER_DAY
-  return formatCountdown(new Date(expiresAt).toISOString()) ?? 'Expired'
-}
-
-function formatPrice(price: number): string {
-  return price.toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })
+  return (
+    formatCountdown(new Date(expiresAt).toISOString()) ??
+    i18next.t('common:time.expired')
+  )
 }
 
 function OrderTable({
@@ -35,6 +33,7 @@ function OrderTable({
   title: string
   isBuyOrder: boolean
 }) {
+  const { t } = useTranslation('tools')
   const containerRef = useRef<HTMLDivElement>(null)
   const systems = useReferenceCacheStore((s) => s.systems)
   const stations = useReferenceCacheStore((s) => s.stations)
@@ -79,7 +78,9 @@ function OrderTable({
           {title}
         </div>
         <div className="flex-1 flex items-center justify-center text-content-tertiary text-sm py-8">
-          No {isBuyOrder ? 'buy' : 'sell'} orders
+          {isBuyOrder
+            ? t('regionalMarket.noBuyOrders')
+            : t('regionalMarket.noSellOrders')}
         </div>
       </div>
     )
@@ -93,10 +94,10 @@ function OrderTable({
         {title} ({orders.length})
       </div>
       <div className="grid grid-cols-[80px_1fr_1fr_80px] gap-2 px-4 py-2 text-xs text-content-secondary bg-surface-secondary border-b border-border">
-        <div>Qty</div>
-        <div>Price</div>
-        <div>Location</div>
-        <div className="text-right">Expires</div>
+        <div>{t('regionalMarket.qty')}</div>
+        <div>{t('regionalMarket.price')}</div>
+        <div>{t('regionalMarket.location')}</div>
+        <div className="text-right">{t('regionalMarket.expires')}</div>
       </div>
       <div ref={containerRef} className="flex-1 overflow-auto">
         <div
@@ -151,6 +152,7 @@ function OrderTable({
 }
 
 export function OrderDetailPanel({ typeId }: OrderDetailPanelProps) {
+  const { t } = useTranslation('tools')
   const { regionId, loadingTypeId, error, typeOrderCache, fetchOrdersForType } =
     useRegionalOrdersStore(
       useShallow((s) => ({
@@ -193,7 +195,7 @@ export function OrderDetailPanel({ typeId }: OrderDetailPanelProps) {
   if (!typeId) {
     return (
       <div className="h-full flex items-center justify-center text-content-secondary text-sm">
-        Select an item to view orders
+        {t('regionalMarket.selectItemPrompt')}
       </div>
     )
   }
@@ -201,7 +203,7 @@ export function OrderDetailPanel({ typeId }: OrderDetailPanelProps) {
   if (!regionId) {
     return (
       <div className="h-full flex items-center justify-center text-content-secondary text-sm">
-        Select a region to view orders
+        {t('regionalMarket.selectRegionPrompt')}
       </div>
     )
   }
@@ -209,7 +211,7 @@ export function OrderDetailPanel({ typeId }: OrderDetailPanelProps) {
   if (loadingTypeId === typeId) {
     return (
       <div className="h-full flex items-center justify-center text-content-secondary text-sm">
-        Loading orders...
+        {t('regionalMarket.loadingOrders')}
       </div>
     )
   }
@@ -227,10 +229,14 @@ export function OrderDetailPanel({ typeId }: OrderDetailPanelProps) {
     <div className="h-full flex flex-col">
       <OrderTable
         orders={orders.sellOrders}
-        title="Sellers"
+        title={t('regionalMarket.sellers')}
         isBuyOrder={false}
       />
-      <OrderTable orders={orders.buyOrders} title="Buyers" isBuyOrder={true} />
+      <OrderTable
+        orders={orders.buyOrders}
+        title={t('regionalMarket.buyers')}
+        isBuyOrder={true}
+      />
     </div>
   )
 }

@@ -1,4 +1,5 @@
 import { createAsyncCache } from '@/lib/async-cache'
+import { getLanguage } from '@/store/settings-store'
 import type {
   RefTypeCoreResult,
   RefTypeDogmaResult,
@@ -41,7 +42,9 @@ export function setCachedTypeData(
 
 const dogmaUnitsCache = createAsyncCache<Record<string, DogmaUnit>>(
   async () => {
-    const result = await window.electronAPI?.refDogmaUnits()
+    const result = await window.electronAPI?.refDogmaUnits({
+      language: getLanguage(),
+    })
     return result?.items ?? null
   }
 )
@@ -49,7 +52,9 @@ const dogmaUnitsCache = createAsyncCache<Record<string, DogmaUnit>>(
 const attrCategoriesCache = createAsyncCache<
   Record<string, DogmaAttributeCategory>
 >(async () => {
-  const result = await window.electronAPI?.refDogmaAttributeCategories()
+  const result = await window.electronAPI?.refDogmaAttributeCategories({
+    language: getLanguage(),
+  })
   return result?.items ?? null
 })
 

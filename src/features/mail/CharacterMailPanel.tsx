@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ChevronRight, ChevronDown, Mail } from 'lucide-react'
 import { type ESIMailHeader } from '@/api/endpoints/mail'
 import { CharacterPortrait } from '@/components/ui/type-icon'
@@ -72,17 +73,24 @@ function getConversationPartnerId(
   return mail.from ?? 0
 }
 
-function getTimeGroupLabel(timestamp: string): string {
+type TimeGroupKey = 'today' | 'yesterday' | 'thisWeek' | 'older'
+
+function getTimeGroupKey(timestamp: string): TimeGroupKey {
   const date = new Date(timestamp)
   const now = new Date()
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const yesterday = new Date(today.getTime() - MS_PER_DAY)
   const weekAgo = new Date(today.getTime() - 7 * MS_PER_DAY)
 
-  if (date >= today) return 'Today'
-  if (date >= yesterday) return 'Yesterday'
-  if (date >= weekAgo) return 'This Week'
-  return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  if (date >= today) return 'today'
+  if (date >= yesterday) return 'yesterday'
+  if (date >= weekAgo) return 'thisWeek'
+  return 'older'
+}
+
+function formatOlderDate(timestamp: string, locale: string): string {
+  const date = new Date(timestamp)
+  return date.toLocaleDateString(locale, { month: 'long', year: 'numeric' })
 }
 
 export function CharacterMailPanel({
@@ -93,6 +101,7 @@ export function CharacterMailPanel({
   resolvedNames,
   onSelectMail,
 }: CharacterMailPanelProps) {
+  const { t, i18n } = useTranslation('common')
   const [expandedConversations, setExpandedConversations] = useState<
     Set<string>
   >(new Set())
@@ -108,8 +117,8 @@ export function CharacterMailPanel({
 
   const resolveName = useCallback(
     (id: number): string =>
-      resolvedNames.get(id) ?? getName(id)?.name ?? `ID: ${id}`,
-    [resolvedNames]
+      resolvedNames.get(id) ?? getName(id)?.name ?? t('mail.unknownId', { id }),
+    [resolvedNames, t]
   )
 
   const timeGroups = useMemo((): TimeGroup[] => {
@@ -119,11 +128,11 @@ export function CharacterMailPanel({
       if (!matchesMailFilter(mail, filterType)) continue
 
       const isSentMail = mail.from === characterId
-      const fromName = mail.from ? resolveName(mail.from) : 'Unknown'
+      const fromName = mail.from ? resolveName(mail.from) : t('mail.unknown')
       const toNames = isSentMail
         ? (mail.recipients ?? [])
             .map((r) => resolveName(r.recipient_id))
-            .join(', ') || 'Unknown'
+            .join(', ') || t('mail.unknown')
         : ''
 
       filteredMails.push({
@@ -189,7 +198,11 @@ export function CharacterMailPanel({
     const groupOrder: string[] = []
 
     for (const conv of conversations) {
-      const label = getTimeGroupLabel(conv.latestTimestamp)
+      const groupKey = getTimeGroupKey(conv.latestTimestamp)
+      const label =
+        groupKey === 'older'
+          ? formatOlderDate(conv.latestTimestamp, i18n.language)
+          : t(`mail.timeGroup.${groupKey}`)
       if (!groupMap.has(label)) {
         groupMap.set(label, [])
         groupOrder.push(label)
@@ -201,12 +214,12 @@ export function CharacterMailPanel({
       label,
       conversations: groupMap.get(label)!,
     }))
-  }, [mails, characterId, filter, filterType, resolveName])
+  }, [mails, characterId, filter, filterType, resolveName, t, i18n.language])
 
   if (timeGroups.length === 0) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-content-muted">
-        {filter ? 'No mail matches' : 'No mail'}
+        {filter ? t('mail.noMatches') : t('mail.empty')}
       </div>
     )
   }
@@ -296,8 +309,8 @@ export function CharacterMailPanel({
                             </div>
                             <div className="text-xs text-content-secondary">
                               {item.isSentMail
-                                ? `To: ${item.toNames}`
-                                : `From: ${item.fromName}`}
+                                ? t('mail.to', { name: item.toNames })
+                                : t('mail.from', { name: item.fromName })}
                             </div>
                           </div>
                           <span className="shrink-0 text-xs text-content-muted">

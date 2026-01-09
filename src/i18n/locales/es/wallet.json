@@ -1,0 +1,10 @@
+{
+  "divisions.master": "Cartera principal",
+  "divisions.wallet2": "Cartera 2",
+  "divisions.wallet3": "Cartera 3",
+  "divisions.wallet4": "Cartera 4",
+  "divisions.wallet5": "Cartera 5",
+  "divisions.wallet6": "Cartera 6",
+  "divisions.wallet7": "Cartera 7",
+  "divisions.division": "División {{number}}"
+}

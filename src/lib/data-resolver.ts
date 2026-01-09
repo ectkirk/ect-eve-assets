@@ -5,7 +5,6 @@ import { type OwnerJobs } from '@/store/industry-jobs-store'
 import { type OwnerStructures } from '@/store/structures-store'
 import { type OwnerStarbases } from '@/store/starbases-store'
 import { type CharacterCloneData } from '@/store/clones-store'
-import { type OwnerLoyalty } from '@/store/loyalty-store'
 import { type ESIAsset } from '@/api/endpoints/assets'
 import { type Owner } from '@/store/auth-store'
 import {
@@ -129,6 +128,9 @@ function collectFromContracts(
       }
       if (contract.assignee_id && !hasName(contract.assignee_id)) {
         ids.entityIds.add(contract.assignee_id)
+      }
+      if (contract.acceptor_id && !hasName(contract.acceptor_id)) {
+        ids.entityIds.add(contract.acceptor_id)
       }
 
       if (items) {
@@ -260,29 +262,15 @@ function collectFromClones(
   }
 }
 
-function collectFromLoyalty(
-  loyaltyByOwner: OwnerLoyalty[],
-  ids: ResolutionIds
-): void {
-  for (const { loyaltyPoints } of loyaltyByOwner) {
-    for (const lp of loyaltyPoints) {
-      if (!hasName(lp.corporation_id)) {
-        ids.entityIds.add(lp.corporation_id)
-      }
-    }
-  }
-}
-
-export async function collectResolutionIds(
+export function collectResolutionIds(
   assetsByOwner: OwnerAssets[],
   contractsByOwner: OwnerContracts[],
   ordersByOwner: OwnerOrders[],
   jobsByOwner: OwnerJobs[],
   structuresByOwner: OwnerStructures[],
   starbasesByOwner: OwnerStarbases[],
-  clonesByOwner: CharacterCloneData[],
-  loyaltyByOwner: OwnerLoyalty[]
-): Promise<ResolutionIds> {
+  clonesByOwner: CharacterCloneData[]
+): ResolutionIds {
   const ids: ResolutionIds = {
     typeIds: new Set(),
     locationIds: new Set(),
@@ -297,7 +285,6 @@ export async function collectResolutionIds(
   collectFromStructures(structuresByOwner, ids)
   collectFromStarbases(starbasesByOwner, ids)
   collectFromClones(clonesByOwner, ids)
-  collectFromLoyalty(loyaltyByOwner, ids)
 
   return ids
 }
@@ -459,30 +446,24 @@ async function runResolution(): Promise<void> {
   const { useStructuresStore } = await import('@/store/structures-store')
   const { useStarbasesStore } = await import('@/store/starbases-store')
   const { useClonesStore } = await import('@/store/clones-store')
-  const { useLoyaltyStore } = await import('@/store/loyalty-store')
 
-  const ids = await collectResolutionIds(
+  const ids = collectResolutionIds(
     useAssetStore.getState().assetsByOwner,
     useContractsStore.getContractsByOwner(),
     useMarketOrdersStore.getOrdersByOwner(),
     useIndustryJobsStore.getJobsByOwner(),
     useStructuresStore.getState().dataByOwner,
     useStarbasesStore.getState().dataByOwner,
-    useClonesStore.getState().dataByOwner,
-    useLoyaltyStore.getState().dataByOwner
+    useClonesStore.getState().dataByOwner
   )
 
   await resolveAllReferenceData(ids)
 }
 
-export async function triggerResolution(): Promise<void> {
-  if (resolutionPending) {
+export function triggerResolution(): void {
+  if (resolutionPending || resolutionTimeout) {
     resolutionQueued = true
     return
-  }
-
-  if (resolutionTimeout) {
-    clearTimeout(resolutionTimeout)
   }
 
   resolutionTimeout = setTimeout(async () => {

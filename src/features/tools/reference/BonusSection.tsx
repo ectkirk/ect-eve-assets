@@ -1,11 +1,13 @@
+import { useTranslation } from 'react-i18next'
 import { getTypeName } from '@/store/reference-cache'
+import { getLocalizedText, type LocalizedText } from '@/store/settings-store'
 import { processEveLinks } from './eve-text-utils'
 import { Section } from './Section'
 
 interface Bonus {
   bonus?: number | null
   unitID?: number | null
-  bonusText: { en: string }
+  bonusText: LocalizedText
 }
 
 interface BonusType {
@@ -47,7 +49,7 @@ function BonusList({
               {formatBonusValue(bonus.bonus, bonus.unitID)}
             </span>
           )}
-          {processEveLinks(bonus.bonusText.en, onNavigate)}
+          {processEveLinks(getLocalizedText(bonus.bonusText), onNavigate)}
         </li>
       ))}
     </ul>
@@ -55,17 +57,18 @@ function BonusList({
 }
 
 export function BonusSection({ bonuses, onNavigate }: BonusSectionProps) {
+  const { t } = useTranslation('tools')
   const hasRoleBonuses = bonuses.roleBonuses && bonuses.roleBonuses.length > 0
   const hasTypeBonuses = bonuses.types && bonuses.types.length > 0
 
   if (!hasRoleBonuses && !hasTypeBonuses) return null
 
   return (
-    <Section title="Item Bonuses">
+    <Section title={t('reference.itemBonuses')}>
       {hasRoleBonuses && (
         <div className="mb-3">
           <div className="mb-1 text-sm font-medium text-content">
-            Role Bonuses
+            {t('reference.roleBonuses')}
           </div>
           <BonusList bonuses={bonuses.roleBonuses!} onNavigate={onNavigate} />
         </div>
@@ -73,7 +76,9 @@ export function BonusSection({ bonuses, onNavigate }: BonusSectionProps) {
       {bonuses.types?.map((skillType) => (
         <div key={skillType._key} className="mb-3">
           <div className="mb-1 text-sm font-medium text-content">
-            {getTypeName(skillType._key)} bonuses per level
+            {t('reference.bonusesPerLevel', {
+              skill: getTypeName(skillType._key),
+            })}
           </div>
           <BonusList bonuses={skillType._value} onNavigate={onNavigate} />
         </div>

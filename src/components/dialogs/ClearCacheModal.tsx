@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Dialog,
   DialogContent,
@@ -32,7 +33,7 @@ type CacheGroup = 'reference' | 'data' | 'structures' | 'system'
 
 interface CacheOption {
   id: string
-  label: string
+  labelKey: string
   group: CacheGroup
   requiresReload: boolean
   endpointPattern?: string
@@ -47,7 +48,7 @@ const refCache = () => useReferenceCacheStore.getState()
 const CACHE_OPTIONS: CacheOption[] = [
   {
     id: 'coreReference',
-    label: 'Core Reference Data (Types & Blueprints)',
+    labelKey: 'clearCache.coreReference',
     group: 'reference',
     requiresReload: false,
     clear: () => refCache().clearCoreReferenceCache(),
@@ -57,7 +58,7 @@ const CACHE_OPTIONS: CacheOption[] = [
   },
   {
     id: 'universe',
-    label: 'Universe Data (Regions/Systems/Stations)',
+    labelKey: 'clearCache.universe',
     group: 'reference',
     requiresReload: false,
     clear: () => refCache().clearUniverseCache(),
@@ -68,21 +69,21 @@ const CACHE_OPTIONS: CacheOption[] = [
   },
   {
     id: 'locations',
-    label: 'Moon Names',
+    labelKey: 'clearCache.locations',
     group: 'reference',
     requiresReload: false,
     clear: () => refCache().clearLocationsCache(),
   },
   {
     id: 'playerStructures',
-    label: 'Player Structure Names',
+    labelKey: 'clearCache.playerStructures',
     group: 'reference',
     requiresReload: false,
     clear: () => refCache().clearStructuresCache(),
   },
   {
     id: 'jitaPrices',
-    label: 'Jita Prices',
+    labelKey: 'clearCache.jitaPrices',
     group: 'reference',
     requiresReload: false,
     clear: () => usePriceStore.getState().clearJita(),
@@ -90,7 +91,7 @@ const CACHE_OPTIONS: CacheOption[] = [
   },
   {
     id: 'esiPrices',
-    label: 'ESI Pricing (Average/Adjusted)',
+    labelKey: 'clearCache.esiPrices',
     group: 'reference',
     requiresReload: false,
     clear: () => usePriceStore.getState().clearEsi(),
@@ -98,21 +99,21 @@ const CACHE_OPTIONS: CacheOption[] = [
   },
   {
     id: 'abyssalPrices',
-    label: 'Abyssal Prices',
+    labelKey: 'clearCache.abyssalPrices',
     group: 'reference',
     requiresReload: false,
     clear: () => usePriceStore.getState().clearAbyssal(),
   },
   {
     id: 'ansiblex',
-    label: 'Ansiblexes',
+    labelKey: 'clearCache.ansiblex',
     group: 'reference',
     requiresReload: false,
     clear: () => useAnsiblexStore.getState().clear(),
   },
   {
     id: 'assets',
-    label: 'Assets',
+    labelKey: 'clearCache.assets',
     group: 'data',
     requiresReload: false,
     endpointPattern: '/assets/',
@@ -122,7 +123,7 @@ const CACHE_OPTIONS: CacheOption[] = [
   },
   {
     id: 'orders',
-    label: 'Market Orders',
+    labelKey: 'clearCache.orders',
     group: 'data',
     requiresReload: false,
     endpointPattern: '/orders/',
@@ -138,7 +139,7 @@ const CACHE_OPTIONS: CacheOption[] = [
   },
   {
     id: 'jobs',
-    label: 'Industry Jobs',
+    labelKey: 'clearCache.jobs',
     group: 'data',
     requiresReload: false,
     endpointPattern: '/industry/jobs/',
@@ -148,7 +149,7 @@ const CACHE_OPTIONS: CacheOption[] = [
   },
   {
     id: 'contracts',
-    label: 'Contracts',
+    labelKey: 'clearCache.contracts',
     group: 'data',
     requiresReload: false,
     endpointPattern: '/contracts/',
@@ -158,7 +159,7 @@ const CACHE_OPTIONS: CacheOption[] = [
   },
   {
     id: 'wallet',
-    label: 'Wallet',
+    labelKey: 'clearCache.wallet',
     group: 'data',
     requiresReload: false,
     endpointPattern: '/wallet',
@@ -168,7 +169,7 @@ const CACHE_OPTIONS: CacheOption[] = [
   },
   {
     id: 'clones',
-    label: 'Clones',
+    labelKey: 'clearCache.clones',
     group: 'data',
     requiresReload: false,
     endpointPattern: '/clones/',
@@ -178,7 +179,7 @@ const CACHE_OPTIONS: CacheOption[] = [
   },
   {
     id: 'loyalty',
-    label: 'Loyalty Points',
+    labelKey: 'clearCache.loyalty',
     group: 'data',
     requiresReload: false,
     endpointPattern: '/loyalty/points',
@@ -188,7 +189,7 @@ const CACHE_OPTIONS: CacheOption[] = [
   },
   {
     id: 'blueprints',
-    label: 'Blueprints',
+    labelKey: 'clearCache.blueprints',
     group: 'data',
     requiresReload: false,
     endpointPattern: '/blueprints/',
@@ -198,7 +199,7 @@ const CACHE_OPTIONS: CacheOption[] = [
   },
   {
     id: 'ownedStructures',
-    label: 'Owned Structures',
+    labelKey: 'clearCache.ownedStructures',
     group: 'structures',
     requiresReload: false,
     endpointPattern: '/structures',
@@ -208,7 +209,7 @@ const CACHE_OPTIONS: CacheOption[] = [
   },
   {
     id: 'starbases',
-    label: 'Starbases (POS)',
+    labelKey: 'clearCache.starbases',
     group: 'structures',
     requiresReload: false,
     endpointPattern: '/starbases',
@@ -218,30 +219,32 @@ const CACHE_OPTIONS: CacheOption[] = [
   },
   {
     id: 'esiCache',
-    label: 'ESI Response Cache',
+    labelKey: 'clearCache.esiCache',
     group: 'system',
     requiresReload: true,
     clear: () => window.electronAPI?.esi.clearCache() ?? Promise.resolve(),
   },
   {
     id: 'expiry',
-    label: 'Expiry Tracking',
+    labelKey: 'clearCache.expiry',
     group: 'system',
     requiresReload: false,
     clear: () => useExpiryCacheStore.getState().clear(),
   },
 ]
 
-const GROUP_LABELS: Record<CacheGroup, string> = {
-  reference: 'Reference Data',
-  data: 'Character & Corporation Data',
-  structures: 'Structure Ownership',
-  system: 'System Caches',
+const GROUP_LABEL_KEYS: Record<CacheGroup, string> = {
+  reference: 'clearCache.groups.reference',
+  data: 'clearCache.groups.data',
+  structures: 'clearCache.groups.structures',
+  system: 'clearCache.groups.system',
 }
 
 const GROUP_ORDER: CacheGroup[] = ['reference', 'data', 'structures', 'system']
 
 export function ClearCacheModal({ open, onOpenChange }: ClearCacheModalProps) {
+  const { t } = useTranslation('dialogs')
+  const { t: tc } = useTranslation('common')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [isClearing, setIsClearing] = useState(false)
 
@@ -336,8 +339,8 @@ export function ClearCacheModal({ open, onOpenChange }: ClearCacheModalProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Clear Cache Data</DialogTitle>
-          <DialogDescription>Select which caches to clear</DialogDescription>
+          <DialogTitle>{t('clearCache.title')}</DialogTitle>
+          <DialogDescription>{t('clearCache.description')}</DialogDescription>
         </DialogHeader>
 
         <ScrollArea className="max-h-[50vh]">
@@ -347,19 +350,19 @@ export function ClearCacheModal({ open, onOpenChange }: ClearCacheModalProps) {
               return (
                 <div key={group}>
                   <div className="text-xs font-medium text-content-muted uppercase tracking-wider mb-2">
-                    {GROUP_LABELS[group]}
+                    {t(GROUP_LABEL_KEYS[group])}
                   </div>
                   <div className="space-y-1">
                     {options.map((option) => (
                       <CheckboxRow
                         key={option.id}
-                        label={option.label}
+                        label={t(option.labelKey)}
                         checked={selected.has(option.id)}
                         onChange={() => toggleOption(option.id)}
                         suffix={
                           option.requiresReload && (
                             <span className="text-xs text-semantic-warning">
-                              reload
+                              {t('clearCache.reload')}
                             </span>
                           )
                         }
@@ -377,20 +380,20 @@ export function ClearCacheModal({ open, onOpenChange }: ClearCacheModalProps) {
             onClick={selectAll}
             className="text-xs text-accent hover:underline"
           >
-            Select All
+            {tc('buttons.selectAll')}
           </button>
           <span className="text-content-muted">·</span>
           <button
             onClick={clearSelection}
             className="text-xs text-accent hover:underline"
           >
-            Clear Selection
+            {tc('buttons.clearSelection')}
           </button>
         </div>
 
         {selectedRequiresReload && (
           <div className="text-xs text-semantic-warning bg-semantic-warning/10 rounded px-3 py-2">
-            The app will reload after clearing the selected caches.
+            {t('clearCache.reloadWarning')}
           </div>
         )}
 
@@ -400,14 +403,16 @@ export function ClearCacheModal({ open, onOpenChange }: ClearCacheModalProps) {
             disabled={isClearing}
             className="rounded-md border border-border px-4 py-2 text-sm font-medium hover:bg-surface-tertiary disabled:opacity-50"
           >
-            Cancel
+            {tc('buttons.cancel')}
           </button>
           <button
             onClick={handleClear}
             disabled={selected.size === 0 || isClearing}
             className="rounded-md bg-semantic-danger px-4 py-2 text-sm font-medium hover:bg-semantic-danger/90 disabled:opacity-50"
           >
-            {isClearing ? 'Clearing...' : `Clear Selected (${selected.size})`}
+            {isClearing
+              ? tc('status.clearing')
+              : t('clearCache.clearSelected', { count: selected.size })}
           </button>
         </DialogFooter>
       </DialogContent>

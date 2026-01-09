@@ -48,13 +48,12 @@ async function handleCallbackRequest(
     return
   }
 
-  if (!pendingAuth || pendingAuth.resolved) {
+  if (!pendingAuth) {
     sendHtmlResponse(res, 400, ERROR_HTML('No pending authentication'))
     return
   }
 
   const { state: expectedState, codeVerifier, resolve, timeoutId } = pendingAuth
-  pendingAuth.resolved = true
   pendingAuth = null
   clearTimeout(timeoutId)
 
@@ -171,10 +170,9 @@ function stopCallbackServer(): void {
 }
 
 export function cancelAuth(): void {
-  if (pendingAuth && !pendingAuth.resolved) {
+  if (pendingAuth) {
     logger.info('Authentication cancelled by user', { module: 'Auth' })
     clearTimeout(pendingAuth.timeoutId)
-    pendingAuth.resolved = true
     pendingAuth.resolve({ success: false, error: 'Authentication cancelled' })
     pendingAuth = null
   }
@@ -230,22 +228,20 @@ export async function startAuth(
 
   return new Promise((resolve) => {
     const timeoutId = setTimeout(() => {
-      if (pendingAuth && !pendingAuth.resolved) {
+      if (pendingAuth) {
         logger.warn('Authentication timed out', { module: 'Auth' })
-        pendingAuth.resolved = true
         pendingAuth = null
         stopCallbackServer()
         resolve({ success: false, error: 'Authentication timed out' })
       }
     }, AUTH_TIMEOUT_MS)
 
-    pendingAuth = { state, codeVerifier, resolve, timeoutId, resolved: false }
+    pendingAuth = { state, codeVerifier, resolve, timeoutId }
 
     shell.openExternal(authUrl.toString()).catch((err) => {
-      if (pendingAuth && !pendingAuth.resolved) {
+      if (pendingAuth) {
         logger.error('Failed to open browser', err, { module: 'Auth' })
         clearTimeout(timeoutId)
-        pendingAuth.resolved = true
         pendingAuth = null
         stopCallbackServer()
         resolve({ success: false, error: 'Failed to open browser' })
@@ -273,11 +269,17 @@ export async function refreshAccessToken(
 
     if (!response.ok) {
       const error = await response.text()
+      const isAuthFailure = response.status >= 400 && response.status < 500
       logger.error('Token refresh failed', undefined, {
         module: 'Auth',
         status: response.status,
+        isAuthFailure,
       })
-      return { success: false, error: `Token refresh failed: ${error}` }
+      return {
+        success: false,
+        error: `Token refresh failed: ${error}`,
+        isAuthFailure,
+      }
     }
 
     const tokens = (await response.json()) as TokenResponse
@@ -307,6 +309,7 @@ export async function refreshAccessToken(
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
+      isAuthFailure: false,
     }
   }
 }

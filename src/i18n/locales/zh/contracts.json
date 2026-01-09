@@ -1,0 +1,34 @@
+{
+  "empty": "没有进行中的合同。",
+
+  "fallback.id": "ID {{id}}",
+
+  "totals.itemValue": "物品价值",
+  "totals.contractPrice": "合同价格",
+  "totals.collateral": "押金",
+
+  "types.itemExchange": "物品交换",
+  "types.courier": "快递",
+  "types.auction": "拍卖",
+  "types.loan": "借贷",
+  "types.unknown": "未知",
+
+  "availability.public": "公开",
+
+  "items.courierContract": "快递合同",
+  "items.multipleItems": "[多个物品]",
+  "items.empty": "[空]",
+
+  "direction.youProvide": "你提供",
+  "direction.youWant": "你想要",
+  "direction.youReceive": "你收到",
+
+  "status.outstanding": "待处理",
+  "status.inProgress": "进行中",
+  "status.finished": "已完成",
+  "status.cancelled": "已取消",
+  "status.rejected": "已拒绝",
+  "status.failed": "已失败",
+  "status.deleted": "已删除",
+  "status.reversed": "已撤销"
+}

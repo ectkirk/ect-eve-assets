@@ -1,15 +1,17 @@
 import { ArrowRightLeft, Gavel, Truck, HelpCircle } from 'lucide-react'
 import type { ESIContract, ESIContractItem } from '@/api/endpoints/contracts'
 import type { ContractWithItems } from '@/store/contracts-store'
-import { hasType, getType } from '@/store/reference-cache'
+import { hasType, getType, getTypeName } from '@/store/reference-cache'
 import { getName } from '@/api/endpoints/universe'
 import { usePriceStore } from '@/store/price-store'
 import { getLocationName } from '@/lib/location-utils'
-import { MS_PER_HOUR, MS_PER_DAY } from '@/lib/timer-utils'
+import { MS_PER_DAY, formatExpiry } from '@/lib/timer-utils'
+import {
+  isContractItemBpc,
+  shouldValueBlueprintAtZero,
+} from '@/lib/contract-items'
 
-function isContractItemBpc(item: ESIContractItem): boolean {
-  return item.is_blueprint_copy === true || item.raw_quantity === -2
-}
+export { formatExpiry }
 
 export type ContractSortColumn =
   | 'type'
@@ -42,12 +44,20 @@ export function getDaysLeft(contract: ESIContract): number {
   return 0
 }
 
-export const CONTRACT_TYPE_NAMES: Record<ESIContract['type'], string> = {
-  unknown: 'Unknown',
-  item_exchange: 'Item Exchange',
-  auction: 'Auction',
-  courier: 'Courier',
-  loan: 'Loan',
+const CONTRACT_TYPE_KEYS: Record<ESIContract['type'], string> = {
+  unknown: 'types.unknown',
+  item_exchange: 'types.itemExchange',
+  auction: 'types.auction',
+  courier: 'types.courier',
+  loan: 'types.loan',
+}
+
+export function getContractTypeName(
+  type: string,
+  t: (key: string) => string
+): string {
+  const key = CONTRACT_TYPE_KEYS[type as ESIContract['type']]
+  return key ? t(key) : type
 }
 
 export const CONTRACT_TYPE_ICONS: Record<
@@ -84,24 +94,6 @@ export interface ContractRow {
   requestedItemCount: number
 }
 
-export function formatExpiry(dateExpired: string): {
-  text: string
-  isExpired: boolean
-} {
-  const remaining = new Date(dateExpired).getTime() - Date.now()
-
-  if (remaining <= 0) {
-    return { text: 'Expired', isExpired: true }
-  }
-
-  const hours = Math.floor(remaining / MS_PER_HOUR)
-  if (hours >= 24) {
-    return { text: `${Math.floor(hours / 24)}d`, isExpired: false }
-  }
-
-  return { text: `${hours}h`, isExpired: false }
-}
-
 export function getContractValue(contract: ESIContract): number {
   return (contract.price ?? 0) + (contract.reward ?? 0)
 }
@@ -110,7 +102,8 @@ export function buildContractRow(
   contractWithItems: ContractWithItems,
   ownerType: 'character' | 'corporation',
   ownerId: number,
-  isIssuer: boolean
+  isIssuer: boolean,
+  t: (key: string, options?: Record<string, unknown>) => string
 ): ContractRow {
   const contract = contractWithItems.contract
   const items = contractWithItems.items ?? []
@@ -128,14 +121,20 @@ export function buildContractRow(
       : undefined
 
   const assignerName =
-    getName(contract.issuer_id)?.name ?? `ID ${contract.issuer_id}`
+    getName(contract.issuer_id)?.name ??
+    t('fallback.id', { id: contract.issuer_id })
 
   let assigneeName: string
-  if (contract.availability === 'public') {
-    assigneeName = 'Public'
+  if (contract.acceptor_id) {
+    assigneeName =
+      getName(contract.acceptor_id)?.name ??
+      t('fallback.id', { id: contract.acceptor_id })
+  } else if (contract.availability === 'public') {
+    assigneeName = t('availability.public')
   } else if (contract.assignee_id) {
     assigneeName =
-      getName(contract.assignee_id)?.name ?? `ID ${contract.assignee_id}`
+      getName(contract.assignee_id)?.name ??
+      t('fallback.id', { id: contract.assignee_id })
   } else {
     assigneeName = '-'
   }
@@ -145,7 +144,7 @@ export function buildContractRow(
   for (const item of includedItems) {
     const price = priceStore.getItemPrice(item.type_id, {
       itemId: item.item_id,
-      isBlueprintCopy: isContractItemBpc(item),
+      isBlueprintCopy: shouldValueBlueprintAtZero(item, contract.availability),
     })
     itemValue += price * item.quantity
   }
@@ -161,10 +160,10 @@ export function buildContractRow(
       : '',
     firstItemTypeId: firstItem?.type_id,
     firstItemCategoryId: firstItemType?.categoryId,
-    firstItemIsBlueprintCopy: firstItem?.is_blueprint_copy,
-    typeName:
-      firstItemType?.name ??
-      (firstItem ? `Unknown Type ${firstItem.type_id}` : ''),
+    firstItemIsBlueprintCopy: firstItem
+      ? isContractItemBpc(firstItem)
+      : undefined,
+    typeName: firstItem ? getTypeName(firstItem.type_id) : '',
     direction,
     assignerName,
     assigneeName,

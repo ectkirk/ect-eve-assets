@@ -11,6 +11,7 @@ export interface AuthResult {
   scopes?: string[]
   corporationRoles?: CorporationRoles | null
   error?: string
+  isAuthFailure?: boolean
 }
 
 export interface PendingAuth {
@@ -18,5 +19,4 @@ export interface PendingAuth {
   codeVerifier: string
   resolve: (result: AuthResult) => void
   timeoutId: NodeJS.Timeout
-  resolved: boolean
 }

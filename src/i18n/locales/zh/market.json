@@ -1,0 +1,9 @@
+{
+  "empty": "没有市场订单。",
+
+  "totals.sellOrders": "出售订单",
+  "totals.buyOrders": "收购订单",
+
+  "orderType.sell": "出售",
+  "orderType.buy": "收购"
+}

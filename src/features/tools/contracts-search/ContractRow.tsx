@@ -1,7 +1,13 @@
+import { useTranslation } from 'react-i18next'
 import { TableRow, TableCell } from '@/components/ui/table'
 import { TypeIcon } from '@/components/ui/type-icon'
 import { CopyButton } from '@/components/ui/copy-button'
-import { formatNumber } from '@/lib/utils'
+import {
+  formatNumber,
+  formatFullNumber,
+  formatSecurity,
+  formatPercent,
+} from '@/lib/utils'
 import { getType } from '@/store/reference-cache'
 import { isAbyssalTypeId } from '@/store/price-store'
 import type { SearchContract } from './types'
@@ -12,6 +18,9 @@ import {
   formatContractDate,
   SCAM_THRESHOLD_PCT,
   calculateContractDisplayValues,
+  getItemTypeName,
+  localizeSystemName,
+  localizeRegionName,
 } from './utils'
 import { decodeHtmlEntities } from '@/features/tools/reference/eve-text-utils'
 
@@ -32,6 +41,7 @@ export function ContractRow({
   onMouseLeave,
   onContextMenu,
 }: ContractRowProps) {
+  const { t } = useTranslation('tools')
   const isWantToBuy = contract.isWantToBuy === true
   const { displayPrice, displayEstValue, diff, pct, diffIsGood, hasBids } =
     calculateContractDisplayValues(contract, highestBid)
@@ -51,8 +61,10 @@ export function ContractRow({
 
   const linkName =
     displayItems.length > 1
-      ? '[Multiple Items]'
-      : (displayItems[0]?.typeName ?? '[Empty]')
+      ? t('contractsSearch.row.multipleItems')
+      : displayItems[0]
+        ? getItemTypeName(displayItems[0])
+        : t('contractsSearch.row.empty')
 
   return (
     <TableRow
@@ -65,11 +77,13 @@ export function ContractRow({
         {displayItems.length > 1 ? (
           showingRequested ? (
             <div>
-              [Multiple Items]
-              <div className="text-xs text-status-negative">You Provide</div>
+              {t('contractsSearch.row.multipleItems')}
+              <div className="text-xs text-status-negative">
+                {t('contractsSearch.row.youProvide')}
+              </div>
             </div>
           ) : (
-            '[Multiple Items]'
+            t('contractsSearch.row.multipleItems')
           )
         ) : !displayItem ? (
           '-'
@@ -87,12 +101,14 @@ export function ContractRow({
               {formatBlueprintName(displayItem)}
               {displayItem.quantity > 1 && (
                 <span className="text-content-secondary">
-                  x{displayItem.quantity.toLocaleString()}
+                  x{formatFullNumber(displayItem.quantity)}
                 </span>
               )}
             </span>
             {showingRequested && (
-              <div className="text-xs text-status-negative">You Provide</div>
+              <div className="text-xs text-status-negative">
+                {t('contractsSearch.row.youProvide')}
+              </div>
             )}
           </div>
         )}
@@ -109,23 +125,28 @@ export function ContractRow({
           {contract.securityStatus != null && (
             <>
               <span className={getSecurityColor(contract.securityStatus)}>
-                {contract.securityStatus.toFixed(1)}
+                {formatSecurity(contract.securityStatus)}
               </span>{' '}
             </>
           )}
-          <span className="text-content">{contract.systemName}</span>
+          <span className="text-content">
+            {localizeSystemName(contract.systemId, contract.systemName)}
+          </span>
         </div>
-        <div className="text-xs text-content-muted">{contract.regionName}</div>
+        <div className="text-xs text-content-muted">
+          {localizeRegionName(contract.regionId, contract.regionName)}
+        </div>
       </TableCell>
       <TableCell className="font-mono">
         {displayPrice != null ? (
           <>
             <span className={hasBids ? 'text-status-highlight' : ''}>
               {formatNumber(displayPrice)}
-            </span>{' '}
-            <span className="text-content-muted">ISK</span>
+            </span>
             {isWantToBuy && (contract.reward ?? 0) > 0 && (
-              <div className="text-xs text-status-positive">You Receive</div>
+              <div className="text-xs text-status-positive">
+                {t('contractsSearch.row.youReceive')}
+              </div>
             )}
           </>
         ) : (
@@ -135,19 +156,14 @@ export function ContractRow({
           contract.buyout != null &&
           contract.buyout > 0 && (
             <div className="text-xs text-status-positive">
-              Buyout: {formatNumber(contract.buyout)}
+              {t('contractsSearch.row.buyout', {
+                price: formatNumber(contract.buyout),
+              })}
             </div>
           )}
       </TableCell>
       <TableCell className="font-mono">
-        {displayEstValue != null ? (
-          <>
-            {formatNumber(displayEstValue)}{' '}
-            <span className="text-content-muted">ISK</span>
-          </>
-        ) : (
-          '-'
-        )}
+        {displayEstValue != null ? formatNumber(displayEstValue) : '-'}
       </TableCell>
       <TableCell className="font-mono">
         {diff != null && pct != null ? (
@@ -164,10 +180,12 @@ export function ContractRow({
             {formatNumber(diff)}{' '}
             {Math.abs(pct) >= SCAM_THRESHOLD_PCT ? (
               <span className="text-status-warning">
-                {isAllAbyssal ? '(RMT?)' : '(Scam?)'}
+                {isAllAbyssal
+                  ? t('contractsSearch.row.rmt')
+                  : t('contractsSearch.row.scam')}
               </span>
             ) : (
-              `(${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%)`
+              `(${pct >= 0 ? '+' : ''}${formatPercent(pct)})`
             )}
           </span>
         ) : (

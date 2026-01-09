@@ -93,10 +93,12 @@ export interface CourierContract {
   originRegion: string
   originRegionId: number
   originSecurity: number | null
+  originStation?: string
   destSystem: string
+  destSystemId: number | null
   destRegion: string
   destSecurity: number | null
-  destStructure?: string
+  destStation?: string
   directJumps: number
   safeJumps: number | null
   dateIssued: string

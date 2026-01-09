@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/shallow'
 import { ContractsFilters } from './ContractsFilters'
 import { ContractsResultsTable } from './ContractsResultsTable'
@@ -10,20 +11,39 @@ import type {
   SortPreset,
   CourierSortPreset,
 } from './types'
-import { SORT_PRESETS, COURIER_SORT_PRESETS, DEFAULT_FILTERS } from './types'
+import { DEFAULT_FILTERS } from './types'
 import { useContractsSessionStore } from '@/store/contracts-session-store'
 import { toDisplayContract } from './utils'
 import { useContractSearch, type ResultsUpdate } from './useContractSearch'
+import { formatFullNumber } from '@/lib/utils'
 
 interface ContractsSearchPanelProps {
   initialType?: { typeId: number; typeName: string } | null
   onInitialTypeConsumed?: () => void
 }
 
+const SORT_PRESET_KEYS: { value: SortPreset; labelKey: string }[] = [
+  { value: 'created-asc', labelKey: 'contractsSearch.sort.createdOldest' },
+  { value: 'created-desc', labelKey: 'contractsSearch.sort.createdNewest' },
+  { value: 'timeLeft-asc', labelKey: 'contractsSearch.sort.timeLeftShortest' },
+  { value: 'timeLeft-desc', labelKey: 'contractsSearch.sort.timeLeftLongest' },
+  { value: 'price-asc', labelKey: 'contractsSearch.sort.priceLowest' },
+  { value: 'price-desc', labelKey: 'contractsSearch.sort.priceHighest' },
+]
+
+const COURIER_SORT_PRESET_KEYS: {
+  value: CourierSortPreset
+  labelKey: string
+}[] = [
+  { value: 'created-desc', labelKey: 'contractsSearch.sort.newestFirst' },
+  { value: 'created-asc', labelKey: 'contractsSearch.sort.oldestFirst' },
+]
+
 export function ContractsSearchPanel({
   initialType,
   onInitialTypeConsumed,
 }: ContractsSearchPanelProps) {
+  const { t } = useTranslation('tools')
   const { filters, committedFilters, buySell, courier } =
     useContractsSessionStore(
       useShallow((s) => ({
@@ -247,9 +267,14 @@ export function ContractsSearchPanel({
           <h2 className="text-sm font-medium text-content">
             {currentState.hasSearched
               ? currentState.total > displayResults.length
-                ? `Showing ${displayResults.length} of ${currentState.total.toLocaleString()} contracts`
-                : `${displayResults.length} contract${displayResults.length !== 1 ? 's' : ''} found`
-              : 'Contract Search'}
+                ? t('contractsSearch.showingOfContracts', {
+                    count: displayResults.length,
+                    total: formatFullNumber(currentState.total),
+                  })
+                : t('contractsSearch.contractsFound', {
+                    count: displayResults.length,
+                  })
+              : t('contractsSearch.title')}
           </h2>
           {currentState.hasSearched &&
             displayResults.length > 0 &&
@@ -263,9 +288,9 @@ export function ContractsSearchPanel({
                 aria-label="Sort courier contracts by"
                 className="rounded border border-border bg-surface-tertiary px-2 py-1 text-sm focus:border-accent focus:outline-hidden disabled:opacity-50"
               >
-                {COURIER_SORT_PRESETS.map((preset) => (
+                {COURIER_SORT_PRESET_KEYS.map((preset) => (
                   <option key={preset.value} value={preset.value}>
-                    {preset.label}
+                    {t(preset.labelKey)}
                   </option>
                 ))}
               </select>
@@ -277,9 +302,9 @@ export function ContractsSearchPanel({
                 aria-label="Sort contracts by"
                 className="rounded border border-border bg-surface-tertiary px-2 py-1 text-sm focus:border-accent focus:outline-hidden disabled:opacity-50"
               >
-                {SORT_PRESETS.map((preset) => (
+                {SORT_PRESET_KEYS.map((preset) => (
                   <option key={preset.value} value={preset.value}>
-                    {preset.label}
+                    {t(preset.labelKey)}
                   </option>
                 ))}
               </select>
@@ -314,7 +339,7 @@ export function ContractsSearchPanel({
           </div>
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center text-content-muted">
-            <p>Enter search criteria and click Search</p>
+            <p>{t('contractsSearch.enterCriteria')}</p>
           </div>
         )}
       </div>

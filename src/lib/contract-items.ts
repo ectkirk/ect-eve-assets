@@ -1,4 +1,4 @@
-import { getType } from '@/store/reference-cache'
+import { getType, isTypeBlueprint } from '@/store/reference-cache'
 import { usePriceStore } from '@/store/price-store'
 
 export interface ContractItem {
@@ -29,12 +29,38 @@ export interface ESIContractItemLike {
   is_included?: boolean
 }
 
-function isItemBpc(item: ESIContractItemLike): boolean {
+export function isContractItemBpc(item: ESIContractItemLike): boolean {
   return item.is_blueprint_copy === true || item.raw_quantity === -2
 }
 
+export interface BlueprintAttributesLike {
+  isBlueprintCopy?: boolean | null
+  materialEfficiency?: number | null
+  timeEfficiency?: number | null
+}
+
+export function hasBlueprintResearchData(
+  item: BlueprintAttributesLike
+): boolean {
+  return (
+    item.isBlueprintCopy === true ||
+    (item.materialEfficiency ?? 0) !== 0 ||
+    (item.timeEfficiency ?? 0) !== 0
+  )
+}
+
+export function shouldValueBlueprintAtZero(
+  item: ESIContractItemLike,
+  contractAvailability: string
+): boolean {
+  if (isContractItemBpc(item)) return true
+  if (contractAvailability === 'public') return false
+  return isTypeBlueprint(item.type_id) && item.raw_quantity === undefined
+}
+
 export function resolveContractItems(
-  items: ESIContractItemLike[]
+  items: ESIContractItemLike[],
+  contractAvailability: string
 ): ContractItem[] {
   const priceStore = usePriceStore.getState()
 
@@ -50,9 +76,9 @@ export function resolveContractItems(
       quantity: item.quantity ?? 1,
       price: priceStore.getItemPrice(item.type_id, {
         itemId: item.item_id,
-        isBlueprintCopy: isItemBpc(item),
+        isBlueprintCopy: shouldValueBlueprintAtZero(item, contractAvailability),
       }),
-      isBlueprintCopy: isItemBpc(item),
+      isBlueprintCopy: isContractItemBpc(item),
       materialEfficiency: item.material_efficiency,
       timeEfficiency: item.time_efficiency,
       runs: item.runs,

@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { TypeIcon } from '@/components/ui/type-icon'
 import type { CachedType } from '@/store/reference-cache'
 import type { MarketGroupNode } from './types'
@@ -16,6 +17,7 @@ export const MarketBreadcrumb = memo(function MarketBreadcrumb({
   selectedType,
   onNavigate,
 }: MarketBreadcrumbProps) {
+  const { t } = useTranslation('tools')
   if (path.length === 0 && !selectedType) return null
 
   return (
@@ -32,7 +34,7 @@ export const MarketBreadcrumb = memo(function MarketBreadcrumb({
           onClick={() => onNavigate(null)}
           className="text-content-secondary hover:text-accent shrink-0"
         >
-          Market
+          {t('regionalMarket.market')}
         </button>
         {path.map((node) => (
           <span

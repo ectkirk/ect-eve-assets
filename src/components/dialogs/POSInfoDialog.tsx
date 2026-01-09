@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import {
   Dialog,
   DialogContent,
@@ -21,7 +22,12 @@ import {
   formatElapsed,
   formatHoursAsTimer,
 } from '@/lib/timer-utils'
-import { cn, formatDateTime } from '@/lib/utils'
+import {
+  cn,
+  formatDateTime,
+  formatFullNumber,
+  formatSecurity,
+} from '@/lib/utils'
 
 interface POSInfoDialogProps {
   open: boolean
@@ -37,14 +43,22 @@ type StarbaseRole =
   | 'corporation_member'
   | 'starbase_fuel_technician_role'
 
-const ROLE_LABELS: Record<StarbaseRole, string> = {
-  alliance_member: 'Alliance Members',
-  config_starbase_equipment_role: 'Starbase Config Role',
-  corporation_member: 'Corp Members',
-  starbase_fuel_technician_role: 'Fuel Technician Role',
+const ROLE_LABEL_KEYS: Record<StarbaseRole, string> = {
+  alliance_member: 'posInfo.roles.allianceMember',
+  config_starbase_equipment_role: 'posInfo.roles.configStarbaseEquipmentRole',
+  corporation_member: 'posInfo.roles.corporationMember',
+  starbase_fuel_technician_role: 'posInfo.roles.starbaseFuelTechnicianRole',
 }
 
-function BooleanBadge({ value }: { value: boolean }) {
+function BooleanBadge({
+  value,
+  yesLabel,
+  noLabel,
+}: {
+  value: boolean
+  yesLabel: string
+  noLabel: string
+}) {
   return (
     <span
       className={cn(
@@ -54,7 +68,7 @@ function BooleanBadge({ value }: { value: boolean }) {
           : 'bg-surface-secondary text-content-muted'
       )}
     >
-      {value ? 'Yes' : 'No'}
+      {value ? yesLabel : noLabel}
     </span>
   )
 }
@@ -66,20 +80,30 @@ export function POSInfoDialog({
   detail,
   ownerName,
 }: POSInfoDialogProps) {
+  const { t } = useTranslation('dialogs')
+
   if (!starbase) return null
 
   const type = getType(starbase.type_id)
   const location = getLocation(starbase.system_id)
   const moon = starbase.moon_id ? getLocation(starbase.moon_id) : undefined
 
-  const typeName = type?.name ?? `Unknown Type ${starbase.type_id}`
-  const systemName = location?.name ?? `System ${starbase.system_id}`
-  const regionName = location?.regionName ?? 'Unknown Region'
+  const typeName =
+    type?.name ?? t('posInfo.unknownType', { id: starbase.type_id })
+  const systemName =
+    location?.name ?? t('posInfo.systemTemplate', { id: starbase.system_id })
+  const regionName = location?.regionName ?? t('structureInfo.unknownRegion')
   const moonName =
-    moon?.name ?? (starbase.moon_id ? `Moon ${starbase.moon_id}` : 'Unanchored')
+    moon?.name ??
+    (starbase.moon_id
+      ? t('posInfo.moonTemplate', { id: starbase.moon_id })
+      : t('posInfo.unanchored'))
 
   const state = starbase.state ?? 'unknown'
   const stateInfo = getStateDisplay(state)
+
+  const yesLabel = t('posInfo.yes')
+  const noLabel = t('posInfo.no')
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -99,32 +123,32 @@ export function POSInfoDialog({
         </DialogHeader>
 
         <div className="space-y-4 mt-2">
-          <InfoSection title="Location">
+          <InfoSection title={t('posInfo.location')}>
             <InfoRow
-              label="System"
+              label={t('posInfo.system')}
               value={systemName}
               className="text-status-info"
             />
-            <InfoRow label="Region" value={regionName} />
-            <InfoRow label="Moon" value={moonName} />
-            <InfoRow label="Owner" value={ownerName} />
+            <InfoRow label={t('posInfo.region')} value={regionName} />
+            <InfoRow label={t('posInfo.moon')} value={moonName} />
+            <InfoRow label={t('posInfo.owner')} value={ownerName} />
           </InfoSection>
 
-          <InfoSection title="Status">
+          <InfoSection title={t('posInfo.status')}>
             <InfoRow
-              label="State"
+              label={t('posInfo.state')}
               value={stateInfo.label}
               className={stateInfo.color}
             />
             {starbase.reinforced_until && (
               <>
                 <InfoRow
-                  label="RF Timer"
+                  label={t('posInfo.rfTimer')}
                   value={formatCountdown(starbase.reinforced_until)}
                   className="text-status-negative font-mono"
                 />
                 <InfoRow
-                  label="Reinforced Until"
+                  label={t('posInfo.reinforcedUntil')}
                   value={formatDateTime(starbase.reinforced_until)}
                   className="text-status-negative"
                 />
@@ -133,12 +157,12 @@ export function POSInfoDialog({
             {starbase.unanchor_at && (
               <>
                 <InfoRow
-                  label="Unanchor Timer"
+                  label={t('posInfo.unanchorTimer')}
                   value={formatCountdown(starbase.unanchor_at)}
                   className="text-status-highlight font-mono"
                 />
                 <InfoRow
-                  label="Unanchor At"
+                  label={t('posInfo.unanchorAt')}
                   value={formatDateTime(starbase.unanchor_at)}
                   className="text-status-highlight"
                 />
@@ -147,12 +171,12 @@ export function POSInfoDialog({
             {starbase.onlined_since && (
               <>
                 <InfoRow
-                  label="Online Duration"
+                  label={t('posInfo.onlineDuration')}
                   value={formatElapsed(starbase.onlined_since)}
                   className="text-status-positive font-mono"
                 />
                 <InfoRow
-                  label="Online Since"
+                  label={t('posInfo.onlineSince')}
                   value={formatDateTime(starbase.onlined_since)}
                 />
               </>
@@ -160,7 +184,7 @@ export function POSInfoDialog({
           </InfoSection>
 
           {detail && (
-            <InfoSection title="Fuel Timers">
+            <InfoSection title={t('posInfo.fuelTimers')}>
               {(() => {
                 const fuelHours = calculateFuelHours(
                   detail,
@@ -177,7 +201,7 @@ export function POSInfoDialog({
                 return (
                   <>
                     <InfoRow
-                      label="Fuel Remaining"
+                      label={t('posInfo.fuelRemaining')}
                       value={formatHoursAsTimer(fuelHours)}
                       className={cn(
                         'font-mono',
@@ -185,7 +209,7 @@ export function POSInfoDialog({
                       )}
                     />
                     <InfoRow
-                      label="Stront Remaining"
+                      label={t('posInfo.strontRemaining')}
                       value={formatHoursAsTimer(strontHours)}
                       className={cn(
                         'font-mono',
@@ -200,77 +224,112 @@ export function POSInfoDialog({
 
           {detail && (
             <>
-              <InfoSection title="Access Settings">
+              <InfoSection title={t('posInfo.accessSettings')}>
                 <InfoRow
-                  label="Allow Corp Members"
+                  label={t('posInfo.allowCorpMembers')}
                   value={
-                    <BooleanBadge value={detail.allow_corporation_members} />
+                    <BooleanBadge
+                      value={detail.allow_corporation_members}
+                      yesLabel={yesLabel}
+                      noLabel={noLabel}
+                    />
                   }
                 />
                 <InfoRow
-                  label="Allow Alliance Members"
-                  value={<BooleanBadge value={detail.allow_alliance_members} />}
+                  label={t('posInfo.allowAllianceMembers')}
+                  value={
+                    <BooleanBadge
+                      value={detail.allow_alliance_members}
+                      yesLabel={yesLabel}
+                      noLabel={noLabel}
+                    />
+                  }
                 />
                 <InfoRow
-                  label="Use Alliance Standings"
-                  value={<BooleanBadge value={detail.use_alliance_standings} />}
+                  label={t('posInfo.useAllianceStandings')}
+                  value={
+                    <BooleanBadge
+                      value={detail.use_alliance_standings}
+                      yesLabel={yesLabel}
+                      noLabel={noLabel}
+                    />
+                  }
                 />
               </InfoSection>
 
-              <InfoSection title="Combat Settings">
+              <InfoSection title={t('posInfo.combatSettings')}>
                 <InfoRow
-                  label="Attack If At War"
-                  value={<BooleanBadge value={detail.attack_if_at_war} />}
+                  label={t('posInfo.attackIfAtWar')}
+                  value={
+                    <BooleanBadge
+                      value={detail.attack_if_at_war}
+                      yesLabel={yesLabel}
+                      noLabel={noLabel}
+                    />
+                  }
                 />
                 <InfoRow
-                  label="Attack Criminals"
+                  label={t('posInfo.attackCriminals')}
                   value={
                     <BooleanBadge
                       value={detail.attack_if_other_security_status_dropping}
+                      yesLabel={yesLabel}
+                      noLabel={noLabel}
                     />
                   }
                 />
                 {detail.attack_security_status_threshold !== undefined && (
                   <InfoRow
-                    label="Sec Status Threshold"
-                    value={detail.attack_security_status_threshold.toFixed(1)}
+                    label={t('posInfo.secStatusThreshold')}
+                    value={formatSecurity(
+                      detail.attack_security_status_threshold
+                    )}
                   />
                 )}
                 {detail.attack_standing_threshold !== undefined && (
                   <InfoRow
-                    label="Standing Threshold"
-                    value={detail.attack_standing_threshold.toFixed(1)}
+                    label={t('posInfo.standingThreshold')}
+                    value={formatSecurity(detail.attack_standing_threshold)}
                   />
                 )}
               </InfoSection>
 
-              <InfoSection title="Role Permissions">
-                <InfoRow label="Anchor" value={ROLE_LABELS[detail.anchor]} />
+              <InfoSection title={t('posInfo.rolePermissions')}>
                 <InfoRow
-                  label="Unanchor"
-                  value={ROLE_LABELS[detail.unanchor]}
-                />
-                <InfoRow label="Online" value={ROLE_LABELS[detail.online]} />
-                <InfoRow label="Offline" value={ROLE_LABELS[detail.offline]} />
-                <InfoRow
-                  label="Fuel Bay View"
-                  value={ROLE_LABELS[detail.fuel_bay_view]}
+                  label={t('posInfo.anchor')}
+                  value={t(ROLE_LABEL_KEYS[detail.anchor])}
                 />
                 <InfoRow
-                  label="Fuel Bay Take"
-                  value={ROLE_LABELS[detail.fuel_bay_take]}
+                  label={t('posInfo.unanchor')}
+                  value={t(ROLE_LABEL_KEYS[detail.unanchor])}
+                />
+                <InfoRow
+                  label={t('posInfo.online')}
+                  value={t(ROLE_LABEL_KEYS[detail.online])}
+                />
+                <InfoRow
+                  label={t('posInfo.offline')}
+                  value={t(ROLE_LABEL_KEYS[detail.offline])}
+                />
+                <InfoRow
+                  label={t('posInfo.fuelBayView')}
+                  value={t(ROLE_LABEL_KEYS[detail.fuel_bay_view])}
+                />
+                <InfoRow
+                  label={t('posInfo.fuelBayTake')}
+                  value={t(ROLE_LABEL_KEYS[detail.fuel_bay_take])}
                 />
               </InfoSection>
 
               {detail.fuels && detail.fuels.length > 0 && (
-                <InfoSection title="Fuel Bay">
+                <InfoSection title={t('posInfo.fuelBay')}>
                   {detail.fuels.map((fuel) => {
                     const fuelType = getType(fuel.type_id)
                     return (
                       <InfoRow
                         key={fuel.type_id}
                         label={fuelType?.name ?? `Type ${fuel.type_id}`}
-                        value={fuel.quantity.toLocaleString()}
+                        value={formatFullNumber(fuel.quantity)}
                       />
                     )
                   })}
@@ -281,7 +340,7 @@ export function POSInfoDialog({
 
           {!detail && (
             <div className="text-center py-4 text-content-muted text-sm">
-              Detailed information not available for offline POSes
+              {t('posInfo.noDetailAvailable')}
             </div>
           )}
         </div>

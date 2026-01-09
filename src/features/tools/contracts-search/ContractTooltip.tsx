@@ -1,9 +1,11 @@
 import { forwardRef, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   getSecurityColor,
   formatBlueprintName,
-  getContractTypeLabel,
+  localizeSystemName,
 } from './utils'
+import { formatFullNumber, formatSecurity } from '@/lib/utils'
 import { decodeHtmlEntities } from '@/features/tools/reference/eve-text-utils'
 import { usePriceStore } from '@/store/price-store'
 import type { SearchContract } from './types'
@@ -18,6 +20,7 @@ interface ContractTooltipProps {
 
 export const ContractTooltip = forwardRef<HTMLDivElement, ContractTooltipProps>(
   function ContractTooltip({ contract, position, visible }, ref) {
+    const { t } = useTranslation('tools')
     const getItemPrice = usePriceStore((s) => s.getItemPrice)
 
     const displayItems = useMemo(() => {
@@ -49,27 +52,33 @@ export const ContractTooltip = forwardRef<HTMLDivElement, ContractTooltipProps>(
       >
         <div className="mb-2 font-medium text-amber-400">
           {contract.topItems.length > 1
-            ? '[Multiple Items]'
+            ? t('contractsSearch.row.multipleItems')
             : contract.topItems[0]
               ? formatBlueprintName(contract.topItems[0])
               : '-'}
         </div>
         <div className="space-y-1 text-sm">
           <div>
-            <span className="text-content-muted">Contract Type: </span>
+            <span className="text-content-muted">
+              {t('contractsSearch.tooltip.contractType')}{' '}
+            </span>
             <span className="text-content">
-              {getContractTypeLabel(contract.type)}
+              {t(
+                `contractsSearch.types.${contract.type === 'item_exchange' ? 'itemExchange' : contract.type}`
+              )}
             </span>
           </div>
           <div>
-            <span className="text-content-muted">Location: </span>
+            <span className="text-content-muted">
+              {t('contractsSearch.tooltip.location')}{' '}
+            </span>
             <span className="text-content">
-              {contract.systemName}
+              {localizeSystemName(contract.systemId, contract.systemName)}
               {contract.securityStatus != null && (
                 <span
                   className={`ml-1 ${getSecurityColor(contract.securityStatus)}`}
                 >
-                  ({contract.securityStatus.toFixed(1)})
+                  ({formatSecurity(contract.securityStatus)})
                 </span>
               )}
             </span>
@@ -77,7 +86,7 @@ export const ContractTooltip = forwardRef<HTMLDivElement, ContractTooltipProps>(
           {contract.title && (
             <div>
               <span className="text-content-muted">
-                Description By Issuer:{' '}
+                {t('contractsSearch.tooltip.descriptionByIssuer')}{' '}
               </span>
               <span className="text-content">
                 {decodeHtmlEntities(contract.title)}
@@ -85,19 +94,26 @@ export const ContractTooltip = forwardRef<HTMLDivElement, ContractTooltipProps>(
             </div>
           )}
           <div className="mt-2">
-            <span className="text-content-muted">Items:</span>
+            <span className="text-content-muted">
+              {t('contractsSearch.tooltip.items')}
+            </span>
             <ul className="ml-2 mt-1 space-y-0.5">
               {displayItems.map((item, idx) => (
                 <li key={item.typeId ?? idx} className="text-content">
-                  {item.quantity.toLocaleString()} x {formatBlueprintName(item)}
+                  {formatFullNumber(item.quantity)} x{' '}
+                  {formatBlueprintName(item)}
                 </li>
               ))}
-              {hasMore && <li className="text-content-muted">More...</li>}
+              {hasMore && (
+                <li className="text-content-muted">
+                  {t('contractsSearch.tooltip.more')}
+                </li>
+              )}
             </ul>
           </div>
           {contract.topItems.length > 1 && (
             <div className="mt-2 text-content-muted">
-              Contract contains multiple items. Open it to view them.
+              {t('contractsSearch.tooltip.multipleItemsHint')}
             </div>
           )}
         </div>

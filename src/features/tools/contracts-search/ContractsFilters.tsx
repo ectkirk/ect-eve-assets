@@ -1,4 +1,5 @@
 import { useMemo, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Search } from 'lucide-react'
 import { getAllCategories, getGroupsByCategory } from '@/store/cache'
 import { TypeSearchInput } from '@/components/ui/type-search-input'
@@ -33,6 +34,7 @@ export function ContractsFilters({
   onSearch,
   isLoading,
 }: ContractsFiltersProps) {
+  const { t } = useTranslation('tools')
   const categories = useMemo(
     () => getAllCategories(true).sort((a, b) => a.name.localeCompare(b.name)),
     []
@@ -100,7 +102,7 @@ export function ContractsFilters({
               : 'text-content-secondary hover:text-content'
           }`}
         >
-          Buy & Sell
+          {t('contractsSearch.filters.buySell')}
         </button>
         <button
           onClick={() => updateFilter('mode', 'courier')}
@@ -110,17 +112,19 @@ export function ContractsFilters({
               : 'text-content-secondary hover:text-content'
           }`}
         >
-          Courier
+          {t('contractsSearch.filters.courier')}
         </button>
       </div>
 
       <div className="flex-1 space-y-3 overflow-y-auto p-4">
         {filters.mode === 'buySell' && !filters.exactTypeMatch && (
           <div>
-            <label className={labelClass}>Search by</label>
+            <label className={labelClass}>
+              {t('contractsSearch.filters.searchBy')}
+            </label>
             <input
               type="text"
-              placeholder="Item name, type..."
+              placeholder={t('common:search.placeholder')}
               className={inputClass}
               value={filters.searchText}
               onChange={(e) => updateFilter('searchText', e.target.value)}
@@ -131,7 +135,9 @@ export function ContractsFilters({
 
         <div>
           <label className={labelClass}>
-            {filters.mode === 'courier' ? 'Origin Region' : 'Region'}
+            {filters.mode === 'courier'
+              ? t('contractsSearch.filters.originRegion')
+              : t('contractsSearch.filters.region')}
           </label>
           <select
             className={selectClass}
@@ -143,7 +149,7 @@ export function ContractsFilters({
               )
             }
           >
-            <option value="">All Regions</option>
+            <option value="">{t('contractsSearch.filters.allRegions')}</option>
             {sortedRegions.map((region) => (
               <option key={region.id} value={region.id}>
                 {region.name}
@@ -154,7 +160,9 @@ export function ContractsFilters({
 
         {filters.mode === 'buySell' && (
           <div>
-            <label className={labelClass}>Contract Type</label>
+            <label className={labelClass}>
+              {t('contractsSearch.filters.contractType')}
+            </label>
             <select
               className={selectClass}
               value={filters.contractType}
@@ -162,9 +170,15 @@ export function ContractsFilters({
                 updateFilter('contractType', e.target.value as ContractType)
               }
             >
-              <option value="want_to_sell">Want To Sell</option>
-              <option value="want_to_buy">Want To Buy</option>
-              <option value="auction">Auctions</option>
+              <option value="want_to_sell">
+                {t('contractsSearch.filters.wantToSell')}
+              </option>
+              <option value="want_to_buy">
+                {t('contractsSearch.filters.wantToBuy')}
+              </option>
+              <option value="auction">
+                {t('contractsSearch.filters.auctions')}
+              </option>
             </select>
           </div>
         )}
@@ -172,7 +186,9 @@ export function ContractsFilters({
         {filters.mode === 'buySell' && !filters.exactTypeMatch && (
           <>
             <div>
-              <label className={labelClass}>Item Category</label>
+              <label className={labelClass}>
+                {t('contractsSearch.filters.itemCategory')}
+              </label>
               <select
                 className={selectClass}
                 value={filters.categoryId ?? ''}
@@ -183,7 +199,9 @@ export function ContractsFilters({
                   )
                 }
               >
-                <option value="">All Categories</option>
+                <option value="">
+                  {t('contractsSearch.filters.allCategories')}
+                </option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -194,7 +212,9 @@ export function ContractsFilters({
 
             {filters.categoryId && (
               <div>
-                <label className={labelClass}>Item Group</label>
+                <label className={labelClass}>
+                  {t('contractsSearch.filters.itemGroup')}
+                </label>
                 <select
                   className={selectClass}
                   value={filters.groupId ?? ''}
@@ -205,7 +225,9 @@ export function ContractsFilters({
                     )
                   }
                 >
-                  <option value="">All Groups</option>
+                  <option value="">
+                    {t('contractsSearch.filters.allGroups')}
+                  </option>
                   {groups.map((g) => (
                     <option key={g.id} value={g.id}>
                       {g.name}
@@ -229,7 +251,7 @@ export function ContractsFilters({
                 }
               />
               <span className="text-sm text-content">
-                Exclude multiple items
+                {t('contractsSearch.filters.excludeMultiple')}
               </span>
             </label>
             <label className="flex cursor-pointer items-center gap-2">
@@ -250,29 +272,31 @@ export function ContractsFilters({
                   })
                 }}
               />
-              <span className="text-sm text-content">Exact type match</span>
+              <span className="text-sm text-content">
+                {t('contractsSearch.filters.exactTypeMatch')}
+              </span>
             </label>
           </div>
         )}
 
         {filters.mode === 'buySell' && filters.exactTypeMatch && (
           <div>
-            <label className={labelClass}>Item Type</label>
-            <TypeSearchInput
-              value={selectedType}
-              onChange={handleTypeChange}
-              placeholder="Search for exact type..."
-            />
+            <label className={labelClass}>
+              {t('contractsSearch.filters.itemType')}
+            </label>
+            <TypeSearchInput value={selectedType} onChange={handleTypeChange} />
           </div>
         )}
 
         {filters.mode === 'buySell' && (
           <div>
-            <label className={labelClass}>Price (millions)</label>
+            <label className={labelClass}>
+              {t('contractsSearch.filters.priceMillions')}
+            </label>
             <div className="flex items-center gap-2">
               <input
                 type="text"
-                placeholder="Min"
+                placeholder={t('contractsSearch.filters.min')}
                 className={inputClass}
                 value={filters.priceMin}
                 onChange={(e) => updateFilter('priceMin', e.target.value)}
@@ -281,7 +305,7 @@ export function ContractsFilters({
               <span className="text-content-muted">-</span>
               <input
                 type="text"
-                placeholder="Max"
+                placeholder={t('contractsSearch.filters.max')}
                 className={inputClass}
                 value={filters.priceMax}
                 onChange={(e) => updateFilter('priceMax', e.target.value)}
@@ -293,7 +317,9 @@ export function ContractsFilters({
 
         {filters.mode === 'buySell' && (
           <div>
-            <label className={labelClass}>Security Status</label>
+            <label className={labelClass}>
+              {t('contractsSearch.filters.securityStatus')}
+            </label>
             <div className="flex gap-4">
               <label className="flex cursor-pointer items-center gap-1.5">
                 <input
@@ -304,7 +330,9 @@ export function ContractsFilters({
                     updateFilter('securityHigh', e.target.checked)
                   }
                 />
-                <span className="text-sm text-status-positive">High</span>
+                <span className="text-sm text-status-positive">
+                  {t('contractsSearch.filters.high')}
+                </span>
               </label>
               <label className="flex cursor-pointer items-center gap-1.5">
                 <input
@@ -315,7 +343,9 @@ export function ContractsFilters({
                     updateFilter('securityLow', e.target.checked)
                   }
                 />
-                <span className="text-sm text-status-warning">Low</span>
+                <span className="text-sm text-status-warning">
+                  {t('contractsSearch.filters.low')}
+                </span>
               </label>
               <label className="flex cursor-pointer items-center gap-1.5">
                 <input
@@ -326,7 +356,9 @@ export function ContractsFilters({
                     updateFilter('securityNull', e.target.checked)
                   }
                 />
-                <span className="text-sm text-status-negative">Null</span>
+                <span className="text-sm text-status-negative">
+                  {t('contractsSearch.filters.null')}
+                </span>
               </label>
             </div>
           </div>
@@ -340,7 +372,9 @@ export function ContractsFilters({
           className="flex w-full items-center justify-center gap-2 rounded bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Search className="h-4 w-4" />
-          {isLoading ? 'Searching...' : 'Search'}
+          {isLoading
+            ? t('contractsSearch.filters.searching')
+            : t('contractsSearch.filters.search')}
         </button>
       </div>
     </div>

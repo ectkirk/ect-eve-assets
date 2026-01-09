@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useMailStore } from '@/store/mail-store'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
@@ -21,6 +22,7 @@ function countFilteredMails(
 }
 
 export function MailTab() {
+  const { t } = useTranslation('common')
   const ownersRecord = useAuthStore((s) => s.owners)
   const characters = useMemo(
     () => Object.values(ownersRecord).filter((o) => o.type === 'character'),
@@ -57,9 +59,9 @@ export function MailTab() {
   }, [update])
 
   useEffect(() => {
-    setSearchPlaceholder('Search mail...')
+    setSearchPlaceholder(t('search.placeholder'))
     return () => setSearchPlaceholder(null)
-  }, [setSearchPlaceholder])
+  }, [setSearchPlaceholder, t])
 
   useEffect(() => {
     setRefreshAction({ onRefresh: handleRefresh, isRefreshing: isUpdating })
@@ -119,7 +121,9 @@ export function MailTab() {
             key={charData.owner.characterId}
             characterId={charData.owner.characterId}
             characterName={charData.owner.name}
-            subtitle={`${countFilteredMails(charData.mails, filterType)} messages`}
+            subtitle={t('mail.messageCount', {
+              count: countFilteredMails(charData.mails, filterType),
+            })}
           >
             <CharacterMailPanel
               characterId={charData.owner.characterId}

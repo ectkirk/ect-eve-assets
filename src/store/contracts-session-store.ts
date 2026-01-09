@@ -11,29 +11,20 @@ import { DEFAULT_FILTERS } from '@/features/tools/contracts-search/types'
 const DEFAULT_SORT: SortPreset = 'price-desc'
 const DEFAULT_COURIER_SORT: CourierSortPreset = 'created-desc'
 
-interface BuySellState {
-  results: SearchContract[]
+interface SearchModeState<TContract, TSort> {
+  results: TContract[]
   page: number
   totalPages: number
   total: number
-  sortPreset: SortPreset
-  committedSort: SortPreset
+  sortPreset: TSort
+  committedSort: TSort
   hasSearched: boolean
   nextCursor: string | null
   hasMore: boolean
 }
 
-interface CourierState {
-  results: CourierContract[]
-  page: number
-  totalPages: number
-  total: number
-  sortPreset: CourierSortPreset
-  committedSort: CourierSortPreset
-  hasSearched: boolean
-  nextCursor: string | null
-  hasMore: boolean
-}
+type BuySellState = SearchModeState<SearchContract, SortPreset>
+type CourierState = SearchModeState<CourierContract, CourierSortPreset>
 
 const DEFAULT_BUYSELL_STATE: BuySellState = {
   results: [],
@@ -59,21 +50,15 @@ const DEFAULT_COURIER_STATE: CourierState = {
   hasMore: false,
 }
 
-interface ResultsUpdate {
-  contracts: SearchContract[]
+interface ResultsUpdate<T> {
+  contracts: T[]
   total?: number
   totalPages?: number
   nextCursor?: string | null
   hasMore?: boolean
 }
 
-interface CourierResultsUpdate {
-  contracts: CourierContract[]
-  total?: number
-  totalPages?: number
-  nextCursor?: string | null
-  hasMore?: boolean
-}
+type SearchMode = 'buySell' | 'courier'
 
 interface ContractsSessionState {
   filters: ContractSearchFilters
@@ -83,12 +68,16 @@ interface ContractsSessionState {
 
   setFilters: (filters: ContractSearchFilters) => void
   commitSearch: () => void
-  setResults: (update: ResultsUpdate) => void
+  updateMode: <T>(
+    mode: SearchMode,
+    update: Partial<SearchModeState<T, unknown>>
+  ) => void
+  setResults: (update: ResultsUpdate<SearchContract>) => void
   setPage: (page: number) => void
   setSortPreset: (preset: SortPreset) => void
   commitSort: () => void
   setHasSearched: (hasSearched: boolean) => void
-  setCourierResults: (update: CourierResultsUpdate) => void
+  setCourierResults: (update: ResultsUpdate<CourierContract>) => void
   setCourierSortPreset: (preset: CourierSortPreset) => void
   commitCourierSort: () => void
   setCourierPage: (page: number) => void
@@ -104,12 +93,19 @@ export const useContractsSessionStore = create<ContractsSessionState>(
     courier: DEFAULT_COURIER_STATE,
 
     setFilters: (filters) => set({ filters }),
+
     commitSearch: () =>
       set((state) => ({
         committedFilters: state.filters,
         buySell: { ...state.buySell, committedSort: state.buySell.sortPreset },
         courier: { ...state.courier, committedSort: state.courier.sortPreset },
       })),
+
+    updateMode: (mode, update) =>
+      set((state) => ({
+        [mode]: { ...state[mode], ...update },
+      })),
+
     setResults: (update) =>
       set((state) => ({
         buySell: {
@@ -121,22 +117,21 @@ export const useContractsSessionStore = create<ContractsSessionState>(
           hasMore: update.hasMore ?? false,
         },
       })),
+
     setPage: (page) =>
-      set((state) => ({
-        buySell: { ...state.buySell, page },
-      })),
+      set((state) => ({ buySell: { ...state.buySell, page } })),
+
     setSortPreset: (sortPreset) =>
-      set((state) => ({
-        buySell: { ...state.buySell, sortPreset },
-      })),
+      set((state) => ({ buySell: { ...state.buySell, sortPreset } })),
+
     commitSort: () =>
       set((state) => ({
         buySell: { ...state.buySell, committedSort: state.buySell.sortPreset },
       })),
+
     setHasSearched: (hasSearched) =>
-      set((state) => ({
-        buySell: { ...state.buySell, hasSearched },
-      })),
+      set((state) => ({ buySell: { ...state.buySell, hasSearched } })),
+
     setCourierResults: (update) =>
       set((state) => ({
         courier: {
@@ -148,22 +143,21 @@ export const useContractsSessionStore = create<ContractsSessionState>(
           hasMore: update.hasMore ?? false,
         },
       })),
+
     setCourierSortPreset: (sortPreset) =>
-      set((state) => ({
-        courier: { ...state.courier, sortPreset },
-      })),
+      set((state) => ({ courier: { ...state.courier, sortPreset } })),
+
     commitCourierSort: () =>
       set((state) => ({
         courier: { ...state.courier, committedSort: state.courier.sortPreset },
       })),
+
     setCourierPage: (page) =>
-      set((state) => ({
-        courier: { ...state.courier, page },
-      })),
+      set((state) => ({ courier: { ...state.courier, page } })),
+
     setCourierHasSearched: (hasSearched) =>
-      set((state) => ({
-        courier: { ...state.courier, hasSearched },
-      })),
+      set((state) => ({ courier: { ...state.courier, hasSearched } })),
+
     reset: () =>
       set({
         filters: DEFAULT_FILTERS,
