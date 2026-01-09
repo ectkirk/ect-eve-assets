@@ -17,6 +17,8 @@ interface UseMapHoverOptions {
   allianceData: Map<number, { allianceId: number; allianceName: string }> | null
   dimensions: { width: number; height: number }
   isDragging: boolean
+  isSystemInIncursion: (systemId: number) => boolean
+  getCorruptionLevel: (systemId: number) => number | null
 }
 
 interface UseMapHoverReturn {
@@ -36,6 +38,8 @@ export function useMapHover({
   allianceData,
   dimensions,
   isDragging,
+  isSystemInIncursion,
+  getCorruptionLevel,
 }: UseMapHoverOptions): UseMapHoverReturn {
   const [hoveredSystem, setHoveredSystem] = useState<HoveredSystem | null>(null)
   const lastHoverIdRef = useRef<number | null>(null)
@@ -99,6 +103,8 @@ export function useMapHover({
       }
 
       const stations = getStationsBySystemId(nearest.id)
+      const isIncursion = isSystemInIncursion(nearest.id)
+      const corruptionLevel = getCorruptionLevel(nearest.id) ?? undefined
 
       setHoveredSystem({
         id: nearest.id,
@@ -111,6 +117,8 @@ export function useMapHover({
         allianceName,
         stationNames:
           stations.length > 0 ? stations.map((s) => s.name) : undefined,
+        isIncursion: isIncursion || undefined,
+        corruptionLevel,
       })
     },
     [
@@ -122,6 +130,8 @@ export function useMapHover({
       fwData,
       allianceData,
       dimensions,
+      isSystemInIncursion,
+      getCorruptionLevel,
     ]
   )
 

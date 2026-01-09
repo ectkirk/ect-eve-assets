@@ -185,7 +185,7 @@
   "map.ignoredSystems.empty": "무시된 성계 없음",
   "map.ignoredSystems.manage": "무시 목록",
   "map.ignoredSystems.avoidIncursions": "인커전 회피",
-  "map.ignoredSystems.avoidInsurgencies": "인서전시 회피",
+  "map.ignoredSystems.avoidInsurgencies": "부패 레벨 5 회피",
   "map.insurgencyPanel.title": "인서전시",
   "map.incursionPanel.title": "인커전",
 

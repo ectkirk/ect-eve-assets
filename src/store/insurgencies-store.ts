@@ -16,11 +16,13 @@ interface InsurgenciesState {
   enabled: boolean
   affectedSystems: Set<number>
   systemsInfo: InsurgencySystemInfo[]
+  corruptionBySystem: Map<number, number>
   isLoading: boolean
   lastUpdated: number | null
   setEnabled: (enabled: boolean) => void
   fetchInsurgencies: () => Promise<void>
   isSystemInInsurgency: (systemId: number) => boolean
+  getCorruptionLevel: (systemId: number) => number | null
 }
 
 export const useInsurgenciesStore = create<InsurgenciesState>()(
@@ -29,15 +31,11 @@ export const useInsurgenciesStore = create<InsurgenciesState>()(
       enabled: false,
       affectedSystems: new Set(),
       systemsInfo: [],
+      corruptionBySystem: new Map(),
       isLoading: false,
       lastUpdated: null,
 
-      setEnabled: (enabled) => {
-        set({ enabled })
-        if (!enabled) {
-          set({ affectedSystems: new Set(), systemsInfo: [] })
-        }
-      },
+      setEnabled: (enabled) => set({ enabled }),
 
       fetchInsurgencies: async () => {
         if (!get().enabled) return
@@ -59,17 +57,20 @@ export const useInsurgenciesStore = create<InsurgenciesState>()(
 
           const affectedSystems = new Set<number>()
           const systemsInfo: InsurgencySystemInfo[] = []
+          const corruptionBySystem = new Map<number, number>()
 
           for (const campaign of campaigns) {
             for (const insurgency of campaign.insurgencies) {
+              const systemId = insurgency.solarSystem.id
               systemsInfo.push({
-                id: insurgency.solarSystem.id,
+                id: systemId,
                 name: insurgency.solarSystem.name,
                 security: insurgency.solarSystem.security,
                 corruptionState: insurgency.corruptionState,
               })
+              corruptionBySystem.set(systemId, insurgency.corruptionState)
               if (insurgency.corruptionState === 5) {
-                affectedSystems.add(insurgency.solarSystem.id)
+                affectedSystems.add(systemId)
               }
             }
           }
@@ -85,6 +86,7 @@ export const useInsurgenciesStore = create<InsurgenciesState>()(
           set({
             affectedSystems,
             systemsInfo,
+            corruptionBySystem,
             lastUpdated: Date.now(),
           })
         } catch (err) {
@@ -100,10 +102,32 @@ export const useInsurgenciesStore = create<InsurgenciesState>()(
       isSystemInInsurgency: (systemId) => {
         return get().affectedSystems.has(systemId)
       },
+
+      getCorruptionLevel: (systemId) => {
+        return get().corruptionBySystem.get(systemId) ?? null
+      },
     }),
     {
       name: 'insurgencies',
-      partialize: (state) => ({ enabled: state.enabled }),
+      partialize: (state) => ({
+        enabled: state.enabled,
+        affectedSystems: Array.from(state.affectedSystems),
+        systemsInfo: state.systemsInfo,
+        corruptionBySystem: Array.from(state.corruptionBySystem.entries()),
+        lastUpdated: state.lastUpdated,
+      }),
+      merge: (persisted, current) => {
+        const p = persisted as {
+          affectedSystems?: number[]
+          corruptionBySystem?: [number, number][]
+        }
+        return {
+          ...current,
+          ...(persisted as object),
+          affectedSystems: new Set(p?.affectedSystems ?? []),
+          corruptionBySystem: new Map(p?.corruptionBySystem ?? []),
+        }
+      },
     }
   )
 )

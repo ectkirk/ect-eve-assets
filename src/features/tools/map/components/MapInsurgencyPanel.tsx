@@ -13,7 +13,7 @@ interface MapInsurgencyPanelProps {
   onUnignore: (systemId: number) => void
 }
 
-function CorruptionBadge({ level }: { level: number }) {
+export function CorruptionBadge({ level }: { level: number }) {
   const colors: Record<number, string> = {
     5: 'bg-red-800 text-red-100',
     4: 'bg-orange-700 text-orange-100',

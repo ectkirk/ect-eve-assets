@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { clampToViewport } from '../utils/coordinates'
 
 interface MapSystemContextMenuProps {
   x: number
@@ -15,7 +16,6 @@ interface MapSystemContextMenuProps {
 
 const MENU_WIDTH = 180
 const MENU_HEIGHT_ESTIMATE = 200
-const VIEWPORT_MARGIN = 8
 
 export function MapSystemContextMenu({
   x,
@@ -42,22 +42,10 @@ export function MapSystemContextMenu({
     return () => window.removeEventListener('mousedown', handleClickOutside)
   }, [onClose])
 
-  const position = useMemo(() => {
-    let left = x
-    let top = y
-
-    if (x + MENU_WIDTH > window.innerWidth - VIEWPORT_MARGIN) {
-      left = x - MENU_WIDTH
-    }
-    if (y + MENU_HEIGHT_ESTIMATE > window.innerHeight - VIEWPORT_MARGIN) {
-      top = y - MENU_HEIGHT_ESTIMATE
-    }
-
-    left = Math.max(VIEWPORT_MARGIN, left)
-    top = Math.max(VIEWPORT_MARGIN, top)
-
-    return { left, top }
-  }, [x, y])
+  const position = useMemo(
+    () => clampToViewport(x, y, MENU_WIDTH, MENU_HEIGHT_ESTIMATE),
+    [x, y]
+  )
 
   return (
     <div

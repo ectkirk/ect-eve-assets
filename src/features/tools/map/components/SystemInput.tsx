@@ -1,13 +1,10 @@
 import { useState, useCallback } from 'react'
 import { useDebounce } from '../hooks/useDebounce'
 import { SecurityBadge, type SystemSearchItem } from './MapRouteControls'
+import type { IndexedSystemItem } from '../types'
 
 const DEBOUNCE_MS = 200
 const MAX_RESULTS = 8
-
-interface IndexedSystemItem extends SystemSearchItem {
-  nameLower: string
-}
 
 interface SystemInputProps {
   placeholder: string

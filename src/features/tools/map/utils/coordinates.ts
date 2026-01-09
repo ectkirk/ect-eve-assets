@@ -118,3 +118,29 @@ export function isInVisibleBounds(
     y <= bounds.bottom
   )
 }
+
+const VIEWPORT_MARGIN = 8
+
+export function clampToViewport(
+  x: number,
+  y: number,
+  elementWidth: number,
+  elementHeight: number,
+  viewportWidth = window.innerWidth,
+  viewportHeight = window.innerHeight
+): { left: number; top: number } {
+  let left = x
+  let top = y
+
+  if (x + elementWidth > viewportWidth - VIEWPORT_MARGIN) {
+    left = x - elementWidth
+  }
+  if (y + elementHeight > viewportHeight - VIEWPORT_MARGIN) {
+    top = y - elementHeight
+  }
+
+  left = Math.max(VIEWPORT_MARGIN, left)
+  top = Math.max(VIEWPORT_MARGIN, top)
+
+  return { left, top }
+}

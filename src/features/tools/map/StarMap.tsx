@@ -18,7 +18,12 @@ import {
   type CachedRegion,
   type CachedStargate,
 } from '@/store/reference-cache'
-import type { ColorMode, SearchResult } from './types'
+import {
+  CLICK_RADIUS,
+  EXCLUDED_REGION_NAMES,
+  type ColorMode,
+  type SearchResult,
+} from './types'
 import {
   buildGraph,
   findRoute,
@@ -145,7 +150,7 @@ export function StarMap() {
     affectedSystems: insurgencySystems,
     systemsInfo: insurgencySystemsInfo,
     fetchInsurgencies,
-    isSystemInInsurgency,
+    getCorruptionLevel,
   } = useInsurgenciesStore()
 
   const { systems, regions, stargates } = useMemo(() => {
@@ -156,10 +161,28 @@ export function StarMap() {
         stargates: [] as CachedStargate[],
       }
     }
+
+    const allRegions = getAllRegions()
+    const filteredRegions = allRegions.filter(
+      (r) => !EXCLUDED_REGION_NAMES.has(r.name)
+    )
+    const excludedRegionIds = new Set(
+      allRegions.filter((r) => EXCLUDED_REGION_NAMES.has(r.name)).map((r) => r.id)
+    )
+
+    const filteredSystems = getAllSystems().filter(
+      (s) => !excludedRegionIds.has(s.regionId)
+    )
+    const validSystemIds = new Set(filteredSystems.map((s) => s.id))
+
+    const filteredStargates = getAllStargates().filter(
+      (g) => validSystemIds.has(g.from) && validSystemIds.has(g.to)
+    )
+
     return {
-      systems: getAllSystems(),
-      regions: getAllRegions(),
-      stargates: getAllStargates(),
+      systems: filteredSystems,
+      regions: filteredRegions,
+      stargates: filteredStargates,
     }
   }, [universeDataLoaded])
 
@@ -278,6 +301,8 @@ export function StarMap() {
     allianceData,
     dimensions,
     isDragging,
+    isSystemInIncursion,
+    getCorruptionLevel,
   })
 
   const getWorldCoordsFromEvent = useCallback(
@@ -353,7 +378,7 @@ export function StarMap() {
         const coords = getWorldCoordsFromEvent(e)
         if (!coords) return
 
-        const clickRadius = 15 / cameraRef.current.zoom
+        const clickRadius = CLICK_RADIUS / cameraRef.current.zoom
         const nearest = spatialIndex.findNearest(
           coords.x,
           coords.y,
@@ -438,7 +463,7 @@ export function StarMap() {
       const coords = getWorldCoordsFromEvent(e)
       if (!coords) return
 
-      const clickRadius = 15 / cameraRef.current.zoom
+      const clickRadius = CLICK_RADIUS / cameraRef.current.zoom
       const nearest = spatialIndex.findNearest(coords.x, coords.y, clickRadius)
 
       if (nearest) {
@@ -757,7 +782,7 @@ export function StarMap() {
         ignoredSystemsCount={ignoredSystems.size}
         isSystemIgnored={isIgnored}
         isSystemInIncursion={isSystemInIncursion}
-        isSystemInInsurgency={isSystemInInsurgency}
+        getCorruptionLevel={getCorruptionLevel}
         onRoutePreferenceChange={setRoutePreference}
         onOpenIgnoredSystems={() => setIgnoredSystemsModalOpen(true)}
         onIgnoreSystem={addIgnored}

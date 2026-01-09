@@ -185,7 +185,7 @@
   "map.ignoredSystems.empty": "無視された星系はありません",
   "map.ignoredSystems.manage": "無視リスト",
   "map.ignoredSystems.avoidIncursions": "インカージョンを避ける",
-  "map.ignoredSystems.avoidInsurgencies": "インサージェンシーを避ける",
+  "map.ignoredSystems.avoidInsurgencies": "腐敗レベル5を避ける",
   "map.insurgencyPanel.title": "インサージェンシー",
   "map.incursionPanel.title": "インカージョン",
 

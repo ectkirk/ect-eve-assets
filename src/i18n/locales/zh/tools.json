@@ -185,7 +185,7 @@
   "map.ignoredSystems.empty": "没有忽略的星系",
   "map.ignoredSystems.manage": "忽略列表",
   "map.ignoredSystems.avoidIncursions": "避开入侵",
-  "map.ignoredSystems.avoidInsurgencies": "避开叛乱",
+  "map.ignoredSystems.avoidInsurgencies": "避开5级腐化",
   "map.insurgencyPanel.title": "叛乱",
   "map.incursionPanel.title": "入侵",
 

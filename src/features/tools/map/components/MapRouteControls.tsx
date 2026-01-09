@@ -3,7 +3,10 @@ import { useTranslation } from 'react-i18next'
 import { IngameActionModal } from '@/components/dialogs/IngameActionModal'
 import { MapSystemContextMenu } from './MapSystemContextMenu'
 import { SystemInput } from './SystemInput'
+import { ToggleOption } from './ToggleOption'
+import { CorruptionBadge } from './MapInsurgencyPanel'
 import type { RoutePreference } from '../utils/pathfinder'
+import type { IndexedSystemItem } from '../types'
 import { formatSecurity, roundSecurity } from '@/lib/utils'
 import { useSystemContextMenu } from '../hooks/useSystemContextMenu'
 
@@ -32,10 +35,6 @@ export interface SystemSearchItem {
   security: number
 }
 
-interface IndexedSystemItem extends SystemSearchItem {
-  nameLower: string
-}
-
 interface MapRouteControlsProps {
   originName: string | null
   originSecurity: number | null
@@ -59,7 +58,7 @@ interface MapRouteControlsProps {
   ignoredSystemsCount: number
   isSystemIgnored: (systemId: number) => boolean
   isSystemInIncursion: (systemId: number) => boolean
-  isSystemInInsurgency: (systemId: number) => boolean
+  getCorruptionLevel: (systemId: number) => number | null
   onRoutePreferenceChange: (pref: RoutePreference) => void
   onOpenIgnoredSystems: () => void
   onIgnoreSystem: (systemId: number) => void
@@ -132,7 +131,7 @@ export const MapRouteControls = memo(function MapRouteControls({
   ignoredSystemsCount,
   isSystemIgnored,
   isSystemInIncursion,
-  isSystemInInsurgency,
+  getCorruptionLevel,
   onRoutePreferenceChange,
   onOpenIgnoredSystems,
   onIgnoreSystem,
@@ -169,14 +168,27 @@ export const MapRouteControls = memo(function MapRouteControls({
           <span className="text-sm font-medium text-content-primary">
             {t('map.route')}
           </span>
-          {(originName || destinationName) && (
+          <div className="flex items-center gap-2">
             <button
-              onClick={onClear}
-              className="text-xs text-content-muted hover:text-content-secondary"
+              onClick={onOpenIgnoredSystems}
+              className="text-xs text-content-secondary hover:text-content"
             >
-              {t('map.clear')}
+              {t('map.ignoredSystems.title')}
+              {ignoredSystemsCount > 0 && (
+                <span className="ml-1 text-semantic-warning">
+                  ({ignoredSystemsCount})
+                </span>
+              )}
             </button>
-          )}
+            {(originName || destinationName) && (
+              <button
+                onClick={onClear}
+                className="text-xs text-content-muted hover:text-content-secondary"
+              >
+                {t('map.clear')}
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="mb-3 space-y-2">
@@ -241,87 +253,37 @@ export const MapRouteControls = memo(function MapRouteControls({
           ))}
         </div>
 
-        {ansiblexRoutingEnabled && (
-          <label className="mt-2 flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={useAnsiblexes}
-              onChange={(e) => onUseAnsiblexesChange(e.target.checked)}
-              className="h-3.5 w-3.5 rounded border-border text-accent focus:ring-accent"
-            />
-            <span className="text-xs text-content-secondary">
-              {t('map.useAnsiblexes')}
-              {ansiblexCount > 0 && (
-                <span className="ml-1 text-content-muted">
-                  ({ansiblexCount})
-                </span>
-              )}
-            </span>
-          </label>
+        {ansiblexRoutingEnabled && ansiblexCount > 0 && (
+          <ToggleOption
+            checked={useAnsiblexes}
+            onChange={onUseAnsiblexesChange}
+            label={t('map.useAnsiblexes')}
+            count={ansiblexCount}
+          />
         )}
 
-        <label className="mt-2 flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={showCharacterLocations}
-            onChange={(e) => onShowCharacterLocationsChange(e.target.checked)}
-            className="h-3.5 w-3.5 rounded border-border text-accent focus:ring-accent"
-          />
-          <span className="text-xs text-content-secondary">
-            {t('map.showCharacterLocations')}
-            {characterLocationCount > 0 && (
-              <span className="ml-1 text-content-muted">
-                ({characterLocationCount})
-              </span>
-            )}
-          </span>
-        </label>
+        <ToggleOption
+          checked={showCharacterLocations}
+          onChange={onShowCharacterLocationsChange}
+          label={t('map.showCharacterLocations')}
+          count={characterLocationCount}
+        />
 
-        <label className="mt-2 flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={showIncursions}
-            onChange={(e) => onShowIncursionsChange(e.target.checked)}
-            className="h-3.5 w-3.5 rounded border-border text-accent focus:ring-accent"
-          />
-          <span className="text-xs text-content-secondary">
-            {t('map.showIncursions')}
-            {incursionSystemCount > 0 && (
-              <span className="ml-1 text-semantic-danger">
-                ({incursionSystemCount})
-              </span>
-            )}
-          </span>
-        </label>
+        <ToggleOption
+          checked={showIncursions}
+          onChange={onShowIncursionsChange}
+          label={t('map.showIncursions')}
+          count={incursionSystemCount}
+          countColorClass="text-semantic-danger"
+        />
 
-        <label className="mt-2 flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={showInsurgencies}
-            onChange={(e) => onShowInsurgenciesChange(e.target.checked)}
-            className="h-3.5 w-3.5 rounded border-border text-accent focus:ring-accent"
-          />
-          <span className="text-xs text-content-secondary">
-            {t('map.showInsurgencies')}
-            {insurgencySystemCount > 0 && (
-              <span className="ml-1 text-semantic-warning">
-                ({insurgencySystemCount})
-              </span>
-            )}
-          </span>
-        </label>
-
-        <button
-          onClick={onOpenIgnoredSystems}
-          className="mt-2 text-xs text-content-secondary hover:text-content"
-        >
-          {t('map.ignoredSystems.manage')}
-          {ignoredSystemsCount > 0 && (
-            <span className="ml-1 text-semantic-warning">
-              ({ignoredSystemsCount})
-            </span>
-          )}
-        </button>
+        <ToggleOption
+          checked={showInsurgencies}
+          onChange={onShowInsurgenciesChange}
+          label={t('map.showInsurgencies')}
+          count={insurgencySystemCount}
+          countColorClass="text-semantic-warning"
+        />
       </div>
 
       {expanded && routeSystems.length > 0 && (
@@ -350,11 +312,15 @@ export const MapRouteControls = memo(function MapRouteControls({
                     {t('map.incursion')}
                   </span>
                 )}
-                {isSystemInInsurgency(system.id) && (
-                  <span className="text-semantic-warning">
-                    {t('map.insurgency')}
-                  </span>
-                )}
+                {(() => {
+                  const level = getCorruptionLevel(system.id)
+                  if (level === null) return null
+                  return (
+                    <span className="flex items-center gap-1 text-semantic-warning">
+                      {t('map.insurgency')} <CorruptionBadge level={level} />
+                    </span>
+                  )
+                })()}
               </div>
             ))}
           </div>

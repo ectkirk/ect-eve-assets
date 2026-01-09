@@ -91,10 +91,8 @@ export function useSystemContextMenu(options: UseSystemContextMenuOptions) {
   }
 
   return {
-    contextMenu,
     contextMenuProps,
     waypointModalProps,
     openContextMenu,
-    closeContextMenu,
   }
 }

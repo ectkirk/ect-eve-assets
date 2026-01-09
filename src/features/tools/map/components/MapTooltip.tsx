@@ -2,6 +2,7 @@ import { memo, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { HoveredSystem } from '../types'
 import { formatSecurity } from '@/lib/utils'
+import { CorruptionBadge } from './MapInsurgencyPanel'
 
 interface TooltipListProps {
   label: string
@@ -116,6 +117,16 @@ export const MapTooltip = memo(function MapTooltip({
       {system.allianceName && (
         <div className="mt-1 text-xs text-green-400">
           {t('map.sovereignty')}: {system.allianceName}
+        </div>
+      )}
+      {system.isIncursion && (
+        <div className="mt-1 text-xs text-semantic-danger">
+          {t('map.incursion')}
+        </div>
+      )}
+      {system.corruptionLevel !== undefined && (
+        <div className="mt-1 flex items-center gap-1 text-xs text-semantic-warning">
+          {t('map.insurgency')} <CorruptionBadge level={system.corruptionLevel} />
         </div>
       )}
       {system.stationNames && (

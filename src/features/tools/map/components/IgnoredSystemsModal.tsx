@@ -37,8 +37,9 @@ export function IgnoredSystemsModal({
     setAvoidInsurgencies,
   } = useIgnoredSystemsStore()
 
-  const { infestedSystems } = useIncursionsStore()
-  const { affectedSystems: insurgencySystems } = useInsurgenciesStore()
+  const { enabled: showIncursions, infestedSystems } = useIncursionsStore()
+  const { enabled: showInsurgencies, affectedSystems: insurgencySystems } =
+    useInsurgenciesStore()
 
   const systemMap = useMemo(
     () => new Map(systems.map((s) => [s.id, s])),
@@ -100,32 +101,38 @@ export function IgnoredSystemsModal({
           )}
 
           <div className="space-y-2 border-t border-border pt-3">
-            <label className="flex items-center gap-2 cursor-pointer">
+            <label
+              className={`flex items-center gap-2 ${showIncursions ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}
+            >
               <input
                 type="checkbox"
                 checked={avoidIncursions}
+                disabled={!showIncursions}
                 onChange={(e) => setAvoidIncursions(e.target.checked)}
-                className="h-3.5 w-3.5 rounded border-border text-accent focus:ring-accent"
+                className="h-3.5 w-3.5 rounded border-border text-accent focus:ring-accent disabled:cursor-not-allowed"
               />
               <span className="text-sm text-content-secondary">
                 {t('map.ignoredSystems.avoidIncursions')}
-                {infestedSystems.size > 0 && (
+                {showIncursions && infestedSystems.size > 0 && (
                   <span className="ml-1 text-semantic-danger">
                     ({infestedSystems.size})
                   </span>
                 )}
               </span>
             </label>
-            <label className="flex items-center gap-2 cursor-pointer">
+            <label
+              className={`flex items-center gap-2 ${showInsurgencies ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}
+            >
               <input
                 type="checkbox"
                 checked={avoidInsurgencies}
+                disabled={!showInsurgencies}
                 onChange={(e) => setAvoidInsurgencies(e.target.checked)}
-                className="h-3.5 w-3.5 rounded border-border text-accent focus:ring-accent"
+                className="h-3.5 w-3.5 rounded border-border text-accent focus:ring-accent disabled:cursor-not-allowed"
               />
               <span className="text-sm text-content-secondary">
                 {t('map.ignoredSystems.avoidInsurgencies')}
-                {insurgencySystems.size > 0 && (
+                {showInsurgencies && insurgencySystems.size > 0 && (
                   <span className="ml-1 text-semantic-warning">
                     ({insurgencySystems.size})
                   </span>

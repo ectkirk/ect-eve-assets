@@ -185,7 +185,7 @@
   "map.ignoredSystems.empty": "No hay sistemas ignorados",
   "map.ignoredSystems.manage": "Ignorados",
   "map.ignoredSystems.avoidIncursions": "Evitar Incursiones",
-  "map.ignoredSystems.avoidInsurgencies": "Evitar Insurgencias",
+  "map.ignoredSystems.avoidInsurgencies": "Evitar Corrupción Nivel 5",
   "map.insurgencyPanel.title": "Insurgencias",
   "map.incursionPanel.title": "Incursiones",
 

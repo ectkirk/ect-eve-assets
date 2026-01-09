@@ -185,7 +185,7 @@
   "map.ignoredSystems.empty": "Нет игнорируемых систем",
   "map.ignoredSystems.manage": "Игнорируемые",
   "map.ignoredSystems.avoidIncursions": "Избегать Вторжений",
-  "map.ignoredSystems.avoidInsurgencies": "Избегать Мятежей",
+  "map.ignoredSystems.avoidInsurgencies": "Избегать Коррупцию 5 Уровня",
   "map.insurgencyPanel.title": "Мятежи",
   "map.incursionPanel.title": "Вторжения",
 

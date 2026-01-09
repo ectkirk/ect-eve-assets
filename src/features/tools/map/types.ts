@@ -1,5 +1,12 @@
 export type ColorMode = 'region' | 'security' | 'faction' | 'alliance'
 
+export interface IndexedSystemItem {
+  id: number
+  name: string
+  security: number
+  nameLower: string
+}
+
 export interface HoveredSystem {
   id: number
   name: string
@@ -10,6 +17,8 @@ export interface HoveredSystem {
   factionName?: string
   allianceName?: string
   stationNames?: string[]
+  isIncursion?: boolean
+  corruptionLevel?: number
 }
 
 export interface Camera {
@@ -42,3 +51,7 @@ export const FACTION_NAMES: Record<number, string> = {
   500003: 'Amarr Empire',
   500004: 'Gallente Federation',
 }
+
+export const CLICK_RADIUS = 15
+
+export const EXCLUDED_REGION_NAMES = new Set(['A821-A', 'J7HZ-F', 'UUA-F4'])

@@ -32,12 +32,7 @@ export const useIncursionsStore = create<IncursionsState>()(
       isLoading: false,
       lastUpdated: null,
 
-      setEnabled: (enabled) => {
-        set({ enabled })
-        if (!enabled) {
-          set({ infestedSystems: new Set(), incursions: [] })
-        }
-      },
+      setEnabled: (enabled) => set({ enabled }),
 
       fetchIncursions: async () => {
         if (!get().enabled) return
@@ -95,7 +90,19 @@ export const useIncursionsStore = create<IncursionsState>()(
     }),
     {
       name: 'incursions',
-      partialize: (state) => ({ enabled: state.enabled }),
+      partialize: (state) => ({
+        enabled: state.enabled,
+        infestedSystems: Array.from(state.infestedSystems),
+        incursions: state.incursions,
+        lastUpdated: state.lastUpdated,
+      }),
+      merge: (persisted, current) => ({
+        ...current,
+        ...(persisted as object),
+        infestedSystems: new Set(
+          (persisted as { infestedSystems?: number[] })?.infestedSystems ?? []
+        ),
+      }),
     }
   )
 )
