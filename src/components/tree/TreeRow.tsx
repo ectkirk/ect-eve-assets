@@ -30,6 +30,8 @@ interface TreeRowProps {
   onViewFitting: (node: TreeNode) => void
   onSellToBuyback: (node: TreeNode) => void
   onShipFreight: (node: TreeNode) => void
+  onOpenMarketIngame?: (typeId: number, typeName?: string) => void
+  onSetAutopilotIngame?: (locationId: number, locationName?: string) => void
   visibleColumns: string[]
 }
 
@@ -45,6 +47,8 @@ export const TreeRow = memo(function TreeRow({
   onViewFitting,
   onSellToBuyback,
   onShipFreight,
+  onOpenMarketIngame,
+  onSetAutopilotIngame,
   visibleColumns,
 }: TreeRowProps) {
   const { t } = useTranslation('common')
@@ -98,6 +102,18 @@ export const TreeRow = memo(function TreeRow({
     }
   }, [node.typeId, navigateToReference])
 
+  const handleOpenMarketIngame = useCallback(() => {
+    if (node.typeId && onOpenMarketIngame) {
+      onOpenMarketIngame(node.typeId, node.typeName)
+    }
+  }, [node.typeId, node.typeName, onOpenMarketIngame])
+
+  const handleSetAutopilotIngame = useCallback(() => {
+    if (node.locationId && onSetAutopilotIngame) {
+      onSetAutopilotIngame(node.locationId, node.name)
+    }
+  }, [node.locationId, node.name, onSetAutopilotIngame])
+
   const isShip = node.nodeType === 'ship'
   const isAbyssalResolved =
     node.typeId && itemId && isAbyssalTypeId(node.typeId) && hasAbyssalPrice
@@ -139,6 +155,9 @@ export const TreeRow = memo(function TreeRow({
     (hasChildren && isInServiceRegion && isStation)
   const canViewInContracts = node.typeId && node.typeName
   const canViewDetails = !!node.typeId
+  const canOpenMarketIngame = isMarketItem && onOpenMarketIngame
+  const canSetAutopilotIngame =
+    node.nodeType === 'station' && node.locationId && onSetAutopilotIngame
   if (
     isShip ||
     isAbyssalResolved ||
@@ -146,7 +165,9 @@ export const TreeRow = memo(function TreeRow({
     showFreight ||
     isMarketItem ||
     canViewInContracts ||
-    canViewDetails
+    canViewDetails ||
+    canOpenMarketIngame ||
+    canSetAutopilotIngame
   ) {
     return (
       <ContextMenu>
@@ -160,6 +181,16 @@ export const TreeRow = memo(function TreeRow({
           {isMarketItem && (
             <ContextMenuItem onClick={handleViewInMarket}>
               {t('contextMenu.viewInMarket')}
+            </ContextMenuItem>
+          )}
+          {canOpenMarketIngame && (
+            <ContextMenuItem onClick={handleOpenMarketIngame}>
+              {t('contextMenu.openMarketIngame')}
+            </ContextMenuItem>
+          )}
+          {canSetAutopilotIngame && (
+            <ContextMenuItem onClick={handleSetAutopilotIngame}>
+              {t('contextMenu.setAutopilotIngame')}
             </ContextMenuItem>
           )}
           {showBuyback && (

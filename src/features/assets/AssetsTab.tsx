@@ -17,6 +17,7 @@ import {
   getType,
   useReferenceCacheStore,
 } from '@/store/reference-cache'
+import { useAuthStore } from '@/store/auth-store'
 import { usePriceStore } from '@/store/price-store'
 import { useResolvedAssets } from '@/hooks/useResolvedAssets'
 import { useRowSelection } from '@/hooks'
@@ -26,6 +27,7 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
+import { IngameActionModal } from '@/components/dialogs/IngameActionModal'
 import { cn } from '@/lib/utils'
 import { useTabControls } from '@/context'
 import {
@@ -69,6 +71,12 @@ export function AssetsTab() {
     useState<VisibilityState>(loadColumnVisibility)
   const [categoryFilterValue, setCategoryFilterValue] = useState('')
   const [assetTypeFilterValue, setAssetTypeFilterValue] = useState('')
+  const [ingameAction, setIngameAction] = useState<{
+    action: 'market' | 'autopilot' | 'contract'
+    targetId: number
+    targetName?: string
+    eligibleCharacterIds?: number[]
+  } | null>(null)
 
   const {
     setColumns,
@@ -95,6 +103,26 @@ export function AssetsTab() {
     (s) => s.navigateToContracts
   )
   const navigateToReference = useReferenceActionStore((s) => s.navigateToType)
+  const authOwners = useAuthStore((s) => s.owners)
+  const ownerHasDirectorRole = useAuthStore((s) => s.ownerHasDirectorRole)
+
+  const getContractEligibleCharacterIds = useCallback(
+    (issuerId: number, issuerCorporationId: number): number[] => {
+      const characterOwners = Object.values(authOwners).filter(
+        (o) => o.type === 'character'
+      )
+      const issuerOwner = characterOwners.find((o) => o.id === issuerId)
+      if (issuerOwner) return [issuerOwner.id]
+
+      const corpDirectors = characterOwners.filter(
+        (o) =>
+          o.corporationId === issuerCorporationId &&
+          ownerHasDirectorRole(`corporation-${o.corporationId}`)
+      )
+      return corpDirectors.map((o) => o.id)
+    },
+    [authOwners, ownerHasDirectorRole]
+  )
 
   const { data, categories } = useMemo(() => {
     void types
@@ -340,173 +368,231 @@ export function AssetsTab() {
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <div
-        ref={tableContainerRef}
-        tabIndex={0}
-        className="flex-1 min-h-0 rounded-lg border border-border bg-surface-secondary/30 overflow-auto outline-none focus:ring-1 focus:ring-accent/50"
-      >
+    <>
+      <div className="flex flex-col h-full">
         <div
-          role="grid"
-          aria-label="Assets"
-          className="grid"
-          style={{ gridTemplateColumns }}
+          ref={tableContainerRef}
+          tabIndex={0}
+          className="flex-1 min-h-0 rounded-lg border border-border bg-surface-secondary/30 overflow-auto outline-none focus:ring-1 focus:ring-accent/50"
         >
-          <div role="rowgroup" className="contents">
-            {table.getHeaderGroups().map((headerGroup) => (
-              <div role="row" className="contents" key={headerGroup.id}>
-                {headerGroup.headers
-                  .filter((h) => h.column.getIsVisible())
-                  .map((header) => (
-                    <div
-                      key={header.id}
-                      role="columnheader"
-                      className={`sticky top-0 z-10 bg-surface-secondary py-3 text-left text-sm font-medium text-content-secondary border-b border-border ${header.column.id === 'ownerName' ? 'px-2' : 'px-4'}`}
-                    >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </div>
-                  ))}
-              </div>
-            ))}
-          </div>
-          {rows.length ? (
+          <div
+            role="grid"
+            aria-label="Assets"
+            className="grid"
+            style={{ gridTemplateColumns }}
+          >
             <div role="rowgroup" className="contents">
-              {rowVirtualizer.getVirtualItems().length > 0 && (
-                <div
-                  aria-hidden="true"
-                  style={{
-                    height: rowVirtualizer.getVirtualItems()[0]?.start ?? 0,
-                    gridColumn: `1 / -1`,
-                  }}
-                />
-              )}
-              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                const row = rows[virtualRow.index]
-                if (!row) return null
-                const modeFlags = row.original.modeFlags
-                const isAbyssalResolved =
-                  row.original.isAbyssal &&
-                  usePriceStore.getState().hasAbyssalPrice(row.original.itemId)
-                const isMarketItem = !!getType(row.original.typeId)
-                  ?.marketGroupId
-                const rowId = getRowId(row.original)
-                const isRowSelected = selectedIds.has(rowId)
-                const rowContent = (
-                  <div
-                    key={row.id}
-                    role="row"
-                    aria-selected={isRowSelected}
-                    data-index={virtualRow.index}
-                    className="contents group cursor-pointer select-none"
-                    onClick={(e) => handleRowClick(rowId, e)}
-                  >
-                    {row.getVisibleCells().map((cell) => (
+              {table.getHeaderGroups().map((headerGroup) => (
+                <div role="row" className="contents" key={headerGroup.id}>
+                  {headerGroup.headers
+                    .filter((h) => h.column.getIsVisible())
+                    .map((header) => (
                       <div
-                        key={cell.id}
-                        role="gridcell"
-                        className={cn(
-                          'py-2 text-sm border-b border-border/50 group-hover:bg-surface-tertiary/50 flex items-center',
-                          cell.column.id === 'ownerName' ? 'px-2' : 'px-4',
-                          isRowSelected && 'bg-accent/20',
-                          !isRowSelected &&
-                            modeFlags.isActiveShip &&
-                            'bg-row-active-ship',
-                          !isRowSelected &&
-                            modeFlags.isContract &&
-                            'bg-row-contract',
-                          !isRowSelected &&
-                            modeFlags.isMarketOrder &&
-                            'bg-row-order',
-                          !isRowSelected &&
-                            modeFlags.isIndustryJob &&
-                            'bg-row-industry',
-                          !isRowSelected &&
-                            modeFlags.isOwnedStructure &&
-                            'bg-row-structure'
-                        )}
+                        key={header.id}
+                        role="columnheader"
+                        className={`sticky top-0 z-10 bg-surface-secondary py-3 text-left text-sm font-medium text-content-secondary border-b border-border ${header.column.id === 'ownerName' ? 'px-2' : 'px-4'}`}
                       >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
                       </div>
                     ))}
-                  </div>
-                )
-                return (
-                  <ContextMenu key={row.id}>
-                    <ContextMenuTrigger asChild>
-                      {rowContent}
-                    </ContextMenuTrigger>
-                    <ContextMenuContent>
-                      <ContextMenuItem
-                        onClick={() =>
-                          navigateToContracts(
-                            row.original.typeId,
-                            row.original.typeName
-                          )
-                        }
-                      >
-                        {t('contextMenu.viewContracts')}
-                      </ContextMenuItem>
-                      {isMarketItem && (
-                        <ContextMenuItem
-                          onClick={() => navigateToType(row.original.typeId)}
+                </div>
+              ))}
+            </div>
+            {rows.length ? (
+              <div role="rowgroup" className="contents">
+                {rowVirtualizer.getVirtualItems().length > 0 && (
+                  <div
+                    aria-hidden="true"
+                    style={{
+                      height: rowVirtualizer.getVirtualItems()[0]?.start ?? 0,
+                      gridColumn: `1 / -1`,
+                    }}
+                  />
+                )}
+                {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                  const row = rows[virtualRow.index]
+                  if (!row) return null
+                  const modeFlags = row.original.modeFlags
+                  const isAbyssalResolved =
+                    row.original.isAbyssal &&
+                    usePriceStore
+                      .getState()
+                      .hasAbyssalPrice(row.original.itemId)
+                  const isMarketItem = !!getType(row.original.typeId)
+                    ?.marketGroupId
+                  const rowId = getRowId(row.original)
+                  const isRowSelected = selectedIds.has(rowId)
+                  const rowContent = (
+                    <div
+                      key={row.id}
+                      role="row"
+                      aria-selected={isRowSelected}
+                      data-index={virtualRow.index}
+                      className="contents group cursor-pointer select-none"
+                      onClick={(e) => handleRowClick(rowId, e)}
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <div
+                          key={cell.id}
+                          role="gridcell"
+                          className={cn(
+                            'py-2 text-sm border-b border-border/50 group-hover:bg-surface-tertiary/50 flex items-center',
+                            cell.column.id === 'ownerName' ? 'px-2' : 'px-4',
+                            isRowSelected && 'bg-accent/20',
+                            !isRowSelected &&
+                              modeFlags.isActiveShip &&
+                              'bg-row-active-ship',
+                            !isRowSelected &&
+                              modeFlags.isContract &&
+                              'bg-row-contract',
+                            !isRowSelected &&
+                              modeFlags.isMarketOrder &&
+                              'bg-row-order',
+                            !isRowSelected &&
+                              modeFlags.isIndustryJob &&
+                              'bg-row-industry',
+                            !isRowSelected &&
+                              modeFlags.isOwnedStructure &&
+                              'bg-row-structure'
+                          )}
                         >
-                          {tCommon('contextMenu.viewInMarket')}
-                        </ContextMenuItem>
-                      )}
-                      {isAbyssalResolved && (
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )
+                  return (
+                    <ContextMenu key={row.id}>
+                      <ContextMenuTrigger asChild>
+                        {rowContent}
+                      </ContextMenuTrigger>
+                      <ContextMenuContent>
                         <ContextMenuItem
                           onClick={() =>
-                            window.open(
-                              getMutamarketUrl(
-                                row.original.typeName,
-                                row.original.itemId
-                              ),
-                              '_blank'
+                            navigateToContracts(
+                              row.original.typeId,
+                              row.original.typeName
                             )
                           }
                         >
-                          {t('contextMenu.openMutamarket')}
+                          {t('contextMenu.viewContracts')}
                         </ContextMenuItem>
-                      )}
-                      <ContextMenuItem
-                        onClick={() => navigateToReference(row.original.typeId)}
-                      >
-                        {tCommon('contextMenu.viewDetails')}
-                      </ContextMenuItem>
-                    </ContextMenuContent>
-                  </ContextMenu>
-                )
-              })}
-              {rowVirtualizer.getVirtualItems().length > 0 && (
-                <div
-                  aria-hidden="true"
-                  style={{
-                    height:
-                      rowVirtualizer.getTotalSize() -
-                      (rowVirtualizer.getVirtualItems().at(-1)?.end ?? 0),
-                    gridColumn: `1 / -1`,
-                  }}
-                />
-              )}
-            </div>
-          ) : (
-            <div
-              className="h-24 flex items-center justify-center text-content-secondary"
-              style={{ gridColumn: `1 / -1` }}
-            >
-              {t('empty')}
-            </div>
-          )}
+                        {isMarketItem && (
+                          <ContextMenuItem
+                            onClick={() => navigateToType(row.original.typeId)}
+                          >
+                            {tCommon('contextMenu.viewInMarket')}
+                          </ContextMenuItem>
+                        )}
+                        {isMarketItem && (
+                          <ContextMenuItem
+                            onClick={() =>
+                              setIngameAction({
+                                action: 'market',
+                                targetId: row.original.typeId,
+                                targetName: row.original.typeName,
+                              })
+                            }
+                          >
+                            {tCommon('contextMenu.openMarketIngame')}
+                          </ContextMenuItem>
+                        )}
+                        {row.original.locationId && (
+                          <ContextMenuItem
+                            onClick={() =>
+                              setIngameAction({
+                                action: 'autopilot',
+                                targetId: row.original.locationId,
+                                targetName: row.original.locationName,
+                              })
+                            }
+                          >
+                            {tCommon('contextMenu.setAutopilotIngame')}
+                          </ContextMenuItem>
+                        )}
+                        {row.original.contractInfo && (
+                          <ContextMenuItem
+                            onClick={() => {
+                              const ci = row.original.contractInfo!
+                              setIngameAction({
+                                action: 'contract',
+                                targetId: ci.contractId,
+                                eligibleCharacterIds:
+                                  getContractEligibleCharacterIds(
+                                    ci.issuerId,
+                                    ci.issuerCorporationId
+                                  ),
+                              })
+                            }}
+                          >
+                            {tCommon('contextMenu.openContractIngame')}
+                          </ContextMenuItem>
+                        )}
+                        {isAbyssalResolved && (
+                          <ContextMenuItem
+                            onClick={() =>
+                              window.open(
+                                getMutamarketUrl(
+                                  row.original.typeName,
+                                  row.original.itemId
+                                ),
+                                '_blank'
+                              )
+                            }
+                          >
+                            {t('contextMenu.openMutamarket')}
+                          </ContextMenuItem>
+                        )}
+                        <ContextMenuItem
+                          onClick={() =>
+                            navigateToReference(row.original.typeId)
+                          }
+                        >
+                          {tCommon('contextMenu.viewDetails')}
+                        </ContextMenuItem>
+                      </ContextMenuContent>
+                    </ContextMenu>
+                  )
+                })}
+                {rowVirtualizer.getVirtualItems().length > 0 && (
+                  <div
+                    aria-hidden="true"
+                    style={{
+                      height:
+                        rowVirtualizer.getTotalSize() -
+                        (rowVirtualizer.getVirtualItems().at(-1)?.end ?? 0),
+                      gridColumn: `1 / -1`,
+                    }}
+                  />
+                )}
+              </div>
+            ) : (
+              <div
+                className="h-24 flex items-center justify-center text-content-secondary"
+                style={{ gridColumn: `1 / -1` }}
+              >
+                {t('empty')}
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+      <IngameActionModal
+        open={ingameAction !== null}
+        onOpenChange={(open) => !open && setIngameAction(null)}
+        action={ingameAction?.action ?? 'market'}
+        targetId={ingameAction?.targetId ?? 0}
+        targetName={ingameAction?.targetName}
+        eligibleCharacterIds={ingameAction?.eligibleCharacterIds}
+      />
+    </>
   )
 }

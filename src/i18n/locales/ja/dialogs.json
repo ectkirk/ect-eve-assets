@@ -278,5 +278,13 @@
   "credits.openSourcePrefix": "このプロジェクトはオープンソースです：",
   "credits.openSourceBuiltWith": "Electron、React、TypeScript、Vite、Tailwind CSS、shadcn/ui、Radix UI、Zustand、TanStack Table、TanStack Queryで構築されています。",
   "credits.legalPrefix": "EVE OnlineとEVEロゴは商標です：",
-  "credits.legalSuffix": "CCPはこのプロジェクトを支持していません。"
+  "credits.legalSuffix": "CCPはこのプロジェクトを支持していません。",
+
+  "ingameAction.title.autopilot": "ゲーム内でオートパイロットを設定",
+  "ingameAction.title.contract": "ゲーム内で契約を開く",
+  "ingameAction.title.market": "ゲーム内でマーケットを開く",
+  "ingameAction.selectCharacter": "この操作を行うキャラクターを選択",
+  "ingameAction.noCharacters": "必要な権限を持つキャラクターがいません",
+  "ingameAction.requiresReauth": "ゲーム内操作を有効にするには再認証が必要です",
+  "ingameAction.error": "ゲーム内で開けませんでした"
 }

@@ -1,10 +1,11 @@
-import { useMemo, useEffect, useState } from 'react'
+import { useMemo, useEffect, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Loader2 } from 'lucide-react'
 import { useResolvedAssets } from '@/hooks/useResolvedAssets'
 import { useDivisionsStore } from '@/store/divisions-store'
 import { useReferenceCacheStore } from '@/store/reference-cache'
 import { TreeTable, useTreeState } from '@/components/tree'
+import { IngameActionModal } from '@/components/dialogs/IngameActionModal'
 import {
   buildTree,
   filterTree,
@@ -34,6 +35,11 @@ export function TreeTab({ mode }: TreeTabProps) {
 
   const [categoryFilter, setCategoryFilterValue] = useState('')
   const [assetTypeFilter, setAssetTypeFilterValue] = useState('')
+  const [ingameAction, setIngameAction] = useState<{
+    action: 'market' | 'autopilot'
+    targetId: number
+    targetName?: string
+  } | null>(null)
   const {
     search,
     setResultCount,
@@ -153,6 +159,28 @@ export function TreeTab({ mode }: TreeTabProps) {
   const { expandedNodes, toggleExpand, expandAll, collapseAll } =
     useTreeState(treeNodes)
 
+  const handleOpenMarketIngame = useCallback(
+    (typeId: number, typeName?: string) => {
+      setIngameAction({
+        action: 'market',
+        targetId: typeId,
+        targetName: typeName,
+      })
+    },
+    []
+  )
+
+  const handleSetAutopilotIngame = useCallback(
+    (locationId: number, locationName?: string) => {
+      setIngameAction({
+        action: 'autopilot',
+        targetId: locationId,
+        targetName: locationName,
+      })
+    },
+    []
+  )
+
   if (owners.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -215,13 +243,24 @@ export function TreeTab({ mode }: TreeTabProps) {
   }
 
   return (
-    <TreeTable
-      nodes={treeNodes}
-      expandedNodes={expandedNodes}
-      onToggleExpand={toggleExpand}
-      onExpandAll={expandAll}
-      onCollapseAll={collapseAll}
-      storageKey={`tree-${mode.toLowerCase()}`}
-    />
+    <>
+      <TreeTable
+        nodes={treeNodes}
+        expandedNodes={expandedNodes}
+        onToggleExpand={toggleExpand}
+        onExpandAll={expandAll}
+        onCollapseAll={collapseAll}
+        storageKey={`tree-${mode.toLowerCase()}`}
+        onOpenMarketIngame={handleOpenMarketIngame}
+        onSetAutopilotIngame={handleSetAutopilotIngame}
+      />
+      <IngameActionModal
+        open={ingameAction !== null}
+        onOpenChange={(open) => !open && setIngameAction(null)}
+        action={ingameAction?.action ?? 'market'}
+        targetId={ingameAction?.targetId ?? 0}
+        targetName={ingameAction?.targetName}
+      />
+    </>
   )
 }

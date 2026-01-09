@@ -278,5 +278,13 @@
   "credits.openSourcePrefix": "Este proyecto es de código abierto en",
   "credits.openSourceBuiltWith": "Construido con Electron, React, TypeScript, Vite, Tailwind CSS, shadcn/ui, Radix UI, Zustand, TanStack Table, TanStack Query.",
   "credits.legalPrefix": "EVE Online y el logo de EVE son marcas registradas de",
-  "credits.legalSuffix": "CCP no respalda este proyecto."
+  "credits.legalSuffix": "CCP no respalda este proyecto.",
+
+  "ingameAction.title.autopilot": "Establecer piloto automático en juego",
+  "ingameAction.title.contract": "Abrir contrato en juego",
+  "ingameAction.title.market": "Abrir mercado en juego",
+  "ingameAction.selectCharacter": "Selecciona un personaje para esta acción",
+  "ingameAction.noCharacters": "No hay personajes con los permisos requeridos",
+  "ingameAction.requiresReauth": "Reautenticar para habilitar acciones en el juego",
+  "ingameAction.error": "Error al abrir en el juego"
 }

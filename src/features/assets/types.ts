@@ -1,5 +1,9 @@
 import type { VisibilityState } from '@tanstack/react-table'
-import type { AssetModeFlags, ResolvedAsset } from '@/lib/resolved-asset'
+import type {
+  AssetModeFlags,
+  ContractInfo,
+  ResolvedAsset,
+} from '@/lib/resolved-asset'
 import { getAssetDisplayNames } from '@/lib/resolved-asset'
 import { formatVolume as formatVolumeBase } from '@/lib/utils'
 
@@ -48,6 +52,7 @@ export interface AssetRow {
   ownerName: string
   ownerType: 'character' | 'corporation'
   modeFlags: AssetModeFlags
+  contractInfo?: ContractInfo
 }
 
 export function formatVolume(value: number): string {
@@ -129,5 +134,6 @@ export function createAssetRow(
     ownerName: ra.owner.name,
     ownerType: ra.owner.type,
     modeFlags: ra.modeFlags,
+    contractInfo: ra.contractInfo,
   }
 }

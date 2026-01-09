@@ -52,6 +52,8 @@ export function TreeTable({
   onExpandAll,
   onCollapseAll,
   storageKey = 'tree-table',
+  onOpenMarketIngame,
+  onSetAutopilotIngame,
 }: TreeTableProps) {
   const { t } = useTranslation('common')
   const tableContainerRef = useRef<HTMLDivElement>(null)
@@ -351,6 +353,8 @@ export function TreeTable({
                       onViewFitting={handleViewFitting}
                       onSellToBuyback={handleNodeSellToBuyback}
                       onShipFreight={handleNodeShipFreight}
+                      onOpenMarketIngame={onOpenMarketIngame}
+                      onSetAutopilotIngame={onSetAutopilotIngame}
                       visibleColumns={visibleColumns}
                     />
                   )

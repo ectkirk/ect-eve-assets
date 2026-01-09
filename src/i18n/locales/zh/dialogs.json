@@ -278,5 +278,13 @@
   "credits.openSourcePrefix": "本项目在以下平台开源：",
   "credits.openSourceBuiltWith": "使用Electron、React、TypeScript、Vite、Tailwind CSS、shadcn/ui、Radix UI、Zustand、TanStack Table、TanStack Query构建。",
   "credits.legalPrefix": "EVE Online和EVE标志是商标，归属于",
-  "credits.legalSuffix": "CCP不支持此项目。"
+  "credits.legalSuffix": "CCP不支持此项目。",
+
+  "ingameAction.title.autopilot": "在游戏中设置自动导航",
+  "ingameAction.title.contract": "在游戏中打开合同",
+  "ingameAction.title.market": "在游戏中打开市场",
+  "ingameAction.selectCharacter": "选择一个角色执行此操作",
+  "ingameAction.noCharacters": "没有具有所需权限的角色",
+  "ingameAction.requiresReauth": "重新认证以启用游戏内操作",
+  "ingameAction.error": "无法在游戏中打开"
 }

@@ -27,6 +27,12 @@ export interface AssetModeFlags {
   isActiveShip: boolean
 }
 
+export interface ContractInfo {
+  contractId: number
+  issuerId: number
+  issuerCorporationId: number
+}
+
 export interface ResolvedAsset {
   asset: ESIAsset
   owner: Owner
@@ -53,6 +59,8 @@ export interface ResolvedAsset {
 
   customName: string | undefined
   isBlueprintCopy: boolean
+
+  contractInfo?: ContractInfo
 }
 
 export interface AssetDisplayNames {

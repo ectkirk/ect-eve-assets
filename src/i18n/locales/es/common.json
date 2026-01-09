@@ -176,5 +176,10 @@
   "contextMenu.showStructureInfo": "Mostrar info de estructura",
   "contextMenu.showPosInfo": "Mostrar info de POS",
   "contextMenu.showPocoInfo": "Mostrar info de aduana",
-  "contextMenu.viewFitting": "Ver equipamiento"
+  "contextMenu.viewFitting": "Ver equipamiento",
+  "contextMenu.openMarketIngame": "Abrir mercado en juego",
+  "contextMenu.setAutopilotIngame": "Establecer piloto automático en juego",
+  "contextMenu.openContractIngame": "Abrir contrato en juego",
+  "contextMenu.setWaypoint": "Establecer punto de ruta",
+  "contextMenu.setWaypointDestination": "Establecer punto de ruta al destino"
 }

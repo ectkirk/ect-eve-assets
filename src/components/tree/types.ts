@@ -85,6 +85,8 @@ export interface TreeTableProps {
   onExpandAll: () => void
   onCollapseAll: () => void
   storageKey?: string
+  onOpenMarketIngame?: (typeId: number, typeName?: string) => void
+  onSetAutopilotIngame?: (locationId: number, locationName?: string) => void
 }
 
 export const NODE_TYPE_ICONS: Record<TreeNodeType, LucideIcon> = {

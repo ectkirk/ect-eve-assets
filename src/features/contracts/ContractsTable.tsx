@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSortable, SortableHeader, sortRows } from '@/hooks'
 import {
@@ -10,7 +10,14 @@ import {
 } from '@/components/ui/table'
 import { Pagination } from '@/components/ui/pagination'
 import { ContractDetailModal } from '@/features/tools/contracts-search/ContractDetailModal'
-import { ContractTableRow, type SelectedContractData } from './ContractTableRow'
+import { IngameActionModal } from '@/components/dialogs/IngameActionModal'
+import { useAuthStore } from '@/store/auth-store'
+import {
+  ContractTableRow,
+  type SelectedContractData,
+  type ContractIngameAction,
+  type WaypointAction,
+} from './ContractTableRow'
 import {
   type ContractSortColumn,
   type ContractRow,
@@ -33,8 +40,51 @@ export function ContractsTable({
   const [page, setPage] = useState(0)
   const [selectedContract, setSelectedContract] =
     useState<SelectedContractData | null>(null)
+  const [ingameAction, setIngameAction] = useState<{
+    contractId: number
+    eligibleCharacterIds: number[]
+  } | null>(null)
+  const [waypointAction, setWaypointAction] = useState<WaypointAction | null>(
+    null
+  )
   const { sortColumn, sortDirection, handleSort } =
     useSortable<ContractSortColumn>('value', 'desc')
+
+  const authOwners = useAuthStore((s) => s.owners)
+
+  const handleOpenContractIngame = useCallback(
+    (action: ContractIngameAction) => {
+      const authCharacters = Object.values(authOwners).map((o) => ({
+        characterId: o.characterId,
+        corporationId: o.corporationId,
+      }))
+
+      let eligibleCharacterIds: number[]
+
+      if (action.availability === 'public') {
+        eligibleCharacterIds = authCharacters.map((o) => o.characterId)
+      } else if (action.ownerType === 'corporation') {
+        eligibleCharacterIds = authCharacters
+          .filter((o) => o.corporationId === action.ownerId)
+          .map((o) => o.characterId)
+      } else {
+        const hasChar = authCharacters.some(
+          (o) => o.characterId === action.ownerId
+        )
+        eligibleCharacterIds = hasChar ? [action.ownerId] : []
+      }
+
+      setIngameAction({
+        contractId: action.contractId,
+        eligibleCharacterIds,
+      })
+    },
+    [authOwners]
+  )
+
+  const handleSetWaypoint = useCallback((action: WaypointAction) => {
+    setWaypointAction(action)
+  }, [])
 
   const sortedContracts = useMemo(() => {
     return sortRows(contracts, sortColumn, sortDirection, (row, column) => {
@@ -202,6 +252,8 @@ export function ContractsTable({
               row={row}
               visibleColumns={visibleColumns}
               onSelectContract={setSelectedContract}
+              onOpenContractIngame={handleOpenContractIngame}
+              onSetWaypoint={handleSetWaypoint}
             />
           ))}
         </TableBody>
@@ -222,6 +274,20 @@ export function ContractsTable({
           onClose={() => setSelectedContract(null)}
         />
       )}
+      <IngameActionModal
+        open={ingameAction !== null}
+        onOpenChange={(open) => !open && setIngameAction(null)}
+        action="contract"
+        targetId={ingameAction?.contractId ?? 0}
+        eligibleCharacterIds={ingameAction?.eligibleCharacterIds}
+      />
+      <IngameActionModal
+        open={waypointAction !== null}
+        onOpenChange={(open) => !open && setWaypointAction(null)}
+        action="autopilot"
+        targetId={waypointAction?.locationId ?? 0}
+        targetName={waypointAction?.locationName}
+      />
     </>
   )
 }

@@ -176,5 +176,10 @@
   "contextMenu.showStructureInfo": "스트럭처 정보 표시",
   "contextMenu.showPosInfo": "POS 정보 표시",
   "contextMenu.showPocoInfo": "세관 오피스 정보 표시",
-  "contextMenu.viewFitting": "피팅 보기"
+  "contextMenu.viewFitting": "피팅 보기",
+  "contextMenu.openMarketIngame": "게임 내 마켓 열기",
+  "contextMenu.setAutopilotIngame": "게임 내 오토파일럿 설정",
+  "contextMenu.openContractIngame": "게임 내 계약 열기",
+  "contextMenu.setWaypoint": "경유지 설정",
+  "contextMenu.setWaypointDestination": "목적지 경유지 설정"
 }

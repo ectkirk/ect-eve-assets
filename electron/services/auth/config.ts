@@ -16,6 +16,8 @@ export const CHARACTER_SCOPES = [
   'esi-location.read_location.v1',
   'esi-location.read_ship_type.v1',
   'esi-search.search_structures.v1',
+  'esi-ui.open_window.v1',
+  'esi-ui.write_waypoint.v1',
 ]
 
 export const CORPORATION_SCOPES = [

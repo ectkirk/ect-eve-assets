@@ -421,6 +421,11 @@ export function resolveContractItem(
     modeFlags: createSyntheticModeFlags('contract', loc.isStructure),
     customName: undefined,
     isBlueprintCopy: isBpc,
+    contractInfo: {
+      contractId: contract.contract_id,
+      issuerId: contract.issuer_id,
+      issuerCorporationId: contract.issuer_corporation_id,
+    },
   }
 }
 

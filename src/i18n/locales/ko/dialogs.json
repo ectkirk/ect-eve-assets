@@ -278,5 +278,13 @@
   "credits.openSourcePrefix": "이 프로젝트는 오픈 소스입니다:",
   "credits.openSourceBuiltWith": "Electron, React, TypeScript, Vite, Tailwind CSS, shadcn/ui, Radix UI, Zustand, TanStack Table, TanStack Query로 제작되었습니다.",
   "credits.legalPrefix": "EVE Online과 EVE 로고는 상표입니다:",
-  "credits.legalSuffix": "CCP는 이 프로젝트를 지지하지 않습니다."
+  "credits.legalSuffix": "CCP는 이 프로젝트를 지지하지 않습니다.",
+
+  "ingameAction.title.autopilot": "게임 내 오토파일럿 설정",
+  "ingameAction.title.contract": "게임 내 계약 열기",
+  "ingameAction.title.market": "게임 내 마켓 열기",
+  "ingameAction.selectCharacter": "이 작업을 수행할 캐릭터를 선택하세요",
+  "ingameAction.noCharacters": "필요한 권한이 있는 캐릭터가 없습니다",
+  "ingameAction.requiresReauth": "게임 내 작업을 활성화하려면 재인증하세요",
+  "ingameAction.error": "게임에서 열지 못했습니다"
 }
