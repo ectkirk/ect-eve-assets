@@ -44,6 +44,25 @@
   "accessibility.skipToContent": "Saltar al contenido principal",
   "accessibility.discord": "Únete a nuestro servidor de Discord",
   "accessibility.dismissWarning": "Descartar advertencia",
+  "accessibility.applicationModes": "Modos de aplicación",
+  "accessibility.abyssalSyncInProgress": "Sincronización abisal en progreso",
+  "accessibility.minimizeWindow": "Minimizar ventana",
+  "accessibility.maximizeWindow": "Maximizar ventana",
+  "accessibility.restoreWindow": "Restaurar ventana",
+  "accessibility.closeWindow": "Cerrar ventana",
+  "accessibility.dismissUpdateNotification": "Descartar notificación de actualización",
+  "accessibility.addCorpAria": "Añadir tu corporación (eres director)",
+
+  "ownerButton.loggingIn": "Iniciando sesión...",
+  "ownerButton.authFailureTooltip": "Error de autenticación - haz clic para volver a autenticar",
+  "ownerButton.scopesOutdatedTooltip": "Permisos desactualizados - haz clic para actualizar",
+
+  "ownerRow.reauthNeeded": "Re-auth necesaria",
+  "ownerRow.upgradeScopes": "Actualizar permisos",
+  "ownerRow.addCorp": "Añadir Corp",
+  "ownerRow.addCorporation": "Añadir Corporación",
+  "ownerRow.refreshing": "Actualizando...",
+  "ownerRow.refreshCorporationRoles": "Actualizar roles de corporación",
 
   "warnings.refDataPartialFail": "Los datos de referencia no se cargaron completamente. Algunos nombres de objetos pueden faltar.",
 

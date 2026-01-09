@@ -167,7 +167,9 @@ export function StarMap() {
       (r) => !EXCLUDED_REGION_NAMES.has(r.name)
     )
     const excludedRegionIds = new Set(
-      allRegions.filter((r) => EXCLUDED_REGION_NAMES.has(r.name)).map((r) => r.id)
+      allRegions
+        .filter((r) => EXCLUDED_REGION_NAMES.has(r.name))
+        .map((r) => r.id)
     )
 
     const filteredSystems = getAllSystems().filter(

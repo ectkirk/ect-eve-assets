@@ -80,6 +80,16 @@
   "time.fullDaysHours": "{{days}}日 {{hours}}時間",
 
   "search.placeholder": "検索...",
+  "search.noItemsFound": "アイテムが見つかりません",
+
+  "accessibility.search": "検索",
+  "accessibility.clearSearch": "検索をクリア",
+  "accessibility.filterByOrderType": "注文タイプでフィルター",
+  "accessibility.filterByAssetType": "アセットタイプでフィルター",
+  "accessibility.filterByCategory": "カテゴリでフィルター",
+  "accessibility.clickToCopy": "クリックしてコピー",
+
+  "buttons.copied": "コピーしました！",
 
   "errors.somethingWentWrong": "問題が発生しました",
   "errors.failedToInitCache": "キャッシュの初期化に失敗しました",

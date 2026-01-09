@@ -244,7 +244,7 @@ export function TypeSearchInput({
         {inputValue && (
           <button
             onClick={handleClear}
-            aria-label="Clear search"
+            aria-label={t('accessibility.clearSearch')}
             className="absolute right-2 top-1/2 -translate-y-1/2 text-content-muted hover:text-content-secondary"
           >
             <X className="h-3.5 w-3.5" />
@@ -272,7 +272,7 @@ export function TypeSearchInput({
 
       {isOpen && debouncedQuery.length >= 2 && searchResults.length === 0 && (
         <div className="absolute left-0 right-0 top-full z-50 mt-1 rounded border border-border bg-surface-secondary px-3 py-2 text-sm text-content-secondary shadow-lg">
-          No items found
+          {t('search.noItemsFound')}
         </div>
       )}
     </div>

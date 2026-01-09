@@ -44,6 +44,25 @@
   "accessibility.skipToContent": "Перейти к основному содержимому",
   "accessibility.discord": "Присоединиться к нашему Discord серверу",
   "accessibility.dismissWarning": "Скрыть предупреждение",
+  "accessibility.applicationModes": "Режимы приложения",
+  "accessibility.abyssalSyncInProgress": "Синхронизация бездны",
+  "accessibility.minimizeWindow": "Свернуть окно",
+  "accessibility.maximizeWindow": "Развернуть окно",
+  "accessibility.restoreWindow": "Восстановить окно",
+  "accessibility.closeWindow": "Закрыть окно",
+  "accessibility.dismissUpdateNotification": "Скрыть уведомление об обновлении",
+  "accessibility.addCorpAria": "Добавить корпорацию (вы директор)",
+
+  "ownerButton.loggingIn": "Вход...",
+  "ownerButton.authFailureTooltip": "Ошибка авторизации - нажмите для повторной авторизации",
+  "ownerButton.scopesOutdatedTooltip": "Разрешения устарели - нажмите для обновления",
+
+  "ownerRow.reauthNeeded": "Требуется повторная авторизация",
+  "ownerRow.upgradeScopes": "Обновить разрешения",
+  "ownerRow.addCorp": "Добавить Corp",
+  "ownerRow.addCorporation": "Добавить корпорацию",
+  "ownerRow.refreshing": "Обновление...",
+  "ownerRow.refreshCorporationRoles": "Обновить роли корпорации",
 
   "warnings.refDataPartialFail": "Справочные данные загружены частично. Некоторые названия предметов могут отсутствовать.",
 

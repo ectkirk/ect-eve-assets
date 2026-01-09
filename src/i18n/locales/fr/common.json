@@ -80,6 +80,16 @@
   "time.fullDaysHours": "{{days}} jours {{hours}} heures",
 
   "search.placeholder": "Rechercher...",
+  "search.noItemsFound": "Aucun objet trouvé",
+
+  "accessibility.search": "Rechercher",
+  "accessibility.clearSearch": "Effacer la recherche",
+  "accessibility.filterByOrderType": "Filtrer par type d'ordre",
+  "accessibility.filterByAssetType": "Filtrer par type d'actif",
+  "accessibility.filterByCategory": "Filtrer par catégorie",
+  "accessibility.clickToCopy": "Cliquer pour copier",
+
+  "buttons.copied": "Copié !",
 
   "errors.somethingWentWrong": "Quelque chose s'est mal passé",
   "errors.failedToInitCache": "Échec de l'initialisation du cache",

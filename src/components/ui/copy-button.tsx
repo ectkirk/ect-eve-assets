@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Check, Copy } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -15,6 +16,7 @@ export function CopyButton({
   className,
   showValue = false,
 }: CopyButtonProps) {
+  const { t } = useTranslation('common')
   const [copied, setCopied] = useState(false)
 
   const handleCopy = () => {
@@ -35,7 +37,7 @@ export function CopyButton({
           'inline-flex items-center gap-1 font-semibold hover:opacity-80',
           className
         )}
-        title="Click to copy"
+        title={t('accessibility.clickToCopy')}
       >
         {text}
         <Icon className={cn('h-3.5 w-3.5', iconClass)} />
@@ -54,7 +56,7 @@ export function CopyButton({
       title={`Copy "${text}"`}
     >
       <Icon className={cn('h-4 w-4', iconClass)} />
-      {copied ? 'Copied!' : label}
+      {copied ? t('buttons.copied') : label}
     </button>
   )
 }

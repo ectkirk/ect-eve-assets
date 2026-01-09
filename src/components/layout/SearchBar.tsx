@@ -231,13 +231,13 @@ export function SearchBar() {
           placeholder={searchPlaceholder ?? t('search.placeholder')}
           value={inputValue}
           onChange={(e) => handleChange(e.target.value)}
-          aria-label="Search"
+          aria-label={t('accessibility.search')}
           className="w-full rounded border border-border bg-surface-tertiary pl-9 pr-8 py-1.5 text-sm placeholder-content-muted focus:border-accent focus:outline-hidden"
         />
         {inputValue && (
           <button
             onClick={handleClear}
-            aria-label="Clear search"
+            aria-label={t('accessibility.clearSearch')}
             className="absolute right-2 top-1/2 -translate-y-1/2 text-content-muted hover:text-content-secondary"
           >
             <X className="h-4 w-4" />
@@ -301,7 +301,7 @@ export function SearchBar() {
           onChange={(e) =>
             orderTypeFilter.onChange(e.target.value as OrderTypeValue)
           }
-          aria-label="Filter by order type"
+          aria-label={t('accessibility.filterByOrderType')}
           className="w-32 rounded border border-border bg-surface-tertiary px-2 py-1.5 text-sm focus:border-accent focus:outline-hidden"
         >
           {ORDER_TYPE_OPTIONS.map((opt) => (
@@ -316,7 +316,7 @@ export function SearchBar() {
         <select
           value={assetTypeFilter.value}
           onChange={(e) => assetTypeFilter.onChange(e.target.value)}
-          aria-label="Filter by asset type"
+          aria-label={t('accessibility.filterByAssetType')}
           className="w-36 rounded border border-border bg-surface-tertiary px-2 py-1.5 text-sm focus:border-accent focus:outline-hidden"
         >
           {filteredTypeOptions.map((opt) => (
@@ -331,7 +331,7 @@ export function SearchBar() {
         <select
           value={categoryFilter.value}
           onChange={(e) => categoryFilter.onChange(e.target.value)}
-          aria-label="Filter by category"
+          aria-label={t('accessibility.filterByCategory')}
           className="w-40 rounded border border-border bg-surface-tertiary px-2 py-1.5 text-sm focus:border-accent focus:outline-hidden"
         >
           <option value="">{t('searchBar.allCategories')}</option>

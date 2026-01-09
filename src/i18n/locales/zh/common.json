@@ -80,6 +80,16 @@
   "time.fullDaysHours": "{{days}}天 {{hours}}小时",
 
   "search.placeholder": "搜索...",
+  "search.noItemsFound": "未找到物品",
+
+  "accessibility.search": "搜索",
+  "accessibility.clearSearch": "清除搜索",
+  "accessibility.filterByOrderType": "按订单类型筛选",
+  "accessibility.filterByAssetType": "按资产类型筛选",
+  "accessibility.filterByCategory": "按分类筛选",
+  "accessibility.clickToCopy": "点击复制",
+
+  "buttons.copied": "已复制！",
 
   "errors.somethingWentWrong": "出现问题",
   "errors.failedToInitCache": "缓存初始化失败",

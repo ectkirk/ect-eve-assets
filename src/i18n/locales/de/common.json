@@ -80,6 +80,16 @@
   "time.fullDaysHours": "{{days}} Tage {{hours}} Stunden",
 
   "search.placeholder": "Suchen...",
+  "search.noItemsFound": "Keine Gegenstände gefunden",
+
+  "accessibility.search": "Suchen",
+  "accessibility.clearSearch": "Suche löschen",
+  "accessibility.filterByOrderType": "Nach Auftragstyp filtern",
+  "accessibility.filterByAssetType": "Nach Asset-Typ filtern",
+  "accessibility.filterByCategory": "Nach Kategorie filtern",
+  "accessibility.clickToCopy": "Klicken zum Kopieren",
+
+  "buttons.copied": "Kopiert!",
 
   "errors.somethingWentWrong": "Etwas ist schief gelaufen",
   "errors.failedToInitCache": "Cache-Initialisierung fehlgeschlagen",

@@ -44,6 +44,25 @@
   "accessibility.skipToContent": "메인 콘텐츠로 건너뛰기",
   "accessibility.discord": "Discord 서버에 참여하기",
   "accessibility.dismissWarning": "경고 닫기",
+  "accessibility.applicationModes": "애플리케이션 모드",
+  "accessibility.abyssalSyncInProgress": "어비셜 동기화 진행 중",
+  "accessibility.minimizeWindow": "창 최소화",
+  "accessibility.maximizeWindow": "창 최대화",
+  "accessibility.restoreWindow": "창 복원",
+  "accessibility.closeWindow": "창 닫기",
+  "accessibility.dismissUpdateNotification": "업데이트 알림 닫기",
+  "accessibility.addCorpAria": "코퍼레이션 추가 (디렉터 권한 있음)",
+
+  "ownerButton.loggingIn": "로그인 중...",
+  "ownerButton.authFailureTooltip": "인증 실패 - 클릭하여 재인증",
+  "ownerButton.scopesOutdatedTooltip": "권한이 오래됨 - 클릭하여 업그레이드",
+
+  "ownerRow.reauthNeeded": "재인증 필요",
+  "ownerRow.upgradeScopes": "권한 업그레이드",
+  "ownerRow.addCorp": "Corp 추가",
+  "ownerRow.addCorporation": "코퍼레이션 추가",
+  "ownerRow.refreshing": "새로고침 중...",
+  "ownerRow.refreshCorporationRoles": "코퍼레이션 역할 새로고침",
 
   "warnings.refDataPartialFail": "레퍼런스 데이터를 일부 로드하지 못했습니다. 일부 아이템 이름이 표시되지 않을 수 있습니다.",
 

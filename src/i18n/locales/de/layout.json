@@ -44,6 +44,25 @@
   "accessibility.skipToContent": "Zum Hauptinhalt springen",
   "accessibility.discord": "Discord-Server beitreten",
   "accessibility.dismissWarning": "Warnung schließen",
+  "accessibility.applicationModes": "Anwendungsmodi",
+  "accessibility.abyssalSyncInProgress": "Abyssale Synchronisation läuft",
+  "accessibility.minimizeWindow": "Fenster minimieren",
+  "accessibility.maximizeWindow": "Fenster maximieren",
+  "accessibility.restoreWindow": "Fenster wiederherstellen",
+  "accessibility.closeWindow": "Fenster schließen",
+  "accessibility.dismissUpdateNotification": "Update-Benachrichtigung schließen",
+  "accessibility.addCorpAria": "Corporation hinzufügen (Sie sind Direktor)",
+
+  "ownerButton.loggingIn": "Anmeldung...",
+  "ownerButton.authFailureTooltip": "Authentifizierung fehlgeschlagen - zum erneuten Authentifizieren klicken",
+  "ownerButton.scopesOutdatedTooltip": "Berechtigungen veraltet - zum Aktualisieren klicken",
+
+  "ownerRow.reauthNeeded": "Erneute Auth. erforderlich",
+  "ownerRow.upgradeScopes": "Berechtigungen aktualisieren",
+  "ownerRow.addCorp": "Corp hinzufügen",
+  "ownerRow.addCorporation": "Corporation hinzufügen",
+  "ownerRow.refreshing": "Aktualisiere...",
+  "ownerRow.refreshCorporationRoles": "Corporation-Rollen aktualisieren",
 
   "warnings.refDataPartialFail": "Referenzdaten konnten nicht vollständig geladen werden. Einige Gegenstandsnamen könnten fehlen.",
 

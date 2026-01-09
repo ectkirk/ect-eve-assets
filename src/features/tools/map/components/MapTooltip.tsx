@@ -126,7 +126,8 @@ export const MapTooltip = memo(function MapTooltip({
       )}
       {system.corruptionLevel !== undefined && (
         <div className="mt-1 flex items-center gap-1 text-xs text-semantic-warning">
-          {t('map.insurgency')} <CorruptionBadge level={system.corruptionLevel} />
+          {t('map.insurgency')}{' '}
+          <CorruptionBadge level={system.corruptionLevel} />
         </div>
       )}
       {system.stationNames && (

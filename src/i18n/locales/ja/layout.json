@@ -44,6 +44,25 @@
   "accessibility.skipToContent": "メインコンテンツへスキップ",
   "accessibility.discord": "Discordサーバーに参加",
   "accessibility.dismissWarning": "警告を閉じる",
+  "accessibility.applicationModes": "アプリケーションモード",
+  "accessibility.abyssalSyncInProgress": "アビサル同期中",
+  "accessibility.minimizeWindow": "ウィンドウを最小化",
+  "accessibility.maximizeWindow": "ウィンドウを最大化",
+  "accessibility.restoreWindow": "ウィンドウを復元",
+  "accessibility.closeWindow": "ウィンドウを閉じる",
+  "accessibility.dismissUpdateNotification": "更新通知を閉じる",
+  "accessibility.addCorpAria": "コーポレーションを追加（ディレクター権限あり）",
+
+  "ownerButton.loggingIn": "ログイン中...",
+  "ownerButton.authFailureTooltip": "認証失敗 - クリックして再認証",
+  "ownerButton.scopesOutdatedTooltip": "権限が古くなっています - クリックして更新",
+
+  "ownerRow.reauthNeeded": "再認証が必要",
+  "ownerRow.upgradeScopes": "権限を更新",
+  "ownerRow.addCorp": "Corp追加",
+  "ownerRow.addCorporation": "コーポレーションを追加",
+  "ownerRow.refreshing": "更新中...",
+  "ownerRow.refreshCorporationRoles": "コーポレーションロールを更新",
 
   "warnings.refDataPartialFail": "参照データの読み込みが部分的に失敗しました。一部のアイテム名が表示されない場合があります。",
 
