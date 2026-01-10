@@ -1,46 +1,16 @@
 {
-  "version": "2.4.0",
-  "date": "2026-01-09",
+  "version": "2.4.1",
+  "date": "2026-01-10",
   "changes": [
     {
-      "type": "feat",
+      "type": "fix",
       "scope": "map",
-      "description": "Add incursions and insurgencies overlay with corruption levels"
-    },
-    {
-      "type": "feat",
-      "scope": "map",
-      "description": "Add route avoidance for high corruption systems"
-    },
-    {
-      "type": "feat",
-      "scope": "structures",
-      "description": "Add customs offices (POCOs) support"
-    },
-    {
-      "type": "feat",
-      "scope": "esi",
-      "description": "Add manual pause/resume for ESI operations"
-    },
-    {
-      "type": "feat",
-      "scope": "ui",
-      "description": "Add in-game actions for contracts and assets"
-    },
-    {
-      "type": "feat",
-      "scope": "i18n",
-      "description": "Add multi-language support (8 languages)"
+      "description": "Show all insurgencies in route panel count instead of only corruption 5"
     },
     {
       "type": "fix",
-      "scope": "i18n",
-      "description": "Translate remaining hardcoded UI strings"
-    },
-    {
-      "type": "refactor",
-      "scope": "map",
-      "description": "DRY/SOLID improvements and component extraction"
+      "scope": "contracts",
+      "description": "Improve contracts time display and ESI UI handling"
     }
   ]
 }
