@@ -30,6 +30,7 @@ import {
   localizeSystemName,
   localizeRegionName,
 } from './utils'
+import { getCourierTimeRemaining } from '@/features/contracts/contracts-utils'
 import type { ContractItem } from '@/lib/contract-items'
 
 const BLUEPRINT_CATEGORY_ID = 9
@@ -48,6 +49,7 @@ export interface DisplayContract {
   securityStatus?: number | null
   dateIssued: string
   dateExpired: string
+  dateAccepted?: string
   price: number
   buyout?: number | null
   reward?: number
@@ -239,6 +241,11 @@ export function ContractDetailModal({
         : t('contractsSearch.modal.public')
       : (contract.assigneeName ?? t('contractsSearch.modal.private'))
 
+  const courierTimeRemaining =
+    contract.type === 'courier' && contract.status === 'in_progress'
+      ? getCourierTimeRemaining(contract.dateAccepted, contract.daysToComplete)
+      : null
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
@@ -305,8 +312,9 @@ export function ContractDetailModal({
               {formatDateTime(contract.dateIssued)}
             </InfoRow>
             <InfoRow label={t('contractsSearch.modal.expiration')}>
-              {formatDateTime(contract.dateExpired)} (
-              {formatTimeRemaining(contract.dateExpired)})
+              {contract.type === 'courier' && contract.status === 'in_progress'
+                ? '-'
+                : `${formatDateTime(contract.dateExpired)} (${formatTimeRemaining(contract.dateExpired)})`}
             </InfoRow>
             {contract.status && (
               <InfoRow label={t('contractsSearch.modal.status')}>
@@ -338,9 +346,16 @@ export function ContractDetailModal({
               </InfoRow>
               {contract.daysToComplete && (
                 <InfoRow label={t('contractsSearch.modal.daysToComplete')}>
-                  {t('contractsSearch.modal.daysValue', {
-                    days: contract.daysToComplete,
-                  })}
+                  {courierTimeRemaining
+                    ? courierTimeRemaining.expired
+                      ? t('common:time.expired')
+                      : t('common:time.daysHours', {
+                          days: courierTimeRemaining.days,
+                          hours: courierTimeRemaining.hours,
+                        })
+                    : t('contractsSearch.modal.daysValue', {
+                        days: contract.daysToComplete,
+                      })}
                 </InfoRow>
               )}
             </div>

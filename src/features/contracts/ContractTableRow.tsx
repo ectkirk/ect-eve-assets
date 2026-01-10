@@ -12,9 +12,10 @@ import { resolveContractItems, type ContractItem } from '@/lib/contract-items'
 import type { DisplayContract } from '@/features/tools/contracts-search/ContractDetailModal'
 import {
   type ContractRow,
-  formatExpiry,
   getContractValue,
   getContractTypeName,
+  getTimeRemaining,
+  getCourierTimeRemaining,
 } from './contracts-utils'
 
 export interface SelectedContractData {
@@ -47,6 +48,7 @@ function toDisplayContract(
     endLocationName: row.endLocationName || undefined,
     dateIssued: contract.date_issued,
     dateExpired: contract.date_expired,
+    dateAccepted: contract.date_accepted,
     price: contract.price ?? 0,
     reward: contract.reward,
     collateral: contract.collateral,
@@ -106,7 +108,7 @@ export function ContractTableRow({
   const { t } = useTranslation('contracts')
   const { t: tCommon } = useTranslation('common')
   const contract = row.contractWithItems.contract
-  const expiry = formatExpiry(contract.date_expired)
+  const expiryTime = getTimeRemaining(contract.date_expired)
   const value = getContractValue(contract)
 
   const displayItemCount = row.isWantToBuy
@@ -243,12 +245,19 @@ export function ContractTableRow({
             <TableCell
               className={cn(
                 'py-1.5 text-right tabular-nums',
-                expiry.isExpired
+                expiryTime.expired
                   ? 'text-status-negative'
                   : 'text-content-secondary'
               )}
             >
-              {expiry.text}
+              {contract.type === 'courier' && contract.status === 'in_progress'
+                ? '-'
+                : expiryTime.expired
+                  ? tCommon('time.expired')
+                  : tCommon('time.daysHours', {
+                      days: expiryTime.days,
+                      hours: expiryTime.hours,
+                    })}
             </TableCell>
           )}
           {show('status') && (
@@ -311,6 +320,32 @@ function DaysCell({
     return (
       <TableCell className="py-1.5 text-right tabular-nums text-content-muted">
         -
+      </TableCell>
+    )
+  }
+
+  if (contract.status === 'in_progress') {
+    const remaining = getCourierTimeRemaining(
+      contract.date_accepted,
+      contract.days_to_complete
+    )
+    if (!remaining || remaining.expired) {
+      return (
+        <TableCell className="py-1.5 text-right tabular-nums text-status-negative">
+          {tc('time.expired')}
+        </TableCell>
+      )
+    }
+    const isUrgent =
+      remaining.days === 0 || (remaining.days === 1 && remaining.hours < 12)
+    return (
+      <TableCell
+        className={cn(
+          'py-1.5 text-right tabular-nums',
+          isUrgent ? 'text-status-negative' : 'text-content-secondary'
+        )}
+      >
+        {tc('time.daysHours', { days: remaining.days, hours: remaining.hours })}
       </TableCell>
     )
   }

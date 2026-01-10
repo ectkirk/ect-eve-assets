@@ -5,13 +5,11 @@ import { hasType, getType, getTypeName } from '@/store/reference-cache'
 import { getName } from '@/api/endpoints/universe'
 import { usePriceStore } from '@/store/price-store'
 import { getLocationName } from '@/lib/location-utils'
-import { MS_PER_DAY, formatExpiry } from '@/lib/timer-utils'
+import { MS_PER_DAY, MS_PER_HOUR } from '@/lib/timer-utils'
 import {
   isContractItemBpc,
   shouldValueBlueprintAtZero,
 } from '@/lib/contract-items'
-
-export { formatExpiry }
 
 export type ContractSortColumn =
   | 'type'
@@ -26,20 +24,50 @@ export type ContractSortColumn =
   | 'days'
   | 'expires'
 
+export interface TimeRemaining {
+  days: number
+  hours: number
+  expired: boolean
+}
+
+export function getTimeRemaining(targetDate: string): TimeRemaining {
+  const remaining = new Date(targetDate).getTime() - Date.now()
+  if (remaining <= 0) return { days: 0, hours: 0, expired: true }
+  const totalHours = Math.floor(remaining / MS_PER_HOUR)
+  return {
+    days: Math.floor(totalHours / 24),
+    hours: totalHours % 24,
+    expired: false,
+  }
+}
+
+export function getCourierTimeRemaining(
+  dateAccepted: string | undefined,
+  daysToComplete: number | undefined
+): TimeRemaining | null {
+  if (!dateAccepted || !daysToComplete) return null
+  const deadline = new Date(
+    new Date(dateAccepted).getTime() + daysToComplete * MS_PER_DAY
+  ).toISOString()
+  return getTimeRemaining(deadline)
+}
+
 export function getDaysLeft(contract: ESIContract): number {
   if (contract.status === 'outstanding') {
-    const remaining = new Date(contract.date_expired).getTime() - Date.now()
-    return Math.ceil(remaining / MS_PER_DAY)
+    const time = getTimeRemaining(contract.date_expired)
+    return time.expired ? 0 : time.days + (time.hours > 0 ? 1 : 0)
   }
   if (
     contract.status === 'in_progress' &&
     contract.date_accepted &&
     contract.days_to_complete
   ) {
-    const deadline =
-      new Date(contract.date_accepted).getTime() +
-      contract.days_to_complete * MS_PER_DAY
-    return Math.ceil((deadline - Date.now()) / MS_PER_DAY)
+    const time = getCourierTimeRemaining(
+      contract.date_accepted,
+      contract.days_to_complete
+    )
+    if (!time || time.expired) return 0
+    return time.days + (time.hours > 0 ? 1 : 0)
   }
   return 0
 }

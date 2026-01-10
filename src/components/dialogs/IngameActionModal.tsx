@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useMemo, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import {
@@ -9,7 +9,6 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { OwnerIcon } from '@/components/ui/type-icon'
-import { Loader2, AlertCircle } from 'lucide-react'
 import {
   postAutopilotWaypoint,
   postOpenContract,
@@ -44,13 +43,6 @@ export function IngameActionModal({
   eligibleCharacterIds,
 }: IngameActionModalProps) {
   const { t } = useTranslation('dialogs')
-  const [executing, setExecuting] = useState<number | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (open) setError(null)
-  }, [open])
-
   const owners = useAuthStore((s) => s.owners)
   const ownerHasScope = useAuthStore((s) => s.ownerHasScope)
   const setOwnerScopesOutdated = useAuthStore((s) => s.setOwnerScopesOutdated)
@@ -89,28 +81,19 @@ export function IngameActionModal({
     eligibleCharacterIds,
   ])
 
-  const handleExecute = async (characterId: number) => {
-    setExecuting(characterId)
-    setError(null)
-
-    try {
-      switch (action) {
-        case 'autopilot':
-          await postAutopilotWaypoint(characterId, targetId, autopilotOptions)
-          break
-        case 'contract':
-          await postOpenContract(characterId, targetId)
-          break
-        case 'market':
-          await postOpenMarketDetails(characterId, targetId)
-          break
-      }
-      onOpenChange(false)
-    } catch {
-      setError(t('ingameAction.error'))
-    } finally {
-      setExecuting(null)
+  const handleExecute = (characterId: number) => {
+    switch (action) {
+      case 'autopilot':
+        postAutopilotWaypoint(characterId, targetId, autopilotOptions)
+        break
+      case 'contract':
+        postOpenContract(characterId, targetId)
+        break
+      case 'market':
+        postOpenMarketDetails(characterId, targetId)
+        break
     }
+    onOpenChange(false)
   }
 
   const title = t(`ingameAction.title.${action}`)
@@ -128,27 +111,16 @@ export function IngameActionModal({
           </DialogDescription>
         </DialogHeader>
 
-        {error && (
-          <div className="flex items-center gap-2 rounded-md bg-semantic-danger/10 px-3 py-2 text-sm text-semantic-danger">
-            <AlertCircle className="h-4 w-4 shrink-0" />
-            {error}
-          </div>
-        )}
-
         <div className="flex flex-col gap-1">
           {hasEligible ? (
             eligibleCharacters.map((char) => (
               <button
                 key={char.id}
                 onClick={() => handleExecute(char.id)}
-                disabled={executing !== null}
-                className="flex items-center gap-3 rounded-md px-3 py-2 text-left transition-colors hover:bg-surface-tertiary disabled:opacity-50"
+                className="flex items-center gap-3 rounded-md px-3 py-2 text-left transition-colors hover:bg-surface-tertiary"
               >
                 <OwnerIcon ownerId={char.id} ownerType="character" size="lg" />
                 <span className="flex-1 text-sm">{char.name}</span>
-                {executing === char.id && (
-                  <Loader2 className="h-4 w-4 animate-spin text-content-muted" />
-                )}
               </button>
             ))
           ) : (

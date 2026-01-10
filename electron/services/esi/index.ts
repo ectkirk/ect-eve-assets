@@ -368,7 +368,7 @@ export class MainESIService {
         const waitSec = retryAfter ? parseInt(retryAfter, 10) : 60
         this.rateLimiter.setGlobalRetryAfter(waitSec)
 
-        if (attempt < ESI_CONFIG.maxRetries) {
+        if (!options.fireAndForget && attempt < ESI_CONFIG.maxRetries) {
           await this.delay(waitSec * 1000)
           return this.executeRequest(endpoint, options, attempt + 1)
         }
@@ -451,23 +451,25 @@ export class MainESIService {
           ? error.message
           : 'Network error'
 
-      const maxAttempts = isAbort
-        ? ESI_CONFIG.maxTimeoutRetries
-        : ESI_CONFIG.maxRetries
-      if (attempt < maxAttempts) {
-        const backoffMs = Math.min(1000 * Math.pow(2, attempt), 10000)
-        logger.debug(
-          `Retrying after ${isAbort ? 'timeout' : 'network error'}`,
-          {
-            module: 'ESI',
-            endpoint,
-            attempt: attempt + 1,
-            error: message,
-            backoffMs,
-          }
-        )
-        await this.delay(backoffMs)
-        return this.executeRequest(endpoint, options, attempt + 1)
+      if (!options.fireAndForget) {
+        const maxAttempts = isAbort
+          ? ESI_CONFIG.maxTimeoutRetries
+          : ESI_CONFIG.maxRetries
+        if (attempt < maxAttempts) {
+          const backoffMs = Math.min(1000 * Math.pow(2, attempt), 10000)
+          logger.debug(
+            `Retrying after ${isAbort ? 'timeout' : 'network error'}`,
+            {
+              module: 'ESI',
+              endpoint,
+              attempt: attempt + 1,
+              error: message,
+              backoffMs,
+            }
+          )
+          await this.delay(backoffMs)
+          return this.executeRequest(endpoint, options, attempt + 1)
+        }
       }
 
       return { success: false, error: message }

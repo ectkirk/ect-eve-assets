@@ -27,6 +27,7 @@ export interface ESIRequestOptions {
   requiresAuth?: boolean
   etag?: string
   language?: string
+  fireAndForget?: boolean
 }
 
 export interface ESIResponseMeta<T> {

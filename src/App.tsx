@@ -202,6 +202,7 @@ function App() {
             module: 'App',
             detectedLanguage: detectedLocale,
           })
+          await initI18n()
           setShowLanguageSelection(true)
           return
         }
