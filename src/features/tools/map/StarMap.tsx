@@ -780,7 +780,7 @@ export function StarMap() {
         showIncursions={showIncursions}
         incursionSystemCount={infestedSystems.size}
         showInsurgencies={showInsurgencies}
-        insurgencySystemCount={insurgencySystems.size}
+        insurgencySystemCount={insurgencySystemsInfo.length}
         ignoredSystemsCount={ignoredSystems.size}
         isSystemIgnored={isIgnored}
         isSystemInIncursion={isSystemInIncursion}
