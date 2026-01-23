@@ -87,6 +87,7 @@
   "accessibility.filterByOrderType": "Фильтр по типу ордера",
   "accessibility.filterByAssetType": "Фильтр по типу актива",
   "accessibility.filterByCategory": "Фильтр по категории",
+  "accessibility.sortCharacters": "Сортировка персонажей",
   "accessibility.clickToCopy": "Нажмите, чтобы скопировать",
 
   "buttons.copied": "Скопировано!",
@@ -144,6 +145,13 @@
   "searchBar.orderTypes.sell": "Ордера на продажу",
   "searchBar.orderTypes.buy": "Ордера на покупку",
 
+  "searchBar.hideAlliance": "Скрыть альянс",
+
+  "sort.name": "Имя",
+  "sort.mostClones": "Больше клонов",
+  "sort.newestMail": "Новые письма",
+  "sort.highestSP": "Больше SP",
+
   "buttons.all": "Все",
   "buttons.none": "Ничего",
 
@@ -190,5 +198,11 @@
   "contextMenu.openMarketIngame": "Открыть рынок в игре",
   "contextMenu.openContractIngame": "Открыть контракт в игре",
   "contextMenu.setWaypoint": "Установить точку маршрута",
-  "contextMenu.setWaypointDestination": "Установить точку маршрута к месту назначения"
+  "contextMenu.setWaypointDestination": "Установить точку маршрута к месту назначения",
+  "contextMenu.viewParent": "В: {{name}}",
+
+  "ui.rateLimited": "Превышен лимит. Повторите через {{seconds}}с",
+  "ui.failedWaypoint": "Не удалось установить маршрут",
+  "ui.failedContract": "Не удалось открыть контракт",
+  "ui.failedMarket": "Не удалось открыть окно рынка"
 }

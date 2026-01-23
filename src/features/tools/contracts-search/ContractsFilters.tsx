@@ -7,7 +7,7 @@ import {
   useReferenceCacheStore,
   type CachedType,
 } from '@/store/reference-cache'
-import { BUYBACK_REGIONS } from '@/hooks/useBuybackSelection'
+import { SERVICE_REGIONS } from '@/hooks/useBuybackSelection'
 import type { ContractSearchFilters, ContractType } from './types'
 
 interface ContractsFiltersProps {
@@ -50,7 +50,7 @@ export function ContractsFilters({
   const regions = useReferenceCacheStore((s) => s.regions)
   const sortedRegions = useMemo(() => {
     const list = Array.from(regions.values()).filter((r) =>
-      BUYBACK_REGIONS.has(r.id)
+      SERVICE_REGIONS.has(r.id)
     )
     list.sort((a, b) => a.name.localeCompare(b.name))
     return list

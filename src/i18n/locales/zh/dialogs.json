@@ -286,5 +286,7 @@
   "ingameAction.selectCharacter": "选择一个角色执行此操作",
   "ingameAction.noCharacters": "没有具有所需权限的角色",
   "ingameAction.requiresReauth": "重新认证以启用游戏内操作",
-  "ingameAction.error": "无法在游戏中打开"
+  "ingameAction.error": "Failed to open in game",
+  "ingameAction.setDefault": "Set as default",
+  "ingameAction.clearDefault": "Clear default"
 }

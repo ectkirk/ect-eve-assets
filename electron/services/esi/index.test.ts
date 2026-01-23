@@ -8,6 +8,7 @@ import {
   type Mock,
 } from 'vitest'
 import { ESIError } from '../../../shared/esi-types'
+import { ESI_COMPATIBILITY_DATE } from './types'
 
 const mocks = vi.hoisted(() => ({
   ensureHealthy: vi.fn(),
@@ -94,7 +95,7 @@ describe('MainESIService', () => {
           method: 'GET',
           headers: expect.objectContaining({
             'Content-Type': 'application/json',
-            'X-Compatibility-Date': '2025-11-06',
+            'X-Compatibility-Date': ESI_COMPATIBILITY_DATE,
           }),
         })
       )

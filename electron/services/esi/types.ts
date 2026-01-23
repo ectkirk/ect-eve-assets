@@ -4,7 +4,7 @@ export type {
 } from '../../../shared/esi-types.js'
 
 export const ESI_BASE_URL = 'https://esi.evetech.net'
-export const ESI_COMPATIBILITY_DATE = '2025-11-06'
+export const ESI_COMPATIBILITY_DATE = '2025-12-16'
 
 export const ESI_CONFIG = {
   maxRetries: 2,

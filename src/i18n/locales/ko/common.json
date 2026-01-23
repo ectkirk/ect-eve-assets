@@ -87,6 +87,7 @@
   "accessibility.filterByOrderType": "주문 유형별 필터",
   "accessibility.filterByAssetType": "자산 유형별 필터",
   "accessibility.filterByCategory": "카테고리별 필터",
+  "accessibility.sortCharacters": "캐릭터 정렬",
   "accessibility.clickToCopy": "클릭하여 복사",
 
   "buttons.copied": "복사됨!",
@@ -144,6 +145,13 @@
   "searchBar.orderTypes.sell": "판매 주문",
   "searchBar.orderTypes.buy": "구매 주문",
 
+  "searchBar.hideAlliance": "얼라이언스 숨기기",
+
+  "sort.name": "이름",
+  "sort.mostClones": "클론 수",
+  "sort.newestMail": "최신 메일",
+  "sort.highestSP": "높은 SP",
+
   "buttons.all": "전체",
   "buttons.none": "없음",
 
@@ -190,5 +198,11 @@
   "contextMenu.openMarketIngame": "게임 내 마켓 열기",
   "contextMenu.openContractIngame": "게임 내 계약 열기",
   "contextMenu.setWaypoint": "경유지 설정",
-  "contextMenu.setWaypointDestination": "목적지 경유지 설정"
+  "contextMenu.setWaypointDestination": "목적지 경유지 설정",
+  "contextMenu.viewParent": "위치: {{name}}",
+
+  "ui.rateLimited": "요청 제한됨. {{seconds}}초 후 다시 시도",
+  "ui.failedWaypoint": "경유지 설정 실패",
+  "ui.failedContract": "계약을 열 수 없음",
+  "ui.failedMarket": "마켓 창을 열 수 없음"
 }

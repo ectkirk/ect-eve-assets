@@ -8,6 +8,7 @@ export interface AuthResult {
   characterId?: number
   characterName?: string
   corporationId?: number
+  allianceId?: number
   scopes?: string[]
   corporationRoles?: CorporationRoles | null
   error?: string

@@ -53,6 +53,9 @@ export interface AssetRow {
   ownerType: 'character' | 'corporation'
   modeFlags: AssetModeFlags
   contractInfo?: ContractInfo
+  parentTypeId?: number
+  parentTypeName?: string
+  parentCustomName?: string
 }
 
 export function formatVolume(value: number): string {
@@ -135,5 +138,8 @@ export function createAssetRow(
     ownerType: ra.owner.type,
     modeFlags: ra.modeFlags,
     contractInfo: ra.contractInfo,
+    parentTypeId: ra.parentTypeId,
+    parentTypeName: ra.parentTypeName,
+    parentCustomName: ra.parentCustomName,
   }
 }

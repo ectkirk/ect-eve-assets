@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { matchesSearchLower } from '@/lib/utils'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useMarketOrdersStore } from '@/store/market-orders-store'
+import { getValidDefaultMarketCharacterId } from '@/store/ingame-defaults-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useTabControls, type OrderTypeValue } from '@/context'
 import { useColumnSettings } from '@/hooks'
@@ -11,6 +12,7 @@ import { useRegionalMarketStore } from '@/store/regional-market-store'
 import { getEsiAveragePrice } from '@/store/price-store'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import { getLocationInfo } from '@/lib/location-utils'
+import { postOpenMarketDetails } from '@/api/endpoints/ui'
 import { ORDER_COLUMNS, type OrderRow } from './types'
 import { OrdersTable } from './OrdersTable'
 import { IngameActionModal } from '@/components/dialogs/IngameActionModal'
@@ -57,14 +59,43 @@ export function MarketOrdersTab() {
   )
 
   const [orderTypeValue, setOrderTypeValue] = useState<OrderTypeValue>('all')
-  const [waypointAction, setWaypointAction] = useState<{
-    locationId: number
-    locationName: string
+  const [ingameAction, setIngameAction] = useState<{
+    action: 'autopilot' | 'market'
+    targetId: number
+    targetName: string
   } | null>(null)
 
   const handleSetWaypoint = useCallback(
     (locationId: number, locationName: string) => {
-      setWaypointAction({ locationId, locationName })
+      setIngameAction({
+        action: 'autopilot',
+        targetId: locationId,
+        targetName: locationName,
+      })
+    },
+    []
+  )
+
+  const handleOpenMarket = useCallback((typeId: number, typeName: string) => {
+    setIngameAction({
+      action: 'market',
+      targetId: typeId,
+      targetName: typeName,
+    })
+  }, [])
+
+  const handleItemDoubleClick = useCallback(
+    (typeId: number, typeName: string) => {
+      const defaultCharId = getValidDefaultMarketCharacterId()
+      if (defaultCharId) {
+        postOpenMarketDetails(defaultCharId, typeId)
+      } else {
+        setIngameAction({
+          action: 'market',
+          targetId: typeId,
+          targetName: typeName,
+        })
+      }
     },
     []
   )
@@ -217,14 +248,16 @@ export function MarketOrdersTab() {
           orders={filteredOrders}
           visibleColumns={visibleColumns}
           onSetWaypoint={handleSetWaypoint}
+          onOpenMarket={handleOpenMarket}
+          onItemDoubleClick={handleItemDoubleClick}
         />
       </div>
       <IngameActionModal
-        open={waypointAction !== null}
-        onOpenChange={(open) => !open && setWaypointAction(null)}
-        action="autopilot"
-        targetId={waypointAction?.locationId ?? 0}
-        targetName={waypointAction?.locationName}
+        open={ingameAction !== null}
+        onOpenChange={(open) => !open && setIngameAction(null)}
+        action={ingameAction?.action ?? 'market'}
+        targetId={ingameAction?.targetId ?? 0}
+        targetName={ingameAction?.targetName}
       />
     </>
   )

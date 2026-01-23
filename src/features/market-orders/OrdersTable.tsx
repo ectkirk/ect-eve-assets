@@ -23,7 +23,6 @@ import type { OrderRow, SortColumn, DiffSortMode } from './types'
 import {
   formatExpiry,
   formatPrice,
-  CopyButton,
   DiffCell,
   EVEEstCell,
   DiffHeader,
@@ -41,9 +40,10 @@ function TranslatedContextMenuText({ labelKey }: { labelKey: string }) {
 interface OrderRowCellsProps {
   row: OrderRow
   show: (col: string) => boolean
+  onItemDoubleClick?: () => void
 }
 
-function OrderRowCells({ row, show }: OrderRowCellsProps) {
+function OrderRowCells({ row, show, onItemDoubleClick }: OrderRowCellsProps) {
   const { t } = useTranslation('common')
   const isBuy = row.order.is_buy_order
   const total = row.order.price * row.order.volume_remain
@@ -60,10 +60,13 @@ function OrderRowCells({ row, show }: OrderRowCellsProps) {
               size="sm"
             />
             <TypeIcon typeId={row.typeId} categoryId={row.categoryId} />
-            <span className="truncate" title={row.typeName}>
+            <span
+              className="truncate"
+              title={row.typeName}
+              onDoubleClick={onItemDoubleClick}
+            >
               {row.typeName}
             </span>
-            <CopyButton text={row.typeName} />
           </div>
         </TableCell>
       )}
@@ -142,6 +145,8 @@ function OrderRowWithContext({
   navigateToType,
   navigateToReference,
   onSetWaypoint,
+  onOpenMarket,
+  onItemDoubleClick,
   style,
 }: {
   row: OrderRow
@@ -149,18 +154,29 @@ function OrderRowWithContext({
   navigateToType: (typeId: number) => void
   navigateToReference: (typeId: number) => void
   onSetWaypoint: (locationId: number, locationName: string) => void
+  onOpenMarket: (typeId: number, typeName: string) => void
+  onItemDoubleClick: (typeId: number, typeName: string) => void
   style?: React.CSSProperties
 }) {
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <TableRow className={ROW_CLASS} style={style}>
-          <OrderRowCells row={row} show={show} />
+          <OrderRowCells
+            row={row}
+            show={show}
+            onItemDoubleClick={() =>
+              onItemDoubleClick(row.typeId, row.typeName)
+            }
+          />
         </TableRow>
       </ContextMenuTrigger>
       <ContextMenuContent>
         <ContextMenuItem onClick={() => navigateToType(row.typeId)}>
           <TranslatedContextMenuText labelKey="contextMenu.viewInMarket" />
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => onOpenMarket(row.typeId, row.typeName)}>
+          <TranslatedContextMenuText labelKey="contextMenu.openMarketIngame" />
         </ContextMenuItem>
         <ContextMenuItem onClick={() => navigateToReference(row.typeId)}>
           <TranslatedContextMenuText labelKey="contextMenu.viewDetails" />
@@ -181,12 +197,16 @@ function VirtualizedTableBody({
   navigateToType,
   navigateToReference,
   onSetWaypoint,
+  onOpenMarket,
+  onItemDoubleClick,
 }: {
   sortedOrders: OrderRow[]
   show: (col: string) => boolean
   navigateToType: (typeId: number) => void
   navigateToReference: (typeId: number) => void
   onSetWaypoint: (locationId: number, locationName: string) => void
+  onOpenMarket: (typeId: number, typeName: string) => void
+  onItemDoubleClick: (typeId: number, typeName: string) => void
 }) {
   const containerRef = useRef<HTMLTableSectionElement>(null)
 
@@ -214,6 +234,8 @@ function VirtualizedTableBody({
             navigateToType={navigateToType}
             navigateToReference={navigateToReference}
             onSetWaypoint={onSetWaypoint}
+            onOpenMarket={onOpenMarket}
+            onItemDoubleClick={onItemDoubleClick}
             style={{
               position: 'absolute',
               top: 0,
@@ -235,12 +257,16 @@ function StandardTableBody({
   navigateToType,
   navigateToReference,
   onSetWaypoint,
+  onOpenMarket,
+  onItemDoubleClick,
 }: {
   sortedOrders: OrderRow[]
   show: (col: string) => boolean
   navigateToType: (typeId: number) => void
   navigateToReference: (typeId: number) => void
   onSetWaypoint: (locationId: number, locationName: string) => void
+  onOpenMarket: (typeId: number, typeName: string) => void
+  onItemDoubleClick: (typeId: number, typeName: string) => void
 }) {
   return (
     <TableBody>
@@ -252,6 +278,8 @@ function StandardTableBody({
           navigateToType={navigateToType}
           navigateToReference={navigateToReference}
           onSetWaypoint={onSetWaypoint}
+          onOpenMarket={onOpenMarket}
+          onItemDoubleClick={onItemDoubleClick}
         />
       ))}
     </TableBody>
@@ -262,10 +290,14 @@ export function OrdersTable({
   orders,
   visibleColumns,
   onSetWaypoint,
+  onOpenMarket,
+  onItemDoubleClick,
 }: {
   orders: OrderRow[]
   visibleColumns: Set<string>
   onSetWaypoint: (locationId: number, locationName: string) => void
+  onOpenMarket: (typeId: number, typeName: string) => void
+  onItemDoubleClick: (typeId: number, typeName: string) => void
 }) {
   const { sortColumn, sortDirection, handleSort } = useSortable<SortColumn>(
     'total',
@@ -438,6 +470,8 @@ export function OrdersTable({
           navigateToType={navigateToType}
           navigateToReference={navigateToReference}
           onSetWaypoint={onSetWaypoint}
+          onOpenMarket={onOpenMarket}
+          onItemDoubleClick={onItemDoubleClick}
         />
       ) : (
         <StandardTableBody
@@ -446,6 +480,8 @@ export function OrdersTable({
           navigateToType={navigateToType}
           navigateToReference={navigateToReference}
           onSetWaypoint={onSetWaypoint}
+          onOpenMarket={onOpenMarket}
+          onItemDoubleClick={onItemDoubleClick}
         />
       )}
     </Table>

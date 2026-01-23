@@ -271,6 +271,11 @@ export function resolveAsset(
 
   const sdeType = getType(asset.type_id)
   const customName = assetNames.get(asset.item_id)
+  const immediateParent = parentChain[0]
+  const parentType = immediateParent ? getType(immediateParent.type_id) : null
+  const parentCustomName = immediateParent
+    ? assetNames.get(immediateParent.item_id)
+    : undefined
   const isBpc = asset.is_blueprint_copy ?? false
 
   const volume = sdeType?.packagedVolume ?? sdeType?.volume ?? 0
@@ -305,6 +310,10 @@ export function resolveAsset(
 
     customName,
     isBlueprintCopy: isBpc,
+
+    parentTypeId: immediateParent?.type_id,
+    parentTypeName: parentType?.name,
+    parentCustomName,
   }
 }
 

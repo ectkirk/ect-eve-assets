@@ -1,6 +1,8 @@
 import { useMemo, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Star } from 'lucide-react'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
+import { useIngameDefaultsStore } from '@/store/ingame-defaults-store'
 import {
   Dialog,
   DialogContent,
@@ -46,6 +48,13 @@ export function IngameActionModal({
   const owners = useAuthStore((s) => s.owners)
   const ownerHasScope = useAuthStore((s) => s.ownerHasScope)
   const setOwnerScopesOutdated = useAuthStore((s) => s.setOwnerScopesOutdated)
+
+  const defaultMarketCharacterId = useIngameDefaultsStore(
+    (s) => s.defaultMarketCharacterId
+  )
+  const setDefaultMarketCharacter = useIngameDefaultsStore(
+    (s) => s.setDefaultMarketCharacter
+  )
 
   const requiredScope = REQUIRED_SCOPES[action]
 
@@ -113,16 +122,44 @@ export function IngameActionModal({
 
         <div className="flex flex-col gap-1">
           {hasEligible ? (
-            eligibleCharacters.map((char) => (
-              <button
-                key={char.id}
-                onClick={() => handleExecute(char.id)}
-                className="flex items-center gap-3 rounded-md px-3 py-2 text-left transition-colors hover:bg-surface-tertiary"
-              >
-                <OwnerIcon ownerId={char.id} ownerType="character" size="lg" />
-                <span className="flex-1 text-sm">{char.name}</span>
-              </button>
-            ))
+            eligibleCharacters.map((char) => {
+              const isDefault =
+                action === 'market' && char.id === defaultMarketCharacterId
+              return (
+                <div key={char.id} className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => handleExecute(char.id)}
+                    className="flex flex-1 items-center gap-3 rounded-md px-3 py-2 text-left transition-colors hover:bg-surface-tertiary"
+                  >
+                    <OwnerIcon
+                      ownerId={char.id}
+                      ownerType="character"
+                      size="lg"
+                    />
+                    <span className="flex-1 text-sm">{char.name}</span>
+                  </button>
+                  {action === 'market' && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDefaultMarketCharacter(isDefault ? null : char.id)
+                      }
+                      className="rounded-md p-2 text-content-muted transition-colors hover:bg-surface-tertiary hover:text-content-secondary"
+                      title={
+                        isDefault
+                          ? t('ingameAction.clearDefault')
+                          : t('ingameAction.setDefault')
+                      }
+                    >
+                      <Star
+                        className={`h-4 w-4 ${isDefault ? 'fill-accent text-accent' : ''}`}
+                      />
+                    </button>
+                  )}
+                </div>
+              )
+            })
           ) : (
             <div className="py-4 text-center text-sm text-content-muted">
               <p>{t('ingameAction.noCharacters')}</p>

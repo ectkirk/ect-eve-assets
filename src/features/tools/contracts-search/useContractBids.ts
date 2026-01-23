@@ -178,7 +178,13 @@ export function useAuctionBids(auctionContractIds: number[]) {
       })
     }
 
-    fetchAll()
+    fetchAll().catch((err) => {
+      if (!controller.signal.aborted) {
+        logger.error('Failed to fetch auction bids', err, {
+          module: 'useContractBids',
+        })
+      }
+    })
 
     return () => {
       controller.abort()

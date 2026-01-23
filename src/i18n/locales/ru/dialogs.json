@@ -286,5 +286,7 @@
   "ingameAction.selectCharacter": "Выберите персонажа для этого действия",
   "ingameAction.noCharacters": "Нет персонажей с необходимыми разрешениями",
   "ingameAction.requiresReauth": "Повторите авторизацию для внутриигровых действий",
-  "ingameAction.error": "Не удалось открыть в игре"
+  "ingameAction.error": "Failed to open in game",
+  "ingameAction.setDefault": "Set as default",
+  "ingameAction.clearDefault": "Clear default"
 }

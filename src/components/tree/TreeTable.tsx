@@ -21,6 +21,8 @@ import {
 } from '@/store/buyback-action-store'
 import { useFreightActionStore } from '@/store/freight-action-store'
 import { getType, getSystem } from '@/store/reference-cache'
+import { getBlueprintInfo } from '@/store/blueprints-store'
+import { CategoryIds } from '@/lib/tree-types'
 import { useColumnSettings } from '@/hooks'
 import type { TreeNode, TreeNodeType } from '@/lib/tree-types'
 import { flattenTree, getAllNodeIds, collectDescendantItems } from '@/lib/tree'
@@ -89,7 +91,16 @@ export function TreeTable({
     const quantity = node.quantity ?? node.totalCount
 
     if (isItem) {
-      return { name, quantity, isItem: true }
+      let blueprintSuffix: string | undefined
+      if (node.categoryId === CategoryIds.BLUEPRINT && node.asset?.item_id) {
+        const bpInfo = getBlueprintInfo(node.asset.item_id)
+        if (bpInfo) {
+          blueprintSuffix = bpInfo.isCopy
+            ? `(ME${bpInfo.materialEfficiency} TE${bpInfo.timeEfficiency} R${bpInfo.runs})`
+            : `(ME${bpInfo.materialEfficiency} TE${bpInfo.timeEfficiency})`
+        }
+      }
+      return { name, quantity, isItem: true, blueprintSuffix }
     }
 
     const fullRowData = [

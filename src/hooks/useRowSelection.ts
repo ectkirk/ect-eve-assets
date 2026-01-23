@@ -11,6 +11,7 @@ export interface CopyData {
   quantity: number
   isItem: boolean
   fullRowData?: string
+  blueprintSuffix?: string
 }
 
 interface UseRowSelectionOptions<T> {
@@ -102,7 +103,8 @@ export function useRowSelection<T>({
       if (!data.isItem && data.fullRowData) {
         navigator.clipboard.writeText(data.fullRowData)
       } else {
-        navigator.clipboard.writeText(`${data.name}\t${data.quantity}`)
+        const suffix = data.blueprintSuffix ? `\t${data.blueprintSuffix}` : ''
+        navigator.clipboard.writeText(`${data.name}\t${data.quantity}${suffix}`)
       }
       return
     }
@@ -111,7 +113,8 @@ export function useRowSelection<T>({
     for (const item of selectedItems) {
       const data = getCopyData(item)
       if (data.isItem) {
-        lines.push(`${data.name}\t${data.quantity}`)
+        const suffix = data.blueprintSuffix ? `\t${data.blueprintSuffix}` : ''
+        lines.push(`${data.name}\t${data.quantity}${suffix}`)
       }
     }
 

@@ -60,6 +60,8 @@ export interface DisplayContract {
   availability?: 'public' | 'personal' | 'corporation' | 'alliance'
   topItemName?: string
   isWantToBuy?: boolean
+  currentBid?: number
+  isIssuer?: boolean
 }
 
 function InfoRow({
@@ -192,21 +194,23 @@ export function ContractDetailModal({
   const { bids, loading: bidsLoading, fetchBids } = useContractBids()
   const items = preloadedItems ?? fetchedItems
   const isLoading = preloadedItems ? false : loading || fetchedItems === null
-  const currentBid = bids?.[0]?.amount ?? null
+  const currentBid = contract.currentBid ?? bids?.[0]?.amount ?? null
+  const needsFetchBids =
+    contract.type === 'auction' && contract.currentBid === undefined
 
   useEffect(() => {
     if (!preloadedItems) {
       fetchItems(contract.contractId)
     }
-    if (contract.type === 'auction') {
+    if (needsFetchBids) {
       fetchBids(contract.contractId)
     }
   }, [
     contract.contractId,
-    contract.type,
     fetchItems,
     fetchBids,
     preloadedItems,
+    needsFetchBids,
   ])
 
   useEffect(() => {
@@ -335,7 +339,14 @@ export function ContractDetailModal({
                   : '-'}
               </InfoRow>
               <InfoRow label={t('contractsSearch.modal.reward')}>
-                <span className="text-status-positive">
+                <span
+                  className={
+                    contract.isIssuer
+                      ? 'text-status-negative'
+                      : 'text-status-positive'
+                  }
+                >
+                  {contract.isIssuer && '-'}
                   {formatNumber(contract.reward ?? 0)}
                 </span>
               </InfoRow>
@@ -367,7 +378,7 @@ export function ContractDetailModal({
                 </span>
               </InfoRow>
               <InfoRow label={t('contractsSearch.modal.currentBid')}>
-                {bidsLoading ? (
+                {needsFetchBids && bidsLoading ? (
                   <span className="text-content-muted">
                     {t('contractsSearch.modal.loadingItems').replace(
                       'items...',
@@ -410,7 +421,7 @@ export function ContractDetailModal({
                   {t('contractsSearch.modal.price')}
                 </span>
                 <span className="text-lg font-bold text-status-highlight">
-                  {formatNumber(contract.price)}
+                  {formatNumber(contract.price - (contract.reward ?? 0))}
                 </span>
               </div>
             </div>

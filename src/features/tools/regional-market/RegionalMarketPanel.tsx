@@ -7,7 +7,7 @@ import {
 } from '@/store/reference-cache'
 import { useRegionalOrdersStore } from '@/store/regional-orders-store'
 import { useRegionalMarketSessionStore } from '@/store/regional-market-session-store'
-import { BUYBACK_REGIONS } from '@/hooks/useBuybackSelection'
+import { SERVICE_REGIONS } from '@/hooks/useBuybackSelection'
 import { MarketGroupTree } from './MarketGroupTree'
 import { MarketItemSearch } from './MarketItemSearch'
 import { MarketBreadcrumb } from './MarketBreadcrumb'
@@ -142,7 +142,7 @@ export function RegionalMarketPanel({
 
   const sortedRegions = useMemo(() => {
     const list = Array.from(regions.values()).filter((r) =>
-      BUYBACK_REGIONS.has(r.id)
+      SERVICE_REGIONS.has(r.id)
     )
     list.sort((a, b) => a.name.localeCompare(b.name))
     return list

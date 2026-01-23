@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { matchesSearchLower } from '@/lib/utils'
 import { useTabControls } from '@/context'
@@ -47,11 +47,18 @@ export function ContractsTab() {
   const initialized = useContractsStore((s) => s.initialized)
   const itemsById = useContractsStore((s) => s.itemsById)
   const itemsByContractId = useContractsStore((s) => s.itemsByContractId)
+  const bidsByContractId = useContractsStore((s) => s.bidsByContractId)
   const visibilityByOwner = useContractsStore((s) => s.visibilityByOwner)
 
   const contractsByOwner = useMemo<OwnerContracts[]>(
-    () => buildOwnerContracts(visibilityByOwner, itemsById, itemsByContractId),
-    [visibilityByOwner, itemsById, itemsByContractId]
+    () =>
+      buildOwnerContracts(
+        visibilityByOwner,
+        itemsById,
+        itemsByContractId,
+        bidsByContractId
+      ),
+    [visibilityByOwner, itemsById, itemsByContractId, bidsByContractId]
   )
 
   const { isLoading: assetsUpdating } = useAssetData()
@@ -65,12 +72,29 @@ export function ContractsTab() {
   const structures = useReferenceCacheStore((s) => s.structures)
   const names = useReferenceCacheStore((s) => s.names)
 
-  const { search, setTotalValue, setColumns } = useTabControls()
+  const { search, setTotalValue, setColumns, setContractAvailabilityFilter } =
+    useTabControls()
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
   const selectedSet = useMemo(
     () => new Set(selectedOwnerIds),
     [selectedOwnerIds]
   )
+
+  const [hideAlliance, setHideAlliance] = useState(() => {
+    try {
+      return localStorage.getItem('contracts.hideAlliance') === 'true'
+    } catch {
+      return false
+    }
+  })
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('contracts.hideAlliance', String(hideAlliance))
+    } catch {
+      /* storage unavailable */
+    }
+  }, [hideAlliance])
 
   const { getColumnsForDropdown, getVisibleColumns } = useColumnSettings(
     'contracts',
@@ -98,10 +122,14 @@ export function ContractsTab() {
 
     const ownerCharIds = new Set<number>()
     const ownerCorpIds = new Set<number>()
+    const ownerAllianceIds = new Set<number>()
     for (const owner of owners) {
       ownerCharIds.add(owner.characterId)
       if (owner.corporationId) {
         ownerCorpIds.add(owner.corporationId)
+      }
+      if (owner.allianceId) {
+        ownerAllianceIds.add(owner.allianceId)
       }
     }
 
@@ -118,6 +146,8 @@ export function ContractsTab() {
         const isActive =
           contract.status === 'outstanding' || contract.status === 'in_progress'
         if (!isActive) continue
+
+        if (hideAlliance && ownerAllianceIds.has(contract.assignee_id)) continue
 
         const isIssuer =
           ownerCharIds.has(contract.issuer_id) ||
@@ -153,7 +183,7 @@ export function ContractsTab() {
         return false
       itemValue += row.itemValue
       const contract = row.contractWithItems.contract
-      contractPrice += (contract.price ?? 0) + (contract.reward ?? 0)
+      contractPrice += contract.price ?? 0
       if (contract.type === 'courier') {
         collateral += contract.collateral ?? 0
       }
@@ -175,6 +205,7 @@ export function ContractsTab() {
     priceVersion,
     search,
     selectedSet,
+    hideAlliance,
     t,
   ])
 
@@ -194,6 +225,28 @@ export function ContractsTab() {
     setColumns(getColumnsForDropdown())
     return () => setColumns([])
   }, [getColumnsForDropdown, setColumns])
+
+  const hasCorporationOwnerWithAlliance = useMemo(
+    () =>
+      owners.some((owner) => owner.type === 'corporation' && owner.allianceId),
+    [owners]
+  )
+
+  useEffect(() => {
+    if (hasCorporationOwnerWithAlliance) {
+      setContractAvailabilityFilter({
+        hideAlliance,
+        onToggleAlliance: setHideAlliance,
+      })
+    } else {
+      setContractAvailabilityFilter(null)
+    }
+    return () => setContractAvailabilityFilter(null)
+  }, [
+    hasCorporationOwnerWithAlliance,
+    hideAlliance,
+    setContractAvailabilityFilter,
+  ])
 
   const loadingState = TabLoadingState({
     dataType: 'contracts',

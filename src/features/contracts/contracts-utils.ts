@@ -120,10 +120,17 @@ export interface ContractRow {
   isWantToBuy: boolean
   includedItemCount: number
   requestedItemCount: number
+  highestBid?: number
 }
 
-export function getContractValue(contract: ESIContract): number {
-  return (contract.price ?? 0) + (contract.reward ?? 0)
+export function getContractValue(
+  contract: ESIContract,
+  highestBid?: number
+): number {
+  if (contract.type === 'auction' && highestBid !== undefined) {
+    return highestBid
+  }
+  return (contract.price ?? 0) - (contract.reward ?? 0)
 }
 
 export function buildContractRow(
@@ -200,5 +207,6 @@ export function buildContractRow(
     isWantToBuy,
     includedItemCount: includedItems.length,
     requestedItemCount: requestedItems.length,
+    highestBid: contractWithItems.highestBid,
   }
 }

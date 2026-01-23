@@ -292,12 +292,25 @@ export function AssetsTab() {
     []
   )
   const getCopyData = useCallback(
-    (row: AssetRow) => ({
-      name: getType(row.typeId)?.name ?? row.typeName,
-      quantity: row.quantity,
-      isItem: true,
-    }),
-    []
+    (row: AssetRow) => {
+      const baseName = getType(row.typeId)?.name ?? row.typeName
+      let blueprintSuffix: string | undefined
+      if (row.categoryId === CategoryIds.BLUEPRINT) {
+        const bpInfo = blueprintsByItemId.get(row.itemId)
+        if (bpInfo) {
+          blueprintSuffix = bpInfo.isCopy
+            ? `(ME${bpInfo.materialEfficiency} TE${bpInfo.timeEfficiency} R${bpInfo.runs})`
+            : `(ME${bpInfo.materialEfficiency} TE${bpInfo.timeEfficiency})`
+        }
+      }
+      return {
+        name: baseName,
+        quantity: row.quantity,
+        isItem: true,
+        blueprintSuffix,
+      }
+    },
+    [blueprintsByItemId]
   )
   const { selectedIds, handleRowClick } = useRowSelection({
     items: sortedData,
@@ -558,6 +571,19 @@ export function AssetsTab() {
                         >
                           {tCommon('contextMenu.viewDetails')}
                         </ContextMenuItem>
+                        {row.original.parentTypeId && (
+                          <ContextMenuItem
+                            onClick={() =>
+                              navigateToReference(row.original.parentTypeId!)
+                            }
+                          >
+                            {tCommon('contextMenu.viewParent', {
+                              name: row.original.parentCustomName
+                                ? `${row.original.parentTypeName} (${row.original.parentCustomName})`
+                                : row.original.parentTypeName,
+                            })}
+                          </ContextMenuItem>
+                        )}
                       </ContextMenuContent>
                     </ContextMenu>
                   )
