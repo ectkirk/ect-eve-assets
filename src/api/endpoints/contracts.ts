@@ -67,3 +67,24 @@ export async function getPublicContractBids(
     { requiresAuth: false, schema: ESIContractBidSchema }
   )
 }
+
+export async function getCharacterContractBids(
+  characterId: number,
+  contractId: number
+): Promise<ESIContractBid[]> {
+  return esi.fetch<ESIContractBid[]>(
+    `/characters/${characterId}/contracts/${contractId}/bids`,
+    { characterId, schema: z.array(ESIContractBidSchema) }
+  )
+}
+
+export async function getCorporationContractBids(
+  characterId: number,
+  corporationId: number,
+  contractId: number
+): Promise<ESIContractBid[]> {
+  return esi.fetchPaginated<ESIContractBid>(
+    `/corporations/${corporationId}/contracts/${contractId}/bids`,
+    { characterId, schema: ESIContractBidSchema }
+  )
+}

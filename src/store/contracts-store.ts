@@ -4,8 +4,12 @@ import {
   getContractItems,
   getCorporationContractItems,
   getPublicContractItems,
+  getCharacterContractBids,
+  getCorporationContractBids,
+  getPublicContractBids,
   type ESIContract,
   type ESIContractItem,
+  type ESIContractBid,
 } from '@/api/endpoints/contracts'
 import { esi } from '@/api/esi'
 import { ESIContractSchema } from '@/api/schemas'
@@ -37,6 +41,7 @@ export interface StoredContract extends StoredItem<ESIContract> {
 export interface ContractWithItems {
   contract: ESIContract
   items?: ESIContractItem[]
+  highestBid?: number
 }
 
 export interface OwnerContracts {
@@ -46,6 +51,7 @@ export interface OwnerContracts {
 
 interface ContractsExtraState {
   itemsByContractId: Map<number, ESIContractItem[]>
+  bidsByContractId: Map<number, number>
 }
 
 interface ContractsExtras {
@@ -70,7 +76,8 @@ const ACTIVE_STATUSES = new Set(['outstanding', 'in_progress'])
 export function buildOwnerContracts(
   visibilityByOwner: Map<string, Set<number>>,
   itemsById: Map<number, StoredContract>,
-  itemsByContractId: Map<number, ESIContractItem[]>
+  itemsByContractId: Map<number, ESIContractItem[]>,
+  bidsByContractId: Map<number, number> = new Map()
 ): OwnerContracts[] {
   const result: OwnerContracts[] = []
   for (const [key, contractIds] of visibilityByOwner) {
@@ -83,6 +90,7 @@ export function buildOwnerContracts(
         contracts.push({
           contract: stored.item,
           items: itemsByContractId.get(contractId),
+          highestBid: bidsByContractId.get(contractId),
         })
       }
     }
@@ -91,10 +99,15 @@ export function buildOwnerContracts(
   return result
 }
 
-function isActiveItemExchange(contract: ESIContract): boolean {
+function shouldFetchItems(contract: ESIContract): boolean {
   return (
-    contract.type === 'item_exchange' && ACTIVE_STATUSES.has(contract.status)
+    (contract.type === 'item_exchange' || contract.type === 'auction') &&
+    ACTIVE_STATUSES.has(contract.status)
   )
+}
+
+function shouldFetchBids(contract: ESIContract): boolean {
+  return contract.type === 'auction' && ACTIVE_STATUSES.has(contract.status)
 }
 
 function getEndpoint(owner: Owner): string {
@@ -116,6 +129,28 @@ async function fetchItemsFromAPI(
         contractId
       )
     : getContractItems(sourceOwner.characterId, contractId)
+}
+
+async function fetchBidsFromAPI(
+  sourceOwner: SourceOwner,
+  contractId: number,
+  isPublic: boolean
+): Promise<ESIContractBid[]> {
+  if (isPublic) {
+    return getPublicContractBids(contractId)
+  }
+  return sourceOwner.type === 'corporation'
+    ? getCorporationContractBids(
+        sourceOwner.characterId,
+        sourceOwner.id,
+        contractId
+      )
+    : getCharacterContractBids(sourceOwner.characterId, contractId)
+}
+
+function getHighestBid(bids: ESIContractBid[]): number | undefined {
+  if (bids.length === 0) return undefined
+  return Math.max(...bids.map((b) => b.amount))
 }
 
 const ITEMS_STORE = 'items'
@@ -172,7 +207,7 @@ function collectContractsToFetch(
   const toFetch = new Map<number, ContractFetchInfo>()
   for (const [contractId, stored] of contractsById) {
     if (
-      isActiveItemExchange(stored.item) &&
+      shouldFetchItems(stored.item) &&
       !itemsState.has(contractId) &&
       !pendingItemFetches.has(contractId)
     ) {
@@ -266,6 +301,77 @@ async function fetchItemsForContracts(
   }
 }
 
+const pendingBidFetches = new Set<number>()
+
+function collectAuctionsToFetchBids(
+  contractsById: Map<number, StoredContract>
+): Map<number, ContractFetchInfo> {
+  const toFetch = new Map<number, ContractFetchInfo>()
+  for (const [contractId, stored] of contractsById) {
+    if (shouldFetchBids(stored.item) && !pendingBidFetches.has(contractId)) {
+      toFetch.set(contractId, {
+        sourceOwner: stored.sourceOwner,
+        isPublic: stored.item.availability === 'public',
+      })
+      pendingBidFetches.add(contractId)
+    }
+  }
+  return toFetch
+}
+
+async function fetchBidsForAuctions(
+  contractsById: Map<number, StoredContract>
+): Promise<void> {
+  const toFetch = collectAuctionsToFetchBids(contractsById)
+
+  if (toFetch.size === 0) return
+
+  try {
+    const results = await Promise.allSettled(
+      Array.from(toFetch.entries()).map(async ([contractId, info]) => {
+        const bids = await fetchBidsFromAPI(
+          info.sourceOwner,
+          contractId,
+          info.isPublic
+        )
+        return { contractId, highestBid: getHighestBid(bids) }
+      })
+    )
+
+    const fetched: Array<{
+      contractId: number
+      highestBid: number | undefined
+    }> = []
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        fetched.push(result.value)
+      } else {
+        logger.error('Failed to fetch contract bids', result.reason, {
+          module: 'ContractsStore',
+        })
+      }
+    }
+
+    if (fetched.length > 0) {
+      const currentState = baseStore.getState()
+      const currentBids = new Map(currentState.bidsByContractId)
+      for (const { contractId, highestBid } of fetched) {
+        if (!currentState.itemsById.has(contractId)) continue
+        if (highestBid !== undefined) {
+          currentBids.set(contractId, highestBid)
+        } else {
+          currentBids.delete(contractId)
+        }
+      }
+      baseStore.setState({ bidsByContractId: currentBids })
+    }
+  } finally {
+    for (const contractId of toFetch.keys()) {
+      pendingBidFetches.delete(contractId)
+    }
+  }
+}
+
 const baseStore = createVisibilityStore<
   ESIContract,
   StoredContract,
@@ -300,7 +406,7 @@ const baseStore = createVisibilityStore<
   shouldUpdateExisting: true,
   shouldDeleteStaleItems: true,
 
-  extraState: { itemsByContractId: new Map() },
+  extraState: { itemsByContractId: new Map(), bidsByContractId: new Map() },
   rebuildExtraState: undefined,
 
   onAfterInit: async () => {
@@ -319,6 +425,7 @@ const baseStore = createVisibilityStore<
 
   onAfterOwnerUpdate: ({ itemsById }) => {
     fetchItemsForContracts(itemsById)
+    fetchBidsForAuctions(itemsById)
   },
 
   onAfterBatchUpdate: async (updatedItemsById) => {
@@ -382,6 +489,7 @@ const originalClear = baseStore.getState().clear
 baseStore.setState({
   clear: async () => {
     pendingItemFetches.clear()
+    pendingBidFetches.clear()
     await originalClear()
     await clearItemsDb()
   },
@@ -451,7 +559,8 @@ export const useContractsStore: ContractsStore = Object.assign(baseStore, {
     return buildOwnerContracts(
       state.visibilityByOwner,
       state.itemsById,
-      state.itemsByContractId
+      state.itemsByContractId,
+      state.bidsByContractId
     )
   },
 })

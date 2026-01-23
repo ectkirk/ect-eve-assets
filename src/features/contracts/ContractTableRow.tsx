@@ -57,6 +57,9 @@ function toDisplayContract(
     status: contract.status,
     availability: contract.availability,
     topItemName,
+    isWantToBuy: row.isWantToBuy,
+    currentBid: row.highestBid,
+    isIssuer: row.direction === 'out',
   }
 
   const resolvedItems = resolveContractItems(items, contract.availability)
@@ -109,7 +112,7 @@ export function ContractTableRow({
   const { t: tCommon } = useTranslation('common')
   const contract = row.contractWithItems.contract
   const expiryTime = getTimeRemaining(contract.date_expired)
-  const value = getContractValue(contract)
+  const value = getContractValue(contract, row.highestBid)
 
   const displayItemCount = row.isWantToBuy
     ? row.requestedItemCount
@@ -208,8 +211,13 @@ export function ContractTableRow({
             </TableCell>
           )}
           {show('price') && (
-            <TableCell className="py-1.5 text-right tabular-nums text-status-highlight">
-              {value > 0 ? (
+            <TableCell
+              className={cn(
+                'py-1.5 text-right tabular-nums',
+                value < 0 ? 'text-status-negative' : 'text-status-highlight'
+              )}
+            >
+              {value !== 0 ? (
                 <div>
                   <div>{formatNumber(value)}</div>
                   {row.isWantToBuy && row.direction === 'in' && (

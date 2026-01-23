@@ -101,7 +101,7 @@ export function ContractsTable({
         case 'assignee':
           return row.assigneeName.toLowerCase()
         case 'price':
-          return getContractValue(contract)
+          return getContractValue(contract, row.highestBid)
         case 'value':
           return row.itemValue
         case 'volume':
