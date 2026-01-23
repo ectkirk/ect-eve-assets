@@ -13,7 +13,9 @@ import { useAssetStore } from './store/asset-store'
 import { useStoreRegistry } from './store/store-registry'
 import { stopPriceRefreshTimers } from './store/price-store'
 import { useExpiryCacheStore } from './store/expiry-cache-store'
+import './store/blueprints-store'
 import { MainLayout } from './components/layout/MainLayout'
+import { ToastContainer } from './components/ui/toast'
 import { useReferenceCacheStore } from './store/reference-cache'
 import {
   loadReferenceData,
@@ -292,6 +294,7 @@ function App() {
           <MainLayout />
         </div>
       </div>
+      <ToastContainer />
     </ErrorBoundary>
   )
 }
