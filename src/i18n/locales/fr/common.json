@@ -87,6 +87,7 @@
   "accessibility.filterByOrderType": "Filtrer par type d'ordre",
   "accessibility.filterByAssetType": "Filtrer par type d'actif",
   "accessibility.filterByCategory": "Filtrer par catégorie",
+  "accessibility.sortCharacters": "Trier les personnages",
   "accessibility.clickToCopy": "Cliquer pour copier",
 
   "buttons.copied": "Copié !",
@@ -144,6 +145,13 @@
   "searchBar.orderTypes.sell": "Ordres de vente",
   "searchBar.orderTypes.buy": "Ordres d'achat",
 
+  "searchBar.hideAlliance": "Masquer Alliance",
+
+  "sort.name": "Nom",
+  "sort.mostClones": "Plus de clones",
+  "sort.newestMail": "Courrier récent",
+  "sort.highestSP": "Plus de SP",
+
   "buttons.all": "Tout",
   "buttons.none": "Aucun",
 
@@ -190,5 +198,11 @@
   "contextMenu.openMarketIngame": "Ouvrir le marché en jeu",
   "contextMenu.openContractIngame": "Ouvrir le contrat en jeu",
   "contextMenu.setWaypoint": "Définir un point de passage",
-  "contextMenu.setWaypointDestination": "Définir un point de passage vers la destination"
+  "contextMenu.setWaypointDestination": "Définir un point de passage vers la destination",
+  "contextMenu.viewParent": "Dans: {{name}}",
+
+  "ui.rateLimited": "Limite atteinte. Réessayez dans {{seconds}}s",
+  "ui.failedWaypoint": "Échec de définition du point de passage",
+  "ui.failedContract": "Échec d'ouverture du contrat",
+  "ui.failedMarket": "Échec d'ouverture de la fenêtre de marché"
 }

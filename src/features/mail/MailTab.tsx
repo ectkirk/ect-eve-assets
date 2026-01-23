@@ -4,8 +4,14 @@ import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useMailStore } from '@/store/mail-store'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import { CharacterPanel } from '@/components/ui/character-panel'
-import { useTabControls, type MailFilterType } from '@/context'
+import {
+  useTabControls,
+  type MailFilterType,
+  type CharacterSortValue,
+} from '@/context'
+import { useLocalStorageSort } from '@/hooks/useLocalStorageSort'
 import { getName, resolveNames } from '@/api/endpoints/universe'
+import { getLocale } from '@/lib/utils'
 import { type ESIMailHeader } from '@/api/endpoints/mail'
 import {
   CharacterMailPanel,
@@ -41,11 +47,20 @@ export function MailTab() {
   const update = useMailStore((s) => s.update)
   const initialized = useMailStore((s) => s.initialized)
 
-  const { search, setSearchPlaceholder, setRefreshAction, setMailFilter } =
-    useTabControls()
+  const {
+    search,
+    setSearchPlaceholder,
+    setRefreshAction,
+    setMailFilter,
+    setCharacterSort,
+  } = useTabControls()
 
   const [selectedMail, setSelectedMail] = useState<MergedMail | null>(null)
   const [filterType, setFilterType] = useState<MailFilterType>('inbox')
+  const [sortBy, setSortBy] = useLocalStorageSort<CharacterSortValue>(
+    'ecteve:sort:mail',
+    'name'
+  )
   const [resolvedNames, setResolvedNames] = useState<Map<number, string>>(
     new Map()
   )
@@ -74,6 +89,18 @@ export function MailTab() {
   }, [setMailFilter, filterType])
 
   useEffect(() => {
+    setCharacterSort({
+      options: [
+        { value: 'name', label: t('sort.name') },
+        { value: 'metric', label: t('sort.newestMail') },
+      ],
+      value: sortBy,
+      onChange: setSortBy,
+    })
+    return () => setCharacterSort(null)
+  }, [setCharacterSort, sortBy, t])
+
+  useEffect(() => {
     const idsToResolve = new Set<number>()
     for (const { mails } of mailByOwner) {
       for (const mail of mails) {
@@ -94,13 +121,26 @@ export function MailTab() {
     }
   }, [mailByOwner])
 
-  const filteredMailByOwner = useMemo(
-    () =>
-      mailByOwner.filter((data) =>
-        selectedSet.has(ownerKey(data.owner.type, data.owner.characterId))
-      ),
-    [mailByOwner, selectedSet]
-  )
+  const filteredMailByOwner = useMemo(() => {
+    const getNewestTimestamp = (mails: ESIMailHeader[]): string =>
+      mails.reduce(
+        (max, mail) => (mail.timestamp > max ? mail.timestamp : max),
+        ''
+      )
+
+    const filtered = mailByOwner.filter((data) =>
+      selectedSet.has(ownerKey(data.owner.type, data.owner.characterId))
+    )
+    return filtered.sort((a, b) => {
+      if (sortBy === 'metric') {
+        const cmp = getNewestTimestamp(b.mails).localeCompare(
+          getNewestTimestamp(a.mails)
+        )
+        if (cmp !== 0) return cmp
+      }
+      return a.owner.name.localeCompare(b.owner.name, getLocale())
+    })
+  }, [mailByOwner, selectedSet, sortBy])
 
   const loadingState = TabLoadingState({
     dataType: 'mail',

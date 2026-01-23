@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useClonesStore } from '@/store/clones-store'
 import { useAssetData } from '@/hooks/useAssetData'
-import { useTabControls } from '@/context'
+import { useLocalStorageSort } from '@/hooks/useLocalStorageSort'
+import { useTabControls, type CharacterSortValue } from '@/context'
 import {
   getType,
   getTypeName,
@@ -62,7 +63,13 @@ export function ClonesTab() {
   const { isLoading: assetsUpdating } = useAssetData()
   const isUpdating = assetsUpdating || clonesUpdating
 
-  const { search, setSearchPlaceholder, setRefreshAction } = useTabControls()
+  const { search, setSearchPlaceholder, setRefreshAction, setCharacterSort } =
+    useTabControls()
+
+  const [sortBy, setSortBy] = useLocalStorageSort<CharacterSortValue>(
+    'ecteve:sort:clones',
+    'name'
+  )
 
   useEffect(() => {
     init().then(() => update())
@@ -81,6 +88,18 @@ export function ClonesTab() {
     setRefreshAction({ onRefresh: handleRefresh, isRefreshing: isUpdating })
     return () => setRefreshAction(null)
   }, [setRefreshAction, handleRefresh, isUpdating])
+
+  useEffect(() => {
+    setCharacterSort({
+      options: [
+        { value: 'name', label: tc('sort.name') },
+        { value: 'metric', label: tc('sort.mostClones') },
+      ],
+      value: sortBy,
+      onChange: setSortBy,
+    })
+    return () => setCharacterSort(null)
+  }, [setCharacterSort, sortBy, tc])
 
   const structures = useReferenceCacheStore((s) => s.structures)
 
@@ -165,10 +184,14 @@ export function ClonesTab() {
       })
     }
 
-    return result.sort((a, b) =>
-      a.ownerName.localeCompare(b.ownerName, getLocale())
-    )
-  }, [clonesByOwner, structures, selectedSet, t])
+    return result.sort((a, b) => {
+      if (sortBy === 'metric') {
+        const diff = b.jumpCloneCount - a.jumpCloneCount
+        if (diff !== 0) return diff
+      }
+      return a.ownerName.localeCompare(b.ownerName, getLocale())
+    })
+  }, [clonesByOwner, structures, selectedSet, t, sortBy])
 
   const loadingState = TabLoadingState({
     dataType: 'clones',

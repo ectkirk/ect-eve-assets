@@ -87,6 +87,7 @@
   "accessibility.filterByOrderType": "注文タイプでフィルター",
   "accessibility.filterByAssetType": "アセットタイプでフィルター",
   "accessibility.filterByCategory": "カテゴリでフィルター",
+  "accessibility.sortCharacters": "キャラクターを並べ替え",
   "accessibility.clickToCopy": "クリックしてコピー",
 
   "buttons.copied": "コピーしました！",
@@ -144,6 +145,13 @@
   "searchBar.orderTypes.sell": "売り注文",
   "searchBar.orderTypes.buy": "買い注文",
 
+  "searchBar.hideAlliance": "アライアンスを非表示",
+
+  "sort.name": "名前",
+  "sort.mostClones": "クローン数順",
+  "sort.newestMail": "新着メール順",
+  "sort.highestSP": "SP順",
+
   "buttons.all": "すべて",
   "buttons.none": "なし",
 
@@ -190,5 +198,11 @@
   "contextMenu.openMarketIngame": "ゲーム内でマーケットを開く",
   "contextMenu.openContractIngame": "ゲーム内で契約を開く",
   "contextMenu.setWaypoint": "ウェイポイントを設定",
-  "contextMenu.setWaypointDestination": "目的地へのウェイポイントを設定"
+  "contextMenu.setWaypointDestination": "目的地へのウェイポイントを設定",
+  "contextMenu.viewParent": "格納先: {{name}}",
+
+  "ui.rateLimited": "レート制限中。{{seconds}}秒後に再試行",
+  "ui.failedWaypoint": "ウェイポイントの設定に失敗",
+  "ui.failedContract": "契約を開けませんでした",
+  "ui.failedMarket": "マーケットウィンドウを開けませんでした"
 }

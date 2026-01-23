@@ -87,6 +87,7 @@
   "accessibility.filterByOrderType": "按订单类型筛选",
   "accessibility.filterByAssetType": "按资产类型筛选",
   "accessibility.filterByCategory": "按分类筛选",
+  "accessibility.sortCharacters": "角色排序",
   "accessibility.clickToCopy": "点击复制",
 
   "buttons.copied": "已复制！",
@@ -144,6 +145,13 @@
   "searchBar.orderTypes.sell": "卖单",
   "searchBar.orderTypes.buy": "买单",
 
+  "searchBar.hideAlliance": "隐藏联盟",
+
+  "sort.name": "名称",
+  "sort.mostClones": "克隆数量",
+  "sort.newestMail": "最新邮件",
+  "sort.highestSP": "最高SP",
+
   "buttons.all": "全部",
   "buttons.none": "无",
 
@@ -190,5 +198,11 @@
   "contextMenu.openMarketIngame": "在游戏中打开市场",
   "contextMenu.openContractIngame": "在游戏中打开合同",
   "contextMenu.setWaypoint": "设置航点",
-  "contextMenu.setWaypointDestination": "设置目的地航点"
+  "contextMenu.setWaypointDestination": "设置目的地航点",
+  "contextMenu.viewParent": "位于: {{name}}",
+
+  "ui.rateLimited": "请求受限。{{seconds}}秒后重试",
+  "ui.failedWaypoint": "设置航点失败",
+  "ui.failedContract": "无法打开合同",
+  "ui.failedMarket": "无法打开市场窗口"
 }

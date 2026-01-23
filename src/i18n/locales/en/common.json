@@ -87,6 +87,7 @@
   "accessibility.filterByOrderType": "Filter by order type",
   "accessibility.filterByAssetType": "Filter by asset type",
   "accessibility.filterByCategory": "Filter by category",
+  "accessibility.sortCharacters": "Sort characters",
   "accessibility.clickToCopy": "Click to copy",
 
   "buttons.copied": "Copied!",
@@ -144,6 +145,13 @@
   "searchBar.orderTypes.sell": "Sell Orders",
   "searchBar.orderTypes.buy": "Buy Orders",
 
+  "searchBar.hideAlliance": "Hide Alliance",
+
+  "sort.name": "Name",
+  "sort.mostClones": "Most Clones",
+  "sort.newestMail": "Newest Mail",
+  "sort.highestSP": "Highest SP",
+
   "buttons.all": "All",
   "buttons.none": "None",
 
@@ -190,5 +198,11 @@
   "contextMenu.openMarketIngame": "Open Market Ingame",
   "contextMenu.openContractIngame": "Open Contract Ingame",
   "contextMenu.setWaypoint": "Set Waypoint",
-  "contextMenu.setWaypointDestination": "Set Waypoint to Destination"
+  "contextMenu.setWaypointDestination": "Set Waypoint to Destination",
+  "contextMenu.viewParent": "In: {{name}}",
+
+  "ui.rateLimited": "Rate limited. Try again in {{seconds}}s",
+  "ui.failedWaypoint": "Failed to set waypoint",
+  "ui.failedContract": "Failed to open contract",
+  "ui.failedMarket": "Failed to open market window"
 }

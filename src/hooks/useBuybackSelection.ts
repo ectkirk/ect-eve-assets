@@ -72,8 +72,6 @@ export const SERVICE_REGIONS = new Set([
   10000006, // Wicked Creek
 ])
 
-export const BUYBACK_REGIONS = SERVICE_REGIONS
-
 export interface BuybackItem {
   id: string
   name: string

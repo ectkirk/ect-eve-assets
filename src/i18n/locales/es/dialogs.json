@@ -286,5 +286,7 @@
   "ingameAction.selectCharacter": "Selecciona un personaje para esta acción",
   "ingameAction.noCharacters": "No hay personajes con los permisos requeridos",
   "ingameAction.requiresReauth": "Reautenticar para habilitar acciones en el juego",
-  "ingameAction.error": "Error al abrir en el juego"
+  "ingameAction.error": "Failed to open in game",
+  "ingameAction.setDefault": "Set as default",
+  "ingameAction.clearDefault": "Clear default"
 }

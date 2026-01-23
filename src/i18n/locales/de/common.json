@@ -87,6 +87,7 @@
   "accessibility.filterByOrderType": "Nach Auftragstyp filtern",
   "accessibility.filterByAssetType": "Nach Asset-Typ filtern",
   "accessibility.filterByCategory": "Nach Kategorie filtern",
+  "accessibility.sortCharacters": "Charaktere sortieren",
   "accessibility.clickToCopy": "Klicken zum Kopieren",
 
   "buttons.copied": "Kopiert!",
@@ -144,6 +145,13 @@
   "searchBar.orderTypes.sell": "Verkaufsaufträge",
   "searchBar.orderTypes.buy": "Kaufaufträge",
 
+  "searchBar.hideAlliance": "Allianz ausblenden",
+
+  "sort.name": "Name",
+  "sort.mostClones": "Meiste Klone",
+  "sort.newestMail": "Neueste Mail",
+  "sort.highestSP": "Höchste SP",
+
   "buttons.all": "Alle",
   "buttons.none": "Keine",
 
@@ -190,5 +198,11 @@
   "contextMenu.openMarketIngame": "Markt im Spiel öffnen",
   "contextMenu.openContractIngame": "Vertrag im Spiel öffnen",
   "contextMenu.setWaypoint": "Wegpunkt setzen",
-  "contextMenu.setWaypointDestination": "Wegpunkt zum Ziel setzen"
+  "contextMenu.setWaypointDestination": "Wegpunkt zum Ziel setzen",
+  "contextMenu.viewParent": "In: {{name}}",
+
+  "ui.rateLimited": "Ratenbegrenzung. Erneut versuchen in {{seconds}}s",
+  "ui.failedWaypoint": "Wegpunkt konnte nicht gesetzt werden",
+  "ui.failedContract": "Vertrag konnte nicht geöffnet werden",
+  "ui.failedMarket": "Marktfenster konnte nicht geöffnet werden"
 }
