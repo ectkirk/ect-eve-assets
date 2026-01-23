@@ -1,16 +1,56 @@
 {
-  "version": "2.4.1",
-  "date": "2026-01-10",
+  "version": "2.5.0",
+  "date": "2026-01-23",
   "changes": [
     {
-      "type": "fix",
-      "scope": "map",
-      "description": "Show all insurgencies in route panel count instead of only corruption 5"
+      "type": "feat",
+      "scope": "contracts",
+      "description": "Add auction bid support with batch fetching and current bid display"
+    },
+    {
+      "type": "feat",
+      "scope": "contracts",
+      "description": "Add hide alliance filter for personal contracts"
+    },
+    {
+      "type": "feat",
+      "scope": "assets",
+      "description": "Add right-click context menu to view parent container location"
+    },
+    {
+      "type": "feat",
+      "scope": "assets",
+      "description": "Include blueprint ME/TE/R info in copy output"
+    },
+    {
+      "type": "feat",
+      "scope": "ui",
+      "description": "Add double-click to open market in-game from market orders"
+    },
+    {
+      "type": "feat",
+      "scope": "ui",
+      "description": "Add sorting controls to character tabs (Mail, Skills, Clones)"
     },
     {
       "type": "fix",
       "scope": "contracts",
-      "description": "Improve contracts time display and ESI UI handling"
+      "description": "Show courier reward as negative when you are the issuer"
+    },
+    {
+      "type": "fix",
+      "scope": "contracts",
+      "description": "Fix price calculations and totals display"
+    },
+    {
+      "type": "fix",
+      "scope": "search",
+      "description": "Sync search input field with context search value"
+    },
+    {
+      "type": "refactor",
+      "scope": "hooks",
+      "description": "Add useLocalStorageSort hook for DRY character tab sorting"
     }
   ]
 }
