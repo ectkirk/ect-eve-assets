@@ -152,8 +152,6 @@ function parseESIOptions(options: unknown): ESIRequestOptions {
       esiOptions.requiresAuth = opts.requiresAuth
     if (typeof opts.etag === 'string') esiOptions.etag = opts.etag
     if (typeof opts.language === 'string') esiOptions.language = opts.language
-    if (typeof opts.fireAndForget === 'boolean')
-      esiOptions.fireAndForget = opts.fireAndForget
   }
   return esiOptions
 }

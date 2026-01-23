@@ -51,6 +51,7 @@ export interface Owner {
   // For characters, this is the same as id
   characterId: number
   corporationId: number
+  allianceId?: number
   accessToken: string | null
   refreshToken: string
   expiresAt: number | null
@@ -85,6 +86,7 @@ interface AuthState {
       name: string
       characterId: number
       corporationId: number
+      allianceId?: number
     }
   }) => void
   removeOwner: (ownerId: string) => void
@@ -164,6 +166,7 @@ export const useAuthStore = create<AuthState>()(
               name: owner.name,
               characterId: owner.characterId,
               corporationId: owner.corporationId,
+              allianceId: owner.allianceId,
               accessToken,
               refreshToken,
               expiresAt,
@@ -444,6 +447,7 @@ export const useAuthStore = create<AuthState>()(
               name: owner.name,
               characterId: owner.characterId,
               corporationId: owner.corporationId,
+              allianceId: owner.allianceId,
               refreshToken: owner.refreshToken,
               scopes: owner.scopes,
               corporationRoles: owner.corporationRoles,

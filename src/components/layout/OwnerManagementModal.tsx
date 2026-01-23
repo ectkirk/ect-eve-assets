@@ -141,6 +141,7 @@ export function OwnerManagementModal({
           name: result.characterName,
           characterId: result.characterId,
           corporationId: result.corporationId,
+          allianceId: result.allianceId,
         }
         useAuthStore.getState().addOwner({
           accessToken: result.accessToken,
@@ -202,6 +203,7 @@ export function OwnerManagementModal({
               name: result.characterName,
               characterId: result.characterId,
               corporationId: result.corporationId,
+              allianceId: result.allianceId,
             },
           })
         } else {
@@ -223,6 +225,7 @@ export function OwnerManagementModal({
           name: corpName,
           characterId: result.characterId,
           corporationId: result.corporationId,
+          allianceId: result.allianceId,
         }
         store.addOwner({
           accessToken: result.accessToken,

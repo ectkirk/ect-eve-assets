@@ -14,6 +14,7 @@ import {
   MAIL_FILTER_OPTIONS,
   ORDER_TYPE_OPTIONS,
   type OrderTypeValue,
+  type CharacterSortValue,
 } from '@/context'
 import { CorporationLogo } from '@/components/ui/type-icon'
 import { cn, formatNumber, formatFullNumber } from '@/lib/utils'
@@ -182,9 +183,15 @@ export function SearchBar() {
     mailFilter,
     loyaltyCorporations,
     orderTypeFilter,
+    characterSort,
+    contractAvailabilityFilter,
   } = useTabControls()
   const [inputValue, setInputValue] = useState(search)
   const settings = useAssetSettings()
+
+  useEffect(() => {
+    setInputValue(search)
+  }, [search])
 
   const filteredTypeOptions = useMemo(() => {
     return ASSET_TYPE_KEYS.filter((opt) => {
@@ -264,6 +271,23 @@ export function SearchBar() {
         </div>
       )}
 
+      {characterSort && (
+        <select
+          value={characterSort.value}
+          onChange={(e) =>
+            characterSort.onChange(e.target.value as CharacterSortValue)
+          }
+          aria-label={t('accessibility.sortCharacters')}
+          className="w-36 rounded border border-border bg-surface-tertiary px-2 py-1.5 text-sm focus:border-accent focus:outline-hidden"
+        >
+          {characterSort.options.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      )}
+
       {loyaltyCorporations && loyaltyCorporations.corporations.length > 0 && (
         <div className="flex items-center gap-3 overflow-x-auto">
           {loyaltyCorporations.corporations
@@ -341,6 +365,20 @@ export function SearchBar() {
             </option>
           ))}
         </select>
+      )}
+
+      {contractAvailabilityFilter && (
+        <label className="flex items-center gap-2 text-sm text-content-secondary cursor-pointer">
+          <input
+            type="checkbox"
+            checked={contractAvailabilityFilter.hideAlliance}
+            onChange={(e) =>
+              contractAvailabilityFilter.onToggleAlliance(e.target.checked)
+            }
+            className="h-4 w-4 rounded border-border bg-surface-tertiary accent-accent"
+          />
+          {t('searchBar.hideAlliance')}
+        </label>
       )}
 
       {totalValue !== null && (

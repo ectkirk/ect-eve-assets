@@ -368,7 +368,7 @@ export class MainESIService {
         const waitSec = retryAfter ? parseInt(retryAfter, 10) : 60
         this.rateLimiter.setGlobalRetryAfter(waitSec)
 
-        if (!options.fireAndForget && attempt < ESI_CONFIG.maxRetries) {
+        if (attempt < ESI_CONFIG.maxRetries) {
           await this.delay(waitSec * 1000)
           return this.executeRequest(endpoint, options, attempt + 1)
         }
@@ -427,6 +427,14 @@ export class MainESIService {
         return { success: false, error: errorMessage, status: response.status }
       }
 
+      if (response.status === 204) {
+        return {
+          success: true,
+          data: undefined,
+          meta: expiresAt ? { expiresAt, etag, notModified: false } : undefined,
+        }
+      }
+
       const data = await response.json()
 
       if (etag && expiresAt) {
@@ -451,25 +459,23 @@ export class MainESIService {
           ? error.message
           : 'Network error'
 
-      if (!options.fireAndForget) {
-        const maxAttempts = isAbort
-          ? ESI_CONFIG.maxTimeoutRetries
-          : ESI_CONFIG.maxRetries
-        if (attempt < maxAttempts) {
-          const backoffMs = Math.min(1000 * Math.pow(2, attempt), 10000)
-          logger.debug(
-            `Retrying after ${isAbort ? 'timeout' : 'network error'}`,
-            {
-              module: 'ESI',
-              endpoint,
-              attempt: attempt + 1,
-              error: message,
-              backoffMs,
-            }
-          )
-          await this.delay(backoffMs)
-          return this.executeRequest(endpoint, options, attempt + 1)
-        }
+      const maxAttempts = isAbort
+        ? ESI_CONFIG.maxTimeoutRetries
+        : ESI_CONFIG.maxRetries
+      if (attempt < maxAttempts) {
+        const backoffMs = Math.min(1000 * Math.pow(2, attempt), 10000)
+        logger.debug(
+          `Retrying after ${isAbort ? 'timeout' : 'network error'}`,
+          {
+            module: 'ESI',
+            endpoint,
+            attempt: attempt + 1,
+            error: message,
+            backoffMs,
+          }
+        )
+        await this.delay(backoffMs)
+        return this.executeRequest(endpoint, options, attempt + 1)
       }
 
       return { success: false, error: message }

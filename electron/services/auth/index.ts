@@ -122,6 +122,7 @@ async function handleCallbackRequest(
       characterId,
       characterName: jwt.name,
       corporationId: charInfo.corporation_id,
+      allianceId: charInfo.alliance_id,
       scopes: extractScopes(jwt.scp),
       corporationRoles,
     })
@@ -302,6 +303,7 @@ export async function refreshAccessToken(
       characterId,
       characterName: jwt.name,
       corporationId: charInfo.corporation_id,
+      allianceId: charInfo.alliance_id,
       scopes: extractScopes(jwt.scp),
     }
   } catch (error) {

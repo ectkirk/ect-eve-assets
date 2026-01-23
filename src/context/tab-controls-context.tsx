@@ -68,6 +68,19 @@ export interface OrderTypeFilterConfig {
   onChange: (value: OrderTypeValue) => void
 }
 
+export type CharacterSortValue = 'name' | 'metric'
+
+export interface CharacterSortConfig {
+  options: { value: CharacterSortValue; label: string }[]
+  value: CharacterSortValue
+  onChange: (value: CharacterSortValue) => void
+}
+
+export interface ContractAvailabilityFilterConfig {
+  hideAlliance: boolean
+  onToggleAlliance: (value: boolean) => void
+}
+
 interface TabControlsContextValue {
   columns: ColumnConfig[]
   setColumns: (columns: ColumnConfig[]) => void
@@ -93,6 +106,12 @@ interface TabControlsContextValue {
   setLoyaltyCorporations: (config: LoyaltyCorporationsConfig | null) => void
   orderTypeFilter: OrderTypeFilterConfig | null
   setOrderTypeFilter: (config: OrderTypeFilterConfig | null) => void
+  characterSort: CharacterSortConfig | null
+  setCharacterSort: (config: CharacterSortConfig | null) => void
+  contractAvailabilityFilter: ContractAvailabilityFilterConfig | null
+  setContractAvailabilityFilter: (
+    config: ContractAvailabilityFilterConfig | null
+  ) => void
 }
 
 const TabControlsContext = createContext<TabControlsContextValue | null>(null)
@@ -118,6 +137,10 @@ export function TabControlsProvider({ children }: { children: ReactNode }) {
     useState<LoyaltyCorporationsConfig | null>(null)
   const [orderTypeFilter, setOrderTypeFilter] =
     useState<OrderTypeFilterConfig | null>(null)
+  const [characterSort, setCharacterSort] =
+    useState<CharacterSortConfig | null>(null)
+  const [contractAvailabilityFilter, setContractAvailabilityFilter] =
+    useState<ContractAvailabilityFilterConfig | null>(null)
 
   const value = useMemo(
     () => ({
@@ -145,6 +168,10 @@ export function TabControlsProvider({ children }: { children: ReactNode }) {
       setLoyaltyCorporations,
       orderTypeFilter,
       setOrderTypeFilter,
+      characterSort,
+      setCharacterSort,
+      contractAvailabilityFilter,
+      setContractAvailabilityFilter,
     }),
     [
       columns,
@@ -159,6 +186,8 @@ export function TabControlsProvider({ children }: { children: ReactNode }) {
       mailFilter,
       loyaltyCorporations,
       orderTypeFilter,
+      characterSort,
+      contractAvailabilityFilter,
     ]
   )
 

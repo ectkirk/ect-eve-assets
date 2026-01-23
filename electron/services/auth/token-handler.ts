@@ -73,6 +73,7 @@ export async function exchangeCodeForTokens(
 
 export interface ESICharacterInfo {
   corporation_id: number
+  alliance_id?: number
   name: string
 }
 
