@@ -2,6 +2,10 @@ const { contextBridge, ipcRenderer } = require('electron')
 
 export type {
   AuthResult,
+  BlueprintCopyMaterial,
+  BlueprintResearchLevel,
+  BlueprintResearchParams,
+  BlueprintResearchResult,
   BuybackCalculatorItem,
   BuybackCalculatorResult,
   BuybackConfig,
@@ -52,6 +56,7 @@ export type {
 } from './preload-types'
 
 import type {
+  BlueprintResearchParams,
   BuybackConfig,
   ContractSearchParams,
   ElectronAPI,
@@ -187,6 +192,8 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.invoke('ref:type-blueprint', typeId, params),
   refManufacturingCost: (params: ManufacturingCostParams) =>
     ipcRenderer.invoke('ref:manufacturingCost', params),
+  refBlueprintResearch: (params: BlueprintResearchParams) =>
+    ipcRenderer.invoke('ref:blueprintResearch', params),
   refDogmaUnits: (params?: LanguageParams) =>
     ipcRenderer.invoke('ref:dogma-units', params),
   refDogmaAttributeCategories: (params?: LanguageParams) =>

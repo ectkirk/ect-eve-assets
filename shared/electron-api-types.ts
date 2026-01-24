@@ -818,6 +818,60 @@ export interface ManufacturingCostParams {
   facilityTax?: number
 }
 
+export interface BlueprintResearchParams {
+  blueprintId: number
+  systemId: number
+  facility?: number
+  rig?: number
+}
+
+export interface BlueprintResearchLevel {
+  level: number
+  duration: number
+  durationFormatted: string
+  cost: number
+  cumulativeDuration: number
+  cumulativeDurationFormatted: string
+  cumulativeCost: number
+}
+
+export interface BlueprintCopyMaterial {
+  typeId: number
+  name: string
+  quantity: number
+  price: number
+  total: number
+}
+
+export interface BlueprintResearchResult {
+  blueprint: {
+    id: number
+    name: string
+  }
+  systemId: number
+  facility: string
+  costIndices: {
+    researching_material_efficiency: number
+    researching_time_efficiency: number
+    copying: number
+  }
+  meResearch: BlueprintResearchLevel[]
+  teResearch: BlueprintResearchLevel[]
+  copying: {
+    baseTime: number
+    runsPerCopy: number
+    duration: number
+    durationFormatted: string
+    installationCost: number
+    materials: BlueprintCopyMaterial[]
+    materialsCost: number
+    totalCost: number
+    maxRuns: number
+    copiesIn30Days: number
+  }
+  error?: string
+}
+
 export interface ManufacturingMaterial {
   type_id: number
   type_name: string
@@ -976,6 +1030,9 @@ export interface ElectronAPI {
   refManufacturingCost: (
     params: ManufacturingCostParams
   ) => Promise<ManufacturingCostResult>
+  refBlueprintResearch: (
+    params: BlueprintResearchParams
+  ) => Promise<BlueprintResearchResult>
   refDogmaUnits: (params?: LanguageParams) => Promise<DogmaUnitsResult>
   refDogmaAttributeCategories: (
     params?: LanguageParams

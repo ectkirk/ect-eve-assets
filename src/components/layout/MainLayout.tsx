@@ -91,6 +91,11 @@ const ManufacturingPanel = lazy(() =>
     default: m.ManufacturingPanel,
   }))
 )
+const ResearchPanel = lazy(() =>
+  import('@/features/tools/research').then((m) => ({
+    default: m.ResearchPanel,
+  }))
+)
 import { useFreightActionStore } from '@/store/freight-action-store'
 import { useRegionalMarketActionStore } from '@/store/regional-market-action-store'
 import { useContractsSearchActionStore } from '@/store/contracts-search-action-store'
@@ -114,6 +119,7 @@ const TOOLS_TAB_IDS = [
   'map',
   'hypernet',
   'manufacturing',
+  'research',
 ] as const
 const CHARACTER_TAB_IDS = ['clones', 'mail', 'skills'] as const
 
@@ -671,6 +677,11 @@ function MainLayoutInner() {
           {mode === 'tools' && activeToolsTab === 'manufacturing' && (
             <FeatureErrorBoundary key="manufacturing" feature="Manufacturing">
               <ManufacturingPanel />
+            </FeatureErrorBoundary>
+          )}
+          {mode === 'tools' && activeToolsTab === 'research' && (
+            <FeatureErrorBoundary key="research" feature="Research">
+              <ResearchPanel />
             </FeatureErrorBoundary>
           )}
         </Suspense>

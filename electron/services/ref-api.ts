@@ -508,4 +508,30 @@ export function registerRefAPIHandlers(): void {
 
     return refGet(`/manufacturing-cost?${queryParams}`, 'ref:manufacturingCost')
   })
+
+  ipcMain.handle('ref:blueprintResearch', async (_event, params: unknown) => {
+    if (!isValidObject(params)) {
+      return { error: 'Invalid params' }
+    }
+    const p = params as Record<string, unknown>
+    if (typeof p.blueprintId !== 'number' || p.blueprintId <= 0) {
+      return { error: 'blueprintId is required' }
+    }
+    if (typeof p.systemId !== 'number' || p.systemId <= 0) {
+      return { error: 'systemId is required' }
+    }
+
+    const queryParams = new URLSearchParams()
+    queryParams.set('blueprint_id', String(p.blueprintId))
+    queryParams.set('system_id', String(p.systemId))
+    if (typeof p.facility === 'number')
+      queryParams.set('facility', String(p.facility))
+    if (typeof p.rig === 'number') {
+      queryParams.set('me_rig', String(p.rig))
+      queryParams.set('te_rig', String(p.rig))
+      queryParams.set('copy_rig', String(p.rig))
+    }
+
+    return refGet(`/blueprint-research?${queryParams}`, 'ref:blueprintResearch')
+  })
 }
