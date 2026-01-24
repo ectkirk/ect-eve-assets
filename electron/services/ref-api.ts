@@ -481,4 +481,31 @@ export function registerRefAPIHandlers(): void {
       return { error: String(err) }
     }
   })
+
+  ipcMain.handle('ref:manufacturingCost', async (_event, params: unknown) => {
+    if (!isValidObject(params)) {
+      return { error: 'Invalid params' }
+    }
+    const p = params as Record<string, unknown>
+    if (typeof p.productId !== 'number' || p.productId <= 0) {
+      return { error: 'productId is required' }
+    }
+    if (typeof p.systemId !== 'number' || p.systemId <= 0) {
+      return { error: 'systemId is required' }
+    }
+
+    const queryParams = new URLSearchParams()
+    queryParams.set('product_id', String(p.productId))
+    queryParams.set('system_id', String(p.systemId))
+    if (typeof p.runs === 'number') queryParams.set('runs', String(p.runs))
+    if (typeof p.me === 'number') queryParams.set('me', String(p.me))
+    if (typeof p.te === 'number') queryParams.set('te', String(p.te))
+    if (typeof p.facility === 'number')
+      queryParams.set('facility', String(p.facility))
+    if (typeof p.meRig === 'number') queryParams.set('me_rig', String(p.meRig))
+    if (typeof p.facilityTax === 'number')
+      queryParams.set('facility_tax', String(p.facilityTax))
+
+    return refGet(`/manufacturing-cost?${queryParams}`, 'ref:manufacturingCost')
+  })
 }

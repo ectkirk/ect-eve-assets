@@ -86,6 +86,11 @@ const HypernetPanel = lazy(() =>
     default: m.HypernetPanel,
   }))
 )
+const ManufacturingPanel = lazy(() =>
+  import('@/features/tools/manufacturing').then((m) => ({
+    default: m.ManufacturingPanel,
+  }))
+)
 import { useFreightActionStore } from '@/store/freight-action-store'
 import { useRegionalMarketActionStore } from '@/store/regional-market-action-store'
 import { useContractsSearchActionStore } from '@/store/contracts-search-action-store'
@@ -108,6 +113,7 @@ const TOOLS_TAB_IDS = [
   'reference',
   'map',
   'hypernet',
+  'manufacturing',
 ] as const
 const CHARACTER_TAB_IDS = ['clones', 'mail', 'skills'] as const
 
@@ -660,6 +666,11 @@ function MainLayoutInner() {
           {mode === 'tools' && activeToolsTab === 'hypernet' && (
             <FeatureErrorBoundary key="hypernet" feature="Hypernet">
               <HypernetPanel />
+            </FeatureErrorBoundary>
+          )}
+          {mode === 'tools' && activeToolsTab === 'manufacturing' && (
+            <FeatureErrorBoundary key="manufacturing" feature="Manufacturing">
+              <ManufacturingPanel />
             </FeatureErrorBoundary>
           )}
         </Suspense>

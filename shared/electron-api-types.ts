@@ -807,6 +807,52 @@ export interface DogmaAttributeCategoriesResult {
   error?: string
 }
 
+export interface ManufacturingCostParams {
+  productId: number
+  systemId: number
+  runs?: number
+  me?: number
+  te?: number
+  facility?: number
+  meRig?: number
+  facilityTax?: number
+}
+
+export interface ManufacturingMaterial {
+  type_id: number
+  type_name: string
+  quantity: number
+  volume: number
+  cost: number
+}
+
+export interface ManufacturingCostResult {
+  productId: number
+  blueprintId: number
+  runs: number
+  me: number
+  te: number
+  units: number
+  unitsPerRun: number
+  time: string
+  timePerRun: string
+  timePerUnit: string
+  materials: Record<number, ManufacturingMaterial>
+  materialsVolume: number
+  productVolume: number
+  estimatedItemValue: number
+  systemCostIndex: number
+  systemCostBonuses: number
+  sccSurcharge: number
+  facilityTax: number
+  totalJobCost: number
+  totalMaterialCost: number
+  totalCost: number
+  totalCostPerRun: number
+  totalCostPerUnit: number
+  error?: string
+}
+
 export type {
   ESIRequestOptions,
   ESIResponseMeta,
@@ -927,6 +973,9 @@ export interface ElectronAPI {
     typeId: number,
     params?: LanguageParams
   ) => Promise<RefTypeBlueprintResult>
+  refManufacturingCost: (
+    params: ManufacturingCostParams
+  ) => Promise<ManufacturingCostResult>
   refDogmaUnits: (params?: LanguageParams) => Promise<DogmaUnitsResult>
   refDogmaAttributeCategories: (
     params?: LanguageParams

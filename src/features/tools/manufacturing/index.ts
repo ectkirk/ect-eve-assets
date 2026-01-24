@@ -1,0 +1,1 @@
+export { ManufacturingPanel } from './ManufacturingPanel'

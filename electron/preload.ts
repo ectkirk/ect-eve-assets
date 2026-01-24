@@ -24,6 +24,9 @@ export type {
   ESIResponseMeta,
   LogContext,
   LogLevel,
+  ManufacturingCostParams,
+  ManufacturingCostResult,
+  ManufacturingMaterial,
   MutamarketResult,
   InsurgencyResult,
   RefApiResult,
@@ -58,6 +61,7 @@ import type {
   LanguageParams,
   LogContext,
   LogLevel,
+  ManufacturingCostParams,
   RefMarketJitaParams,
   RefStructuresPageParams,
   RefTypesPageParams,
@@ -181,6 +185,8 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.invoke('ref:type-variations', typeId, params),
   refTypeBlueprint: (typeId: number, params?: LanguageParams) =>
     ipcRenderer.invoke('ref:type-blueprint', typeId, params),
+  refManufacturingCost: (params: ManufacturingCostParams) =>
+    ipcRenderer.invoke('ref:manufacturingCost', params),
   refDogmaUnits: (params?: LanguageParams) =>
     ipcRenderer.invoke('ref:dogma-units', params),
   refDogmaAttributeCategories: (params?: LanguageParams) =>
