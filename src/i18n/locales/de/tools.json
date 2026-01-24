@@ -422,5 +422,21 @@
   "regionalMarket.expires": "Läuft ab",
   "regionalMarket.market": "Markt",
   "regionalMarket.expandGroup": "{{name}} erweitern",
-  "regionalMarket.collapseGroup": "{{name}} einklappen"
+  "regionalMarket.collapseGroup": "{{name}} einklappen",
+
+  "hypernet.loadingTypes": "Typen werden geladen...",
+  "hypernet.searchDescription": "Suchen Sie nach einem Gegenstand, um Hypernet-Relay-Kosten zu berechnen.",
+  "hypernet.selectItemPrompt": "Wählen Sie einen Gegenstand zur Hypernet-Berechnung",
+  "hypernet.estimatedValue": "Geschätzt {{value}}",
+  "hypernet.greenPrice": "Green Price: {{value}}",
+  "hypernet.totalPrice": "Gesamtpreis",
+  "hypernet.hypernodes": "Anzahl Hypernodes",
+  "hypernet.hypercoresRequired": "Benötigte Hypercores",
+  "hypernet.nodesPurchased": "Gekaufte Nodes",
+  "hypernet.duration": "Dauer",
+  "hypernet.threeDays": "3 Tage",
+  "hypernet.hypernodePrice": "Hypernode-Preis",
+  "hypernet.relayFee": "Hypernet-Relay-Gebühr (5%)",
+  "hypernet.hypercoreCost": "Hypercore-Kosten",
+  "hypernet.payout": "Auszahlung"
 }

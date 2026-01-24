@@ -99,7 +99,7 @@ export function ClonesTab() {
       onChange: setSortBy,
     })
     return () => setCharacterSort(null)
-  }, [setCharacterSort, sortBy, tc])
+  }, [setCharacterSort, setSortBy, sortBy, tc])
 
   const structures = useReferenceCacheStore((s) => s.structures)
 

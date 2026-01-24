@@ -13,7 +13,7 @@ import { useReferenceCacheStore } from '@/store/reference-cache'
 import { TypeIcon } from '@/components/ui/type-icon'
 import { FeatureErrorBoundary } from '@/components/ui/feature-error-boundary'
 import { loadReferenceData } from '@/api/ref-data-loader'
-import { useDebouncedValue } from '@/hooks'
+import { useDebouncedValue, useSetToggle } from '@/hooks'
 import { CategoryGroupTree } from './CategoryGroupTree'
 
 const SEARCH_DEBOUNCE_MS = 150
@@ -147,29 +147,8 @@ export function ReferencePanel({
     t,
   ])
 
-  const handleToggleCategory = useCallback((categoryId: number) => {
-    setExpandedCategoryIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(categoryId)) {
-        next.delete(categoryId)
-      } else {
-        next.add(categoryId)
-      }
-      return next
-    })
-  }, [])
-
-  const handleToggleGroup = useCallback((groupId: number) => {
-    setExpandedGroupIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(groupId)) {
-        next.delete(groupId)
-      } else {
-        next.add(groupId)
-      }
-      return next
-    })
-  }, [])
+  const handleToggleCategory = useSetToggle(setExpandedCategoryIds)
+  const handleToggleGroup = useSetToggle(setExpandedGroupIds)
 
   const handleSelectCategory = useCallback((categoryId: number) => {
     setSelectedCategoryId(categoryId)

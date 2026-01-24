@@ -422,5 +422,21 @@
   "regionalMarket.expires": "Expire",
   "regionalMarket.market": "Marché",
   "regionalMarket.expandGroup": "Développer {{name}}",
-  "regionalMarket.collapseGroup": "Réduire {{name}}"
+  "regionalMarket.collapseGroup": "Réduire {{name}}",
+
+  "hypernet.loadingTypes": "Chargement des types...",
+  "hypernet.searchDescription": "Recherchez un objet pour calculer les coûts du relais Hypernet.",
+  "hypernet.selectItemPrompt": "Sélectionnez un objet pour calculer les coûts Hypernet",
+  "hypernet.estimatedValue": "Est. {{value}}",
+  "hypernet.greenPrice": "Green Price: {{value}}",
+  "hypernet.totalPrice": "Prix Total",
+  "hypernet.hypernodes": "Nombre de Hypernodes",
+  "hypernet.hypercoresRequired": "Hypercores Requis",
+  "hypernet.nodesPurchased": "Nodes Achetés",
+  "hypernet.duration": "Durée",
+  "hypernet.threeDays": "3 Jours",
+  "hypernet.hypernodePrice": "Prix par Hypernode",
+  "hypernet.relayFee": "Frais de Relais Hypernet (5%)",
+  "hypernet.hypercoreCost": "Coût des Hypercores",
+  "hypernet.payout": "Paiement"
 }

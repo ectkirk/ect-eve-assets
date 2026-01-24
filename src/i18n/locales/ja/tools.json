@@ -422,5 +422,21 @@
   "regionalMarket.expires": "有効期限",
   "regionalMarket.market": "マーケット",
   "regionalMarket.expandGroup": "{{name}}を展開",
-  "regionalMarket.collapseGroup": "{{name}}を折りたたむ"
+  "regionalMarket.collapseGroup": "{{name}}を折りたたむ",
+
+  "hypernet.loadingTypes": "タイプを読み込み中...",
+  "hypernet.searchDescription": "アイテムを検索してHypernet Relayのコストを計算します。",
+  "hypernet.selectItemPrompt": "Hypernetコストを計算するアイテムを選択",
+  "hypernet.estimatedValue": "推定 {{value}}",
+  "hypernet.greenPrice": "Green Price: {{value}}",
+  "hypernet.totalPrice": "合計価格",
+  "hypernet.hypernodes": "Hypernode数",
+  "hypernet.hypercoresRequired": "必要なHypercore",
+  "hypernet.nodesPurchased": "購入済みノード",
+  "hypernet.duration": "期間",
+  "hypernet.threeDays": "3日間",
+  "hypernet.hypernodePrice": "Hypernode価格",
+  "hypernet.relayFee": "Hypernet Relay手数料 (5%)",
+  "hypernet.hypercoreCost": "Hypercoreコスト",
+  "hypernet.payout": "払い出し"
 }

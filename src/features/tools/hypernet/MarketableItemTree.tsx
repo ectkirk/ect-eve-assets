@@ -5,6 +5,7 @@ import type {
   CachedGroup,
   CachedType,
 } from '@/store/reference-cache'
+import type { EsiPriceData } from '@/store/price-store'
 import {
   SortedData,
   ROW_HEIGHT,
@@ -14,38 +15,68 @@ import {
   buildFlatRows,
   FolderRow,
   TypeRow,
-} from './tree-primitives'
+} from '../reference/tree-primitives'
 
-interface CategoryGroupTreeProps {
+interface MarketableItemTreeProps {
   categories: Map<number, CachedCategory>
   groups: Map<number, CachedGroup>
   types: Map<number, CachedType>
+  esiPrices: Map<number, EsiPriceData>
   expandedCategoryIds: Set<number>
   expandedGroupIds: Set<number>
-  selectedCategoryId: number | null
-  selectedGroupId: number | null
   selectedTypeId: number | null
-  showUnpublished: boolean
   onToggleCategory: (categoryId: number) => void
   onToggleGroup: (groupId: number) => void
-  onSelectCategory: (categoryId: number) => void
-  onSelectGroup: (groupId: number) => void
   onSelectType: (typeId: number) => void
+}
+
+interface FilteredData {
+  typesWithPrice: Map<number, CachedType>
+  groupsWithPricedTypes: Set<number>
+  categoriesWithPricedTypes: Set<number>
+}
+
+function filterTypesWithAveragePrice(
+  types: Map<number, CachedType>,
+  esiPrices: Map<number, EsiPriceData>
+): FilteredData {
+  const typesWithPrice = new Map<number, CachedType>()
+  const groupsWithPricedTypes = new Set<number>()
+  const categoriesWithPricedTypes = new Set<number>()
+
+  for (const type of types.values()) {
+    if (type.published === false) continue
+    const priceData = esiPrices.get(type.id)
+    if (priceData?.average == null) continue
+
+    typesWithPrice.set(type.id, type)
+    groupsWithPricedTypes.add(type.groupId)
+    categoriesWithPricedTypes.add(type.categoryId)
+  }
+
+  return {
+    typesWithPrice,
+    groupsWithPricedTypes,
+    categoriesWithPricedTypes,
+  }
 }
 
 function buildSortedData(
   categories: Map<number, CachedCategory>,
   groups: Map<number, CachedGroup>,
-  types: Map<number, CachedType>,
-  showUnpublished: boolean
+  filteredData: FilteredData
 ): SortedData {
+  const { typesWithPrice, groupsWithPricedTypes, categoriesWithPricedTypes } =
+    filteredData
+
   const sortedCategories = Array.from(categories.values())
-    .filter((c) => showUnpublished || c.published !== false)
+    .filter((c) => c.published !== false && categoriesWithPricedTypes.has(c.id))
     .sort((a, b) => a.name.localeCompare(b.name))
 
   const groupsByCategory = new Map<number, CachedGroup[]>()
   for (const group of groups.values()) {
-    if (!showUnpublished && group.published === false) continue
+    if (group.published === false) continue
+    if (!groupsWithPricedTypes.has(group.id)) continue
     const list = groupsByCategory.get(group.categoryId) || []
     list.push(group)
     groupsByCategory.set(group.categoryId, list)
@@ -55,8 +86,7 @@ function buildSortedData(
   }
 
   const typesByGroup = new Map<number, CachedType[]>()
-  for (const type of types.values()) {
-    if (!showUnpublished && type.published === false) continue
+  for (const type of typesWithPrice.values()) {
     const list = typesByGroup.get(type.groupId) || []
     list.push(type)
     typesByGroup.set(type.groupId, list)
@@ -68,45 +98,46 @@ function buildSortedData(
   return { sortedCategories, groupsByCategory, typesByGroup }
 }
 
-export function CategoryGroupTree({
+export function MarketableItemTree({
   categories,
   groups,
   types,
+  esiPrices,
   expandedCategoryIds,
   expandedGroupIds,
-  selectedCategoryId,
-  selectedGroupId,
   selectedTypeId,
-  showUnpublished,
   onToggleCategory,
   onToggleGroup,
-  onSelectCategory,
-  onSelectGroup,
   onSelectType,
-}: CategoryGroupTreeProps) {
+}: MarketableItemTreeProps) {
   const containerRef = useRef<HTMLDivElement>(null)
+
+  const filteredData = useMemo(
+    () => filterTypesWithAveragePrice(types, esiPrices),
+    [types, esiPrices]
+  )
 
   const typeCountsByGroup = useMemo(() => {
     const map = new Map<number, number>()
-    for (const type of types.values()) {
-      if (!showUnpublished && type.published === false) continue
+    for (const type of filteredData.typesWithPrice.values()) {
       map.set(type.groupId, (map.get(type.groupId) || 0) + 1)
     }
     return map
-  }, [types, showUnpublished])
+  }, [filteredData])
 
   const groupCountsByCategory = useMemo(() => {
     const map = new Map<number, number>()
     for (const group of groups.values()) {
-      if (!showUnpublished && group.published === false) continue
+      if (group.published === false) continue
+      if (!filteredData.groupsWithPricedTypes.has(group.id)) continue
       map.set(group.categoryId, (map.get(group.categoryId) || 0) + 1)
     }
     return map
-  }, [groups, showUnpublished])
+  }, [groups, filteredData])
 
   const sortedData = useMemo(
-    () => buildSortedData(categories, groups, types, showUnpublished),
-    [categories, groups, types, showUnpublished]
+    () => buildSortedData(categories, groups, filteredData),
+    [categories, groups, filteredData]
   )
 
   const flatRows = useMemo(
@@ -144,15 +175,12 @@ export function CategoryGroupTree({
               <FolderRow
                 name={row.category.name}
                 isExpanded={expandedCategoryIds.has(row.category.id)}
-                isSelected={selectedCategoryId === row.category.id}
-                isUnpublished={row.category.published === false}
                 hasChildren={
                   (groupCountsByCategory.get(row.category.id) || 0) > 0
                 }
                 paddingLeft={INDENT_CATEGORY}
                 folderColor={FOLDER_COLORS.category}
                 onToggle={() => onToggleCategory(row.category.id)}
-                onSelect={() => onSelectCategory(row.category.id)}
               />
             )
           } else if (row.kind === 'group') {
@@ -161,13 +189,10 @@ export function CategoryGroupTree({
               <FolderRow
                 name={row.group.name}
                 isExpanded={expandedGroupIds.has(row.group.id)}
-                isSelected={selectedGroupId === row.group.id}
-                isUnpublished={row.group.published === false}
                 hasChildren={(typeCountsByGroup.get(row.group.id) || 0) > 0}
                 paddingLeft={INDENT_GROUP}
                 folderColor={FOLDER_COLORS.group}
                 onToggle={() => onToggleGroup(row.group.id)}
-                onSelect={() => onSelectGroup(row.group.id)}
               />
             )
           } else {

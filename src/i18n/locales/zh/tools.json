@@ -422,5 +422,21 @@
   "regionalMarket.expires": "到期",
   "regionalMarket.market": "市场",
   "regionalMarket.expandGroup": "展开 {{name}}",
-  "regionalMarket.collapseGroup": "折叠 {{name}}"
+  "regionalMarket.collapseGroup": "折叠 {{name}}",
+
+  "hypernet.loadingTypes": "正在加载物品类型...",
+  "hypernet.searchDescription": "搜索物品以计算Hypernet中继费用。",
+  "hypernet.selectItemPrompt": "选择物品计算Hypernet费用",
+  "hypernet.estimatedValue": "估价 {{value}}",
+  "hypernet.greenPrice": "Green Price: {{value}}",
+  "hypernet.totalPrice": "总价",
+  "hypernet.hypernodes": "Hypernode数量",
+  "hypernet.hypercoresRequired": "所需Hypercore",
+  "hypernet.nodesPurchased": "已购节点",
+  "hypernet.duration": "持续时间",
+  "hypernet.threeDays": "3天",
+  "hypernet.hypernodePrice": "Hypernode价格",
+  "hypernet.relayFee": "Hypernet中继费 (5%)",
+  "hypernet.hypercoreCost": "Hypercore成本",
+  "hypernet.payout": "支付金额"
 }

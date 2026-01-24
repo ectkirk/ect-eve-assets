@@ -422,5 +422,21 @@
   "regionalMarket.expires": "Expires",
   "regionalMarket.market": "Market",
   "regionalMarket.expandGroup": "Expand {{name}}",
-  "regionalMarket.collapseGroup": "Collapse {{name}}"
+  "regionalMarket.collapseGroup": "Collapse {{name}}",
+
+  "hypernet.loadingTypes": "Loading types...",
+  "hypernet.searchDescription": "Search for an item to calculate Hypernet Relay costs.",
+  "hypernet.selectItemPrompt": "Select an item to calculate Hypernet costs",
+  "hypernet.estimatedValue": "Est. {{value}}",
+  "hypernet.greenPrice": "Green Price: {{value}}",
+  "hypernet.totalPrice": "Total Price",
+  "hypernet.hypernodes": "Number of Hypernodes",
+  "hypernet.hypercoresRequired": "Hypercores Required",
+  "hypernet.nodesPurchased": "Nodes Purchased",
+  "hypernet.duration": "Duration",
+  "hypernet.threeDays": "3 Days",
+  "hypernet.hypernodePrice": "Hypernode Price",
+  "hypernet.relayFee": "Hypernet Relay Fee (5%)",
+  "hypernet.hypercoreCost": "Hypercore Cost",
+  "hypernet.payout": "Payout"
 }

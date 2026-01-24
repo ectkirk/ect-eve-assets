@@ -81,6 +81,11 @@ const ReferencePanel = lazy(() =>
 const MapPanel = lazy(() =>
   import('@/features/tools/map').then((m) => ({ default: m.MapPanel }))
 )
+const HypernetPanel = lazy(() =>
+  import('@/features/tools/hypernet').then((m) => ({
+    default: m.HypernetPanel,
+  }))
+)
 import { useFreightActionStore } from '@/store/freight-action-store'
 import { useRegionalMarketActionStore } from '@/store/regional-market-action-store'
 import { useContractsSearchActionStore } from '@/store/contracts-search-action-store'
@@ -97,7 +102,13 @@ import { SearchBar } from './SearchBar'
 
 type AppMode = 'assets' | 'character' | 'tools' | 'buyback' | 'freight'
 
-const TOOLS_TAB_IDS = ['contracts', 'market', 'reference', 'map'] as const
+const TOOLS_TAB_IDS = [
+  'contracts',
+  'market',
+  'reference',
+  'map',
+  'hypernet',
+] as const
 const CHARACTER_TAB_IDS = ['clones', 'mail', 'skills'] as const
 
 type ToolsTabId = (typeof TOOLS_TAB_IDS)[number]
@@ -644,6 +655,11 @@ function MainLayoutInner() {
                 initialTypeId={referenceTypeId}
                 onClearInitialTypeId={clearReferenceTypeId}
               />
+            </FeatureErrorBoundary>
+          )}
+          {mode === 'tools' && activeToolsTab === 'hypernet' && (
+            <FeatureErrorBoundary key="hypernet" feature="Hypernet">
+              <HypernetPanel />
             </FeatureErrorBoundary>
           )}
         </Suspense>

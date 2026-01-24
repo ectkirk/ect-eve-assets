@@ -77,6 +77,16 @@ export function formatFullNumber(value: number, decimals: number = 0): string {
   return value.toLocaleString(getLocale(), { maximumFractionDigits: decimals })
 }
 
+export function parseLocalizedNumber(value: string): number {
+  const locale = getLocale()
+  const groupSep = (1000).toLocaleString(locale).charAt(1)
+  const decimalSep = (1.1).toLocaleString(locale).charAt(1)
+  const cleaned = value
+    .replace(new RegExp(`[${groupSep}]`, 'g'), '')
+    .replace(decimalSep, '.')
+  return parseFloat(cleaned)
+}
+
 export function formatDecimal(value: number, decimals: number = 1): string {
   return value.toLocaleString(getLocale(), {
     minimumFractionDigits: decimals,

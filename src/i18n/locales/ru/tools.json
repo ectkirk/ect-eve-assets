@@ -422,5 +422,21 @@
   "regionalMarket.expires": "Истекает",
   "regionalMarket.market": "Рынок",
   "regionalMarket.expandGroup": "Развернуть {{name}}",
-  "regionalMarket.collapseGroup": "Свернуть {{name}}"
+  "regionalMarket.collapseGroup": "Свернуть {{name}}",
+
+  "hypernet.loadingTypes": "Загрузка типов...",
+  "hypernet.searchDescription": "Найдите предмет для расчёта стоимости Hypernet Relay.",
+  "hypernet.selectItemPrompt": "Выберите предмет для расчёта Hypernet",
+  "hypernet.estimatedValue": "Оценка {{value}}",
+  "hypernet.greenPrice": "Green Price: {{value}}",
+  "hypernet.totalPrice": "Общая цена",
+  "hypernet.hypernodes": "Количество Hypernodes",
+  "hypernet.hypercoresRequired": "Требуется Hypercores",
+  "hypernet.nodesPurchased": "Купленные ноды",
+  "hypernet.duration": "Продолжительность",
+  "hypernet.threeDays": "3 дня",
+  "hypernet.hypernodePrice": "Цена Hypernode",
+  "hypernet.relayFee": "Комиссия Hypernet Relay (5%)",
+  "hypernet.hypercoreCost": "Стоимость Hypercore",
+  "hypernet.payout": "Выплата"
 }
