@@ -647,9 +647,7 @@ registerCollector('assets', (ids: ResolutionIds) => {
         ids.locationIds.add(asset.location_id)
       }
 
-      const type = hasType(asset.type_id)
-        ? getTypeFn(asset.type_id)
-        : undefined
+      const type = hasType(asset.type_id) ? getTypeFn(asset.type_id) : undefined
       if (
         type?.categoryId === 65 &&
         asset.location_type === 'solar_system' &&
