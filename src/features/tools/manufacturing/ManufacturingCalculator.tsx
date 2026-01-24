@@ -10,26 +10,16 @@ import {
   formatVolume,
   formatPercent,
 } from '@/lib/utils'
+import {
+  JITA_SYSTEM_ID,
+  CALCULATE_DEBOUNCE_MS,
+  FACILITIES,
+  RIGS,
+} from '../industry-constants'
 import type {
   ManufacturingCostResult,
   ManufacturingMaterial,
 } from '../../../../shared/electron-api-types'
-
-const JITA_SYSTEM_ID = 30000142
-const CALCULATE_DEBOUNCE_MS = 300
-
-const FACILITIES = [
-  { value: 0, label: 'Station' },
-  { value: 1, label: 'Raitaru' },
-  { value: 2, label: 'Azbel' },
-  { value: 3, label: 'Sotiyo' },
-] as const
-
-const RIGS = [
-  { value: 0, label: 'None' },
-  { value: 1, label: 'T1' },
-  { value: 2, label: 'T2' },
-] as const
 
 interface ManufacturingCalculatorProps {
   typeId: number
@@ -74,7 +64,7 @@ export function ManufacturingCalculator({
   const [systemId, setSystemId] = useState(JITA_SYSTEM_ID)
   const [systemSearch, setSystemSearch] = useState('Jita')
   const [facility, setFacility] = useState(0)
-  const [meRig, setMeRig] = useState(0)
+  const [rig, setRig] = useState(0)
   const [facilityTax, setFacilityTax] = useState(0)
 
   const [result, setResult] = useState<ManufacturingCostResult | null>(null)
@@ -84,6 +74,7 @@ export function ManufacturingCalculator({
   const debouncedRuns = useDebouncedValue(runs, CALCULATE_DEBOUNCE_MS)
   const debouncedMe = useDebouncedValue(me, CALCULATE_DEBOUNCE_MS)
   const debouncedTe = useDebouncedValue(te, CALCULATE_DEBOUNCE_MS)
+  const debouncedSystemId = useDebouncedValue(systemId, CALCULATE_DEBOUNCE_MS)
   const debouncedTax = useDebouncedValue(facilityTax, CALCULATE_DEBOUNCE_MS)
 
   const systemMatches = useMemo(() => {
@@ -100,7 +91,7 @@ export function ManufacturingCalculator({
   }, [systems, systemSearch])
 
   const calculate = useCallback(async () => {
-    if (!typeId || !systemId || !window.electronAPI) return
+    if (!typeId || !debouncedSystemId || !window.electronAPI) return
 
     setLoading(true)
     setError(null)
@@ -108,12 +99,12 @@ export function ManufacturingCalculator({
     try {
       const res = await window.electronAPI.refManufacturingCost({
         productId: typeId,
-        systemId,
+        systemId: debouncedSystemId,
         runs: debouncedRuns,
         me: debouncedMe,
         te: debouncedTe,
         facility,
-        meRig,
+        meRig: rig,
         facilityTax: debouncedTax / 100,
       })
 
@@ -131,12 +122,12 @@ export function ManufacturingCalculator({
     }
   }, [
     typeId,
-    systemId,
+    debouncedSystemId,
     debouncedRuns,
     debouncedMe,
     debouncedTe,
     facility,
-    meRig,
+    rig,
     debouncedTax,
   ])
 
@@ -164,7 +155,9 @@ export function ManufacturingCalculator({
             type="number"
             min={1}
             value={runs}
-            onChange={(e) => setRuns(Math.max(1, parseInt(e.target.value) || 1))}
+            onChange={(e) =>
+              setRuns(Math.max(1, parseInt(e.target.value) || 1))
+            }
             className="rounded border border-border bg-surface-tertiary px-2 py-1 text-sm"
           />
         </label>
@@ -260,7 +253,11 @@ export function ManufacturingCalculator({
           </span>
           <select
             value={facility}
-            onChange={(e) => setFacility(parseInt(e.target.value))}
+            onChange={(e) => {
+              const newFacility = parseInt(e.target.value)
+              setFacility(newFacility)
+              if (newFacility === 0) setRig(0)
+            }}
             className="rounded border border-border bg-surface-tertiary px-2 py-1 text-sm"
           >
             {FACILITIES.map((f) => (
@@ -276,9 +273,10 @@ export function ManufacturingCalculator({
             {t('manufacturing.rig')}
           </span>
           <select
-            value={meRig}
-            onChange={(e) => setMeRig(parseInt(e.target.value))}
-            className="rounded border border-border bg-surface-tertiary px-2 py-1 text-sm"
+            value={rig}
+            onChange={(e) => setRig(parseInt(e.target.value))}
+            disabled={facility === 0}
+            className="rounded border border-border bg-surface-tertiary px-2 py-1 text-sm disabled:opacity-50"
           >
             {RIGS.map((r) => (
               <option key={r.value} value={r.value}>
@@ -413,7 +411,9 @@ export function ManufacturingCalculator({
                 <div className="text-content-secondary">
                   {t('manufacturing.buildTime')}
                 </div>
-                <div className="font-medium">{formatBuildTime(result.time)}</div>
+                <div className="font-medium">
+                  {formatBuildTime(result.time)}
+                </div>
               </div>
               <div>
                 <div className="text-content-secondary">

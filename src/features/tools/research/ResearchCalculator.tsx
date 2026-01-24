@@ -5,28 +5,19 @@ import { TypeIcon } from '@/components/ui/type-icon'
 import { useReferenceCacheStore } from '@/store/reference-cache'
 import { useDebouncedValue } from '@/hooks'
 import { formatNumber, formatFullNumber } from '@/lib/utils'
+import {
+  JITA_SYSTEM_ID,
+  CALCULATE_DEBOUNCE_MS,
+  FACILITIES,
+  RIGS,
+} from '../industry-constants'
 import type {
   BlueprintResearchResult,
   BlueprintResearchLevel,
   BlueprintCopyMaterial,
 } from '../../../../shared/electron-api-types'
 
-const JITA_SYSTEM_ID = 30000142
-const CALCULATE_DEBOUNCE_MS = 300
 const BLUEPRINT_CATEGORY_ID = 9
-
-const FACILITIES = [
-  { value: 0, label: 'Station' },
-  { value: 1, label: 'Raitaru' },
-  { value: 2, label: 'Azbel' },
-  { value: 3, label: 'Sotiyo' },
-] as const
-
-const RIGS = [
-  { value: 0, label: 'None' },
-  { value: 1, label: 'T1' },
-  { value: 2, label: 'T2' },
-] as const
 
 interface ResearchCalculatorProps {
   typeId: number
