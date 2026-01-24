@@ -5,6 +5,14 @@ import { esi } from '@/api/esi'
 import { ESIIndustryJobSchema } from '@/api/schemas'
 import { logger } from '@/lib/logger'
 import { ownerEndpoint } from '@/lib/owner-utils'
+import {
+  registerCollector,
+  needsTypeResolution,
+  hasLocation,
+  hasStructure,
+  PLAYER_STRUCTURE_ID_THRESHOLD,
+  type ResolutionIds,
+} from '@/lib/data-resolver'
 import { isIndustryJobBpcProduct } from '@/lib/eve-constants'
 import {
   createVisibilityStore,
@@ -181,3 +189,27 @@ export const useIndustryJobsStore: IndustryJobsStore = Object.assign(
     },
   }
 )
+
+registerCollector('industry-jobs', (ids: ResolutionIds) => {
+  const jobsByOwner = useIndustryJobsStore.getJobsByOwner()
+
+  for (const { owner, jobs } of jobsByOwner) {
+    for (const job of jobs) {
+      if (needsTypeResolution(job.blueprint_type_id)) {
+        ids.typeIds.add(job.blueprint_type_id)
+      }
+      if (job.product_type_id && needsTypeResolution(job.product_type_id)) {
+        ids.typeIds.add(job.product_type_id)
+      }
+
+      const locationId = job.location_id ?? job.facility_id
+      if (locationId >= PLAYER_STRUCTURE_ID_THRESHOLD) {
+        if (!hasStructure(locationId)) {
+          ids.structureToCharacter.set(locationId, owner.characterId)
+        }
+      } else if (!hasLocation(locationId)) {
+        ids.locationIds.add(locationId)
+      }
+    }
+  }
+})

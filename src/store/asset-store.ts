@@ -25,7 +25,17 @@ import { createOwnerDB } from '@/lib/owner-indexed-db'
 import { logger } from '@/lib/logger'
 import { getErrorForLog, getUserFriendlyMessage } from '@/lib/errors'
 import { ownerEndpoint } from '@/lib/owner-utils'
-import { triggerResolution } from '@/lib/data-resolver'
+import {
+  triggerResolution,
+  registerCollector,
+  needsTypeResolution,
+  hasType,
+  getType as getTypeFn,
+  hasLocation,
+  hasStructure,
+  PLAYER_STRUCTURE_ID_THRESHOLD,
+  type ResolutionIds,
+} from '@/lib/data-resolver'
 import { useStoreRegistry } from './store-registry'
 import { useContractsStore } from './contracts-store'
 import { useMarketOrdersStore } from './market-orders-store'
@@ -592,4 +602,66 @@ useStoreRegistry.getState().register({
   getIsUpdating: () => useAssetStore.getState().isUpdating,
   init: useAssetStore.getState().init,
   update: useAssetStore.getState().update,
+})
+
+registerCollector('assets', (ids: ResolutionIds) => {
+  const { assetsByOwner } = useAssetStore.getState()
+  const itemIdToAsset = new Map<number, ESIAsset>()
+  const itemIdToOwner = new Map<number, Owner>()
+
+  for (const { owner, assets } of assetsByOwner) {
+    for (const asset of assets) {
+      itemIdToAsset.set(asset.item_id, asset)
+      itemIdToOwner.set(asset.item_id, owner)
+    }
+  }
+
+  const getRootInfo = (
+    asset: ESIAsset
+  ): { structureId: number | null; owner: Owner | undefined } => {
+    let current = asset
+    let owner = itemIdToOwner.get(asset.item_id)
+    while (current.location_type === 'item') {
+      const parent = itemIdToAsset.get(current.location_id)
+      if (!parent) break
+      current = parent
+      owner = itemIdToOwner.get(current.item_id)
+    }
+    if (current.location_id >= PLAYER_STRUCTURE_ID_THRESHOLD) {
+      return { structureId: current.location_id, owner }
+    }
+    return { structureId: null, owner }
+  }
+
+  for (const { owner, assets } of assetsByOwner) {
+    for (const asset of assets) {
+      if (needsTypeResolution(asset.type_id)) {
+        ids.typeIds.add(asset.type_id)
+      }
+
+      if (
+        asset.location_type !== 'item' &&
+        asset.location_id < PLAYER_STRUCTURE_ID_THRESHOLD &&
+        !hasLocation(asset.location_id)
+      ) {
+        ids.locationIds.add(asset.location_id)
+      }
+
+      const type = hasType(asset.type_id)
+        ? getTypeFn(asset.type_id)
+        : undefined
+      if (
+        type?.categoryId === 65 &&
+        asset.location_type === 'solar_system' &&
+        !hasStructure(asset.item_id)
+      ) {
+        ids.structureToCharacter.set(asset.item_id, owner.characterId)
+      }
+
+      const { structureId, owner: rootOwner } = getRootInfo(asset)
+      if (structureId && !hasStructure(structureId) && rootOwner) {
+        ids.structureToCharacter.set(structureId, rootOwner.characterId)
+      }
+    }
+  }
 })

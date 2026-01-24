@@ -15,7 +15,16 @@ import { esi } from '@/api/esi'
 import { ESIContractSchema } from '@/api/schemas'
 import { logger } from '@/lib/logger'
 import { ownerEndpoint } from '@/lib/owner-utils'
-import { triggerResolution } from '@/lib/data-resolver'
+import {
+  triggerResolution,
+  registerCollector,
+  needsTypeResolution,
+  hasLocation,
+  hasStructure,
+  hasName,
+  PLAYER_STRUCTURE_ID_THRESHOLD,
+  type ResolutionIds,
+} from '@/lib/data-resolver'
 import {
   createVisibilityStore,
   type StoredItem,
@@ -563,4 +572,47 @@ export const useContractsStore: ContractsStore = Object.assign(baseStore, {
       state.bidsByContractId
     )
   },
+})
+
+registerCollector('contracts', (ids: ResolutionIds) => {
+  const contractsByOwner = useContractsStore.getContractsByOwner()
+
+  const checkLocation = (
+    locationId: number | undefined,
+    characterId: number
+  ) => {
+    if (!locationId) return
+    if (locationId >= PLAYER_STRUCTURE_ID_THRESHOLD) {
+      if (!hasStructure(locationId)) {
+        ids.structureToCharacter.set(locationId, characterId)
+      }
+    } else if (!hasLocation(locationId)) {
+      ids.locationIds.add(locationId)
+    }
+  }
+
+  for (const { owner, contracts } of contractsByOwner) {
+    for (const { contract, items } of contracts) {
+      checkLocation(contract.start_location_id, owner.characterId)
+      checkLocation(contract.end_location_id, owner.characterId)
+
+      if (!hasName(contract.issuer_id)) {
+        ids.entityIds.add(contract.issuer_id)
+      }
+      if (contract.assignee_id && !hasName(contract.assignee_id)) {
+        ids.entityIds.add(contract.assignee_id)
+      }
+      if (contract.acceptor_id && !hasName(contract.acceptor_id)) {
+        ids.entityIds.add(contract.acceptor_id)
+      }
+
+      if (items) {
+        for (const item of items) {
+          if (needsTypeResolution(item.type_id)) {
+            ids.typeIds.add(item.type_id)
+          }
+        }
+      }
+    }
+  }
 })

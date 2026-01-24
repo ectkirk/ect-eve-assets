@@ -2,6 +2,13 @@ import { type Owner } from './auth-store'
 import { createOwnerStore } from './create-owner-store'
 import { esi } from '@/api/esi'
 import { ESICloneSchema } from '@/api/schemas'
+import {
+  registerCollector,
+  needsTypeResolution,
+  hasLocation,
+  hasStructure,
+  type ResolutionIds,
+} from '@/lib/data-resolver'
 import { z } from 'zod'
 
 export type ESIClone = z.infer<typeof ESICloneSchema>
@@ -59,4 +66,44 @@ export const useClonesStore = createOwnerStore<CloneData, CharacterCloneData>({
     clones: data.clones,
     activeImplants: data.activeImplants,
   }),
+})
+
+registerCollector('clones', (ids: ResolutionIds) => {
+  const { dataByOwner } = useClonesStore.getState()
+
+  for (const { owner, clones, activeImplants } of dataByOwner) {
+    for (const implantId of activeImplants) {
+      if (needsTypeResolution(implantId)) {
+        ids.typeIds.add(implantId)
+      }
+    }
+
+    if (clones.home_location) {
+      const { location_id, location_type } = clones.home_location
+      if (location_type === 'structure') {
+        if (!hasStructure(location_id)) {
+          ids.structureToCharacter.set(location_id, owner.characterId)
+        }
+      } else if (!hasLocation(location_id)) {
+        ids.locationIds.add(location_id)
+      }
+    }
+
+    for (const jumpClone of clones.jump_clones) {
+      const { location_id, location_type } = jumpClone
+      if (location_type === 'structure') {
+        if (!hasStructure(location_id)) {
+          ids.structureToCharacter.set(location_id, owner.characterId)
+        }
+      } else if (!hasLocation(location_id)) {
+        ids.locationIds.add(location_id)
+      }
+
+      for (const implantId of jumpClone.implants) {
+        if (needsTypeResolution(implantId)) {
+          ids.typeIds.add(implantId)
+        }
+      }
+    }
+  }
 })

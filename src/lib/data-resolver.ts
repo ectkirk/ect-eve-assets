@@ -1,12 +1,3 @@
-import { type OwnerAssets } from '@/store/asset-store'
-import { type OwnerContracts } from '@/store/contracts-store'
-import { type OwnerOrders } from '@/store/market-orders-store'
-import { type OwnerJobs } from '@/store/industry-jobs-store'
-import { type OwnerStructures } from '@/store/structures-store'
-import { type OwnerStarbases } from '@/store/starbases-store'
-import { type CharacterCloneData } from '@/store/clones-store'
-import { type ESIAsset } from '@/api/endpoints/assets'
-import { type Owner } from '@/store/auth-store'
 import {
   hasType,
   getType,
@@ -34,243 +25,29 @@ export interface ResolutionIds {
   entityIds: Set<number>
 }
 
-function needsTypeResolution(typeId: number): boolean {
+export type CollectorFn = (ids: ResolutionIds) => void
+
+const collectors = new Map<string, CollectorFn>()
+
+export function registerCollector(name: string, collector: CollectorFn): void {
+  collectors.set(name, collector)
+}
+
+export function needsTypeResolution(typeId: number): boolean {
   return !hasType(typeId)
 }
 
-function collectFromAssets(
-  assetsByOwner: OwnerAssets[],
-  ids: ResolutionIds
-): void {
-  const itemIdToAsset = new Map<number, ESIAsset>()
-  const itemIdToOwner = new Map<number, Owner>()
-
-  for (const { owner, assets } of assetsByOwner) {
-    for (const asset of assets) {
-      itemIdToAsset.set(asset.item_id, asset)
-      itemIdToOwner.set(asset.item_id, owner)
-    }
-  }
-
-  const getRootInfo = (
-    asset: ESIAsset
-  ): { structureId: number | null; owner: Owner | undefined } => {
-    let current = asset
-    let owner = itemIdToOwner.get(asset.item_id)
-    while (current.location_type === 'item') {
-      const parent = itemIdToAsset.get(current.location_id)
-      if (!parent) break
-      current = parent
-      owner = itemIdToOwner.get(current.item_id)
-    }
-    if (current.location_id >= PLAYER_STRUCTURE_ID_THRESHOLD) {
-      return { structureId: current.location_id, owner }
-    }
-    return { structureId: null, owner }
-  }
-
-  for (const { owner, assets } of assetsByOwner) {
-    for (const asset of assets) {
-      if (needsTypeResolution(asset.type_id)) {
-        ids.typeIds.add(asset.type_id)
-      }
-
-      if (
-        asset.location_type !== 'item' &&
-        asset.location_id < PLAYER_STRUCTURE_ID_THRESHOLD &&
-        !hasLocation(asset.location_id)
-      ) {
-        ids.locationIds.add(asset.location_id)
-      }
-
-      const type = hasType(asset.type_id) ? getType(asset.type_id) : undefined
-      if (
-        type?.categoryId === 65 &&
-        asset.location_type === 'solar_system' &&
-        !hasStructure(asset.item_id)
-      ) {
-        ids.structureToCharacter.set(asset.item_id, owner.characterId)
-      }
-
-      const { structureId, owner: rootOwner } = getRootInfo(asset)
-      if (structureId && !hasStructure(structureId) && rootOwner) {
-        ids.structureToCharacter.set(structureId, rootOwner.characterId)
-      }
-    }
-  }
+export {
+  hasType,
+  getType,
+  hasLocation,
+  hasStructure,
+  getStructure,
+  hasName,
+  PLAYER_STRUCTURE_ID_THRESHOLD,
 }
 
-function collectFromContracts(
-  contractsByOwner: OwnerContracts[],
-  ids: ResolutionIds
-): void {
-  const checkLocation = (
-    locationId: number | undefined,
-    characterId: number
-  ) => {
-    if (!locationId) return
-    if (locationId >= PLAYER_STRUCTURE_ID_THRESHOLD) {
-      if (!hasStructure(locationId)) {
-        ids.structureToCharacter.set(locationId, characterId)
-      }
-    } else if (!hasLocation(locationId)) {
-      ids.locationIds.add(locationId)
-    }
-  }
-
-  for (const { owner, contracts } of contractsByOwner) {
-    for (const { contract, items } of contracts) {
-      checkLocation(contract.start_location_id, owner.characterId)
-      checkLocation(contract.end_location_id, owner.characterId)
-
-      if (!hasName(contract.issuer_id)) {
-        ids.entityIds.add(contract.issuer_id)
-      }
-      if (contract.assignee_id && !hasName(contract.assignee_id)) {
-        ids.entityIds.add(contract.assignee_id)
-      }
-      if (contract.acceptor_id && !hasName(contract.acceptor_id)) {
-        ids.entityIds.add(contract.acceptor_id)
-      }
-
-      if (items) {
-        for (const item of items) {
-          if (needsTypeResolution(item.type_id)) {
-            ids.typeIds.add(item.type_id)
-          }
-        }
-      }
-    }
-  }
-}
-
-function collectFromOrders(
-  ordersByOwner: OwnerOrders[],
-  ids: ResolutionIds
-): void {
-  for (const { owner, orders } of ordersByOwner) {
-    for (const order of orders) {
-      if (needsTypeResolution(order.type_id)) {
-        ids.typeIds.add(order.type_id)
-      }
-      if (order.location_id >= PLAYER_STRUCTURE_ID_THRESHOLD) {
-        if (!hasStructure(order.location_id)) {
-          ids.structureToCharacter.set(order.location_id, owner.characterId)
-        }
-      } else if (!hasLocation(order.location_id)) {
-        ids.locationIds.add(order.location_id)
-      }
-    }
-  }
-}
-
-function collectFromJobs(jobsByOwner: OwnerJobs[], ids: ResolutionIds): void {
-  for (const { owner, jobs } of jobsByOwner) {
-    for (const job of jobs) {
-      if (needsTypeResolution(job.blueprint_type_id)) {
-        ids.typeIds.add(job.blueprint_type_id)
-      }
-      if (job.product_type_id && needsTypeResolution(job.product_type_id)) {
-        ids.typeIds.add(job.product_type_id)
-      }
-
-      const locationId = job.location_id ?? job.facility_id
-      if (locationId >= PLAYER_STRUCTURE_ID_THRESHOLD) {
-        if (!hasStructure(locationId)) {
-          ids.structureToCharacter.set(locationId, owner.characterId)
-        }
-      } else if (!hasLocation(locationId)) {
-        ids.locationIds.add(locationId)
-      }
-    }
-  }
-}
-
-function collectFromStructures(
-  structuresByOwner: OwnerStructures[],
-  ids: ResolutionIds
-): void {
-  for (const { structures } of structuresByOwner) {
-    for (const structure of structures) {
-      if (needsTypeResolution(structure.type_id)) {
-        ids.typeIds.add(structure.type_id)
-      }
-      if (!hasLocation(structure.system_id)) {
-        ids.locationIds.add(structure.system_id)
-      }
-    }
-  }
-}
-
-function collectFromStarbases(
-  starbasesByOwner: OwnerStarbases[],
-  ids: ResolutionIds
-): void {
-  for (const { starbases } of starbasesByOwner) {
-    for (const starbase of starbases) {
-      if (needsTypeResolution(starbase.type_id)) {
-        ids.typeIds.add(starbase.type_id)
-      }
-      if (!hasLocation(starbase.system_id)) {
-        ids.locationIds.add(starbase.system_id)
-      }
-      if (starbase.moon_id && !hasLocation(starbase.moon_id)) {
-        ids.locationIds.add(starbase.moon_id)
-      }
-    }
-  }
-}
-
-function collectFromClones(
-  clonesByOwner: CharacterCloneData[],
-  ids: ResolutionIds
-): void {
-  for (const { owner, clones, activeImplants } of clonesByOwner) {
-    for (const implantId of activeImplants) {
-      if (needsTypeResolution(implantId)) {
-        ids.typeIds.add(implantId)
-      }
-    }
-
-    if (clones.home_location) {
-      const { location_id, location_type } = clones.home_location
-      if (location_type === 'structure') {
-        if (!hasStructure(location_id)) {
-          ids.structureToCharacter.set(location_id, owner.characterId)
-        }
-      } else if (!hasLocation(location_id)) {
-        ids.locationIds.add(location_id)
-      }
-    }
-
-    for (const jumpClone of clones.jump_clones) {
-      const { location_id, location_type } = jumpClone
-      if (location_type === 'structure') {
-        if (!hasStructure(location_id)) {
-          ids.structureToCharacter.set(location_id, owner.characterId)
-        }
-      } else if (!hasLocation(location_id)) {
-        ids.locationIds.add(location_id)
-      }
-
-      for (const implantId of jumpClone.implants) {
-        if (needsTypeResolution(implantId)) {
-          ids.typeIds.add(implantId)
-        }
-      }
-    }
-  }
-}
-
-export function collectResolutionIds(
-  assetsByOwner: OwnerAssets[],
-  contractsByOwner: OwnerContracts[],
-  ordersByOwner: OwnerOrders[],
-  jobsByOwner: OwnerJobs[],
-  structuresByOwner: OwnerStructures[],
-  starbasesByOwner: OwnerStarbases[],
-  clonesByOwner: CharacterCloneData[]
-): ResolutionIds {
+export function collectResolutionIds(): ResolutionIds {
   const ids: ResolutionIds = {
     typeIds: new Set(),
     locationIds: new Set(),
@@ -278,13 +55,9 @@ export function collectResolutionIds(
     entityIds: new Set(),
   }
 
-  collectFromAssets(assetsByOwner, ids)
-  collectFromContracts(contractsByOwner, ids)
-  collectFromOrders(ordersByOwner, ids)
-  collectFromJobs(jobsByOwner, ids)
-  collectFromStructures(structuresByOwner, ids)
-  collectFromStarbases(starbasesByOwner, ids)
-  collectFromClones(clonesByOwner, ids)
+  for (const collector of collectors.values()) {
+    collector(ids)
+  }
 
   return ids
 }
@@ -439,24 +212,7 @@ let resolutionQueued = false
 let resolutionTimeout: ReturnType<typeof setTimeout> | null = null
 
 async function runResolution(): Promise<void> {
-  const { useAssetStore } = await import('@/store/asset-store')
-  const { useContractsStore } = await import('@/store/contracts-store')
-  const { useMarketOrdersStore } = await import('@/store/market-orders-store')
-  const { useIndustryJobsStore } = await import('@/store/industry-jobs-store')
-  const { useStructuresStore } = await import('@/store/structures-store')
-  const { useStarbasesStore } = await import('@/store/starbases-store')
-  const { useClonesStore } = await import('@/store/clones-store')
-
-  const ids = collectResolutionIds(
-    useAssetStore.getState().assetsByOwner,
-    useContractsStore.getContractsByOwner(),
-    useMarketOrdersStore.getOrdersByOwner(),
-    useIndustryJobsStore.getJobsByOwner(),
-    useStructuresStore.getState().dataByOwner,
-    useStarbasesStore.getState().dataByOwner,
-    useClonesStore.getState().dataByOwner
-  )
-
+  const ids = collectResolutionIds()
   await resolveAllReferenceData(ids)
 }
 
