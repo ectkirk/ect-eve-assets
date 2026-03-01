@@ -48,12 +48,23 @@ export async function loadUniverseData(
 
     try {
       onProgress?.(i18n.t('status.loadingUniverse'))
-      await Promise.all([
+      const results = await Promise.all([
         loadAllRegions(),
         loadAllSystems(),
         loadAllStations(),
         loadAllStargates(),
       ])
+
+      const allSucceeded = results.every(Boolean)
+      if (!allSucceeded) {
+        logger.warn('Universe data loaded with partial failures', {
+          module: 'RefAPI',
+          regions: results[0],
+          systems: results[1],
+          stations: results[2],
+          stargates: results[3],
+        })
+      }
 
       useReferenceCacheStore.getState().setUniverseDataLoaded(true)
 
@@ -69,7 +80,7 @@ export async function loadUniverseData(
   return universeDataPromise
 }
 
-async function loadAllRegions(): Promise<void> {
+async function loadAllRegions(): Promise<boolean> {
   const language = getLanguage()
   const result = await window.electronAPI!.refUniverseRegions({ language })
 
@@ -78,12 +89,12 @@ async function loadAllRegions(): Promise<void> {
       module: 'RefAPI',
       error: result.error,
     })
-    return
+    return false
   }
 
   if (!result.items) {
     logger.warn('No regions returned', { module: 'RefAPI' })
-    return
+    return false
   }
 
   const parseResult = RefRegionsResponseSchema.safeParse(result)
@@ -92,7 +103,7 @@ async function loadAllRegions(): Promise<void> {
       module: 'RefAPI',
       errors: parseResult.error.issues.slice(0, 3),
     })
-    return
+    return false
   }
 
   const regions: CachedRegion[] = Object.values(parseResult.data.items).map(
@@ -103,9 +114,10 @@ async function loadAllRegions(): Promise<void> {
   )
 
   await useReferenceCacheStore.getState().setRegions(regions)
+  return true
 }
 
-async function loadAllSystems(): Promise<void> {
+async function loadAllSystems(): Promise<boolean> {
   const start = performance.now()
   const language = getLanguage()
   const result = await window.electronAPI!.refUniverseSystems({ language })
@@ -115,12 +127,12 @@ async function loadAllSystems(): Promise<void> {
       module: 'RefAPI',
       error: result.error,
     })
-    return
+    return false
   }
 
   if (!result.items) {
     logger.warn('No systems returned', { module: 'RefAPI' })
-    return
+    return false
   }
 
   const parseResult = RefSystemsResponseSchema.safeParse(result)
@@ -129,7 +141,7 @@ async function loadAllSystems(): Promise<void> {
       module: 'RefAPI',
       errors: parseResult.error.issues.slice(0, 3),
     })
-    return
+    return false
   }
 
   const systems: CachedSystem[] = Object.values(parseResult.data.items).map(
@@ -150,9 +162,10 @@ async function loadAllSystems(): Promise<void> {
     count: systems.length,
     duration,
   })
+  return true
 }
 
-async function loadAllStations(): Promise<void> {
+async function loadAllStations(): Promise<boolean> {
   const start = performance.now()
   const language = getLanguage()
   const result = await window.electronAPI!.refUniverseStations({ language })
@@ -162,12 +175,12 @@ async function loadAllStations(): Promise<void> {
       module: 'RefAPI',
       error: result.error,
     })
-    return
+    return false
   }
 
   if (!result.items) {
     logger.warn('No stations returned', { module: 'RefAPI' })
-    return
+    return false
   }
 
   const parseResult = RefStationsResponseSchema.safeParse(result)
@@ -176,7 +189,7 @@ async function loadAllStations(): Promise<void> {
       module: 'RefAPI',
       errors: parseResult.error.issues.slice(0, 3),
     })
-    return
+    return false
   }
 
   const stations: CachedStation[] = Object.values(parseResult.data.items).map(
@@ -195,9 +208,10 @@ async function loadAllStations(): Promise<void> {
     count: stations.length,
     duration,
   })
+  return true
 }
 
-async function loadAllStargates(): Promise<void> {
+async function loadAllStargates(): Promise<boolean> {
   const start = performance.now()
   const result = await window.electronAPI!.refUniverseStargates()
 
@@ -206,12 +220,12 @@ async function loadAllStargates(): Promise<void> {
       module: 'RefAPI',
       error: result.error,
     })
-    return
+    return false
   }
 
   if (!result.items) {
     logger.warn('No stargates returned', { module: 'RefAPI' })
-    return
+    return false
   }
 
   const parseResult = RefStargatesResponseSchema.safeParse(result)
@@ -220,7 +234,7 @@ async function loadAllStargates(): Promise<void> {
       module: 'RefAPI',
       errors: parseResult.error.issues.slice(0, 3),
     })
-    return
+    return false
   }
 
   const stargates: CachedStargate[] = Object.values(parseResult.data.items).map(
@@ -239,6 +253,7 @@ async function loadAllStargates(): Promise<void> {
     count: stargates.length,
     duration,
   })
+  return true
 }
 
 let refStructuresPromise: Promise<void> | null = null

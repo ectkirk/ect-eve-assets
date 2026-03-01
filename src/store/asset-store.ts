@@ -417,7 +417,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         etag,
       } = await fetchOwnerAssetsWithMeta(owner)
 
-      const newNames = new Map(state.assetNames)
+      const newNames = new Map(get().assetNames)
 
       const activeShipResult = await detectAndInjectActiveShip(
         owner,

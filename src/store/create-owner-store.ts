@@ -359,11 +359,12 @@ export function createOwnerStore<
           const { data, expiresAt, etag } = await fetchData(owner)
 
           if (onAfterOwnerUpdate) {
+            const currentState = get()
             onAfterOwnerUpdate({
               owner,
               newData: data,
               previousData: preHookResult.previousData,
-              state: state as BaseState<TOwnerData> & TExtraState,
+              state: currentState as BaseState<TOwnerData> & TExtraState,
             })
           }
 

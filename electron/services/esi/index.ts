@@ -270,6 +270,34 @@ export class MainESIService {
       if (inflight) {
         return inflight
       }
+
+      // Store the promise synchronously before any awaits to prevent
+      // concurrent calls from bypassing the deduplication check
+      const requestPromise = (async () => {
+        if (isContractItemsEndpoint(endpoint)) {
+          const contractDelay =
+            this.rateLimiter.getContractItemsDelay(characterId)
+          if (contractDelay > 0) {
+            await this.delay(contractDelay)
+          }
+          this.rateLimiter.recordContractItemsRequest(characterId)
+        }
+
+        const group = guessRateLimitGroup(endpoint)
+        const delay = this.rateLimiter.getDelayMs(characterId, group)
+        if (delay > 0) {
+          await this.delay(delay)
+        }
+
+        return this.executeRequest(endpoint, options)
+      })()
+
+      this.inflightRequests.set(cacheKey, requestPromise)
+      requestPromise.finally(() => {
+        this.inflightRequests.delete(cacheKey)
+      })
+
+      return requestPromise
     }
 
     if (isContractItemsEndpoint(endpoint)) {
@@ -286,16 +314,7 @@ export class MainESIService {
       await this.delay(delay)
     }
 
-    const requestPromise = this.executeRequest(endpoint, options)
-
-    if (options.method !== 'POST') {
-      this.inflightRequests.set(cacheKey, requestPromise)
-      requestPromise.finally(() => {
-        this.inflightRequests.delete(cacheKey)
-      })
-    }
-
-    return requestPromise
+    return this.executeRequest(endpoint, options)
   }
 
   private async executeRequest(

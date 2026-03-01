@@ -73,6 +73,7 @@ export const useAnsiblexStore = create<AnsiblexState>()((set, get) => ({
   initialized: false,
 
   init: async () => {
+    if (get().initialized) return
     if (initPromise) return initPromise
 
     initPromise = (async () => {

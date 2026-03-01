@@ -1,16 +1,22 @@
+import { z } from 'zod'
 import { esi } from '../esi'
 
-export interface ESIIncursion {
-  constellation_id: number
-  faction_id: number
-  has_boss: boolean
-  infested_solar_systems: number[]
-  influence: number
-  staging_solar_system_id: number
-  state: 'withdrawing' | 'mobilizing' | 'established'
-  type: string
-}
+export const ESIIncursionSchema = z.object({
+  constellation_id: z.number(),
+  faction_id: z.number(),
+  has_boss: z.boolean(),
+  infested_solar_systems: z.array(z.number()),
+  influence: z.number(),
+  staging_solar_system_id: z.number(),
+  state: z.enum(['withdrawing', 'mobilizing', 'established']),
+  type: z.string(),
+})
+
+export type ESIIncursion = z.infer<typeof ESIIncursionSchema>
 
 export async function getIncursions(): Promise<ESIIncursion[]> {
-  return esi.fetch<ESIIncursion[]>('/incursions')
+  return esi.fetch<ESIIncursion[]>('/incursions', {
+    requiresAuth: false,
+    schema: z.array(ESIIncursionSchema),
+  })
 }

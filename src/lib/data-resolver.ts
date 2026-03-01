@@ -216,6 +216,14 @@ async function runResolution(): Promise<void> {
   await resolveAllReferenceData(ids)
 }
 
+export function cleanupResolutionTimer(): void {
+  if (resolutionTimeout) {
+    clearTimeout(resolutionTimeout)
+    resolutionTimeout = null
+  }
+  resolutionQueued = false
+}
+
 export function triggerResolution(): void {
   if (resolutionPending || resolutionTimeout) {
     resolutionQueued = true

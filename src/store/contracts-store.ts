@@ -274,11 +274,12 @@ async function fetchItemsForContracts(
   contractsById: Map<number, StoredContract>
 ): Promise<void> {
   const itemsState = baseStore.getState().itemsByContractId
-  const toFetch = collectContractsToFetch(contractsById, itemsState)
-
-  if (toFetch.size === 0) return
-
+  let toFetch: Map<number, ContractFetchInfo> | undefined
   try {
+    toFetch = collectContractsToFetch(contractsById, itemsState)
+
+    if (toFetch.size === 0) return
+
     const fetched = await fetchAndSaveItems(toFetch)
 
     if (fetched.length > 0) {
@@ -306,7 +307,9 @@ async function fetchItemsForContracts(
       triggerResolution()
     }
   } finally {
-    clearPendingFetches(toFetch)
+    if (toFetch) {
+      clearPendingFetches(toFetch)
+    }
   }
 }
 
@@ -331,11 +334,12 @@ function collectAuctionsToFetchBids(
 async function fetchBidsForAuctions(
   contractsById: Map<number, StoredContract>
 ): Promise<void> {
-  const toFetch = collectAuctionsToFetchBids(contractsById)
-
-  if (toFetch.size === 0) return
-
+  let toFetch: Map<number, ContractFetchInfo> | undefined
   try {
+    toFetch = collectAuctionsToFetchBids(contractsById)
+
+    if (toFetch.size === 0) return
+
     const results = await Promise.allSettled(
       Array.from(toFetch.entries()).map(async ([contractId, info]) => {
         const bids = await fetchBidsFromAPI(
@@ -375,8 +379,10 @@ async function fetchBidsForAuctions(
       baseStore.setState({ bidsByContractId: currentBids })
     }
   } finally {
-    for (const contractId of toFetch.keys()) {
-      pendingBidFetches.delete(contractId)
+    if (toFetch) {
+      for (const contractId of toFetch.keys()) {
+        pendingBidFetches.delete(contractId)
+      }
     }
   }
 }
@@ -439,18 +445,19 @@ const baseStore = createVisibilityStore<
 
   onAfterBatchUpdate: async (updatedItemsById) => {
     const itemsState = baseStore.getState().itemsByContractId
-    const toFetch = collectContractsToFetch(updatedItemsById, itemsState)
-
-    const toDelete: number[] = []
-    for (const contractId of itemsState.keys()) {
-      if (!updatedItemsById.has(contractId)) {
-        toDelete.push(contractId)
-      }
-    }
-
-    if (toFetch.size === 0 && toDelete.length === 0) return
-
+    let toFetch: Map<number, ContractFetchInfo> | undefined
     try {
+      toFetch = collectContractsToFetch(updatedItemsById, itemsState)
+
+      const toDelete: number[] = []
+      for (const contractId of itemsState.keys()) {
+        if (!updatedItemsById.has(contractId)) {
+          toDelete.push(contractId)
+        }
+      }
+
+      if (toFetch.size === 0 && toDelete.length === 0) return
+
       const currentItems = new Map(baseStore.getState().itemsByContractId)
       let hasChanges = false
       const typeIds = new Set<number>()
@@ -489,7 +496,9 @@ const baseStore = createVisibilityStore<
         triggerResolution()
       }
     } finally {
-      clearPendingFetches(toFetch)
+      if (toFetch) {
+        clearPendingFetches(toFetch)
+      }
     }
   },
 })

@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, powerMonitor } from 'electron'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -126,6 +126,30 @@ if (!gotTheLock) {
     if (app.isPackaged && windowManager.mainWindow) {
       initUpdater(windowManager.mainWindow)
     }
+
+    // Clear stored tokens on system suspend/lock for security hardening
+    const clearTokens = () => {
+      if (characterTokens.size > 0) {
+        characterTokens.clear()
+        logger.info('Cleared character tokens (system event)', {
+          module: 'Main',
+        })
+      }
+    }
+    powerMonitor.on('suspend', clearTokens)
+    powerMonitor.on('lock-screen', clearTokens)
+
+    // Clear tokens after 30 minutes of idle
+    const IDLE_TIMEOUT_SEC = 30 * 60
+    const idleCheckInterval = setInterval(() => {
+      if (powerMonitor.getSystemIdleTime() >= IDLE_TIMEOUT_SEC) {
+        clearTokens()
+      }
+    }, 60_000)
+
+    app.on('before-quit', () => {
+      clearInterval(idleCheckInterval)
+    })
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) {

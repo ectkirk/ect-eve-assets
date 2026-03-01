@@ -70,6 +70,7 @@ function MenuItem({
   if (href) {
     return (
       <a
+        role="menuitem"
         href={href}
         target="_blank"
         rel="noopener noreferrer"
@@ -82,11 +83,58 @@ function MenuItem({
   }
 
   return (
-    <button onClick={onClick} className={className}>
+    <button role="menuitem" onClick={onClick} className={className}>
       <Icon className="h-4 w-4" />
       {children}
     </button>
   )
+}
+
+function useFocusTrap(
+  ref: React.RefObject<HTMLElement | null>,
+  isActive: boolean,
+  onEscape: () => void
+) {
+  useEffect(() => {
+    if (!isActive || !ref.current) return
+
+    const container = ref.current
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        onEscape()
+        return
+      }
+
+      if (e.key !== 'Tab') return
+
+      const focusable = container.querySelectorAll<HTMLElement>(
+        'a[href], button, select, input, textarea, [tabindex]:not([tabindex="-1"])'
+      )
+      if (focusable.length === 0) return
+
+      const first = focusable[0]!
+      const last = focusable[focusable.length - 1]!
+
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+
+    container.addEventListener('keydown', handleKeyDown)
+
+    const firstFocusable = container.querySelector<HTMLElement>(
+      'a[href], button, select, input, textarea, [tabindex]:not([tabindex="-1"])'
+    )
+    firstFocusable?.focus()
+
+    return () => container.removeEventListener('keydown', handleKeyDown)
+  }, [ref, isActive, onEscape])
 }
 
 export function WindowControls() {
@@ -116,6 +164,7 @@ export function WindowControls() {
   }, [])
 
   useClickOutside(settingsPanelRef, settingsOpen, closeSettings)
+  useFocusTrap(settingsPanelRef, settingsOpen, closeSettings)
 
   return (
     <div
@@ -140,13 +189,17 @@ export function WindowControls() {
         <button
           onClick={() => setSettingsOpen(!settingsOpen)}
           aria-label={t('settings.title')}
+          aria-haspopup="menu"
           aria-expanded={settingsOpen}
           className="flex h-10 w-12 items-center justify-center text-content-secondary hover:bg-surface-tertiary hover:text-content"
         >
           <Settings className="h-4 w-4" />
         </button>
         {settingsOpen && (
-          <div className="absolute right-0 top-full mt-1 w-64 rounded-lg border border-border bg-surface-secondary shadow-lg z-50">
+          <div
+            role="menu"
+            className="absolute right-0 top-full mt-1 w-64 rounded-lg border border-border bg-surface-secondary shadow-lg z-50"
+          >
             <div className="p-3 border-b border-border">
               <span className="text-sm font-medium text-content-secondary">
                 {t('settings.title')}

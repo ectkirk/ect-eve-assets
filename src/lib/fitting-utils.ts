@@ -117,7 +117,7 @@ function extractModulesFromChildren(
     }
   }
 
-  const maxSlot = Math.max(...slotMap.keys(), -1)
+  const maxSlot = slotMap.size === 0 ? -1 : Math.max(...slotMap.keys())
   const modules: ModuleItem[] = []
   for (let i = 0; i <= maxSlot; i++) {
     modules.push(slotMap.get(i) ?? { type_id: 0, type_name: '', quantity: 0 })

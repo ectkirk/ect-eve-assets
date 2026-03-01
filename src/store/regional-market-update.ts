@@ -120,54 +120,78 @@ export function deepClonePricesByLocation(
   return clone
 }
 
+interface RegionalFetchResult {
+  regionId: number
+  typeId: number
+  fetchTime: number
+  lowestByLocation: Map<number, number>
+  highestByLocation: Map<number, number>
+}
+
 async function processRegionalBatch(
   batch: RegionalTask[],
   ctx: PriceUpdateContext,
   lastFetchAt: Map<string, number>
 ): Promise<void> {
-  await Promise.all(
-    batch.map(async ({ regionId, typeId }) => {
-      try {
-        const [sellOrders, buyOrders] = await Promise.all([
-          getRegionalOrders(regionId, typeId, 'sell'),
-          getRegionalOrders(regionId, typeId, 'buy'),
-        ])
-        const key = cacheKey(regionId, typeId)
-        const fetchTime = Date.now()
-        lastFetchAt.set(key, fetchTime)
+  const results = await Promise.all(
+    batch.map(
+      async ({ regionId, typeId }): Promise<RegionalFetchResult | null> => {
+        try {
+          const [sellOrders, buyOrders] = await Promise.all([
+            getRegionalOrders(regionId, typeId, 'sell'),
+            getRegionalOrders(regionId, typeId, 'buy'),
+          ])
 
-        const lowestByLocation = new Map<number, number>()
-        for (const order of sellOrders) {
-          const current = lowestByLocation.get(order.location_id)
-          if (!current || order.price < current) {
-            lowestByLocation.set(order.location_id, order.price)
+          const lowestByLocation = new Map<number, number>()
+          for (const order of sellOrders) {
+            const current = lowestByLocation.get(order.location_id)
+            if (!current || order.price < current) {
+              lowestByLocation.set(order.location_id, order.price)
+            }
           }
-        }
 
-        const highestByLocation = new Map<number, number>()
-        for (const order of buyOrders) {
-          const current = highestByLocation.get(order.location_id)
-          if (!current || order.price > current) {
-            highestByLocation.set(order.location_id, order.price)
+          const highestByLocation = new Map<number, number>()
+          for (const order of buyOrders) {
+            const current = highestByLocation.get(order.location_id)
+            if (!current || order.price > current) {
+              highestByLocation.set(order.location_id, order.price)
+            }
           }
-        }
 
-        for (const [locationId, price] of lowestByLocation) {
-          updateLocationPrice(ctx, typeId, locationId, price, false, fetchTime)
+          return {
+            regionId,
+            typeId,
+            fetchTime: Date.now(),
+            lowestByLocation,
+            highestByLocation,
+          }
+        } catch (err) {
+          logger.warn('Failed to fetch regional orders', {
+            module: 'RegionalMarketStore',
+            regionId,
+            typeId,
+            error: getErrorMessage(err),
+          })
+          return null
         }
-        for (const [locationId, price] of highestByLocation) {
-          updateLocationPrice(ctx, typeId, locationId, price, true, fetchTime)
-        }
-      } catch (err) {
-        logger.warn('Failed to fetch regional orders', {
-          module: 'RegionalMarketStore',
-          regionId,
-          typeId,
-          error: getErrorMessage(err),
-        })
       }
-    })
+    )
   )
+
+  for (const result of results) {
+    if (!result) continue
+    const { regionId, typeId, fetchTime, lowestByLocation, highestByLocation } =
+      result
+    const key = cacheKey(regionId, typeId)
+    lastFetchAt.set(key, fetchTime)
+
+    for (const [locationId, price] of lowestByLocation) {
+      updateLocationPrice(ctx, typeId, locationId, price, false, fetchTime)
+    }
+    for (const [locationId, price] of highestByLocation) {
+      updateLocationPrice(ctx, typeId, locationId, price, true, fetchTime)
+    }
+  }
 }
 
 async function processStructure(

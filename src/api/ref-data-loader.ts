@@ -231,9 +231,20 @@ export async function loadReferenceData(
     logger.info('Reference data loaded', { module: 'RefAPI', duration })
 
     return { success: errors.length === 0, errors }
-  })().finally(() => {
-    referenceDataPromise = null
-  })
+  })().then(
+    (result) => {
+      referenceDataPromise = null
+      return result
+    },
+    (error) => {
+      // Keep rejected promise cached briefly to prevent retry races,
+      // then clear so a future call can retry
+      setTimeout(() => {
+        referenceDataPromise = null
+      }, 1000)
+      throw error
+    }
+  )
 
   return referenceDataPromise
 }

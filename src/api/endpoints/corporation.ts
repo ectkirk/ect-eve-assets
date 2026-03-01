@@ -13,10 +13,12 @@ export type ESICorporationDivisions = z.infer<
   typeof ESICorporationDivisionsSchema
 >
 
-export interface ESICharacterPublic {
-  corporation_id: number
-  name: string
-}
+export const ESICharacterPublicSchema = z.object({
+  corporation_id: z.number(),
+  name: z.string(),
+})
+
+export type ESICharacterPublic = z.infer<typeof ESICharacterPublicSchema>
 
 const DIRECTOR_ROLE = 'Director'
 
@@ -72,7 +74,8 @@ export async function getCorporationDivisions(
 export async function getCharacterPublic(
   characterId: number
 ): Promise<ESICharacterPublic> {
-  return esi.fetch<ESICharacterPublic>(`/characters/${characterId}/`, {
+  return esi.fetch<ESICharacterPublic>(`/characters/${characterId}`, {
     requiresAuth: false,
+    schema: ESICharacterPublicSchema,
   })
 }
