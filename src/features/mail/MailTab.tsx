@@ -98,7 +98,7 @@ export function MailTab() {
       onChange: setSortBy,
     })
     return () => setCharacterSort(null)
-  }, [setCharacterSort, sortBy, t])
+  }, [setCharacterSort, setSortBy, sortBy, t])
 
   useEffect(() => {
     const idsToResolve = new Set<number>()

@@ -1,5 +1,27 @@
 import '@testing-library/jest-dom/vitest'
 import 'fake-indexeddb/auto'
+
+// jsdom 28 no longer provides a functional localStorage by default
+const store: Record<string, string> = {}
+Object.defineProperty(globalThis, 'localStorage', {
+  value: {
+    getItem: (key: string) => store[key] ?? null,
+    setItem: (key: string, value: string) => {
+      store[key] = String(value)
+    },
+    removeItem: (key: string) => {
+      delete store[key]
+    },
+    clear: () => {
+      Object.keys(store).forEach((k) => delete store[k])
+    },
+    get length() {
+      return Object.keys(store).length
+    },
+    key: (i: number) => Object.keys(store)[i] ?? null,
+  },
+  writable: true,
+})
 import { vi } from 'vitest'
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'

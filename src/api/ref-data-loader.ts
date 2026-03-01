@@ -251,7 +251,7 @@ async function loadAllTypes(
   const start = performance.now()
   const language = getLanguage()
   let cursor: number | undefined
-  let total = 0
+  let total: number
   let loaded = 0
   let pageCount = 0
 
