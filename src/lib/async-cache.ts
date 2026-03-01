@@ -12,7 +12,7 @@ export function createAsyncCache<T>(fetcher: Fetcher<T>): AsyncCache<T> {
 
   return {
     get: async () => {
-      if (cache) return cache
+      if (cache !== null) return cache
 
       if (fetching) {
         return new Promise((resolve) => {

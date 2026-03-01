@@ -182,6 +182,7 @@ async function fetchOwnerAssetNames(
 }
 
 let initPromise: Promise<void> | null = null
+const updatingOwners = new Set<string>()
 
 export const useAssetStore = create<AssetStore>((set, get) => ({
   assetsByOwner: [],
@@ -392,10 +393,9 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
   },
 
   updateForOwner: async (owner: Owner) => {
-    const state = get()
-    if (state.isUpdating) return
-
     const ownerKeyStr = `${owner.type}-${owner.id}`
+    if (updatingOwners.has(ownerKeyStr)) return
+    updatingOwners.add(ownerKeyStr)
 
     set({
       isUpdating: true,
@@ -508,6 +508,8 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
           module: 'AssetStore',
         })
       }
+    } finally {
+      updatingOwners.delete(ownerKeyStr)
     }
   },
 
