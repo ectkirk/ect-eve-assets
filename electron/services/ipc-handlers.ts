@@ -152,6 +152,7 @@ export function registerLoggingHandlers(): void {
       const logContext = { ...validContext, source: 'renderer' }
       switch (level as LogLevel) {
         case 'DEBUG':
+          logger.debug(truncatedMessage, logContext)
           break
         case 'INFO':
           logger.info(truncatedMessage, logContext)

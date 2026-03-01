@@ -263,7 +263,8 @@ function extractFighterTubes(children: TreeNode[]): ModuleItem[] {
 }
 
 function extractFittingName(fullName: string, typeName: string): string {
-  const pattern = new RegExp(`^${typeName}\\s*\\((.+)\\)$`)
+  const escaped = typeName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const pattern = new RegExp(`^${escaped}\\s*\\((.+)\\)$`)
   const match = fullName.match(pattern)
   return match?.[1] ?? fullName
 }

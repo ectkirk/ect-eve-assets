@@ -59,7 +59,3 @@ export function stopPriceRefreshTimers(): void {
     esiRefreshTimer = null
   }
 }
-
-export function clearInitPromise(): void {
-  // Used by price-store to reset initialization state
-}
