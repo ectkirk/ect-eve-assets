@@ -2,10 +2,6 @@ const { contextBridge, ipcRenderer } = require('electron')
 
 export type {
   AuthResult,
-  BlueprintCopyMaterial,
-  BlueprintResearchLevel,
-  BlueprintResearchParams,
-  BlueprintResearchResult,
   BuybackCalculatorItem,
   BuybackCalculatorResult,
   BuybackConfig,
@@ -28,9 +24,6 @@ export type {
   ESIResponseMeta,
   LogContext,
   LogLevel,
-  ManufacturingCostParams,
-  ManufacturingCostResult,
-  ManufacturingMaterial,
   MutamarketResult,
   InsurgencyResult,
   RefApiResult,
@@ -56,7 +49,6 @@ export type {
 } from './preload-types'
 
 import type {
-  BlueprintResearchParams,
   BuybackConfig,
   ContractSearchParams,
   ElectronAPI,
@@ -66,7 +58,6 @@ import type {
   LanguageParams,
   LogContext,
   LogLevel,
-  ManufacturingCostParams,
   RefMarketJitaParams,
   RefStructuresPageParams,
   RefTypesPageParams,
@@ -190,10 +181,6 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.invoke('ref:type-variations', typeId, params),
   refTypeBlueprint: (typeId: number, params?: LanguageParams) =>
     ipcRenderer.invoke('ref:type-blueprint', typeId, params),
-  refManufacturingCost: (params: ManufacturingCostParams) =>
-    ipcRenderer.invoke('ref:manufacturingCost', params),
-  refBlueprintResearch: (params: BlueprintResearchParams) =>
-    ipcRenderer.invoke('ref:blueprintResearch', params),
   refDogmaUnits: (params?: LanguageParams) =>
     ipcRenderer.invoke('ref:dogma-units', params),
   refDogmaAttributeCategories: (params?: LanguageParams) =>

@@ -1,1 +1,0 @@
-export { ManufacturingPanel } from './ManufacturingPanel'

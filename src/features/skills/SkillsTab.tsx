@@ -64,7 +64,7 @@ export function SkillsTab() {
       onChange: setSortBy,
     })
     return () => setCharacterSort(null)
-  }, [setCharacterSort, setSortBy, sortBy, t])
+  }, [setCharacterSort, sortBy, t])
 
   const sortedSkillsByOwner = useMemo(
     () =>

@@ -1,1 +1,0 @@
-export { ResearchPanel } from './ResearchPanel'
