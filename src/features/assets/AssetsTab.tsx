@@ -63,6 +63,7 @@ export function AssetsTab() {
     updateProgress,
   } = useResolvedAssets()
   const types = useReferenceCacheStore((s) => s.types)
+  const abyssalPrices = usePriceStore((s) => s.abyssalPrices)
 
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'totalValue', desc: true },
@@ -135,6 +136,7 @@ export function AssetsTab() {
 
       const isBlueprint = ra.categoryId === CategoryIds.BLUEPRINT
       const isAbyssal = isAbyssalTypeId(ra.typeId)
+      const isAbyssalResolved = isAbyssal && abyssalPrices.has(ra.asset.item_id)
       const names = getAssetDisplayNames(ra)
 
       if (names.categoryName) cats.add(names.categoryName)
@@ -142,7 +144,7 @@ export function AssetsTab() {
       if (isAbyssal || (ra.asset.is_singleton && !isBlueprint)) {
         aggregated.set(
           `unique-${ra.asset.item_id}`,
-          createAssetRow(ra, displayFlag, isAbyssal)
+          createAssetRow(ra, displayFlag, isAbyssal, isAbyssalResolved)
         )
         continue
       }
@@ -162,7 +164,10 @@ export function AssetsTab() {
         existing.totalValue += ra.totalValue
         existing.totalVolume += ra.totalVolume
       } else {
-        aggregated.set(key, createAssetRow(ra, displayFlag, isAbyssal))
+        aggregated.set(
+          key,
+          createAssetRow(ra, displayFlag, isAbyssal, isAbyssalResolved)
+        )
       }
     }
 
@@ -170,7 +175,7 @@ export function AssetsTab() {
       data: Array.from(aggregated.values()),
       categories: Array.from(cats).sort(),
     }
-  }, [selectedResolvedAssets, types, blueprintsByItemId])
+  }, [selectedResolvedAssets, types, blueprintsByItemId, abyssalPrices])
 
   const { filteredData, filteredTotalValue, sourceCount } = useMemo(() => {
     const searchLower = search.toLowerCase()
@@ -431,11 +436,7 @@ export function AssetsTab() {
                   const row = rows[virtualRow.index]
                   if (!row) return null
                   const modeFlags = row.original.modeFlags
-                  const isAbyssalResolved =
-                    row.original.isAbyssal &&
-                    usePriceStore
-                      .getState()
-                      .hasAbyssalPrice(row.original.itemId)
+                  const isAbyssalResolved = row.original.isAbyssalResolved
                   const isMarketItem = !!getType(row.original.typeId)
                     ?.marketGroupId
                   const rowId = getRowId(row.original)

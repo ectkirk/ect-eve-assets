@@ -61,6 +61,10 @@ export function OwnerManagementModal({
     refreshingRolesOwner,
   } = state
 
+  useEffect(() => {
+    if (open) dispatch({ type: 'RESET' })
+  }, [open])
+
   const isPaused = useESIPauseStore((s) => s.isPaused)
   const togglePause = useESIPauseStore((s) => s.toggle)
   const syncPause = useESIPauseStore((s) => s.sync)
