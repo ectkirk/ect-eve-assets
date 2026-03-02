@@ -14,6 +14,11 @@ import { edgeKey } from './pathfinder'
 
 import type { LabelData } from './labels'
 
+const COLOR_HIGHLIGHT = '#ffffff'
+const COLOR_ROUTE_ORIGIN = '#00ff88'
+const COLOR_ROUTE_DESTINATION = '#ff4444'
+const COLOR_ANSIBLEX = '#ff8800'
+
 export interface RenderContext {
   ctx: CanvasRenderingContext2D
   width: number
@@ -115,7 +120,7 @@ export function renderHighlightedSystem(
   const baseRadius = 8 / camera.zoom
   const ringWidth = 2 / camera.zoom
 
-  ctx.strokeStyle = '#ffffff'
+  ctx.strokeStyle = COLOR_HIGHLIGHT
   ctx.lineWidth = ringWidth
   ctx.beginPath()
   ctx.arc(x, y, baseRadius, 0, Math.PI * 2)
@@ -197,7 +202,7 @@ export function renderRouteEndpoints(
       ctx,
       origin.canvasX,
       origin.canvasY,
-      '#00ff88',
+      COLOR_ROUTE_ORIGIN,
       ringRadius,
       ringWidth,
       centerRadius
@@ -209,7 +214,7 @@ export function renderRouteEndpoints(
       ctx,
       destination.canvasX,
       destination.canvasY,
-      '#ff4444',
+      COLOR_ROUTE_DESTINATION,
       ringRadius,
       ringWidth,
       centerRadius
@@ -233,7 +238,7 @@ export function renderAnsiblexConnections(
 
   const seen = new Set<string>()
 
-  ctx.strokeStyle = '#ff8800'
+  ctx.strokeStyle = COLOR_ANSIBLEX
   ctx.lineWidth = 2 / camera.zoom
   ctx.setLineDash([10 / camera.zoom, 5 / camera.zoom])
   ctx.beginPath()

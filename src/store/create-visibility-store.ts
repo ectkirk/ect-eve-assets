@@ -2,6 +2,7 @@ import { create, type StoreApi, type UseBoundStore } from 'zustand'
 import {
   useAuthStore,
   type Owner,
+  type OwnerType,
   ownerKey as makeOwnerKey,
   findOwnerByKey,
 } from './auth-store'
@@ -239,7 +240,7 @@ export function createVisibilityStore<
             )
           : allOwners.filter((owner): owner is Owner => {
               if (!owner || owner.authFailed) return false
-              const key = `${owner.type}-${owner.id}`
+              const key = makeOwnerKey(owner.type, owner.id)
               return expiryCacheStore.isExpired(key, getEndpoint(owner))
             })
 
@@ -480,7 +481,7 @@ export function createVisibilityStore<
       },
 
       removeForOwner: async (ownerType: string, ownerId: number) => {
-        const currentOwnerKey = `${ownerType}-${ownerId}`
+        const currentOwnerKey = makeOwnerKey(ownerType as OwnerType, ownerId)
 
         if (!get().visibilityByOwner.has(currentOwnerKey)) return
 

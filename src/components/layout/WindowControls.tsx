@@ -76,7 +76,7 @@ function MenuItem({
         rel="noopener noreferrer"
         className={className}
       >
-        <Icon className="h-4 w-4" />
+        <Icon aria-hidden="true" className="h-4 w-4" />
         {children}
       </a>
     )
@@ -84,7 +84,7 @@ function MenuItem({
 
   return (
     <button role="menuitem" onClick={onClick} className={className}>
-      <Icon className="h-4 w-4" />
+      <Icon aria-hidden="true" className="h-4 w-4" />
       {children}
     </button>
   )

@@ -2,8 +2,9 @@ import { create } from 'zustand'
 import {
   useAuthStore,
   type Owner,
+  type OwnerType,
   findOwnerByKey,
-  ownerKey,
+  ownerKey as makeOwnerKey,
 } from './auth-store'
 import { useExpiryCacheStore } from './expiry-cache-store'
 import {
@@ -110,8 +111,8 @@ function isNameable(typeId: number): boolean {
 }
 
 async function handleCharacterLeftCorporation(corpOwner: Owner): Promise<void> {
-  const corpKey = ownerKey('corporation', corpOwner.id)
-  const charKey = ownerKey('character', corpOwner.characterId)
+  const corpKey = makeOwnerKey('corporation', corpOwner.id)
+  const charKey = makeOwnerKey('character', corpOwner.characterId)
 
   if (!useAuthStore.getState().getOwner(corpKey)) {
     return
@@ -259,7 +260,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
       ? owners.filter((o): o is Owner => o !== undefined && !o.authFailed)
       : owners.filter((owner): owner is Owner => {
           if (!owner || owner.authFailed) return false
-          const ownerKey = `${owner.type}-${owner.id}`
+          const ownerKey = makeOwnerKey(owner.type, owner.id)
           const endpoint = getAssetEndpoint(owner)
           return expiryCacheStore.isExpired(ownerKey, endpoint)
         })
@@ -276,7 +277,10 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
 
     try {
       const existingAssets = new Map(
-        state.assetsByOwner.map((oa) => [`${oa.owner.type}-${oa.owner.id}`, oa])
+        state.assetsByOwner.map((oa) => [
+          makeOwnerKey(oa.owner.type, oa.owner.id),
+          oa,
+        ])
       )
       const allNames = new Map(state.assetNames)
 
@@ -285,7 +289,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         if (!owner) continue
         set({ updateProgress: { current: i, total: ownersToUpdate.length } })
 
-        const ownerKey = `${owner.type}-${owner.id}`
+        const ownerKey = makeOwnerKey(owner.type, owner.id)
         const endpoint = getAssetEndpoint(owner)
 
         try {
@@ -393,7 +397,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
   },
 
   updateForOwner: async (owner: Owner) => {
-    const ownerKeyStr = `${owner.type}-${owner.id}`
+    const ownerKeyStr = makeOwnerKey(owner.type, owner.id)
     if (updatingOwners.has(ownerKeyStr)) return
     updatingOwners.add(ownerKeyStr)
 
@@ -472,7 +476,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
       set((current) => ({
         assetsByOwner: [
           ...current.assetsByOwner.filter(
-            (oa) => `${oa.owner.type}-${oa.owner.id}` !== ownerKeyStr
+            (oa) => makeOwnerKey(oa.owner.type, oa.owner.id) !== ownerKeyStr
           ),
           { owner, assets },
         ],
@@ -492,7 +496,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         await handleCharacterLeftCorporation(owner)
         set((current) => ({
           assetsByOwner: current.assetsByOwner.filter(
-            (oa) => `${oa.owner.type}-${oa.owner.id}` !== ownerKeyStr
+            (oa) => makeOwnerKey(oa.owner.type, oa.owner.id) !== ownerKeyStr
           ),
           isUpdating: false,
           updateProgress: null,
@@ -514,9 +518,9 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
   },
 
   removeForOwner: async (ownerType: string, ownerId: number) => {
-    const ownerKey = `${ownerType}-${ownerId}`
+    const ownerKey = makeOwnerKey(ownerType as OwnerType, ownerId)
     const hasOwner = get().assetsByOwner.some(
-      (oa) => `${oa.owner.type}-${oa.owner.id}` === ownerKey
+      (oa) => makeOwnerKey(oa.owner.type, oa.owner.id) === ownerKey
     )
     if (!hasOwner) return
 
@@ -524,7 +528,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
 
     set((current) => ({
       assetsByOwner: current.assetsByOwner.filter(
-        (oa) => `${oa.owner.type}-${oa.owner.id}` !== ownerKey
+        (oa) => makeOwnerKey(oa.owner.type, oa.owner.id) !== ownerKey
       ),
     }))
 

@@ -17,6 +17,10 @@ import {
   renderSystemLabels,
   renderLabels,
 } from '../utils/rendering'
+
+const COLOR_BACKGROUND = '#000000'
+const COLOR_INCURSION_RING = '#ff3333'
+const COLOR_INSURGENCY_RING = '#ff8800'
 import {
   calculateRegionLabels,
   calculateFactionLabels,
@@ -85,7 +89,7 @@ export function useCanvasRenderer({
 
     const cam = cameraRef.current
 
-    ctx.fillStyle = '#000000'
+    ctx.fillStyle = COLOR_BACKGROUND
     ctx.fillRect(0, 0, dimensions.width, dimensions.height)
 
     const visibleBounds = getVisibleBounds(
@@ -147,7 +151,7 @@ export function useCanvasRenderer({
         renderContext,
         infestedSystems,
         spatialIndex.getSystemMap(),
-        '#ff3333',
+        COLOR_INCURSION_RING,
         8
       )
     }
@@ -157,7 +161,7 @@ export function useCanvasRenderer({
         renderContext,
         insurgencySystems,
         spatialIndex.getSystemMap(),
-        '#ff8800',
+        COLOR_INSURGENCY_RING,
         10
       )
     }

@@ -332,7 +332,12 @@ export function CharacterMailPanel({
 
 function ConversationChevron({ isExpanded }: { isExpanded: boolean }) {
   const Icon = isExpanded ? ChevronDown : ChevronRight
-  return <Icon className="h-4 w-4 shrink-0 text-content-secondary" />
+  return (
+    <Icon
+      aria-hidden="true"
+      className="h-4 w-4 shrink-0 text-content-secondary"
+    />
+  )
 }
 
 function UnreadDot() {
