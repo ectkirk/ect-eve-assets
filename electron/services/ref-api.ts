@@ -18,13 +18,13 @@ const REF_REQUEST_TIMEOUT_MS = 30000
 
 let refGlobalRetryAfter = 0
 let refLastRequestTime = 0
-let cachedBaseHeaders: Record<string, string> | null = null
-let cachedJsonHeaders: Record<string, string> | null = null
+let cachedBaseHeaders: Readonly<Record<string, string>> | null = null
+let cachedJsonHeaders: Readonly<Record<string, string>> | null = null
 
 function getRefHeaders(
   contentType?: 'json',
   language?: string
-): Record<string, string> {
+): Readonly<Record<string, string>> {
   const userAgent = makeUserAgent(app.getVersion())
   const lang = language || 'en'
 
@@ -38,12 +38,12 @@ function getRefHeaders(
       }
     }
     if (!cachedJsonHeaders) {
-      cachedJsonHeaders = {
+      cachedJsonHeaders = Object.freeze({
         'User-Agent': userAgent,
         'Content-Type': 'application/json',
         'Accept-Language': 'en',
         ...(REF_API_KEY && { 'X-App-Key': REF_API_KEY }),
-      }
+      })
     }
     return cachedJsonHeaders
   }
@@ -56,11 +56,11 @@ function getRefHeaders(
     }
   }
   if (!cachedBaseHeaders) {
-    cachedBaseHeaders = {
+    cachedBaseHeaders = Object.freeze({
       'User-Agent': userAgent,
       'Accept-Language': 'en',
       ...(REF_API_KEY && { 'X-App-Key': REF_API_KEY }),
-    }
+    })
   }
   return cachedBaseHeaders
 }
@@ -166,6 +166,7 @@ type PaginatedResult<T> = {
 
 async function refGetPaginated<T, C extends string | number>(
   endpoint: string,
+  /** Used only for error logging context in the catch block */
   channel: string,
   cursor?: C,
   language?: string

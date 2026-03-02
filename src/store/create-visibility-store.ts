@@ -2,6 +2,7 @@ import { create, type StoreApi, type UseBoundStore } from 'zustand'
 import {
   useAuthStore,
   type Owner,
+  type OwnerType,
   ownerKey as makeOwnerKey,
   findOwnerByKey,
 } from './auth-store'
@@ -105,15 +106,17 @@ function collectVisibleItemIds(
 function removeStaleItems<TStoredItem>(
   itemsById: Map<number, TStoredItem>,
   visibleIds: Set<number>
-): number[] {
+): { filtered: Map<number, TStoredItem>; staleIds: number[] } {
   const staleIds: number[] = []
-  for (const itemId of itemsById.keys()) {
-    if (!visibleIds.has(itemId)) {
+  const filtered = new Map<number, TStoredItem>()
+  for (const [itemId, item] of itemsById) {
+    if (visibleIds.has(itemId)) {
+      filtered.set(itemId, item)
+    } else {
       staleIds.push(itemId)
-      itemsById.delete(itemId)
     }
   }
-  return staleIds
+  return { filtered, staleIds }
 }
 
 export function createVisibilityStore<
@@ -237,7 +240,7 @@ export function createVisibilityStore<
             )
           : allOwners.filter((owner): owner is Owner => {
               if (!owner || owner.authFailed) return false
-              const key = `${owner.type}-${owner.id}`
+              const key = makeOwnerKey(owner.type, owner.id)
               return expiryCacheStore.isExpired(key, getEndpoint(owner))
             })
 
@@ -250,7 +253,7 @@ export function createVisibilityStore<
         } as Partial<FullStore>)
 
         try {
-          const itemsById = new Map(get().itemsById)
+          let itemsById = new Map(get().itemsById)
           const visibilityByOwner = new Map(get().visibilityByOwner)
           const itemBatch: Array<{ id: number; stored: TStoredItem }> = []
           const failedOwners: string[] = []
@@ -314,8 +317,12 @@ export function createVisibilityStore<
 
           if (shouldDeleteStaleItems) {
             const visibleIds = collectVisibleItemIds(visibilityByOwner)
-            const staleIds = removeStaleItems(itemsById, visibleIds)
+            const { filtered, staleIds } = removeStaleItems(
+              itemsById,
+              visibleIds
+            )
             if (staleIds.length > 0) {
+              itemsById = filtered
               await db.deleteItems(staleIds)
               logger.info(`Cleaned up stale ${name}`, {
                 module: moduleName,
@@ -392,7 +399,7 @@ export function createVisibilityStore<
           const { data: items, expiresAt, etag } = await fetchData(owner)
 
           const currentState = get()
-          const itemsById = new Map(currentState.itemsById)
+          let itemsById = new Map(currentState.itemsById)
           const visibilityByOwner = new Map(currentState.visibilityByOwner)
           const itemBatch: Array<{ id: number; stored: TStoredItem }> = []
 
@@ -419,8 +426,12 @@ export function createVisibilityStore<
 
           if (shouldDeleteStaleItems) {
             const visibleIds = collectVisibleItemIds(visibilityByOwner)
-            const staleIds = removeStaleItems(itemsById, visibleIds)
+            const { filtered, staleIds } = removeStaleItems(
+              itemsById,
+              visibleIds
+            )
             if (staleIds.length > 0) {
+              itemsById = filtered
               await db.deleteItems(staleIds)
               logger.info(`Cleaned up stale ${name}`, {
                 module: moduleName,
@@ -470,7 +481,7 @@ export function createVisibilityStore<
       },
 
       removeForOwner: async (ownerType: string, ownerId: number) => {
-        const currentOwnerKey = `${ownerType}-${ownerId}`
+        const currentOwnerKey = makeOwnerKey(ownerType as OwnerType, ownerId)
 
         if (!get().visibilityByOwner.has(currentOwnerKey)) return
 
@@ -481,10 +492,12 @@ export function createVisibilityStore<
           const visibilityByOwner = new Map(current.visibilityByOwner)
           visibilityByOwner.delete(currentOwnerKey)
 
-          const itemsById = new Map(current.itemsById)
+          let itemsById = new Map(current.itemsById)
           if (shouldDeleteStaleItems) {
             const visibleIds = collectVisibleItemIds(visibilityByOwner)
-            staleIds = removeStaleItems(itemsById, visibleIds)
+            const result = removeStaleItems(itemsById, visibleIds)
+            staleIds = result.staleIds
+            itemsById = result.filtered
           }
 
           const extra = rebuildExtraState ? rebuildExtraState(itemsById) : {}

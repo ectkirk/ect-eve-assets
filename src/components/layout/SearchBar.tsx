@@ -22,7 +22,7 @@ import {
   useAssetSettings,
   ASSET_SETTINGS_CONFIG,
 } from '@/store/asset-settings-store'
-import { useClickOutside } from '@/hooks'
+import { useClickOutside, useDebouncedValue } from '@/hooks'
 
 const ASSET_TYPE_KEYS: { value: string; key: string }[] = [
   { value: '', key: 'searchBar.assetTypes.all' },
@@ -189,9 +189,16 @@ export function SearchBar() {
   const [inputValue, setInputValue] = useState(search)
   const settings = useAssetSettings()
 
+  // Sync input when search is reset externally (e.g. tab change)
   useEffect(() => {
     setInputValue(search)
   }, [search])
+
+  const debouncedInput = useDebouncedValue(inputValue, SEARCH_DEBOUNCE_MS)
+
+  useEffect(() => {
+    setSearch(debouncedInput)
+  }, [debouncedInput, setSearch])
 
   const filteredTypeOptions = useMemo(() => {
     return ASSET_TYPE_KEYS.filter((opt) => {
@@ -202,31 +209,10 @@ export function SearchBar() {
       return config ? settings[config.key] : true
     })
   }, [settings])
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const setSearchRef = useRef(setSearch)
-
-  useEffect(() => {
-    setSearchRef.current = setSearch
-  }, [setSearch])
-
-  useEffect(() => {
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current)
-    }
-  }, [])
-
-  const handleChange = (value: string) => {
-    setInputValue(value)
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => {
-      setSearchRef.current(value)
-    }, SEARCH_DEBOUNCE_MS)
-  }
 
   const handleClear = () => {
-    if (debounceRef.current) clearTimeout(debounceRef.current)
     setInputValue('')
-    setSearchRef.current('')
+    setSearch('')
   }
 
   return (
@@ -237,7 +223,7 @@ export function SearchBar() {
           type="text"
           placeholder={searchPlaceholder ?? t('search.placeholder')}
           value={inputValue}
-          onChange={(e) => handleChange(e.target.value)}
+          onChange={(e) => setInputValue(e.target.value)}
           aria-label={t('accessibility.search')}
           className="w-full rounded border border-border bg-surface-tertiary pl-9 pr-8 py-1.5 text-sm placeholder-content-muted focus:border-accent focus:outline-hidden"
         />

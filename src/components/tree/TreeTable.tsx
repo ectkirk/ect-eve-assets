@@ -395,13 +395,13 @@ export function TreeTable({
             )}
           </TableBody>
         </Table>
-
-        <FittingDialog
-          open={fittingDialogOpen}
-          onOpenChange={setFittingDialogOpen}
-          shipNode={selectedShipNode}
-        />
       </div>
+
+      <FittingDialog
+        open={fittingDialogOpen}
+        onOpenChange={setFittingDialogOpen}
+        shipNode={selectedShipNode}
+      />
     </div>
   )
 }

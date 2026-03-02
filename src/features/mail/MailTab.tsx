@@ -98,7 +98,7 @@ export function MailTab() {
       onChange: setSortBy,
     })
     return () => setCharacterSort(null)
-  }, [setCharacterSort, sortBy, t])
+  }, [setCharacterSort, setSortBy, sortBy, t])
 
   useEffect(() => {
     const idsToResolve = new Set<number>()
@@ -111,13 +111,17 @@ export function MailTab() {
       }
     }
     if (idsToResolve.size > 0) {
-      resolveNames(Array.from(idsToResolve)).then((resolved) => {
-        const newNames = new Map<number, string>()
-        for (const [id, data] of resolved) {
-          newNames.set(id, data.name)
-        }
-        setResolvedNames((prev) => new Map([...prev, ...newNames]))
-      })
+      resolveNames(Array.from(idsToResolve))
+        .then((resolved) => {
+          const newNames = new Map<number, string>()
+          for (const [id, data] of resolved) {
+            newNames.set(id, data.name)
+          }
+          setResolvedNames((prev) => new Map([...prev, ...newNames]))
+        })
+        .catch(() => {
+          // Name resolution is non-critical; silently ignore failures
+        })
     }
   }, [mailByOwner])
 

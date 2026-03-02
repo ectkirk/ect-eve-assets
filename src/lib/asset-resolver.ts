@@ -392,8 +392,14 @@ export function resolveContractItem(
   const loc = resolveSyntheticLocation(locationId)
   const isBpc = item.is_blueprint_copy ?? false
 
+  // Use smaller multiplier to keep synthetic ID within Number.MAX_SAFE_INTEGER.
+  // Contract IDs are currently in the billions range; 1000 is sufficient since
+  // record_id per contract is typically small (< 1000 items per contract).
+  const syntheticItemId =
+    contract.contract_id * 1_000 + (item.record_id % 1_000)
+
   const syntheticAsset: ESIAsset = {
-    item_id: contract.contract_id * 1_000_000 + item.record_id,
+    item_id: syntheticItemId,
     type_id: item.type_id,
     location_id: locationId,
     location_type: loc.isStructure ? 'other' : 'station',

@@ -464,6 +464,7 @@ export const usePriceStore = create<PriceStore>((set, get) => ({
     await clearJitaDB()
     set({ jitaPrices: new Map(), marketPrices: new Map(), initialized: false })
     logger.info('Jita price cache cleared', { module: 'PriceStore' })
+    startJitaRefreshTimer(shouldRefreshJita(), triggerJitaRefreshIfNeeded)
   },
 
   clearEsi: async () => {

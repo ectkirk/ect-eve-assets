@@ -35,6 +35,11 @@ vi.mock('@/lib/logger', () => ({
 
 vi.mock('@/lib/data-resolver', () => ({
   triggerResolution: vi.fn(),
+  registerCollector: vi.fn(),
+  needsTypeResolution: vi.fn(() => false),
+  hasLocation: vi.fn(() => true),
+  hasStructure: vi.fn(() => true),
+  PLAYER_STRUCTURE_ID_THRESHOLD: 1000000000000,
 }))
 
 vi.mock('./asset-store', () => ({

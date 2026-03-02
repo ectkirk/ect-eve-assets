@@ -7,11 +7,15 @@ import {
 } from './wallet-store'
 import { createMockOwner, createMockAuthState } from '@/test/helpers'
 
-vi.mock('./auth-store', () => ({
-  useAuthStore: {
-    getState: vi.fn(() => ({ owners: {} })),
-  },
-}))
+vi.mock('./auth-store', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./auth-store')>()
+  return {
+    ...actual,
+    useAuthStore: {
+      getState: vi.fn(() => ({ owners: {} })),
+    },
+  }
+})
 
 vi.mock('./expiry-cache-store', () => ({
   useExpiryCacheStore: {

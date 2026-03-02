@@ -15,7 +15,16 @@ import { esi } from '@/api/esi'
 import { ESIContractSchema } from '@/api/schemas'
 import { logger } from '@/lib/logger'
 import { ownerEndpoint } from '@/lib/owner-utils'
-import { triggerResolution } from '@/lib/data-resolver'
+import {
+  triggerResolution,
+  registerCollector,
+  needsTypeResolution,
+  hasLocation,
+  hasStructure,
+  hasName,
+  PLAYER_STRUCTURE_ID_THRESHOLD,
+  type ResolutionIds,
+} from '@/lib/data-resolver'
 import {
   createVisibilityStore,
   type StoredItem,
@@ -265,11 +274,12 @@ async function fetchItemsForContracts(
   contractsById: Map<number, StoredContract>
 ): Promise<void> {
   const itemsState = baseStore.getState().itemsByContractId
-  const toFetch = collectContractsToFetch(contractsById, itemsState)
-
-  if (toFetch.size === 0) return
-
+  let toFetch: Map<number, ContractFetchInfo> | undefined
   try {
+    toFetch = collectContractsToFetch(contractsById, itemsState)
+
+    if (toFetch.size === 0) return
+
     const fetched = await fetchAndSaveItems(toFetch)
 
     if (fetched.length > 0) {
@@ -297,7 +307,9 @@ async function fetchItemsForContracts(
       triggerResolution()
     }
   } finally {
-    clearPendingFetches(toFetch)
+    if (toFetch) {
+      clearPendingFetches(toFetch)
+    }
   }
 }
 
@@ -322,11 +334,12 @@ function collectAuctionsToFetchBids(
 async function fetchBidsForAuctions(
   contractsById: Map<number, StoredContract>
 ): Promise<void> {
-  const toFetch = collectAuctionsToFetchBids(contractsById)
-
-  if (toFetch.size === 0) return
-
+  let toFetch: Map<number, ContractFetchInfo> | undefined
   try {
+    toFetch = collectAuctionsToFetchBids(contractsById)
+
+    if (toFetch.size === 0) return
+
     const results = await Promise.allSettled(
       Array.from(toFetch.entries()).map(async ([contractId, info]) => {
         const bids = await fetchBidsFromAPI(
@@ -366,8 +379,10 @@ async function fetchBidsForAuctions(
       baseStore.setState({ bidsByContractId: currentBids })
     }
   } finally {
-    for (const contractId of toFetch.keys()) {
-      pendingBidFetches.delete(contractId)
+    if (toFetch) {
+      for (const contractId of toFetch.keys()) {
+        pendingBidFetches.delete(contractId)
+      }
     }
   }
 }
@@ -430,18 +445,19 @@ const baseStore = createVisibilityStore<
 
   onAfterBatchUpdate: async (updatedItemsById) => {
     const itemsState = baseStore.getState().itemsByContractId
-    const toFetch = collectContractsToFetch(updatedItemsById, itemsState)
-
-    const toDelete: number[] = []
-    for (const contractId of itemsState.keys()) {
-      if (!updatedItemsById.has(contractId)) {
-        toDelete.push(contractId)
-      }
-    }
-
-    if (toFetch.size === 0 && toDelete.length === 0) return
-
+    let toFetch: Map<number, ContractFetchInfo> | undefined
     try {
+      toFetch = collectContractsToFetch(updatedItemsById, itemsState)
+
+      const toDelete: number[] = []
+      for (const contractId of itemsState.keys()) {
+        if (!updatedItemsById.has(contractId)) {
+          toDelete.push(contractId)
+        }
+      }
+
+      if (toFetch.size === 0 && toDelete.length === 0) return
+
       const currentItems = new Map(baseStore.getState().itemsByContractId)
       let hasChanges = false
       const typeIds = new Set<number>()
@@ -480,7 +496,9 @@ const baseStore = createVisibilityStore<
         triggerResolution()
       }
     } finally {
-      clearPendingFetches(toFetch)
+      if (toFetch) {
+        clearPendingFetches(toFetch)
+      }
     }
   },
 })
@@ -563,4 +581,47 @@ export const useContractsStore: ContractsStore = Object.assign(baseStore, {
       state.bidsByContractId
     )
   },
+})
+
+registerCollector('contracts', (ids: ResolutionIds) => {
+  const contractsByOwner = useContractsStore.getContractsByOwner()
+
+  const checkLocation = (
+    locationId: number | undefined,
+    characterId: number
+  ) => {
+    if (!locationId) return
+    if (locationId >= PLAYER_STRUCTURE_ID_THRESHOLD) {
+      if (!hasStructure(locationId)) {
+        ids.structureToCharacter.set(locationId, characterId)
+      }
+    } else if (!hasLocation(locationId)) {
+      ids.locationIds.add(locationId)
+    }
+  }
+
+  for (const { owner, contracts } of contractsByOwner) {
+    for (const { contract, items } of contracts) {
+      checkLocation(contract.start_location_id, owner.characterId)
+      checkLocation(contract.end_location_id, owner.characterId)
+
+      if (!hasName(contract.issuer_id)) {
+        ids.entityIds.add(contract.issuer_id)
+      }
+      if (contract.assignee_id && !hasName(contract.assignee_id)) {
+        ids.entityIds.add(contract.assignee_id)
+      }
+      if (contract.acceptor_id && !hasName(contract.acceptor_id)) {
+        ids.entityIds.add(contract.acceptor_id)
+      }
+
+      if (items) {
+        for (const item of items) {
+          if (needsTypeResolution(item.type_id)) {
+            ids.typeIds.add(item.type_id)
+          }
+        }
+      }
+    }
+  }
 })

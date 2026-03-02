@@ -37,7 +37,11 @@ export function extractCharacterId(sub: string): number {
   if (!idPart) {
     throw new Error('Invalid sub claim format')
   }
-  return parseInt(idPart, 10)
+  const id = parseInt(idPart, 10)
+  if (isNaN(id)) {
+    throw new Error('Invalid character ID in sub claim')
+  }
+  return id
 }
 
 export function extractScopes(scp: string | string[]): string[] {

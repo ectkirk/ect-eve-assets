@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { IngameActionModal } from '@/components/dialogs/IngameActionModal'
 import { useCharacterLocationsStore } from '@/store/character-locations-store'
@@ -9,52 +9,11 @@ import {
   startInsurgenciesRefreshTimer,
   stopInsurgenciesRefreshTimer,
 } from '@/store/map-data-refresh-timers'
-import {
-  getAllSystems,
-  getAllRegions,
-  getAllStargates,
-  useUniverseDataLoaded,
-  type CachedSystem,
-  type CachedRegion,
-  type CachedStargate,
-} from '@/store/reference-cache'
-import {
-  CLICK_RADIUS,
-  EXCLUDED_REGION_NAMES,
-  type ColorMode,
-  type SearchResult,
-} from './types'
-import {
-  buildGraph,
-  findRoute,
-  type RoutePreference,
-  type PathfinderGraph,
-} from './utils/pathfinder'
-import {
-  calculateBounds,
-  calculateCoordinateData,
-  getVisibleBounds,
-  screenToWorld,
-} from './utils/coordinates'
-import { SpatialIndex } from './utils/spatial-index'
-import {
-  setupTransform,
-  renderStargates,
-  renderSystems,
-  renderHighlightedSystem,
-  renderHighlightedRegion,
-  renderRoute,
-  renderRouteEndpoints,
-  renderAnsiblexConnections,
-  renderSystemRings,
-  renderSystemLabels,
-  renderLabels,
-} from './utils/rendering'
-import {
-  calculateRegionLabels,
-  calculateFactionLabels,
-  calculateAllianceLabels,
-} from './utils/labels'
+import type { ColorMode } from './types'
+import { useMapData } from './hooks/useMapData'
+import { useMapRoute } from './hooks/useMapRoute'
+import { useMapInteraction } from './hooks/useMapInteraction'
+import { useCanvasRenderer } from './hooks/useCanvasRenderer'
 import { useMapCamera } from './hooks/useMapCamera'
 import { useMapSearch } from './hooks/useMapSearch'
 import { useMapHover } from './hooks/useMapHover'
@@ -80,30 +39,24 @@ export function StarMap() {
   const [dimensions, setDimensions] = useState({ width: 1200, height: 800 })
 
   const [colorMode, setColorMode] = useState<ColorMode>('region')
-  const [highlightedSystemId, setHighlightedSystemId] = useState<number | null>(
-    null
-  )
-  const [highlightedRegionId, setHighlightedRegionId] = useState<number | null>(
-    null
-  )
-  const [routeOrigin, setRouteOrigin] = useState<number | null>(null)
-  const [routeDestination, setRouteDestination] = useState<number | null>(null)
-  const [routePreference, setRoutePreference] =
-    useState<RoutePreference>('shorter')
-  const [contextMenu, setContextMenu] = useState<{
-    x: number
-    y: number
-    systemId: number
-    systemName: string
-  } | null>(null)
   const [ignoredSystemsModalOpen, setIgnoredSystemsModalOpen] = useState(false)
   const [waypointAction, setWaypointAction] = useState<{
     systemId: number
     systemName: string
   } | null>(null)
-  const clickStartRef = useRef<{ x: number; y: number } | null>(null)
 
-  const universeDataLoaded = useUniverseDataLoaded()
+  // --- Data hooks ---
+
+  const {
+    systems,
+    regions,
+    regionMap,
+    stargates,
+    coordinateData,
+    spatialIndex,
+    indexedStargates,
+  } = useMapData(dimensions)
+
   const { fwData, allianceData } = useSovereigntyData(colorMode)
 
   const {
@@ -126,14 +79,8 @@ export function StarMap() {
     [characterLocations]
   )
 
-  const {
-    ignoredSystems,
-    avoidIncursions,
-    avoidInsurgencies,
-    addIgnored,
-    removeIgnored,
-    isIgnored,
-  } = useIgnoredSystemsStore()
+  const { ignoredSystems, addIgnored, removeIgnored, isIgnored } =
+    useIgnoredSystemsStore()
 
   const {
     enabled: showIncursions,
@@ -153,115 +100,28 @@ export function StarMap() {
     getCorruptionLevel,
   } = useInsurgenciesStore()
 
-  const { systems, regions, stargates } = useMemo(() => {
-    if (!universeDataLoaded) {
-      return {
-        systems: [] as CachedSystem[],
-        regions: [] as CachedRegion[],
-        stargates: [] as CachedStargate[],
-      }
-    }
+  // --- Route hook ---
 
-    const allRegions = getAllRegions()
-    const filteredRegions = allRegions.filter(
-      (r) => !EXCLUDED_REGION_NAMES.has(r.name)
-    )
-    const excludedRegionIds = new Set(
-      allRegions
-        .filter((r) => EXCLUDED_REGION_NAMES.has(r.name))
-        .map((r) => r.id)
-    )
-
-    const filteredSystems = getAllSystems().filter(
-      (s) => !excludedRegionIds.has(s.regionId)
-    )
-    const validSystemIds = new Set(filteredSystems.map((s) => s.id))
-
-    const filteredStargates = getAllStargates().filter(
-      (g) => validSystemIds.has(g.from) && validSystemIds.has(g.to)
-    )
-
-    return {
-      systems: filteredSystems,
-      regions: filteredRegions,
-      stargates: filteredStargates,
-    }
-  }, [universeDataLoaded])
-
-  const regionMap = useMemo(
-    () => new Map(regions.map((r) => [r.id, r])),
-    [regions]
-  )
-
-  const bounds = useMemo(() => calculateBounds(systems), [systems])
-
-  const coordinateData = useMemo(
-    () => calculateCoordinateData(bounds, dimensions.width, dimensions.height),
-    [bounds, dimensions]
-  )
-
-  const spatialIndex = useMemo(() => {
-    if (systems.length === 0) return null
-    const index = new SpatialIndex(20)
-    index.build(systems, coordinateData, dimensions.height)
-    return index
-  }, [systems, coordinateData, dimensions.height])
-
-  const indexedStargates = useMemo(
-    () => spatialIndex?.indexStargates(stargates) ?? [],
-    [spatialIndex, stargates]
-  )
-
-  const pathfinderGraph = useMemo<PathfinderGraph | null>(() => {
-    if (!spatialIndex || stargates.length === 0) return null
-    const indexedSystems = spatialIndex.getSystems()
-    const gatesForRouting =
-      ansiblexRoutingEnabled && useAnsiblexes ? ansiblexes : undefined
-    return buildGraph(indexedSystems, stargates, gatesForRouting)
-  }, [
+  const {
+    routeOrigin,
+    routeDestination,
+    routePreference,
+    calculatedRoute,
+    setRouteOrigin,
+    setRouteDestination,
+    setRoutePreference,
+    handleClearRoute,
+    handleSetOrigin,
+    handleSetDestination,
+  } = useMapRoute({
     spatialIndex,
     stargates,
     ansiblexRoutingEnabled,
     useAnsiblexes,
     ansiblexes,
-  ])
+  })
 
-  const effectiveIgnoredSystems = useMemo(() => {
-    const merged = new Set(ignoredSystems)
-    if (avoidIncursions) {
-      for (const id of infestedSystems) merged.add(id)
-    }
-    if (avoidInsurgencies) {
-      for (const id of insurgencySystems) merged.add(id)
-    }
-    return merged
-  }, [
-    ignoredSystems,
-    avoidIncursions,
-    avoidInsurgencies,
-    infestedSystems,
-    insurgencySystems,
-  ])
-
-  const calculatedRoute = useMemo(() => {
-    if (!pathfinderGraph || routeOrigin === null || routeDestination === null) {
-      return null
-    }
-    return findRoute(
-      pathfinderGraph,
-      routeOrigin,
-      routeDestination,
-      routePreference,
-      50,
-      effectiveIgnoredSystems
-    )
-  }, [
-    pathfinderGraph,
-    routeOrigin,
-    routeDestination,
-    routePreference,
-    effectiveIgnoredSystems,
-  ])
+  // --- Camera & search hooks ---
 
   const {
     camera,
@@ -307,134 +167,66 @@ export function StarMap() {
     getCorruptionLevel,
   })
 
-  const getWorldCoordsFromEvent = useCallback(
-    (e: React.MouseEvent<HTMLCanvasElement>) => {
-      if (!canvasRef.current) return null
-      const rect = canvasRef.current.getBoundingClientRect()
-      const mouseX = e.clientX - rect.left
-      const mouseY = e.clientY - rect.top
-      const cam = cameraRef.current
-      return screenToWorld(
-        mouseX,
-        mouseY,
-        cam,
-        dimensions.width,
-        dimensions.height
-      )
-    },
-    [cameraRef, dimensions]
-  )
+  // --- Interaction hook ---
 
-  const handleSelectResult = useCallback(
-    (result: SearchResult) => {
-      selectSearchResult(result)
+  const {
+    highlightedSystemId,
+    highlightedRegionId,
+    contextMenu,
+    setContextMenu,
+    handleSelectResult,
+    handleCanvasMouseDown,
+    handleCanvasMouseMove,
+    handleCanvasMouseUp,
+    handleCanvasMouseLeave,
+    handleDoubleClick,
+    handleContextMenu,
+  } = useMapInteraction({
+    canvasRef,
+    cameraRef,
+    spatialIndex,
+    dimensions,
+    isDragging,
+    handleCameraMouseDown: handleMouseDown,
+    handleCameraMouseMove,
+    handleCameraMouseUp: handleMouseUp,
+    handleCameraMouseLeave,
+    handleHoverMouseMove,
+    clearHover,
+    selectSearchResult,
+    navigateTo,
+    setRouteOrigin,
+    setRouteDestination,
+  })
 
-      if (result.type === 'system') {
-        setHighlightedRegionId(null)
-        setHighlightedSystemId(result.id)
-        const indexed = spatialIndex?.getSystemById(result.id)
-        if (indexed) {
-          navigateTo(indexed.canvasX, indexed.canvasY, 8)
-        }
-      } else {
-        setHighlightedSystemId(null)
-        setHighlightedRegionId(result.id)
-        const centroid = spatialIndex?.getRegionCentroid(result.id)
-        if (centroid) {
-          navigateTo(centroid.x, centroid.y, 4)
-        }
-      }
-    },
-    [selectSearchResult, spatialIndex, navigateTo]
-  )
+  // --- Canvas renderer ---
 
-  const handleCanvasMouseDown = useCallback(
-    (e: React.MouseEvent<HTMLCanvasElement>) => {
-      clickStartRef.current = { x: e.clientX, y: e.clientY }
-      handleMouseDown(e)
-    },
-    [handleMouseDown]
-  )
+  useCanvasRenderer({
+    canvasRef,
+    cameraRef,
+    camera,
+    dimensions,
+    spatialIndex,
+    indexedStargates,
+    colorMode,
+    isInitialized,
+    fwData,
+    allianceData,
+    regionMap,
+    highlightedSystemId,
+    highlightedRegionId,
+    calculatedRoute,
+    routeOrigin,
+    routeDestination,
+    ansiblexes,
+    useAnsiblexes,
+    showIncursions,
+    infestedSystems,
+    showInsurgencies,
+    insurgencySystems,
+  })
 
-  const handleCanvasMouseMove = useCallback(
-    (e: React.MouseEvent<HTMLCanvasElement>) => {
-      handleCameraMouseMove(e)
-      if (!isDragging) {
-        handleHoverMouseMove(e)
-      }
-    },
-    [handleCameraMouseMove, handleHoverMouseMove, isDragging]
-  )
-
-  const handleCanvasMouseUp = useCallback(
-    (e: React.MouseEvent<HTMLCanvasElement>) => {
-      handleMouseUp()
-
-      if (!clickStartRef.current || !spatialIndex || !canvasRef.current) return
-
-      const dx = e.clientX - clickStartRef.current.x
-      const dy = e.clientY - clickStartRef.current.y
-      const movedDistance = Math.sqrt(dx * dx + dy * dy)
-
-      if (movedDistance < 5) {
-        const coords = getWorldCoordsFromEvent(e)
-        if (!coords) return
-
-        const clickRadius = CLICK_RADIUS / cameraRef.current.zoom
-        const nearest = spatialIndex.findNearest(
-          coords.x,
-          coords.y,
-          clickRadius
-        )
-
-        if (e.shiftKey && nearest) {
-          setRouteOrigin(nearest.id)
-        } else if (e.ctrlKey && nearest) {
-          setRouteDestination(nearest.id)
-        } else if (nearest) {
-          setHighlightedRegionId(null)
-          setHighlightedSystemId(nearest.id)
-        } else {
-          setHighlightedSystemId(null)
-          setHighlightedRegionId(null)
-        }
-      }
-
-      clickStartRef.current = null
-    },
-    [handleMouseUp, spatialIndex, getWorldCoordsFromEvent, cameraRef]
-  )
-
-  const handleClearRoute = useCallback(() => {
-    setRouteOrigin(null)
-    setRouteDestination(null)
-  }, [])
-
-  const handleSetOrigin = useCallback((systemId: number) => {
-    setRouteOrigin(systemId)
-  }, [])
-
-  const handleSetDestination = useCallback((systemId: number) => {
-    setRouteDestination(systemId)
-  }, [])
-
-  const handleDoubleClick = useCallback(
-    (e: React.MouseEvent<HTMLCanvasElement>) => {
-      if (!spatialIndex) return
-
-      const coords = getWorldCoordsFromEvent(e)
-      if (!coords) return
-
-      const regionRadius = 100 / cameraRef.current.zoom
-      const nearest = spatialIndex.findNearest(coords.x, coords.y, regionRadius)
-
-      if (nearest) {
-        setHighlightedSystemId(null)
-        setHighlightedRegionId(nearest.regionId)
-      }
-    },
-    [spatialIndex, getWorldCoordsFromEvent, cameraRef]
-  )
+  // --- Derived data for route controls ---
 
   const systemSearchList = useMemo<SystemSearchItem[]>(
     () =>
@@ -451,41 +243,7 @@ export function StarMap() {
     [systemSearchList]
   )
 
-  const handleCanvasMouseLeave = useCallback(() => {
-    handleCameraMouseLeave()
-    clearHover()
-    clickStartRef.current = null
-  }, [handleCameraMouseLeave, clearHover])
-
-  const handleContextMenu = useCallback(
-    (e: React.MouseEvent<HTMLCanvasElement>) => {
-      e.preventDefault()
-      if (!spatialIndex) return
-
-      const coords = getWorldCoordsFromEvent(e)
-      if (!coords) return
-
-      const clickRadius = CLICK_RADIUS / cameraRef.current.zoom
-      const nearest = spatialIndex.findNearest(coords.x, coords.y, clickRadius)
-
-      if (nearest) {
-        setContextMenu({
-          x: e.clientX,
-          y: e.clientY,
-          systemId: nearest.id,
-          systemName: nearest.name,
-        })
-      }
-    },
-    [spatialIndex, getWorldCoordsFromEvent, cameraRef]
-  )
-
-  useEffect(() => {
-    if (!contextMenu) return
-    const handler = () => setContextMenu(null)
-    window.addEventListener('click', handler)
-    return () => window.removeEventListener('click', handler)
-  }, [contextMenu])
+  // --- Side effects ---
 
   useEffect(() => {
     const updateDimensions = () => {
@@ -524,154 +282,7 @@ export function StarMap() {
     return () => stopInsurgenciesRefreshTimer()
   }, [fetchInsurgencies, showInsurgencies])
 
-  useEffect(() => {
-    if (!spatialIndex || !canvasRef.current || !isInitialized) return
-
-    const canvas = canvasRef.current
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    const cam = cameraRef.current
-
-    ctx.fillStyle = '#000000'
-    ctx.fillRect(0, 0, dimensions.width, dimensions.height)
-
-    const visibleBounds = getVisibleBounds(
-      cam,
-      dimensions.width,
-      dimensions.height
-    )
-
-    const renderContext = {
-      ctx,
-      width: dimensions.width,
-      height: dimensions.height,
-      camera: cam,
-      visibleBounds,
-    }
-
-    setupTransform(renderContext)
-
-    renderStargates(renderContext, indexedStargates)
-
-    const indexedSystems = spatialIndex.getSystems()
-    renderSystems(
-      renderContext,
-      indexedSystems,
-      colorMode,
-      fwData,
-      allianceData
-    )
-    if (highlightedRegionId !== null) {
-      renderHighlightedRegion(
-        renderContext,
-        highlightedRegionId,
-        indexedSystems,
-        indexedStargates
-      )
-    }
-
-    if (highlightedSystemId !== null) {
-      const highlightedSystem = spatialIndex.getSystemById(highlightedSystemId)
-      if (highlightedSystem) {
-        renderHighlightedSystem(
-          renderContext,
-          highlightedSystem,
-          indexedStargates
-        )
-      }
-    }
-
-    if (ansiblexes.length > 0 && useAnsiblexes) {
-      renderAnsiblexConnections(
-        renderContext,
-        ansiblexes,
-        spatialIndex.getSystemMap()
-      )
-    }
-
-    if (showIncursions && infestedSystems.size > 0) {
-      renderSystemRings(
-        renderContext,
-        infestedSystems,
-        spatialIndex.getSystemMap(),
-        '#ff3333',
-        8
-      )
-    }
-
-    if (showInsurgencies && insurgencySystems.size > 0) {
-      renderSystemRings(
-        renderContext,
-        insurgencySystems,
-        spatialIndex.getSystemMap(),
-        '#ff8800',
-        10
-      )
-    }
-
-    const routeIds = calculatedRoute ? new Set(calculatedRoute.path) : undefined
-    renderSystemLabels(
-      renderContext,
-      indexedSystems,
-      colorMode,
-      fwData,
-      allianceData,
-      routeIds
-    )
-
-    let labels
-    if (colorMode === 'faction' && fwData) {
-      labels = calculateFactionLabels(indexedSystems, fwData)
-    } else if (colorMode === 'alliance' && allianceData) {
-      labels = calculateAllianceLabels(indexedSystems, allianceData)
-    } else {
-      labels = calculateRegionLabels(indexedSystems, regionMap)
-    }
-    renderLabels(renderContext, labels)
-
-    if (calculatedRoute) {
-      renderRoute(
-        renderContext,
-        calculatedRoute.path,
-        spatialIndex.getSystemMap()
-      )
-    }
-
-    const originSystem =
-      routeOrigin !== null ? spatialIndex.getSystemById(routeOrigin) : undefined
-    const destSystem =
-      routeDestination !== null
-        ? spatialIndex.getSystemById(routeDestination)
-        : undefined
-    if (originSystem || destSystem) {
-      renderRouteEndpoints(renderContext, originSystem, destSystem)
-    }
-
-    ctx.restore()
-  }, [
-    spatialIndex,
-    indexedStargates,
-    camera,
-    cameraRef,
-    dimensions,
-    colorMode,
-    isInitialized,
-    fwData,
-    allianceData,
-    regionMap,
-    highlightedSystemId,
-    highlightedRegionId,
-    calculatedRoute,
-    routeOrigin,
-    routeDestination,
-    ansiblexes,
-    useAnsiblexes,
-    showIncursions,
-    infestedSystems,
-    showInsurgencies,
-    insurgencySystems,
-  ])
+  // --- Render ---
 
   if (systems.length === 0 || !isInitialized) {
     return (

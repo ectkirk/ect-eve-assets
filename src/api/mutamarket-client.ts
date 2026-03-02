@@ -126,7 +126,7 @@ async function fetchSingleAbyssalPriceInternal(
       return null
     }
 
-    const price = parseResult.data.estimated_value || -1
+    const price = parseResult.data.estimated_value ?? -1
     return { price, persist: true }
   } catch (error) {
     if (retryCount < MAX_RETRIES) {

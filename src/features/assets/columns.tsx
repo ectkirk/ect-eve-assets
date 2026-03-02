@@ -1,6 +1,5 @@
 import type { ColumnDef } from '@tanstack/react-table'
 import { useTranslation } from 'react-i18next'
-import { usePriceStore } from '@/store/price-store'
 import { TypeIcon, OwnerIcon } from '@/components/ui/type-icon'
 import { AbyssalPreview } from '@/components/ui/abyssal-preview'
 import { SortButton } from '@/components/ui/sortable-header'
@@ -110,9 +109,7 @@ export const columns: ColumnDef<AssetRow>[] = [
       const isBpc = row.original.isBlueprintCopy
       const categoryId = row.original.categoryId
       const modeFlags = row.original.modeFlags
-      const isAbyssalResolved =
-        row.original.isAbyssal &&
-        usePriceStore.getState().hasAbyssalPrice(row.original.itemId)
+      const isAbyssalResolved = row.original.isAbyssalResolved
       const nameSpan = (
         <span className={cn('truncate', isBpc && 'text-status-special')}>
           {typeName}

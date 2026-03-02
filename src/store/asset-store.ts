@@ -2,8 +2,9 @@ import { create } from 'zustand'
 import {
   useAuthStore,
   type Owner,
+  type OwnerType,
   findOwnerByKey,
-  ownerKey,
+  ownerKey as makeOwnerKey,
 } from './auth-store'
 import { useExpiryCacheStore } from './expiry-cache-store'
 import {
@@ -25,7 +26,17 @@ import { createOwnerDB } from '@/lib/owner-indexed-db'
 import { logger } from '@/lib/logger'
 import { getErrorForLog, getUserFriendlyMessage } from '@/lib/errors'
 import { ownerEndpoint } from '@/lib/owner-utils'
-import { triggerResolution } from '@/lib/data-resolver'
+import {
+  triggerResolution,
+  registerCollector,
+  needsTypeResolution,
+  hasType,
+  getType as getTypeFn,
+  hasLocation,
+  hasStructure,
+  PLAYER_STRUCTURE_ID_THRESHOLD,
+  type ResolutionIds,
+} from '@/lib/data-resolver'
 import { useStoreRegistry } from './store-registry'
 import { useContractsStore } from './contracts-store'
 import { useMarketOrdersStore } from './market-orders-store'
@@ -100,8 +111,8 @@ function isNameable(typeId: number): boolean {
 }
 
 async function handleCharacterLeftCorporation(corpOwner: Owner): Promise<void> {
-  const corpKey = ownerKey('corporation', corpOwner.id)
-  const charKey = ownerKey('character', corpOwner.characterId)
+  const corpKey = makeOwnerKey('corporation', corpOwner.id)
+  const charKey = makeOwnerKey('character', corpOwner.characterId)
 
   if (!useAuthStore.getState().getOwner(corpKey)) {
     return
@@ -172,6 +183,7 @@ async function fetchOwnerAssetNames(
 }
 
 let initPromise: Promise<void> | null = null
+const updatingOwners = new Set<string>()
 
 export const useAssetStore = create<AssetStore>((set, get) => ({
   assetsByOwner: [],
@@ -248,7 +260,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
       ? owners.filter((o): o is Owner => o !== undefined && !o.authFailed)
       : owners.filter((owner): owner is Owner => {
           if (!owner || owner.authFailed) return false
-          const ownerKey = `${owner.type}-${owner.id}`
+          const ownerKey = makeOwnerKey(owner.type, owner.id)
           const endpoint = getAssetEndpoint(owner)
           return expiryCacheStore.isExpired(ownerKey, endpoint)
         })
@@ -265,7 +277,10 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
 
     try {
       const existingAssets = new Map(
-        state.assetsByOwner.map((oa) => [`${oa.owner.type}-${oa.owner.id}`, oa])
+        state.assetsByOwner.map((oa) => [
+          makeOwnerKey(oa.owner.type, oa.owner.id),
+          oa,
+        ])
       )
       const allNames = new Map(state.assetNames)
 
@@ -274,7 +289,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         if (!owner) continue
         set({ updateProgress: { current: i, total: ownersToUpdate.length } })
 
-        const ownerKey = `${owner.type}-${owner.id}`
+        const ownerKey = makeOwnerKey(owner.type, owner.id)
         const endpoint = getAssetEndpoint(owner)
 
         try {
@@ -382,10 +397,9 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
   },
 
   updateForOwner: async (owner: Owner) => {
-    const state = get()
-    if (state.isUpdating) return
-
-    const ownerKeyStr = `${owner.type}-${owner.id}`
+    const ownerKeyStr = makeOwnerKey(owner.type, owner.id)
+    if (updatingOwners.has(ownerKeyStr)) return
+    updatingOwners.add(ownerKeyStr)
 
     set({
       isUpdating: true,
@@ -407,7 +421,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         etag,
       } = await fetchOwnerAssetsWithMeta(owner)
 
-      const newNames = new Map(state.assetNames)
+      const newNames = new Map(get().assetNames)
 
       const activeShipResult = await detectAndInjectActiveShip(
         owner,
@@ -462,7 +476,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
       set((current) => ({
         assetsByOwner: [
           ...current.assetsByOwner.filter(
-            (oa) => `${oa.owner.type}-${oa.owner.id}` !== ownerKeyStr
+            (oa) => makeOwnerKey(oa.owner.type, oa.owner.id) !== ownerKeyStr
           ),
           { owner, assets },
         ],
@@ -482,7 +496,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         await handleCharacterLeftCorporation(owner)
         set((current) => ({
           assetsByOwner: current.assetsByOwner.filter(
-            (oa) => `${oa.owner.type}-${oa.owner.id}` !== ownerKeyStr
+            (oa) => makeOwnerKey(oa.owner.type, oa.owner.id) !== ownerKeyStr
           ),
           isUpdating: false,
           updateProgress: null,
@@ -498,13 +512,15 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
           module: 'AssetStore',
         })
       }
+    } finally {
+      updatingOwners.delete(ownerKeyStr)
     }
   },
 
   removeForOwner: async (ownerType: string, ownerId: number) => {
-    const ownerKey = `${ownerType}-${ownerId}`
+    const ownerKey = makeOwnerKey(ownerType as OwnerType, ownerId)
     const hasOwner = get().assetsByOwner.some(
-      (oa) => `${oa.owner.type}-${oa.owner.id}` === ownerKey
+      (oa) => makeOwnerKey(oa.owner.type, oa.owner.id) === ownerKey
     )
     if (!hasOwner) return
 
@@ -512,7 +528,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
 
     set((current) => ({
       assetsByOwner: current.assetsByOwner.filter(
-        (oa) => `${oa.owner.type}-${oa.owner.id}` !== ownerKey
+        (oa) => makeOwnerKey(oa.owner.type, oa.owner.id) !== ownerKey
       ),
     }))
 
@@ -592,4 +608,64 @@ useStoreRegistry.getState().register({
   getIsUpdating: () => useAssetStore.getState().isUpdating,
   init: useAssetStore.getState().init,
   update: useAssetStore.getState().update,
+})
+
+registerCollector('assets', (ids: ResolutionIds) => {
+  const { assetsByOwner } = useAssetStore.getState()
+  const itemIdToAsset = new Map<number, ESIAsset>()
+  const itemIdToOwner = new Map<number, Owner>()
+
+  for (const { owner, assets } of assetsByOwner) {
+    for (const asset of assets) {
+      itemIdToAsset.set(asset.item_id, asset)
+      itemIdToOwner.set(asset.item_id, owner)
+    }
+  }
+
+  const getRootInfo = (
+    asset: ESIAsset
+  ): { structureId: number | null; owner: Owner | undefined } => {
+    let current = asset
+    let owner = itemIdToOwner.get(asset.item_id)
+    while (current.location_type === 'item') {
+      const parent = itemIdToAsset.get(current.location_id)
+      if (!parent) break
+      current = parent
+      owner = itemIdToOwner.get(current.item_id)
+    }
+    if (current.location_id >= PLAYER_STRUCTURE_ID_THRESHOLD) {
+      return { structureId: current.location_id, owner }
+    }
+    return { structureId: null, owner }
+  }
+
+  for (const { owner, assets } of assetsByOwner) {
+    for (const asset of assets) {
+      if (needsTypeResolution(asset.type_id)) {
+        ids.typeIds.add(asset.type_id)
+      }
+
+      if (
+        asset.location_type !== 'item' &&
+        asset.location_id < PLAYER_STRUCTURE_ID_THRESHOLD &&
+        !hasLocation(asset.location_id)
+      ) {
+        ids.locationIds.add(asset.location_id)
+      }
+
+      const type = hasType(asset.type_id) ? getTypeFn(asset.type_id) : undefined
+      if (
+        type?.categoryId === 65 &&
+        asset.location_type === 'solar_system' &&
+        !hasStructure(asset.item_id)
+      ) {
+        ids.structureToCharacter.set(asset.item_id, owner.characterId)
+      }
+
+      const { structureId, owner: rootOwner } = getRootInfo(asset)
+      if (structureId && !hasStructure(structureId) && rootOwner) {
+        ids.structureToCharacter.set(structureId, rootOwner.characterId)
+      }
+    }
+  }
 })

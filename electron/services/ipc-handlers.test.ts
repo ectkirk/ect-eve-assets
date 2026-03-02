@@ -32,6 +32,7 @@ const mocks = vi.hoisted(() => ({
   revokeToken: vi.fn(),
   cancelAuth: vi.fn(),
   logger: {
+    debug: vi.fn(),
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
@@ -380,10 +381,14 @@ describe('IPC Handlers', () => {
         expect(mocks.logger.error).toHaveBeenCalled()
       })
 
-      it('does not log DEBUG level', async () => {
+      it('logs DEBUG level via logger.debug', async () => {
         const handler = getRegisteredHandler('log:write')
         await handler(mockEvent, 'DEBUG', 'debug message')
 
+        expect(mocks.logger.debug).toHaveBeenCalledWith(
+          'debug message',
+          expect.objectContaining({ source: 'renderer' })
+        )
         expect(mocks.logger.info).not.toHaveBeenCalled()
         expect(mocks.logger.warn).not.toHaveBeenCalled()
         expect(mocks.logger.error).not.toHaveBeenCalled()

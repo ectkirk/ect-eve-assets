@@ -72,7 +72,8 @@ export function useResolvedAssets(): ResolvedAssetsResult {
     return { ownedStructureIds: ids, starbaseMoonIds: moonIds }
   }, [starbasesByOwner, structuresByOwner])
 
-  const resolvedAssets = useMemo(() => {
+  // Memo 1: Base assets from owned items
+  const baseAssets = useMemo(() => {
     void assetData.priceVersion
     void types
     void structures
@@ -94,68 +95,6 @@ export function useResolvedAssets(): ResolvedAssetsResult {
       )
     }
 
-    if (includeMarketOrders) {
-      for (const [ownerKeyStr, orderIds] of ordersVisibilityByOwner) {
-        const owner = findOwnerByKey(ownerKeyStr)
-        if (!owner) continue
-
-        for (const orderId of orderIds) {
-          const stored = ordersById.get(orderId)
-          if (stored && !stored.item.is_buy_order) {
-            assets.push(resolveMarketOrder(stored.item, owner))
-          }
-        }
-      }
-    }
-
-    if (includeContracts) {
-      for (const [ownerKeyStr, contractIds] of contractsVisibilityByOwner) {
-        const owner = findOwnerByKey(ownerKeyStr)
-        if (!owner) continue
-
-        const isCharOwner = owner.type === 'character'
-        const ownerId = isCharOwner ? owner.characterId : owner.id
-
-        for (const contractId of contractIds) {
-          const stored = contractsById.get(contractId)
-          if (!stored) continue
-
-          const contract = stored.item
-          const items = contractItemsById.get(contractId)
-          if (contract.status !== 'outstanding' || !items) continue
-
-          const isIssuer = isCharOwner
-            ? contract.issuer_id === ownerId
-            : contract.issuer_corporation_id === ownerId
-
-          if (!isIssuer) continue
-
-          for (const item of items) {
-            if (item.is_included) {
-              assets.push(resolveContractItem(contract, item, owner))
-            }
-          }
-        }
-      }
-    }
-
-    if (includeIndustryJobs) {
-      for (const [ownerKeyStr, jobIds] of jobsVisibilityByOwner) {
-        const owner = findOwnerByKey(ownerKeyStr)
-        if (!owner) continue
-
-        for (const jobId of jobIds) {
-          const stored = jobsById.get(jobId)
-          if (!stored) continue
-
-          const job = stored.item
-          if (job.status !== 'active' && job.status !== 'ready') continue
-
-          assets.push(resolveIndustryJob(job, owner))
-        }
-      }
-    }
-
     return assets
   }, [
     assetData.assetsByOwner,
@@ -165,19 +104,108 @@ export function useResolvedAssets(): ResolvedAssetsResult {
     assetData.assetNames,
     ownedStructureIds,
     starbaseMoonIds,
-    ordersById,
-    ordersVisibilityByOwner,
-    contractsById,
-    contractItemsById,
-    contractsVisibilityByOwner,
-    jobsById,
-    jobsVisibilityByOwner,
-    includeMarketOrders,
-    includeContracts,
-    includeIndustryJobs,
     includeActiveShip,
     includeStructures,
   ])
+
+  // Memo 2: Market order assets
+  const marketOrderAssets = useMemo(() => {
+    if (!includeMarketOrders) return []
+
+    const assets: ResolvedAsset[] = []
+    for (const [ownerKeyStr, orderIds] of ordersVisibilityByOwner) {
+      const owner = findOwnerByKey(ownerKeyStr)
+      if (!owner) continue
+
+      for (const orderId of orderIds) {
+        const stored = ordersById.get(orderId)
+        if (stored && !stored.item.is_buy_order) {
+          assets.push(resolveMarketOrder(stored.item, owner))
+        }
+      }
+    }
+    return assets
+  }, [ordersById, ordersVisibilityByOwner, includeMarketOrders])
+
+  // Memo 3: Contract assets
+  const contractAssets = useMemo(() => {
+    if (!includeContracts) return []
+
+    const assets: ResolvedAsset[] = []
+    for (const [ownerKeyStr, contractIds] of contractsVisibilityByOwner) {
+      const owner = findOwnerByKey(ownerKeyStr)
+      if (!owner) continue
+
+      const isCharOwner = owner.type === 'character'
+      const ownerId = isCharOwner ? owner.characterId : owner.id
+
+      for (const contractId of contractIds) {
+        const stored = contractsById.get(contractId)
+        if (!stored) continue
+
+        const contract = stored.item
+        const items = contractItemsById.get(contractId)
+        if (contract.status !== 'outstanding' || !items) continue
+
+        const isIssuer = isCharOwner
+          ? contract.issuer_id === ownerId
+          : contract.issuer_corporation_id === ownerId
+
+        if (!isIssuer) continue
+
+        for (const item of items) {
+          if (item.is_included) {
+            assets.push(resolveContractItem(contract, item, owner))
+          }
+        }
+      }
+    }
+    return assets
+  }, [
+    contractsById,
+    contractItemsById,
+    contractsVisibilityByOwner,
+    includeContracts,
+  ])
+
+  // Memo 4: Industry job assets
+  const industryJobAssets = useMemo(() => {
+    if (!includeIndustryJobs) return []
+
+    const assets: ResolvedAsset[] = []
+    for (const [ownerKeyStr, jobIds] of jobsVisibilityByOwner) {
+      const owner = findOwnerByKey(ownerKeyStr)
+      if (!owner) continue
+
+      for (const jobId of jobIds) {
+        const stored = jobsById.get(jobId)
+        if (!stored) continue
+
+        const job = stored.item
+        if (job.status !== 'active' && job.status !== 'ready') continue
+
+        assets.push(resolveIndustryJob(job, owner))
+      }
+    }
+    return assets
+  }, [jobsById, jobsVisibilityByOwner, includeIndustryJobs])
+
+  // Memo 5: Concat all sources
+  const resolvedAssets = useMemo(() => {
+    if (
+      marketOrderAssets.length === 0 &&
+      contractAssets.length === 0 &&
+      industryJobAssets.length === 0
+    ) {
+      return baseAssets
+    }
+    return [
+      ...baseAssets,
+      ...marketOrderAssets,
+      ...contractAssets,
+      ...industryJobAssets,
+    ]
+  }, [baseAssets, marketOrderAssets, contractAssets, industryJobAssets])
 
   const resolvedByOwner = useMemo(() => {
     const byOwner = new Map<string, ResolvedAsset[]>()

@@ -41,6 +41,7 @@ export interface AssetRow {
   isSingleton: boolean
   isBlueprintCopy: boolean
   isAbyssal: boolean
+  isAbyssalResolved: boolean
   price: number
   totalValue: number
   volume: number
@@ -107,7 +108,8 @@ export function saveColumnVisibility(state: VisibilityState): void {
 export function createAssetRow(
   ra: ResolvedAsset,
   displayFlag: string,
-  isAbyssal: boolean
+  isAbyssal: boolean,
+  isAbyssalResolved: boolean
 ): AssetRow {
   const names = getAssetDisplayNames(ra)
   return {
@@ -126,6 +128,7 @@ export function createAssetRow(
     isSingleton: ra.asset.is_singleton,
     isBlueprintCopy: ra.isBlueprintCopy,
     isAbyssal,
+    isAbyssalResolved,
     price: ra.price,
     totalValue: ra.totalValue,
     volume: ra.volume,

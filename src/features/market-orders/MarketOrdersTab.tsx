@@ -48,7 +48,10 @@ export function MarketOrdersTab() {
   const types = useReferenceCacheStore((s) => s.types)
   const structures = useReferenceCacheStore((s) => s.structures)
 
-  const regionalMarketStore = useRegionalMarketStore()
+  const pricesByLocation = useRegionalMarketStore((s) => s.pricesByLocation)
+  const buyPricesByLocation = useRegionalMarketStore(
+    (s) => s.buyPricesByLocation
+  )
 
   const { search, setTotalValue, setColumns, setOrderTypeFilter } =
     useTabControls()
@@ -123,15 +126,9 @@ export function MarketOrdersTab() {
         const type = types.get(order.type_id)
         const locationInfo = getLocationInfo(order.location_id)
         const lowestSell =
-          regionalMarketStore.getPriceAtLocation(
-            order.type_id,
-            order.location_id
-          ) ?? null
+          pricesByLocation.get(order.type_id)?.get(order.location_id) ?? null
         const highestBuy =
-          regionalMarketStore.getHighestBuyAtLocation(
-            order.type_id,
-            order.location_id
-          ) ?? null
+          buyPricesByLocation.get(order.type_id)?.get(order.location_id) ?? null
         const eveEstimated = getEsiAveragePrice(order.type_id) ?? null
         const expiryTime =
           new Date(order.issued).getTime() +
@@ -158,7 +155,14 @@ export function MarketOrdersTab() {
     }
 
     return orders
-  }, [ordersByOwner, types, structures, selectedSet, regionalMarketStore])
+  }, [
+    ordersByOwner,
+    types,
+    structures,
+    selectedSet,
+    pricesByLocation,
+    buyPricesByLocation,
+  ])
 
   const filteredOrders = useMemo(() => {
     let filtered = allOrders

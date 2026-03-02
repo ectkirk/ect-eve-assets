@@ -7,6 +7,7 @@ import {
 import {
   useAuthStore,
   type Owner,
+  type OwnerType,
   findOwnerByKey,
   ownerKey as makeOwnerKey,
 } from './auth-store'
@@ -230,7 +231,7 @@ export function createOwnerStore<
         const ownersToUpdate = force
           ? filtered
           : filtered.filter((owner) => {
-              const ownerKey = `${owner.type}-${owner.id}`
+              const ownerKey = makeOwnerKey(owner.type, owner.id)
               const endpoint = getEndpoint(owner)
               return expiryCacheStore.isExpired(ownerKey, endpoint)
             })
@@ -246,7 +247,7 @@ export function createOwnerStore<
         try {
           const existing = new Map<string, TOwnerData>(
             state.dataByOwner.map((d: TOwnerData) => [
-              `${d.owner.type}-${d.owner.id}`,
+              makeOwnerKey(d.owner.type, d.owner.id),
               d,
             ])
           )
@@ -258,7 +259,7 @@ export function createOwnerStore<
               continue
             }
 
-            const ownerKey = `${owner.type}-${owner.id}`
+            const ownerKey = makeOwnerKey(owner.type, owner.id)
             const endpoint = getEndpoint(owner)
 
             try {
@@ -335,7 +336,7 @@ export function createOwnerStore<
           return
         }
 
-        const ownerKey = `${owner.type}-${owner.id}`
+        const ownerKey = makeOwnerKey(owner.type, owner.id)
         if (updatingOwners.has(ownerKey)) {
           return
         }
@@ -359,11 +360,12 @@ export function createOwnerStore<
           const { data, expiresAt, etag } = await fetchData(owner)
 
           if (onAfterOwnerUpdate) {
+            const currentState = get()
             onAfterOwnerUpdate({
               owner,
               newData: data,
               previousData: preHookResult.previousData,
-              state: state as BaseState<TOwnerData> & TExtraState,
+              state: currentState as BaseState<TOwnerData> & TExtraState,
             })
           }
 
@@ -374,7 +376,8 @@ export function createOwnerStore<
             .setExpiry(ownerKey, endpoint, expiresAt, etag, isDataEmpty)
 
           const updated = (get().dataByOwner as TOwnerData[]).filter(
-            (d: TOwnerData) => `${d.owner.type}-${d.owner.id}` !== ownerKey
+            (d: TOwnerData) =>
+              makeOwnerKey(d.owner.type, d.owner.id) !== ownerKey
           )
           updated.push(toOwnerData(owner, data))
 
@@ -412,9 +415,9 @@ export function createOwnerStore<
       },
 
       removeForOwner: async (ownerType: string, ownerId: number) => {
-        const ownerKey = `${ownerType}-${ownerId}`
+        const ownerKey = makeOwnerKey(ownerType as OwnerType, ownerId)
         const hasOwner = get().dataByOwner.some(
-          (d: TOwnerData) => `${d.owner.type}-${d.owner.id}` === ownerKey
+          (d: TOwnerData) => makeOwnerKey(d.owner.type, d.owner.id) === ownerKey
         )
         if (!hasOwner) return
 
@@ -422,7 +425,8 @@ export function createOwnerStore<
 
         set((current) => {
           const updated = (current.dataByOwner as TOwnerData[]).filter(
-            (d: TOwnerData) => `${d.owner.type}-${d.owner.id}` !== ownerKey
+            (d: TOwnerData) =>
+              makeOwnerKey(d.owner.type, d.owner.id) !== ownerKey
           )
           const extra = rebuildExtraState ? rebuildExtraState(updated) : {}
           return { dataByOwner: updated, ...extra } as Partial<

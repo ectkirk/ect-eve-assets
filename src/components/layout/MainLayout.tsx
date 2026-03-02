@@ -87,7 +87,7 @@ import { useContractsSearchActionStore } from '@/store/contracts-search-action-s
 import { useReferenceActionStore } from '@/store/reference-action-store'
 import { useTotalAssets, useNavigationAction } from '@/hooks'
 import { formatNumber } from '@/lib/utils'
-import { TabControlsProvider } from '@/context'
+import { useTabControlsStore } from '@/store/tab-controls-store'
 import { FeatureErrorBoundary } from '@/components/ui/feature-error-boundary'
 import { DiscordIcon } from '@/components/ui/icons'
 import { UpdateBanner } from './UpdateBanner'
@@ -410,6 +410,12 @@ function MainLayoutInner() {
     }, [])
   )
 
+  const resetSearch = useTabControlsStore((s) => s.resetSearch)
+
+  useEffect(() => {
+    resetSearch()
+  }, [mode, activeAssetTab, activeCharacterTab, resetSearch])
+
   const clearMarketTypeId = useCallback(() => setMarketTypeId(null), [])
   const clearReferenceTypeId = useCallback(() => setReferenceTypeId(null), [])
   const clearContractsSearchType = useCallback(
@@ -653,9 +659,5 @@ function MainLayoutInner() {
 }
 
 export function MainLayout() {
-  return (
-    <TabControlsProvider>
-      <MainLayoutInner />
-    </TabControlsProvider>
-  )
+  return <MainLayoutInner />
 }

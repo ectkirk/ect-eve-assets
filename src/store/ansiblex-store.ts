@@ -73,6 +73,7 @@ export const useAnsiblexStore = create<AnsiblexState>()((set, get) => ({
   initialized: false,
 
   init: async () => {
+    if (get().initialized) return
     if (initPromise) return initPromise
 
     initPromise = (async () => {
@@ -96,7 +97,7 @@ export const useAnsiblexStore = create<AnsiblexState>()((set, get) => ({
           total: Array.from(ansiblexesByCharacter.values()).flat().length,
         })
       } catch (err) {
-        logger.error('Failed to initialize ansiblex store', err as Error, {
+        logger.error('Failed to initialize ansiblex store', err, {
           module: 'AnsiblexStore',
         })
       }
@@ -242,7 +243,7 @@ export const useAnsiblexStore = create<AnsiblexState>()((set, get) => ({
         total: allAnsiblexes.length,
       })
     } catch (err) {
-      logger.error('Failed to fetch ansiblex data', err as Error, {
+      logger.error('Failed to fetch ansiblex data', err, {
         module: 'AnsiblexStore',
         characterId,
       })
@@ -262,7 +263,7 @@ export const useAnsiblexStore = create<AnsiblexState>()((set, get) => ({
       })
       logger.info('Ansiblex cache cleared', { module: 'AnsiblexStore' })
     } catch (err) {
-      logger.error('Failed to clear ansiblex cache', err as Error, {
+      logger.error('Failed to clear ansiblex cache', err, {
         module: 'AnsiblexStore',
       })
     }

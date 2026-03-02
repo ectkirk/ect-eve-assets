@@ -11,6 +11,7 @@ export type OwnerModalState = {
 }
 
 export type OwnerModalAction =
+  | { type: 'RESET' }
   | { type: 'START_AUTH'; flow: 'character' | 'corporation' }
   | { type: 'END_AUTH' }
   | { type: 'SET_UPDATING'; value: boolean }
@@ -37,6 +38,8 @@ export function ownerModalReducer(
   action: OwnerModalAction
 ): OwnerModalState {
   switch (action.type) {
+    case 'RESET':
+      return initialOwnerModalState
     case 'START_AUTH':
       return { ...state, authFlow: action.flow, error: null }
     case 'END_AUTH':

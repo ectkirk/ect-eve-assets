@@ -60,7 +60,11 @@ async function fetchJitaPricesFromAPI(
   const results = new Map<number, number>()
 
   const chunks = chunkArray(typeIds, 1000)
-  if (chunks.length === 0) chunks.push([])
+  if (chunks.length === 0) {
+    // Only push an empty chunk if there are other params to send (itemIds, contractTypeIds, plex).
+    // The early return above already handles the all-empty case.
+    chunks.push([])
+  }
 
   let firstChunk = true
   for (const chunk of chunks) {

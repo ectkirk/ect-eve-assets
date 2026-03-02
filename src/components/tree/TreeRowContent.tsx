@@ -34,7 +34,12 @@ export const TreeNodeIcon = memo(function TreeNodeIcon({
   ) {
     colorClass = DIVISION_COLORS[divisionNumber - 1]!
   }
-  return <Icon className={cn('h-4 w-4 flex-shrink-0', colorClass)} />
+  return (
+    <Icon
+      aria-hidden="true"
+      className={cn('h-4 w-4 flex-shrink-0', colorClass)}
+    />
+  )
 })
 
 export const ItemIcon = memo(function ItemIcon({ node }: { node: TreeNode }) {

@@ -10,6 +10,9 @@ import type { IndexedSystemItem } from '../types'
 import { formatSecurity, roundSecurity } from '@/lib/utils'
 import { useSystemContextMenu } from '../hooks/useSystemContextMenu'
 
+const COLOR_ROUTE_ORIGIN = '#00ff88'
+const COLOR_ROUTE_DESTINATION = '#ff4444'
+
 function getSecurityClass(security: number): 'high' | 'low' | 'null' {
   if (security >= 0.45) return 'high'
   if (security > 0) return 'low'
@@ -196,7 +199,7 @@ export const MapRouteControls = memo(function MapRouteControls({
             placeholder={t('map.originPlaceholder')}
             selectedName={originName}
             selectedSecurity={originSecurity}
-            dotColor="#00ff88"
+            dotColor={COLOR_ROUTE_ORIGIN}
             indexedSystems={indexedSystems}
             onSelect={onSetOrigin}
           />
@@ -204,7 +207,7 @@ export const MapRouteControls = memo(function MapRouteControls({
             placeholder={t('map.destinationPlaceholder')}
             selectedName={destinationName}
             selectedSecurity={destinationSecurity}
-            dotColor="#ff4444"
+            dotColor={COLOR_ROUTE_DESTINATION}
             indexedSystems={indexedSystems}
             onSelect={onSetDestination}
           />

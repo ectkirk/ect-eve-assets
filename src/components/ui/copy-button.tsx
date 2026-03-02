@@ -40,7 +40,7 @@ export function CopyButton({
         title={t('accessibility.clickToCopy')}
       >
         {text}
-        <Icon className={cn('h-3.5 w-3.5', iconClass)} />
+        <Icon aria-hidden="true" className={cn('h-3.5 w-3.5', iconClass)} />
       </button>
     )
   }
@@ -55,7 +55,7 @@ export function CopyButton({
       )}
       title={`Copy "${text}"`}
     >
-      <Icon className={cn('h-4 w-4', iconClass)} />
+      <Icon aria-hidden="true" className={cn('h-4 w-4', iconClass)} />
       {copied ? t('buttons.copied') : label}
     </button>
   )

@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { create } from 'zustand'
 import type { Owner } from './auth-store'
 import {
@@ -180,17 +181,21 @@ export function useCorporationDivisions(owner: Owner | null) {
   const initialized = useDivisionsStore((s) => s.initialized)
   const init = useDivisionsStore((s) => s.init)
 
-  if (!initialized) {
-    init()
-  }
+  useEffect(() => {
+    if (!initialized) {
+      init()
+    }
+  }, [initialized, init])
 
-  if (
-    owner?.type === 'corporation' &&
-    initialized &&
-    !divisionsByCorp.has(owner.id)
-  ) {
-    fetchForOwner(owner)
-  }
+  useEffect(() => {
+    if (
+      owner?.type === 'corporation' &&
+      initialized &&
+      !divisionsByCorp.has(owner.id)
+    ) {
+      fetchForOwner(owner)
+    }
+  }, [owner, initialized, divisionsByCorp, fetchForOwner])
 
   return owner?.type === 'corporation'
     ? divisionsByCorp.get(owner.id)

@@ -10,6 +10,14 @@ import { useRegionalMarketStore } from '@/store/regional-market-store'
 import { logger } from '@/lib/logger'
 import { ownerEndpoint } from '@/lib/owner-utils'
 import {
+  registerCollector,
+  needsTypeResolution,
+  hasLocation,
+  hasStructure,
+  PLAYER_STRUCTURE_ID_THRESHOLD,
+  type ResolutionIds,
+} from '@/lib/data-resolver'
+import {
   createVisibilityStore,
   type StoredItem,
   type SourceOwner,
@@ -270,3 +278,22 @@ export const useMarketOrdersStore: MarketOrdersStore = Object.assign(
     },
   }
 )
+
+registerCollector('market-orders', (ids: ResolutionIds) => {
+  const ordersByOwner = useMarketOrdersStore.getOrdersByOwner()
+
+  for (const { owner, orders } of ordersByOwner) {
+    for (const order of orders) {
+      if (needsTypeResolution(order.type_id)) {
+        ids.typeIds.add(order.type_id)
+      }
+      if (order.location_id >= PLAYER_STRUCTURE_ID_THRESHOLD) {
+        if (!hasStructure(order.location_id)) {
+          ids.structureToCharacter.set(order.location_id, owner.characterId)
+        }
+      } else if (!hasLocation(order.location_id)) {
+        ids.locationIds.add(order.location_id)
+      }
+    }
+  }
+})

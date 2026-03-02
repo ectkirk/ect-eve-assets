@@ -187,60 +187,49 @@ export function StructuresTab() {
       return calculateStructureValues(assetsByOwner, selectedOwnerIds)
     }, [assetsByOwner, priceVersion, selectedOwnerIds, types])
 
-  const [fittingDialogOpen, setFittingDialogOpen] = useState(false)
-  const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null)
-  const [posInfoDialogOpen, setPosInfoDialogOpen] = useState(false)
-  const [selectedStarbase, setSelectedStarbase] = useState<{
-    starbase: ESIStarbase
-    ownerName: string
-  } | null>(null)
-  const [structureInfoDialogOpen, setStructureInfoDialogOpen] = useState(false)
-  const [selectedStructure, setSelectedStructure] = useState<{
-    structure: ESICorporationStructure
-    ownerName: string
-  } | null>(null)
-  const [pocoInfoDialogOpen, setPocoInfoDialogOpen] = useState(false)
-  const [selectedPoco, setSelectedPoco] = useState<{
-    customsOffice: ESICustomsOffice
-    ownerName: string
-  } | null>(null)
-  const [waypointAction, setWaypointAction] = useState<{
-    systemId: number
-    systemName: string
-  } | null>(null)
+  type DialogState =
+    | { type: 'none' }
+    | { type: 'fitting'; node: TreeNode }
+    | { type: 'posInfo'; starbase: ESIStarbase; ownerName: string }
+    | {
+        type: 'structureInfo'
+        structure: ESICorporationStructure
+        ownerName: string
+      }
+    | { type: 'pocoInfo'; customsOffice: ESICustomsOffice; ownerName: string }
+    | { type: 'waypoint'; systemId: number; systemName: string }
+
+  const [dialog, setDialog] = useState<DialogState>({ type: 'none' })
+  const closeDialog = useCallback(() => setDialog({ type: 'none' }), [])
 
   const handleViewFitting = useCallback((node: TreeNode) => {
-    setSelectedNode(node)
-    setFittingDialogOpen(true)
+    setDialog({ type: 'fitting', node })
   }, [])
 
   const handleViewPosInfo = useCallback(
     (starbase: ESIStarbase, ownerName: string) => {
-      setSelectedStarbase({ starbase, ownerName })
-      setPosInfoDialogOpen(true)
+      setDialog({ type: 'posInfo', starbase, ownerName })
     },
     []
   )
 
   const handleViewStructureInfo = useCallback(
     (structure: ESICorporationStructure, ownerName: string) => {
-      setSelectedStructure({ structure, ownerName })
-      setStructureInfoDialogOpen(true)
+      setDialog({ type: 'structureInfo', structure, ownerName })
     },
     []
   )
 
   const handleViewPocoInfo = useCallback(
     (customsOffice: ESICustomsOffice, ownerName: string) => {
-      setSelectedPoco({ customsOffice, ownerName })
-      setPocoInfoDialogOpen(true)
+      setDialog({ type: 'pocoInfo', customsOffice, ownerName })
     },
     []
   )
 
   const handleSetWaypoint = useCallback(
     (systemId: number, systemName: string) => {
-      setWaypointAction({ systemId, systemName })
+      setDialog({ type: 'waypoint', systemId, systemName })
     },
     []
   )
@@ -469,39 +458,39 @@ export function StructuresTab() {
         onSetWaypoint={handleSetWaypoint}
       />
       <FittingDialog
-        open={fittingDialogOpen}
-        onOpenChange={setFittingDialogOpen}
-        shipNode={selectedNode}
+        open={dialog.type === 'fitting'}
+        onOpenChange={(open) => !open && closeDialog()}
+        shipNode={dialog.type === 'fitting' ? dialog.node : null}
       />
       <POSInfoDialog
-        open={posInfoDialogOpen}
-        onOpenChange={setPosInfoDialogOpen}
-        starbase={selectedStarbase?.starbase ?? null}
+        open={dialog.type === 'posInfo'}
+        onOpenChange={(open) => !open && closeDialog()}
+        starbase={dialog.type === 'posInfo' ? dialog.starbase : null}
         detail={
-          selectedStarbase
-            ? starbaseDetails.get(selectedStarbase.starbase.starbase_id)
+          dialog.type === 'posInfo'
+            ? starbaseDetails.get(dialog.starbase.starbase_id)
             : undefined
         }
-        ownerName={selectedStarbase?.ownerName ?? ''}
+        ownerName={dialog.type === 'posInfo' ? dialog.ownerName : ''}
       />
       <StructureInfoDialog
-        open={structureInfoDialogOpen}
-        onOpenChange={setStructureInfoDialogOpen}
-        structure={selectedStructure?.structure ?? null}
-        ownerName={selectedStructure?.ownerName ?? ''}
+        open={dialog.type === 'structureInfo'}
+        onOpenChange={(open) => !open && closeDialog()}
+        structure={dialog.type === 'structureInfo' ? dialog.structure : null}
+        ownerName={dialog.type === 'structureInfo' ? dialog.ownerName : ''}
       />
       <POCOInfoDialog
-        open={pocoInfoDialogOpen}
-        onOpenChange={setPocoInfoDialogOpen}
-        customsOffice={selectedPoco?.customsOffice ?? null}
-        ownerName={selectedPoco?.ownerName ?? ''}
+        open={dialog.type === 'pocoInfo'}
+        onOpenChange={(open) => !open && closeDialog()}
+        customsOffice={dialog.type === 'pocoInfo' ? dialog.customsOffice : null}
+        ownerName={dialog.type === 'pocoInfo' ? dialog.ownerName : ''}
       />
       <IngameActionModal
-        open={waypointAction !== null}
-        onOpenChange={(open) => !open && setWaypointAction(null)}
+        open={dialog.type === 'waypoint'}
+        onOpenChange={(open) => !open && closeDialog()}
         action="autopilot"
-        targetId={waypointAction?.systemId ?? 0}
-        targetName={waypointAction?.systemName}
+        targetId={dialog.type === 'waypoint' ? dialog.systemId : 0}
+        targetName={dialog.type === 'waypoint' ? dialog.systemName : undefined}
       />
     </>
   )
