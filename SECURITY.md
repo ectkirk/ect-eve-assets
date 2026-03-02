@@ -4,17 +4,43 @@
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 2.5.x   | :white_check_mark: |
-| < 2.5.0 | :x:                |
+| 2.6.x   | :white_check_mark: |
+| < 2.6.0 | :x:                |
 
-## Security Considerations
+## Security Model
 
-ECTEVEAssets is a desktop application that handles EVE Online SSO authentication. Key security aspects:
+ECT EVE Assets is a desktop application that handles EVE Online SSO authentication. The Electron architecture enforces a strict security boundary between the main process (privileged) and the renderer process (sandboxed).
 
-- **OAuth Tokens**: Access and refresh tokens are stored locally via Zustand persistence
-- **EVE SSO**: Authentication uses EVE Online's OAuth2 flow with PKCE
-- **Local Only**: No data is sent to third-party servers; all ESI requests go directly to CCP's APIs
-- **No Secrets in Code**: Client credentials must be provided via environment variables
+### Authentication
+
+- **EVE SSO PKCE**: OAuth2 with Proof Key for Code Exchange — no client secret stored in the application
+- **Token isolation**: Access and refresh tokens are stored exclusively in the Electron main process and never exposed to the renderer
+- **Token refresh**: Automatic refresh 60 seconds before expiry via the main process
+- **Token revocation**: Tokens are revoked on application shutdown
+- **Session cleanup**: Tokens are cleared on system lock, system suspend, and after 30 minutes of idle time
+
+### Process Isolation
+
+- **Preload bridge**: The renderer communicates with the main process exclusively through `contextBridge`-exposed IPC channels (`window.electronAPI`, `window.esiAPI`)
+- **Input validation**: All IPC handlers validate incoming parameters before processing
+- **No Node.js in renderer**: The renderer has no direct access to Node.js APIs or the filesystem
+
+### Content Sanitization
+
+- **DOMPurify**: All HTML content (EVE mail, item descriptions, user-generated text) is sanitized with allowlisted tags and attributes before rendering
+
+### External Services
+
+The application communicates with these external services:
+
+| Service                  | Purpose                                    |
+| ------------------------ | ------------------------------------------ |
+| ESI (esi.evetech.net)    | EVE Online API for character/corp data     |
+| EVE SSO (login.eveonline.com) | OAuth2 authentication                |
+| edencom.net              | Reference data (item types, prices, locations) |
+| mutamarket.com           | Abyssal module pricing                     |
+
+No other external services are contacted. All communication uses HTTPS.
 
 ## Reporting a Vulnerability
 
@@ -44,9 +70,10 @@ If you discover a security vulnerability, please:
 
 In scope:
 
-- Token handling and storage
-- OAuth flow implementation
+- Token handling, storage, and lifecycle
+- OAuth flow implementation (PKCE, refresh, revocation)
 - IPC security between main and renderer processes
+- Content sanitization
 - Dependency vulnerabilities
 
 Out of scope:
