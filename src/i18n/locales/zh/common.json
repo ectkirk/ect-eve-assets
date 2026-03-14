@@ -87,6 +87,7 @@
   "accessibility.filterByOrderType": "按订单类型筛选",
   "accessibility.filterByAssetType": "按资产类型筛选",
   "accessibility.filterByCategory": "按分类筛选",
+  "accessibility.filterByGroup": "按分组筛选",
   "accessibility.sortCharacters": "角色排序",
   "accessibility.clickToCopy": "点击复制",
 
@@ -128,6 +129,7 @@
   "searchBar.showing": "显示 {{showing}} / {{total}}",
   "searchBar.more": "+{{count}} 更多",
   "searchBar.allCategories": "所有分类",
+  "searchBar.allGroups": "全部分组",
 
   "searchBar.assetTypes.all": "所有类型",
   "searchBar.assetTypes.activeShip": "当前舰船",

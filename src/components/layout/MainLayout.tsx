@@ -152,12 +152,7 @@ function CharacterTabContent({ tab }: { tab: CharacterTabId }) {
   }
 }
 
-const APP_MODE_IDS: AppMode[] = [
-  'assets',
-  'character',
-  'tools',
-  'buyback',
-]
+const APP_MODE_IDS: AppMode[] = ['assets', 'character', 'tools', 'buyback']
 
 function TabButtons<T extends string>({
   tabs,

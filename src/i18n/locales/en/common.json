@@ -87,6 +87,7 @@
   "accessibility.filterByOrderType": "Filter by order type",
   "accessibility.filterByAssetType": "Filter by asset type",
   "accessibility.filterByCategory": "Filter by category",
+  "accessibility.filterByGroup": "Filter by group",
   "accessibility.sortCharacters": "Sort characters",
   "accessibility.clickToCopy": "Click to copy",
 
@@ -128,6 +129,7 @@
   "searchBar.showing": "Showing {{showing}} of {{total}}",
   "searchBar.more": "+{{count}} more",
   "searchBar.allCategories": "All Categories",
+  "searchBar.allGroups": "All Groups",
 
   "searchBar.assetTypes.all": "All Types",
   "searchBar.assetTypes.activeShip": "Active Ship",

@@ -177,6 +177,7 @@ export function SearchBar() {
     setSearch,
     searchPlaceholder,
     categoryFilter,
+    groupFilter,
     assetTypeFilter,
     resultCount,
     totalValue,
@@ -348,6 +349,22 @@ export function SearchBar() {
           {categoryFilter.categories.map((cat) => (
             <option key={cat} value={cat}>
               {cat}
+            </option>
+          ))}
+        </select>
+      )}
+
+      {groupFilter && groupFilter.groups.length > 0 && (
+        <select
+          value={groupFilter.value}
+          onChange={(e) => groupFilter.onChange(e.target.value)}
+          aria-label={t('accessibility.filterByGroup')}
+          className="w-44 rounded border border-border bg-surface-tertiary px-2 py-1.5 text-sm focus:border-accent focus:outline-hidden"
+        >
+          <option value="">{t('searchBar.allGroups')}</option>
+          {groupFilter.groups.map((grp) => (
+            <option key={grp} value={grp}>
+              {grp}
             </option>
           ))}
         </select>

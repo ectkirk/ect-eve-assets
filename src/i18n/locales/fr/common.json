@@ -87,6 +87,7 @@
   "accessibility.filterByOrderType": "Filtrer par type d'ordre",
   "accessibility.filterByAssetType": "Filtrer par type d'actif",
   "accessibility.filterByCategory": "Filtrer par catégorie",
+  "accessibility.filterByGroup": "Filtrer par groupe",
   "accessibility.sortCharacters": "Trier les personnages",
   "accessibility.clickToCopy": "Cliquer pour copier",
 
@@ -128,6 +129,7 @@
   "searchBar.showing": "Affichage {{showing}} sur {{total}}",
   "searchBar.more": "+{{count}} de plus",
   "searchBar.allCategories": "Toutes les catégories",
+  "searchBar.allGroups": "Tous les groupes",
 
   "searchBar.assetTypes.all": "Tous les types",
   "searchBar.assetTypes.activeShip": "Vaisseau actif",

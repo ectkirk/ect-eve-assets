@@ -60,6 +60,8 @@ export function useTabControls() {
       setSearchPlaceholder: s.setSearchPlaceholder,
       categoryFilter: s.categoryFilter,
       setCategoryFilter: s.setCategoryFilter,
+      groupFilter: s.groupFilter,
+      setGroupFilter: s.setGroupFilter,
       assetTypeFilter: s.assetTypeFilter,
       setAssetTypeFilter: s.setAssetTypeFilter,
       resultCount: s.resultCount,

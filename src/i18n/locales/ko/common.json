@@ -87,6 +87,7 @@
   "accessibility.filterByOrderType": "주문 유형별 필터",
   "accessibility.filterByAssetType": "자산 유형별 필터",
   "accessibility.filterByCategory": "카테고리별 필터",
+  "accessibility.filterByGroup": "그룹별 필터",
   "accessibility.sortCharacters": "캐릭터 정렬",
   "accessibility.clickToCopy": "클릭하여 복사",
 
@@ -128,6 +129,7 @@
   "searchBar.showing": "{{showing}} / {{total}} 표시 중",
   "searchBar.more": "+{{count}} 더보기",
   "searchBar.allCategories": "모든 카테고리",
+  "searchBar.allGroups": "모든 그룹",
 
   "searchBar.assetTypes.all": "모든 유형",
   "searchBar.assetTypes.activeShip": "활성 함선",

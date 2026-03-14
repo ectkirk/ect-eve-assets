@@ -71,6 +71,7 @@ export function AssetsTab() {
   const [columnVisibility, setColumnVisibility] =
     useState<VisibilityState>(loadColumnVisibility)
   const [categoryFilterValue, setCategoryFilterValue] = useState('')
+  const [groupFilterValue, setGroupFilterValue] = useState('')
   const [assetTypeFilterValue, setAssetTypeFilterValue] = useState('')
   const [ingameAction, setIngameAction] = useState<{
     action: 'market' | 'autopilot' | 'contract'
@@ -84,6 +85,7 @@ export function AssetsTab() {
     search,
     setSearchPlaceholder,
     setCategoryFilter,
+    setGroupFilter,
     setAssetTypeFilter,
     setResultCount,
     setTotalValue,
@@ -125,11 +127,12 @@ export function AssetsTab() {
     [authOwners, ownerHasDirectorRole]
   )
 
-  const { data, categories } = useMemo(() => {
+  const { data, categories, groups } = useMemo(() => {
     void types
 
     const aggregated = new Map<string, AssetRow>()
     const cats = new Set<string>()
+    const grps = new Set<string>()
 
     for (const ra of selectedResolvedAssets) {
       const displayFlag = getDisplayFlag(ra.modeFlags, ra.asset.location_flag)
@@ -140,6 +143,7 @@ export function AssetsTab() {
       const names = getAssetDisplayNames(ra)
 
       if (names.categoryName) cats.add(names.categoryName)
+      if (names.groupName) grps.add(names.groupName)
 
       if (isAbyssal || (ra.asset.is_singleton && !isBlueprint)) {
         aggregated.set(
@@ -174,8 +178,20 @@ export function AssetsTab() {
     return {
       data: Array.from(aggregated.values()),
       categories: Array.from(cats).sort(),
+      groups: Array.from(grps).sort(),
     }
   }, [selectedResolvedAssets, types, blueprintsByItemId, abyssalPrices])
+
+  const filteredGroups = useMemo(() => {
+    if (!categoryFilterValue) return groups
+    const grpSet = new Set<string>()
+    for (const row of data) {
+      if (row.categoryName === categoryFilterValue && row.groupName) {
+        grpSet.add(row.groupName)
+      }
+    }
+    return Array.from(grpSet).sort()
+  }, [groups, data, categoryFilterValue])
 
   const { filteredData, filteredTotalValue, sourceCount } = useMemo(() => {
     const searchLower = search.toLowerCase()
@@ -187,6 +203,7 @@ export function AssetsTab() {
       const names = getAssetDisplayNames(ra)
       if (categoryFilterValue && names.categoryName !== categoryFilterValue)
         continue
+      if (groupFilterValue && names.groupName !== groupFilterValue) continue
       if (search && !matchesSearch(ra, search)) continue
       sourceShowing++
     }
@@ -196,6 +213,7 @@ export function AssetsTab() {
         return false
       if (categoryFilterValue && row.categoryName !== categoryFilterValue)
         return false
+      if (groupFilterValue && row.groupName !== groupFilterValue) return false
       if (
         search &&
         !matchesSearchLower(
@@ -231,6 +249,7 @@ export function AssetsTab() {
     selectedResolvedAssets,
     assetTypeFilterValue,
     categoryFilterValue,
+    groupFilterValue,
     search,
   ])
 
@@ -265,10 +284,22 @@ export function AssetsTab() {
     setCategoryFilter({
       categories,
       value: categoryFilterValue,
-      onChange: setCategoryFilterValue,
+      onChange: (value: string) => {
+        setCategoryFilterValue(value)
+        setGroupFilterValue('')
+      },
     })
     return () => setCategoryFilter(null)
   }, [categories, categoryFilterValue, setCategoryFilter])
+
+  useEffect(() => {
+    setGroupFilter({
+      groups: filteredGroups,
+      value: groupFilterValue,
+      onChange: setGroupFilterValue,
+    })
+    return () => setGroupFilter(null)
+  }, [filteredGroups, groupFilterValue, setGroupFilter])
 
   useEffect(() => {
     setAssetTypeFilter({

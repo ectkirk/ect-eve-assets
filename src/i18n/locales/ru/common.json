@@ -87,6 +87,7 @@
   "accessibility.filterByOrderType": "Фильтр по типу ордера",
   "accessibility.filterByAssetType": "Фильтр по типу актива",
   "accessibility.filterByCategory": "Фильтр по категории",
+  "accessibility.filterByGroup": "Фильтр по группе",
   "accessibility.sortCharacters": "Сортировка персонажей",
   "accessibility.clickToCopy": "Нажмите, чтобы скопировать",
 
@@ -128,6 +129,7 @@
   "searchBar.showing": "Показано {{showing}} из {{total}}",
   "searchBar.more": "+{{count}} ещё",
   "searchBar.allCategories": "Все категории",
+  "searchBar.allGroups": "Все группы",
 
   "searchBar.assetTypes.all": "Все типы",
   "searchBar.assetTypes.activeShip": "Активный корабль",

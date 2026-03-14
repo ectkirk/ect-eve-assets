@@ -26,6 +26,12 @@ interface CategoryFilterConfig {
   onChange: (value: string) => void
 }
 
+interface GroupFilterConfig {
+  groups: string[]
+  value: string
+  onChange: (value: string) => void
+}
+
 interface AssetTypeFilterConfig {
   value: string
   onChange: (value: string) => void
@@ -47,6 +53,7 @@ interface TabControlsState {
   search: string
   searchPlaceholder: string | null
   categoryFilter: CategoryFilterConfig | null
+  groupFilter: GroupFilterConfig | null
   assetTypeFilter: AssetTypeFilterConfig | null
   resultCount: ResultCount | null
   totalValue: TotalValueConfig | null
@@ -64,6 +71,7 @@ interface TabControlsActions {
   setSearch: (value: string) => void
   setSearchPlaceholder: (placeholder: string | null) => void
   setCategoryFilter: (config: CategoryFilterConfig | null) => void
+  setGroupFilter: (config: GroupFilterConfig | null) => void
   setAssetTypeFilter: (config: AssetTypeFilterConfig | null) => void
   setResultCount: (count: ResultCount | null) => void
   setTotalValue: (value: TotalValueConfig | null) => void
@@ -86,6 +94,7 @@ export const useTabControlsStore = create<
   search: '',
   searchPlaceholder: null,
   categoryFilter: null,
+  groupFilter: null,
   assetTypeFilter: null,
   resultCount: null,
   totalValue: null,
@@ -101,6 +110,7 @@ export const useTabControlsStore = create<
   setSearch: (search) => set({ search }),
   setSearchPlaceholder: (searchPlaceholder) => set({ searchPlaceholder }),
   setCategoryFilter: (categoryFilter) => set({ categoryFilter }),
+  setGroupFilter: (groupFilter) => set({ groupFilter }),
   setAssetTypeFilter: (assetTypeFilter) => set({ assetTypeFilter }),
   setResultCount: (resultCount) => set({ resultCount }),
   setTotalValue: (totalValue) => set({ totalValue }),

@@ -87,6 +87,7 @@
   "accessibility.filterByOrderType": "注文タイプでフィルター",
   "accessibility.filterByAssetType": "アセットタイプでフィルター",
   "accessibility.filterByCategory": "カテゴリでフィルター",
+  "accessibility.filterByGroup": "グループでフィルタ",
   "accessibility.sortCharacters": "キャラクターを並べ替え",
   "accessibility.clickToCopy": "クリックしてコピー",
 
@@ -128,6 +129,7 @@
   "searchBar.showing": "{{showing}} / {{total}} 件表示",
   "searchBar.more": "+{{count}} 件",
   "searchBar.allCategories": "すべてのカテゴリ",
+  "searchBar.allGroups": "全グループ",
 
   "searchBar.assetTypes.all": "すべてのタイプ",
   "searchBar.assetTypes.activeShip": "アクティブシップ",

@@ -87,6 +87,7 @@
   "accessibility.filterByOrderType": "Filtrar por tipo de orden",
   "accessibility.filterByAssetType": "Filtrar por tipo de activo",
   "accessibility.filterByCategory": "Filtrar por categoría",
+  "accessibility.filterByGroup": "Filtrar por grupo",
   "accessibility.sortCharacters": "Ordenar personajes",
   "accessibility.clickToCopy": "Clic para copiar",
 
@@ -128,6 +129,7 @@
   "searchBar.showing": "Mostrando {{showing}} de {{total}}",
   "searchBar.more": "+{{count}} más",
   "searchBar.allCategories": "Todas las categorías",
+  "searchBar.allGroups": "Todos los grupos",
 
   "searchBar.assetTypes.all": "Todos los tipos",
   "searchBar.assetTypes.activeShip": "Nave activa",
