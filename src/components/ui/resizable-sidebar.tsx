@@ -33,6 +33,11 @@ export function ResizableSidebar({
   const isDragging = useRef(false)
   const startX = useRef(0)
   const startWidth = useRef(0)
+  const widthRef = useRef(width)
+
+  useEffect(() => {
+    widthRef.current = width
+  }, [width])
 
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
@@ -53,11 +58,14 @@ export function ResizableSidebar({
     document.body.style.cursor = ''
     document.body.style.userSelect = ''
     try {
-      localStorage.setItem(`sidebar-width-${storageKey}`, String(width))
+      localStorage.setItem(
+        `sidebar-width-${storageKey}`,
+        String(widthRef.current)
+      )
     } catch {
       // ignore
     }
-  }, [storageKey, width])
+  }, [storageKey])
 
   useEffect(() => {
     document.addEventListener('mousemove', handleMouseMove)
@@ -68,17 +76,14 @@ export function ResizableSidebar({
     }
   }, [handleMouseMove, handleMouseUp])
 
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault()
-      isDragging.current = true
-      startX.current = e.clientX
-      startWidth.current = width
-      document.body.style.cursor = 'col-resize'
-      document.body.style.userSelect = 'none'
-    },
-    [width]
-  )
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    isDragging.current = true
+    startX.current = e.clientX
+    startWidth.current = widthRef.current
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+  }, [])
 
   return (
     <div className={`relative flex-shrink-0 ${className}`} style={{ width }}>
