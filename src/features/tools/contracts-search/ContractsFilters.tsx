@@ -1,6 +1,7 @@
 import { useMemo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Search } from 'lucide-react'
+import { ResizableSidebar } from '@/components/ui/resizable-sidebar'
 import { getAllCategories, getGroupsByCategory } from '@/store/cache'
 import { TypeSearchInput } from '@/components/ui/type-search-input'
 import {
@@ -92,7 +93,11 @@ export function ContractsFilters({
   }
 
   return (
-    <div className="flex h-full w-80 shrink-0 flex-col border-r border-border bg-surface-secondary/50">
+    <ResizableSidebar
+      storageKey="contracts-filters"
+      defaultWidth={320}
+      className="flex h-full flex-col border-r border-border bg-surface-secondary/50"
+    >
       <div className="flex border-b border-border">
         <button
           onClick={() => updateFilter('mode', 'buySell')}
@@ -377,6 +382,6 @@ export function ContractsFilters({
             : t('contractsSearch.filters.search')}
         </button>
       </div>
-    </div>
+    </ResizableSidebar>
   )
 }

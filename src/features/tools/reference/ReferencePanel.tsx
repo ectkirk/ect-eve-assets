@@ -8,6 +8,7 @@ import {
   useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ResizableSidebar } from '@/components/ui/resizable-sidebar'
 import { ChevronRight, Loader2, Search, X } from 'lucide-react'
 import { useReferenceCacheStore } from '@/store/reference-cache'
 import { TypeIcon } from '@/components/ui/type-icon'
@@ -323,7 +324,11 @@ export function ReferencePanel({
       </div>
 
       <div className="flex min-h-0 flex-1">
-        <div className="flex w-72 flex-shrink-0 flex-col overflow-hidden border-r border-border">
+        <ResizableSidebar
+          storageKey="reference"
+          defaultWidth={288}
+          className="flex flex-col overflow-hidden border-r border-border"
+        >
           <div className="border-b border-border p-2">
             <div ref={searchContainerRef} className="relative">
               <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-content-secondary" />
@@ -464,7 +469,7 @@ export function ReferencePanel({
               onSelectType={handleSelectType}
             />
           </div>
-        </div>
+        </ResizableSidebar>
 
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           {breadcrumb.length > 0 && (

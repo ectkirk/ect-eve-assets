@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/shallow'
+import { ResizableSidebar } from '@/components/ui/resizable-sidebar'
 import {
   useReferenceCacheStore,
   type CachedType,
@@ -266,7 +267,11 @@ export function RegionalMarketPanel({
       </div>
 
       <div className="flex-1 flex min-h-0">
-        <div className="w-64 border-r border-border flex-shrink-0 flex flex-col overflow-hidden">
+        <ResizableSidebar
+          storageKey="regional-market"
+          defaultWidth={256}
+          className="flex flex-col overflow-hidden border-r border-border"
+        >
           <div className="border-b border-border">
             <MarketItemSearch onSelectType={handleSearchSelect} />
           </div>
@@ -281,7 +286,7 @@ export function RegionalMarketPanel({
               onSelectType={setSelectedTypeId}
             />
           </div>
-        </div>
+        </ResizableSidebar>
 
         <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
           <MarketBreadcrumb
