@@ -285,23 +285,22 @@ async function fetchItemsForContracts(
     if (fetched.length > 0) {
       const currentState = baseStore.getState()
       const currentItems = new Map(currentState.itemsByContractId)
-      const typeIds = new Set<number>()
+      const allItems: ESIContractItem[] = []
       for (const { contractId, items } of fetched) {
         if (!currentState.itemsById.has(contractId)) continue
         currentItems.set(contractId, items)
         if (items) {
-          for (const item of items) {
-            typeIds.add(item.type_id)
-          }
+          allItems.push(...items)
         }
       }
       baseStore.setState({
         itemsByContractId: currentItems,
       })
 
-      if (typeIds.size > 0) {
+      const { typeIds, abyssalItemIds } = extractPriceableIds(allItems)
+      if (typeIds.length > 0 || abyssalItemIds.length > 0) {
         const { usePriceStore } = await import('./price-store')
-        await usePriceStore.getState().ensureJitaPrices(Array.from(typeIds))
+        await usePriceStore.getState().ensureJitaPrices(typeIds, abyssalItemIds)
       }
 
       triggerResolution()
@@ -460,7 +459,7 @@ const baseStore = createVisibilityStore<
 
       const currentItems = new Map(baseStore.getState().itemsByContractId)
       let hasChanges = false
-      const typeIds = new Set<number>()
+      const allNewItems: ESIContractItem[] = []
 
       if (toFetch.size > 0) {
         const fetched = await fetchAndSaveItems(toFetch)
@@ -468,9 +467,7 @@ const baseStore = createVisibilityStore<
           currentItems.set(contractId, items)
           hasChanges = true
           if (items) {
-            for (const item of items) {
-              typeIds.add(item.type_id)
-            }
+            allNewItems.push(...items)
           }
         }
       }
@@ -488,9 +485,12 @@ const baseStore = createVisibilityStore<
           itemsByContractId: currentItems,
         })
 
-        if (typeIds.size > 0) {
+        const { typeIds, abyssalItemIds } = extractPriceableIds(allNewItems)
+        if (typeIds.length > 0 || abyssalItemIds.length > 0) {
           const { usePriceStore } = await import('./price-store')
-          await usePriceStore.getState().ensureJitaPrices(Array.from(typeIds))
+          await usePriceStore
+            .getState()
+            .ensureJitaPrices(typeIds, abyssalItemIds)
         }
 
         triggerResolution()

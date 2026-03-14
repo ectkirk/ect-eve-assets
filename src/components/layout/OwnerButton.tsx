@@ -51,12 +51,14 @@ export function OwnerButton() {
           refreshToken: result.refreshToken,
           expiresAt: result.expiresAt ?? Date.now() + 1200000,
           scopes: result.scopes,
+          corporationRoles: result.corporationRoles,
           owner: {
             id: result.characterId,
             type: 'character',
             name: result.characterName,
             characterId: result.characterId,
             corporationId: result.corporationId,
+            allianceId: result.allianceId,
           },
         })
         useExpiryCacheStore
