@@ -14,7 +14,6 @@ export {
   SERVICE_REGIONS,
   type BuybackItem,
 } from './useBuybackSelection'
-export { useFreightSelection } from './useFreightSelection'
 export { useNavigationAction } from './useNavigationAction'
 export { useDebouncedValue } from './useDebouncedValue'
 export { useClickOutside } from './useClickOutside'

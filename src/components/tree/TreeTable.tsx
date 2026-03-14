@@ -13,13 +13,11 @@ import {
   SortableHeader,
   useRowSelection,
   useBuybackSelection,
-  useFreightSelection,
 } from '@/hooks'
 import {
   useBuybackActionStore,
   getSecurityTab,
 } from '@/store/buyback-action-store'
-import { useFreightActionStore } from '@/store/freight-action-store'
 import { getType, getSystem } from '@/store/reference-cache'
 import { getBlueprintInfo } from '@/store/blueprints-store'
 import { CategoryIds } from '@/lib/tree-types'
@@ -174,14 +172,7 @@ export function TreeTable({
     minItems: hasLocationSelected ? 1 : 2,
   })
 
-  const { canShipFreight, handleShipFreight } = useFreightSelection({
-    selectedIds: expandedBuybackIds,
-    items: buybackItems,
-    minItems: hasLocationSelected ? 1 : 2,
-  })
-
   const triggerBuyback = useBuybackActionStore((s) => s.triggerBuyback)
-  const triggerFreight = useFreightActionStore((s) => s.triggerFreight)
 
   const handleNodeSellToBuyback = useCallback(
     (node: TreeNode) => {
@@ -209,36 +200,6 @@ export function TreeTable({
       }
     },
     [handleSellToBuyback, triggerBuyback]
-  )
-
-  const handleNodeShipFreight = useCallback(
-    (node: TreeNode) => {
-      if (node.children.length > 0) {
-        const descendants = collectDescendantItems(node)
-        if (descendants.length === 0) return
-
-        const first = descendants[0]
-        if (!first?.locationId || first.locationId >= 100_000_000) return
-
-        const items = descendants.map((n) => ({
-          name: n.typeId ? (getType(n.typeId)?.name ?? n.name) : n.name,
-          quantity: n.quantity ?? n.totalCount,
-        }))
-
-        const system = first.systemId ? getSystem(first.systemId) : undefined
-        const securityStatus = system?.securityStatus
-        const nullSec =
-          securityStatus !== undefined &&
-          securityStatus !== null &&
-          securityStatus <= 0.0
-
-        const text = items.map((i) => `${i.name}\t${i.quantity}`).join('\n')
-        triggerFreight({ text, nullSec })
-      } else {
-        handleShipFreight()
-      }
-    },
-    [handleShipFreight, triggerFreight]
   )
 
   const rowVirtualizer = useVirtualizer({
@@ -358,12 +319,10 @@ export function TreeTable({
                       isExpanded={expandedNodes.has(node.id)}
                       isSelected={selectedIds.has(node.id)}
                       showBuybackOption={canSellToBuyback}
-                      showFreightOption={canShipFreight}
                       onToggleExpand={onToggleExpand}
                       onRowClick={handleRowClick}
                       onViewFitting={handleViewFitting}
                       onSellToBuyback={handleNodeSellToBuyback}
-                      onShipFreight={handleNodeShipFreight}
                       onOpenMarketIngame={onOpenMarketIngame}
                       onSetAutopilotIngame={onSetAutopilotIngame}
                       visibleColumns={visibleColumns}

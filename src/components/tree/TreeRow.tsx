@@ -24,12 +24,10 @@ interface TreeRowProps {
   isExpanded: boolean
   isSelected: boolean
   showBuybackOption: boolean
-  showFreightOption: boolean
   onToggleExpand: (nodeId: string) => void
   onRowClick: (id: string, event: React.MouseEvent) => void
   onViewFitting: (node: TreeNode) => void
   onSellToBuyback: (node: TreeNode) => void
-  onShipFreight: (node: TreeNode) => void
   onOpenMarketIngame?: (typeId: number, typeName?: string) => void
   onSetAutopilotIngame?: (locationId: number, locationName?: string) => void
   visibleColumns: string[]
@@ -41,12 +39,10 @@ export const TreeRow = memo(function TreeRow({
   isExpanded,
   isSelected,
   showBuybackOption,
-  showFreightOption,
   onToggleExpand,
   onRowClick,
   onViewFitting,
   onSellToBuyback,
-  onShipFreight,
   onOpenMarketIngame,
   onSetAutopilotIngame,
   visibleColumns,
@@ -150,9 +146,6 @@ export const TreeRow = memo(function TreeRow({
   const showBuyback =
     (isSelected && showBuybackOption) ||
     (hasChildren && isInServiceRegion && isStation)
-  const showFreight =
-    (isSelected && showFreightOption) ||
-    (hasChildren && isInServiceRegion && isStation)
   const canViewInContracts = node.typeId && node.typeName
   const canViewDetails = !!node.typeId
   const canOpenMarketIngame = isMarketItem && onOpenMarketIngame
@@ -162,7 +155,6 @@ export const TreeRow = memo(function TreeRow({
     isShip ||
     isAbyssalResolved ||
     showBuyback ||
-    showFreight ||
     isMarketItem ||
     canViewInContracts ||
     canViewDetails ||
@@ -196,11 +188,6 @@ export const TreeRow = memo(function TreeRow({
           {showBuyback && (
             <ContextMenuItem onClick={() => onSellToBuyback(node)}>
               {t('contextMenu.sellToBuyback')}
-            </ContextMenuItem>
-          )}
-          {showFreight && (
-            <ContextMenuItem onClick={() => onShipFreight(node)}>
-              {t('contextMenu.shipItems')}
             </ContextMenuItem>
           )}
           {isShip && (

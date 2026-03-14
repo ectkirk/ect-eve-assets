@@ -60,9 +60,6 @@ const WalletTab = lazy(() =>
 const BuybackTab = lazy(() =>
   import('@/features/buyback').then((m) => ({ default: m.BuybackTab }))
 )
-const FreightPanel = lazy(() =>
-  import('@/features/tools/freight').then((m) => ({ default: m.FreightPanel }))
-)
 const ContractsSearchPanel = lazy(() =>
   import('@/features/tools/contracts-search').then((m) => ({
     default: m.ContractsSearchPanel,
@@ -81,7 +78,6 @@ const ReferencePanel = lazy(() =>
 const MapPanel = lazy(() =>
   import('@/features/tools/map').then((m) => ({ default: m.MapPanel }))
 )
-import { useFreightActionStore } from '@/store/freight-action-store'
 import { useRegionalMarketActionStore } from '@/store/regional-market-action-store'
 import { useContractsSearchActionStore } from '@/store/contracts-search-action-store'
 import { useReferenceActionStore } from '@/store/reference-action-store'
@@ -95,7 +91,7 @@ import { OwnerButton } from './OwnerButton'
 import { WindowControls } from './WindowControls'
 import { SearchBar } from './SearchBar'
 
-type AppMode = 'assets' | 'character' | 'tools' | 'buyback' | 'freight'
+type AppMode = 'assets' | 'character' | 'tools' | 'buyback'
 
 const TOOLS_TAB_IDS = ['contracts', 'market', 'reference', 'map'] as const
 const CHARACTER_TAB_IDS = ['clones', 'mail', 'skills'] as const
@@ -161,7 +157,6 @@ const APP_MODE_IDS: AppMode[] = [
   'character',
   'tools',
   'buyback',
-  'freight',
 ]
 
 function TabButtons<T extends string>({
@@ -352,10 +347,6 @@ function MainLayoutInner() {
   )
   const [activeToolsTab, setActiveToolsTab] = useState<ToolsTabId>('contracts')
   const [buybackPrefill, setBuybackPrefill] = useState<string | null>(null)
-  const [freightPrefill, setFreightPrefill] = useState<{
-    text: string
-    nullSec: boolean
-  } | null>(null)
   const [marketTypeId, setMarketTypeId] = useState<number | null>(null)
   const [referenceTypeId, setReferenceTypeId] = useState<number | null>(null)
   const [contractsSearchType, setContractsSearchType] = useState<{
@@ -369,14 +360,6 @@ function MainLayoutInner() {
       setMode('buyback')
       setActiveBuybackTab(action.securityTab)
       setBuybackPrefill(action.text)
-    }, [])
-  )
-
-  useNavigationAction(
-    useFreightActionStore,
-    useCallback((action: { text: string; nullSec: boolean }) => {
-      setMode('freight')
-      setFreightPrefill({ text: action.text, nullSec: action.nullSec })
     }, [])
   )
 
@@ -627,15 +610,6 @@ function MainLayoutInner() {
               <RegionalMarketPanel
                 initialTypeId={marketTypeId}
                 onInitialTypeConsumed={clearMarketTypeId}
-              />
-            </FeatureErrorBoundary>
-          )}
-          {mode === 'freight' && (
-            <FeatureErrorBoundary key="freight" feature="Freight">
-              <FreightPanel
-                prefillText={freightPrefill?.text}
-                prefillNullSec={freightPrefill?.nullSec}
-                onPrefillConsumed={() => setFreightPrefill(null)}
               />
             </FeatureErrorBoundary>
           )}

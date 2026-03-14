@@ -1,1 +1,0 @@
-export { FreightPanel } from './FreightPanel'

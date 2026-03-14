@@ -77,10 +77,6 @@ vi.mock('@/features/buyback', () => ({
   tabToKey: (tab: string) => tab.toLowerCase().replace(' ', '-'),
 }))
 
-vi.mock('@/features/tools/freight', () => ({
-  FreightPanel: () => <div data-testid="freight-panel">FreightPanel</div>,
-}))
-
 vi.mock('@/features/tools/contracts-search', () => ({
   ContractsSearchPanel: () => (
     <div data-testid="contracts-search-panel">ContractsSearchPanel</div>
@@ -363,17 +359,6 @@ describe('MainLayout', () => {
       fireEvent.click(within(modeTablist).getByText('Buyback'))
 
       expect(await screen.findByTestId('buyback-tab')).toBeInTheDocument()
-    })
-
-    it('switches to Freight mode', async () => {
-      render(<MainLayout />)
-      const modeTablist = screen.getByRole('tablist', {
-        name: 'Application modes',
-      })
-
-      fireEvent.click(within(modeTablist).getByText('Freight'))
-
-      expect(await screen.findByTestId('freight-panel')).toBeInTheDocument()
     })
 
     it('hides search bar in non-assets modes', () => {
