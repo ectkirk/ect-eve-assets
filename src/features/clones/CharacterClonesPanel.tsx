@@ -80,7 +80,9 @@ function CloneRow({
                 className="flex items-center gap-2 rounded bg-surface-tertiary/50 p-2"
               >
                 <TypeIcon typeId={implant.typeId} size="sm" />
-                <span className="flex-1 truncate text-sm">{implant.name}</span>
+                <span className="flex-1 truncate text-sm" title={implant.name}>
+                  {implant.name}
+                </span>
                 <span className="text-xs tabular-nums text-content-muted">
                   {implant.slot <= 10
                     ? t('implantSlot', { slot: implant.slot })
