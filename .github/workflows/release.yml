@@ -31,7 +31,7 @@ jobs:
           REF_API_KEY: ${{ secrets.REF_API_KEY }}
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: win-build
           path: |
@@ -62,7 +62,7 @@ jobs:
           REF_API_KEY: ${{ secrets.REF_API_KEY }}
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: linux-build
           path: |
@@ -93,7 +93,7 @@ jobs:
           REF_API_KEY: ${{ secrets.REF_API_KEY }}
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: mac-build
           path: |
