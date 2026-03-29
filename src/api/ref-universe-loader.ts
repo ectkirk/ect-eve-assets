@@ -82,12 +82,24 @@ export async function loadUniverseData(
   return universeDataPromise
 }
 
-async function loadAllRegions(): Promise<boolean> {
-  const language = getLanguage()
-  const result = await window.electronAPI!.refUniverseRegions({ language })
+async function loadUniverseEntities<TRaw, TParsed>(config: {
+  fetch: () => Promise<{ error?: string; items?: unknown }>
+  schema: {
+    safeParse: (data: unknown) => {
+      success: boolean
+      data?: { items: Record<string, TRaw> }
+      error?: { issues: unknown[] }
+    }
+  }
+  entityName: string
+  mapper: (raw: TRaw) => TParsed
+  setter: (items: TParsed[]) => Promise<void>
+}): Promise<boolean> {
+  const start = performance.now()
+  const result = await config.fetch()
 
   if (result.error) {
-    logger.error('Failed to load regions', undefined, {
+    logger.error(`Failed to load ${config.entityName}`, undefined, {
       module: 'RefAPI',
       error: result.error,
     })
@@ -95,167 +107,90 @@ async function loadAllRegions(): Promise<boolean> {
   }
 
   if (!result.items) {
-    logger.warn('No regions returned', { module: 'RefAPI' })
+    logger.warn(`No ${config.entityName} returned`, { module: 'RefAPI' })
     return false
   }
 
-  const parseResult = RefRegionsResponseSchema.safeParse(result)
+  const parseResult = config.schema.safeParse(result)
   if (!parseResult.success) {
-    logger.error('Regions validation failed', undefined, {
+    logger.error(`${config.entityName} validation failed`, undefined, {
       module: 'RefAPI',
-      errors: parseResult.error.issues.slice(0, 3),
+      errors: parseResult.error!.issues.slice(0, 3),
     })
     return false
   }
 
-  const regions: CachedRegion[] = Object.values(parseResult.data.items).map(
-    (r) => ({
-      id: r.id,
-      name: r.name,
-    })
-  )
+  const entities = Object.values(parseResult.data!.items).map(config.mapper)
+  await config.setter(entities)
 
-  await useReferenceCacheStore.getState().setRegions(regions)
+  const duration = Math.round(performance.now() - start)
+  if (entities.length > 0) {
+    logger.info(`${config.entityName} loaded`, {
+      module: 'RefAPI',
+      count: entities.length,
+      duration,
+    })
+  }
   return true
 }
 
-async function loadAllSystems(): Promise<boolean> {
-  const start = performance.now()
+function loadAllRegions(): Promise<boolean> {
   const language = getLanguage()
-  const result = await window.electronAPI!.refUniverseSystems({ language })
+  return loadUniverseEntities({
+    fetch: () => window.electronAPI!.refUniverseRegions({ language }),
+    schema: RefRegionsResponseSchema,
+    entityName: 'Regions',
+    mapper: (r): CachedRegion => ({ id: r.id, name: r.name }),
+    setter: (regions) => useReferenceCacheStore.getState().setRegions(regions),
+  })
+}
 
-  if (result.error) {
-    logger.error('Failed to load systems', undefined, {
-      module: 'RefAPI',
-      error: result.error,
-    })
-    return false
-  }
-
-  if (!result.items) {
-    logger.warn('No systems returned', { module: 'RefAPI' })
-    return false
-  }
-
-  const parseResult = RefSystemsResponseSchema.safeParse(result)
-  if (!parseResult.success) {
-    logger.error('Systems validation failed', undefined, {
-      module: 'RefAPI',
-      errors: parseResult.error.issues.slice(0, 3),
-    })
-    return false
-  }
-
-  const systems: CachedSystem[] = Object.values(parseResult.data.items).map(
-    (s) => ({
+function loadAllSystems(): Promise<boolean> {
+  const language = getLanguage()
+  return loadUniverseEntities({
+    fetch: () => window.electronAPI!.refUniverseSystems({ language }),
+    schema: RefSystemsResponseSchema,
+    entityName: 'Systems',
+    mapper: (s): CachedSystem => ({
       id: s.id,
       name: s.name,
       regionId: s.regionId,
       securityStatus: s.securityStatus,
       position2D: s.position2D,
-    })
-  )
-
-  await useReferenceCacheStore.getState().setSystems(systems)
-
-  const duration = Math.round(performance.now() - start)
-  logger.info('Systems loaded', {
-    module: 'RefAPI',
-    count: systems.length,
-    duration,
+    }),
+    setter: (systems) => useReferenceCacheStore.getState().setSystems(systems),
   })
-  return true
 }
 
-async function loadAllStations(): Promise<boolean> {
-  const start = performance.now()
+function loadAllStations(): Promise<boolean> {
   const language = getLanguage()
-  const result = await window.electronAPI!.refUniverseStations({ language })
-
-  if (result.error) {
-    logger.error('Failed to load stations', undefined, {
-      module: 'RefAPI',
-      error: result.error,
-    })
-    return false
-  }
-
-  if (!result.items) {
-    logger.warn('No stations returned', { module: 'RefAPI' })
-    return false
-  }
-
-  const parseResult = RefStationsResponseSchema.safeParse(result)
-  if (!parseResult.success) {
-    logger.error('Stations validation failed', undefined, {
-      module: 'RefAPI',
-      errors: parseResult.error.issues.slice(0, 3),
-    })
-    return false
-  }
-
-  const stations: CachedStation[] = Object.values(parseResult.data.items).map(
-    (s) => ({
+  return loadUniverseEntities({
+    fetch: () => window.electronAPI!.refUniverseStations({ language }),
+    schema: RefStationsResponseSchema,
+    entityName: 'Stations',
+    mapper: (s): CachedStation => ({
       id: s.id,
       name: s.name,
       systemId: s.systemId,
-    })
-  )
-
-  await useReferenceCacheStore.getState().setStations(stations)
-
-  const duration = Math.round(performance.now() - start)
-  logger.info('Stations loaded', {
-    module: 'RefAPI',
-    count: stations.length,
-    duration,
+    }),
+    setter: (stations) =>
+      useReferenceCacheStore.getState().setStations(stations),
   })
-  return true
 }
 
-async function loadAllStargates(): Promise<boolean> {
-  const start = performance.now()
-  const result = await window.electronAPI!.refUniverseStargates()
-
-  if (result.error) {
-    logger.error('Failed to load stargates', undefined, {
-      module: 'RefAPI',
-      error: result.error,
-    })
-    return false
-  }
-
-  if (!result.items) {
-    logger.warn('No stargates returned', { module: 'RefAPI' })
-    return false
-  }
-
-  const parseResult = RefStargatesResponseSchema.safeParse(result)
-  if (!parseResult.success) {
-    logger.error('Stargates validation failed', undefined, {
-      module: 'RefAPI',
-      errors: parseResult.error.issues.slice(0, 3),
-    })
-    return false
-  }
-
-  const stargates: CachedStargate[] = Object.values(parseResult.data.items).map(
-    (s) => ({
+function loadAllStargates(): Promise<boolean> {
+  return loadUniverseEntities({
+    fetch: () => window.electronAPI!.refUniverseStargates(),
+    schema: RefStargatesResponseSchema,
+    entityName: 'Stargates',
+    mapper: (s): CachedStargate => ({
       id: s.id,
       from: s.from,
       to: s.to,
-    })
-  )
-
-  await useReferenceCacheStore.getState().setStargates(stargates)
-
-  const duration = Math.round(performance.now() - start)
-  logger.info('Stargates loaded', {
-    module: 'RefAPI',
-    count: stargates.length,
-    duration,
+    }),
+    setter: (stargates) =>
+      useReferenceCacheStore.getState().setStargates(stargates),
   })
-  return true
 }
 
 let refStructuresPromise: Promise<void> | null = null
