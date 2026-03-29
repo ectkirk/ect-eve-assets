@@ -313,10 +313,6 @@ export function createOwnerStore<
             .concat(Array.from(updatedOwners.values()))
           const extra = rebuildExtraState ? rebuildExtraState(results) : {}
 
-          if (onAfterBatchUpdate) {
-            await onAfterBatchUpdate(results)
-          }
-
           set({
             dataByOwner: results,
             isUpdating: false,
@@ -326,6 +322,10 @@ export function createOwnerStore<
                 : null,
             ...extra,
           } as Partial<OwnerStore<TOwnerData, TExtraState, TExtraActions>>)
+
+          if (onAfterBatchUpdate) {
+            await onAfterBatchUpdate(results)
+          }
 
           triggerResolution()
 

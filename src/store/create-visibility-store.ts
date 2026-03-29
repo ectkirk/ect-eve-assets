@@ -353,8 +353,6 @@ export function createVisibilityStore<
             }
           }
 
-          onAfterBatchUpdate?.(itemsById)
-
           const extra = rebuildExtraState ? rebuildExtraState(itemsById) : {}
           const updateError =
             failedOwners.length === ownersToUpdate.length
@@ -370,6 +368,8 @@ export function createVisibilityStore<
             failedOwners,
             ...extra,
           } as Partial<FullStore>)
+
+          onAfterBatchUpdate?.(itemsById)
 
           triggerResolution()
 
@@ -391,8 +391,7 @@ export function createVisibilityStore<
       },
 
       updateForOwner: async (owner: Owner) => {
-        const state = get()
-        if (!state.initialized) await get().init()
+        if (!get().initialized) await get().init()
 
         const currentOwnerKey = makeOwnerKey(owner.type, owner.id)
         if (updatingOwners.has(currentOwnerKey)) {
@@ -410,10 +409,11 @@ export function createVisibilityStore<
         const gen = storeGeneration
         try {
           const endpoint = getEndpoint(owner)
+          const preState = get()
           const previousVisibility =
-            state.visibilityByOwner.get(currentOwnerKey) ?? new Set()
+            preState.visibilityByOwner.get(currentOwnerKey) ?? new Set()
 
-          onBeforeOwnerUpdate?.(owner, previousVisibility, state.itemsById)
+          onBeforeOwnerUpdate?.(owner, previousVisibility, preState.itemsById)
 
           logger.info(`Fetching ${name} for owner`, {
             module: moduleName,
