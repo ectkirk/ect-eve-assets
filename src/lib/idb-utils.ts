@@ -56,9 +56,12 @@ export async function openDatabase(
     }
 
     request.onblocked = () => {
-      logger.warn(`Database ${config.name} upgrade blocked by open connection`, {
-        module: config.module,
-      })
+      logger.warn(
+        `Database ${config.name} upgrade blocked by open connection`,
+        {
+          module: config.module,
+        }
+      )
     }
 
     request.onupgradeneeded = (event) => {
