@@ -184,7 +184,7 @@ describe('CRUD operations', () => {
 
     const all = await idbGetAll<{ id: string; value: number }>(db, 'items')
     expect(all).toHaveLength(1)
-    expect(all[0].id).toBe('b')
+    expect(all[0]!.id).toBe('b')
   })
 
   it('idbDeleteWhere removes items matching predicate', async () => {

@@ -74,11 +74,12 @@ interface TestOwnerData {
   items: number[]
 }
 
-const mockFetchData = vi.fn<
-  (
-    owner: Owner
-  ) => Promise<{ data: number[]; expiresAt: number; etag?: string | null }>
->()
+const mockFetchData =
+  vi.fn<
+    (
+      owner: Owner
+    ) => Promise<{ data: number[]; expiresAt: number; etag?: string | null }>
+  >()
 
 function makeConfig(
   overrides?: Partial<OwnerStoreConfig<number[], TestOwnerData>>
@@ -140,9 +141,7 @@ describe('createOwnerStore', () => {
 
   describe('init', () => {
     it('loads data from IndexedDB', async () => {
-      mockDB.loadAll.mockResolvedValue([
-        { owner: ownerA, data: [10, 20] },
-      ])
+      mockDB.loadAll.mockResolvedValue([{ owner: ownerA, data: [10, 20] }])
       const store = createOwnerStore(makeConfig())
 
       await store.getState().init()
@@ -179,9 +178,7 @@ describe('createOwnerStore', () => {
       await store.getState().clear()
       expect(store.getState().initialized).toBe(false)
 
-      mockDB.loadAll.mockResolvedValue([
-        { owner: ownerA, data: [42] },
-      ])
+      mockDB.loadAll.mockResolvedValue([{ owner: ownerA, data: [42] }])
       await store.getState().init()
       expect(store.getState().dataByOwner).toHaveLength(1)
       expect(store.getState().dataByOwner[0]!.items).toEqual([42])
@@ -189,9 +186,7 @@ describe('createOwnerStore', () => {
 
     it('calls rebuildExtraState with loaded data', async () => {
       const rebuildExtraState = vi.fn(() => ({ total: 99 }))
-      mockDB.loadAll.mockResolvedValue([
-        { owner: ownerA, data: [1, 2, 3] },
-      ])
+      mockDB.loadAll.mockResolvedValue([{ owner: ownerA, data: [1, 2, 3] }])
       const store = createOwnerStore(
         makeConfig({
           extraState: { total: 0 },
@@ -204,9 +199,7 @@ describe('createOwnerStore', () => {
       expect(rebuildExtraState).toHaveBeenCalledWith([
         { owner: ownerA, items: [1, 2, 3] },
       ])
-      expect(
-        (store.getState() as unknown as { total: number }).total
-      ).toBe(99)
+      expect((store.getState() as unknown as { total: number }).total).toBe(99)
     })
   })
 
@@ -310,9 +303,7 @@ describe('createOwnerStore', () => {
     })
 
     it('merges updated owners with existing state', async () => {
-      mockDB.loadAll.mockResolvedValue([
-        { owner: ownerA, data: [1] },
-      ])
+      mockDB.loadAll.mockResolvedValue([{ owner: ownerA, data: [1] }])
 
       const store = createOwnerStore(makeConfig())
       await store.getState().init()
@@ -392,9 +383,11 @@ describe('createOwnerStore', () => {
       mockDB.loadAll.mockResolvedValue([])
       mockOwners({ 'character-1001': ownerA })
 
-      let resolveSingle!: (
-        v: { data: number[]; expiresAt: number; etag: null }
-      ) => void
+      let resolveSingle!: (v: {
+        data: number[]
+        expiresAt: number
+        etag: null
+      }) => void
       const singlePromise = new Promise<{
         data: number[]
         expiresAt: number
@@ -497,9 +490,11 @@ describe('createOwnerStore', () => {
     it('skips if already updating same owner (updatingOwners guard)', async () => {
       mockDB.loadAll.mockResolvedValue([])
 
-      let resolveFirst!: (
-        v: { data: number[]; expiresAt: number; etag: null }
-      ) => void
+      let resolveFirst!: (v: {
+        data: number[]
+        expiresAt: number
+        etag: null
+      }) => void
       mockFetchData.mockReturnValueOnce(
         new Promise((r) => {
           resolveFirst = r
@@ -524,9 +519,7 @@ describe('createOwnerStore', () => {
     it('respects ownerFilter — skips corporation owner when filter is character', async () => {
       mockDB.loadAll.mockResolvedValue([])
 
-      const store = createOwnerStore(
-        makeConfig({ ownerFilter: 'character' })
-      )
+      const store = createOwnerStore(makeConfig({ ownerFilter: 'character' }))
       await store.getState().init()
 
       await store.getState().updateForOwner(corpOwner)
@@ -574,7 +567,11 @@ describe('createOwnerStore', () => {
         () =>
           new Promise((resolve) => {
             resolveFetch = () =>
-              resolve({ data: [1], expiresAt: Date.now() + 300_000, etag: null })
+              resolve({
+                data: [1],
+                expiresAt: Date.now() + 300_000,
+                etag: null,
+              })
           })
       )
 
@@ -643,9 +640,7 @@ describe('createOwnerStore', () => {
     })
 
     it('no-ops for unknown owner', async () => {
-      mockDB.loadAll.mockResolvedValue([
-        { owner: ownerA, data: [1] },
-      ])
+      mockDB.loadAll.mockResolvedValue([{ owner: ownerA, data: [1] }])
 
       const store = createOwnerStore(makeConfig())
       await store.getState().init()
@@ -661,9 +656,7 @@ describe('createOwnerStore', () => {
 
   describe('clear', () => {
     it('resets all state including initialized flag', async () => {
-      mockDB.loadAll.mockResolvedValue([
-        { owner: ownerA, data: [1] },
-      ])
+      mockDB.loadAll.mockResolvedValue([{ owner: ownerA, data: [1] }])
 
       const store = createOwnerStore(makeConfig())
       await store.getState().init()
@@ -687,7 +680,11 @@ describe('createOwnerStore', () => {
         () =>
           new Promise((resolve) => {
             resolveFetch = () =>
-              resolve({ data: [1], expiresAt: Date.now() + 300_000, etag: null })
+              resolve({
+                data: [1],
+                expiresAt: Date.now() + 300_000,
+                etag: null,
+              })
           })
       )
 
@@ -721,9 +718,7 @@ describe('createOwnerStore', () => {
 
       createOwnerStore(makeConfig())
 
-      expect(
-        mockExpiryCacheState.registerRefreshCallback
-      ).toHaveBeenCalledWith(
+      expect(mockExpiryCacheState.registerRefreshCallback).toHaveBeenCalledWith(
         '/test/{owner_id}/items/',
         expect.any(Function)
       )

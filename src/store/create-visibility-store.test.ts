@@ -39,8 +39,7 @@ vi.mock('@/lib/visibility-indexed-db', () => ({
 }))
 
 vi.mock('./auth-store', async (importOriginal) => {
-  const original =
-    await importOriginal<typeof import('./auth-store')>()
+  const original = await importOriginal<typeof import('./auth-store')>()
   return {
     ...original,
     useAuthStore: {
@@ -91,19 +90,21 @@ function makeStoredItem(owner: Owner, item: TestItem): TestStoredItem {
   }
 }
 
-const defaultConfig = () => ({
+type TestConfig = import('./create-visibility-store').VisibilityStoreConfig<
+  TestItem,
+  TestStoredItem
+>
+
+const defaultConfig = (): TestConfig => ({
   name: 'TestItems',
   moduleName: 'test',
   endpointPattern: '/test/{owner_id}/items/',
   dbName: 'test-items-db',
   itemStoreName: 'items',
   itemKeyName: 'id',
-  getEndpoint: (owner: Owner) =>
-    `/test/${owner.type}/${owner.id}/items/`,
+  getEndpoint: (owner: Owner) => `/test/${owner.type}/${owner.id}/items/`,
   getItemId: (item: TestItem) => item.id,
-  fetchData: vi.fn(async (_owner: Owner) =>
-    createESIResponse<TestItem[]>([])
-  ),
+  fetchData: vi.fn(async (_owner: Owner) => createESIResponse<TestItem[]>([])),
   toStoredItem: (owner: Owner, item: TestItem): TestStoredItem =>
     makeStoredItem(owner, item),
 })
@@ -197,9 +198,7 @@ describe('createVisibilityStore', () => {
       expect(state.initialized).toBe(true)
       expect(state.itemsById.size).toBe(1)
       expect(state.itemsById.get(1)).toEqual(stored)
-      expect(state.visibilityByOwner.get('character-100')).toEqual(
-        new Set([1])
-      )
+      expect(state.visibilityByOwner.get('character-100')).toEqual(new Set([1]))
     })
 
     it('is idempotent', async () => {
@@ -257,9 +256,7 @@ describe('createVisibilityStore', () => {
   describe('update', () => {
     it('calls init first if not initialized', async () => {
       const { useAuthStore } = await import('./auth-store')
-      vi.mocked(useAuthStore.getState).mockReturnValue(
-        createMockAuthState({})
-      )
+      vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({}))
 
       const store = createVisibilityStore(defaultConfig())
       expect(store.getState().initialized).toBe(false)
@@ -289,7 +286,11 @@ describe('createVisibilityStore', () => {
       const config = defaultConfig()
       config.fetchData = vi.fn(
         () =>
-          new Promise((resolve) => {
+          new Promise<{
+            data: TestItem[]
+            expiresAt: number
+            etag: string | null
+          }>((resolve) => {
             firstCallPromise.then(() =>
               resolve(createESIResponse<TestItem[]>([]))
             )
@@ -311,9 +312,7 @@ describe('createVisibilityStore', () => {
 
     it('sets error when no owners logged in', async () => {
       const { useAuthStore } = await import('./auth-store')
-      vi.mocked(useAuthStore.getState).mockReturnValue(
-        createMockAuthState({})
-      )
+      vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({}))
 
       const store = createVisibilityStore(defaultConfig())
       await store.getState().init()
@@ -404,9 +403,7 @@ describe('createVisibilityStore', () => {
       const state = store.getState()
       expect(state.itemsById.size).toBe(1)
       expect(state.itemsById.get(1)?.item).toEqual(item1)
-      expect(state.visibilityByOwner.get('character-100')).toEqual(
-        new Set([1])
-      )
+      expect(state.visibilityByOwner.get('character-100')).toEqual(new Set([1]))
       expect(mockDB.saveItems).toHaveBeenCalled()
       expect(mockDB.saveVisibility).toHaveBeenCalledWith(
         'character-100',
@@ -455,9 +452,7 @@ describe('createVisibilityStore', () => {
       // Now update only owner B (make A non-expired)
       const { useExpiryCacheStore } = await import('./expiry-cache-store')
       vi.mocked(useExpiryCacheStore.getState).mockReturnValue({
-        isExpired: vi.fn(
-          (ownerKey: string) => ownerKey === 'character-200'
-        ),
+        isExpired: vi.fn((ownerKey: string) => ownerKey === 'character-200'),
         setExpiry: vi.fn(),
         clearForOwner: vi.fn(),
         registerRefreshCallback: vi.fn(() => vi.fn()),
@@ -523,9 +518,7 @@ describe('createVisibilityStore', () => {
 
       const config = defaultConfig()
       config.shouldDeleteStaleItems = true
-      config.fetchData = vi.fn(async () =>
-        createESIResponse([makeItem(2)])
-      )
+      config.fetchData = vi.fn(async () => createESIResponse([makeItem(2)]))
 
       const store = createVisibilityStore(config)
       await store.getState().init()
@@ -568,9 +561,7 @@ describe('createVisibilityStore', () => {
 
       // Pre-populate with old version
       store.setState({
-        itemsById: new Map([
-          [1, makeStoredItem(owner, makeItem(1, 'Old'))],
-        ]),
+        itemsById: new Map([[1, makeStoredItem(owner, makeItem(1, 'Old'))]]),
         visibilityByOwner: new Map([['character-100', new Set([1])]]),
       })
 
@@ -690,9 +681,7 @@ describe('createVisibilityStore', () => {
       })
 
       const config = defaultConfig()
-      config.fetchData = vi.fn(async () =>
-        createESIResponse([makeItem(1)])
-      )
+      config.fetchData = vi.fn(async () => createESIResponse([makeItem(1)]))
       config.shouldDeleteStaleItems = false
 
       const store = createVisibilityStore(config)
@@ -750,9 +739,7 @@ describe('createVisibilityStore', () => {
       config.shouldDeleteStaleItems = false
       config.onBeforeOwnerUpdate = onBeforeOwnerUpdate
       config.onAfterOwnerUpdate = onAfterOwnerUpdate
-      config.fetchData = vi.fn(async () =>
-        createESIResponse([makeItem(1)])
-      )
+      config.fetchData = vi.fn(async () => createESIResponse([makeItem(1)]))
 
       const store = createVisibilityStore(config)
       await store.getState().init()
@@ -817,18 +804,14 @@ describe('createVisibilityStore', () => {
       const config = defaultConfig()
       config.shouldDeleteStaleItems = true
       // Update returns only item 2, so item 1 (only visible to ownerA) becomes stale
-      config.fetchData = vi.fn(async () =>
-        createESIResponse([makeItem(2)])
-      )
+      config.fetchData = vi.fn(async () => createESIResponse([makeItem(2)]))
 
       const store = createVisibilityStore(config)
       await store.getState().init()
 
       // Pre-populate: item 1 visible only to ownerA
       store.setState({
-        itemsById: new Map([
-          [1, makeStoredItem(ownerA, makeItem(1))],
-        ]),
+        itemsById: new Map([[1, makeStoredItem(ownerA, makeItem(1))]]),
         visibilityByOwner: new Map([['character-100', new Set([1])]]),
       })
 
@@ -857,9 +840,7 @@ describe('createVisibilityStore', () => {
       let capturedItems: Map<number, TestStoredItem> | undefined
 
       const config = defaultConfig()
-      config.fetchData = vi.fn(async () =>
-        createESIResponse([makeItem(1)])
-      )
+      config.fetchData = vi.fn(async () => createESIResponse([makeItem(1)]))
       config.onAfterBatchUpdate = (itemsById) => {
         capturedItems = itemsById
       }
@@ -893,9 +874,7 @@ describe('createVisibilityStore', () => {
 
       // Set up: item 1 visible only to Alice
       store.setState({
-        itemsById: new Map([
-          [1, makeStoredItem(owner, makeItem(1))],
-        ]),
+        itemsById: new Map([[1, makeStoredItem(owner, makeItem(1))]]),
         visibilityByOwner: new Map([['character-100', new Set([1])]]),
       })
 
@@ -934,9 +913,7 @@ describe('createVisibilityStore', () => {
       await store.getState().init()
 
       store.setState({
-        itemsById: new Map([
-          [1, makeStoredItem(owner, makeItem(1))],
-        ]),
+        itemsById: new Map([[1, makeStoredItem(owner, makeItem(1))]]),
         visibilityByOwner: new Map([['character-100', new Set([1])]]),
         isUpdating: true,
         updateError: 'some error',

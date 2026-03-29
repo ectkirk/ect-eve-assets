@@ -401,7 +401,7 @@ describe('expiry-cache-store', () => {
       expect(state.endpoints.has('character-1:/assets')).toBe(false)
       expect(state.endpoints.has('character-2:/assets')).toBe(true)
       expect(state.refreshQueue.length).toBe(1)
-      expect(state.refreshQueue[0].ownerKey).toBe('character-2')
+      expect(state.refreshQueue[0]!.ownerKey).toBe('character-2')
     })
   })
 
