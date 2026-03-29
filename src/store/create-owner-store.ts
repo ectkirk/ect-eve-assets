@@ -260,6 +260,10 @@ export function createOwnerStore<
             }
 
             const ownerKey = makeOwnerKey(owner.type, owner.id)
+
+            if (updatingOwners.has(ownerKey)) continue
+            updatingOwners.add(ownerKey)
+
             const endpoint = getEndpoint(owner)
 
             try {
@@ -291,6 +295,8 @@ export function createOwnerStore<
                   }
                 )
               }
+            } finally {
+              updatingOwners.delete(ownerKey)
             }
           }
 

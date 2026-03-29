@@ -260,6 +260,10 @@ export function createVisibilityStore<
 
           for (const owner of ownersToUpdate) {
             const currentOwnerKey = makeOwnerKey(owner.type, owner.id)
+
+            if (updatingOwners.has(currentOwnerKey)) continue
+            updatingOwners.add(currentOwnerKey)
+
             const endpoint = getEndpoint(owner)
 
             try {
@@ -310,6 +314,8 @@ export function createVisibilityStore<
                   owner: owner.name,
                 })
               }
+            } finally {
+              updatingOwners.delete(currentOwnerKey)
             }
           }
 
