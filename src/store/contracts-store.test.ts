@@ -209,7 +209,20 @@ describe('contracts-store', () => {
   })
 
   describe('getTotal', () => {
-    it('counts each contract only once even if visible to multiple owners', () => {
+    it('counts each contract only once even if visible to multiple owners', async () => {
+      const { useAuthStore } = vi.mocked(
+        await import('./auth-store'),
+        true
+      )
+      const owner = createMockOwner({
+        id: 12345,
+        name: 'Issuer',
+        type: 'character',
+      })
+      vi.mocked(useAuthStore.getState).mockReturnValue({
+        owners: { 'character-12345': owner },
+      } as never)
+
       const mockContract = {
         contract_id: 1,
         issuer_id: 12345,
@@ -255,6 +268,7 @@ describe('contracts-store', () => {
         'character-67890',
       ])
 
+      // collateral (1,000,000) + items valued by issuer (100 * 10 = 1,000)
       expect(total).toBe(1001000)
     })
   })

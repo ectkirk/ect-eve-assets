@@ -372,6 +372,58 @@ describe('expiry-cache-store', () => {
 
       expect(cb).not.toHaveBeenCalled()
     })
+
+    it('continues processing after callback error', async () => {
+      const failCb = vi.fn().mockRejectedValue(new Error('boom'))
+      const successCb = vi.fn().mockResolvedValue(undefined)
+
+      useExpiryCacheStore.getState().registerRefreshCallback('/fail', failCb)
+      useExpiryCacheStore.getState().registerRefreshCallback('/ok', successCb)
+
+      useExpiryCacheStore.setState({
+        refreshQueue: [
+          { ownerKey: 'char-1', endpoint: '/fail' },
+          { ownerKey: 'char-1', endpoint: '/ok' },
+        ],
+      })
+
+      useExpiryCacheStore.getState().queueRefresh('char-1', '/trigger')
+
+      await vi.waitFor(() => {
+        expect(successCb).toHaveBeenCalledWith('char-1', '/ok')
+      })
+
+      expect(failCb).toHaveBeenCalled()
+    })
+  })
+
+  describe('queueMissingEndpoints', () => {
+    it('queues endpoints that have no expiry record', async () => {
+      await useExpiryCacheStore.getState().init()
+
+      const cb = vi.fn().mockResolvedValue(undefined)
+      useExpiryCacheStore.getState().registerRefreshCallback('/assets', cb)
+      useExpiryCacheStore.getState().registerRefreshCallback('/orders', cb)
+
+      // Only /assets has an expiry record
+      useExpiryCacheStore.setState({
+        endpoints: new Map([
+          [
+            'character-1:/assets',
+            { expiresAt: Date.now() + 60_000, etag: null },
+          ],
+        ]),
+      })
+
+      useExpiryCacheStore
+        .getState()
+        .queueMissingEndpoints(['character-1'])
+
+      const queue = useExpiryCacheStore.getState().refreshQueue
+      // /orders should be queued (missing), /assets should NOT (has record)
+      expect(queue.some((q) => q.endpoint.includes('/orders'))).toBe(true)
+      expect(queue.some((q) => q.endpoint.includes('/assets'))).toBe(false)
+    })
   })
 
   describe('clearForOwner', () => {

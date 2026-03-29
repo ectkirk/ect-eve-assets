@@ -3,6 +3,7 @@ import 'fake-indexeddb/auto'
 import {
   openDatabase,
   closeDatabase,
+  deleteDatabase,
   idbPut,
   idbGet,
   idbGetAll,
@@ -11,6 +12,7 @@ import {
   idbDeleteBatch,
   idbDeleteWhere,
   idbClear,
+  idbClearMultiple,
   idbGetByIndex,
 } from './idb-utils'
 import type { DBConfig } from './db-constants'
@@ -251,5 +253,44 @@ describe('idbGetByIndex', () => {
 
     expect(fruits).toHaveLength(2)
     expect(fruits.map((f) => f.name).sort()).toEqual(['apple', 'banana'])
+  })
+})
+
+describe('deleteDatabase', () => {
+  it('deletes database and removes from cache', async () => {
+    const config = makeConfig()
+    const db = await openTestDB(config)
+    await idbPut(db, 'items', { id: 'a', value: 1 })
+
+    await deleteDatabase(config.name, 'test')
+    const idx = openedDbs.indexOf(config.name)
+    if (idx >= 0) openedDbs.splice(idx, 1)
+
+    // Reopen — should be empty (new DB)
+    const db2 = await openTestDB(config)
+    const all = await idbGetAll(db2, 'items')
+    expect(all).toHaveLength(0)
+  })
+})
+
+describe('idbClearMultiple', () => {
+  it('clears multiple stores in a single transaction', async () => {
+    const config = makeConfig({
+      stores: [
+        { name: 'items', keyPath: 'id' },
+        { name: 'meta', keyPath: 'key' },
+      ],
+    })
+    const db = await openTestDB(config)
+
+    await idbPut(db, 'items', { id: 'a', value: 1 })
+    await idbPut(db, 'meta', { key: 'version', value: 1 })
+
+    await idbClearMultiple(db, ['items', 'meta'])
+
+    const items = await idbGetAll(db, 'items')
+    const meta = await idbGetAll(db, 'meta')
+    expect(items).toHaveLength(0)
+    expect(meta).toHaveLength(0)
   })
 })
