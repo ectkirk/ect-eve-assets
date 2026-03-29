@@ -162,6 +162,7 @@ export function createVisibilityStore<
 
   let initPromise: Promise<void> | null = null
   const updatingOwners = new Set<string>()
+  let storeGeneration = 0
 
   const store = create<FullStore>((set, get) => {
     const baseSet = (partial: Partial<FullState>) =>
@@ -246,6 +247,7 @@ export function createVisibilityStore<
 
         if (ownersToUpdate.length === 0) return
 
+        const gen = storeGeneration
         set({
           isUpdating: true,
           updateError: null,
@@ -259,6 +261,7 @@ export function createVisibilityStore<
           const failedOwners: string[] = []
 
           for (const owner of ownersToUpdate) {
+            if (gen !== storeGeneration) return
             const currentOwnerKey = makeOwnerKey(owner.type, owner.id)
 
             if (updatingOwners.has(currentOwnerKey)) continue
@@ -391,6 +394,7 @@ export function createVisibilityStore<
         }
 
         updatingOwners.add(currentOwnerKey)
+        const gen = storeGeneration
         try {
           const endpoint = getEndpoint(owner)
           const previousVisibility =
@@ -403,6 +407,8 @@ export function createVisibilityStore<
             owner: owner.name,
           })
           const { data: items, expiresAt, etag } = await fetchData(owner)
+
+          if (gen !== storeGeneration) return
 
           const currentState = get()
           let itemsById = new Map(currentState.itemsById)
@@ -527,12 +533,15 @@ export function createVisibilityStore<
       },
 
       clear: async () => {
+        storeGeneration++
         await db.clear()
         initPromise = null
+        updatingOwners.clear()
         const extra = extraState ? { ...extraState } : {}
         set({
           itemsById: new Map(),
           visibilityByOwner: new Map(),
+          isUpdating: false,
           updateError: null,
           failedOwners: [],
           initialized: false,

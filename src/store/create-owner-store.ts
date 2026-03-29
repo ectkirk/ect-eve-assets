@@ -145,6 +145,7 @@ export function createOwnerStore<
 
   const updatingOwners = new Set<string>()
   let initPromise: Promise<void> | null = null
+  let storeGeneration = 0
 
   const storeCreator: StateCreator<
     OwnerStore<TOwnerData, TExtraState, TExtraActions>
@@ -240,6 +241,7 @@ export function createOwnerStore<
           return
         }
 
+        const gen = storeGeneration
         set({ isUpdating: true, updateError: null } as Partial<
           OwnerStore<TOwnerData, TExtraState, TExtraActions>
         >)
@@ -253,6 +255,7 @@ export function createOwnerStore<
           )
 
           for (const owner of ownersToUpdate) {
+            if (gen !== storeGeneration) return
             if (!ownerHasRequiredScope(owner)) {
               const ownerId = makeOwnerKey(owner.type, owner.id)
               useAuthStore.getState().setOwnerScopesOutdated(ownerId, true)
@@ -349,6 +352,7 @@ export function createOwnerStore<
         }
         updatingOwners.add(ownerKey)
 
+        const gen = storeGeneration
         const state = get()
         const preHookResult = onBeforeOwnerUpdate
           ? onBeforeOwnerUpdate(
@@ -366,6 +370,8 @@ export function createOwnerStore<
           })
           const { data, expiresAt, etag } = await fetchData(owner)
 
+          if (gen !== storeGeneration) return
+
           if (onAfterOwnerUpdate) {
             const currentState = get()
             onAfterOwnerUpdate({
@@ -377,6 +383,8 @@ export function createOwnerStore<
           }
 
           await db.save(ownerKey, owner, data)
+          if (gen !== storeGeneration) return
+
           const isDataEmpty = isEmpty ? isEmpty(data) : false
           useExpiryCacheStore
             .getState()
@@ -449,11 +457,14 @@ export function createOwnerStore<
       },
 
       clear: async () => {
+        storeGeneration++
         await db.clear()
         initPromise = null
+        updatingOwners.clear()
         const extra = extraState ? { ...extraState } : {}
         set({
           dataByOwner: [],
+          isUpdating: false,
           updateError: null,
           initialized: false,
           ...extra,
