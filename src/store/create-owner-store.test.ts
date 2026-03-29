@@ -322,6 +322,8 @@ describe('createOwnerStore', () => {
 
       await store.getState().update()
 
+      expect(mockFetchData).toHaveBeenCalledTimes(1)
+
       const data = store.getState().dataByOwner
       expect(data).toHaveLength(2)
       const aData = data.find((d) => d.owner.id === 1001)
@@ -372,6 +374,148 @@ describe('createOwnerStore', () => {
       expect(mockSetOwnerScopesOutdated).toHaveBeenCalledWith(
         'character-1001',
         true
+      )
+    })
+
+    it('passes isDataEmpty=true to setExpiry when isEmpty returns true', async () => {
+      mockDB.loadAll.mockResolvedValue([])
+      mockFetchData.mockResolvedValue(createESIResponse([]))
+      mockOwners({ 'character-1001': ownerA })
+
+      const store = createOwnerStore(
+        makeConfig({
+          isEmpty: (data) => data.length === 0,
+        })
+      )
+      await store.getState().init()
+      await store.getState().update(true)
+
+      expect(mockExpiryCacheState.setExpiry).toHaveBeenCalledWith(
+        'character-1001',
+        '/test/1001/items/',
+        expect.any(Number),
+        null,
+        true
+      )
+    })
+
+    it('skips fetchData and sets scopesOutdated when owner lacks requiredScope', async () => {
+      mockDB.loadAll.mockResolvedValue([])
+      const ownerNoScope = createMockOwner({
+        id: 1001,
+        name: 'Alpha',
+        type: 'character',
+        scopes: ['some-other-scope.v1'],
+      })
+      mockOwners({ 'character-1001': ownerNoScope })
+
+      const store = createOwnerStore(
+        makeConfig({ requiredScope: 'esi-test.scope.v1' })
+      )
+      await store.getState().init()
+      await store.getState().update(true)
+
+      expect(mockFetchData).not.toHaveBeenCalled()
+      expect(mockSetOwnerScopesOutdated).toHaveBeenCalledWith(
+        'character-1001',
+        true
+      )
+    })
+
+    it('ownerFilter restricts which owners are fetched', async () => {
+      mockDB.loadAll.mockResolvedValue([])
+      mockFetchData.mockResolvedValue(createESIResponse([1]))
+      mockOwners({
+        'character-1001': ownerA,
+        'corporation-98000001': corpOwner,
+      })
+
+      const store = createOwnerStore(makeConfig({ ownerFilter: 'character' }))
+      await store.getState().init()
+      await store.getState().update(true)
+
+      expect(mockFetchData).toHaveBeenCalledTimes(1)
+      expect(mockFetchData).toHaveBeenCalledWith(ownerA)
+    })
+
+    it('skips owners with authFailed=true', async () => {
+      mockDB.loadAll.mockResolvedValue([])
+      const failedOwner = createMockOwner({
+        id: 1001,
+        name: 'Alpha',
+        type: 'character',
+        authFailed: true,
+      })
+      mockOwners({ 'character-1001': failedOwner })
+
+      const store = createOwnerStore(makeConfig())
+      await store.getState().init()
+      await store.getState().update(true)
+
+      expect(mockFetchData).not.toHaveBeenCalled()
+    })
+
+    it('calls rebuildExtraState after update completes', async () => {
+      mockDB.loadAll.mockResolvedValue([])
+      mockFetchData.mockResolvedValue(createESIResponse([10, 20]))
+      mockOwners({ 'character-1001': ownerA })
+
+      const rebuildExtraState = vi.fn(() => ({ count: 2 }))
+      const store = createOwnerStore(
+        makeConfig({
+          extraState: { count: 0 },
+          rebuildExtraState,
+        })
+      )
+      await store.getState().init()
+      // Clear the call from init
+      rebuildExtraState.mockClear()
+
+      await store.getState().update(true)
+
+      expect(rebuildExtraState).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ items: [10, 20] }),
+        ])
+      )
+      expect((store.getState() as unknown as { count: number }).count).toBe(2)
+    })
+
+    it('calls rebuildExtraState in removeForOwner with remaining data', async () => {
+      mockDB.loadAll.mockResolvedValue([
+        { owner: ownerA, data: [1] },
+        { owner: ownerB, data: [2] },
+      ])
+
+      const rebuildExtraState = vi.fn(() => ({ count: 1 }))
+      const store = createOwnerStore(
+        makeConfig({
+          extraState: { count: 0 },
+          rebuildExtraState,
+        })
+      )
+      await store.getState().init()
+      rebuildExtraState.mockClear()
+
+      await store.getState().removeForOwner('character', 1001)
+
+      expect(rebuildExtraState).toHaveBeenCalledTimes(1)
+      expect(rebuildExtraState).toHaveBeenCalledWith([
+        expect.objectContaining({ owner: ownerB, items: [2] }),
+      ])
+    })
+
+    it('sets updateError when all owners fail', async () => {
+      mockDB.loadAll.mockResolvedValue([])
+      mockFetchData.mockRejectedValue(new Error('Network error'))
+      mockOwners({ 'character-1001': ownerA })
+
+      const store = createOwnerStore(makeConfig())
+      await store.getState().init()
+      await store.getState().update(true)
+
+      expect(store.getState().updateError).toBe(
+        'Failed to fetch any TestItems'
       )
     })
   })
@@ -467,6 +611,7 @@ describe('createOwnerStore', () => {
 
       // The second owner should never have been fetched because generation changed
       expect(fetchCount).toBe(1)
+      // Verify isUpdating was properly reset after generation mismatch
       expect(store.getState().isUpdating).toBe(false)
     })
   })
@@ -559,6 +704,28 @@ describe('createOwnerStore', () => {
       expect(onAfterOwnerUpdate).toHaveBeenCalledTimes(1)
     })
 
+    it('skips fetchData and sets scopesOutdated when owner lacks requiredScope', async () => {
+      mockDB.loadAll.mockResolvedValue([])
+      const ownerNoScope = createMockOwner({
+        id: 1001,
+        name: 'Alpha',
+        type: 'character',
+        scopes: ['some-other-scope.v1'],
+      })
+
+      const store = createOwnerStore(
+        makeConfig({ requiredScope: 'esi-test.scope.v1' })
+      )
+      await store.getState().init()
+      await store.getState().updateForOwner(ownerNoScope)
+
+      expect(mockFetchData).not.toHaveBeenCalled()
+      expect(mockSetOwnerScopesOutdated).toHaveBeenCalledWith(
+        'character-1001',
+        true
+      )
+    })
+
     it('generation counter — clear() causes bail', async () => {
       mockDB.loadAll.mockResolvedValue([])
 
@@ -598,17 +765,25 @@ describe('createOwnerStore', () => {
       mockOwners({ 'character-1001': ownerA })
 
       let capturedData: TestOwnerData[] = []
+      let storeDataInsideCallback: TestOwnerData[] = []
+      let storeRef: ReturnType<typeof createOwnerStore<number[], TestOwnerData>> | null = null
       const onAfterBatchUpdate = vi.fn(async (results: TestOwnerData[]) => {
         capturedData = results
+        storeDataInsideCallback = storeRef!.getState().dataByOwner
       })
 
       const store = createOwnerStore(makeConfig({ onAfterBatchUpdate }))
+      storeRef = store
       await store.getState().init()
       await store.getState().update(true)
 
       expect(onAfterBatchUpdate).toHaveBeenCalledTimes(1)
       expect(capturedData).toHaveLength(1)
       expect(capturedData[0]!.items).toEqual([7, 8])
+
+      // Verify state was already set BEFORE the callback fired
+      expect(storeDataInsideCallback).toHaveLength(1)
+      expect(storeDataInsideCallback[0]!.items).toEqual([7, 8])
 
       // Verify the store also has the data
       expect(store.getState().dataByOwner).toHaveLength(1)
