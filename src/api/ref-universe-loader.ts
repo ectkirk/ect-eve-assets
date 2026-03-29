@@ -334,7 +334,9 @@ export async function loadRefStructures(
     } while (cursor !== undefined)
 
     await useReferenceCacheStore.getState().setRefStructures(allStructures)
-    useReferenceCacheStore.getState().setRefStructuresLoaded(true)
+    if (useReferenceCacheStore.getState().refStructures.size > 0) {
+      useReferenceCacheStore.getState().setRefStructuresLoaded(true)
+    }
 
     const duration = Math.round(performance.now() - start)
     logger.info('RefStructures loaded', {

@@ -284,12 +284,13 @@ export const useReferenceCacheStore = create<ReferenceCacheStore>(
 
     saveTypes: async (newTypes) => {
       if (newTypes.length === 0) return
-      const current = get().types
-      const updated = new Map(current)
-      for (const type of newTypes) updated.set(type.id, type)
 
       await writeBatch('types', newTypes, () => {
-        set((s) => ({ types: updated, typesVersion: s.typesVersion + 1 }))
+        set((s) => {
+          const merged = new Map(s.types)
+          for (const type of newTypes) merged.set(type.id, type)
+          return { types: merged, typesVersion: s.typesVersion + 1 }
+        })
       })
     },
 
@@ -388,35 +389,38 @@ export const useReferenceCacheStore = create<ReferenceCacheStore>(
 
     saveStructures: async (newStructures) => {
       if (newStructures.length === 0) return
-      const current = get().structures
-      const updated = new Map(current)
-      for (const structure of newStructures)
-        updated.set(structure.id, structure)
 
       await writeBatch('structures', newStructures, () => {
-        set({ structures: updated })
+        set((s) => {
+          const merged = new Map(s.structures)
+          for (const structure of newStructures)
+            merged.set(structure.id, structure)
+          return { structures: merged }
+        })
       })
     },
 
     saveLocations: async (newLocations) => {
       if (newLocations.length === 0) return
-      const current = get().locations
-      const updated = new Map(current)
-      for (const location of newLocations) updated.set(location.id, location)
 
       await writeBatch('locations', newLocations, () => {
-        set({ locations: updated })
+        set((s) => {
+          const merged = new Map(s.locations)
+          for (const location of newLocations) merged.set(location.id, location)
+          return { locations: merged }
+        })
       })
     },
 
     saveNames: async (newNames) => {
       if (newNames.length === 0) return
-      const current = get().names
-      const updated = new Map(current)
-      for (const name of newNames) updated.set(name.id, name)
 
       await writeBatch('names', newNames, () => {
-        set({ names: updated })
+        set((s) => {
+          const merged = new Map(s.names)
+          for (const name of newNames) merged.set(name.id, name)
+          return { names: merged }
+        })
       })
     },
 
