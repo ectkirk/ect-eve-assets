@@ -373,6 +373,9 @@ export function createOwnerStore<
 
           if (gen !== storeGeneration) return
 
+          await db.save(ownerKey, owner, data)
+          if (gen !== storeGeneration) return
+
           if (onAfterOwnerUpdate) {
             const currentState = get()
             onAfterOwnerUpdate({
@@ -382,9 +385,6 @@ export function createOwnerStore<
               state: currentState as BaseState<TOwnerData> & TExtraState,
             })
           }
-
-          await db.save(ownerKey, owner, data)
-          if (gen !== storeGeneration) return
 
           const isDataEmpty = isEmpty ? isEmpty(data) : false
           useExpiryCacheStore
