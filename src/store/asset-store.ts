@@ -331,7 +331,6 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         } catch (err) {
           if (owner.type === 'corporation' && isNotInCorporationError(err)) {
             await handleCharacterLeftCorporation(owner)
-            updatedAssets.delete(ownerKey)
           } else {
             logger.error(
               'Failed to fetch assets for owner',

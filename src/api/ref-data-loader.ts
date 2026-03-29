@@ -225,7 +225,7 @@ export async function loadReferenceData(
       }
     }
 
-    if (!isReferenceDataLoaded() && (!categoriesOk || !groupsOk)) {
+    if (!categoriesOk || !groupsOk) {
       errors.push('Skipped loading types: categories or groups unavailable')
       logger.warn('Skipping type loading due to missing categories/groups', {
         module: 'RefAPI',
