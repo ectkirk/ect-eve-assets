@@ -248,12 +248,7 @@ export function createOwnerStore<
         >)
 
         try {
-          const existing = new Map<string, TOwnerData>(
-            get().dataByOwner.map((d: TOwnerData) => [
-              makeOwnerKey(d.owner.type, d.owner.id),
-              d,
-            ])
-          )
+          const updatedOwners = new Map<string, TOwnerData>()
 
           for (const owner of ownersToUpdate) {
             if (gen !== storeGeneration) return
@@ -278,7 +273,7 @@ export function createOwnerStore<
               const { data, expiresAt, etag } = await fetchData(owner)
 
               await db.save(ownerKey, owner, data)
-              existing.set(ownerKey, toOwnerData(owner, data))
+              updatedOwners.set(ownerKey, toOwnerData(owner, data))
 
               const isDataEmpty = isEmpty ? isEmpty(data) : false
               useExpiryCacheStore
@@ -304,7 +299,13 @@ export function createOwnerStore<
             }
           }
 
-          const results = Array.from(existing.values())
+          const current = get().dataByOwner as TOwnerData[]
+          const results = current
+            .filter(
+              (d: TOwnerData) =>
+                !updatedOwners.has(makeOwnerKey(d.owner.type, d.owner.id))
+            )
+            .concat(Array.from(updatedOwners.values()))
           const extra = rebuildExtraState ? rebuildExtraState(results) : {}
 
           if (onAfterBatchUpdate) {
@@ -315,7 +316,9 @@ export function createOwnerStore<
             dataByOwner: results,
             isUpdating: false,
             updateError:
-              results.length === 0 ? `Failed to fetch any ${name}` : null,
+              updatedOwners.size === 0 && ownersToUpdate.length > 0
+                ? `Failed to fetch any ${name}`
+                : null,
             ...extra,
           } as Partial<OwnerStore<TOwnerData, TExtraState, TExtraActions>>)
 

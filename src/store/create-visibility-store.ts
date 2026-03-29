@@ -256,8 +256,8 @@ export function createVisibilityStore<
         } as Partial<FullStore>)
 
         try {
-          let itemsById = new Map(get().itemsById)
-          const visibilityByOwner = new Map(get().visibilityByOwner)
+          const newItems = new Map<number, TStoredItem>()
+          const updatedVisibility = new Map<string, Set<number>>()
           const itemBatch: Array<{ id: number; stored: TStoredItem }> = []
           const failedOwners: string[] = []
 
@@ -282,14 +282,14 @@ export function createVisibilityStore<
                 const itemId = getItemId(item)
                 ownerVisibility.add(itemId)
 
-                if (!itemsById.has(itemId) || shouldUpdateExisting) {
+                if (!get().itemsById.has(itemId) || shouldUpdateExisting) {
                   const stored = toStoredItem(owner, item)
-                  itemsById.set(itemId, stored)
+                  newItems.set(itemId, stored)
                   itemBatch.push({ id: itemId, stored })
                 }
               }
 
-              visibilityByOwner.set(currentOwnerKey, ownerVisibility)
+              updatedVisibility.set(currentOwnerKey, ownerVisibility)
               await db.saveVisibility(currentOwnerKey, ownerVisibility)
 
               const isDataEmpty = isEmpty ? isEmpty(items) : items.length === 0
@@ -324,6 +324,15 @@ export function createVisibilityStore<
           }
 
           await db.saveItems(itemBatch)
+
+          let itemsById = new Map(get().itemsById)
+          for (const [id, stored] of newItems) {
+            itemsById.set(id, stored)
+          }
+          const visibilityByOwner = new Map(get().visibilityByOwner)
+          for (const [key, vis] of updatedVisibility) {
+            visibilityByOwner.set(key, vis)
+          }
 
           if (shouldDeleteStaleItems) {
             const visibleIds = collectVisibleItemIds(visibilityByOwner)
