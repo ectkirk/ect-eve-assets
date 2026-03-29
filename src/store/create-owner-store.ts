@@ -143,6 +143,21 @@ export function createOwnerStore<
     })
   }
 
+  const flagScopeOutdated = (owner: Owner): void => {
+    const ownerId = makeOwnerKey(owner.type, owner.id)
+    useAuthStore.getState().setOwnerScopesOutdated(ownerId, true)
+  }
+
+  const handleScopeError = (err: unknown, owner: Owner): void => {
+    if (isScopeError(err)) {
+      flagScopeOutdated(owner)
+      logger.warn(
+        `Owner ${owner.name} needs re-authentication for new scopes`,
+        { module: moduleName }
+      )
+    }
+  }
+
   const updatingOwners = new Set<string>()
   let initPromise: Promise<void> | null = null
   let storeGeneration = 0
@@ -251,15 +266,9 @@ export function createOwnerStore<
           const updatedOwners = new Map<string, TOwnerData>()
 
           for (const owner of ownersToUpdate) {
-            if (gen !== storeGeneration) {
-              set({ isUpdating: false } as Partial<
-                OwnerStore<TOwnerData, TExtraState, TExtraActions>
-              >)
-              return
-            }
+            if (gen !== storeGeneration) break
             if (!ownerHasRequiredScope(owner)) {
-              const ownerId = makeOwnerKey(owner.type, owner.id)
-              useAuthStore.getState().setOwnerScopesOutdated(ownerId, true)
+              flagScopeOutdated(owner)
               continue
             }
 
@@ -277,7 +286,11 @@ export function createOwnerStore<
               })
               const { data, expiresAt, etag } = await fetchData(owner)
 
+              if (gen !== storeGeneration) continue
+
               await db.save(ownerKey, owner, data)
+
+              if (gen !== storeGeneration) continue
               updatedOwners.set(ownerKey, toOwnerData(owner, data))
 
               const isDataEmpty = isEmpty ? isEmpty(data) : false
@@ -289,19 +302,17 @@ export function createOwnerStore<
                 module: moduleName,
                 owner: owner.name,
               })
-              if (isScopeError(err)) {
-                const ownerId = makeOwnerKey(owner.type, owner.id)
-                useAuthStore.getState().setOwnerScopesOutdated(ownerId, true)
-                logger.warn(
-                  `Owner ${owner.name} needs re-authentication for new scopes`,
-                  {
-                    module: moduleName,
-                  }
-                )
-              }
+              handleScopeError(err, owner)
             } finally {
               updatingOwners.delete(ownerKey)
             }
+          }
+
+          if (gen !== storeGeneration) {
+            set({ isUpdating: false } as Partial<
+              OwnerStore<TOwnerData, TExtraState, TExtraActions>
+            >)
+            return
           }
 
           const current = get().dataByOwner as TOwnerData[]
@@ -350,8 +361,7 @@ export function createOwnerStore<
         if (ownerFilter === 'corporation' && owner.type !== 'corporation')
           return
         if (!ownerHasRequiredScope(owner)) {
-          const ownerId = makeOwnerKey(owner.type, owner.id)
-          useAuthStore.getState().setOwnerScopesOutdated(ownerId, true)
+          flagScopeOutdated(owner)
           return
         }
 
@@ -425,14 +435,7 @@ export function createOwnerStore<
               owner: owner.name,
             }
           )
-          if (isScopeError(err)) {
-            const ownerId = makeOwnerKey(owner.type, owner.id)
-            useAuthStore.getState().setOwnerScopesOutdated(ownerId, true)
-            logger.warn(
-              `Owner ${owner.name} needs re-authentication for new scopes`,
-              { module: moduleName }
-            )
-          }
+          handleScopeError(err, owner)
         } finally {
           updatingOwners.delete(ownerKey)
         }

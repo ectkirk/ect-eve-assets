@@ -285,7 +285,10 @@ export function createVisibilityStore<
                 const itemId = getItemId(item)
                 ownerVisibility.add(itemId)
 
-                if (!get().itemsById.has(itemId) || shouldUpdateExisting) {
+                if (
+                  shouldUpdateExisting ||
+                  (!get().itemsById.has(itemId) && !newItems.has(itemId))
+                ) {
                   const stored = toStoredItem(owner, item)
                   newItems.set(itemId, stored)
                   itemBatch.push({ id: itemId, stored })
@@ -433,9 +436,11 @@ export function createVisibilityStore<
             const itemId = getItemId(item)
             ownerVisibility.add(itemId)
 
-            const stored = toStoredItem(owner, item)
-            itemsById.set(itemId, stored)
-            itemBatch.push({ id: itemId, stored })
+            if (!itemsById.has(itemId) || shouldUpdateExisting) {
+              const stored = toStoredItem(owner, item)
+              itemsById.set(itemId, stored)
+              itemBatch.push({ id: itemId, stored })
+            }
           }
 
           await db.saveItems(itemBatch)
