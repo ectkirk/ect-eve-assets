@@ -953,6 +953,48 @@ describe('createVisibilityStore', () => {
       expect(state.itemsById.has(2)).toBe(true)
       expect(mockDB.deleteItems).toHaveBeenCalledWith([1])
     })
+
+    it('respects shouldUpdateExisting=false and skips existing items', async () => {
+      const owner = createMockOwner({
+        id: 100,
+        name: 'Alice',
+        type: 'character',
+      })
+
+      const config = defaultConfig()
+      config.shouldUpdateExisting = false
+      config.shouldDeleteStaleItems = false
+      config.fetchData = vi.fn(async () =>
+        createESIResponse([makeItem(1, 'NewName'), makeItem(2, 'Brand New')])
+      )
+
+      const store = createVisibilityStore(config)
+      await store.getState().init()
+
+      // Pre-populate with existing item id=1
+      const existingStored = makeStoredItem(owner, makeItem(1, 'Original'))
+      store.setState({
+        itemsById: new Map([[1, existingStored]]),
+        visibilityByOwner: new Map([['character-100', new Set([1])]]),
+      })
+
+      await store.getState().updateForOwner(owner)
+
+      const state = store.getState()
+      // Existing item (id=1) should NOT be overwritten
+      expect(state.itemsById.get(1)?.item.name).toBe('Original')
+      // New item (id=2) should be added
+      expect(state.itemsById.get(2)?.item.name).toBe('Brand New')
+
+      // db.saveItems should only contain the new item (id=2)
+      expect(mockDB.saveItems).toHaveBeenCalledTimes(1)
+      expect(mockDB.saveItems).toHaveBeenCalledWith(
+        expect.arrayContaining([expect.objectContaining({ id: 2 })])
+      )
+      expect(mockDB.saveItems).not.toHaveBeenCalledWith(
+        expect.arrayContaining([expect.objectContaining({ id: 1 })])
+      )
+    })
   })
 
   // ======== describe('onAfterBatchUpdate') ========

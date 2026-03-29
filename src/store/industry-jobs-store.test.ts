@@ -3,11 +3,11 @@ import 'fake-indexeddb/auto'
 import { useIndustryJobsStore } from './industry-jobs-store'
 import { createMockOwner, createMockAuthState } from '@/test/helpers'
 
-vi.mock('./auth-store', () => ({
+vi.mock('./auth-store', async (importOriginal) => ({
+  ...(await importOriginal()),
   useAuthStore: {
     getState: vi.fn(() => ({ owners: {} })),
   },
-  ownerKey: (type: string, id: number) => `${type}-${id}`,
   findOwnerByKey: vi.fn(),
 }))
 
@@ -36,15 +36,6 @@ vi.mock('@/lib/data-resolver', () => ({
   hasLocation: vi.fn(() => true),
   hasStructure: vi.fn(() => true),
   PLAYER_STRUCTURE_ID_THRESHOLD: 1000000000000,
-}))
-
-vi.mock('./asset-store', () => ({
-  useAssetStore: {
-    getState: () => ({
-      prices: new Map(),
-      setPrices: vi.fn(),
-    }),
-  },
 }))
 
 vi.mock('./price-store', () => ({

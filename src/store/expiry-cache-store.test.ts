@@ -94,7 +94,7 @@ describe('expiry-cache-store', () => {
 
       const state = useExpiryCacheStore.getState()
       expect(state.refreshQueue.length).toBe(1)
-      expect(state.refreshQueue[0]).toEqual({
+      expect(state.refreshQueue[0]).toMatchObject({
         ownerKey: 'character-123',
         endpoint: '/assets',
       })
@@ -452,6 +452,190 @@ describe('expiry-cache-store', () => {
       expect(state.endpoints.has('character-2:/assets')).toBe(true)
       expect(state.refreshQueue.length).toBe(1)
       expect(state.refreshQueue[0]!.ownerKey).toBe('character-2')
+    })
+  })
+
+  describe('clearByEndpoint', () => {
+    it('removes matching entries from endpoints and refresh queue', async () => {
+      await useExpiryCacheStore.getState().init()
+
+      useExpiryCacheStore.setState({
+        endpoints: new Map([
+          [
+            'character-1:/assets',
+            { expiresAt: Date.now() + 60_000, etag: null },
+          ],
+          [
+            'character-2:/assets',
+            { expiresAt: Date.now() + 60_000, etag: null },
+          ],
+          [
+            'character-1:/contracts',
+            { expiresAt: Date.now() + 60_000, etag: null },
+          ],
+        ]),
+        refreshQueue: [
+          { ownerKey: 'character-1', endpoint: '/assets' },
+          { ownerKey: 'character-2', endpoint: '/assets' },
+          { ownerKey: 'character-1', endpoint: '/contracts' },
+        ],
+      })
+
+      await useExpiryCacheStore.getState().clearByEndpoint('/assets')
+
+      const state = useExpiryCacheStore.getState()
+      expect(state.endpoints.has('character-1:/assets')).toBe(false)
+      expect(state.endpoints.has('character-2:/assets')).toBe(false)
+      expect(state.endpoints.has('character-1:/contracts')).toBe(true)
+      expect(state.refreshQueue.length).toBe(1)
+      expect(state.refreshQueue[0]!.endpoint).toBe('/contracts')
+    })
+
+    it('persists removal to IDB', async () => {
+      await useExpiryCacheStore.getState().init()
+
+      const db = await openDatabase(DB.EXPIRY)
+      await idbPut(db, 'expiry', {
+        key: 'character-1:/assets',
+        expiresAt: Date.now() + 60_000,
+        etag: null,
+      })
+      await idbPut(db, 'expiry', {
+        key: 'character-1:/contracts',
+        expiresAt: Date.now() + 60_000,
+        etag: null,
+      })
+
+      useExpiryCacheStore.setState({
+        endpoints: new Map([
+          [
+            'character-1:/assets',
+            { expiresAt: Date.now() + 60_000, etag: null },
+          ],
+          [
+            'character-1:/contracts',
+            { expiresAt: Date.now() + 60_000, etag: null },
+          ],
+        ]),
+      })
+
+      await useExpiryCacheStore.getState().clearByEndpoint('/assets')
+
+      const records = await idbGetAll<{
+        key: string
+        expiresAt: number
+        etag: string | null
+      }>(db, 'expiry')
+      expect(records.some((r) => r.key.includes('/assets'))).toBe(false)
+      expect(records.some((r) => r.key.includes('/contracts'))).toBe(true)
+    })
+  })
+
+  describe('pruneOrphaned', () => {
+    it('removes entries for owners no longer in auth-store', async () => {
+      await useExpiryCacheStore.getState().init()
+
+      useExpiryCacheStore.setState({
+        endpoints: new Map([
+          [
+            'character-1:/assets',
+            { expiresAt: Date.now() + 60_000, etag: null },
+          ],
+          [
+            'character-2:/assets',
+            { expiresAt: Date.now() + 60_000, etag: null },
+          ],
+        ]),
+        refreshQueue: [
+          { ownerKey: 'character-1', endpoint: '/assets' },
+          { ownerKey: 'character-2', endpoint: '/assets' },
+        ],
+      })
+
+      // Only character-2 exists in auth-store
+      vi.mocked(useAuthStore.getState).mockReturnValue({
+        owners: { 'character-2': {} },
+        getOwner: mockGetOwner,
+      } as never)
+
+      const pruned = await useExpiryCacheStore.getState().pruneOrphaned()
+
+      expect(pruned).toBe(1)
+      const state = useExpiryCacheStore.getState()
+      expect(state.endpoints.has('character-1:/assets')).toBe(false)
+      expect(state.endpoints.has('character-2:/assets')).toBe(true)
+      expect(state.refreshQueue.length).toBe(1)
+      expect(state.refreshQueue[0]!.ownerKey).toBe('character-2')
+    })
+
+    it('keeps all entries when all owners exist', async () => {
+      await useExpiryCacheStore.getState().init()
+
+      useExpiryCacheStore.setState({
+        endpoints: new Map([
+          [
+            'character-1:/assets',
+            { expiresAt: Date.now() + 60_000, etag: null },
+          ],
+        ]),
+      })
+
+      vi.mocked(useAuthStore.getState).mockReturnValue({
+        owners: { 'character-1': {} },
+        getOwner: mockGetOwner,
+      } as never)
+
+      const pruned = await useExpiryCacheStore.getState().pruneOrphaned()
+
+      expect(pruned).toBe(0)
+      expect(
+        useExpiryCacheStore.getState().endpoints.has('character-1:/assets')
+      ).toBe(true)
+    })
+
+    it('cleans up orphaned entries from IDB', async () => {
+      await useExpiryCacheStore.getState().init()
+
+      const db = await openDatabase(DB.EXPIRY)
+      await idbPut(db, 'expiry', {
+        key: 'character-1:/assets',
+        expiresAt: Date.now() + 60_000,
+        etag: null,
+      })
+      await idbPut(db, 'expiry', {
+        key: 'character-2:/assets',
+        expiresAt: Date.now() + 60_000,
+        etag: null,
+      })
+
+      useExpiryCacheStore.setState({
+        endpoints: new Map([
+          [
+            'character-1:/assets',
+            { expiresAt: Date.now() + 60_000, etag: null },
+          ],
+          [
+            'character-2:/assets',
+            { expiresAt: Date.now() + 60_000, etag: null },
+          ],
+        ]),
+      })
+
+      // Only character-2 exists
+      vi.mocked(useAuthStore.getState).mockReturnValue({
+        owners: { 'character-2': {} },
+        getOwner: mockGetOwner,
+      } as never)
+
+      await useExpiryCacheStore.getState().pruneOrphaned()
+
+      const records = await idbGetAll<{
+        key: string
+        expiresAt: number
+        etag: string | null
+      }>(db, 'expiry')
+      expect(records.some((r) => r.key.startsWith('character-1:'))).toBe(false)
+      expect(records.some((r) => r.key.startsWith('character-2:'))).toBe(true)
     })
   })
 

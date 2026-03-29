@@ -18,6 +18,7 @@ const mockSetSystems = vi.fn()
 const mockSetStations = vi.fn()
 const mockSetStargates = vi.fn()
 const mockSetRefStructures = vi.fn()
+const mockSetReferenceDataLoaded = vi.fn()
 const mockSetAllTypesLoaded = vi.fn()
 const mockSetUniverseDataLoaded = vi.fn()
 const mockSetRefStructuresLoaded = vi.fn()
@@ -47,6 +48,7 @@ vi.mock('@/store/reference-cache', () => ({
       setStations: mockSetStations,
       setStargates: mockSetStargates,
       setRefStructures: mockSetRefStructures,
+      setReferenceDataLoaded: mockSetReferenceDataLoaded,
       setAllTypesLoaded: mockSetAllTypesLoaded,
       setUniverseDataLoaded: mockSetUniverseDataLoaded,
       setRefStructuresLoaded: mockSetRefStructuresLoaded,
@@ -422,6 +424,7 @@ describe('ref-client', () => {
       expect(mockSetGroups).toHaveBeenCalledWith([
         { id: 18, name: 'Mineral', categoryId: 4, published: true },
       ])
+      expect(mockSetReferenceDataLoaded).toHaveBeenCalledWith(true)
     })
 
     it('loads all types with cursor pagination', async () => {

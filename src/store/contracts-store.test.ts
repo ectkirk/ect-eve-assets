@@ -3,11 +3,11 @@ import 'fake-indexeddb/auto'
 import { useContractsStore } from './contracts-store'
 import { createMockOwner, createMockAuthState } from '@/test/helpers'
 
-vi.mock('./auth-store', () => ({
+vi.mock('./auth-store', async (importOriginal) => ({
+  ...(await importOriginal()),
   useAuthStore: {
     getState: vi.fn(() => ({ owners: {}, ownerHasScope: () => false })),
   },
-  ownerKey: (type: string, id: number) => `${type}-${id}`,
   findOwnerByKey: vi.fn(),
 }))
 

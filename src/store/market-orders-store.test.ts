@@ -4,11 +4,11 @@ import { useMarketOrdersStore } from './market-orders-store'
 import { useExpiryCacheStore } from './expiry-cache-store'
 import { createMockOwner, createMockAuthState } from '@/test/helpers'
 
-vi.mock('./auth-store', () => ({
+vi.mock('./auth-store', async (importOriginal) => ({
+  ...(await importOriginal()),
   useAuthStore: {
     getState: vi.fn(() => ({ owners: {} })),
   },
-  ownerKey: (type: string, id: number) => `${type}-${id}`,
   findOwnerByKey: vi.fn(),
 }))
 
@@ -128,7 +128,7 @@ describe('market-orders-store', () => {
       const expiry = useExpiryCacheStore
         .getState()
         .endpoints.get('character-12345:/characters/12345/orders')
-      expect(expiry?.expiresAt).toBeGreaterThanOrEqual(futureExpiry - 1000)
+      expect(expiry?.expiresAt).toBe(futureExpiry)
     })
   })
 

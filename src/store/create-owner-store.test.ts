@@ -514,6 +514,33 @@ describe('createOwnerStore', () => {
 
       expect(store.getState().updateError).toBe('Failed to fetch any TestItems')
     })
+
+    it('skips db.save when clear() is called during fetchData', async () => {
+      mockDB.loadAll.mockResolvedValue([])
+      mockOwners({ 'character-1001': ownerA })
+
+      const storeRef = {
+        current: null as ReturnType<
+          typeof createOwnerStore<number[], TestOwnerData>
+        > | null,
+      }
+
+      mockFetchData.mockImplementationOnce(async () => {
+        // Simulate clear() happening mid-fetch
+        await storeRef.current!.getState().clear()
+        return { data: [1, 2, 3], expiresAt: Date.now() + 300_000, etag: null }
+      })
+
+      storeRef.current = createOwnerStore(makeConfig())
+      await storeRef.current.getState().init()
+      await storeRef.current.getState().update(true)
+
+      // db.save should NOT have been called because clear() incremented generation
+      expect(mockDB.save).not.toHaveBeenCalled()
+      // Store state should be clean after clear()
+      expect(storeRef.current!.getState().dataByOwner).toHaveLength(0)
+      expect(storeRef.current!.getState().isUpdating).toBe(false)
+    })
   })
 
   // ── update concurrency ───────────────────────────────────────────────────
