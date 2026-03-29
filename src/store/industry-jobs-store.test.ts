@@ -166,9 +166,7 @@ describe('industry-jobs-store', () => {
             },
           ],
         ]),
-        visibilityByOwner: new Map([
-          ['character-12345', new Set([1, 2])],
-        ]),
+        visibilityByOwner: new Map([['character-12345', new Set([1, 2])]]),
       })
 
       const total = useIndustryJobsStore.getTotal(['character-12345'])
@@ -208,9 +206,7 @@ describe('industry-jobs-store', () => {
             },
           ],
         ]),
-        visibilityByOwner: new Map([
-          ['character-12345', new Set([1])],
-        ]),
+        visibilityByOwner: new Map([['character-12345', new Set([1])]]),
       })
 
       // price(2000) = 500, runs = 3
@@ -248,9 +244,7 @@ describe('industry-jobs-store', () => {
             },
           ],
         ]),
-        visibilityByOwner: new Map([
-          ['character-12345', new Set([1])],
-        ]),
+        visibilityByOwner: new Map([['character-12345', new Set([1])]]),
       })
 
       const result = useIndustryJobsStore.getJobsByOwner()

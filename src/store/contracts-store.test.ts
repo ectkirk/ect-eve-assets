@@ -210,10 +210,7 @@ describe('contracts-store', () => {
 
   describe('getTotal', () => {
     it('counts each contract only once even if visible to multiple owners', async () => {
-      const { useAuthStore } = vi.mocked(
-        await import('./auth-store'),
-        true
-      )
+      const { useAuthStore } = vi.mocked(await import('./auth-store'), true)
       const owner = createMockOwner({
         id: 12345,
         name: 'Issuer',

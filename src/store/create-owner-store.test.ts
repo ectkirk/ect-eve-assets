@@ -474,9 +474,7 @@ describe('createOwnerStore', () => {
       await store.getState().update(true)
 
       expect(rebuildExtraState).toHaveBeenCalledWith(
-        expect.arrayContaining([
-          expect.objectContaining({ items: [10, 20] }),
-        ])
+        expect.arrayContaining([expect.objectContaining({ items: [10, 20] })])
       )
       expect((store.getState() as unknown as { count: number }).count).toBe(2)
     })
@@ -514,9 +512,7 @@ describe('createOwnerStore', () => {
       await store.getState().init()
       await store.getState().update(true)
 
-      expect(store.getState().updateError).toBe(
-        'Failed to fetch any TestItems'
-      )
+      expect(store.getState().updateError).toBe('Failed to fetch any TestItems')
     })
   })
 
@@ -766,7 +762,9 @@ describe('createOwnerStore', () => {
 
       let capturedData: TestOwnerData[] = []
       let storeDataInsideCallback: TestOwnerData[] = []
-      let storeRef: ReturnType<typeof createOwnerStore<number[], TestOwnerData>> | null = null
+      let storeRef: ReturnType<
+        typeof createOwnerStore<number[], TestOwnerData>
+      > | null = null
       const onAfterBatchUpdate = vi.fn(async (results: TestOwnerData[]) => {
         capturedData = results
         storeDataInsideCallback = storeRef!.getState().dataByOwner

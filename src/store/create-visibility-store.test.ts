@@ -4,9 +4,12 @@ import {
   createMockOwner,
   createESIResponse,
   createMockAuthState,
+  createMockExpiryCacheState,
 } from '@/test/helpers'
 import type { Owner } from './auth-store'
 import type { StoredItem, SourceOwner } from '@/lib/visibility-indexed-db'
+// ESIError must be dynamically imported after vi.resetModules() to share
+// the same class identity as the source. Use createCorpError() helper below.
 
 // ---------- types for our synthetic store ----------
 
@@ -108,6 +111,29 @@ const defaultConfig = (): TestConfig => ({
   toStoredItem: (owner: Owner, item: TestItem): TestStoredItem =>
     makeStoredItem(owner, item),
 })
+
+// ---------- DRY helpers for error creation ----------
+
+async function createCorpError(): Promise<Error> {
+  const { ESIError } = await import('../../shared/esi-types')
+  return new ESIError('Character is not in the corporation', 403)
+}
+
+// ---------- DRY helpers for mock setup ----------
+
+async function mockOwners(owners: Record<string, Owner>) {
+  const { useAuthStore } = await import('./auth-store')
+  vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState(owners))
+}
+
+async function mockExpiry(
+  overrides: Partial<ReturnType<typeof createMockExpiryCacheState>> = {}
+) {
+  const { useExpiryCacheStore } = await import('./expiry-cache-store')
+  const state = { ...createMockExpiryCacheState(), ...overrides }
+  vi.mocked(useExpiryCacheStore.getState).mockReturnValue(state as never)
+  return state
+}
 
 // ---------- tests ----------
 
@@ -250,13 +276,27 @@ describe('createVisibilityStore', () => {
       expect(onAfterInit).toHaveBeenCalledTimes(1)
       expect(onAfterInit).toHaveBeenCalledWith(new Map([[1, stored]]))
     })
+
+    it('does not call onAfterInit when items are empty', async () => {
+      const onAfterInit = vi.fn()
+
+      mockDB.loadAll.mockResolvedValueOnce({
+        items: new Map(),
+        visibility: new Map(),
+      })
+
+      const config = { ...defaultConfig(), onAfterInit }
+      const store = createVisibilityStore(config)
+      await store.getState().init()
+
+      expect(onAfterInit).not.toHaveBeenCalled()
+    })
   })
 
   // ======== describe('update') ========
   describe('update', () => {
     it('calls init first if not initialized', async () => {
-      const { useAuthStore } = await import('./auth-store')
-      vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({}))
+      await mockOwners({})
 
       const store = createVisibilityStore(defaultConfig())
       expect(store.getState().initialized).toBe(false)
@@ -268,15 +308,12 @@ describe('createVisibilityStore', () => {
     })
 
     it('skips when already updating', async () => {
-      const { useAuthStore } = await import('./auth-store')
       const owner = createMockOwner({
         id: 100,
         name: 'Alice',
         type: 'character',
       })
-      vi.mocked(useAuthStore.getState).mockReturnValue(
-        createMockAuthState({ 'character-100': owner })
-      )
+      await mockOwners({ 'character-100': owner })
 
       let resolveFirst: () => void
       const firstCallPromise = new Promise<void>((r) => {
@@ -311,8 +348,7 @@ describe('createVisibilityStore', () => {
     })
 
     it('sets error when no owners logged in', async () => {
-      const { useAuthStore } = await import('./auth-store')
-      vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({}))
+      await mockOwners({})
 
       const store = createVisibilityStore(defaultConfig())
       await store.getState().init()
@@ -322,23 +358,13 @@ describe('createVisibilityStore', () => {
     })
 
     it('skips non-expired owners', async () => {
-      const { useAuthStore } = await import('./auth-store')
-      const { useExpiryCacheStore } = await import('./expiry-cache-store')
-
       const owner = createMockOwner({
         id: 100,
         name: 'Alice',
         type: 'character',
       })
-      vi.mocked(useAuthStore.getState).mockReturnValue(
-        createMockAuthState({ 'character-100': owner })
-      )
-      vi.mocked(useExpiryCacheStore.getState).mockReturnValue({
-        isExpired: vi.fn(() => false),
-        setExpiry: vi.fn(),
-        clearForOwner: vi.fn(),
-        registerRefreshCallback: vi.fn(() => vi.fn()),
-      } as never)
+      await mockOwners({ 'character-100': owner })
+      await mockExpiry({ isExpired: vi.fn(() => false) })
 
       const config = defaultConfig()
       const store = createVisibilityStore(config)
@@ -349,23 +375,13 @@ describe('createVisibilityStore', () => {
     })
 
     it('force=true bypasses expiry', async () => {
-      const { useAuthStore } = await import('./auth-store')
-      const { useExpiryCacheStore } = await import('./expiry-cache-store')
-
       const owner = createMockOwner({
         id: 100,
         name: 'Alice',
         type: 'character',
       })
-      vi.mocked(useAuthStore.getState).mockReturnValue(
-        createMockAuthState({ 'character-100': owner })
-      )
-      vi.mocked(useExpiryCacheStore.getState).mockReturnValue({
-        isExpired: vi.fn(() => false),
-        setExpiry: vi.fn(),
-        clearForOwner: vi.fn(),
-        registerRefreshCallback: vi.fn(() => vi.fn()),
-      } as never)
+      await mockOwners({ 'character-100': owner })
+      await mockExpiry({ isExpired: vi.fn(() => false) })
 
       const config = defaultConfig()
       config.fetchData = vi.fn(async () =>
@@ -380,15 +396,12 @@ describe('createVisibilityStore', () => {
     })
 
     it('fetches data, saves items and visibility to DB', async () => {
-      const { useAuthStore } = await import('./auth-store')
       const owner = createMockOwner({
         id: 100,
         name: 'Alice',
         type: 'character',
       })
-      vi.mocked(useAuthStore.getState).mockReturnValue(
-        createMockAuthState({ 'character-100': owner })
-      )
+      await mockOwners({ 'character-100': owner })
 
       const item1 = makeItem(1, 'Tritanium')
       const config = defaultConfig()
@@ -412,7 +425,6 @@ describe('createVisibilityStore', () => {
     })
 
     it('merges new items with existing', async () => {
-      const { useAuthStore } = await import('./auth-store')
       const ownerA = createMockOwner({
         id: 100,
         name: 'Alice',
@@ -423,12 +435,10 @@ describe('createVisibilityStore', () => {
         name: 'Bob',
         type: 'character',
       })
-      vi.mocked(useAuthStore.getState).mockReturnValue(
-        createMockAuthState({
-          'character-100': ownerA,
-          'character-200': ownerB,
-        })
-      )
+      await mockOwners({
+        'character-100': ownerA,
+        'character-200': ownerB,
+      })
 
       const itemA = makeItem(1, 'ItemA')
       const itemB = makeItem(2, 'ItemB')
@@ -450,13 +460,9 @@ describe('createVisibilityStore', () => {
       })
 
       // Now update only owner B (make A non-expired)
-      const { useExpiryCacheStore } = await import('./expiry-cache-store')
-      vi.mocked(useExpiryCacheStore.getState).mockReturnValue({
+      await mockExpiry({
         isExpired: vi.fn((ownerKey: string) => ownerKey === 'character-200'),
-        setExpiry: vi.fn(),
-        clearForOwner: vi.fn(),
-        registerRefreshCallback: vi.fn(() => vi.fn()),
-      } as never)
+      })
 
       await store.getState().update()
 
@@ -464,10 +470,11 @@ describe('createVisibilityStore', () => {
       expect(state.itemsById.size).toBe(2)
       expect(state.itemsById.get(1)?.item.name).toBe('ItemA')
       expect(state.itemsById.get(2)?.item.name).toBe('ItemB')
+      // Verify only owner B was fetched (owner A was non-expired)
+      expect(config.fetchData).toHaveBeenCalledTimes(1)
     })
 
     it('handles per-owner errors, tracks failedOwners', async () => {
-      const { useAuthStore } = await import('./auth-store')
       const ownerA = createMockOwner({
         id: 100,
         name: 'Alice',
@@ -478,12 +485,10 @@ describe('createVisibilityStore', () => {
         name: 'Bob',
         type: 'character',
       })
-      vi.mocked(useAuthStore.getState).mockReturnValue(
-        createMockAuthState({
-          'character-100': ownerA,
-          'character-200': ownerB,
-        })
-      )
+      await mockOwners({
+        'character-100': ownerA,
+        'character-200': ownerB,
+      })
 
       const config = defaultConfig()
       config.shouldDeleteStaleItems = false
@@ -506,15 +511,12 @@ describe('createVisibilityStore', () => {
     })
 
     it('stale item cleanup removes items not in any visibility set', async () => {
-      const { useAuthStore } = await import('./auth-store')
       const owner = createMockOwner({
         id: 100,
         name: 'Alice',
         type: 'character',
       })
-      vi.mocked(useAuthStore.getState).mockReturnValue(
-        createMockAuthState({ 'character-100': owner })
-      )
+      await mockOwners({ 'character-100': owner })
 
       const config = defaultConfig()
       config.shouldDeleteStaleItems = true
@@ -540,15 +542,12 @@ describe('createVisibilityStore', () => {
     })
 
     it('shouldUpdateExisting replaces existing item data', async () => {
-      const { useAuthStore } = await import('./auth-store')
       const owner = createMockOwner({
         id: 100,
         name: 'Alice',
         type: 'character',
       })
-      vi.mocked(useAuthStore.getState).mockReturnValue(
-        createMockAuthState({ 'character-100': owner })
-      )
+      await mockOwners({ 'character-100': owner })
 
       const config = defaultConfig()
       config.shouldUpdateExisting = true
@@ -569,20 +568,121 @@ describe('createVisibilityStore', () => {
 
       expect(store.getState().itemsById.get(1)?.item.name).toBe('Updated')
     })
-  })
 
-  // ======== describe('update concurrency') ========
-  describe('update concurrency', () => {
-    it('shared updatingOwners guard', async () => {
-      const { useAuthStore } = await import('./auth-store')
+    it('passes isEmpty result to setExpiry as isDataEmpty', async () => {
       const owner = createMockOwner({
         id: 100,
         name: 'Alice',
         type: 'character',
       })
-      vi.mocked(useAuthStore.getState).mockReturnValue(
-        createMockAuthState({ 'character-100': owner })
+      await mockOwners({ 'character-100': owner })
+
+      const { useExpiryCacheStore } = await import('./expiry-cache-store')
+      const setExpiry = vi.fn()
+      vi.mocked(useExpiryCacheStore.getState).mockReturnValue({
+        isExpired: vi.fn(() => true),
+        setExpiry,
+        clearForOwner: vi.fn(),
+        registerRefreshCallback: vi.fn(() => vi.fn()),
+      } as never)
+
+      const config = defaultConfig()
+      config.isEmpty = (items: TestItem[]) => items.length === 0
+      config.fetchData = vi.fn(async () => createESIResponse<TestItem[]>([]))
+
+      const store = createVisibilityStore(config)
+      await store.getState().init()
+      await store.getState().update(true)
+
+      // Verify setExpiry was called with isDataEmpty=true (last arg)
+      const { useExpiryCacheStore: ecs } = await import('./expiry-cache-store')
+      const calledSetExpiry = vi.mocked(ecs.getState)().setExpiry
+      expect(calledSetExpiry).toHaveBeenCalledTimes(1)
+      const callArgs = vi.mocked(calledSetExpiry).mock.calls[0]!
+      expect(callArgs[0]).toBe('character-100')
+      expect(callArgs[4]).toBe(true) // isDataEmpty
+    })
+
+    it('does not add corp owner to failedOwners on isNotInCorporationError', async () => {
+      const corpOwner = createMockOwner({
+        id: 300,
+        name: 'TestCorp',
+        type: 'corporation',
+      })
+      await mockOwners({ 'corporation-300': corpOwner })
+
+      const corpError = await createCorpError()
+      const config = defaultConfig()
+      config.fetchData = vi.fn(async () => {
+        throw corpError
+      })
+
+      const store = createVisibilityStore(config)
+      await store.getState().init()
+      await store.getState().update(true)
+
+      const state = store.getState()
+      expect(state.failedOwners).not.toContain('corporation-300')
+      expect(state.isUpdating).toBe(false)
+    })
+
+    it('sets all-owners-failed error message when single owner fails', async () => {
+      const owner = createMockOwner({
+        id: 100,
+        name: 'Alice',
+        type: 'character',
+      })
+      await mockOwners({ 'character-100': owner })
+
+      const config = defaultConfig()
+      config.fetchData = vi.fn(async () => {
+        throw new Error('API fail')
+      })
+
+      const store = createVisibilityStore(config)
+      await store.getState().init()
+      await store.getState().update(true)
+
+      expect(store.getState().updateError).toBe('Failed to fetch any TestItems')
+    })
+
+    it('calls rebuildExtraState after update', async () => {
+      const owner = createMockOwner({
+        id: 100,
+        name: 'Alice',
+        type: 'character',
+      })
+      await mockOwners({ 'character-100': owner })
+
+      const rebuildExtraState = vi.fn(
+        (_itemsById: Map<number, TestStoredItem>) => ({ totalCount: 1 })
       )
+
+      const config = {
+        ...defaultConfig(),
+        extraState: { totalCount: 0 },
+        rebuildExtraState,
+      }
+      config.fetchData = vi.fn(async () => createESIResponse([makeItem(1)]))
+
+      const store = createVisibilityStore(config)
+      await store.getState().init()
+      await store.getState().update(true)
+
+      expect(rebuildExtraState).toHaveBeenCalled()
+      expect(rebuildExtraState).toHaveBeenCalledWith(expect.any(Map))
+    })
+  })
+
+  // ======== describe('update concurrency') ========
+  describe('update concurrency', () => {
+    it('shared updatingOwners guard', async () => {
+      const owner = createMockOwner({
+        id: 100,
+        name: 'Alice',
+        type: 'character',
+      })
+      await mockOwners({ 'character-100': owner })
 
       let resolveFirst!: () => void
       const gate = new Promise<void>((r) => {
@@ -617,7 +717,6 @@ describe('createVisibilityStore', () => {
     })
 
     it('generation counter — clear() cancels in-flight update for subsequent owners', async () => {
-      const { useAuthStore } = await import('./auth-store')
       const ownerA = createMockOwner({
         id: 100,
         name: 'Alice',
@@ -628,12 +727,10 @@ describe('createVisibilityStore', () => {
         name: 'Bob',
         type: 'character',
       })
-      vi.mocked(useAuthStore.getState).mockReturnValue(
-        createMockAuthState({
-          'character-100': ownerA,
-          'character-200': ownerB,
-        })
-      )
+      await mockOwners({
+        'character-100': ownerA,
+        'character-200': ownerB,
+      })
 
       let resolveFetchA!: () => void
       const gateA = new Promise<void>((r) => {
@@ -668,6 +765,7 @@ describe('createVisibilityStore', () => {
 
       // ownerA's fetch completed but ownerB was never fetched due to generation check
       expect(fetchCalls).toBe(1)
+      expect(store.getState().isUpdating).toBe(false)
     })
   })
 
@@ -794,6 +892,39 @@ describe('createVisibilityStore', () => {
       expect(store.getState().itemsById.size).toBe(0)
     })
 
+    it('handles isNotInCorporationError without crashing', async () => {
+      const corpOwner = createMockOwner({
+        id: 300,
+        name: 'TestCorp',
+        type: 'corporation',
+      })
+
+      const corpError = await createCorpError()
+      const config = defaultConfig()
+      config.shouldDeleteStaleItems = false
+      config.fetchData = vi.fn(async () => {
+        throw corpError
+      })
+
+      const store = createVisibilityStore(config)
+      await store.getState().init()
+
+      // Pre-populate some data so we can verify store remains consistent
+      store.setState({
+        itemsById: new Map([[1, makeStoredItem(corpOwner, makeItem(1))]]),
+        visibilityByOwner: new Map([['corporation-300', new Set([1])]]),
+      })
+
+      await store.getState().updateForOwner(corpOwner)
+
+      // Store should remain consistent — data not wiped
+      const state = store.getState()
+      expect(state.itemsById.size).toBe(1)
+      expect(state.visibilityByOwner.get('corporation-300')).toEqual(
+        new Set([1])
+      )
+    })
+
     it('stale item cleanup after single owner update', async () => {
       const ownerA = createMockOwner({
         id: 100,
@@ -827,22 +958,22 @@ describe('createVisibilityStore', () => {
   // ======== describe('onAfterBatchUpdate') ========
   describe('onAfterBatchUpdate', () => {
     it('state is applied before callback fires', async () => {
-      const { useAuthStore } = await import('./auth-store')
       const owner = createMockOwner({
         id: 100,
         name: 'Alice',
         type: 'character',
       })
-      vi.mocked(useAuthStore.getState).mockReturnValue(
-        createMockAuthState({ 'character-100': owner })
-      )
+      await mockOwners({ 'character-100': owner })
 
       let capturedItems: Map<number, TestStoredItem> | undefined
+      let storeItemsAtCallbackTime: Map<number, TestStoredItem> | undefined
 
       const config = defaultConfig()
       config.fetchData = vi.fn(async () => createESIResponse([makeItem(1)]))
       config.onAfterBatchUpdate = (itemsById) => {
         capturedItems = itemsById
+        // Read store state inside callback to prove state was set before callback
+        storeItemsAtCallbackTime = store.getState().itemsById
       }
 
       const store = createVisibilityStore(config)
@@ -852,8 +983,10 @@ describe('createVisibilityStore', () => {
       expect(capturedItems).toBeDefined()
       expect(capturedItems!.size).toBe(1)
       expect(capturedItems!.get(1)?.item).toEqual(makeItem(1))
-      // Verify the store also has the data
-      expect(store.getState().itemsById.size).toBe(1)
+      // Verify the store had the data at the time the callback fired
+      expect(storeItemsAtCallbackTime).toBeDefined()
+      expect(storeItemsAtCallbackTime!.size).toBe(1)
+      expect(storeItemsAtCallbackTime!.get(1)?.item).toEqual(makeItem(1))
     })
   })
 
@@ -885,6 +1018,68 @@ describe('createVisibilityStore', () => {
       expect(state.itemsById.has(1)).toBe(false)
       expect(mockDB.deleteVisibility).toHaveBeenCalledWith('character-100')
       expect(mockDB.deleteItems).toHaveBeenCalledWith([1])
+    })
+
+    it('does not delete items when shouldDeleteStaleItems is false', async () => {
+      const owner = createMockOwner({
+        id: 100,
+        name: 'Alice',
+        type: 'character',
+      })
+
+      const config = defaultConfig()
+      config.shouldDeleteStaleItems = false
+
+      const store = createVisibilityStore(config)
+      await store.getState().init()
+
+      store.setState({
+        itemsById: new Map([[1, makeStoredItem(owner, makeItem(1))]]),
+        visibilityByOwner: new Map([['character-100', new Set([1])]]),
+      })
+
+      await store.getState().removeForOwner('character', 100)
+
+      const state = store.getState()
+      expect(state.visibilityByOwner.has('character-100')).toBe(false)
+      // Item should still exist because shouldDeleteStaleItems is false
+      expect(state.itemsById.has(1)).toBe(true)
+      expect(mockDB.deleteItems).not.toHaveBeenCalled()
+    })
+
+    it('calls rebuildExtraState after removal', async () => {
+      const owner = createMockOwner({
+        id: 100,
+        name: 'Alice',
+        type: 'character',
+      })
+
+      const rebuildExtraState = vi.fn(
+        (_itemsById: Map<number, TestStoredItem>) => ({ totalCount: 0 })
+      )
+
+      const config = {
+        ...defaultConfig(),
+        shouldDeleteStaleItems: true,
+        extraState: { totalCount: 1 },
+        rebuildExtraState,
+      }
+
+      const store = createVisibilityStore(config)
+      await store.getState().init()
+
+      store.setState({
+        itemsById: new Map([[1, makeStoredItem(owner, makeItem(1))]]),
+        visibilityByOwner: new Map([['character-100', new Set([1])]]),
+      })
+
+      // Clear mock calls from init
+      rebuildExtraState.mockClear()
+
+      await store.getState().removeForOwner('character', 100)
+
+      expect(rebuildExtraState).toHaveBeenCalledTimes(1)
+      expect(rebuildExtraState).toHaveBeenCalledWith(expect.any(Map))
     })
 
     it('no-ops for unknown owner', async () => {
@@ -933,15 +1128,12 @@ describe('createVisibilityStore', () => {
     })
 
     it('clears updatingOwners', async () => {
-      const { useAuthStore } = await import('./auth-store')
       const owner = createMockOwner({
         id: 100,
         name: 'Alice',
         type: 'character',
       })
-      vi.mocked(useAuthStore.getState).mockReturnValue(
-        createMockAuthState({ 'character-100': owner })
-      )
+      await mockOwners({ 'character-100': owner })
 
       let resolveFetch!: () => void
       const gate = new Promise<void>((r) => {
@@ -982,14 +1174,8 @@ describe('createVisibilityStore', () => {
   // ======== describe('registration') ========
   describe('registration', () => {
     it('registers refresh callback', async () => {
-      const { useExpiryCacheStore } = await import('./expiry-cache-store')
       const registerRefreshCallback = vi.fn(() => vi.fn())
-      vi.mocked(useExpiryCacheStore.getState).mockReturnValue({
-        isExpired: vi.fn(() => true),
-        setExpiry: vi.fn(),
-        clearForOwner: vi.fn(),
-        registerRefreshCallback,
-      } as never)
+      await mockExpiry({ registerRefreshCallback })
 
       const config = defaultConfig()
       createVisibilityStore(config)

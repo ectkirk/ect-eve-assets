@@ -415,9 +415,7 @@ describe('expiry-cache-store', () => {
         ]),
       })
 
-      useExpiryCacheStore
-        .getState()
-        .queueMissingEndpoints(['character-1'])
+      useExpiryCacheStore.getState().queueMissingEndpoints(['character-1'])
 
       const queue = useExpiryCacheStore.getState().refreshQueue
       // /orders should be queued (missing), /assets should NOT (has record)
