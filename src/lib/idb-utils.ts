@@ -13,7 +13,7 @@ interface OpenOptions {
   onUpgrade?: UpgradeHandler
 }
 
-const dbCache = new Map<string, IDBDatabase>()
+const dbCache = new Map<string, Promise<IDBDatabase>>()
 
 function createStoreWithIndexes(
   db: IDBDatabase,
@@ -36,7 +36,7 @@ export async function openDatabase(
   const cached = dbCache.get(config.name)
   if (cached) return cached
 
-  return new Promise((resolve, reject) => {
+  const promise = new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDB.open(config.name, config.version)
 
     request.onerror = () => {
@@ -47,8 +47,18 @@ export async function openDatabase(
     }
 
     request.onsuccess = () => {
-      dbCache.set(config.name, request.result)
-      resolve(request.result)
+      const db = request.result
+      db.onversionchange = () => {
+        db.close()
+        dbCache.delete(config.name)
+      }
+      resolve(db)
+    }
+
+    request.onblocked = () => {
+      logger.warn(`Database ${config.name} upgrade blocked by open connection`, {
+        module: config.module,
+      })
     }
 
     request.onupgradeneeded = (event) => {
@@ -67,28 +77,44 @@ export async function openDatabase(
       }
     }
   })
+
+  dbCache.set(config.name, promise)
+  promise.catch(() => dbCache.delete(config.name))
+
+  return promise
 }
 
-export function closeDatabase(dbName: string): void {
+export async function closeDatabase(dbName: string): Promise<void> {
   const cached = dbCache.get(dbName)
+  dbCache.delete(dbName)
   if (cached) {
-    cached.close()
-    dbCache.delete(dbName)
+    try {
+      const db = await cached
+      db.close()
+    } catch {
+      // DB never opened successfully, nothing to close
+    }
   }
 }
 
-export function closeAllDatabases(): void {
-  for (const db of dbCache.values()) {
-    db.close()
-  }
+export async function closeAllDatabases(): Promise<void> {
+  const entries = Array.from(dbCache.values())
   dbCache.clear()
+  for (const promise of entries) {
+    try {
+      const db = await promise
+      db.close()
+    } catch {
+      // DB never opened successfully, nothing to close
+    }
+  }
 }
 
 export async function deleteDatabase(
   dbName: string,
   module: string
 ): Promise<void> {
-  closeDatabase(dbName)
+  await closeDatabase(dbName)
   return new Promise((resolve, reject) => {
     const request = indexedDB.deleteDatabase(dbName)
     request.onerror = () => {
