@@ -216,6 +216,7 @@ export function createVisibilityStore<
                 module: moduleName,
               }
             )
+            initPromise = null
             set({ initialized: true } as Partial<FullStore>)
           }
         })()

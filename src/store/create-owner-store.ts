@@ -203,6 +203,7 @@ export function createOwnerStore<
                 module: moduleName,
               }
             )
+            initPromise = null
             set({ initialized: true } as Partial<
               OwnerStore<TOwnerData, TExtraState, TExtraActions>
             >)
