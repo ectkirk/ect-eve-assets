@@ -28,22 +28,30 @@ const electronStorage: StateStorage = {
       localStorage.setItem(name, value)
       return
     }
-    writeQueue = writeQueue.then(async () => {
-      const existing = (await window.electronAPI!.storageGet()) ?? {}
-      existing[name] = JSON.parse(value)
-      await window.electronAPI!.storageSet(existing)
-    }).catch(() => {})
+    writeQueue = writeQueue
+      .then(async () => {
+        const existing = (await window.electronAPI!.storageGet()) ?? {}
+        existing[name] = JSON.parse(value)
+        await window.electronAPI!.storageSet(existing)
+      })
+      .catch((err) => {
+        console.error('[electronStorage] setItem failed:', err)
+      })
   },
   removeItem: (name: string): void => {
     if (!window.electronAPI) {
       localStorage.removeItem(name)
       return
     }
-    writeQueue = writeQueue.then(async () => {
-      const existing = (await window.electronAPI!.storageGet()) ?? {}
-      delete existing[name]
-      await window.electronAPI!.storageSet(existing)
-    }).catch(() => {})
+    writeQueue = writeQueue
+      .then(async () => {
+        const existing = (await window.electronAPI!.storageGet()) ?? {}
+        delete existing[name]
+        await window.electronAPI!.storageSet(existing)
+      })
+      .catch((err) => {
+        console.error('[electronStorage] removeItem failed:', err)
+      })
   },
 }
 

@@ -202,6 +202,7 @@ function processQueue() {
   useExpiryCacheStore.setState({ isProcessingQueue: true })
 
   const skippedOwners = new Set<string>()
+  let deferredCount = 0
 
   const processNext = async () => {
     const currentState = useExpiryCacheStore.getState()
@@ -243,6 +244,7 @@ function processQueue() {
 
     const callback = findCallback(callbacks, item.endpoint)
     if (callback) {
+      deferredCount = 0
       useExpiryCacheStore.setState({ currentlyRefreshing: item })
       try {
         await callback(item.ownerKey, item.endpoint)
@@ -260,11 +262,15 @@ function processQueue() {
         useExpiryCacheStore.setState({ currentlyRefreshing: null })
       }
     } else {
+      deferredCount++
       useExpiryCacheStore.setState((state) => ({
         refreshQueue: [...state.refreshQueue, item],
-        isProcessingQueue: false,
       }))
-      return
+      const remaining = useExpiryCacheStore.getState().refreshQueue.length
+      if (deferredCount >= remaining) {
+        useExpiryCacheStore.setState({ isProcessingQueue: false })
+        return
+      }
     }
 
     queueMicrotask(processNext)
