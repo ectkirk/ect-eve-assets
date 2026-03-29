@@ -66,7 +66,9 @@ export async function loadUniverseData(
         })
       }
 
-      useReferenceCacheStore.getState().setUniverseDataLoaded(true)
+      if (allSucceeded) {
+        useReferenceCacheStore.getState().setUniverseDataLoaded(true)
+      }
 
       const duration = Math.round(performance.now() - start)
       logger.info('Universe data loaded', { module: 'RefAPI', duration })

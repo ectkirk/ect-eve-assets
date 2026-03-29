@@ -126,6 +126,9 @@ export async function loadReferenceData(
     const start = performance.now()
     const errors: string[] = []
 
+    let categoriesOk = isReferenceDataLoaded()
+    let groupsOk = isReferenceDataLoaded()
+
     if (!isReferenceDataLoaded()) {
       onProgress?.(i18n.t('status.loadingCategories'))
       const language = getLanguage()
@@ -135,8 +138,8 @@ export async function loadReferenceData(
         window.electronAPI!.refCorporations({ language }),
       ])
 
-      let categoriesOk = false
-      let groupsOk = false
+      categoriesOk = false
+      groupsOk = false
       let corporationsOk = false
 
       if (categoriesRaw && 'error' in categoriesRaw) {
@@ -222,9 +225,18 @@ export async function loadReferenceData(
       }
     }
 
-    const typesResult = await loadAllTypes(onProgress)
-    if (typesResult.error) {
-      errors.push(typesResult.error)
+    if (!isReferenceDataLoaded() && (!categoriesOk || !groupsOk)) {
+      errors.push('Skipped loading types: categories or groups unavailable')
+      logger.warn('Skipping type loading due to missing categories/groups', {
+        module: 'RefAPI',
+        categoriesOk,
+        groupsOk,
+      })
+    } else {
+      const typesResult = await loadAllTypes(onProgress)
+      if (typesResult.error) {
+        errors.push(typesResult.error)
+      }
     }
 
     const duration = Math.round(performance.now() - start)
