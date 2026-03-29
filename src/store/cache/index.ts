@@ -80,6 +80,7 @@ interface ReferenceCacheActions {
   saveLocations: (locations: CachedLocation[]) => Promise<void>
   saveNames: (names: CachedName[]) => Promise<void>
 
+  setReferenceDataLoaded: (loaded: boolean) => void
   setAllTypesLoaded: (loaded: boolean) => void
   setUniverseDataLoaded: (loaded: boolean) => void
   setRefStructuresLoaded: (loaded: boolean) => void
@@ -284,12 +285,13 @@ export const useReferenceCacheStore = create<ReferenceCacheStore>(
 
     saveTypes: async (newTypes) => {
       if (newTypes.length === 0) return
-      const current = get().types
-      const updated = new Map(current)
-      for (const type of newTypes) updated.set(type.id, type)
 
       await writeBatch('types', newTypes, () => {
-        set((s) => ({ types: updated, typesVersion: s.typesVersion + 1 }))
+        set((s) => {
+          const merged = new Map(s.types)
+          for (const type of newTypes) merged.set(type.id, type)
+          return { types: merged, typesVersion: s.typesVersion + 1 }
+        })
       })
     },
 
@@ -308,10 +310,6 @@ export const useReferenceCacheStore = create<ReferenceCacheStore>(
         set({
           groups: new Map(newGroups.map((g) => [g.id, g])),
         })
-        setLocalStorage(
-          REFERENCE_SCHEMA_VERSION_KEY,
-          String(REFERENCE_SCHEMA_VERSION)
-        )
         logger.info('Groups saved', {
           module: 'ReferenceCache',
           count: newGroups.length,
@@ -323,12 +321,7 @@ export const useReferenceCacheStore = create<ReferenceCacheStore>(
       await writeBatch('corporations', newCorporations, () => {
         set({
           corporations: new Map(newCorporations.map((c) => [c.id, c])),
-          referenceDataLoaded: true,
         })
-        setLocalStorage(
-          REFERENCE_SCHEMA_VERSION_KEY,
-          String(REFERENCE_SCHEMA_VERSION)
-        )
         logger.info('Corporations saved', {
           module: 'ReferenceCache',
           count: newCorporations.length,
@@ -388,36 +381,51 @@ export const useReferenceCacheStore = create<ReferenceCacheStore>(
 
     saveStructures: async (newStructures) => {
       if (newStructures.length === 0) return
-      const current = get().structures
-      const updated = new Map(current)
-      for (const structure of newStructures)
-        updated.set(structure.id, structure)
 
       await writeBatch('structures', newStructures, () => {
-        set({ structures: updated })
+        set((s) => {
+          const merged = new Map(s.structures)
+          for (const structure of newStructures)
+            merged.set(structure.id, structure)
+          return { structures: merged }
+        })
       })
     },
 
     saveLocations: async (newLocations) => {
       if (newLocations.length === 0) return
-      const current = get().locations
-      const updated = new Map(current)
-      for (const location of newLocations) updated.set(location.id, location)
 
       await writeBatch('locations', newLocations, () => {
-        set({ locations: updated })
+        set((s) => {
+          const merged = new Map(s.locations)
+          for (const location of newLocations) merged.set(location.id, location)
+          return { locations: merged }
+        })
       })
     },
 
     saveNames: async (newNames) => {
       if (newNames.length === 0) return
-      const current = get().names
-      const updated = new Map(current)
-      for (const name of newNames) updated.set(name.id, name)
 
       await writeBatch('names', newNames, () => {
-        set({ names: updated })
+        set((s) => {
+          const merged = new Map(s.names)
+          for (const name of newNames) merged.set(name.id, name)
+          return { names: merged }
+        })
       })
+    },
+
+    setReferenceDataLoaded: (loaded) => {
+      set({ referenceDataLoaded: loaded })
+      if (loaded) {
+        setLocalStorage(
+          REFERENCE_SCHEMA_VERSION_KEY,
+          String(REFERENCE_SCHEMA_VERSION)
+        )
+      } else {
+        setLocalStorage(REFERENCE_SCHEMA_VERSION_KEY, null)
+      }
     },
 
     setAllTypesLoaded: (loaded) => {
@@ -474,8 +482,9 @@ export const useReferenceCacheStore = create<ReferenceCacheStore>(
 
     clearGroupsCache: async () => {
       logger.info('Clearing groups cache', { module: 'ReferenceCache' })
+      get().setReferenceDataLoaded(false)
       await clearStore('groups')
-      set({ groups: new Map(), referenceDataLoaded: false })
+      set({ groups: new Map() })
     },
 
     clearUniverseCache: async () => {
@@ -501,6 +510,7 @@ export const useReferenceCacheStore = create<ReferenceCacheStore>(
     clearCoreReferenceCache: async () => {
       logger.info('Clearing core reference cache', { module: 'ReferenceCache' })
       get().setAllTypesLoaded(false)
+      get().setReferenceDataLoaded(false)
       await Promise.all([
         clearStore('types'),
         clearStore('categories'),
@@ -513,7 +523,6 @@ export const useReferenceCacheStore = create<ReferenceCacheStore>(
         categories: new Map(),
         groups: new Map(),
         corporations: new Map(),
-        referenceDataLoaded: false,
       })
     },
 
@@ -522,6 +531,7 @@ export const useReferenceCacheStore = create<ReferenceCacheStore>(
       get().setAllTypesLoaded(false)
       get().setUniverseDataLoaded(false)
       get().setRefStructuresLoaded(false)
+      get().setReferenceDataLoaded(false)
       initPromise = null
 
       await deleteDatabase()
@@ -541,7 +551,6 @@ export const useReferenceCacheStore = create<ReferenceCacheStore>(
         locations: new Map(),
         names: new Map(),
         initialized: false,
-        referenceDataLoaded: false,
       })
     },
   })

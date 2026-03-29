@@ -23,6 +23,46 @@ export interface ReferenceDataResult {
   errors: string[]
 }
 
+async function validateAndSave<T>(
+  raw: unknown,
+  config: {
+    schema: {
+      safeParse: (data: unknown) => {
+        success: boolean
+        data?: { items: Record<string, T> }
+        error?: { issues: unknown[] }
+      }
+    }
+    entityName: string
+    save: (items: T[]) => Promise<void>
+    errors: string[]
+  }
+): Promise<boolean> {
+  if (raw && typeof raw === 'object' && 'error' in raw) {
+    const errorMsg = `Failed to load ${config.entityName}: ${(raw as { error: string }).error}`
+    logger.error(`Failed to load ${config.entityName}`, undefined, {
+      module: 'RefAPI',
+      error: (raw as { error: string }).error,
+    })
+    config.errors.push(errorMsg)
+    return false
+  }
+
+  const result = config.schema.safeParse(raw)
+  if (!result.success) {
+    const errorMsg = `${config.entityName} validation failed`
+    logger.error(`${config.entityName} validation failed`, undefined, {
+      module: 'RefAPI',
+      errors: result.error!.issues.slice(0, 3),
+    })
+    config.errors.push(errorMsg)
+    return false
+  }
+
+  await config.save(Object.values(result.data!.items))
+  return true
+}
+
 const CONTROL_TOWER_GROUP_ID = 365
 const TIER_2_TOWER_PREFIXES = [
   'Dark Blood',
@@ -126,6 +166,9 @@ export async function loadReferenceData(
     const start = performance.now()
     const errors: string[] = []
 
+    let categoriesOk = isReferenceDataLoaded()
+    let groupsOk = isReferenceDataLoaded()
+
     if (!isReferenceDataLoaded()) {
       onProgress?.(i18n.t('status.loadingCategories'))
       const language = getLanguage()
@@ -135,85 +178,36 @@ export async function loadReferenceData(
         window.electronAPI!.refCorporations({ language }),
       ])
 
-      let categoriesOk = false
-      let groupsOk = false
-      let corporationsOk = false
+      const [categoriesOkResult, groupsOkResult, corporationsOkResult] =
+        await Promise.all([
+          validateAndSave(categoriesRaw, {
+            schema: RefCategoriesResponseSchema,
+            entityName: 'categories',
+            save: (items) =>
+              useReferenceCacheStore.getState().setCategories(items),
+            errors,
+          }),
+          validateAndSave(groupsRaw, {
+            schema: RefGroupsResponseSchema,
+            entityName: 'groups',
+            save: (items) => useReferenceCacheStore.getState().setGroups(items),
+            errors,
+          }),
+          validateAndSave(corporationsRaw, {
+            schema: RefCorporationsResponseSchema,
+            entityName: 'corporations',
+            save: (items) =>
+              useReferenceCacheStore.getState().setCorporations(items),
+            errors,
+          }),
+        ])
 
-      if (categoriesRaw && 'error' in categoriesRaw) {
-        const errorMsg = `Failed to load categories: ${categoriesRaw.error}`
-        logger.error('Failed to load categories', undefined, {
-          module: 'RefAPI',
-          error: categoriesRaw.error,
-        })
-        errors.push(errorMsg)
-      } else {
-        const categoriesResult =
-          RefCategoriesResponseSchema.safeParse(categoriesRaw)
-        if (!categoriesResult.success) {
-          const errorMsg = 'Categories validation failed'
-          logger.error('Categories validation failed', undefined, {
-            module: 'RefAPI',
-            errors: categoriesResult.error.issues.slice(0, 3),
-          })
-          errors.push(errorMsg)
-        } else {
-          await useReferenceCacheStore
-            .getState()
-            .setCategories(Object.values(categoriesResult.data.items))
-          categoriesOk = true
-        }
-      }
-
-      if (groupsRaw && 'error' in groupsRaw) {
-        const errorMsg = `Failed to load groups: ${groupsRaw.error}`
-        logger.error('Failed to load groups', undefined, {
-          module: 'RefAPI',
-          error: groupsRaw.error,
-        })
-        errors.push(errorMsg)
-      } else {
-        const groupsResult = RefGroupsResponseSchema.safeParse(groupsRaw)
-        if (!groupsResult.success) {
-          const errorMsg = 'Groups validation failed'
-          logger.error('Groups validation failed', undefined, {
-            module: 'RefAPI',
-            errors: groupsResult.error.issues.slice(0, 3),
-          })
-          errors.push(errorMsg)
-        } else {
-          await useReferenceCacheStore
-            .getState()
-            .setGroups(Object.values(groupsResult.data.items))
-          groupsOk = true
-        }
-      }
-
-      if (corporationsRaw && 'error' in corporationsRaw) {
-        const errorMsg = `Failed to load corporations: ${corporationsRaw.error}`
-        logger.error('Failed to load corporations', undefined, {
-          module: 'RefAPI',
-          error: corporationsRaw.error,
-        })
-        errors.push(errorMsg)
-      } else {
-        const corporationsResult =
-          RefCorporationsResponseSchema.safeParse(corporationsRaw)
-        if (!corporationsResult.success) {
-          const errorMsg = 'Corporations validation failed'
-          logger.error('Corporations validation failed', undefined, {
-            module: 'RefAPI',
-            errors: corporationsResult.error.issues.slice(0, 3),
-          })
-          errors.push(errorMsg)
-        } else {
-          await useReferenceCacheStore
-            .getState()
-            .setCorporations(Object.values(corporationsResult.data.items))
-          corporationsOk = true
-        }
-      }
+      categoriesOk = categoriesOkResult
+      groupsOk = groupsOkResult
+      const corporationsOk = corporationsOkResult
 
       if (categoriesOk && groupsOk && corporationsOk) {
+        useReferenceCacheStore.getState().setReferenceDataLoaded(true)
         const catGroupDuration = Math.round(performance.now() - start)
         logger.info('Categories, groups and corporations loaded', {
           module: 'RefAPI',
@@ -222,9 +216,18 @@ export async function loadReferenceData(
       }
     }
 
-    const typesResult = await loadAllTypes(onProgress)
-    if (typesResult.error) {
-      errors.push(typesResult.error)
+    if (!categoriesOk || !groupsOk) {
+      errors.push('Skipped loading types: categories or groups unavailable')
+      logger.warn('Skipping type loading due to missing categories/groups', {
+        module: 'RefAPI',
+        categoriesOk,
+        groupsOk,
+      })
+    } else {
+      const typesResult = await loadAllTypes(onProgress)
+      if (typesResult.error) {
+        errors.push(typesResult.error)
+      }
     }
 
     const duration = Math.round(performance.now() - start)

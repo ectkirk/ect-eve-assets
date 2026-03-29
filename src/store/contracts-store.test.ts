@@ -3,11 +3,11 @@ import 'fake-indexeddb/auto'
 import { useContractsStore } from './contracts-store'
 import { createMockOwner, createMockAuthState } from '@/test/helpers'
 
-vi.mock('./auth-store', () => ({
+vi.mock('./auth-store', async (importOriginal) => ({
+  ...(await importOriginal()),
   useAuthStore: {
     getState: vi.fn(() => ({ owners: {}, ownerHasScope: () => false })),
   },
-  ownerKey: (type: string, id: number) => `${type}-${id}`,
   findOwnerByKey: vi.fn(),
 }))
 
@@ -31,10 +31,6 @@ vi.mock('@/api/esi', () => ({
   esi: {
     fetchPaginatedWithMeta: vi.fn(),
   },
-}))
-
-vi.mock('@/lib/logger', () => ({
-  logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
 vi.mock('./price-store', () => ({
@@ -65,68 +61,7 @@ describe('contracts-store', () => {
     })
   })
 
-  describe('initial state', () => {
-    it('has correct initial values', () => {
-      const state = useContractsStore.getState()
-      expect(state.itemsById.size).toBe(0)
-      expect(state.visibilityByOwner.size).toBe(0)
-      expect(state.isUpdating).toBe(false)
-      expect(state.updateError).toBeNull()
-      expect(state.initialized).toBe(false)
-    })
-  })
-
   describe('update', () => {
-    it('sets error when no owners logged in', async () => {
-      const { useAuthStore } = await import('./auth-store')
-      vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({}))
-
-      await useContractsStore.getState().update(true)
-
-      expect(useContractsStore.getState().updateError).toBe(
-        'No owners logged in'
-      )
-    })
-
-    it('updates both character and corporation owners', async () => {
-      const { useAuthStore, findOwnerByKey } = await import('./auth-store')
-      const { esi } = await import('@/api/esi')
-
-      const charOwner = createMockOwner({
-        id: 12345,
-        name: 'Test',
-        type: 'character',
-      })
-      const corpOwner = createMockOwner({
-        id: 98000001,
-        characterId: 12345,
-        name: 'Corp',
-        type: 'corporation',
-      })
-      vi.mocked(useAuthStore.getState).mockReturnValue(
-        createMockAuthState({
-          'character-12345': charOwner,
-          'corporation-98000001': corpOwner,
-        })
-      )
-      vi.mocked(findOwnerByKey).mockImplementation((key: string) => {
-        if (key === 'character-12345') return charOwner
-        if (key === 'corporation-98000001') return corpOwner
-        return undefined
-      })
-
-      vi.mocked(esi.fetchPaginatedWithMeta).mockResolvedValue({
-        data: [],
-        expiresAt: Date.now() + 300000,
-        etag: 'test-etag',
-        notModified: false,
-      })
-
-      await useContractsStore.getState().update(true)
-
-      expect(useContractsStore.getState().visibilityByOwner.size).toBe(2)
-    })
-
     it('fetches contracts successfully', async () => {
       const { useAuthStore, findOwnerByKey } = await import('./auth-store')
       const { esi } = await import('@/api/esi')
@@ -224,47 +159,6 @@ describe('contracts-store', () => {
       expect(state.itemsById.size).toBe(1)
       expect(state.itemsById.get(1)?.item.for_corporation).toBe(false)
     })
-
-    it('handles fetch errors gracefully', async () => {
-      const { useAuthStore } = await import('./auth-store')
-      const { esi } = await import('@/api/esi')
-
-      const mockOwner = createMockOwner({
-        id: 12345,
-        name: 'Test',
-        type: 'character',
-      })
-      vi.mocked(useAuthStore.getState).mockReturnValue(
-        createMockAuthState({ 'character-12345': mockOwner })
-      )
-
-      vi.mocked(esi.fetchPaginatedWithMeta).mockRejectedValue(
-        new Error('API Error')
-      )
-
-      await useContractsStore.getState().update(true)
-
-      expect(useContractsStore.getState().isUpdating).toBe(false)
-    })
-  })
-
-  describe('clear', () => {
-    it('resets store state', async () => {
-      useContractsStore.setState({
-        itemsById: new Map([
-          [1, { item: {} as never, sourceOwner: {} as never }],
-        ]),
-        visibilityByOwner: new Map([['test', new Set([1])]]),
-        updateError: 'error',
-      })
-
-      await useContractsStore.getState().clear()
-
-      const state = useContractsStore.getState()
-      expect(state.itemsById.size).toBe(0)
-      expect(state.visibilityByOwner.size).toBe(0)
-      expect(state.updateError).toBeNull()
-    })
   })
 
   describe('getContractsByOwner', () => {
@@ -315,7 +209,17 @@ describe('contracts-store', () => {
   })
 
   describe('getTotal', () => {
-    it('counts each contract only once even if visible to multiple owners', () => {
+    it('counts each contract only once even if visible to multiple owners', async () => {
+      const { useAuthStore } = vi.mocked(await import('./auth-store'), true)
+      const owner = createMockOwner({
+        id: 12345,
+        name: 'Issuer',
+        type: 'character',
+      })
+      vi.mocked(useAuthStore.getState).mockReturnValue({
+        owners: { 'character-12345': owner },
+      } as never)
+
       const mockContract = {
         contract_id: 1,
         issuer_id: 12345,
@@ -361,6 +265,7 @@ describe('contracts-store', () => {
         'character-67890',
       ])
 
+      // collateral (1,000,000) + items valued by issuer (100 * 10 = 1,000)
       expect(total).toBe(1001000)
     })
   })

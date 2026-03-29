@@ -30,7 +30,11 @@ type RefreshCallback = (ownerKey: string, endpoint: string) => Promise<void>
 interface ExpiryCacheState {
   endpoints: Map<string, EndpointExpiry>
   callbacks: Map<string, RefreshCallback>
-  refreshQueue: Array<{ ownerKey: string; endpoint: string }>
+  refreshQueue: Array<{
+    ownerKey: string
+    endpoint: string
+    deferCount?: number
+  }>
   initialized: boolean
   isProcessingQueue: boolean
   pollingGeneration: number
@@ -202,6 +206,7 @@ function processQueue() {
   useExpiryCacheStore.setState({ isProcessingQueue: true })
 
   const skippedOwners = new Set<string>()
+  let deferredCount = 0
 
   const processNext = async () => {
     const currentState = useExpiryCacheStore.getState()
@@ -243,6 +248,7 @@ function processQueue() {
 
     const callback = findCallback(callbacks, item.endpoint)
     if (callback) {
+      deferredCount = 0
       useExpiryCacheStore.setState({ currentlyRefreshing: item })
       try {
         await callback(item.ownerKey, item.endpoint)
@@ -258,6 +264,28 @@ function processQueue() {
         )
       } finally {
         useExpiryCacheStore.setState({ currentlyRefreshing: null })
+      }
+    } else {
+      const nextDeferCount = (item.deferCount ?? 0) + 1
+      if (nextDeferCount > 3) {
+        logger.warn('Dropping queue item with no matching callback', {
+          module: 'ExpiryCacheStore',
+          ownerKey: item.ownerKey,
+          endpoint: item.endpoint,
+        })
+      } else {
+        deferredCount++
+        useExpiryCacheStore.setState((state) => ({
+          refreshQueue: [
+            ...state.refreshQueue,
+            { ...item, deferCount: nextDeferCount },
+          ],
+        }))
+      }
+      const remaining = useExpiryCacheStore.getState().refreshQueue.length
+      if (deferredCount >= remaining) {
+        useExpiryCacheStore.setState({ isProcessingQueue: false })
+        return
       }
     }
 
@@ -369,6 +397,7 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
       sortedPatternsCache = null
       return { callbacks }
     })
+    processQueue()
 
     return () => {
       set((state) => {

@@ -162,6 +162,7 @@ export function createVisibilityStore<
 
   let initPromise: Promise<void> | null = null
   const updatingOwners = new Set<string>()
+  let storeGeneration = 0
 
   const store = create<FullStore>((set, get) => {
     const baseSet = (partial: Partial<FullState>) =>
@@ -215,6 +216,7 @@ export function createVisibilityStore<
                 module: moduleName,
               }
             )
+            initPromise = null
             set({ initialized: true } as Partial<FullStore>)
           }
         })()
@@ -246,6 +248,7 @@ export function createVisibilityStore<
 
         if (ownersToUpdate.length === 0) return
 
+        const gen = storeGeneration
         set({
           isUpdating: true,
           updateError: null,
@@ -253,13 +256,21 @@ export function createVisibilityStore<
         } as Partial<FullStore>)
 
         try {
-          let itemsById = new Map(get().itemsById)
-          const visibilityByOwner = new Map(get().visibilityByOwner)
+          const newItems = new Map<number, TStoredItem>()
+          const updatedVisibility = new Map<string, Set<number>>()
           const itemBatch: Array<{ id: number; stored: TStoredItem }> = []
           const failedOwners: string[] = []
 
           for (const owner of ownersToUpdate) {
+            if (gen !== storeGeneration) {
+              set({ isUpdating: false } as Partial<FullStore>)
+              return
+            }
             const currentOwnerKey = makeOwnerKey(owner.type, owner.id)
+
+            if (updatingOwners.has(currentOwnerKey)) continue
+            updatingOwners.add(currentOwnerKey)
+
             const endpoint = getEndpoint(owner)
 
             try {
@@ -274,14 +285,17 @@ export function createVisibilityStore<
                 const itemId = getItemId(item)
                 ownerVisibility.add(itemId)
 
-                if (!itemsById.has(itemId) || shouldUpdateExisting) {
+                if (
+                  shouldUpdateExisting ||
+                  (!get().itemsById.has(itemId) && !newItems.has(itemId))
+                ) {
                   const stored = toStoredItem(owner, item)
-                  itemsById.set(itemId, stored)
+                  newItems.set(itemId, stored)
                   itemBatch.push({ id: itemId, stored })
                 }
               }
 
-              visibilityByOwner.set(currentOwnerKey, ownerVisibility)
+              updatedVisibility.set(currentOwnerKey, ownerVisibility)
               await db.saveVisibility(currentOwnerKey, ownerVisibility)
 
               const isDataEmpty = isEmpty ? isEmpty(items) : items.length === 0
@@ -310,10 +324,21 @@ export function createVisibilityStore<
                   owner: owner.name,
                 })
               }
+            } finally {
+              updatingOwners.delete(currentOwnerKey)
             }
           }
 
           await db.saveItems(itemBatch)
+
+          let itemsById = new Map(get().itemsById)
+          for (const [id, stored] of newItems) {
+            itemsById.set(id, stored)
+          }
+          const visibilityByOwner = new Map(get().visibilityByOwner)
+          for (const [key, vis] of updatedVisibility) {
+            visibilityByOwner.set(key, vis)
+          }
 
           if (shouldDeleteStaleItems) {
             const visibleIds = collectVisibleItemIds(visibilityByOwner)
@@ -331,8 +356,6 @@ export function createVisibilityStore<
             }
           }
 
-          onAfterBatchUpdate?.(itemsById)
-
           const extra = rebuildExtraState ? rebuildExtraState(itemsById) : {}
           const updateError =
             failedOwners.length === ownersToUpdate.length
@@ -348,6 +371,8 @@ export function createVisibilityStore<
             failedOwners,
             ...extra,
           } as Partial<FullStore>)
+
+          onAfterBatchUpdate?.(itemsById)
 
           triggerResolution()
 
@@ -369,8 +394,7 @@ export function createVisibilityStore<
       },
 
       updateForOwner: async (owner: Owner) => {
-        const state = get()
-        if (!state.initialized) await get().init()
+        if (!get().initialized) await get().init()
 
         const currentOwnerKey = makeOwnerKey(owner.type, owner.id)
         if (updatingOwners.has(currentOwnerKey)) {
@@ -385,18 +409,22 @@ export function createVisibilityStore<
         }
 
         updatingOwners.add(currentOwnerKey)
+        const gen = storeGeneration
         try {
           const endpoint = getEndpoint(owner)
+          const preState = get()
           const previousVisibility =
-            state.visibilityByOwner.get(currentOwnerKey) ?? new Set()
+            preState.visibilityByOwner.get(currentOwnerKey) ?? new Set()
 
-          onBeforeOwnerUpdate?.(owner, previousVisibility, state.itemsById)
+          onBeforeOwnerUpdate?.(owner, previousVisibility, preState.itemsById)
 
           logger.info(`Fetching ${name} for owner`, {
             module: moduleName,
             owner: owner.name,
           })
           const { data: items, expiresAt, etag } = await fetchData(owner)
+
+          if (gen !== storeGeneration) return
 
           const currentState = get()
           let itemsById = new Map(currentState.itemsById)
@@ -408,9 +436,11 @@ export function createVisibilityStore<
             const itemId = getItemId(item)
             ownerVisibility.add(itemId)
 
-            const stored = toStoredItem(owner, item)
-            itemsById.set(itemId, stored)
-            itemBatch.push({ id: itemId, stored })
+            if (!itemsById.has(itemId) || shouldUpdateExisting) {
+              const stored = toStoredItem(owner, item)
+              itemsById.set(itemId, stored)
+              itemBatch.push({ id: itemId, stored })
+            }
           }
 
           await db.saveItems(itemBatch)
@@ -521,12 +551,15 @@ export function createVisibilityStore<
       },
 
       clear: async () => {
+        storeGeneration++
         await db.clear()
         initPromise = null
+        updatingOwners.clear()
         const extra = extraState ? { ...extraState } : {}
         set({
           itemsById: new Map(),
           visibilityByOwner: new Map(),
+          isUpdating: false,
           updateError: null,
           failedOwners: [],
           initialized: false,

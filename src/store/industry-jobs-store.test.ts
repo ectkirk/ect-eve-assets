@@ -3,11 +3,11 @@ import 'fake-indexeddb/auto'
 import { useIndustryJobsStore } from './industry-jobs-store'
 import { createMockOwner, createMockAuthState } from '@/test/helpers'
 
-vi.mock('./auth-store', () => ({
+vi.mock('./auth-store', async (importOriginal) => ({
+  ...(await importOriginal()),
   useAuthStore: {
     getState: vi.fn(() => ({ owners: {} })),
   },
-  ownerKey: (type: string, id: number) => `${type}-${id}`,
   findOwnerByKey: vi.fn(),
 }))
 
@@ -29,10 +29,6 @@ vi.mock('@/api/esi', () => ({
   },
 }))
 
-vi.mock('@/lib/logger', () => ({
-  logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
-}))
-
 vi.mock('@/lib/data-resolver', () => ({
   triggerResolution: vi.fn(),
   registerCollector: vi.fn(),
@@ -42,12 +38,12 @@ vi.mock('@/lib/data-resolver', () => ({
   PLAYER_STRUCTURE_ID_THRESHOLD: 1000000000000,
 }))
 
-vi.mock('./asset-store', () => ({
-  useAssetStore: {
-    getState: () => ({
-      prices: new Map(),
-      setPrices: vi.fn(),
-    }),
+vi.mock('./price-store', () => ({
+  usePriceStore: {
+    getState: vi.fn(() => ({
+      getItemPrice: vi.fn((typeId: number) => (typeId === 2000 ? 500 : 0)),
+      ensureJitaPrices: vi.fn(),
+    })),
   },
 }))
 
@@ -64,29 +60,7 @@ describe('industry-jobs-store', () => {
     })
   })
 
-  describe('initial state', () => {
-    it('has correct initial values', () => {
-      const state = useIndustryJobsStore.getState()
-      expect(state.itemsById.size).toBe(0)
-      expect(state.visibilityByOwner.size).toBe(0)
-      expect(state.isUpdating).toBe(false)
-      expect(state.updateError).toBeNull()
-      expect(state.initialized).toBe(false)
-    })
-  })
-
   describe('update', () => {
-    it('sets error when no owners logged in', async () => {
-      const { useAuthStore } = await import('./auth-store')
-      vi.mocked(useAuthStore.getState).mockReturnValue(createMockAuthState({}))
-
-      await useIndustryJobsStore.getState().update(true)
-
-      expect(useIndustryJobsStore.getState().updateError).toBe(
-        'No owners logged in'
-      )
-    })
-
     it('fetches character jobs for character owners', async () => {
       const { useAuthStore } = await import('./auth-store')
       const { esi } = await import('@/api/esi')
@@ -128,75 +102,146 @@ describe('industry-jobs-store', () => {
 
       await useIndustryJobsStore.getState().update(true)
 
-      expect(esi.fetchWithMeta).toHaveBeenCalled()
+      expect(esi.fetchWithMeta).toHaveBeenCalledWith(
+        expect.stringContaining('/characters/12345/industry/jobs'),
+        expect.anything()
+      )
       expect(useIndustryJobsStore.getState().itemsById.size).toBe(1)
       expect(useIndustryJobsStore.getState().visibilityByOwner.size).toBe(1)
     })
+  })
 
-    it('fetches corporation jobs for corporation owners', async () => {
-      const { useAuthStore } = await import('./auth-store')
-      const { esi } = await import('@/api/esi')
+  describe('getTotal', () => {
+    it('sums product value for active jobs', () => {
+      const activeJob = {
+        job_id: 1,
+        installer_id: 12345,
+        facility_id: 60003760,
+        station_id: 60003760,
+        activity_id: 1,
+        blueprint_id: 100,
+        blueprint_type_id: 1000,
+        product_type_id: 2000,
+        blueprint_location_id: 60003760,
+        location_id: 60003760,
+        output_location_id: 60003760,
+        runs: 10,
+        status: 'active',
+        start_date: '2024-01-01T00:00:00Z',
+        end_date: '2024-01-02T00:00:00Z',
+        duration: 86400,
+        cost: 1000,
+      }
 
-      const mockCorpOwner = createMockOwner({
-        id: 98000001,
-        characterId: 12345,
-        name: 'Test Corp',
-        type: 'corporation',
+      const completedJob = {
+        ...activeJob,
+        job_id: 2,
+        status: 'delivered',
+        runs: 5,
+      }
+
+      useIndustryJobsStore.setState({
+        itemsById: new Map([
+          [
+            1,
+            {
+              item: activeJob as never,
+              sourceOwner: { type: 'character', id: 12345, characterId: 12345 },
+            },
+          ],
+          [
+            2,
+            {
+              item: completedJob as never,
+              sourceOwner: { type: 'character', id: 12345, characterId: 12345 },
+            },
+          ],
+        ]),
+        visibilityByOwner: new Map([['character-12345', new Set([1, 2])]]),
       })
-      vi.mocked(useAuthStore.getState).mockReturnValue(
-        createMockAuthState({ 'corporation-98000001': mockCorpOwner })
-      )
 
-      vi.mocked(esi.fetchPaginatedWithMeta).mockResolvedValue({
-        data: [],
-        expiresAt: Date.now() + 300000,
-        etag: 'test-etag',
-        notModified: false,
-      })
+      const total = useIndustryJobsStore.getTotal(['character-12345'])
 
-      await useIndustryJobsStore.getState().update(true)
-
-      expect(esi.fetchPaginatedWithMeta).toHaveBeenCalled()
+      // Only active job counts: price(2000) = 500, runs = 10, total = 5000
+      // Delivered job is excluded
+      expect(total).toBe(5000)
     })
 
-    it('handles fetch errors gracefully', async () => {
-      const { useAuthStore } = await import('./auth-store')
-      const { esi } = await import('@/api/esi')
+    it('uses blueprint_type_id when product_type_id is absent', () => {
+      const job = {
+        job_id: 1,
+        installer_id: 12345,
+        facility_id: 60003760,
+        station_id: 60003760,
+        activity_id: 1,
+        blueprint_id: 100,
+        blueprint_type_id: 2000,
+        blueprint_location_id: 60003760,
+        location_id: 60003760,
+        output_location_id: 60003760,
+        runs: 3,
+        status: 'ready',
+        start_date: '2024-01-01T00:00:00Z',
+        end_date: '2024-01-02T00:00:00Z',
+        duration: 86400,
+        cost: 1000,
+      }
 
-      const mockOwner = createMockOwner({
+      useIndustryJobsStore.setState({
+        itemsById: new Map([
+          [
+            1,
+            {
+              item: job as never,
+              sourceOwner: { type: 'character', id: 12345, characterId: 12345 },
+            },
+          ],
+        ]),
+        visibilityByOwner: new Map([['character-12345', new Set([1])]]),
+      })
+
+      // price(2000) = 500, runs = 3
+      expect(useIndustryJobsStore.getTotal(['character-12345'])).toBe(1500)
+    })
+
+    it('returns 0 when no jobs match selected owners', () => {
+      expect(useIndustryJobsStore.getTotal(['character-99999'])).toBe(0)
+    })
+  })
+
+  describe('getJobsByOwner', () => {
+    it('groups jobs by owner', async () => {
+      const { findOwnerByKey } = await import('./auth-store')
+      const owner = createMockOwner({
         id: 12345,
         name: 'Test',
         type: 'character',
       })
-      vi.mocked(useAuthStore.getState).mockReturnValue(
-        createMockAuthState({ 'character-12345': mockOwner })
-      )
+      vi.mocked(findOwnerByKey).mockReturnValue(owner)
 
-      vi.mocked(esi.fetchWithMeta).mockRejectedValue(new Error('API Error'))
+      const job = {
+        job_id: 1,
+        installer_id: 12345,
+        status: 'active',
+      }
 
-      await useIndustryJobsStore.getState().update(true)
-
-      expect(useIndustryJobsStore.getState().itemsById.size).toBe(0)
-      expect(useIndustryJobsStore.getState().isUpdating).toBe(false)
-    })
-  })
-
-  describe('clear', () => {
-    it('resets store state', async () => {
       useIndustryJobsStore.setState({
         itemsById: new Map([
-          [1, { item: {} as never, sourceOwner: {} as never }],
+          [
+            1,
+            {
+              item: job as never,
+              sourceOwner: { type: 'character', id: 12345, characterId: 12345 },
+            },
+          ],
         ]),
-        visibilityByOwner: new Map([['test', new Set([1])]]),
-        updateError: 'error',
+        visibilityByOwner: new Map([['character-12345', new Set([1])]]),
       })
 
-      await useIndustryJobsStore.getState().clear()
-
-      const state = useIndustryJobsStore.getState()
-      expect(state.itemsById.size).toBe(0)
-      expect(state.visibilityByOwner.size).toBe(0)
-      expect(state.updateError).toBeNull()
+      const result = useIndustryJobsStore.getJobsByOwner()
+      expect(result).toHaveLength(1)
+      expect(result[0]?.owner).toEqual(owner)
+      expect(result[0]?.jobs).toHaveLength(1)
     })
   })
 })

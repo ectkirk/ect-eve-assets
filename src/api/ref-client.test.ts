@@ -18,6 +18,7 @@ const mockSetSystems = vi.fn()
 const mockSetStations = vi.fn()
 const mockSetStargates = vi.fn()
 const mockSetRefStructures = vi.fn()
+const mockSetReferenceDataLoaded = vi.fn()
 const mockSetAllTypesLoaded = vi.fn()
 const mockSetUniverseDataLoaded = vi.fn()
 const mockSetRefStructuresLoaded = vi.fn()
@@ -47,6 +48,7 @@ vi.mock('@/store/reference-cache', () => ({
       setStations: mockSetStations,
       setStargates: mockSetStargates,
       setRefStructures: mockSetRefStructures,
+      setReferenceDataLoaded: mockSetReferenceDataLoaded,
       setAllTypesLoaded: mockSetAllTypesLoaded,
       setUniverseDataLoaded: mockSetUniverseDataLoaded,
       setRefStructuresLoaded: mockSetRefStructuresLoaded,
@@ -422,6 +424,7 @@ describe('ref-client', () => {
       expect(mockSetGroups).toHaveBeenCalledWith([
         { id: 18, name: 'Mineral', categoryId: 4, published: true },
       ])
+      expect(mockSetReferenceDataLoaded).toHaveBeenCalledWith(true)
     })
 
     it('loads all types with cursor pagination', async () => {
@@ -457,17 +460,18 @@ describe('ref-client', () => {
       expect(mockSetAllTypesLoaded).toHaveBeenCalledWith(true)
     })
 
-    it('handles categories API error gracefully and continues loading', async () => {
+    it('handles categories API error gracefully and skips type loading', async () => {
       vi.mocked(isReferenceDataLoaded).mockReturnValue(false)
       vi.mocked(isAllTypesLoaded).mockReturnValue(false)
 
       mockRefCategories.mockResolvedValueOnce({ error: 'HTTP 500' })
 
-      await loadReferenceData()
+      const result = await loadReferenceData()
 
       expect(mockSetCategories).not.toHaveBeenCalled()
       expect(mockSetGroups).toHaveBeenCalled()
-      expect(mockRefTypesPage).toHaveBeenCalled()
+      expect(mockRefTypesPage).not.toHaveBeenCalled()
+      expect(result.success).toBe(false)
     })
 
     it('handles types page API error gracefully', async () => {
@@ -620,7 +624,7 @@ describe('ref-client', () => {
       expect(mockRefUniverseStations).toHaveBeenCalled()
     })
 
-    it('handles stations API error gracefully', async () => {
+    it('handles stations API error gracefully and does not mark loaded', async () => {
       vi.mocked(isUniverseDataLoaded).mockReturnValue(false)
 
       mockRefUniverseStations.mockResolvedValueOnce({ error: 'HTTP 500' })
@@ -628,7 +632,7 @@ describe('ref-client', () => {
       await loadUniverseData()
 
       expect(mockSetStations).not.toHaveBeenCalled()
-      expect(mockSetUniverseDataLoaded).toHaveBeenCalledWith(true)
+      expect(mockSetUniverseDataLoaded).not.toHaveBeenCalled()
     })
 
     it('deduplicates concurrent calls', async () => {

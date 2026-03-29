@@ -143,8 +143,24 @@ export function createOwnerStore<
     })
   }
 
+  const flagScopeOutdated = (owner: Owner): void => {
+    const ownerId = makeOwnerKey(owner.type, owner.id)
+    useAuthStore.getState().setOwnerScopesOutdated(ownerId, true)
+  }
+
+  const handleScopeError = (err: unknown, owner: Owner): void => {
+    if (isScopeError(err)) {
+      flagScopeOutdated(owner)
+      logger.warn(
+        `Owner ${owner.name} needs re-authentication for new scopes`,
+        { module: moduleName }
+      )
+    }
+  }
+
   const updatingOwners = new Set<string>()
   let initPromise: Promise<void> | null = null
+  let storeGeneration = 0
 
   const storeCreator: StateCreator<
     OwnerStore<TOwnerData, TExtraState, TExtraActions>
@@ -202,6 +218,7 @@ export function createOwnerStore<
                 module: moduleName,
               }
             )
+            initPromise = null
             set({ initialized: true } as Partial<
               OwnerStore<TOwnerData, TExtraState, TExtraActions>
             >)
@@ -212,8 +229,8 @@ export function createOwnerStore<
       },
 
       update: async (force = false) => {
-        const state = get()
-        if (state.isUpdating) return
+        if (!get().initialized) await get().init()
+        if (get().isUpdating) return
 
         const allOwners = Object.values(useAuthStore.getState().owners)
         const filtered = filterOwners(allOwners)
@@ -240,26 +257,26 @@ export function createOwnerStore<
           return
         }
 
+        const gen = storeGeneration
         set({ isUpdating: true, updateError: null } as Partial<
           OwnerStore<TOwnerData, TExtraState, TExtraActions>
         >)
 
         try {
-          const existing = new Map<string, TOwnerData>(
-            state.dataByOwner.map((d: TOwnerData) => [
-              makeOwnerKey(d.owner.type, d.owner.id),
-              d,
-            ])
-          )
+          const updatedOwners = new Map<string, TOwnerData>()
 
           for (const owner of ownersToUpdate) {
+            if (gen !== storeGeneration) break
             if (!ownerHasRequiredScope(owner)) {
-              const ownerId = makeOwnerKey(owner.type, owner.id)
-              useAuthStore.getState().setOwnerScopesOutdated(ownerId, true)
+              flagScopeOutdated(owner)
               continue
             }
 
             const ownerKey = makeOwnerKey(owner.type, owner.id)
+
+            if (updatingOwners.has(ownerKey)) continue
+            updatingOwners.add(ownerKey)
+
             const endpoint = getEndpoint(owner)
 
             try {
@@ -269,8 +286,12 @@ export function createOwnerStore<
               })
               const { data, expiresAt, etag } = await fetchData(owner)
 
+              if (gen !== storeGeneration) continue
+
               await db.save(ownerKey, owner, data)
-              existing.set(ownerKey, toOwnerData(owner, data))
+
+              if (gen !== storeGeneration) continue
+              updatedOwners.set(ownerKey, toOwnerData(owner, data))
 
               const isDataEmpty = isEmpty ? isEmpty(data) : false
               useExpiryCacheStore
@@ -281,33 +302,41 @@ export function createOwnerStore<
                 module: moduleName,
                 owner: owner.name,
               })
-              if (isScopeError(err)) {
-                const ownerId = makeOwnerKey(owner.type, owner.id)
-                useAuthStore.getState().setOwnerScopesOutdated(ownerId, true)
-                logger.warn(
-                  `Owner ${owner.name} needs re-authentication for new scopes`,
-                  {
-                    module: moduleName,
-                  }
-                )
-              }
+              handleScopeError(err, owner)
+            } finally {
+              updatingOwners.delete(ownerKey)
             }
           }
 
-          const results = Array.from(existing.values())
-          const extra = rebuildExtraState ? rebuildExtraState(results) : {}
-
-          if (onAfterBatchUpdate) {
-            await onAfterBatchUpdate(results)
+          if (gen !== storeGeneration) {
+            set({ isUpdating: false } as Partial<
+              OwnerStore<TOwnerData, TExtraState, TExtraActions>
+            >)
+            return
           }
+
+          const current = get().dataByOwner as TOwnerData[]
+          const results = current
+            .filter(
+              (d: TOwnerData) =>
+                !updatedOwners.has(makeOwnerKey(d.owner.type, d.owner.id))
+            )
+            .concat(Array.from(updatedOwners.values()))
+          const extra = rebuildExtraState ? rebuildExtraState(results) : {}
 
           set({
             dataByOwner: results,
             isUpdating: false,
             updateError:
-              results.length === 0 ? `Failed to fetch any ${name}` : null,
+              updatedOwners.size === 0 && ownersToUpdate.length > 0
+                ? `Failed to fetch any ${name}`
+                : null,
             ...extra,
           } as Partial<OwnerStore<TOwnerData, TExtraState, TExtraActions>>)
+
+          if (onAfterBatchUpdate) {
+            await onAfterBatchUpdate(results)
+          }
 
           triggerResolution()
 
@@ -327,12 +356,12 @@ export function createOwnerStore<
       },
 
       updateForOwner: async (owner: Owner) => {
+        if (!get().initialized) await get().init()
         if (ownerFilter === 'character' && owner.type !== 'character') return
         if (ownerFilter === 'corporation' && owner.type !== 'corporation')
           return
         if (!ownerHasRequiredScope(owner)) {
-          const ownerId = makeOwnerKey(owner.type, owner.id)
-          useAuthStore.getState().setOwnerScopesOutdated(ownerId, true)
+          flagScopeOutdated(owner)
           return
         }
 
@@ -342,6 +371,7 @@ export function createOwnerStore<
         }
         updatingOwners.add(ownerKey)
 
+        const gen = storeGeneration
         const state = get()
         const preHookResult = onBeforeOwnerUpdate
           ? onBeforeOwnerUpdate(
@@ -359,6 +389,11 @@ export function createOwnerStore<
           })
           const { data, expiresAt, etag } = await fetchData(owner)
 
+          if (gen !== storeGeneration) return
+
+          await db.save(ownerKey, owner, data)
+          if (gen !== storeGeneration) return
+
           if (onAfterOwnerUpdate) {
             const currentState = get()
             onAfterOwnerUpdate({
@@ -369,7 +404,6 @@ export function createOwnerStore<
             })
           }
 
-          await db.save(ownerKey, owner, data)
           const isDataEmpty = isEmpty ? isEmpty(data) : false
           useExpiryCacheStore
             .getState()
@@ -401,14 +435,7 @@ export function createOwnerStore<
               owner: owner.name,
             }
           )
-          if (isScopeError(err)) {
-            const ownerId = makeOwnerKey(owner.type, owner.id)
-            useAuthStore.getState().setOwnerScopesOutdated(ownerId, true)
-            logger.warn(
-              `Owner ${owner.name} needs re-authentication for new scopes`,
-              { module: moduleName }
-            )
-          }
+          handleScopeError(err, owner)
         } finally {
           updatingOwners.delete(ownerKey)
         }
@@ -442,11 +469,14 @@ export function createOwnerStore<
       },
 
       clear: async () => {
+        storeGeneration++
         await db.clear()
         initPromise = null
+        updatingOwners.clear()
         const extra = extraState ? { ...extraState } : {}
         set({
           dataByOwner: [],
+          isUpdating: false,
           updateError: null,
           initialized: false,
           ...extra,

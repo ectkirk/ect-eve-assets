@@ -276,13 +276,8 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
     })
 
     try {
-      const existingAssets = new Map(
-        state.assetsByOwner.map((oa) => [
-          makeOwnerKey(oa.owner.type, oa.owner.id),
-          oa,
-        ])
-      )
-      const allNames = new Map(state.assetNames)
+      const updatedAssets = new Map<string, OwnerAssets>()
+      const allNames = new Map(get().assetNames)
 
       for (let i = 0; i < ownersToUpdate.length; i++) {
         const owner = ownersToUpdate[i]
@@ -320,7 +315,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
           }
 
           await db.save(ownerKey, owner, assets)
-          existingAssets.set(ownerKey, { owner, assets })
+          updatedAssets.set(ownerKey, { owner, assets })
 
           useExpiryCacheStore
             .getState()
@@ -336,7 +331,6 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         } catch (err) {
           if (owner.type === 'corporation' && isNotInCorporationError(err)) {
             await handleCharacterLeftCorporation(owner)
-            existingAssets.delete(ownerKey)
           } else {
             logger.error(
               'Failed to fetch assets for owner',
@@ -350,7 +344,12 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         }
       }
 
-      const results = Array.from(existingAssets.values())
+      const current = get().assetsByOwner
+      const results = current
+        .filter(
+          (oa) => !updatedAssets.has(makeOwnerKey(oa.owner.type, oa.owner.id))
+        )
+        .concat(Array.from(updatedAssets.values()))
 
       const { typeIds, abyssalItemIds } = collectOwnedIds(
         results,
@@ -376,7 +375,10 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
         assetNames: allNames,
         isUpdating: false,
         updateProgress: null,
-        updateError: results.length === 0 ? 'Failed to fetch any assets' : null,
+        updateError:
+          updatedAssets.size === 0 && ownersToUpdate.length > 0
+            ? 'Failed to fetch any assets'
+            : null,
       })
 
       logger.info('Assets updated', {

@@ -10,6 +10,8 @@ export type { CorporationRoles }
 
 const TOKEN_EXPIRY_BUFFER_MS = 60_000
 
+let writeQueue: Promise<void> = Promise.resolve()
+
 const electronStorage: StateStorage = {
   getItem: async (name: string): Promise<string | null> => {
     if (!window.electronAPI) {
@@ -21,23 +23,35 @@ const electronStorage: StateStorage = {
     }
     return null
   },
-  setItem: async (name: string, value: string): Promise<void> => {
+  setItem: (name: string, value: string): void => {
     if (!window.electronAPI) {
       localStorage.setItem(name, value)
       return
     }
-    const existing = (await window.electronAPI.storageGet()) ?? {}
-    existing[name] = JSON.parse(value)
-    await window.electronAPI.storageSet(existing)
+    writeQueue = writeQueue
+      .then(async () => {
+        const existing = (await window.electronAPI!.storageGet()) ?? {}
+        existing[name] = JSON.parse(value)
+        await window.electronAPI!.storageSet(existing)
+      })
+      .catch((err) => {
+        console.error('[electronStorage] setItem failed:', err)
+      })
   },
-  removeItem: async (name: string): Promise<void> => {
+  removeItem: (name: string): void => {
     if (!window.electronAPI) {
       localStorage.removeItem(name)
       return
     }
-    const existing = (await window.electronAPI.storageGet()) ?? {}
-    delete existing[name]
-    await window.electronAPI.storageSet(existing)
+    writeQueue = writeQueue
+      .then(async () => {
+        const existing = (await window.electronAPI!.storageGet()) ?? {}
+        delete existing[name]
+        await window.electronAPI!.storageSet(existing)
+      })
+      .catch((err) => {
+        console.error('[electronStorage] removeItem failed:', err)
+      })
   },
 }
 

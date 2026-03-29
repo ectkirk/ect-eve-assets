@@ -119,8 +119,8 @@ export async function clearStore(storeName: string): Promise<void> {
   await idbClear(db, storeName)
 }
 
-export function closeCacheDB(): void {
-  closeDatabase(DB.CACHE.name)
+export async function closeCacheDB(): Promise<void> {
+  await closeDatabase(DB.CACHE.name)
 }
 
 export async function deleteDatabase(): Promise<void> {
