@@ -259,6 +259,12 @@ function processQueue() {
       } finally {
         useExpiryCacheStore.setState({ currentlyRefreshing: null })
       }
+    } else {
+      useExpiryCacheStore.setState((state) => ({
+        refreshQueue: [...state.refreshQueue, item],
+        isProcessingQueue: false,
+      }))
+      return
     }
 
     queueMicrotask(processNext)
@@ -369,6 +375,7 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
       sortedPatternsCache = null
       return { callbacks }
     })
+    processQueue()
 
     return () => {
       set((state) => {
