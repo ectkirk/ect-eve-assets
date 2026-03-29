@@ -212,8 +212,8 @@ export function createOwnerStore<
       },
 
       update: async (force = false) => {
-        const state = get()
-        if (state.isUpdating) return
+        if (!get().initialized) await get().init()
+        if (get().isUpdating) return
 
         const allOwners = Object.values(useAuthStore.getState().owners)
         const filtered = filterOwners(allOwners)
@@ -246,7 +246,7 @@ export function createOwnerStore<
 
         try {
           const existing = new Map<string, TOwnerData>(
-            state.dataByOwner.map((d: TOwnerData) => [
+            get().dataByOwner.map((d: TOwnerData) => [
               makeOwnerKey(d.owner.type, d.owner.id),
               d,
             ])
@@ -327,6 +327,7 @@ export function createOwnerStore<
       },
 
       updateForOwner: async (owner: Owner) => {
+        if (!get().initialized) await get().init()
         if (ownerFilter === 'character' && owner.type !== 'character') return
         if (ownerFilter === 'corporation' && owner.type !== 'corporation')
           return
