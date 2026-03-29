@@ -262,7 +262,10 @@ export function createVisibilityStore<
           const failedOwners: string[] = []
 
           for (const owner of ownersToUpdate) {
-            if (gen !== storeGeneration) return
+            if (gen !== storeGeneration) {
+              set({ isUpdating: false } as Partial<FullStore>)
+              return
+            }
             const currentOwnerKey = makeOwnerKey(owner.type, owner.id)
 
             if (updatingOwners.has(currentOwnerKey)) continue

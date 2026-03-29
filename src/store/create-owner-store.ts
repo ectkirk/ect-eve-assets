@@ -251,7 +251,12 @@ export function createOwnerStore<
           const updatedOwners = new Map<string, TOwnerData>()
 
           for (const owner of ownersToUpdate) {
-            if (gen !== storeGeneration) return
+            if (gen !== storeGeneration) {
+              set({ isUpdating: false } as Partial<
+                OwnerStore<TOwnerData, TExtraState, TExtraActions>
+              >)
+              return
+            }
             if (!ownerHasRequiredScope(owner)) {
               const ownerId = makeOwnerKey(owner.type, owner.id)
               useAuthStore.getState().setOwnerScopesOutdated(ownerId, true)
