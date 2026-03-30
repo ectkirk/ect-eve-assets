@@ -1,5 +1,5 @@
 import { Component, type ReactNode } from 'react'
-import { AlertTriangle, RefreshCw } from 'lucide-react'
+import { TriangleAlert, RefreshCw } from 'lucide-react'
 import { logger } from '@/lib/logger'
 
 interface Props {
@@ -43,7 +43,7 @@ export class FeatureErrorBoundary extends Component<Props, State> {
           aria-live="assertive"
         >
           <div className="max-w-md text-center">
-            <AlertTriangle
+            <TriangleAlert
               className="mx-auto h-12 w-12 text-semantic-warning"
               aria-hidden="true"
             />

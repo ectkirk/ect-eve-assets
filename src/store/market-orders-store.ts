@@ -127,7 +127,9 @@ async function fetchOrdersForOwner(owner: Owner): Promise<{
     characterId: owner.characterId,
     schema: ESIMarketOrderSchema,
   })
-  result.data = result.data.filter((order) => !order.is_corporation)
+  result.data = result.data.filter(
+    (order: ESIMarketOrder) => !order.is_corporation
+  )
   return result
 }
 

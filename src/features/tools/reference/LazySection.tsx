@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef, ReactNode } from 'react'
-import { ChevronRight, ChevronDown, Loader2, AlertCircle } from 'lucide-react'
+import { ChevronRight, ChevronDown, Loader2, CircleAlert } from 'lucide-react'
 
 interface LazySectionProps<T> {
   title: string
@@ -94,7 +94,7 @@ export function LazySection<T>({
           )}
           {error && (
             <div className="flex items-center gap-2 text-status-error">
-              <AlertCircle className="h-4 w-4" />
+              <CircleAlert className="h-4 w-4" />
               <span className="text-sm">{error}</span>
             </div>
           )}

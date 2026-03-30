@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react'
-import { AlertTriangle, AlertCircle, CheckCircle, Info } from 'lucide-react'
+import { TriangleAlert, CircleAlert, CircleCheck, Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type AlertVariant = 'warning' | 'danger' | 'success' | 'info'
@@ -11,10 +11,10 @@ const variantStyles: Record<AlertVariant, string> = {
   info: 'border-accent/30 bg-accent/10',
 }
 
-const variantIcons: Record<AlertVariant, typeof AlertTriangle> = {
-  warning: AlertTriangle,
-  danger: AlertCircle,
-  success: CheckCircle,
+const variantIcons: Record<AlertVariant, typeof TriangleAlert> = {
+  warning: TriangleAlert,
+  danger: CircleAlert,
+  success: CircleCheck,
   info: Info,
 }
 

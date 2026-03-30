@@ -11,7 +11,7 @@ import {
   Loader2,
   Square,
   CheckSquare,
-  AlertCircle,
+  CircleAlert,
   RefreshCw,
   Building2,
 } from 'lucide-react'
@@ -86,13 +86,13 @@ export function OwnerRow({
         )}
         {owner.authFailed && (
           <span className="flex items-center gap-1 text-xs text-semantic-danger">
-            <AlertCircle className="h-3 w-3" />
+            <CircleAlert className="h-3 w-3" />
             {t('ownerRow.reauthNeeded')}
           </span>
         )}
         {owner.scopesOutdated && !owner.authFailed && (
           <span className="flex items-center gap-1 text-xs text-semantic-warning">
-            <AlertCircle className="h-3 w-3" />
+            <CircleAlert className="h-3 w-3" />
             {t('ownerRow.upgradeScopes')}
           </span>
         )}
