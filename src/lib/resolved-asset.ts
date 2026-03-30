@@ -93,7 +93,11 @@ export function getAssetDisplayNames(ra: ResolvedAsset): AssetDisplayNames {
 
   let locationName: string
   if (ra.modeFlags.inAssetSafety) {
-    locationName = i18n.t('assets:locations.assetSafety')
+    const safetyLabel = i18n.t('assets:locations.assetSafety')
+    const resolved = getLocation(ra.rootLocationId)
+    locationName = resolved
+      ? `${resolved.name} — ${safetyLabel}`
+      : safetyLabel
   } else if (ra.hasOrphanedParent) {
     locationName = i18n.t('assets:locations.unknownParent')
   } else {
