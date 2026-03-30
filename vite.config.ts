@@ -30,7 +30,7 @@ export default defineConfig({
           },
           build: {
             outDir: 'dist-electron',
-            rolldownOptions: {
+            rollupOptions: {
               external: ['electron'],
             },
           },
@@ -46,34 +46,28 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    rolldownOptions: {
+    rollupOptions: {
       output: {
-        manualChunks(id) {
-          if (
-            id.includes('node_modules/react-dom/') ||
-            id.includes('node_modules/react/')
-          ) {
-            return 'react-vendor'
-          }
-          if (
-            id.includes('@tanstack/react-table') ||
-            id.includes('@tanstack/react-virtual')
-          ) {
-            return 'tanstack-vendor'
-          }
-          if (id.includes('@radix-ui/')) {
-            return 'radix-vendor'
-          }
-          if (
-            id.includes('node_modules/zustand/') ||
-            id.includes('node_modules/zod/') ||
-            id.includes('node_modules/jose/') ||
-            id.includes('node_modules/clsx/') ||
-            id.includes('node_modules/class-variance-authority/') ||
-            id.includes('node_modules/tailwind-merge/')
-          ) {
-            return 'utils-vendor'
-          }
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom'],
+          'tanstack-vendor': [
+            '@tanstack/react-table',
+            '@tanstack/react-virtual',
+          ],
+          'radix-vendor': [
+            '@radix-ui/react-context-menu',
+            '@radix-ui/react-dialog',
+            '@radix-ui/react-hover-card',
+            '@radix-ui/react-scroll-area',
+          ],
+          'utils-vendor': [
+            'zustand',
+            'zod',
+            'jose',
+            'clsx',
+            'class-variance-authority',
+            'tailwind-merge',
+          ],
         },
       },
     },
