@@ -77,7 +77,6 @@ interface PriceActions {
     abyssalItemIds?: number[]
   ) => Promise<void>
   refreshEsiPrices: () => Promise<void>
-  pruneAbyssalPrices: (ownedAbyssalIds: Set<number>) => Promise<void>
   clearAbyssal: () => Promise<void>
   clearJita: () => Promise<void>
   clearEsi: () => Promise<void>
@@ -118,7 +117,6 @@ async function triggerJitaRefreshIfNeeded(): Promise<void> {
       )
     }
 
-    await state.pruneAbyssalPrices(abyssalItemIds)
   } catch (err) {
     logger.error(
       'Jita refresh timer failed',
@@ -414,41 +412,6 @@ export const usePriceStore = create<PriceStore>((set, get) => ({
     } finally {
       set({ isUpdatingEsi: false })
     }
-  },
-
-  pruneAbyssalPrices: async (ownedAbyssalIds) => {
-    const state = get()
-
-    const prunedAbyssal = new Map<number, number>()
-    for (const [itemId, price] of state.abyssalPrices) {
-      if (ownedAbyssalIds.has(itemId)) {
-        prunedAbyssal.set(itemId, price)
-      }
-    }
-
-    const abyssalPruned = state.abyssalPrices.size - prunedAbyssal.size
-
-    if (abyssalPruned === 0) {
-      return
-    }
-
-    set({ abyssalPrices: prunedAbyssal })
-
-    await clearAbyssalDB()
-
-    const abyssalRecords = Array.from(prunedAbyssal.entries()).map(
-      ([itemId, price]) => ({ itemId, price })
-    )
-
-    if (abyssalRecords.length > 0) {
-      await saveAbyssalPricesToDB(abyssalRecords)
-    }
-
-    logger.info('Pruned orphaned abyssal prices', {
-      module: 'PriceStore',
-      abyssalPruned,
-      abyssalRemaining: prunedAbyssal.size,
-    })
   },
 
   clearAbyssal: async () => {

@@ -211,41 +211,6 @@ describe('price-store', () => {
     })
   })
 
-  describe('pruneAbyssalPrices', () => {
-    it('removes prices for items no longer owned', async () => {
-      usePriceStore.setState({
-        abyssalPrices: new Map([
-          [11111, 100],
-          [22222, 200],
-          [33333, 300],
-        ]),
-        initialized: true,
-      })
-
-      await usePriceStore.getState().pruneAbyssalPrices(new Set([11111, 33333]))
-
-      const state = usePriceStore.getState()
-      expect(state.abyssalPrices.has(11111)).toBe(true)
-      expect(state.abyssalPrices.has(22222)).toBe(false)
-      expect(state.abyssalPrices.has(33333)).toBe(true)
-    })
-
-    it('does nothing when all items are still owned', async () => {
-      usePriceStore.setState({
-        abyssalPrices: new Map([
-          [11111, 100],
-          [22222, 200],
-        ]),
-        initialized: true,
-      })
-
-      await usePriceStore.getState().pruneAbyssalPrices(new Set([11111, 22222]))
-
-      const state = usePriceStore.getState()
-      expect(state.abyssalPrices.size).toBe(2)
-    })
-  })
-
   describe('clear methods', () => {
     it('clearAbyssal clears abyssal prices', async () => {
       usePriceStore.setState({
