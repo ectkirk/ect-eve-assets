@@ -112,7 +112,7 @@
     "@types/node": "^25.5.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
-    "@vitejs/plugin-react": "^6.0.1",
+    "@vitejs/plugin-react": "^5.1.4",
     "@vitest/coverage-v8": "^4.1.2",
     "autoprefixer": "^10.4.24",
     "electron": "^41.1.0",
@@ -130,7 +130,7 @@
     "tsx": "^4.21.0",
     "typescript": "^6.0.2",
     "typescript-eslint": "^8.57.2",
-    "vite": "^8.0.3",
+    "vite": "^7.3.1",
     "vite-plugin-electron": "0.29.1",
     "vite-plugin-electron-renderer": "0.14.6",
     "vitest": "4.1.2"
