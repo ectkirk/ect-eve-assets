@@ -89,7 +89,7 @@
     "dompurify": "^3.3.3",
     "dotenv": "^17.3.1",
     "electron-updater": "^6.8.3",
-    "i18next": "^26.0.1",
+    "i18next": "^26.0.2",
     "jose": "^6.2.2",
     "lucide-react": "^1.7.0",
     "p-limit": "^7.3.0",
