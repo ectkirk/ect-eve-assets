@@ -123,6 +123,15 @@ vi.mock('@/store/reference-cache', () => ({
     }
     return locations[id]
   }),
+  getSystem: vi.fn((id: number) => {
+    const systems: Record<
+      number,
+      { id: number; name: string; regionId: number }
+    > = {
+      30000142: { id: 30000142, name: 'Jita', regionId: 10000002 },
+    }
+    return systems[id]
+  }),
   getRegion: vi.fn((id: number) => {
     const regions: Record<number, { id: number; name: string }> = {
       10000002: { id: 10000002, name: 'The Forge' },

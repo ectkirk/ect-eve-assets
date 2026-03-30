@@ -4,6 +4,7 @@ import type { Owner } from '@/store/auth-store'
 import {
   getType,
   getLocation,
+  getSystem,
   getRegion,
   getLocationName,
   CategoryIds,
@@ -94,8 +95,8 @@ export function getAssetDisplayNames(ra: ResolvedAsset): AssetDisplayNames {
   let locationName: string
   if (ra.modeFlags.inAssetSafety) {
     const safetyLabel = i18n.t('assets:locations.assetSafety')
-    const resolved = getLocation(ra.rootLocationId)
-    locationName = resolved ? `${resolved.name} — ${safetyLabel}` : safetyLabel
+    const system = ra.systemId ? getSystem(ra.systemId) : undefined
+    locationName = system ? `${system.name} - ${safetyLabel}` : safetyLabel
   } else if (ra.hasOrphanedParent) {
     locationName = i18n.t('assets:locations.unknownParent')
   } else {
