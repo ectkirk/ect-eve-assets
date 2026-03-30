@@ -1,5 +1,5 @@
 import type { z } from 'zod'
-import type { ESIResponseMeta, ESIRequestOptions } from 'electron/preload'
+import type { ESIResponseMeta, ESIRequestOptions } from '../../shared/esi-types'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { getLanguage } from '@/store/settings-store'
 import { logger } from '@/lib/logger'

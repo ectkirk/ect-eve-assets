@@ -6,7 +6,7 @@ import {
   Component,
   type ReactNode,
 } from 'react'
-import { AlertTriangle, X } from 'lucide-react'
+import { TriangleAlert, X } from 'lucide-react'
 import { version } from '../package.json'
 import { useAuthStore } from './store/auth-store'
 import { useAssetStore } from './store/asset-store'
@@ -50,7 +50,7 @@ function RefDataWarningBanner({
       className="flex items-center justify-between gap-2 bg-semantic-warning/20 border-b border-semantic-warning/30 px-4 py-2 text-sm"
     >
       <div className="flex items-center gap-2 text-semantic-warning">
-        <AlertTriangle className="h-4 w-4 shrink-0" />
+        <TriangleAlert className="h-4 w-4 shrink-0" />
         <span>
           Reference data partially failed to load. Some item names may be
           missing.

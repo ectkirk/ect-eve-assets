@@ -405,7 +405,7 @@ const baseStore = createVisibilityStore<
       { characterId: owner.characterId, schema: ESIContractSchema }
     )
     if (owner.type === 'character') {
-      result.data = result.data.filter((c) => !c.for_corporation)
+      result.data = result.data.filter((c: ESIContract) => !c.for_corporation)
     }
     return result
   },

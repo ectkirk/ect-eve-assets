@@ -1,4 +1,4 @@
-import { AlertCircle } from 'lucide-react'
+import { CircleAlert } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface ESIErrorDisplayProps {
@@ -20,7 +20,7 @@ export function ESIErrorDisplay({
       aria-live="assertive"
       className={cn('flex items-start gap-3', className)}
     >
-      <AlertCircle
+      <CircleAlert
         className="h-5 w-5 shrink-0 text-semantic-danger"
         aria-hidden="true"
       />

@@ -1,5 +1,5 @@
 import { useMemo, useEffect, useState } from 'react'
-import { Fuel, AlertTriangle, Clock } from 'lucide-react'
+import { Fuel, TriangleAlert, Clock } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useSortable, SortableHeader, sortRows } from '@/hooks'
 import { getStateDisplay } from '@/lib/structure-constants'
@@ -233,7 +233,7 @@ function StructureRowWithContext({
                   {row.name}
                 </span>
                 {row.isReinforced && (
-                  <AlertTriangle className="h-4 w-4 text-status-negative shrink-0" />
+                  <TriangleAlert className="h-4 w-4 text-status-negative shrink-0" />
                 )}
               </div>
             </TableCell>

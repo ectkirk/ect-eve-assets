@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Loader2, AlertTriangle } from 'lucide-react'
+import { Loader2, TriangleAlert } from 'lucide-react'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { useExpiryCacheStore } from '@/store/expiry-cache-store'
 import { OwnerIcon } from '@/components/ui/type-icon'
@@ -101,12 +101,12 @@ export function OwnerButton() {
       >
         {hasAuthFailure && (
           <span title={t('ownerButton.authFailureTooltip')}>
-            <AlertTriangle className="h-4 w-4 text-semantic-danger" />
+            <TriangleAlert className="h-4 w-4 text-semantic-danger" />
           </span>
         )}
         {hasScopesOutdated && !hasAuthFailure && (
           <span title={t('ownerButton.scopesOutdatedTooltip')}>
-            <AlertTriangle className="h-4 w-4 text-semantic-warning" />
+            <TriangleAlert className="h-4 w-4 text-semantic-warning" />
           </span>
         )}
         {selectedOwners.length === 0 ? (
