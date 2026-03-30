@@ -116,7 +116,6 @@ async function triggerJitaRefreshIfNeeded(): Promise<void> {
         Array.from(abyssalItemIds)
       )
     }
-
   } catch (err) {
     logger.error(
       'Jita refresh timer failed',
