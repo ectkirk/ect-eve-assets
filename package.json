@@ -130,7 +130,7 @@
     "tsx": "^4.21.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.58.2",
-    "vite": "^7.3.2",
+    "vite": "^8.0.8",
     "vite-plugin-electron": "0.29.1",
     "vite-plugin-electron-renderer": "0.14.6",
     "vitest": "4.1.4"
