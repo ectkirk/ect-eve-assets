@@ -1,8 +1,5 @@
-import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import { app, BrowserWindow, powerMonitor } from 'electron'
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 import { logger, initLogger } from './services/logger.js'
 import { initUpdater, stopUpdater } from './services/updater.js'

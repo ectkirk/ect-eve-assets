@@ -1,9 +1,9 @@
 {
   "name": "ecteveassets",
-  "version": "2.7.4",
+  "version": "2.7.5",
   "type": "module",
   "description": "EVE Online Asset Management Desktop Application",
-  "main": "dist-electron/main.js",
+  "main": "dist-electron/main.cjs",
   "author": "EC Trade <contact@edencom.net>",
   "license": "MIT",
   "repository": {
@@ -12,7 +12,8 @@
   },
   "scripts": {
     "dev": "npm run build:preload && vite",
-    "build": "vite build && npm run build:preload",
+    "build": "vite build && npm run build:main && npm run build:preload",
+    "build:main": "node scripts/build-electron-main.mjs",
     "build:preload": "npx esbuild electron/preload.ts --bundle --platform=node --target=node18 --external:electron --format=cjs --outfile=dist-electron/preload.cjs",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",

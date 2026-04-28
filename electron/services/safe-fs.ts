@@ -2,8 +2,11 @@ import { createRequire } from 'node:module'
 import path from 'node:path'
 import type * as Fs from 'node:fs'
 
-const requireNode = createRequire(import.meta.url)
-const nodeFs = requireNode('node:fs') as typeof Fs
+const requirePath =
+  typeof __filename === 'string'
+    ? __filename
+    : path.join(process.cwd(), 'electron-main.cjs')
+const nodeFs = createRequire(requirePath)('node:fs') as typeof Fs
 
 function assertPath(value: string): string {
   if (value.includes('\0')) {
