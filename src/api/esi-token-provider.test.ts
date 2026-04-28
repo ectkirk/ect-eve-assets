@@ -138,7 +138,7 @@ describe('ESI Token Provider Integration', () => {
 
       expect(mockProvideToken).toHaveBeenCalledWith(12345, null)
       expect(
-        useAuthStore.getState().hasOwnerAuthFailed('character-12345')
+        useAuthStore.getState().hasOwnerAuthFailed('character-12345'),
       ).toBe(true)
 
       cleanup()
@@ -170,7 +170,7 @@ describe('ESI Token Provider Integration', () => {
 
       expect(mockProvideToken).toHaveBeenCalledWith(12345, null)
       expect(
-        useAuthStore.getState().hasOwnerAuthFailed('character-12345')
+        useAuthStore.getState().hasOwnerAuthFailed('character-12345'),
       ).toBe(false)
 
       cleanup()

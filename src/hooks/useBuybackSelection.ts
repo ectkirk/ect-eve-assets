@@ -111,7 +111,7 @@ export function useBuybackSelection({
     if (isStructure) return null
 
     const allSameLocation = selectedItems.every(
-      (item) => item.locationId === firstLocation
+      (item) => item.locationId === firstLocation,
     )
     if (!allSameLocation) return null
 

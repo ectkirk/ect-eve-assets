@@ -46,7 +46,7 @@ export class SpatialIndex {
   build(
     systems: CachedSystem[],
     coordData: CoordinateData,
-    height: number
+    height: number,
   ): void {
     this.grid.clear()
     this.allSystems = []
@@ -65,7 +65,7 @@ export class SpatialIndex {
         system.position2D.x,
         system.position2D.y,
         coordData,
-        height
+        height,
       )
 
       const indexed: IndexedSystem = {
@@ -110,7 +110,7 @@ export class SpatialIndex {
   findNearest(
     worldX: number,
     worldY: number,
-    maxDistance: number
+    maxDistance: number,
   ): IndexedSystem | null {
     const searchRadius = Math.ceil(maxDistance / this.cellSize)
     const centerCellX = Math.floor(worldX / this.cellSize)

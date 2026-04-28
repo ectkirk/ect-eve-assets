@@ -35,7 +35,7 @@ import { PLAYER_STRUCTURE_ID_THRESHOLD } from '@/lib/eve-constants'
 let universeDataPromise: Promise<void> | null = null
 
 export async function loadUniverseData(
-  onProgress?: ReferenceDataProgress
+  onProgress?: ReferenceDataProgress,
 ): Promise<void> {
   if (isUniverseDataLoaded()) return
 
@@ -196,7 +196,7 @@ function loadAllStargates(): Promise<boolean> {
 let refStructuresPromise: Promise<void> | null = null
 
 export async function loadRefStructures(
-  onProgress?: ReferenceDataProgress
+  onProgress?: ReferenceDataProgress,
 ): Promise<void> {
   if (isRefStructuresLoaded()) return
 
@@ -241,7 +241,7 @@ export async function loadRefStructures(
       }
 
       const structures: CachedRefStructure[] = Object.values(
-        parseResult.data.items
+        parseResult.data.items,
       ).map((s) => ({
         id: parseInt(s.id, 10),
         name: s.name,
@@ -260,7 +260,7 @@ export async function loadRefStructures(
         i18n.t('status.loadingStructuresProgress', {
           loaded: formatFullNumber(loaded),
           total: formatFullNumber(total),
-        })
+        }),
       )
 
       cursor = result.pagination.hasMore
@@ -339,7 +339,7 @@ async function fetchMoons(ids: number[]): Promise<Map<number, MoonData>> {
 }
 
 export async function resolveTypes(
-  typeIds: number[]
+  typeIds: number[],
 ): Promise<Map<number, CachedType>> {
   await loadReferenceData()
 
@@ -368,7 +368,7 @@ function isCelestialIdRange(id: number): boolean {
 }
 
 export async function resolveLocations(
-  locationIds: number[]
+  locationIds: number[],
 ): Promise<Map<number, CachedLocation>> {
   await loadUniverseData()
 

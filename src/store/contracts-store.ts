@@ -70,7 +70,7 @@ interface ContractsExtras {
       itemsById: Map<number, StoredContract>
       visibilityByOwner: Map<string, Set<number>>
       itemsByContractId: Map<number, ESIContractItem[]>
-    }
+    },
   ) => number
   getContractsByOwner: () => OwnerContracts[]
 }
@@ -86,7 +86,7 @@ export function buildOwnerContracts(
   visibilityByOwner: Map<string, Set<number>>,
   itemsById: Map<number, StoredContract>,
   itemsByContractId: Map<number, ESIContractItem[]>,
-  bidsByContractId = new Map<number, number>()
+  bidsByContractId = new Map<number, number>(),
 ): OwnerContracts[] {
   const result: OwnerContracts[] = []
   for (const [key, contractIds] of visibilityByOwner) {
@@ -126,7 +126,7 @@ function getEndpoint(owner: Owner): string {
 async function fetchItemsFromAPI(
   sourceOwner: SourceOwner,
   contractId: number,
-  isPublic: boolean
+  isPublic: boolean,
 ): Promise<ESIContractItem[]> {
   if (isPublic) {
     return getPublicContractItems(contractId)
@@ -135,7 +135,7 @@ async function fetchItemsFromAPI(
     ? getCorporationContractItems(
         sourceOwner.characterId,
         sourceOwner.id,
-        contractId
+        contractId,
       )
     : getContractItems(sourceOwner.characterId, contractId)
 }
@@ -143,7 +143,7 @@ async function fetchItemsFromAPI(
 async function fetchBidsFromAPI(
   sourceOwner: SourceOwner,
   contractId: number,
-  isPublic: boolean
+  isPublic: boolean,
 ): Promise<ESIContractBid[]> {
   if (isPublic) {
     return getPublicContractBids(contractId)
@@ -152,7 +152,7 @@ async function fetchBidsFromAPI(
     ? getCorporationContractBids(
         sourceOwner.characterId,
         sourceOwner.id,
-        contractId
+        contractId,
       )
     : getCharacterContractBids(sourceOwner.characterId, contractId)
 }
@@ -184,7 +184,7 @@ async function loadAllItems(): Promise<Map<number, ESIContractItem[]>> {
 }
 
 async function saveItemsBatch(
-  items: { contractId: number; items: ESIContractItem[] }[]
+  items: { contractId: number; items: ESIContractItem[] }[],
 ): Promise<void> {
   if (items.length === 0) return
   const db = await getItemsDb()
@@ -211,7 +211,7 @@ interface ContractFetchInfo {
 
 function collectContractsToFetch(
   contractsById: Map<number, StoredContract>,
-  itemsState: Map<number, ESIContractItem[]>
+  itemsState: Map<number, ESIContractItem[]>,
 ): Map<number, ContractFetchInfo> {
   const toFetch = new Map<number, ContractFetchInfo>()
   for (const [contractId, stored] of contractsById) {
@@ -231,7 +231,7 @@ function collectContractsToFetch(
 }
 
 async function fetchAndSaveItems(
-  toFetch: Map<number, ContractFetchInfo>
+  toFetch: Map<number, ContractFetchInfo>,
 ): Promise<{ contractId: number; items: ESIContractItem[] }[]> {
   if (toFetch.size === 0) return []
 
@@ -240,10 +240,10 @@ async function fetchAndSaveItems(
       const items = await fetchItemsFromAPI(
         info.sourceOwner,
         contractId,
-        info.isPublic
+        info.isPublic,
       )
       return { contractId, items }
-    })
+    }),
   )
 
   const fetched: { contractId: number; items: ESIContractItem[] }[] = []
@@ -271,7 +271,7 @@ function clearPendingFetches(toFetch: Map<number, ContractFetchInfo>): void {
 }
 
 async function fetchItemsForContracts(
-  contractsById: Map<number, StoredContract>
+  contractsById: Map<number, StoredContract>,
 ): Promise<void> {
   const itemsState = baseStore.getState().itemsByContractId
   let toFetch: Map<number, ContractFetchInfo> | undefined
@@ -315,7 +315,7 @@ async function fetchItemsForContracts(
 const pendingBidFetches = new Set<number>()
 
 function collectAuctionsToFetchBids(
-  contractsById: Map<number, StoredContract>
+  contractsById: Map<number, StoredContract>,
 ): Map<number, ContractFetchInfo> {
   const toFetch = new Map<number, ContractFetchInfo>()
   for (const [contractId, stored] of contractsById) {
@@ -331,7 +331,7 @@ function collectAuctionsToFetchBids(
 }
 
 async function fetchBidsForAuctions(
-  contractsById: Map<number, StoredContract>
+  contractsById: Map<number, StoredContract>,
 ): Promise<void> {
   let toFetch: Map<number, ContractFetchInfo> | undefined
   try {
@@ -344,10 +344,10 @@ async function fetchBidsForAuctions(
         const bids = await fetchBidsFromAPI(
           info.sourceOwner,
           contractId,
-          info.isPublic
+          info.isPublic,
         )
         return { contractId, highestBid: getHighestBid(bids) }
-      })
+      }),
     )
 
     const fetched: {
@@ -402,7 +402,7 @@ const baseStore = createVisibilityStore<
   fetchData: async (owner) => {
     const result = await esi.fetchPaginatedWithMeta<ESIContract>(
       getEndpoint(owner),
-      { characterId: owner.characterId, schema: ESIContractSchema }
+      { characterId: owner.characterId, schema: ESIContractSchema },
     )
     if (owner.type === 'character') {
       result.data = result.data.filter((c: ESIContract) => !c.for_corporation)
@@ -521,17 +521,17 @@ export const useContractsStore: ContractsStore = Object.assign(baseStore, {
       itemsById: Map<number, StoredContract>
       visibilityByOwner: Map<string, Set<number>>
       itemsByContractId: Map<number, ESIContractItem[]>
-    }
+    },
   ): number {
     const { itemsById, visibilityByOwner, itemsByContractId } =
       stateOverride ?? baseStore.getState()
     const selectedSet = new Set(selectedOwnerIds)
     const allOwners = Object.values(useAuthStore.getState().owners).filter(
-      (o): o is Owner => !!o
+      (o): o is Owner => !!o,
     )
     const ownerCharIds = new Set(allOwners.map((o) => o.characterId))
     const ownerCorpIds = new Set(
-      allOwners.filter((o) => o.corporationId).map((o) => o.corporationId)
+      allOwners.filter((o) => o.corporationId).map((o) => o.corporationId),
     )
 
     const visibleIds = new Set<number>()
@@ -561,7 +561,7 @@ export const useContractsStore: ContractsStore = Object.assign(baseStore, {
                 itemId: item.item_id,
                 isBlueprintCopy: shouldValueBlueprintAtZero(
                   item,
-                  stored.item.availability
+                  stored.item.availability,
                 ),
               })
               total += price * item.quantity
@@ -579,7 +579,7 @@ export const useContractsStore: ContractsStore = Object.assign(baseStore, {
       state.visibilityByOwner,
       state.itemsById,
       state.itemsByContractId,
-      state.bidsByContractId
+      state.bidsByContractId,
     )
   },
 })
@@ -589,7 +589,7 @@ registerCollector('contracts', (ids: ResolutionIds) => {
 
   const checkLocation = (
     locationId: number | undefined,
-    characterId: number
+    characterId: number,
   ) => {
     if (!locationId) return
     if (locationId >= PLAYER_STRUCTURE_ID_THRESHOLD) {

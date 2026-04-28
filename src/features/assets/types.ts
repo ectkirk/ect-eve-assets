@@ -15,7 +15,7 @@ export const DISPLAY_FLAGS = {
 
 export function getDisplayFlag(
   modeFlags: AssetModeFlags,
-  locationFlag: string
+  locationFlag: string,
 ): string {
   if (modeFlags.isContract) return DISPLAY_FLAGS.IN_CONTRACT
   if (modeFlags.isMarketOrder) return DISPLAY_FLAGS.SELL_ORDER
@@ -120,7 +120,7 @@ export function createAssetRow(
   ra: ResolvedAsset,
   displayFlag: string,
   isAbyssal: boolean,
-  isAbyssalResolved: boolean
+  isAbyssalResolved: boolean,
 ): AssetRow {
   const names = getAssetDisplayNames(ra)
   return {

@@ -16,7 +16,7 @@ export function edgeKey(from: number, to: number): string {
 export function buildGraph(
   systems: { id: number; security: number }[],
   stargates: CachedStargate[],
-  ansiblexes?: Ansiblex[]
+  ansiblexes?: Ansiblex[],
 ): PathfinderGraph {
   const adjacency = new Map<number, Set<number>>()
   const security = new Map<number, number>()
@@ -50,7 +50,7 @@ const NULLSEC_MULTIPLIER = 2
 function getCostFunction(
   preference: RoutePreference,
   securityPenalty: number,
-  security: Map<number, number>
+  security: Map<number, number>,
 ): (from: number, to: number) => number {
   const penaltyCost = Math.exp(0.15 * securityPenalty)
 
@@ -155,7 +155,7 @@ export function findRoute(
   destination: number,
   preference: RoutePreference = 'shorter',
   securityPenalty = 50,
-  ignoredSystems?: Set<number>
+  ignoredSystems?: Set<number>,
 ): RouteResult | null {
   if (origin === destination) {
     return { path: [origin], jumps: 0, ansiblexJumps: 0 }

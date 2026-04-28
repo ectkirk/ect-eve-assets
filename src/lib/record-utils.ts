@@ -1,6 +1,6 @@
 export function getRecordValue<T>(
   record: Readonly<Record<string, T>>,
-  key: string
+  key: string,
 ): T | undefined {
   return new Map(Object.entries(record)).get(key)
 }
@@ -8,7 +8,7 @@ export function getRecordValue<T>(
 export function setRecordValue<T>(
   record: Readonly<Record<string, T>>,
   key: string,
-  value: NoInfer<T>
+  value: NoInfer<T>,
 ): Record<string, T> {
   return Object.fromEntries([
     ...Object.entries(record).filter(([existingKey]) => existingKey !== key),
@@ -18,9 +18,9 @@ export function setRecordValue<T>(
 
 export function removeRecordValue<T>(
   record: Readonly<Record<string, T>>,
-  key: string
+  key: string,
 ): Record<string, T> {
   return Object.fromEntries(
-    Object.entries(record).filter(([existingKey]) => existingKey !== key)
+    Object.entries(record).filter(([existingKey]) => existingKey !== key),
   )
 }

@@ -210,7 +210,7 @@ test.describe('Mode Switching', () => {
     }
     await modeTablist.getByText('Assets').click()
     await expect(
-      modeTablist.getByRole('tab', { name: 'Assets', selected: true })
+      modeTablist.getByRole('tab', { name: 'Assets', selected: true }),
     ).toBeVisible()
   })
 })
@@ -225,14 +225,14 @@ test.describe('Search Bar', () => {
     await modeTablist.getByText('Assets').click()
 
     const searchInput = page.getByPlaceholder(
-      'Search name, group, location, system, region...'
+      'Search name, group, location, system, region...',
     )
     await expect(searchInput).toBeVisible()
   })
 
   test('can type in search input', async () => {
     const searchInput = page.getByPlaceholder(
-      'Search name, group, location, system, region...'
+      'Search name, group, location, system, region...',
     )
     if ((await searchInput.count()) === 0) {
       test.skip()
@@ -245,7 +245,7 @@ test.describe('Search Bar', () => {
 
   test('clear button appears when search has text', async () => {
     const searchInput = page.getByPlaceholder(
-      'Search name, group, location, system, region...'
+      'Search name, group, location, system, region...',
     )
     if ((await searchInput.count()) === 0) {
       test.skip()
@@ -259,7 +259,7 @@ test.describe('Search Bar', () => {
 
   test('clear button clears the search', async () => {
     const searchInput = page.getByPlaceholder(
-      'Search name, group, location, system, region...'
+      'Search name, group, location, system, region...',
     )
     if ((await searchInput.count()) === 0) {
       test.skip()
@@ -281,7 +281,7 @@ test.describe('Search Bar', () => {
     await modeTablist.getByText('Contracts').click()
 
     const searchInput = page.getByPlaceholder(
-      'Search name, group, location, system, region...'
+      'Search name, group, location, system, region...',
     )
     await expect(searchInput).not.toBeVisible()
 
@@ -312,7 +312,7 @@ test.describe('Asset Tab Switching', () => {
     }
     await assetsTablist.getByText('Clones').click()
     await expect(
-      page.getByRole('tab', { name: 'Clones', selected: true })
+      page.getByRole('tab', { name: 'Clones', selected: true }),
     ).toBeVisible()
   })
 
@@ -324,7 +324,7 @@ test.describe('Asset Tab Switching', () => {
     }
     await assetsTablist.getByText('Contracts').click()
     await expect(
-      page.getByRole('tab', { name: 'Contracts', selected: true })
+      page.getByRole('tab', { name: 'Contracts', selected: true }),
     ).toBeVisible()
   })
 
@@ -336,7 +336,7 @@ test.describe('Asset Tab Switching', () => {
     }
     await assetsTablist.getByText('Market Orders').click()
     await expect(
-      page.getByRole('tab', { name: 'Market Orders', selected: true })
+      page.getByRole('tab', { name: 'Market Orders', selected: true }),
     ).toBeVisible()
   })
 
@@ -348,7 +348,7 @@ test.describe('Asset Tab Switching', () => {
     }
     await assetsTablist.getByText('Assets').first().click()
     await expect(
-      assetsTablist.getByRole('tab', { name: 'Assets', selected: true })
+      assetsTablist.getByRole('tab', { name: 'Assets', selected: true }),
     ).toBeVisible()
   })
 })

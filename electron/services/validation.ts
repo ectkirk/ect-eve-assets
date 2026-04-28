@@ -4,7 +4,7 @@ export function isValidCharacterId(value: unknown): value is number {
 
 export function isValidIdArray(
   ids: unknown,
-  maxLength: number
+  maxLength: number,
 ): ids is number[] {
   return (
     Array.isArray(ids) &&
@@ -34,7 +34,7 @@ export function isValidNonEmptyString(value: unknown): value is string {
 }
 
 export function isValidObject(
-  value: unknown
+  value: unknown,
 ): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }

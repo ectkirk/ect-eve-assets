@@ -35,7 +35,7 @@ function loadWindowState(): WindowState {
   try {
     if (pathExists(windowStateFile)) {
       const data = JSON.parse(
-        readTextFile(windowStateFile)
+        readTextFile(windowStateFile),
       ) as Partial<WindowState>
       if (data.width && data.height) {
         const state: WindowState = {
@@ -224,7 +224,7 @@ export function createWindow(
   RENDERER_DIST: string,
   VITE_PUBLIC: string,
   preloadPath: string,
-  manager: WindowManager
+  manager: WindowManager,
 ): void {
   const savedState = getValidatedWindowState(loadWindowState())
 

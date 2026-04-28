@@ -16,8 +16,8 @@ export const useIngameDefaultsStore = create<IngameDefaultsState>()(
       setDefaultMarketCharacter: (characterId) =>
         set({ defaultMarketCharacterId: characterId }),
     }),
-    { name: 'ingame-defaults' }
-  )
+    { name: 'ingame-defaults' },
+  ),
 )
 
 export function getValidDefaultMarketCharacterId(): number | null {
@@ -30,7 +30,7 @@ export function getValidDefaultMarketCharacterId(): number | null {
   if (
     !ownerHasScope(
       ownerKey('character', defaultMarketCharacterId),
-      MARKET_SCOPE
+      MARKET_SCOPE,
     )
   )
     return null

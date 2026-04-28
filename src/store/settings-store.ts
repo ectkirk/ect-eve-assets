@@ -65,7 +65,7 @@ export const useSettingsStore = create<SettingsState>()(
             module: 'Settings',
             from: current,
             to: language,
-          }
+          },
         )
 
         set({ language })
@@ -75,7 +75,7 @@ export const useSettingsStore = create<SettingsState>()(
           JSON.stringify({
             state: { language, hasSelectedLanguage: true },
             version: 0,
-          })
+          }),
         )
 
         clearNamesLRUCache()
@@ -95,8 +95,8 @@ export const useSettingsStore = create<SettingsState>()(
           })
       },
     }),
-    { name: 'settings' }
-  )
+    { name: 'settings' },
+  ),
 )
 
 function getPersistedState(): {
@@ -135,7 +135,7 @@ export type LocalizedText = Partial<Record<SupportedLanguage, string>> & {
 }
 
 export function getLocalizedText(
-  obj: LocalizedText | null | undefined
+  obj: LocalizedText | null | undefined,
 ): string {
   if (!obj) return ''
   const lang = getLanguage()

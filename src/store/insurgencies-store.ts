@@ -128,6 +128,6 @@ export const useInsurgenciesStore = create<InsurgenciesState>()(
           corruptionBySystem: new Map(p?.corruptionBySystem ?? []),
         }
       },
-    }
-  )
+    },
+  ),
 )

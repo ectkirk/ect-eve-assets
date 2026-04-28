@@ -96,24 +96,24 @@ function sanitizeValue(value: unknown): unknown {
 }
 
 function sanitizeContext(
-  context: Record<string, unknown>
+  context: Record<string, unknown>,
 ): Record<string, unknown> {
   return Object.fromEntries(
     Object.entries(context).map(([key, value]) => [
       key,
       SENSITIVE_KEYS.some((sensitive) =>
-        key.toLowerCase().includes(sensitive.toLowerCase())
+        key.toLowerCase().includes(sensitive.toLowerCase()),
       )
         ? '[REDACTED]'
         : sanitizeValue(value),
-    ])
+    ]),
   )
 }
 
 function formatMessage(
   level: LogLevel,
   message: string,
-  context?: LogContext
+  context?: LogContext,
 ): string {
   const timestamp = new Date().toISOString()
   const sanitizedContext = context ? sanitizeContext(context) : undefined

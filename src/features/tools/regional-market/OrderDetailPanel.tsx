@@ -69,7 +69,7 @@ function OrderTable({
       const system = systems.get(order.system_id)
       return system?.name ?? `System ${order.system_id}`
     },
-    [systems, stations, structures]
+    [systems, stations, structures],
   )
 
   if (orders.length === 0) {
@@ -127,7 +127,9 @@ function OrderTable({
                 <div
                   className={cn(
                     'tabular-nums',
-                    isBuyOrder ? 'text-status-positive' : 'text-status-negative'
+                    isBuyOrder
+                      ? 'text-status-positive'
+                      : 'text-status-negative',
                   )}
                 >
                   {formatPrice(order.price)}
@@ -160,7 +162,7 @@ export function OrderDetailPanel({ typeId }: OrderDetailPanelProps) {
         error: s.error,
         typeOrderCache: s.typeOrderCache,
         fetchOrdersForType: s.fetchOrdersForType,
-      }))
+      })),
     )
 
   useEffect(() => {

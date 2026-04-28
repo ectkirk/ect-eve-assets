@@ -17,7 +17,7 @@ interface CalculatorProps {
 
 function getSortValue(
   item: BuybackCalculatorItem,
-  sortField: SortField
+  sortField: SortField,
 ): string | number {
   switch (sortField) {
     case 'itemName':

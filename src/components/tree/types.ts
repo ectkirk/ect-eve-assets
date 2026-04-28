@@ -24,7 +24,7 @@ export function sortTreeNodes(
   nodes: TreeNode[],
   sortColumn: TreeSortColumn,
   sortDirection: SortDirection,
-  parentRegionName?: string
+  parentRegionName?: string,
 ): TreeNode[] {
   const sorted = [...nodes].sort((a, b) => {
     let aVal: number | string
@@ -72,7 +72,7 @@ export function sortTreeNodes(
         node.children,
         sortColumn,
         sortDirection,
-        nodeRegion
+        nodeRegion,
       ),
     }
   })

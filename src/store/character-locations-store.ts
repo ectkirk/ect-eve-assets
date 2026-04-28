@@ -82,7 +82,7 @@ export const useCharacterLocationsStore = create<CharacterLocationsState>()(
                   error: err,
                 })
               }
-            })
+            }),
           )
 
           set({
@@ -97,6 +97,6 @@ export const useCharacterLocationsStore = create<CharacterLocationsState>()(
     {
       name: 'character-locations',
       partialize: (state) => ({ enabled: state.enabled }),
-    }
-  )
+    },
+  ),
 )

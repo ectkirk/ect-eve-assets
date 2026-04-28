@@ -2,7 +2,8 @@
   "semi": false,
   "singleQuote": true,
   "tabWidth": 2,
-  "trailingComma": "es5",
+  "trailingComma": "all",
   "printWidth": 80,
+  "endOfLine": "lf",
   "plugins": []
 }

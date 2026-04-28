@@ -81,7 +81,7 @@ interface TabControlsActions {
   setOrderTypeFilter: (config: OrderTypeFilterConfig | null) => void
   setCharacterSort: (config: CharacterSortConfig | null) => void
   setContractAvailabilityFilter: (
-    config: ContractAvailabilityFilterConfig | null
+    config: ContractAvailabilityFilterConfig | null,
   ) => void
   resetSearch: () => void
 }

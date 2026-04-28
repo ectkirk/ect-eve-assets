@@ -96,14 +96,14 @@ export function ItemDetailPanel({
       yes: t('reference.attribute.yes'),
       no: t('reference.attribute.no'),
     }),
-    [t]
+    [t],
   )
 
   useEffect(() => {
     let mounted = true
     void getDogmaUnits().then((data) => mounted && setDogmaUnits(data))
     void getAttributeCategories().then(
-      (data) => mounted && setAttrCategories(data)
+      (data) => mounted && setAttrCategories(data),
     )
     return () => {
       mounted = false
@@ -205,7 +205,7 @@ export function ItemDetailPanel({
   const sanitizedDescription = useMemo(
     () =>
       localizedDescription ? sanitizeDescription(localizedDescription) : null,
-    [localizedDescription]
+    [localizedDescription],
   )
 
   const categoryId = category?.id
@@ -271,7 +271,7 @@ export function ItemDetailPanel({
         attributes: grouped
           .get(catId)!
           .sort((a, b) => a.displayName.localeCompare(b.displayName)),
-      })
+      }),
     )
   }, [dogma, attrCategories, excludedAttrIds, showUnpublished, t])
 
@@ -459,11 +459,11 @@ export function ItemDetailPanel({
                         attr.value,
                         attr.unitId,
                         dogmaUnits,
-                        attrTranslations
+                        attrTranslations,
                       )}
                     </span>
                   </div>
-                )
+                ),
               )}
             </div>
           </Section>

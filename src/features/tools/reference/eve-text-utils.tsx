@@ -10,7 +10,7 @@ export function sanitizeMailBody(html: string): string {
     .replace(/<url=[^>]*>([^<]*)<\/url>/gi, '$1')
     .replace(
       /<font[^>]*color="?#?([0-9a-fA-F]+)"?[^>]*>/gi,
-      '<span style="color:#$1">'
+      '<span style="color:#$1">',
     )
     .replace(/<font[^>]*>/gi, '<span>')
     .replace(/<\/font>/gi, '</span>')
@@ -26,7 +26,7 @@ export function sanitizeMailBody(html: string): string {
 export function sanitizeDescription(html: string): string {
   const withEveLinks = html.replace(
     /<a href=showinfo:(\d+)>([^<]+)<\/a>/g,
-    '<span class="text-accent" data-typeid="$1">$2</span>'
+    '<span class="text-accent" data-typeid="$1">$2</span>',
   )
 
   return DOMPurify.sanitize(withEveLinks, {
@@ -37,7 +37,7 @@ export function sanitizeDescription(html: string): string {
 
 export function processEveLinks(
   text: string,
-  onNavigate?: (typeId: number) => void
+  onNavigate?: (typeId: number) => void,
 ): React.ReactNode {
   const parts: React.ReactNode[] = []
   let lastIndex = 0
@@ -62,7 +62,7 @@ export function processEveLinks(
         className="text-accent hover:underline"
       >
         {linkText}
-      </button>
+      </button>,
     )
 
     lastIndex = match.index + match[0].length

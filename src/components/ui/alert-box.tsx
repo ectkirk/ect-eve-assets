@@ -52,7 +52,7 @@ export function AlertBox({
       className={cn(
         'rounded-lg border p-4',
         variantStyles.get(variant),
-        className
+        className,
       )}
     >
       <div className="flex gap-3">

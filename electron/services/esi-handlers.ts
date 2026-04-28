@@ -20,7 +20,7 @@ function serializeESIError(error: ESIError): SerializedESIError {
 }
 
 function wrapESIHandler<T>(
-  handler: () => Promise<T>
+  handler: () => Promise<T>,
 ): Promise<T | { __esiError: SerializedESIError }> {
   return handler().catch((error: unknown) => {
     if (error instanceof ESIError) {
@@ -59,13 +59,13 @@ function cleanupStaleRequests(): void {
 }
 
 export function setupESIService(
-  getMainWindow: () => BrowserWindow | null
+  getMainWindow: () => BrowserWindow | null,
 ): void {
   const esiService = getESIService()
 
   cleanupInterval ??= setInterval(
     cleanupStaleRequests,
-    ESI_CONFIG.staleCleanupIntervalMs
+    ESI_CONFIG.staleCleanupIntervalMs,
   )
 
   esiService.setTokenProvider(async (characterId: number) => {
@@ -161,7 +161,7 @@ function parseESIOptions(options: unknown): ESIRequestOptions {
 let mainWindowGetter: (() => BrowserWindow | null) | null = null
 
 export function registerESIHandlers(
-  getMainWindow: () => BrowserWindow | null
+  getMainWindow: () => BrowserWindow | null,
 ): void {
   mainWindowGetter = getMainWindow
 
@@ -181,7 +181,7 @@ export function registerESIHandlers(
         pendingTokenRequests.delete(characterId)
       }
       return { success: true }
-    }
+    },
   )
 
   ipcMain.handle(
@@ -189,9 +189,9 @@ export function registerESIHandlers(
     async (_event, endpoint: unknown, options: unknown) => {
       if (!isValidEndpoint(endpoint)) throw new Error('Invalid endpoint')
       return wrapESIHandler(() =>
-        getESIService().fetch(endpoint, parseESIOptions(options))
+        getESIService().fetch(endpoint, parseESIOptions(options)),
       )
-    }
+    },
   )
 
   ipcMain.handle(
@@ -199,9 +199,9 @@ export function registerESIHandlers(
     async (_event, endpoint: unknown, options: unknown) => {
       if (!isValidEndpoint(endpoint)) throw new Error('Invalid endpoint')
       return wrapESIHandler(() =>
-        getESIService().fetchWithMeta(endpoint, parseESIOptions(options))
+        getESIService().fetchWithMeta(endpoint, parseESIOptions(options)),
       )
-    }
+    },
   )
 
   ipcMain.handle(
@@ -209,9 +209,9 @@ export function registerESIHandlers(
     async (_event, endpoint: unknown, options: unknown) => {
       if (!isValidEndpoint(endpoint)) throw new Error('Invalid endpoint')
       return wrapESIHandler(() =>
-        getESIService().fetchPaginated(endpoint, parseESIOptions(options))
+        getESIService().fetchPaginated(endpoint, parseESIOptions(options)),
       )
-    }
+    },
   )
 
   ipcMain.handle(
@@ -221,10 +221,10 @@ export function registerESIHandlers(
       return wrapESIHandler(() =>
         getESIService().fetchPaginatedWithMeta(
           endpoint,
-          parseESIOptions(options)
-        )
+          parseESIOptions(options),
+        ),
       )
-    }
+    },
   )
 
   ipcMain.handle(
@@ -233,7 +233,7 @@ export function registerESIHandlers(
       _event,
       endpoint: unknown,
       options: unknown,
-      progressChannel: unknown
+      progressChannel: unknown,
     ) => {
       if (!isValidEndpoint(endpoint)) throw new Error('Invalid endpoint')
       const channel =
@@ -256,10 +256,10 @@ export function registerESIHandlers(
         getESIService().fetchPaginatedWithProgress(
           endpoint,
           parseESIOptions(options),
-          onProgress
-        )
+          onProgress,
+        ),
       )
-    }
+    },
   )
 
   ipcMain.handle('esi:clearCache', () => {

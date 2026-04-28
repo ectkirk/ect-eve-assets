@@ -127,7 +127,7 @@ async function mockOwners(owners: Record<string, Owner>) {
 }
 
 async function mockExpiry(
-  overrides: Partial<ReturnType<typeof createMockExpiryCacheState>> = {}
+  overrides: Partial<ReturnType<typeof createMockExpiryCacheState>> = {},
 ) {
   const { useExpiryCacheStore } = await import('./expiry-cache-store')
   const state = { ...createMockExpiryCacheState(), ...overrides }
@@ -329,9 +329,9 @@ describe('createVisibilityStore', () => {
             etag: string | null
           }>((resolve) => {
             firstCallPromise.then(() =>
-              resolve(createESIResponse<TestItem[]>([]))
+              resolve(createESIResponse<TestItem[]>([])),
             )
-          })
+          }),
       )
 
       const store = createVisibilityStore(config)
@@ -385,7 +385,7 @@ describe('createVisibilityStore', () => {
 
       const config = defaultConfig()
       config.fetchData = vi.fn(async () =>
-        createESIResponse<TestItem[]>([makeItem(1)])
+        createESIResponse<TestItem[]>([makeItem(1)]),
       )
 
       const store = createVisibilityStore(config)
@@ -406,7 +406,7 @@ describe('createVisibilityStore', () => {
       const item1 = makeItem(1, 'Tritanium')
       const config = defaultConfig()
       config.fetchData = vi.fn(async () =>
-        createESIResponse<TestItem[]>([item1])
+        createESIResponse<TestItem[]>([item1]),
       )
 
       const store = createVisibilityStore(config)
@@ -420,7 +420,7 @@ describe('createVisibilityStore', () => {
       expect(mockDB.saveItems).toHaveBeenCalled()
       expect(mockDB.saveVisibility).toHaveBeenCalledWith(
         'character-100',
-        new Set([1])
+        new Set([1]),
       )
     })
 
@@ -505,7 +505,7 @@ describe('createVisibilityStore', () => {
       expect(state.failedOwners).toContain('character-100')
       expect(state.failedOwners).not.toContain('character-200')
       expect(state.updateError).toBe(
-        'Failed to fetch TestItems for some owners'
+        'Failed to fetch TestItems for some owners',
       )
       expect(state.itemsById.get(2)).toBeDefined()
     })
@@ -552,7 +552,7 @@ describe('createVisibilityStore', () => {
       const config = defaultConfig()
       config.shouldUpdateExisting = true
       config.fetchData = vi.fn(async () =>
-        createESIResponse([makeItem(1, 'Updated')])
+        createESIResponse([makeItem(1, 'Updated')]),
       )
 
       const store = createVisibilityStore(config)
@@ -655,7 +655,7 @@ describe('createVisibilityStore', () => {
       await mockOwners({ 'character-100': owner })
 
       const rebuildExtraState = vi.fn(
-        (_itemsById: Map<number, TestStoredItem>) => ({ totalCount: 1 })
+        (_itemsById: Map<number, TestStoredItem>) => ({ totalCount: 1 }),
       )
 
       const config = {
@@ -847,7 +847,7 @@ describe('createVisibilityStore', () => {
       expect(onBeforeOwnerUpdate).toHaveBeenCalledWith(
         owner,
         new Set(),
-        expect.any(Map)
+        expect.any(Map),
       )
 
       expect(onAfterOwnerUpdate).toHaveBeenCalledTimes(1)
@@ -921,7 +921,7 @@ describe('createVisibilityStore', () => {
       const state = store.getState()
       expect(state.itemsById.size).toBe(1)
       expect(state.visibilityByOwner.get('corporation-300')).toEqual(
-        new Set([1])
+        new Set([1]),
       )
     })
 
@@ -965,7 +965,7 @@ describe('createVisibilityStore', () => {
       config.shouldUpdateExisting = false
       config.shouldDeleteStaleItems = false
       config.fetchData = vi.fn(async () =>
-        createESIResponse([makeItem(1, 'NewName'), makeItem(2, 'Brand New')])
+        createESIResponse([makeItem(1, 'NewName'), makeItem(2, 'Brand New')]),
       )
 
       const store = createVisibilityStore(config)
@@ -989,10 +989,10 @@ describe('createVisibilityStore', () => {
       // db.saveItems should only contain the new item (id=2)
       expect(mockDB.saveItems).toHaveBeenCalledTimes(1)
       expect(mockDB.saveItems).toHaveBeenCalledWith(
-        expect.arrayContaining([expect.objectContaining({ id: 2 })])
+        expect.arrayContaining([expect.objectContaining({ id: 2 })]),
       )
       expect(mockDB.saveItems).not.toHaveBeenCalledWith(
-        expect.arrayContaining([expect.objectContaining({ id: 1 })])
+        expect.arrayContaining([expect.objectContaining({ id: 1 })]),
       )
     })
   })
@@ -1097,7 +1097,7 @@ describe('createVisibilityStore', () => {
       })
 
       const rebuildExtraState = vi.fn(
-        (_itemsById: Map<number, TestStoredItem>) => ({ totalCount: 0 })
+        (_itemsById: Map<number, TestStoredItem>) => ({ totalCount: 0 }),
       )
 
       const config = {
@@ -1224,7 +1224,7 @@ describe('createVisibilityStore', () => {
 
       expect(registerRefreshCallback).toHaveBeenCalledWith(
         config.endpointPattern,
-        expect.any(Function)
+        expect.any(Function),
       )
     })
 
@@ -1246,7 +1246,7 @@ describe('createVisibilityStore', () => {
           getIsUpdating: expect.any(Function),
           init: expect.any(Function),
           update: expect.any(Function),
-        })
+        }),
       )
     })
   })

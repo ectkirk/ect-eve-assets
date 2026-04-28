@@ -95,7 +95,7 @@ export function useCanvasRenderer({
     const visibleBounds = getVisibleBounds(
       cam,
       dimensions.width,
-      dimensions.height
+      dimensions.height,
     )
 
     const renderContext = {
@@ -116,14 +116,14 @@ export function useCanvasRenderer({
       indexedSystems,
       colorMode,
       fwData,
-      allianceData
+      allianceData,
     )
     if (highlightedRegionId !== null) {
       renderHighlightedRegion(
         renderContext,
         highlightedRegionId,
         indexedSystems,
-        indexedStargates
+        indexedStargates,
       )
     }
 
@@ -133,7 +133,7 @@ export function useCanvasRenderer({
         renderHighlightedSystem(
           renderContext,
           highlightedSystem,
-          indexedStargates
+          indexedStargates,
         )
       }
     }
@@ -142,7 +142,7 @@ export function useCanvasRenderer({
       renderAnsiblexConnections(
         renderContext,
         ansiblexes,
-        spatialIndex.getSystemMap()
+        spatialIndex.getSystemMap(),
       )
     }
 
@@ -152,7 +152,7 @@ export function useCanvasRenderer({
         infestedSystems,
         spatialIndex.getSystemMap(),
         COLOR_INCURSION_RING,
-        8
+        8,
       )
     }
 
@@ -162,7 +162,7 @@ export function useCanvasRenderer({
         insurgencySystems,
         spatialIndex.getSystemMap(),
         COLOR_INSURGENCY_RING,
-        10
+        10,
       )
     }
 
@@ -173,7 +173,7 @@ export function useCanvasRenderer({
       colorMode,
       fwData,
       allianceData,
-      routeIds
+      routeIds,
     )
 
     let labels
@@ -190,7 +190,7 @@ export function useCanvasRenderer({
       renderRoute(
         renderContext,
         calculatedRoute.path,
-        spatialIndex.getSystemMap()
+        spatialIndex.getSystemMap(),
       )
     }
 

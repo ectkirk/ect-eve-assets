@@ -18,7 +18,7 @@ interface InfoStoreConfig<T> {
 const DEFAULT_CACHE_DURATION_MS = 60 * 60 * 1000
 
 export function createInfoStore<T>(
-  config: InfoStoreConfig<T>
+  config: InfoStoreConfig<T>,
 ): UseBoundStore<StoreApi<InfoState<T>>> {
   const { name, fetchFn, cacheDurationMs = DEFAULT_CACHE_DURATION_MS } = config
 

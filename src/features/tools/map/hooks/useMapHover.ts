@@ -67,7 +67,7 @@ export function useMapHover({
         screenY,
         cam,
         dimensions.width,
-        dimensions.height
+        dimensions.height,
       )
 
       const hoverRadius = 10 / cam.zoom
@@ -132,7 +132,7 @@ export function useMapHover({
       dimensions,
       isSystemInIncursion,
       getCorruptionLevel,
-    ]
+    ],
   )
 
   const clearHover = useCallback(() => {

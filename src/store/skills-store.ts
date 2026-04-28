@@ -39,7 +39,7 @@ export const useSkillsStore = createOwnerStore<SkillsData, CharacterSkillsData>(
         {
           characterId: owner.characterId,
           schema: ESICharacterSkillsSchema,
-        }
+        },
       )
       return {
         data: { skills: result.data },
@@ -51,5 +51,5 @@ export const useSkillsStore = createOwnerStore<SkillsData, CharacterSkillsData>(
       owner,
       skills: data.skills,
     }),
-  }
+  },
 )

@@ -94,7 +94,7 @@ export function useMapRoute({
       routeDestination,
       routePreference,
       50,
-      effectiveIgnoredSystems
+      effectiveIgnoredSystems,
     )
   }, [
     pathfinderGraph,

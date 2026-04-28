@@ -86,12 +86,12 @@ export function WalletTab() {
       walletsByOwner
         .filter((w) => isCorporationWallet(w))
         .map((w) => `${w.owner.type}-${w.owner.id}`),
-    [walletsByOwner]
+    [walletsByOwner],
   )
 
   const { isExpanded, toggle } = useExpandCollapse(
     expandableKeys,
-    setExpandCollapse
+    setExpandCollapse,
   )
 
   const { sortColumn, sortDirection, handleSort } =
@@ -99,24 +99,24 @@ export function WalletTab() {
 
   const totalBalance = useMemo(
     () => walletsByOwner.reduce((sum, w) => sum + getWalletBalance(w), 0),
-    [walletsByOwner]
+    [walletsByOwner],
   )
 
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
   const selectedSet = useMemo(
     () => new Set(selectedOwnerIds),
-    [selectedOwnerIds]
+    [selectedOwnerIds],
   )
 
   const sortedWallets = useMemo(() => {
     let filtered = walletsByOwner.filter((w) =>
-      selectedSet.has(ownerKey(w.owner.type, w.owner.id))
+      selectedSet.has(ownerKey(w.owner.type, w.owner.id)),
     )
 
     if (search) {
       const searchLower = search.toLowerCase()
       filtered = filtered.filter((wallet) =>
-        wallet.owner.name.toLowerCase().includes(searchLower)
+        wallet.owner.name.toLowerCase().includes(searchLower),
       )
     }
 
@@ -231,7 +231,7 @@ function WalletRow({
         onClick={() => isCorp && toggle(rowKey)}
         className={cn(
           'border-b border-border/50 hover:bg-surface-tertiary/50',
-          isCorp && 'cursor-pointer'
+          isCorp && 'cursor-pointer',
         )}
       >
         <TableCell className="py-1.5 px-4">
@@ -253,7 +253,7 @@ function WalletRow({
           <span
             className={cn(
               'tabular-nums',
-              ownerTotal >= 0 ? 'text-status-positive' : 'text-status-negative'
+              ownerTotal >= 0 ? 'text-status-positive' : 'text-status-negative',
             )}
           >
             {formatNumber(ownerTotal)}
@@ -291,7 +291,7 @@ function WalletRow({
                       'tabular-nums',
                       div.balance >= 0
                         ? 'text-status-positive/80'
-                        : 'text-status-negative/80'
+                        : 'text-status-negative/80',
                     )}
                   >
                     {formatNumber(div.balance)}

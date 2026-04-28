@@ -88,7 +88,7 @@ function ItemsTable({
 }) {
   const totalValue = items.reduce(
     (sum, item) => sum + item.price * item.quantity,
-    0
+    0,
   )
 
   return (
@@ -119,7 +119,7 @@ function ItemsTable({
                 <span
                   className={cn(
                     'font-medium',
-                    isBlueprint && 'text-status-special'
+                    isBlueprint && 'text-status-special',
                   )}
                 >
                   {displayName}
@@ -386,7 +386,7 @@ export function ContractDetailModal({
                   <span className="text-content-muted">
                     {t('contractsSearch.modal.loadingItems').replace(
                       'items...',
-                      '...'
+                      '...',
                     )}
                   </span>
                 ) : currentBid != null ? (
@@ -443,10 +443,10 @@ export function ContractDetailModal({
               ) : items && items.length > 0 ? (
                 (() => {
                   const includedItems = items.filter(
-                    (i) => i.isIncluded !== false
+                    (i) => i.isIncluded !== false,
                   )
                   const requestedItems = items.filter(
-                    (i) => i.isIncluded === false
+                    (i) => i.isIncluded === false,
                   )
                   return (
                     <>

@@ -34,7 +34,7 @@ export const useLoyaltyStore = createOwnerStore<
       {
         characterId: owner.characterId,
         schema: z.array(ESILoyaltyPointsSchema),
-      }
+      },
     )
   },
   toOwnerData: (owner, data) => ({ owner, loyaltyPoints: data }),

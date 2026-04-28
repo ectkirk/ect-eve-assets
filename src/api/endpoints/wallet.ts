@@ -15,10 +15,10 @@ export async function getCharacterWallet(characterId: number): Promise<number> {
 
 export async function getCorporationWallets(
   characterId: number,
-  corporationId: number
+  corporationId: number,
 ): Promise<ESICorporationWalletDivision[]> {
   return esi.fetch<ESICorporationWalletDivision[]>(
     `/corporations/${corporationId}/wallets`,
-    { characterId, schema: z.array(ESICorporationWalletDivisionSchema) }
+    { characterId, schema: z.array(ESICorporationWalletDivisionSchema) },
   )
 }

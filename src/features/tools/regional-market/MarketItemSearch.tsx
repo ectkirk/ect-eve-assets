@@ -15,7 +15,7 @@ export function MarketItemSearch({ onSelectType }: MarketItemSearchProps) {
     (type: CachedType | null) => {
       if (type) onSelectType(type)
     },
-    [onSelectType]
+    [onSelectType],
   )
 
   return (

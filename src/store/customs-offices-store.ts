@@ -29,7 +29,7 @@ export const useCustomsOfficesStore = createOwnerStore<
   fetchData: async (owner) => {
     const result = await esi.fetchPaginatedWithMeta<ESICustomsOffice>(
       `/corporations/${owner.id}/customs_offices`,
-      { characterId: owner.characterId, schema: ESICustomsOfficeSchema }
+      { characterId: owner.characterId, schema: ESICustomsOfficeSchema },
     )
     return { data: result.data, expiresAt: result.expiresAt, etag: result.etag }
   },

@@ -60,7 +60,7 @@ export const useMailStore = createOwnerStore<
       {
         characterId: owner.characterId,
         schema: z.array(ESIMailHeaderSchema),
-      }
+      },
     )
     return {
       data: { mails: result.data },
@@ -84,7 +84,7 @@ export const useMailStore = createOwnerStore<
 
       const stored = await db.getFromExtra<MailBodyRecord>(
         BODIES_STORE,
-        cacheKey
+        cacheKey,
       )
       if (stored) {
         set({
@@ -95,7 +95,7 @@ export const useMailStore = createOwnerStore<
 
       const body = await esi.fetch<ESIMailBody>(
         `/characters/${characterId}/mail/${mailId}`,
-        { characterId, schema: ESIMailBodySchema }
+        { characterId, schema: ESIMailBodySchema },
       )
 
       await db.putToExtra<MailBodyRecord>(BODIES_STORE, {

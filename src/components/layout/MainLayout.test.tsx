@@ -157,7 +157,7 @@ describe('MainLayout', () => {
     it('renders Discord link', () => {
       render(<MainLayout />)
       expect(
-        screen.getByRole('link', { name: 'Join our Discord server' })
+        screen.getByRole('link', { name: 'Join our Discord server' }),
       ).toHaveAttribute('href', 'https://discord.gg/dexSsJYYbv')
     })
   })
@@ -328,7 +328,7 @@ describe('MainLayout', () => {
       fireEvent.click(within(modeTablist).getByText('Tools'))
 
       expect(
-        await screen.findByTestId('contracts-search-panel')
+        await screen.findByTestId('contracts-search-panel'),
       ).toBeInTheDocument()
     })
 
@@ -346,7 +346,7 @@ describe('MainLayout', () => {
       fireEvent.click(within(toolsTablist).getByText('Market'))
 
       expect(
-        await screen.findByTestId('regional-market-panel')
+        await screen.findByTestId('regional-market-panel'),
       ).toBeInTheDocument()
     })
 

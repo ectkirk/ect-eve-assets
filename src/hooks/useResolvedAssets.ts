@@ -36,12 +36,12 @@ export function useResolvedAssets(): ResolvedAssetsResult {
   const structuresByOwner = useStructuresStore((s) => s.dataByOwner)
   const ordersById = useMarketOrdersStore((s) => s.itemsById)
   const ordersVisibilityByOwner = useMarketOrdersStore(
-    (s) => s.visibilityByOwner
+    (s) => s.visibilityByOwner,
   )
   const contractsById = useContractsStore((s) => s.itemsById)
   const contractItemsById = useContractsStore((s) => s.itemsByContractId)
   const contractsVisibilityByOwner = useContractsStore(
-    (s) => s.visibilityByOwner
+    (s) => s.visibilityByOwner,
   )
   const jobsById = useIndustryJobsStore((s) => s.itemsById)
   const jobsVisibilityByOwner = useIndustryJobsStore((s) => s.visibilityByOwner)
@@ -91,7 +91,7 @@ export function useResolvedAssets(): ResolvedAssetsResult {
       assets = assets.filter(
         (a) =>
           (includeActiveShip || !a.modeFlags.isActiveShip) &&
-          (includeStructures || !a.modeFlags.isOwnedStructure)
+          (includeStructures || !a.modeFlags.isOwnedStructure),
       )
     }
 
@@ -233,7 +233,7 @@ export function useResolvedAssets(): ResolvedAssetsResult {
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
   const selectedSet = useMemo(
     () => new Set(selectedOwnerIds),
-    [selectedOwnerIds]
+    [selectedOwnerIds],
   )
 
   const selectedResolvedAssets = useMemo(() => {

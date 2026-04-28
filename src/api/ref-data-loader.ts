@@ -36,7 +36,7 @@ async function validateAndSave<T>(
     entityName: string
     save: (items: T[]) => Promise<void>
     errors: string[]
-  }
+  },
 ): Promise<boolean> {
   if (raw && typeof raw === 'object' && 'error' in raw) {
     const errorMsg = `Failed to load ${config.entityName}: ${(raw as { error: string }).error}`
@@ -81,7 +81,7 @@ const TIER_1_TOWER_PREFIXES = [
 
 function getTowerInfo(
   groupId: number,
-  name: string
+  name: string,
 ): { towerSize?: number; fuelTier?: number } {
   if (groupId !== CONTROL_TOWER_GROUP_ID) return {}
 
@@ -154,7 +154,7 @@ export function _resetForTests(): void {
 }
 
 export async function loadReferenceData(
-  onProgress?: ReferenceDataProgress
+  onProgress?: ReferenceDataProgress,
 ): Promise<ReferenceDataResult> {
   if (isReferenceDataLoaded() && isAllTypesLoaded()) {
     return { success: true, errors: [] }
@@ -248,7 +248,7 @@ export async function loadReferenceData(
         referenceDataPromise = null
       }, 1000)
       throw error
-    }
+    },
   )
 
   return referenceDataPromise
@@ -259,7 +259,7 @@ interface TypesLoadResult {
 }
 
 async function loadAllTypes(
-  onProgress?: ReferenceDataProgress
+  onProgress?: ReferenceDataProgress,
 ): Promise<TypesLoadResult> {
   if (isAllTypesLoaded()) return {}
 
@@ -310,7 +310,7 @@ async function loadAllTypes(
       i18n.t('status.loadingTypesProgress', {
         loaded: formatFullNumber(loaded),
         total: formatFullNumber(total),
-      })
+      }),
     )
 
     cursor = result.pagination.hasMore

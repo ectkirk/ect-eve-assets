@@ -37,7 +37,7 @@ export function useRowSelection<T>({
 
   const isSelected = useCallback(
     (id: string) => selectedIds.has(id),
-    [selectedIds]
+    [selectedIds],
   )
 
   const clearSelection = useCallback(() => {
@@ -89,7 +89,7 @@ export function useRowSelection<T>({
       }
       lastClickedRef.current = id
     },
-    [getId]
+    [getId],
   )
 
   const copySelected = useCallback(() => {
@@ -105,7 +105,7 @@ export function useRowSelection<T>({
       } else {
         const suffix = data.blueprintSuffix ? `\t${data.blueprintSuffix}` : ''
         void navigator.clipboard.writeText(
-          `${data.name}\t${data.quantity}${suffix}`
+          `${data.name}\t${data.quantity}${suffix}`,
         )
       }
       return

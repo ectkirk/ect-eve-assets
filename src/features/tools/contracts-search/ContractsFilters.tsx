@@ -38,20 +38,20 @@ export function ContractsFilters({
   const { t } = useTranslation('tools')
   const categories = useMemo(
     () => getAllCategories(true).sort((a, b) => a.name.localeCompare(b.name)),
-    []
+    [],
   )
 
   const groups = useMemo(() => {
     if (!filters.categoryId) return []
     return getGroupsByCategory(filters.categoryId, true).sort((a, b) =>
-      a.name.localeCompare(b.name)
+      a.name.localeCompare(b.name),
     )
   }, [filters.categoryId])
 
   const regions = useReferenceCacheStore((s) => s.regions)
   const sortedRegions = useMemo(() => {
     const list = Array.from(regions.values()).filter((r) =>
-      SERVICE_REGIONS.has(r.id)
+      SERVICE_REGIONS.has(r.id),
     )
     list.sort((a, b) => a.name.localeCompare(b.name))
     return list
@@ -72,12 +72,12 @@ export function ContractsFilters({
         searchText: '',
       })
     },
-    [filters, onChange]
+    [filters, onChange],
   )
 
   const updateFilter = <K extends keyof ContractSearchFilters>(
     key: K,
-    value: ContractSearchFilters[K]
+    value: ContractSearchFilters[K],
   ) => {
     const updated = { ...filters, [key]: value }
     if (key === 'categoryId') {
@@ -156,7 +156,7 @@ export function ContractsFilters({
             onChange={(e) => {
               updateFilter(
                 'regionId',
-                e.target.value ? Number(e.target.value) : null
+                e.target.value ? Number(e.target.value) : null,
               )
             }}
           >
@@ -206,7 +206,7 @@ export function ContractsFilters({
                 onChange={(e) => {
                   updateFilter(
                     'categoryId',
-                    e.target.value ? Number(e.target.value) : null
+                    e.target.value ? Number(e.target.value) : null,
                   )
                 }}
               >
@@ -232,7 +232,7 @@ export function ContractsFilters({
                   onChange={(e) => {
                     updateFilter(
                       'groupId',
-                      e.target.value ? Number(e.target.value) : null
+                      e.target.value ? Number(e.target.value) : null,
                     )
                   }}
                 >

@@ -61,10 +61,10 @@ export function useMapInteraction({
   setRouteDestination,
 }: UseMapInteractionOptions): UseMapInteractionReturn {
   const [highlightedSystemId, setHighlightedSystemId] = useState<number | null>(
-    null
+    null,
   )
   const [highlightedRegionId, setHighlightedRegionId] = useState<number | null>(
-    null
+    null,
   )
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   const clickStartRef = useRef<{ x: number; y: number } | null>(null)
@@ -81,10 +81,10 @@ export function useMapInteraction({
         mouseY,
         cam,
         dimensions.width,
-        dimensions.height
+        dimensions.height,
       )
     },
-    [canvasRef, cameraRef, dimensions]
+    [canvasRef, cameraRef, dimensions],
   )
 
   const handleSelectResult = useCallback(
@@ -107,7 +107,7 @@ export function useMapInteraction({
         }
       }
     },
-    [selectSearchResult, spatialIndex, navigateTo]
+    [selectSearchResult, spatialIndex, navigateTo],
   )
 
   const handleCanvasMouseDown = useCallback(
@@ -115,7 +115,7 @@ export function useMapInteraction({
       clickStartRef.current = { x: e.clientX, y: e.clientY }
       handleCameraMouseDown(e)
     },
-    [handleCameraMouseDown]
+    [handleCameraMouseDown],
   )
 
   const handleCanvasMouseMove = useCallback(
@@ -125,7 +125,7 @@ export function useMapInteraction({
         handleHoverMouseMove(e)
       }
     },
-    [handleCameraMouseMove, handleHoverMouseMove, isDragging]
+    [handleCameraMouseMove, handleHoverMouseMove, isDragging],
   )
 
   const handleCanvasMouseUp = useCallback(
@@ -146,7 +146,7 @@ export function useMapInteraction({
         const nearest = spatialIndex.findNearest(
           coords.x,
           coords.y,
-          clickRadius
+          clickRadius,
         )
 
         if (e.shiftKey && nearest) {
@@ -172,7 +172,7 @@ export function useMapInteraction({
       cameraRef,
       setRouteOrigin,
       setRouteDestination,
-    ]
+    ],
   )
 
   const handleCanvasMouseLeave = useCallback(() => {
@@ -196,7 +196,7 @@ export function useMapInteraction({
         setHighlightedRegionId(nearest.regionId)
       }
     },
-    [spatialIndex, getWorldCoordsFromEvent, cameraRef]
+    [spatialIndex, getWorldCoordsFromEvent, cameraRef],
   )
 
   const handleContextMenu = useCallback(
@@ -219,7 +219,7 @@ export function useMapInteraction({
         })
       }
     },
-    [spatialIndex, getWorldCoordsFromEvent, cameraRef]
+    [spatialIndex, getWorldCoordsFromEvent, cameraRef],
   )
 
   useEffect(() => {

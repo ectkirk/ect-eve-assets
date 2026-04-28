@@ -175,7 +175,7 @@ describe('expiry-cache-store', () => {
       const oneHourMs = 60 * 60 * 1000
       expect(expiry!.expiresAt).toBeGreaterThan(Date.now() + oneHourMs - 5_000)
       expect(expiry!.expiresAt).toBeLessThanOrEqual(
-        Date.now() + oneHourMs + 1_000
+        Date.now() + oneHourMs + 1_000,
       )
     })
   })
@@ -183,7 +183,7 @@ describe('expiry-cache-store', () => {
   describe('isExpired', () => {
     it('returns true for unknown endpoints', () => {
       expect(
-        useExpiryCacheStore.getState().isExpired('owner-1', '/unknown')
+        useExpiryCacheStore.getState().isExpired('owner-1', '/unknown'),
       ).toBe(true)
     })
 
@@ -194,7 +194,7 @@ describe('expiry-cache-store', () => {
         ]),
       })
       expect(
-        useExpiryCacheStore.getState().isExpired('owner-1', '/assets')
+        useExpiryCacheStore.getState().isExpired('owner-1', '/assets'),
       ).toBe(true)
     })
 
@@ -205,7 +205,7 @@ describe('expiry-cache-store', () => {
         ]),
       })
       expect(
-        useExpiryCacheStore.getState().isExpired('owner-1', '/assets')
+        useExpiryCacheStore.getState().isExpired('owner-1', '/assets'),
       ).toBe(false)
     })
   })
@@ -237,7 +237,7 @@ describe('expiry-cache-store', () => {
       unsub()
 
       expect(useExpiryCacheStore.getState().callbacks.has('/assets')).toBe(
-        false
+        false,
       )
     })
   })
@@ -249,8 +249,8 @@ describe('expiry-cache-store', () => {
       const state = useExpiryCacheStore.getState()
       expect(
         state.refreshQueue.some(
-          (q) => q.ownerKey === 'char-1' && q.endpoint === '/assets'
-        )
+          (q) => q.ownerKey === 'char-1' && q.endpoint === '/assets',
+        ),
       ).toBe(true)
     })
 
@@ -263,7 +263,7 @@ describe('expiry-cache-store', () => {
 
       const state = useExpiryCacheStore.getState()
       const matching = state.refreshQueue.filter(
-        (q) => q.ownerKey === 'char-1' && q.endpoint === '/assets'
+        (q) => q.ownerKey === 'char-1' && q.endpoint === '/assets',
       )
       expect(matching.length).toBeLessThanOrEqual(1)
     })
@@ -303,7 +303,7 @@ describe('expiry-cache-store', () => {
       // The unknown item should still be in the queue (deferred)
       const state = useExpiryCacheStore.getState()
       expect(
-        state.refreshQueue.some((q) => q.endpoint === '/unknown-endpoint')
+        state.refreshQueue.some((q) => q.endpoint === '/unknown-endpoint'),
       ).toBe(true)
     })
 
@@ -589,7 +589,7 @@ describe('expiry-cache-store', () => {
 
       expect(pruned).toBe(0)
       expect(
-        useExpiryCacheStore.getState().endpoints.has('character-1:/assets')
+        useExpiryCacheStore.getState().endpoints.has('character-1:/assets'),
       ).toBe(true)
     })
 

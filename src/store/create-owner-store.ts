@@ -76,12 +76,12 @@ export interface OwnerStoreConfig<
       TExtraState &
       BaseActions &
       TExtraActions,
-    db: OwnerDB<TDBData>
+    db: OwnerDB<TDBData>,
   ) => TExtraActions
   onAfterBatchUpdate?: (results: TOwnerData[]) => Promise<void>
   onBeforeOwnerUpdate?: (
     owner: Owner,
-    state: BaseState<TOwnerData> & TExtraState
+    state: BaseState<TOwnerData> & TExtraState,
   ) => {
     previousData?: TDBData | undefined
   }
@@ -105,7 +105,7 @@ export function createOwnerStore<
   TExtraState extends object = object,
   TExtraActions extends object = object,
 >(
-  config: OwnerStoreConfig<TDBData, TOwnerData, TExtraState, TExtraActions>
+  config: OwnerStoreConfig<TDBData, TOwnerData, TExtraState, TExtraActions>,
 ): UseBoundStore<StoreApi<OwnerStore<TOwnerData, TExtraState, TExtraActions>>> {
   const {
     name,
@@ -153,7 +153,7 @@ export function createOwnerStore<
       flagScopeOutdated(owner)
       logger.warn(
         `Owner ${owner.name} needs re-authentication for new scopes`,
-        { module: moduleName }
+        { module: moduleName },
       )
     }
   }
@@ -167,7 +167,7 @@ export function createOwnerStore<
   > = (set, get) => {
     const baseSet = (partial: Partial<BaseState<TOwnerData> & TExtraState>) => {
       set(
-        partial as Partial<OwnerStore<TOwnerData, TExtraState, TExtraActions>>
+        partial as Partial<OwnerStore<TOwnerData, TExtraState, TExtraActions>>,
       )
     }
 
@@ -210,7 +210,7 @@ export function createOwnerStore<
               getErrorForLog(err),
               {
                 module: moduleName,
-              }
+              },
             )
             initPromise = null
             set({ initialized: true } as Partial<
@@ -313,7 +313,7 @@ export function createOwnerStore<
           const results = current
             .filter(
               (d: TOwnerData) =>
-                !updatedOwners.has(makeOwnerKey(d.owner.type, d.owner.id))
+                !updatedOwners.has(makeOwnerKey(d.owner.type, d.owner.id)),
             )
             .concat(Array.from(updatedOwners.values()))
           const extra = rebuildExtraState ? rebuildExtraState(results) : {}
@@ -402,7 +402,7 @@ export function createOwnerStore<
 
           const updated = get().dataByOwner.filter(
             (d: TOwnerData) =>
-              makeOwnerKey(d.owner.type, d.owner.id) !== ownerKey
+              makeOwnerKey(d.owner.type, d.owner.id) !== ownerKey,
           )
           updated.push(toOwnerData(owner, data))
 
@@ -424,7 +424,7 @@ export function createOwnerStore<
             {
               module: moduleName,
               owner: owner.name,
-            }
+            },
           )
           handleScopeError(err, owner)
         } finally {
@@ -435,7 +435,8 @@ export function createOwnerStore<
       removeForOwner: async (ownerType: string, ownerId: number) => {
         const ownerKey = makeOwnerKey(ownerType as OwnerType, ownerId)
         const hasOwner = get().dataByOwner.some(
-          (d: TOwnerData) => makeOwnerKey(d.owner.type, d.owner.id) === ownerKey
+          (d: TOwnerData) =>
+            makeOwnerKey(d.owner.type, d.owner.id) === ownerKey,
         )
         if (!hasOwner) return
 
@@ -444,7 +445,7 @@ export function createOwnerStore<
         set((current) => {
           const updated = current.dataByOwner.filter(
             (d: TOwnerData) =>
-              makeOwnerKey(d.owner.type, d.owner.id) !== ownerKey
+              makeOwnerKey(d.owner.type, d.owner.id) !== ownerKey,
           )
           const extra = rebuildExtraState ? rebuildExtraState(updated) : {}
           return { dataByOwner: updated, ...extra } as Partial<

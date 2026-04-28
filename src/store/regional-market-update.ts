@@ -29,7 +29,7 @@ function updateLocationPrice(
   locationId: number,
   price: number,
   isBuyOrder: boolean,
-  fetchTime: number
+  fetchTime: number,
 ): void {
   const pricesByLocation = isBuyOrder
     ? ctx.buyPricesByLocation
@@ -108,7 +108,7 @@ interface UpdateInput {
 }
 
 export function deepClonePricesByLocation(
-  original: Map<number, Map<number, number>>
+  original: Map<number, Map<number, number>>,
 ): Map<number, Map<number, number>> {
   const clone = new Map<number, Map<number, number>>()
   for (const [typeId, locationMap] of original) {
@@ -128,7 +128,7 @@ interface RegionalFetchResult {
 async function processRegionalBatch(
   batch: RegionalTask[],
   ctx: PriceUpdateContext,
-  lastFetchAt: Map<string, number>
+  lastFetchAt: Map<string, number>,
 ): Promise<void> {
   const results = await Promise.all(
     batch.map(
@@ -171,8 +171,8 @@ async function processRegionalBatch(
           })
           return null
         }
-      }
-    )
+      },
+    ),
   )
 
   for (const result of results) {
@@ -198,7 +198,7 @@ async function processStructure(
     number,
     { characterId: number; typeIds: Set<number>; lastFetchAt: number }
   >,
-  structureUpdates: TrackedStructureRecord[]
+  structureUpdates: TrackedStructureRecord[],
 ): Promise<void> {
   const { structureId, characterId, typeIds } = task
   try {
@@ -257,11 +257,11 @@ export async function executeUpdate(input: UpdateInput): Promise<UpdateResult> {
 
   const sellPricesByType = new Map(currentState.pricesByType)
   const sellPricesByLocation = deepClonePricesByLocation(
-    currentState.pricesByLocation
+    currentState.pricesByLocation,
   )
   const buyPricesByType = new Map(currentState.buyPricesByType)
   const buyPricesByLocation = deepClonePricesByLocation(
-    currentState.buyPricesByLocation
+    currentState.buyPricesByLocation,
   )
   const lastFetchAt = new Map(currentState.lastFetchAt)
   const trackedStructures = new Map(currentState.trackedStructures)
@@ -284,8 +284,8 @@ export async function executeUpdate(input: UpdateInput): Promise<UpdateResult> {
   for (const batch of chunkArray(structureTasks, PARALLEL_LIMIT)) {
     await Promise.all(
       batch.map((task) =>
-        processStructure(task, ctx, trackedStructures, structureUpdates)
-      )
+        processStructure(task, ctx, trackedStructures, structureUpdates),
+      ),
     )
   }
 

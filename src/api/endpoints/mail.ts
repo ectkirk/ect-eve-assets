@@ -7,7 +7,7 @@ export type ESIMailBody = z.infer<typeof ESIMailBodySchema>
 
 export async function getCharacterMail(
   characterId: number,
-  lastMailId?: number
+  lastMailId?: number,
 ): Promise<ESIMailHeader[]> {
   const params = lastMailId ? `?last_mail_id=${lastMailId}` : ''
   return esi.fetch<ESIMailHeader[]>(
@@ -15,6 +15,6 @@ export async function getCharacterMail(
     {
       characterId,
       schema: z.array(ESIMailHeaderSchema),
-    }
+    },
   )
 }

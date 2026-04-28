@@ -20,7 +20,7 @@ export interface ActiveShipResult {
 export async function detectAndInjectActiveShip(
   owner: Owner,
   assets: ESIAsset[],
-  ownerKey: string
+  ownerKey: string,
 ): Promise<ActiveShipResult> {
   const nullResult: ActiveShipResult = {
     syntheticShip: null,
@@ -41,7 +41,7 @@ export async function detectAndInjectActiveShip(
   if (missingParentIds.size === 0) return nullResult
 
   const hasLocationScopes = LOCATION_SCOPES.every((scope) =>
-    useAuthStore.getState().ownerHasScope(ownerKey, scope)
+    useAuthStore.getState().ownerHasScope(ownerKey, scope),
   )
 
   if (!hasLocationScopes) {

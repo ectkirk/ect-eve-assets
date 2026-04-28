@@ -10,7 +10,7 @@ type LoadState = 'idle' | 'loading' | 'loaded' | 'error'
 function useLazyFetch<T, R>(
   shouldFetch: boolean,
   fetchFn: () => Promise<T>,
-  extractData: (result: T) => R
+  extractData: (result: T) => R,
 ): R | null {
   const [data, setData] = useState<R | null>(null)
   const stateRef = useRef<LoadState>('idle')
@@ -54,7 +54,7 @@ interface UseSovereigntyDataReturn {
 }
 
 export function useSovereigntyData(
-  colorMode: ColorMode
+  colorMode: ColorMode,
 ): UseSovereigntyDataReturn {
   const fwData = useLazyFetch<
     Awaited<ReturnType<typeof getFactionWarfareSystems>>,

@@ -64,7 +64,7 @@ export const ContractTooltip = forwardRef<HTMLDivElement, ContractTooltipProps>(
             </span>
             <span className="text-content">
               {t(
-                `contractsSearch.types.${contract.type === 'item_exchange' ? 'itemExchange' : contract.type}`
+                `contractsSearch.types.${contract.type === 'item_exchange' ? 'itemExchange' : contract.type}`,
               )}
             </span>
           </div>
@@ -119,5 +119,5 @@ export const ContractTooltip = forwardRef<HTMLDivElement, ContractTooltipProps>(
         </div>
       </div>
     )
-  }
+  },
 )

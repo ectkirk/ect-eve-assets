@@ -7,7 +7,7 @@ interface PriceState {
 }
 
 type StoreSet = (
-  partial: Partial<PriceState> | ((state: PriceState) => Partial<PriceState>)
+  partial: Partial<PriceState> | ((state: PriceState) => Partial<PriceState>),
 ) => void
 
 type StoreGet = () => PriceState
@@ -16,7 +16,7 @@ export async function storeAndPersistPrices(
   fetched: Map<number, number>,
   abyssalIdSet: Set<number>,
   set: StoreSet,
-  get: StoreGet
+  get: StoreGet,
 ): Promise<Map<number, number>> {
   const stored = new Map<number, number>()
   if (fetched.size === 0) return stored

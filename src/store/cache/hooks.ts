@@ -21,7 +21,7 @@ export function useType(id: number): CachedType | undefined {
 export function useTypeName(id: number): string {
   return useReferenceCacheStore(
     (s) =>
-      s.types.get(id)?.name ?? i18n.t('assets:locations.unknownType', { id })
+      s.types.get(id)?.name ?? i18n.t('assets:locations.unknownType', { id }),
   )
 }
 
@@ -74,7 +74,7 @@ function resolveLocation(
     systems: Map<number, CachedSystem>
     regions: Map<number, CachedRegion>
     refStructures: Map<number, CachedRefStructure>
-  }
+  },
 ): CachedLocation | undefined {
   const cached = s.locations.get(id)
   if (cached) return cached

@@ -5,7 +5,7 @@ import { z } from 'zod'
 export type ESICharacterSkills = z.infer<typeof ESICharacterSkillsSchema>
 
 export async function getCharacterSkills(
-  characterId: number
+  characterId: number,
 ): Promise<ESICharacterSkills> {
   return esi.fetch<ESICharacterSkills>(`/characters/${characterId}/skills`, {
     characterId,

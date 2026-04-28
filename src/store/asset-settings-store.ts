@@ -72,8 +72,8 @@ export const useAssetSettingsStore = create<AssetSettingsState>()(
       ...defaultValues,
       setSetting: (key, value) => set({ [key]: value }),
     }),
-    { name: 'asset-settings' }
-  )
+    { name: 'asset-settings' },
+  ),
 )
 
 export function useAssetSettings() {
@@ -85,6 +85,6 @@ export function useAssetSettings() {
       includeActiveShip: s.includeActiveShip,
       includeStructures: s.includeStructures,
       setSetting: s.setSetting,
-    }))
+    })),
   )
 }

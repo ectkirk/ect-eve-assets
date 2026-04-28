@@ -50,7 +50,7 @@ interface StarbaseDetailsActions {
   init: () => Promise<void>
   fetchDetail: (
     key: StarbaseDetailKey,
-    force?: boolean
+    force?: boolean,
   ) => Promise<ESIStarbaseDetail | null>
   getDetail: (starbaseId: number) => ESIStarbaseDetail | undefined
   removeOrphans: (validStarbaseIds: Set<number>) => void
@@ -93,7 +93,7 @@ async function loadAllFromDB(): Promise<LoadedDetails> {
 async function saveToDB(
   starbaseId: number,
   corporationId: number,
-  detail: ESIStarbaseDetail
+  detail: ESIStarbaseDetail,
 ): Promise<void> {
   const db = await getDB()
   await idbPut(db, STORE_NAME, {
@@ -115,7 +115,7 @@ async function deleteByCorpFromDB(corporationId: number): Promise<number[]> {
     db,
     STORE_NAME,
     'corporationId',
-    corporationId
+    corporationId,
   )) as number[]
   await idbDeleteBatch(db, STORE_NAME, keys)
   return keys
@@ -155,7 +155,7 @@ export const useStarbaseDetailsStore = create<StarbaseDetailsStore>(
             err instanceof Error ? err : undefined,
             {
               module: 'StarbaseDetailsStore',
-            }
+            },
           )
           set({ initialized: true })
         }
@@ -166,7 +166,7 @@ export const useStarbaseDetailsStore = create<StarbaseDetailsStore>(
 
     fetchDetail: async (
       { corporationId, starbaseId, systemId, characterId },
-      force = false
+      force = false,
     ) => {
       const state = get()
 
@@ -188,7 +188,7 @@ export const useStarbaseDetailsStore = create<StarbaseDetailsStore>(
           characterId,
           corporationId,
           starbaseId,
-          systemId
+          systemId,
         )
         const now = Date.now()
         set((s) => {
@@ -215,7 +215,7 @@ export const useStarbaseDetailsStore = create<StarbaseDetailsStore>(
             {
               module: 'StarbaseDetailsStore',
               starbaseId,
-            }
+            },
           )
         })
 
@@ -227,7 +227,7 @@ export const useStarbaseDetailsStore = create<StarbaseDetailsStore>(
           {
             module: 'StarbaseDetailsStore',
             starbaseId,
-          }
+          },
         )
         set((s) => {
           const newLoading = new Set(s.loading)
@@ -281,7 +281,7 @@ export const useStarbaseDetailsStore = create<StarbaseDetailsStore>(
             {
               module: 'StarbaseDetailsStore',
               starbaseId: id,
-            }
+            },
           )
         })
       }
@@ -339,7 +339,7 @@ export const useStarbaseDetailsStore = create<StarbaseDetailsStore>(
           {
             module: 'StarbaseDetailsStore',
             corporationId: ownerId,
-          }
+          },
         )
       }
     },
@@ -365,11 +365,11 @@ export const useStarbaseDetailsStore = create<StarbaseDetailsStore>(
           err instanceof Error ? err : undefined,
           {
             module: 'StarbaseDetailsStore',
-          }
+          },
         )
       }
     },
-  })
+  }),
 )
 
 useStoreRegistry.getState().register({
@@ -383,12 +383,12 @@ useStoreRegistry.getState().register({
 export function calculateFuelHours(
   detail: ESIStarbaseDetail | undefined,
   towerSize: number | undefined,
-  fuelTier: number | undefined
+  fuelTier: number | undefined,
 ): number | null {
   if (!detail?.fuels || towerSize === undefined) return null
 
   const fuelBlocks = detail.fuels.find((f) =>
-    FUEL_BLOCK_TYPE_IDS.has(f.type_id)
+    FUEL_BLOCK_TYPE_IDS.has(f.type_id),
   )
   if (!fuelBlocks) return null
 
@@ -403,7 +403,7 @@ export function calculateFuelHours(
 
 export function calculateStrontHours(
   detail: ESIStarbaseDetail | undefined,
-  towerSize: number | undefined
+  towerSize: number | undefined,
 ): number | null {
   if (!detail?.fuels || towerSize === undefined) return null
 

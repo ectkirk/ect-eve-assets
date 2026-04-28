@@ -33,7 +33,7 @@ function BooleanBadge({
         'px-2 py-0.5 rounded text-xs font-medium',
         value
           ? 'bg-semantic-success/20 text-status-positive'
-          : 'bg-surface-secondary text-content-muted'
+          : 'bg-surface-secondary text-content-muted',
       )}
     >
       {value ? yesLabel : noLabel}
@@ -125,7 +125,7 @@ export function POCOInfoDialog({
                 <InfoRow
                   label={t('pocoInfo.excellentStanding')}
                   value={formatTaxRate(
-                    customsOffice.excellent_standing_tax_rate
+                    customsOffice.excellent_standing_tax_rate,
                   )}
                 />
               )}
@@ -151,7 +151,7 @@ export function POCOInfoDialog({
                 <InfoRow
                   label={t('pocoInfo.terribleStanding')}
                   value={formatTaxRate(
-                    customsOffice.terrible_standing_tax_rate
+                    customsOffice.terrible_standing_tax_rate,
                   )}
                 />
               )}

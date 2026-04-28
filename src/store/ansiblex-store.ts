@@ -56,7 +56,7 @@ async function getDb() {
 let initPromise: Promise<void> | null = null
 
 function parseAnsiblexName(
-  name: string
+  name: string,
 ): { fromSystem: string; toSystem: string } | null {
   const match = /^(.+?)\s*»\s*(.+?)(?:\s+-|$)/.exec(name)
   if (!match) return null
@@ -124,7 +124,7 @@ export const useAnsiblexStore = create<AnsiblexState>()((set, get) => ({
     try {
       const searchResult = await window.electronAPI?.esi.fetch<ESISearchResult>(
         `/characters/${charId}/search/?categories=structure&search=${encodeURIComponent(' » ')}`,
-        { characterId: charId, requiresAuth: true }
+        { characterId: charId, requiresAuth: true },
       )
 
       const structureIds = searchResult?.structure ?? []
@@ -141,7 +141,7 @@ export const useAnsiblexStore = create<AnsiblexState>()((set, get) => ({
           loading: false,
           ansiblexesByCharacter: new Map(s.ansiblexesByCharacter).set(
             characterId,
-            []
+            [],
           ),
           lastSearch: new Map(s.lastSearch).set(characterId, Date.now()),
         }))
@@ -151,7 +151,7 @@ export const useAnsiblexStore = create<AnsiblexState>()((set, get) => ({
       const currentIds = new Set(structureIds)
       const newStructureIds = structureIds.filter((id) => !existingById.has(id))
       const keptAnsiblexes = existingAnsiblexes.filter((a) =>
-        currentIds.has(a.id)
+        currentIds.has(a.id),
       )
 
       logger.info('Ansiblex search complete', {
@@ -175,7 +175,7 @@ export const useAnsiblexStore = create<AnsiblexState>()((set, get) => ({
           loading: false,
           ansiblexesByCharacter: new Map(s.ansiblexesByCharacter).set(
             characterId,
-            keptAnsiblexes
+            keptAnsiblexes,
           ),
           lastSearch: new Map(s.lastSearch).set(characterId, Date.now()),
         }))
@@ -193,7 +193,7 @@ export const useAnsiblexStore = create<AnsiblexState>()((set, get) => ({
         try {
           const details = await window.electronAPI?.esi.fetch<ESIStructureInfo>(
             `/universe/structures/${structureId}/`,
-            { characterId: charId, requiresAuth: true }
+            { characterId: charId, requiresAuth: true },
           )
 
           if (details?.type_id !== ANSIBLEX_TYPE_ID) continue
@@ -231,7 +231,7 @@ export const useAnsiblexStore = create<AnsiblexState>()((set, get) => ({
         loading: false,
         ansiblexesByCharacter: new Map(s.ansiblexesByCharacter).set(
           characterId,
-          allAnsiblexes
+          allAnsiblexes,
         ),
         lastSearch: new Map(s.lastSearch).set(characterId, Date.now()),
       }))

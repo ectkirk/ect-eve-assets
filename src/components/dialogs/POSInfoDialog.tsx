@@ -65,7 +65,7 @@ function BooleanBadge({
         'px-2 py-0.5 rounded text-xs font-medium',
         value
           ? 'bg-semantic-success/20 text-status-positive'
-          : 'bg-surface-secondary text-content-muted'
+          : 'bg-surface-secondary text-content-muted',
       )}
     >
       {value ? yesLabel : noLabel}
@@ -189,11 +189,11 @@ export function POSInfoDialog({
                 const fuelHours = calculateFuelHours(
                   detail,
                   type?.towerSize,
-                  type?.fuelTier
+                  type?.fuelTier,
                 )
                 const strontHours = calculateStrontHours(
                   detail,
-                  type?.towerSize
+                  type?.towerSize,
                 )
                 const fuelIsLow =
                   fuelHours !== null && fuelHours < LOW_FUEL_THRESHOLD_HOURS
@@ -205,7 +205,7 @@ export function POSInfoDialog({
                       value={formatHoursAsTimer(fuelHours)}
                       className={cn(
                         'font-mono',
-                        fuelIsLow ? 'text-status-negative' : undefined
+                        fuelIsLow ? 'text-status-negative' : undefined,
                       )}
                     />
                     <InfoRow
@@ -213,7 +213,7 @@ export function POSInfoDialog({
                       value={formatHoursAsTimer(strontHours)}
                       className={cn(
                         'font-mono',
-                        strontIsLow ? 'text-status-negative' : undefined
+                        strontIsLow ? 'text-status-negative' : undefined,
                       )}
                     />
                   </>
@@ -282,7 +282,7 @@ export function POSInfoDialog({
                   <InfoRow
                     label={t('posInfo.secStatusThreshold')}
                     value={formatSecurity(
-                      detail.attack_security_status_threshold
+                      detail.attack_security_status_threshold,
                     )}
                   />
                 )}

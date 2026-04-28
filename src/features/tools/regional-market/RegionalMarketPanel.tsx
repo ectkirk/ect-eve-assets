@@ -24,7 +24,7 @@ interface RegionalMarketPanelProps {
 
 function findGroupNode(
   nodes: MarketGroupNode[],
-  groupId: number
+  groupId: number,
 ): MarketGroupNode | null {
   for (const node of nodes) {
     if (node.group.id === groupId) return node
@@ -36,7 +36,7 @@ function findGroupNode(
 
 function buildBreadcrumbPath(
   tree: MarketGroupNode[],
-  groupId: number
+  groupId: number,
 ): MarketGroupNode[] {
   const path: MarketGroupNode[] = []
 
@@ -73,7 +73,7 @@ export function RegionalMarketPanel({
       selectedMarketGroupId: s.selectedMarketGroupId,
       selectedTypeId: s.selectedTypeId,
       expandedGroupIds: s.expandedGroupIds,
-    }))
+    })),
   )
 
   const {
@@ -91,7 +91,7 @@ export function RegionalMarketPanel({
       setExpandedGroupIds: s.setExpandedGroupIds,
       toggleExpandedGroup: s.toggleExpandedGroup,
       expandGroups: s.expandGroups,
-    }))
+    })),
   )
 
   const { t } = useTranslation('tools')
@@ -103,7 +103,7 @@ export function RegionalMarketPanel({
     useShallow((s) => ({
       setRegion: s.setRegion,
       initOrdersStore: s.init,
-    }))
+    })),
   )
 
   useEffect(() => {
@@ -126,7 +126,7 @@ export function RegionalMarketPanel({
       setSelectedMarketGroupId(type.marketGroupId)
       setSelectedTypeId(type.id)
     },
-    [tree, types, expandGroups, setSelectedMarketGroupId, setSelectedTypeId]
+    [tree, types, expandGroups, setSelectedMarketGroupId, setSelectedTypeId],
   )
 
   const lastHandledTypeId = useRef<number | null>(null)
@@ -143,7 +143,7 @@ export function RegionalMarketPanel({
 
   const sortedRegions = useMemo(() => {
     const list = Array.from(regions.values()).filter((r) =>
-      SERVICE_REGIONS.has(r.id)
+      SERVICE_REGIONS.has(r.id),
     )
     list.sort((a, b) => a.name.localeCompare(b.name))
     return list
@@ -170,7 +170,7 @@ export function RegionalMarketPanel({
       setSelectedTypeId(null)
       expandGroups([groupId])
     },
-    [setSelectedMarketGroupId, setSelectedTypeId, expandGroups]
+    [setSelectedMarketGroupId, setSelectedTypeId, expandGroups],
   )
 
   const handleBreadcrumbClick = useCallback(
@@ -178,14 +178,14 @@ export function RegionalMarketPanel({
       setSelectedMarketGroupId(groupId)
       setSelectedTypeId(null)
     },
-    [setSelectedMarketGroupId, setSelectedTypeId]
+    [setSelectedMarketGroupId, setSelectedTypeId],
   )
 
   const handleRegionChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
       setSelectedRegionId(parseInt(e.target.value, 10))
     },
-    [setSelectedRegionId]
+    [setSelectedRegionId],
   )
 
   const handleExpandAll = useCallback(() => {
@@ -201,7 +201,7 @@ export function RegionalMarketPanel({
     (type: CachedType) => {
       selectType(type.id)
     },
-    [selectType]
+    [selectType],
   )
 
   if (loading) {

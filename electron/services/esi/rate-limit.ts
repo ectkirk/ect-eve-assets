@@ -197,7 +197,7 @@ export class RateLimitTracker {
           charId,
           timestamps.filter((t) => t > cutoff),
         ])
-        .filter(([, timestamps]) => timestamps.length > 0)
+        .filter(([, timestamps]) => timestamps.length > 0),
     )
     return {
       groups,
@@ -208,7 +208,7 @@ export class RateLimitTracker {
   }
 
   loadState(
-    state: RateLimitExportedState | Record<string, RateLimitState>
+    state: RateLimitExportedState | Record<string, RateLimitState>,
   ): void {
     const now = Date.now()
 
@@ -234,7 +234,7 @@ export class RateLimitTracker {
       if (fullState.contractItemsTimestamps) {
         const cutoff = now - RATE_LIMIT_CONFIG.contractItemsWindowMs
         for (const [charIdStr, timestamps] of Object.entries(
-          fullState.contractItemsTimestamps
+          fullState.contractItemsTimestamps,
         )) {
           const recent = timestamps.filter((t) => t > cutoff)
           if (recent.length > 0) {

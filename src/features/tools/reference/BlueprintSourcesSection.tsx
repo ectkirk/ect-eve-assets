@@ -32,7 +32,7 @@ function hasBlueprintData(data: RefTypeBlueprintResult): boolean {
 function getMaterialQuantity(
   blueprint: RefTypeBlueprintResult['blueprint'],
   typeId: number,
-  kind: 'materials' | 'products'
+  kind: 'materials' | 'products',
 ): number {
   const manufacturing = blueprint?.activities?.manufacturing
   const materials =
@@ -67,7 +67,7 @@ export function BlueprintSourcesSection({
                     </div>
                     <div className="font-semibold text-content">
                       {formatDuration(
-                        data.blueprint.activities.manufacturing.time
+                        data.blueprint.activities.manufacturing.time,
                       )}
                     </div>
                   </div>
@@ -100,7 +100,7 @@ export function BlueprintSourcesSection({
                     quantity: getMaterialQuantity(
                       data.blueprint,
                       mat.id,
-                      'materials'
+                      'materials',
                     ),
                   }))}
                   onNavigate={onNavigate}
@@ -123,7 +123,7 @@ export function BlueprintSourcesSection({
                     quantity: getMaterialQuantity(
                       data.blueprint,
                       prod.id,
-                      'products'
+                      'products',
                     ),
                   }))}
                   onNavigate={onNavigate}

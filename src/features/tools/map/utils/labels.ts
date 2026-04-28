@@ -23,7 +23,7 @@ function accumulateCentroid(
   acc: CentroidAccumulator | undefined,
   x: number,
   y: number,
-  name: string
+  name: string,
 ): CentroidAccumulator {
   if (acc) {
     acc.sumX += x
@@ -38,7 +38,7 @@ function accumulateCentroid(
 function centroidToLabel(
   acc: CentroidAccumulator,
   color: string,
-  includeTopY = false
+  includeTopY = false,
 ): LabelData {
   const label: LabelData = {
     x: acc.sumX / acc.count,
@@ -52,7 +52,7 @@ function centroidToLabel(
 
 export function calculateRegionLabels(
   systems: IndexedSystem[],
-  regionMap: Map<number, CachedRegion>
+  regionMap: Map<number, CachedRegion>,
 ): LabelData[] {
   const accumulators = new Map<number, CentroidAccumulator>()
 
@@ -65,8 +65,8 @@ export function calculateRegionLabels(
         existing,
         system.canvasX,
         system.canvasY,
-        region?.name ?? 'Unknown'
-      )
+        region?.name ?? 'Unknown',
+      ),
     )
   }
 
@@ -79,7 +79,7 @@ export function calculateRegionLabels(
 
 export function calculateFactionLabels(
   systems: IndexedSystem[],
-  fwData: Map<number, number>
+  fwData: Map<number, number>,
 ): LabelData[] {
   const accumulators = new Map<number, CentroidAccumulator>()
 
@@ -94,8 +94,8 @@ export function calculateFactionLabels(
         existing,
         system.canvasX,
         system.canvasY,
-        FACTION_NAMES.get(factionId) ?? `Faction ${factionId}`
-      )
+        FACTION_NAMES.get(factionId) ?? `Faction ${factionId}`,
+      ),
     )
   }
 
@@ -108,7 +108,7 @@ export function calculateFactionLabels(
 
 export function calculateAllianceLabels(
   systems: IndexedSystem[],
-  allianceData: Map<number, { allianceId: number; allianceName: string }>
+  allianceData: Map<number, { allianceId: number; allianceName: string }>,
 ): LabelData[] {
   const allianceSystems = new Map<
     number,
@@ -164,7 +164,7 @@ export function calculateAllianceLabels(
 
 function clusterPoints(
   points: { x: number; y: number }[],
-  thresholdSq: number
+  thresholdSq: number,
 ): { x: number; y: number }[][] {
   const n = points.length
   if (n === 0) return []
@@ -187,7 +187,7 @@ function clusterPoints(
   }
 
   const parent = new Map<number, number>(
-    Array.from({ length: n }, (_, i) => [i, i])
+    Array.from({ length: n }, (_, i) => [i, i]),
   )
 
   function find(i: number): number {

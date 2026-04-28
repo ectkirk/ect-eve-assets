@@ -43,7 +43,7 @@ const COLUMNS: {
 ]
 
 const DEFAULT_VISIBILITY: Record<string, boolean> = Object.fromEntries(
-  COLUMNS.map((c) => [c.id, true])
+  COLUMNS.map((c) => [c.id, true]),
 )
 
 function loadColumnVisibility(): Record<string, boolean> {
@@ -73,7 +73,7 @@ interface StructuresTableProps {
   rows: UnifiedStructureRow[]
   onViewStructureInfo: (
     structure: ESICorporationStructure,
-    ownerName: string
+    ownerName: string,
   ) => void
   onViewPosInfo: (starbase: ESIStarbase, ownerName: string) => void
   onViewPocoInfo: (customsOffice: ESICustomsOffice, ownerName: string) => void
@@ -201,7 +201,7 @@ interface StructureRowProps {
   show: (col: string) => boolean
   onViewStructureInfo: (
     structure: ESICorporationStructure,
-    ownerName: string
+    ownerName: string,
   ) => void
   onViewPosInfo: (starbase: ESIStarbase, ownerName: string) => void
   onViewPocoInfo: (customsOffice: ESICustomsOffice, ownerName: string) => void
@@ -222,7 +222,7 @@ function StructureRowWithContext({
   const stateInfo = getStateDisplay(row.state)
   const timerColorClass = getTimerColorClass(
     row.timerType as TimerType,
-    row.timerIsUrgent
+    row.timerIsUrgent,
   )
   const hasFitting = row.treeNode != null
 
@@ -278,7 +278,7 @@ function StructureRowWithContext({
                     'tabular-nums',
                     row.fuelIsLow
                       ? 'text-status-negative'
-                      : 'text-content-secondary'
+                      : 'text-content-secondary',
                   )}
                 >
                   {row.fuelText}

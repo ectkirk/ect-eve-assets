@@ -77,12 +77,12 @@ interface TestOwnerData {
 const mockFetchData =
   vi.fn<
     (
-      owner: Owner
+      owner: Owner,
     ) => Promise<{ data: number[]; expiresAt: number; etag?: string | null }>
   >()
 
 function makeConfig(
-  overrides?: Partial<OwnerStoreConfig<number[], TestOwnerData>>
+  overrides?: Partial<OwnerStoreConfig<number[], TestOwnerData>>,
 ): OwnerStoreConfig<number[], TestOwnerData> {
   return {
     name: 'TestItems',
@@ -191,7 +191,7 @@ describe('createOwnerStore', () => {
         makeConfig({
           extraState: { total: 0 },
           rebuildExtraState,
-        })
+        }),
       )
 
       await store.getState().init()
@@ -227,7 +227,7 @@ describe('createOwnerStore', () => {
         () =>
           new Promise((resolve) => {
             resolveFirst = () => resolve(createESIResponse([1]))
-          })
+          }),
       )
       mockOwners({ 'character-1001': ownerA })
 
@@ -295,7 +295,7 @@ describe('createOwnerStore', () => {
       expect(mockDB.save).toHaveBeenCalledWith(
         'character-1001',
         ownerA,
-        [10, 20, 30]
+        [10, 20, 30],
       )
       expect(store.getState().dataByOwner).toHaveLength(1)
       expect(store.getState().dataByOwner[0]!.items).toEqual([10, 20, 30])
@@ -317,7 +317,7 @@ describe('createOwnerStore', () => {
       })
       // Only ownerB is expired
       mockExpiryCacheState.isExpired.mockImplementation(
-        (...args: unknown[]) => (args[0] as string) === 'character-1002'
+        (...args: unknown[]) => (args[0] as string) === 'character-1002',
       )
 
       await store.getState().update()
@@ -363,7 +363,7 @@ describe('createOwnerStore', () => {
     it('sets scopesOutdated for scope errors', async () => {
       mockDB.loadAll.mockResolvedValue([])
       mockFetchData.mockRejectedValue(
-        new Error('Token is not valid for any required scope')
+        new Error('Token is not valid for any required scope'),
       )
       mockOwners({ 'character-1001': ownerA })
 
@@ -373,7 +373,7 @@ describe('createOwnerStore', () => {
 
       expect(mockSetOwnerScopesOutdated).toHaveBeenCalledWith(
         'character-1001',
-        true
+        true,
       )
     })
 
@@ -385,7 +385,7 @@ describe('createOwnerStore', () => {
       const store = createOwnerStore(
         makeConfig({
           isEmpty: (data) => data.length === 0,
-        })
+        }),
       )
       await store.getState().init()
       await store.getState().update(true)
@@ -395,7 +395,7 @@ describe('createOwnerStore', () => {
         '/test/1001/items/',
         expect.any(Number),
         null,
-        true
+        true,
       )
     })
 
@@ -410,7 +410,7 @@ describe('createOwnerStore', () => {
       mockOwners({ 'character-1001': ownerNoScope })
 
       const store = createOwnerStore(
-        makeConfig({ requiredScope: 'esi-test.scope.v1' })
+        makeConfig({ requiredScope: 'esi-test.scope.v1' }),
       )
       await store.getState().init()
       await store.getState().update(true)
@@ -418,7 +418,7 @@ describe('createOwnerStore', () => {
       expect(mockFetchData).not.toHaveBeenCalled()
       expect(mockSetOwnerScopesOutdated).toHaveBeenCalledWith(
         'character-1001',
-        true
+        true,
       )
     })
 
@@ -465,7 +465,7 @@ describe('createOwnerStore', () => {
         makeConfig({
           extraState: { count: 0 },
           rebuildExtraState,
-        })
+        }),
       )
       await store.getState().init()
       // Clear the call from init
@@ -474,7 +474,7 @@ describe('createOwnerStore', () => {
       await store.getState().update(true)
 
       expect(rebuildExtraState).toHaveBeenCalledWith(
-        expect.arrayContaining([expect.objectContaining({ items: [10, 20] })])
+        expect.arrayContaining([expect.objectContaining({ items: [10, 20] })]),
       )
       expect((store.getState() as unknown as { count: number }).count).toBe(2)
     })
@@ -490,7 +490,7 @@ describe('createOwnerStore', () => {
         makeConfig({
           extraState: { count: 0 },
           rebuildExtraState,
-        })
+        }),
       )
       await store.getState().init()
       rebuildExtraState.mockClear()
@@ -610,7 +610,7 @@ describe('createOwnerStore', () => {
                 etag: null,
               })
             }
-          })
+          }),
       )
 
       const store = createOwnerStore(makeConfig())
@@ -666,7 +666,7 @@ describe('createOwnerStore', () => {
       mockFetchData.mockReturnValueOnce(
         new Promise((r) => {
           resolveFirst = r
-        })
+        }),
       )
 
       const store = createOwnerStore(makeConfig())
@@ -713,11 +713,11 @@ describe('createOwnerStore', () => {
           callOrder.push('after')
           expect(params.previousData).toEqual([1, 2])
           expect(params.newData).toEqual([5, 6])
-        }
+        },
       )
 
       const store = createOwnerStore(
-        makeConfig({ onBeforeOwnerUpdate, onAfterOwnerUpdate })
+        makeConfig({ onBeforeOwnerUpdate, onAfterOwnerUpdate }),
       )
       await store.getState().init()
       await store.getState().updateForOwner(ownerA)
@@ -737,7 +737,7 @@ describe('createOwnerStore', () => {
       })
 
       const store = createOwnerStore(
-        makeConfig({ requiredScope: 'esi-test.scope.v1' })
+        makeConfig({ requiredScope: 'esi-test.scope.v1' }),
       )
       await store.getState().init()
       await store.getState().updateForOwner(ownerNoScope)
@@ -745,7 +745,7 @@ describe('createOwnerStore', () => {
       expect(mockFetchData).not.toHaveBeenCalled()
       expect(mockSetOwnerScopesOutdated).toHaveBeenCalledWith(
         'character-1001',
-        true
+        true,
       )
     })
 
@@ -762,7 +762,7 @@ describe('createOwnerStore', () => {
                 expiresAt: Date.now() + 300_000,
                 etag: null,
               })
-          })
+          }),
       )
 
       const store = createOwnerStore(makeConfig())
@@ -833,7 +833,7 @@ describe('createOwnerStore', () => {
 
       expect(mockDB.delete).toHaveBeenCalledWith('character-1001')
       expect(mockExpiryCacheState.clearForOwner).toHaveBeenCalledWith(
-        'character-1001'
+        'character-1001',
       )
       expect(store.getState().dataByOwner).toHaveLength(1)
       expect(store.getState().dataByOwner[0]!.owner.id).toBe(1002)
@@ -885,7 +885,7 @@ describe('createOwnerStore', () => {
                 expiresAt: Date.now() + 300_000,
                 etag: null,
               })
-          })
+          }),
       )
 
       const store = createOwnerStore(makeConfig())
@@ -920,7 +920,7 @@ describe('createOwnerStore', () => {
 
       expect(mockExpiryCacheState.registerRefreshCallback).toHaveBeenCalledWith(
         '/test/{owner_id}/items/',
-        expect.any(Function)
+        expect.any(Function),
       )
     })
 
@@ -930,7 +930,7 @@ describe('createOwnerStore', () => {
       createOwnerStore(makeConfig({ disableAutoRefresh: true }))
 
       expect(
-        mockExpiryCacheState.registerRefreshCallback
+        mockExpiryCacheState.registerRefreshCallback,
       ).not.toHaveBeenCalled()
     })
 
@@ -947,7 +947,7 @@ describe('createOwnerStore', () => {
           getIsUpdating: expect.any(Function),
           init: expect.any(Function),
           update: expect.any(Function),
-        })
+        }),
       )
     })
   })

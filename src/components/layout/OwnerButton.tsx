@@ -19,17 +19,17 @@ export function OwnerButton() {
   const selectedOwners = useMemo(
     () =>
       owners.filter((o) => selectedOwnerIds.includes(ownerKey(o.type, o.id))),
-    [owners, selectedOwnerIds]
+    [owners, selectedOwnerIds],
   )
 
   const hasAuthFailure = useMemo(
     () => owners.some((o) => o.authFailed),
-    [owners]
+    [owners],
   )
 
   const hasScopesOutdated = useMemo(
     () => owners.some((o) => o.scopesOutdated && !o.authFailed),
-    [owners]
+    [owners],
   )
 
   const handleAddFirstCharacter = async () => {
@@ -123,10 +123,10 @@ export function OwnerButton() {
                 .filter((o) => o.type === 'corporation')
                 .slice(0, 5)
               const totalCharacters = owners.filter(
-                (o) => o.type === 'character'
+                (o) => o.type === 'character',
               ).length
               const totalCorps = owners.filter(
-                (o) => o.type === 'corporation'
+                (o) => o.type === 'corporation',
               ).length
               return (
                 <>

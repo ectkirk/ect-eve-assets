@@ -35,7 +35,7 @@ export const initialOwnerModalState: OwnerModalState = {
 
 export function ownerModalReducer(
   state: OwnerModalState,
-  action: OwnerModalAction
+  action: OwnerModalAction,
 ): OwnerModalState {
   switch (action.type) {
     case 'RESET':

@@ -9,7 +9,7 @@ import {
 
 vi.mock('./reference-cache', () => ({
   getTypeBasePrice: vi.fn((typeId: number) =>
-    typeId === 11399 ? 1000000 : undefined
+    typeId === 11399 ? 1000000 : undefined,
   ),
   isTypeBlueprint: vi.fn((typeId: number) => typeId === 11399),
 }))

@@ -78,7 +78,7 @@ export const TreeRowContent = memo(function TreeRowContent({
   const { t } = useTranslation('common')
   const itemId = node.asset?.item_id
   const hasAbyssalPrice = usePriceStore((s) =>
-    itemId ? s.abyssalPrices.has(itemId) : false
+    itemId ? s.abyssalPrices.has(itemId) : false,
   )
   const hasChildren = node.children.length > 0
   const indentPx = node.depth * 20
@@ -96,7 +96,7 @@ export const TreeRowContent = memo(function TreeRowContent({
       e.stopPropagation()
       onToggleExpand(node.id)
     },
-    [onToggleExpand, node.id]
+    [onToggleExpand, node.id],
   )
 
   return (
@@ -165,7 +165,7 @@ export const TreeRowContent = memo(function TreeRowContent({
                         isDivisionNode &&
                           node.divisionNumber &&
                           DIVISION_COLORS[node.divisionNumber - 1],
-                        node.isBlueprintCopy && 'text-status-special'
+                        node.isBlueprintCopy && 'text-status-special',
                       )}
                       title={node.name}
                     >

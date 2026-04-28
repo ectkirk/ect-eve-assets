@@ -44,7 +44,7 @@ export function useTotalAssets(): AssetTotals {
 
     const { structureRelatedIds, structuresTotal } = calculateStructureValues(
       assetsByOwner,
-      selectedOwnerIds
+      selectedOwnerIds,
     )
 
     const priceStore = usePriceStore.getState()

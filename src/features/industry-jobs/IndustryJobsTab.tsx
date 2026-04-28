@@ -120,7 +120,7 @@ function JobsTable({ jobs, visibleColumns, onSetWaypoint }: JobsTableProps) {
   const [page, setPage] = useState(0)
   const { sortColumn, sortDirection, handleSort } = useSortable<JobSortColumn>(
     'value',
-    'desc'
+    'desc',
   )
 
   const sortedJobs = useMemo(() => {
@@ -152,7 +152,7 @@ function JobsTable({ jobs, visibleColumns, onSetWaypoint }: JobsTableProps) {
   const clampedPage = Math.min(page, totalPages - 1)
   const paginatedJobs = sortedJobs.slice(
     clampedPage * PAGE_SIZE,
-    (clampedPage + 1) * PAGE_SIZE
+    (clampedPage + 1) * PAGE_SIZE,
   )
 
   const show = (col: string) => visibleColumns.has(col)
@@ -326,7 +326,7 @@ function JobsTable({ jobs, visibleColumns, onSetWaypoint }: JobsTableProps) {
                         className={cn(
                           'py-1.5 text-right tabular-nums',
                           duration.isComplete && 'text-status-positive',
-                          !duration.isComplete && 'text-content-secondary'
+                          !duration.isComplete && 'text-content-secondary',
                         )}
                       >
                         {durationText}
@@ -382,7 +382,7 @@ export function IndustryJobsTab() {
 
   const jobsByOwner = useMemo(
     () => useIndustryJobsStore.getJobsByOwner({ itemsById, visibilityByOwner }),
-    [itemsById, visibilityByOwner]
+    [itemsById, visibilityByOwner],
   )
 
   const { isLoading: assetsUpdating } = useAssetData()
@@ -401,7 +401,7 @@ export function IndustryJobsTab() {
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
   const selectedSet = useMemo(
     () => new Set(selectedOwnerIds),
-    [selectedOwnerIds]
+    [selectedOwnerIds],
   )
 
   const JOB_COLUMNS: ColumnConfig[] = useMemo(
@@ -416,16 +416,16 @@ export function IndustryJobsTab() {
       { id: 'time', label: 'columns.time' },
       { id: 'location', label: 'columns.location' },
     ],
-    []
+    [],
   )
 
   const { getColumnsForDropdown, getVisibleColumns } = useColumnSettings(
     'industry-jobs',
-    JOB_COLUMNS
+    JOB_COLUMNS,
   )
   const visibleColumns = useMemo(
     () => new Set(getVisibleColumns()),
-    [getVisibleColumns]
+    [getVisibleColumns],
   )
 
   const [waypointAction, setWaypointAction] = useState<{
@@ -437,7 +437,7 @@ export function IndustryJobsTab() {
     (locationId: number, locationName: string) => {
       setWaypointAction({ locationId, locationName })
     },
-    []
+    [],
   )
 
   const { allJobs, totalValue } = useMemo(() => {
@@ -446,7 +446,7 @@ export function IndustryJobsTab() {
     void priceVersion
 
     const filteredJobsByOwner = jobsByOwner.filter(({ owner }) =>
-      selectedSet.has(ownerKey(owner.type, owner.id))
+      selectedSet.has(ownerKey(owner.type, owner.id)),
     )
 
     const jobs: JobRow[] = []
@@ -496,8 +496,8 @@ export function IndustryJobsTab() {
           j.productName,
           j.ownerName,
           j.locationName,
-          j.activityName
-        )
+          j.activityName,
+        ),
       )
       return { allJobs: filtered, totalValue: value }
     }

@@ -85,7 +85,7 @@ describe('clones-store', () => {
         createMockAuthState({
           'character-12345': charOwner,
           'corporation-98000001': corpOwner,
-        })
+        }),
       )
 
       vi.mocked(esi.fetchWithMeta).mockResolvedValue({
@@ -113,7 +113,7 @@ describe('clones-store', () => {
         type: 'character',
       })
       vi.mocked(useAuthStore.getState).mockReturnValue(
-        createMockAuthState({ 'character-12345': mockOwner })
+        createMockAuthState({ 'character-12345': mockOwner }),
       )
 
       vi.mocked(esi.fetchWithMeta)
@@ -158,7 +158,7 @@ describe('clones-store', () => {
         type: 'character',
       })
       vi.mocked(useAuthStore.getState).mockReturnValue(
-        createMockAuthState({ 'character-12345': mockOwner })
+        createMockAuthState({ 'character-12345': mockOwner }),
       )
 
       vi.mocked(esi.fetchWithMeta).mockRejectedValue(new Error('API Error'))

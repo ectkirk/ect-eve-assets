@@ -15,7 +15,7 @@ export function collectOwnedIds(
   ordersByOwner: OwnerOrders[],
   contractsByOwner: OwnerContracts[],
   jobsByOwner: OwnerJobs[],
-  structuresByOwner: OwnerStructures[]
+  structuresByOwner: OwnerStructures[],
 ): OwnedIds {
   const typeIds = new Set<number>()
   const abyssalItemIds = new Set<number>()

@@ -19,7 +19,7 @@ import type { DBConfig } from './db-constants'
 
 let dbCounter = 0
 function makeConfig(
-  overrides?: Partial<DBConfig> & { stores?: DBConfig['stores'] }
+  overrides?: Partial<DBConfig> & { stores?: DBConfig['stores'] },
 ): DBConfig {
   dbCounter++
   return {
@@ -201,7 +201,7 @@ describe('CRUD operations', () => {
     ])
 
     await idbDeleteWhere(db, 'items', (key) =>
-      (key as string).startsWith('remove')
+      (key as string).startsWith('remove'),
     )
 
     const all = await idbGetAll<{ id: string; value: number }>(db, 'items')

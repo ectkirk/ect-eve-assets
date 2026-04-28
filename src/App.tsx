@@ -166,7 +166,7 @@ function App() {
         setCacheError(getErrorMessage(err))
       }
     },
-    [setInitialLanguage, continueInitialization]
+    [setInitialLanguage, continueInitialization],
   )
 
   useEffect(() => {
@@ -185,7 +185,7 @@ function App() {
         } else {
           useExpiryCacheStore.getState().resume()
         }
-      }
+      },
     )
     return () => unsubscribe?.()
   }, [])

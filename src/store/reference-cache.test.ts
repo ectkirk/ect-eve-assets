@@ -159,7 +159,7 @@ describe('Reference Cache', () => {
 
     it('returns location name for low IDs', () => {
       expect(getLocationName(60003760)).toBe(
-        'Jita IV - Moon 4 - Caldari Navy Assembly Plant'
+        'Jita IV - Moon 4 - Caldari Navy Assembly Plant',
       )
     })
 

@@ -9,7 +9,7 @@ export type ESIAssetName = z.infer<typeof ESIAssetNameSchema>
 async function fetchAssetNames(
   endpoint: string,
   characterId: number,
-  itemIds: number[]
+  itemIds: number[],
 ): Promise<ESIAssetName[]> {
   const chunks = chunkArray(itemIds, 1000)
   const results: ESIAssetName[] = []
@@ -29,7 +29,7 @@ async function fetchAssetNames(
 
 export async function getCharacterAssets(
   characterId: number,
-  authCharacterId?: number
+  authCharacterId?: number,
 ): Promise<ESIAsset[]> {
   return esi.fetchPaginated<ESIAsset>(`/characters/${characterId}/assets`, {
     characterId: authCharacterId ?? characterId,
@@ -40,23 +40,23 @@ export async function getCharacterAssets(
 export async function getCharacterAssetNames(
   characterId: number,
   authCharacterId: number,
-  itemIds: number[]
+  itemIds: number[],
 ): Promise<ESIAssetName[]> {
   return fetchAssetNames(
     `/characters/${characterId}/assets/names`,
     authCharacterId,
-    itemIds
+    itemIds,
   )
 }
 
 export async function getCorporationAssetNames(
   corporationId: number,
   characterId: number,
-  itemIds: number[]
+  itemIds: number[],
 ): Promise<ESIAssetName[]> {
   return fetchAssetNames(
     `/corporations/${corporationId}/assets/names`,
     characterId,
-    itemIds
+    itemIds,
   )
 }

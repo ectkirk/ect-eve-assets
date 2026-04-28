@@ -20,7 +20,7 @@ export function isOffice(typeId: number): boolean {
 export function createItemNode(
   ra: ResolvedAsset,
   depth: number,
-  stationName?: string
+  stationName?: string,
 ): TreeNode {
   const type = getType(ra.typeId)
   const names = getAssetDisplayNames(ra)
@@ -76,7 +76,7 @@ export function createDivisionNode(
   officeItemId: number,
   flag: string,
   depth: number,
-  hangarDivisionNames?: Map<number, string>
+  hangarDivisionNames?: Map<number, string>,
 ): TreeNode {
   const divisionNum = getDivisionNumber(flag)
   const customName = divisionNum
@@ -109,7 +109,7 @@ export function createLocationNode(
     regionName?: string | undefined
     systemId?: number | undefined
     systemName?: string | undefined
-  }
+  },
 ): TreeNode {
   return {
     id,

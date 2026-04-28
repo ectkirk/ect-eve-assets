@@ -200,11 +200,11 @@ export function getAllCategories(publishedOnly = false): CachedCategory[] {
 
 export function getGroupsByCategory(
   categoryId: number,
-  publishedOnly = false
+  publishedOnly = false,
 ): CachedGroup[] {
   return Array.from(useReferenceCacheStore.getState().groups.values()).filter(
     (g) =>
-      g.categoryId === categoryId && (!publishedOnly || g.published === true)
+      g.categoryId === categoryId && (!publishedOnly || g.published === true),
   )
 }
 
@@ -222,14 +222,14 @@ export function getAllStargates(): CachedStargate[] {
 
 export function getStationsBySystemId(systemId: number): CachedStation[] {
   return Array.from(useReferenceCacheStore.getState().stations.values()).filter(
-    (s) => s.systemId === systemId
+    (s) => s.systemId === systemId,
   )
 }
 
 export function getRefStructuresBySystemId(
-  systemId: number
+  systemId: number,
 ): CachedRefStructure[] {
   return Array.from(
-    useReferenceCacheStore.getState().refStructures.values()
+    useReferenceCacheStore.getState().refStructures.values(),
   ).filter((s) => s.systemId === systemId)
 }

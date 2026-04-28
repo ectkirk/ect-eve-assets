@@ -14,7 +14,7 @@ export const NO_SUBJECT = '(No Subject)'
 
 export function matchesMailFilter(
   mail: ESIMailHeader,
-  filterType: MailFilterType
+  filterType: MailFilterType,
 ): boolean {
   const isInbox = mail.labels?.includes(LABEL_INBOX)
   const isSent = mail.labels?.includes(LABEL_SENT)
@@ -65,7 +65,7 @@ function normalizeSubject(subject: string | undefined): string {
 
 function getConversationPartnerId(
   mail: ESIMailHeader,
-  characterId: number
+  characterId: number,
 ): number {
   if (mail.from === characterId) {
     return mail.recipients?.[0]?.recipient_id ?? 0
@@ -118,7 +118,7 @@ export function CharacterMailPanel({
   const resolveName = useCallback(
     (id: number): string =>
       resolvedNames.get(id) ?? getName(id)?.name ?? t('mail.unknownId', { id }),
-    [resolvedNames, t]
+    [resolvedNames, t],
   )
 
   const timeGroups = useMemo((): TimeGroup[] => {
@@ -147,7 +147,7 @@ export function CharacterMailPanel({
     if (filter) {
       const filterLower = filter.toLowerCase()
       filteredMails = filteredMails.filter((m) =>
-        matchesSearchLower(filterLower, m.mail.subject, m.fromName, m.toNames)
+        matchesSearchLower(filterLower, m.mail.subject, m.fromName, m.toNames),
       )
     }
 
@@ -184,14 +184,14 @@ export function CharacterMailPanel({
       conv.mails.sort(
         (a, b) =>
           new Date(b.mail.timestamp).getTime() -
-          new Date(a.mail.timestamp).getTime()
+          new Date(a.mail.timestamp).getTime(),
       )
     }
 
     const conversations = Array.from(conversationMap.values()).sort(
       (a, b) =>
         new Date(b.latestTimestamp).getTime() -
-        new Date(a.latestTimestamp).getTime()
+        new Date(a.latestTimestamp).getTime(),
     )
 
     const groupMap = new Map<string, Conversation[]>()
@@ -266,7 +266,7 @@ export function CharacterMailPanel({
                         <span
                           className={cn(
                             'truncate text-sm',
-                            conv.hasUnread && 'font-medium'
+                            conv.hasUnread && 'font-medium',
                           )}
                         >
                           {conv.subject}
@@ -302,7 +302,7 @@ export function CharacterMailPanel({
                               <span
                                 className={cn(
                                   'truncate',
-                                  item.mail.is_read === false && 'font-medium'
+                                  item.mail.is_read === false && 'font-medium',
                                 )}
                               >
                                 {item.mail.subject ?? NO_SUBJECT}

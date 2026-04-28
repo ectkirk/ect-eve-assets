@@ -23,7 +23,7 @@ export function registerMutamarketHandlers(): void {
       try {
         const getResponse = await fetchWithTimeout(
           `${MUTAMARKET_API_BASE}/modules/${itemId}`,
-          { headers, timeoutMs: MUTAMARKET_TIMEOUT_MS }
+          { headers, timeoutMs: MUTAMARKET_TIMEOUT_MS },
         )
 
         if (getResponse.ok) {
@@ -48,7 +48,7 @@ export function registerMutamarketHandlers(): void {
             headers,
             body: JSON.stringify({ type_id: typeId, item_id: itemId }),
             timeoutMs: MUTAMARKET_TIMEOUT_MS,
-          }
+          },
         )
 
         if (!postResponse.ok) {
@@ -68,6 +68,6 @@ export function registerMutamarketHandlers(): void {
         })
         return { error: String(err) }
       }
-    }
+    },
   )
 }

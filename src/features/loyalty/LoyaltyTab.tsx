@@ -51,12 +51,12 @@ export function LoyaltyTab() {
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
   const selectedSet = useMemo(
     () => new Set(selectedOwnerIds),
-    [selectedOwnerIds]
+    [selectedOwnerIds],
   )
 
   const { sortColumn, sortDirection, handleSort } = useSortable<SortColumn>(
     'corporation',
-    'asc'
+    'asc',
   )
 
   const { rows, corpTotals } = useMemo(() => {
@@ -66,7 +66,7 @@ export function LoyaltyTab() {
     const corpMap = new Map<number, { name: string; total: number }>()
 
     const filteredLoyaltyByOwner = loyaltyByOwner.filter(({ owner }) =>
-      selectedSet.has(ownerKey(owner.type, owner.characterId))
+      selectedSet.has(ownerKey(owner.type, owner.characterId)),
     )
 
     for (const { owner, loyaltyPoints } of filteredLoyaltyByOwner) {
@@ -102,7 +102,7 @@ export function LoyaltyTab() {
     if (search) {
       const searchLower = search.toLowerCase()
       filtered = filtered.filter((row) =>
-        matchesSearchLower(searchLower, row.ownerName, row.corporationName)
+        matchesSearchLower(searchLower, row.ownerName, row.corporationName),
       )
     }
 
@@ -121,7 +121,7 @@ export function LoyaltyTab() {
           default:
             return 0
         }
-      }
+      },
     )
 
     const corpTotals = Array.from(corpMap.entries())
@@ -155,7 +155,7 @@ export function LoyaltyTab() {
 
   const charactersNeedingReauth = useMemo(
     () => owners.filter((o) => o.type === 'character' && o.scopesOutdated),
-    [owners]
+    [owners],
   )
 
   const loadingState = TabLoadingState({

@@ -25,7 +25,7 @@ export interface SelectedContractData {
 
 function toDisplayContract(
   row: ContractRow,
-  t: (key: string) => string
+  t: (key: string) => string,
 ): SelectedContractData {
   const contract = row.contractWithItems.contract
   const items = row.items
@@ -73,7 +73,7 @@ function WantToBuyLabel({ direction }: { direction: 'in' | 'out' }) {
     <div
       className={cn(
         'text-xs',
-        direction === 'in' ? 'text-status-negative' : 'text-status-info'
+        direction === 'in' ? 'text-status-negative' : 'text-status-info',
       )}
     >
       {direction === 'in' ? t('direction.youProvide') : t('direction.youWant')}
@@ -175,7 +175,7 @@ export function ContractTableRow({
                           className={cn(
                             'truncate',
                             row.firstItemIsBlueprintCopy &&
-                              'text-status-special'
+                              'text-status-special',
                           )}
                           title={row.typeName}
                         >
@@ -218,7 +218,7 @@ export function ContractTableRow({
             <TableCell
               className={cn(
                 'py-1.5 text-right tabular-nums',
-                value < 0 ? 'text-status-negative' : 'text-status-highlight'
+                value < 0 ? 'text-status-negative' : 'text-status-highlight',
               )}
             >
               {value !== 0 ? (
@@ -259,7 +259,7 @@ export function ContractTableRow({
                 'py-1.5 text-right tabular-nums',
                 expiryTime.expired
                   ? 'text-status-negative'
-                  : 'text-content-secondary'
+                  : 'text-content-secondary',
               )}
             >
               {contract.type === 'courier' && contract.status === 'in_progress'
@@ -339,7 +339,7 @@ function DaysCell({
   if (contract.status === 'in_progress') {
     const remaining = getCourierTimeRemaining(
       contract.date_accepted,
-      contract.days_to_complete
+      contract.days_to_complete,
     )
     if (!remaining || remaining.expired) {
       return (
@@ -354,7 +354,7 @@ function DaysCell({
       <TableCell
         className={cn(
           'py-1.5 text-right tabular-nums',
-          isUrgent ? 'text-status-negative' : 'text-content-secondary'
+          isUrgent ? 'text-status-negative' : 'text-content-secondary',
         )}
       >
         {tc('time.daysHours', { days: remaining.days, hours: remaining.hours })}

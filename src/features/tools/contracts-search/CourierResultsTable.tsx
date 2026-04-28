@@ -76,7 +76,7 @@ export function CourierResultsTable({
   const { t } = useTranslation('tools')
   const { t: tCommon } = useTranslation('common')
   const { sortColumn, sortDirection, handleSort } = useSortToggle(
-    getDefaultSortDirection
+    getDefaultSortDirection,
   )
   const tableRef = useRef<HTMLDivElement>(null)
   const [ingameAction, setIngameAction] = useState<{
@@ -110,7 +110,7 @@ export function CourierResultsTable({
           expiryTime: new Date(c.dateExpired).getTime(),
         }
       }),
-    [contracts]
+    [contracts],
   )
 
   const sortedContracts = useMemo(() => {

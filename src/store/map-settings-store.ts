@@ -23,11 +23,11 @@ export const useMapSettingsStore = create<MapSettingsState>()(
       removeAnsiblexCharacter: (characterId) =>
         set((s) => ({
           ansiblexCharacterIds: s.ansiblexCharacterIds.filter(
-            (id) => id !== characterId
+            (id) => id !== characterId,
           ),
         })),
       setUseAnsiblexes: (use) => set({ useAnsiblexes: use }),
     }),
-    { name: 'map-settings' }
-  )
+    { name: 'map-settings' },
+  ),
 )

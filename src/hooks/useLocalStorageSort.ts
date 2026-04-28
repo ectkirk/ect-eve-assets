@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react'
 
 export function useLocalStorageSort<T extends string>(
   key: string,
-  defaultValue: T
+  defaultValue: T,
 ): [T, (value: T) => void] {
   const [sortBy, setSortByState] = useState<T>(() => {
     try {
@@ -22,7 +22,7 @@ export function useLocalStorageSort<T extends string>(
         // Ignore storage errors
       }
     },
-    [key]
+    [key],
   )
 
   return [sortBy, setSortBy]

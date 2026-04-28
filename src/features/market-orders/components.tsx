@@ -9,7 +9,7 @@ import type { SortColumn, DiffSortMode } from './types'
 
 export function formatExpiry(issued: string, duration: number): string {
   const expiryDate = new Date(
-    new Date(issued).getTime() + duration * MS_PER_DAY
+    new Date(issued).getTime() + duration * MS_PER_DAY,
   )
   return formatExpiryInfo(expiryDate.toISOString()).text
 }
@@ -172,7 +172,7 @@ export function DiffHeader({
               {t('marketOrders.sortByPercent')}
             </button>
           </div>,
-          document.body
+          document.body,
         )}
     </TableHead>
   )

@@ -336,7 +336,7 @@ describe('ref-client', () => {
             name: 'Celestial 40099999',
             type: 'celestial',
           }),
-        ])
+        ]),
       )
     })
   })

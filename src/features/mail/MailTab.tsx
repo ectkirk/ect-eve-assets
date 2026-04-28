@@ -22,7 +22,7 @@ import { MailDetailModal } from './MailDetailModal'
 
 function countFilteredMails(
   mails: ESIMailHeader[],
-  filterType: MailFilterType
+  filterType: MailFilterType,
 ): number {
   return mails.filter((mail) => matchesMailFilter(mail, filterType)).length
 }
@@ -32,12 +32,12 @@ export function MailTab() {
   const ownersRecord = useAuthStore((s) => s.owners)
   const characters = useMemo(
     () => Object.values(ownersRecord).filter((o) => o.type === 'character'),
-    [ownersRecord]
+    [ownersRecord],
   )
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
   const selectedSet = useMemo(
     () => new Set(selectedOwnerIds),
-    [selectedOwnerIds]
+    [selectedOwnerIds],
   )
 
   const mailByOwner = useMailStore((s) => s.dataByOwner)
@@ -59,10 +59,10 @@ export function MailTab() {
   const [filterType, setFilterType] = useState<MailFilterType>('inbox')
   const [sortBy, setSortBy] = useLocalStorageSort<CharacterSortValue>(
     'ecteve:sort:mail',
-    'name'
+    'name',
   )
   const [resolvedNames, setResolvedNames] = useState<Map<number, string>>(
-    new Map()
+    new Map(),
   )
 
   useEffect(() => {
@@ -137,16 +137,16 @@ export function MailTab() {
     const getNewestTimestamp = (mails: ESIMailHeader[]): string =>
       mails.reduce(
         (max, mail) => (mail.timestamp > max ? mail.timestamp : max),
-        ''
+        '',
       )
 
     const filtered = mailByOwner.filter((data) =>
-      selectedSet.has(ownerKey(data.owner.type, data.owner.characterId))
+      selectedSet.has(ownerKey(data.owner.type, data.owner.characterId)),
     )
     return filtered.sort((a, b) => {
       if (sortBy === 'metric') {
         const cmp = getNewestTimestamp(b.mails).localeCompare(
-          getNewestTimestamp(a.mails)
+          getNewestTimestamp(a.mails),
         )
         if (cmp !== 0) return cmp
       }

@@ -41,27 +41,27 @@ export const EMPTY_PRICE_DATA: PriceData = {
 export const DEFAULT_REGION_ID = 10000002
 
 export async function getCharacterOrders(
-  characterId: number
+  characterId: number,
 ): Promise<ESIMarketOrder[]> {
   return esi.fetchPaginated<ESIMarketOrder>(
     `/characters/${characterId}/orders`,
     {
       characterId,
       schema: ESIMarketOrderSchema,
-    }
+    },
   )
 }
 
 export async function getCorporationOrders(
   characterId: number,
-  corporationId: number
+  corporationId: number,
 ): Promise<ESICorporationMarketOrder[]> {
   return esi.fetchPaginated<ESICorporationMarketOrder>(
     `/corporations/${corporationId}/orders`,
     {
       characterId,
       schema: ESICorporationMarketOrderSchema,
-    }
+    },
   )
 }
 
@@ -152,16 +152,16 @@ function calculatePriceData(orders: ESIRegionOrder[]): PriceData {
 }
 
 async function fetchAllRegionOrders(
-  regionId: number
+  regionId: number,
 ): Promise<ESIRegionOrder[]> {
   return esi.fetchPaginated<ESIRegionOrder>(
     `/markets/${regionId}/orders?order_type=all`,
-    { requiresAuth: false, schema: ESIRegionOrderSchema }
+    { requiresAuth: false, schema: ESIRegionOrderSchema },
   )
 }
 
 export async function getRegionalMarketPrices(
-  regionId: number = DEFAULT_REGION_ID
+  regionId: number = DEFAULT_REGION_ID,
 ): Promise<Map<number, PriceData>> {
   const allOrders = await fetchAllRegionOrders(regionId)
 
@@ -186,20 +186,20 @@ export async function getRegionalMarketPrices(
 export async function getRegionalOrders(
   regionId: number,
   typeId: number,
-  orderType: 'sell' | 'buy'
+  orderType: 'sell' | 'buy',
 ): Promise<ESIRegionOrder[]> {
   return esi.fetchPaginated<ESIRegionOrder>(
     `/markets/${regionId}/orders?order_type=${orderType}&type_id=${typeId}`,
-    { requiresAuth: false, schema: ESIRegionOrderSchema }
+    { requiresAuth: false, schema: ESIRegionOrderSchema },
   )
 }
 
 export async function getStructureOrders(
   structureId: number,
-  characterId: number
+  characterId: number,
 ): Promise<ESIStructureOrder[]> {
   return esi.fetchPaginated<ESIStructureOrder>(
     `/markets/structures/${structureId}`,
-    { characterId, schema: ESIStructureOrderSchema }
+    { characterId, schema: ESIStructureOrderSchema },
   )
 }

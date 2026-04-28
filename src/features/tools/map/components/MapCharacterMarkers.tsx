@@ -54,7 +54,7 @@ export const MapCharacterMarkers = memo(function MapCharacterMarkers({
         system.canvasY,
         camera,
         width,
-        height
+        height,
       )
 
       if (x < -50 || x > width + 50 || y < -50 || y > height + 50) continue

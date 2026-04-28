@@ -67,15 +67,15 @@ interface PriceActions {
   hasAbyssalPrice: (itemId: number) => boolean
   ensureJitaPrices: (
     typeIds: number[],
-    abyssalItemIds?: number[]
+    abyssalItemIds?: number[],
   ) => Promise<Map<number, number>>
   setAbyssalPrices: (
-    prices: { itemId: number; price: number }[]
+    prices: { itemId: number; price: number }[],
   ) => Promise<void>
   setMarketPrices: (prices: Map<number, number>) => void
   refreshAllJitaPrices: (
     typeIds: number[],
-    abyssalItemIds?: number[]
+    abyssalItemIds?: number[],
   ) => Promise<void>
   refreshEsiPrices: () => Promise<void>
   clearAbyssal: () => Promise<void>
@@ -106,21 +106,21 @@ async function triggerJitaRefreshIfNeeded(): Promise<void> {
       useMarketOrdersStore.getOrdersByOwner(),
       useContractsStore.getContractsByOwner(),
       useIndustryJobsStore.getJobsByOwner(),
-      useStructuresStore.getState().dataByOwner
+      useStructuresStore.getState().dataByOwner,
     )
 
     if (typeIds.size > 0 || abyssalItemIds.size > 0) {
       logger.info('Jita price refresh triggered', { module: 'PriceStore' })
       await state.refreshAllJitaPrices(
         Array.from(typeIds),
-        Array.from(abyssalItemIds)
+        Array.from(abyssalItemIds),
       )
     }
   } catch (err) {
     logger.error(
       'Jita refresh timer failed',
       err instanceof Error ? err : undefined,
-      { module: 'PriceStore' }
+      { module: 'PriceStore' },
     )
   }
 }
@@ -189,7 +189,7 @@ export const usePriceStore = create<PriceStore>((set, get) => ({
         logger.error(
           'Failed to init price store',
           err instanceof Error ? err : undefined,
-          { module: 'PriceStore' }
+          { module: 'PriceStore' },
         )
         set({ initialized: true })
       }
@@ -273,14 +273,14 @@ export const usePriceStore = create<PriceStore>((set, get) => ({
     const { fetchPrices } = await import('@/api/ref-market')
     const fetched = await fetchPrices(
       missingTypeIds,
-      missingAbyssalIds.length > 0 ? missingAbyssalIds : undefined
+      missingAbyssalIds.length > 0 ? missingAbyssalIds : undefined,
     )
 
     const stored = await storeAndPersistPrices(
       fetched,
       missingAbyssalSet,
       set,
-      get
+      get,
     )
     for (const [id, price] of stored) {
       results.set(id, price)
@@ -335,7 +335,7 @@ export const usePriceStore = create<PriceStore>((set, get) => ({
       const { fetchPrices } = await import('@/api/ref-market')
       const fetched = await fetchPrices(
         typeIds,
-        hasAbyssalIds ? abyssalItemIds : undefined
+        hasAbyssalIds ? abyssalItemIds : undefined,
       )
 
       const abyssalIdSet = hasAbyssalIds
@@ -355,7 +355,7 @@ export const usePriceStore = create<PriceStore>((set, get) => ({
       logger.error(
         'Failed to refresh prices',
         err instanceof Error ? err : undefined,
-        { module: 'PriceStore' }
+        { module: 'PriceStore' },
       )
     } finally {
       set({ isUpdatingJita: false })
@@ -406,7 +406,7 @@ export const usePriceStore = create<PriceStore>((set, get) => ({
       logger.error(
         'Failed to fetch ESI prices',
         err instanceof Error ? err : undefined,
-        { module: 'PriceStore' }
+        { module: 'PriceStore' },
       )
     } finally {
       set({ isUpdatingEsi: false })

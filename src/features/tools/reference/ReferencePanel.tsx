@@ -23,7 +23,7 @@ const SEARCH_LIMIT_GROUPS = 10
 const SEARCH_LIMIT_TYPES = 20
 
 const ItemDetailPanel = lazy(() =>
-  import('./ItemDetailPanel').then((m) => ({ default: m.ItemDetailPanel }))
+  import('./ItemDetailPanel').then((m) => ({ default: m.ItemDetailPanel })),
 )
 
 interface ReferencePanelProps {
@@ -42,13 +42,13 @@ export function ReferencePanel({
   const debouncedQuery = useDebouncedValue(searchQuery, SEARCH_DEBOUNCE_MS)
   const searchContainerRef = useRef<HTMLDivElement>(null)
   const [expandedCategoryIds, setExpandedCategoryIds] = useState<Set<number>>(
-    new Set()
+    new Set(),
   )
   const [expandedGroupIds, setExpandedGroupIds] = useState<Set<number>>(
-    new Set()
+    new Set(),
   )
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(
-    null
+    null,
   )
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null)
   const [selectedTypeId, setSelectedTypeId] = useState<number | null>(null)
@@ -187,7 +187,7 @@ export function ReferencePanel({
       setSelectedGroupId(groupId)
       setSelectedTypeId(null)
     },
-    [groups]
+    [groups],
   )
 
   const handleSelectType = useCallback(
@@ -203,7 +203,7 @@ export function ReferencePanel({
       setSearchQuery('')
       setDropdownOpen(false)
     },
-    [types]
+    [types],
   )
 
   const lastHandledTypeId = useRef<number | null>(null)
@@ -225,7 +225,7 @@ export function ReferencePanel({
       setSearchQuery('')
       setDropdownOpen(false)
     },
-    [handleSelectCategory]
+    [handleSelectCategory],
   )
 
   const handleSearchGroupClick = useCallback(
@@ -239,7 +239,7 @@ export function ReferencePanel({
       setSearchQuery('')
       setDropdownOpen(false)
     },
-    [groups, handleSelectGroup]
+    [groups, handleSelectGroup],
   )
 
   const handleExpandAll = useCallback(() => {

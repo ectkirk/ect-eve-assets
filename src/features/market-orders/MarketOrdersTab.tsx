@@ -35,7 +35,7 @@ export function MarketOrdersTab() {
   const ordersByOwner = useMemo(
     () =>
       useMarketOrdersStore.getOrdersByOwner({ itemsById, visibilityByOwner }),
-    [itemsById, visibilityByOwner]
+    [itemsById, visibilityByOwner],
   )
 
   const { isLoading: assetsUpdating } = useAssetData()
@@ -50,7 +50,7 @@ export function MarketOrdersTab() {
 
   const pricesByLocation = useRegionalMarketStore((s) => s.pricesByLocation)
   const buyPricesByLocation = useRegionalMarketStore(
-    (s) => s.buyPricesByLocation
+    (s) => s.buyPricesByLocation,
   )
 
   const { search, setTotalValue, setColumns, setOrderTypeFilter } =
@@ -58,7 +58,7 @@ export function MarketOrdersTab() {
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
   const selectedSet = useMemo(
     () => new Set(selectedOwnerIds),
-    [selectedOwnerIds]
+    [selectedOwnerIds],
   )
 
   const [orderTypeValue, setOrderTypeValue] = useState<OrderTypeValue>('all')
@@ -76,7 +76,7 @@ export function MarketOrdersTab() {
         targetName: locationName,
       })
     },
-    []
+    [],
   )
 
   const handleOpenMarket = useCallback((typeId: number, typeName: string) => {
@@ -100,23 +100,23 @@ export function MarketOrdersTab() {
         })
       }
     },
-    []
+    [],
   )
 
   const { getColumnsForDropdown, getVisibleColumns } = useColumnSettings(
     'market-orders',
-    ORDER_COLUMNS
+    ORDER_COLUMNS,
   )
   const visibleColumns = useMemo(
     () => new Set(getVisibleColumns()),
-    [getVisibleColumns]
+    [getVisibleColumns],
   )
 
   const allOrders = useMemo(() => {
     void structures
 
     const filteredOrdersByOwner = ordersByOwner.filter(({ owner }) =>
-      selectedSet.has(ownerKey(owner.type, owner.id))
+      selectedSet.has(ownerKey(owner.type, owner.id)),
     )
 
     const orders: OrderRow[] = []
@@ -176,8 +176,8 @@ export function MarketOrdersTab() {
           o.ownerName,
           o.locationName,
           o.regionName,
-          o.systemName
-        )
+          o.systemName,
+        ),
       )
     }
 

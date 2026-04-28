@@ -30,12 +30,12 @@ type StructureResult =
 
 async function getStructureFromESI(
   structureId: number,
-  characterId: number
+  characterId: number,
 ): Promise<StructureResult> {
   try {
     const data = await esi.fetch<ESIStructure>(
       `/universe/structures/${structureId}`,
-      { characterId, schema: ESIStructureSchema }
+      { characterId, schema: ESIStructureSchema },
     )
     return { status: 'success', data, characterId }
   } catch (error) {
@@ -48,7 +48,7 @@ async function getStructureFromESI(
 }
 
 export async function resolveStructures(
-  structureToCharacter: Map<number, number>
+  structureToCharacter: Map<number, number>,
 ): Promise<Map<number, CachedStructure>> {
   const results = new Map<number, CachedStructure>()
   const uncached = new Map<number, number>()
@@ -67,7 +67,7 @@ export async function resolveStructures(
 
   // NPC stations via ref API
   const npcIds = Array.from(uncached.keys()).filter(
-    (id) => id < PLAYER_STRUCTURE_ID_THRESHOLD
+    (id) => id < PLAYER_STRUCTURE_ID_THRESHOLD,
   )
   if (npcIds.length > 0) {
     const resolved = await resolveLocations(npcIds)
@@ -89,7 +89,7 @@ export async function resolveStructures(
 
   // Player structures via ESI - only try the character who owns assets there
   const playerStructures = Array.from(uncached.entries()).filter(
-    ([id]) => id >= PLAYER_STRUCTURE_ID_THRESHOLD
+    ([id]) => id >= PLAYER_STRUCTURE_ID_THRESHOLD,
   )
 
   if (playerStructures.length > 0) {
@@ -142,7 +142,7 @@ const NAMES_CACHE_TTL_MS = 24 * 60 * 60 * 1000
 const NAMES_CACHE_MAX_SIZE = 10000
 const namesCache = createLRUCache<number, ESIName>(
   NAMES_CACHE_TTL_MS,
-  NAMES_CACHE_MAX_SIZE
+  NAMES_CACHE_MAX_SIZE,
 )
 
 export function getName(id: number): ESIName | undefined {
@@ -158,7 +158,7 @@ export function clearNamesLRUCache(): void {
 }
 
 export async function resolveNames(
-  ids: number[]
+  ids: number[],
 ): Promise<Map<number, ESIName>> {
   if (ids.length === 0) return new Map()
 

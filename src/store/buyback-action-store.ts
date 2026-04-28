@@ -13,7 +13,7 @@ export const useBuybackActionStore = createActionStore<
 >('triggerBuyback', (action) => action)
 
 export function getSecurityTab(
-  securityStatus: number | null | undefined
+  securityStatus: number | null | undefined,
 ): BuybackTabType {
   if (securityStatus === null || securityStatus === undefined) {
     return 'nullsec'

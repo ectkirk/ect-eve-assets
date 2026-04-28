@@ -9,7 +9,7 @@ function validateRefResponse<T>(
   rawData: unknown,
   schema: z.ZodType<T>,
   endpoint: string,
-  context?: Record<string, unknown>
+  context?: Record<string, unknown>,
 ): T | null {
   if (rawData && typeof rawData === 'object' && 'error' in rawData) {
     logger.warn(`RefAPI ${endpoint} failed`, {
@@ -43,7 +43,7 @@ interface JitaRequestParams {
 }
 
 async function fetchJitaPricesFromAPI(
-  params: JitaRequestParams
+  params: JitaRequestParams,
 ): Promise<Map<number, number>> {
   const { typeIds, itemIds, contractTypeIds, includePlex } = params
 
@@ -96,7 +96,7 @@ async function fetchJitaPricesFromAPI(
         rawData,
         MarketJitaResponseSchema,
         '/market/jita',
-        { requested: chunk.length, duration }
+        { requested: chunk.length, duration },
       )
       if (!data) continue
 
@@ -158,7 +158,7 @@ async function fetchJitaPricesFromAPI(
 
 async function fetchPricesConsolidated(
   typeIds: number[],
-  itemIds?: number[]
+  itemIds?: number[],
 ): Promise<Map<number, number>> {
   if (typeIds.length === 0 && (!itemIds || itemIds.length === 0)) {
     return new Map()
@@ -166,11 +166,11 @@ async function fetchPricesConsolidated(
 
   const pricableTypeIds = typeIds.filter(
     (id) =>
-      isTypePublished(id) && isTypeMarketable(id) && !EXCLUDED_TYPE_IDS.has(id)
+      isTypePublished(id) && isTypeMarketable(id) && !EXCLUDED_TYPE_IDS.has(id),
   )
 
   const contractTypeIds = pricableTypeIds.filter((id) =>
-    CONTRACT_PRICED_TYPE_IDS.has(id)
+    CONTRACT_PRICED_TYPE_IDS.has(id),
   )
   const includePlex = pricableTypeIds.includes(PLEX_TYPE_ID)
 
@@ -204,7 +204,7 @@ async function fetchPricesConsolidated(
 
 export async function fetchPrices(
   typeIds: number[],
-  itemIds?: number[]
+  itemIds?: number[],
 ): Promise<Map<number, number>> {
   return fetchPricesConsolidated(typeIds, itemIds)
 }

@@ -76,56 +76,56 @@ describe('Error Utilities', () => {
     it('returns friendly message for ESI 503', () => {
       const err = new ESIError('Service unavailable', 503)
       expect(getUserFriendlyMessage(err)).toBe(
-        'EVE servers are currently unavailable. Please try again later.'
+        'EVE servers are currently unavailable. Please try again later.',
       )
     })
 
     it('returns friendly message for ESI 420', () => {
       const err = new ESIError('Rate limited', 420)
       expect(getUserFriendlyMessage(err)).toBe(
-        'Too many requests. Please wait a moment.'
+        'Too many requests. Please wait a moment.',
       )
     })
 
     it('returns friendly message for ESI 429', () => {
       const err = new ESIError('Rate limited', 429)
       expect(getUserFriendlyMessage(err)).toBe(
-        'Too many requests. Please wait a moment.'
+        'Too many requests. Please wait a moment.',
       )
     })
 
     it('returns friendly message for ESI 401', () => {
       const err = new ESIError('Unauthorized', 401)
       expect(getUserFriendlyMessage(err)).toBe(
-        'Authentication expired. Please re-login.'
+        'Authentication expired. Please re-login.',
       )
     })
 
     it('returns friendly message for ESI 403', () => {
       const err = new ESIError('Forbidden', 403)
       expect(getUserFriendlyMessage(err)).toBe(
-        'You do not have permission to access this data.'
+        'You do not have permission to access this data.',
       )
     })
 
     it('returns friendly message for ESI 404', () => {
       const err = new ESIError('Not found', 404)
       expect(getUserFriendlyMessage(err)).toBe(
-        'The requested data was not found.'
+        'The requested data was not found.',
       )
     })
 
     it('returns friendly message for MktMarketOpening', () => {
       const err = new ESIError('MktMarketOpening', 500)
       expect(getUserFriendlyMessage(err)).toBe(
-        'Market data is unavailable during daily downtime.'
+        'Market data is unavailable during daily downtime.',
       )
     })
 
     it('returns friendly message for SDE_SERVICE_UNAVAILABLE', () => {
       const err = new ESIError('SDE_SERVICE_UNAVAILABLE', 500)
       expect(getUserFriendlyMessage(err)).toBe(
-        'EVE static data is temporarily unavailable.'
+        'EVE static data is temporarily unavailable.',
       )
     })
 

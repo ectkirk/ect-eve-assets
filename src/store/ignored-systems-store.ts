@@ -86,6 +86,6 @@ export const useIgnoredSystemsStore = create<IgnoredSystemsState>()(
           localStorage.removeItem(name)
         },
       },
-    }
-  )
+    },
+  ),
 )

@@ -245,10 +245,10 @@ describe('guessRateLimitGroup', () => {
 describe('isContractItemsEndpoint', () => {
   it('identifies contract items endpoints', () => {
     expect(isContractItemsEndpoint('/characters/123/contracts/456/items')).toBe(
-      true
+      true,
     )
     expect(
-      isContractItemsEndpoint('/corporations/123/contracts/456/items')
+      isContractItemsEndpoint('/corporations/123/contracts/456/items'),
     ).toBe(true)
   })
 

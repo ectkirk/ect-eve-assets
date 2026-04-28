@@ -54,7 +54,7 @@ export function SystemInput({
 
       performSearch(newQuery)
     },
-    [performSearch]
+    [performSearch],
   )
 
   const handleSelect = useCallback(
@@ -65,7 +65,7 @@ export function SystemInput({
       setShowDropdown(false)
       setIsEditing(false)
     },
-    [onSelect]
+    [onSelect],
   )
 
   const handleFocus = useCallback(() => {

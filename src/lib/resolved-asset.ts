@@ -122,7 +122,7 @@ export interface ResolvedAssetsByOwner {
 
 export function matchesAssetTypeFilter(
   modeFlags: AssetModeFlags,
-  filterValue: string
+  filterValue: string,
 ): boolean {
   if (!filterValue) return true
   switch (filterValue) {
@@ -160,6 +160,6 @@ export function matchesSearch(ra: ResolvedAsset, search: string): boolean {
     names.groupName,
     names.locationName,
     names.systemName,
-    names.regionName
+    names.regionName,
   )
 }

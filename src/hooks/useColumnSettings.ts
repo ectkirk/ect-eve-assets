@@ -44,7 +44,7 @@ export function useColumnSettings(storageKey: string, columns: ColumnConfig[]) {
 
   const toggleVisibility = useCallback((columnId: string) => {
     setVisibility((prev) =>
-      setRecordValue(prev, columnId, !(getRecordValue(prev, columnId) ?? true))
+      setRecordValue(prev, columnId, !(getRecordValue(prev, columnId) ?? true)),
     )
   }, [])
 

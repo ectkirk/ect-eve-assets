@@ -828,24 +828,24 @@ export interface ESIAPI {
   fetch: <T>(endpoint: string, options?: ESIRequestOptions) => Promise<T>
   fetchWithMeta: <T>(
     endpoint: string,
-    options?: ESIRequestOptions
+    options?: ESIRequestOptions,
   ) => Promise<ESIResponseMeta<T>>
   fetchPaginated: <T>(
     endpoint: string,
-    options?: ESIRequestOptions
+    options?: ESIRequestOptions,
   ) => Promise<T[]>
   fetchPaginatedWithMeta: <T>(
     endpoint: string,
-    options?: ESIRequestOptions
+    options?: ESIRequestOptions,
   ) => Promise<ESIResponseMeta<T[]>>
   fetchPaginatedWithProgress: <T>(
     endpoint: string,
     options?: ESIRequestOptions,
-    progressChannel?: string
+    progressChannel?: string,
   ) => Promise<ESIResponseMeta<T[]>>
   onPaginatedProgress: (
     channel: string,
-    callback: (progress: { current: number; total: number }) => void
+    callback: (progress: { current: number; total: number }) => void,
   ) => () => void
   clearCache: () => Promise<void>
   clearCacheByPattern: (pattern: string) => Promise<number>
@@ -862,7 +862,7 @@ export interface ElectronAPI {
   cancelAuth: () => Promise<void>
   refreshToken: (
     refreshToken: string,
-    characterId: number
+    characterId: number,
   ) => Promise<AuthResult>
   logout: (characterId?: number) => Promise<{ success: boolean }>
   storageGet: () => Promise<Record<string, unknown> | null>
@@ -870,13 +870,13 @@ export interface ElectronAPI {
   writeLog: (
     level: LogLevel,
     message: string,
-    context?: LogContext
+    context?: LogContext,
   ) => Promise<void>
   getLogDir: () => Promise<string>
   openLogsFolder: () => Promise<void>
   submitBugReport: (
     characterName: string,
-    description: string
+    description: string,
   ) => Promise<{ success: boolean; error?: string }>
   refTypesPage: (params?: RefTypesPageParams) => Promise<RefTypesPageResult>
   refCategories: (params?: LanguageParams) => Promise<RefApiResult>
@@ -886,7 +886,7 @@ export interface ElectronAPI {
   refUniverseStations: (params?: LanguageParams) => Promise<RefStationsResult>
   refUniverseStargates: () => Promise<RefStargatesResult>
   refUniverseStructuresPage: (
-    params?: RefStructuresPageParams
+    params?: RefStructuresPageParams,
   ) => Promise<RefStructuresPageResult>
   refMoons: (ids: number[], params?: LanguageParams) => Promise<RefMoonsResult>
   refMarketGroups: (params?: LanguageParams) => Promise<RefMarketGroupsResult>
@@ -894,52 +894,52 @@ export interface ElectronAPI {
   refMarketJita: (params: RefMarketJitaParams) => Promise<RefMarketJitaResult>
   refBuybackCalculate: (
     text: string,
-    config: BuybackConfig
+    config: BuybackConfig,
   ) => Promise<BuybackResult>
   refBuybackInfo: (params?: LanguageParams) => Promise<BuybackInfoResult>
   refShippingInfo: (params?: LanguageParams) => Promise<ShippingInfoResult>
   refShippingCalculate: (
     text: string,
-    nullSec?: boolean
+    nullSec?: boolean,
   ) => Promise<ShippingCalculateResult>
   refContractsSearch: (
-    params: ContractSearchParams
+    params: ContractSearchParams,
   ) => Promise<ContractSearchResult>
   refTypeDetail: (
     typeId: number,
-    params?: LanguageParams
+    params?: LanguageParams,
   ) => Promise<RefTypeDetailResult>
   refTypeCore: (
     typeId: number,
-    params?: LanguageParams
+    params?: LanguageParams,
   ) => Promise<RefTypeCoreResult>
   refTypeDogma: (
     typeId: number,
-    params?: LanguageParams
+    params?: LanguageParams,
   ) => Promise<RefTypeDogmaResult>
   refTypeMarket: (
     typeId: number,
-    params?: LanguageParams
+    params?: LanguageParams,
   ) => Promise<RefTypeMarketResult>
   refTypeSkills: (
     typeId: number,
-    params?: LanguageParams
+    params?: LanguageParams,
   ) => Promise<RefTypeSkillsResult>
   refTypeVariations: (
     typeId: number,
-    params?: LanguageParams
+    params?: LanguageParams,
   ) => Promise<RefTypeVariationsResult>
   refTypeBlueprint: (
     typeId: number,
-    params?: LanguageParams
+    params?: LanguageParams,
   ) => Promise<RefTypeBlueprintResult>
   refDogmaUnits: (params?: LanguageParams) => Promise<DogmaUnitsResult>
   refDogmaAttributeCategories: (
-    params?: LanguageParams
+    params?: LanguageParams,
   ) => Promise<DogmaAttributeCategoriesResult>
   mutamarketModule: (
     itemId: number,
-    typeId?: number
+    typeId?: number,
   ) => Promise<MutamarketResult>
   insurgencyGet: () => Promise<InsurgencyResult>
   onUpdateAvailable: (callback: (version: string) => void) => () => void
@@ -957,10 +957,10 @@ export interface ElectronAPI {
     height?: number
   }) => Promise<void>
   onWindowMaximizeChange: (
-    callback: (isMaximized: boolean) => void
+    callback: (isMaximized: boolean) => void,
   ) => () => void
   onWindowMinimizeChange: (
-    callback: (isMinimized: boolean) => void
+    callback: (isMinimized: boolean) => void,
   ) => () => void
   clearStorageAndRestart: () => Promise<void>
   esi: ESIAPI

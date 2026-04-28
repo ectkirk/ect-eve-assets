@@ -107,7 +107,7 @@ export function TypeListPanel({
 
   const handleSelectGroup = useCallback(
     (groupId: number) => onSelectGroup?.(groupId),
-    [onSelectGroup]
+    [onSelectGroup],
   )
 
   if (!selectedGroup) {

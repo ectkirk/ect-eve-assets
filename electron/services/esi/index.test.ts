@@ -86,7 +86,7 @@ describe('MainESIService', () => {
       })
 
       const result = await service.fetch<{ id: number; name: string }>(
-        '/test/endpoint'
+        '/test/endpoint',
       )
       expect(result).toEqual({ id: 1, name: 'Test' })
       expect(mockFetch).toHaveBeenCalledWith(
@@ -97,7 +97,7 @@ describe('MainESIService', () => {
             'Content-Type': 'application/json',
             'X-Compatibility-Date': ESI_COMPATIBILITY_DATE,
           }),
-        })
+        }),
       )
     })
 
@@ -133,7 +133,7 @@ describe('MainESIService', () => {
           headers: expect.objectContaining({
             Authorization: `Bearer ${mockToken}`,
           }),
-        })
+        }),
       )
     })
 
@@ -143,13 +143,13 @@ describe('MainESIService', () => {
       })
 
       await expect(
-        service.fetch('/characters/123/assets', { characterId: 123 })
+        service.fetch('/characters/123/assets', { characterId: 123 }),
       ).rejects.toThrow(ESIError)
     })
 
     it('returns error when no token provider is set', async () => {
       await expect(
-        service.fetch('/characters/123/assets', { characterId: 123 })
+        service.fetch('/characters/123/assets', { characterId: 123 }),
       ).rejects.toMatchObject({
         message: 'No token provider configured',
       })
@@ -170,7 +170,7 @@ describe('MainESIService', () => {
       })
 
       const result = await service.fetchWithMeta<{ value: number }>(
-        '/test/meta'
+        '/test/meta',
       )
       expect(result.data).toEqual({ value: 42 })
       expect(result.etag).toBe('"meta-etag"')
@@ -222,7 +222,7 @@ describe('MainESIService', () => {
       })
 
       const result = await service.fetchPaginated<{ id: number }>(
-        '/test/paginated'
+        '/test/paginated',
       )
       expect(result).toEqual([{ id: 1 }, { id: 2 }])
     })
@@ -287,7 +287,7 @@ describe('MainESIService', () => {
       await service.fetchPaginatedWithProgress<{ id: number }>(
         '/test/progress',
         {},
-        (p) => progressCalls.push(p)
+        (p) => progressCalls.push(p),
       )
 
       expect(progressCalls).toContainEqual({ current: 1, total: 3 })

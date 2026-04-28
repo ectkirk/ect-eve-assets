@@ -12,7 +12,7 @@ export interface SortState<T extends string> {
 
 export function useSortable<T extends string>(
   defaultColumn: T,
-  defaultDirection: SortDirection = 'desc'
+  defaultDirection: SortDirection = 'desc',
 ) {
   const [sortColumn, setSortColumn] = useState<T>(defaultColumn)
   const [sortDirection, setSortDirection] =
@@ -27,7 +27,7 @@ export function useSortable<T extends string>(
         setSortDirection('desc')
       }
     },
-    [sortColumn]
+    [sortColumn],
   )
 
   return {
@@ -83,7 +83,7 @@ export function sortRows<T, C extends string>(
   rows: T[],
   sortColumn: C,
   sortDirection: SortDirection,
-  getValue: (row: T, column: C) => number | string | null
+  getValue: (row: T, column: C) => number | string | null,
 ): T[] {
   return [...rows].sort((a, b) => {
     const aVal = getValue(a, sortColumn)

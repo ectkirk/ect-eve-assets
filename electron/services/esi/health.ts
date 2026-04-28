@@ -29,7 +29,7 @@ export class ESIHealthChecker {
   }
 
   async ensureHealthy(
-    endpoint: string
+    endpoint: string,
   ): Promise<{ healthy: boolean; error?: string }> {
     const status = await this.getHealthStatus()
 
@@ -156,7 +156,7 @@ export class ESIHealthChecker {
   }
 
   private calculateOverallStatus(
-    routes: ESIRouteHealth[]
+    routes: ESIRouteHealth[],
   ): 'healthy' | 'degraded' | 'down' | 'unknown' {
     if (routes.length === 0) return 'unknown'
 

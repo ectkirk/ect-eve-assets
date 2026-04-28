@@ -45,7 +45,7 @@ export function ContractsTable({
     eligibleCharacterIds: number[]
   } | null>(null)
   const [waypointAction, setWaypointAction] = useState<WaypointAction | null>(
-    null
+    null,
   )
   const { sortColumn, sortDirection, handleSort } =
     useSortable<ContractSortColumn>('value', 'desc')
@@ -69,7 +69,7 @@ export function ContractsTable({
           .map((o) => o.characterId)
       } else {
         const hasChar = authCharacters.some(
-          (o) => o.characterId === action.ownerId
+          (o) => o.characterId === action.ownerId,
         )
         eligibleCharacterIds = hasChar ? [action.ownerId] : []
       }
@@ -79,7 +79,7 @@ export function ContractsTable({
         eligibleCharacterIds,
       })
     },
-    [authOwners]
+    [authOwners],
   )
 
   const handleSetWaypoint = useCallback((action: WaypointAction) => {
@@ -122,7 +122,7 @@ export function ContractsTable({
   const clampedPage = Math.min(page, totalPages - 1)
   const paginatedContracts = sortedContracts.slice(
     clampedPage * PAGE_SIZE,
-    (clampedPage + 1) * PAGE_SIZE
+    (clampedPage + 1) * PAGE_SIZE,
   )
 
   const show = (col: string) => visibleColumns.has(col)

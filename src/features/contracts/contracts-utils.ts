@@ -43,11 +43,11 @@ export function getTimeRemaining(targetDate: string): TimeRemaining {
 
 export function getCourierTimeRemaining(
   dateAccepted: string | undefined,
-  daysToComplete: number | undefined
+  daysToComplete: number | undefined,
 ): TimeRemaining | null {
   if (!dateAccepted || !daysToComplete) return null
   const deadline = new Date(
-    new Date(dateAccepted).getTime() + daysToComplete * MS_PER_DAY
+    new Date(dateAccepted).getTime() + daysToComplete * MS_PER_DAY,
   ).toISOString()
   return getTimeRemaining(deadline)
 }
@@ -64,7 +64,7 @@ export function getDaysLeft(contract: ESIContract): number {
   ) {
     const time = getCourierTimeRemaining(
       contract.date_accepted,
-      contract.days_to_complete
+      contract.days_to_complete,
     )
     if (!time || time.expired) return 0
     return time.days + (time.hours > 0 ? 1 : 0)
@@ -82,7 +82,7 @@ const CONTRACT_TYPE_KEYS: Record<ESIContract['type'], string> = {
 
 export function getContractTypeName(
   type: string,
-  t: (key: string) => string
+  t: (key: string) => string,
 ): string {
   const key = CONTRACT_TYPE_KEYS[type as ESIContract['type']]
   return key ? t(key) : type
@@ -125,7 +125,7 @@ export interface ContractRow {
 
 export function getContractValue(
   contract: ESIContract,
-  highestBid?: number
+  highestBid?: number,
 ): number {
   if (contract.type === 'auction' && highestBid !== undefined) {
     return highestBid
@@ -138,7 +138,7 @@ export function buildContractRow(
   ownerType: 'character' | 'corporation',
   ownerId: number,
   isIssuer: boolean,
-  t: (key: string, options?: Record<string, unknown>) => string
+  t: (key: string, options?: Record<string, unknown>) => string,
 ): ContractRow {
   const contract = contractWithItems.contract
   const items = contractWithItems.items ?? []

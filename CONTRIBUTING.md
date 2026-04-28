@@ -125,16 +125,16 @@ CI runs typecheck, lint, and tests automatically on every PR.
 
 Use [Conventional Commits](https://www.conventionalcommits.org/):
 
-| Prefix      | Use for                                      |
-| ----------- | -------------------------------------------- |
-| `feat:`     | New features                                 |
-| `fix:`      | Bug fixes                                    |
-| `refactor:` | Code changes with no behavior change         |
-| `test:`     | Adding or updating tests                     |
-| `docs:`     | Documentation only                           |
-| `ci:`       | CI/CD changes                                |
-| `deps:`     | Dependency updates                           |
-| `revert:`   | Reverting a previous change                  |
+| Prefix      | Use for                              |
+| ----------- | ------------------------------------ |
+| `feat:`     | New features                         |
+| `fix:`      | Bug fixes                            |
+| `refactor:` | Code changes with no behavior change |
+| `test:`     | Adding or updating tests             |
+| `docs:`     | Documentation only                   |
+| `ci:`       | CI/CD changes                        |
+| `deps:`     | Dependency updates                   |
+| `revert:`   | Reverting a previous change          |
 
 Optional scope: `feat(map): add route highlighting`, `fix(store): prevent stale state`
 

@@ -54,7 +54,7 @@ interface RegionalMarketActions {
   registerStructures: (
     structureIds: number[],
     typeIds: number[],
-    characterId: number
+    characterId: number,
   ) => void
   untrackTypes: (typeIds: number[]) => Promise<void>
   untrackStructures: (structureIds: number[]) => Promise<void>
@@ -64,7 +64,7 @@ interface RegionalMarketActions {
   getPriceAtLocation: (typeId: number, locationId: number) => number | undefined
   getHighestBuyAtLocation: (
     typeId: number,
-    locationId: number
+    locationId: number,
   ) => number | undefined
   clear: () => Promise<void>
 }
@@ -115,7 +115,7 @@ export const useRegionalMarketStore = create<RegionalMarketStore>(
             err instanceof Error ? err : undefined,
             {
               module: 'RegionalMarketStore',
-            }
+            },
           )
           set({ initialized: true })
         }
@@ -136,7 +136,7 @@ export const useRegionalMarketStore = create<RegionalMarketStore>(
 
       const { regionalTasks, structureTasks, earliestExpiry } = collectTasks(
         state,
-        Date.now()
+        Date.now(),
       )
 
       if (regionalTasks.length === 0 && structureTasks.length === 0) {
@@ -213,7 +213,7 @@ export const useRegionalMarketStore = create<RegionalMarketStore>(
             err instanceof Error ? err : undefined,
             {
               module: 'RegionalMarketStore',
-            }
+            },
           )
         })
 
@@ -272,7 +272,7 @@ export const useRegionalMarketStore = create<RegionalMarketStore>(
             err instanceof Error ? err : undefined,
             {
               module: 'RegionalMarketStore',
-            }
+            },
           )
         }
       }
@@ -335,7 +335,7 @@ export const useRegionalMarketStore = create<RegionalMarketStore>(
               {
                 module: 'RegionalMarketStore',
                 structureId: record.structureId,
-              }
+              },
             )
           })
         }
@@ -353,7 +353,7 @@ export const useRegionalMarketStore = create<RegionalMarketStore>(
       const pricesByLocation = deepClonePricesByLocation(state.pricesByLocation)
       const pricesByType = new Map(state.pricesByType)
       const buyPricesByLocation = deepClonePricesByLocation(
-        state.buyPricesByLocation
+        state.buyPricesByLocation,
       )
       const buyPricesByType = new Map(state.buyPricesByType)
       const toDelete: number[] = []
@@ -369,13 +369,13 @@ export const useRegionalMarketStore = create<RegionalMarketStore>(
         pricesByLocation,
         pricesByType,
         structureIdSet,
-        Math.min
+        Math.min,
       )
       cleanupLocationPrices(
         buyPricesByLocation,
         buyPricesByType,
         structureIdSet,
-        Math.max
+        Math.max,
       )
 
       if (toDelete.length > 0) {
@@ -399,7 +399,7 @@ export const useRegionalMarketStore = create<RegionalMarketStore>(
             err instanceof Error ? err : undefined,
             {
               module: 'RegionalMarketStore',
-            }
+            },
           )
         }
       }
@@ -462,7 +462,7 @@ export const useRegionalMarketStore = create<RegionalMarketStore>(
         initialized: false,
       })
     },
-  })
+  }),
 )
 
 useExpiryCacheStore

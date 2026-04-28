@@ -90,7 +90,7 @@ export function useMarketGroups(): UseMarketGroupsResult {
 export function flattenTreeWithItems(
   nodes: MarketGroupNode[],
   expandedIds: Set<number>,
-  types: Map<number, CachedType>
+  types: Map<number, CachedType>,
 ): TreeRow[] {
   const result: TreeRow[] = []
 
@@ -160,7 +160,7 @@ export function getAllGroupIds(nodes: MarketGroupNode[]): number[] {
 
 export function getDescendantMarketGroupIds(
   node: MarketGroupNode,
-  includeParent = true
+  includeParent = true,
 ): number[] {
   const ids: number[] = includeParent ? [node.group.id] : []
 

@@ -49,7 +49,7 @@ describe('getLocationName', () => {
     })
 
     expect(getLocationName(60003760)).toBe(
-      'Jita IV - Moon 4 - Caldari Navy Assembly Plant'
+      'Jita IV - Moon 4 - Caldari Navy Assembly Plant',
     )
     expect(mockGetLocation).toHaveBeenCalledWith(60003760)
   })

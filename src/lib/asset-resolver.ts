@@ -51,7 +51,7 @@ type SyntheticAssetType = 'contract' | 'marketOrder' | 'industryJob'
 
 function createSyntheticModeFlags(
   type: SyntheticAssetType,
-  isStructure: boolean
+  isStructure: boolean,
 ): AssetModeFlags {
   return {
     inHangar: false,
@@ -81,7 +81,7 @@ export interface ResolutionContext {
 }
 
 export function buildAssetLookupMap(
-  assetsByOwner: { owner: Owner; assets: ESIAsset[] }[]
+  assetsByOwner: { owner: Owner; assets: ESIAsset[] }[],
 ): AssetLookupMap {
   const itemIdToAsset = new Map<number, ESIAsset>()
   const itemIdToOwner = new Map<number, Owner>()
@@ -98,7 +98,7 @@ export function buildAssetLookupMap(
 
 export function buildParentChain(
   asset: ESIAsset,
-  itemIdToAsset: Map<number, ESIAsset>
+  itemIdToAsset: Map<number, ESIAsset>,
 ): ESIAsset[] {
   const chain: ESIAsset[] = []
   const visited = new Set<number>()
@@ -133,7 +133,7 @@ interface RootLocationInfo {
 export function resolveRootLocation(
   asset: ESIAsset,
   parentChain: ESIAsset[],
-  starbaseMoonIds: Map<number, number>
+  starbaseMoonIds: Map<number, number>,
 ): RootLocationInfo {
   const rootAsset =
     parentChain.length > 0 ? parentChain[parentChain.length - 1]! : asset
@@ -205,7 +205,7 @@ export function computeModeFlags(
   asset: ESIAsset,
   parentChain: ESIAsset[],
   rootFlag: string,
-  ownedStructureIds: Set<number>
+  ownedStructureIds: Set<number>,
 ): AssetModeFlags {
   const type = getType(asset.type_id)
   const isShip = type?.categoryId === CategoryIds.SHIP
@@ -246,7 +246,7 @@ export function resolveAsset(
   asset: ESIAsset,
   owner: Owner,
   lookupMap: AssetLookupMap,
-  context: ResolutionContext
+  context: ResolutionContext,
 ): ResolvedAsset {
   const { itemIdToAsset } = lookupMap
   const { assetNames, ownedStructureIds, starbaseMoonIds } = context
@@ -267,7 +267,7 @@ export function resolveAsset(
     asset,
     parentChain,
     rootFlag,
-    ownedStructureIds
+    ownedStructureIds,
   )
 
   const sdeType = getType(asset.type_id)
@@ -320,7 +320,7 @@ export function resolveAsset(
 
 export function resolveAllAssets(
   assetsByOwner: { owner: Owner; assets: ESIAsset[] }[],
-  context: ResolutionContext
+  context: ResolutionContext,
 ): ResolvedAsset[] {
   const lookupMap = buildAssetLookupMap(assetsByOwner)
   const results: ResolvedAsset[] = []
@@ -343,7 +343,7 @@ export function resolveAllAssets(
 
 export function resolveMarketOrder(
   order: MarketOrder,
-  owner: Owner
+  owner: Owner,
 ): ResolvedAsset {
   const loc = resolveSyntheticLocation(order.location_id)
 
@@ -387,7 +387,7 @@ export function resolveMarketOrder(
 export function resolveContractItem(
   contract: ESIContract,
   item: ESIContractItem,
-  owner: Owner
+  owner: Owner,
 ): ResolvedAsset {
   const locationId = contract.start_location_id ?? 0
   const loc = resolveSyntheticLocation(locationId)
@@ -447,7 +447,7 @@ export function resolveContractItem(
 
 export function resolveIndustryJob(
   job: ESIIndustryJob,
-  owner: Owner
+  owner: Owner,
 ): ResolvedAsset {
   const locationId = job.location_id ?? job.facility_id
   const loc = resolveSyntheticLocation(locationId)

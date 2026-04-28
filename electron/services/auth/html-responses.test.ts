@@ -25,7 +25,7 @@ describe('HTML Responses', () => {
 
     it('escapes multiple characters', () => {
       expect(escapeHtml('<script>"alert(\'xss\')"</script>')).toBe(
-        '&lt;script&gt;&quot;alert(&#39;xss&#39;)&quot;&lt;/script&gt;'
+        '&lt;script&gt;&quot;alert(&#39;xss&#39;)&quot;&lt;/script&gt;',
       )
     })
 

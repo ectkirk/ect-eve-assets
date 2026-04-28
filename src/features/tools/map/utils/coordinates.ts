@@ -27,7 +27,7 @@ export function calculateCoordinateData(
   bounds: Bounds,
   width: number,
   height: number,
-  padding = 50
+  padding = 50,
 ): CoordinateData {
   const scaleX = (width - padding * 2) / (bounds.maxX - bounds.minX || 1)
   const scaleY = (height - padding * 2) / (bounds.maxY - bounds.minY || 1)
@@ -39,7 +39,7 @@ export function worldToCanvas(
   worldX: number,
   worldY: number,
   coordData: CoordinateData,
-  height: number
+  height: number,
 ): { x: number; y: number } {
   return {
     x: (worldX - coordData.minX) * coordData.scale + coordData.padding,
@@ -54,7 +54,7 @@ export function screenToWorld(
   screenY: number,
   camera: Camera,
   width: number,
-  height: number
+  height: number,
 ): { x: number; y: number } {
   return {
     x: (screenX - width / 2 - camera.x) / camera.zoom + width / 2,
@@ -67,7 +67,7 @@ export function canvasToScreen(
   canvasY: number,
   camera: Camera,
   width: number,
-  height: number
+  height: number,
 ): { x: number; y: number } {
   return {
     x: (canvasX - width / 2) * camera.zoom + width / 2 + camera.x,
@@ -86,7 +86,7 @@ export function getVisibleBounds(
   camera: Camera,
   width: number,
   height: number,
-  margin = 50
+  margin = 50,
 ): VisibleBounds {
   const invZoom = 1 / camera.zoom
   const centerX = width / 2
@@ -109,7 +109,7 @@ export function getVisibleBounds(
 export function isInVisibleBounds(
   x: number,
   y: number,
-  bounds: VisibleBounds
+  bounds: VisibleBounds,
 ): boolean {
   return (
     x >= bounds.left &&
@@ -127,7 +127,7 @@ export function clampToViewport(
   elementWidth: number,
   elementHeight: number,
   viewportWidth = window.innerWidth,
-  viewportHeight = window.innerHeight
+  viewportHeight = window.innerHeight,
 ): { left: number; top: number } {
   let left = x
   let top = y

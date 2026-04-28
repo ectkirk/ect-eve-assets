@@ -46,7 +46,7 @@ export interface VisibilityDB<TStoredItem> {
 
 export function createVisibilityDB<T, TStoredItem extends StoredItem<T>>(
   config: VisibilityDBConfig,
-  getItemId: (stored: TStoredItem) => number
+  getItemId: (stored: TStoredItem) => number,
 ): VisibilityDB<TStoredItem> {
   const { dbName, itemStoreName, itemKeyName, moduleName } = config
   const visibilityStoreName = 'visibility'
@@ -67,7 +67,7 @@ export function createVisibilityDB<T, TStoredItem extends StoredItem<T>>(
 
   const toRecord = (
     id: number,
-    stored: TStoredItem
+    stored: TStoredItem,
   ): Record<string, unknown> => ({
     [itemKeyName]: id,
     item: stored.item,
@@ -105,7 +105,7 @@ export function createVisibilityDB<T, TStoredItem extends StoredItem<T>>(
   }
 
   const saveItems = async (
-    items: { id: number; stored: TStoredItem }[]
+    items: { id: number; stored: TStoredItem }[],
   ): Promise<void> => {
     if (items.length === 0) return
     const db = await getDB()
@@ -121,7 +121,7 @@ export function createVisibilityDB<T, TStoredItem extends StoredItem<T>>(
 
   const saveVisibility = async (
     ownerKey: string,
-    itemIds: Set<number>
+    itemIds: Set<number>,
   ): Promise<void> => {
     const db = await getDB()
     await idbPut(db, visibilityStoreName, {

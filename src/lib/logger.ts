@@ -1,7 +1,7 @@
 function formatForConsole(
   level: LogLevel,
   message: string,
-  context?: LogContext
+  context?: LogContext,
 ): string {
   const timestamp = new Date().toISOString()
   const module = context?.module ? `[${context.module}]` : ''
@@ -23,7 +23,7 @@ function extractError(error: unknown): { message: string; stack?: string } {
 async function writeLog(
   level: LogLevel,
   message: string,
-  context?: LogContext
+  context?: LogContext,
 ): Promise<void> {
   const formatted = formatForConsole(level, message, context)
 

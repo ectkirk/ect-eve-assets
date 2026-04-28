@@ -47,7 +47,7 @@ interface MarketOrdersExtras {
     state?: {
       itemsById: Map<number, StoredOrder>
       visibilityByOwner: Map<string, Set<number>>
-    }
+    },
   ) => number
   getOrdersByOwner: (state?: {
     itemsById: Map<number, StoredOrder>
@@ -98,7 +98,7 @@ function registerPricesFromOrders(ordersById: Map<number, StoredOrder>): void {
       .registerStructures(
         Array.from(structureIds),
         Array.from(structureTypeIds),
-        characterId
+        characterId,
       )
   }
 }
@@ -128,7 +128,7 @@ async function fetchOrdersForOwner(owner: Owner): Promise<{
     schema: ESIMarketOrderSchema,
   })
   result.data = result.data.filter(
-    (order: ESIMarketOrder) => !order.is_corporation
+    (order: ESIMarketOrder) => !order.is_corporation,
   )
   return result
 }
@@ -177,7 +177,7 @@ const baseStore = createVisibilityStore<MarketOrder, StoredOrder>({
 
     const newOrderIds = new Set(newItems.map((o) => o.order_id))
     const completedOrders = [...previousOrders.values()].filter(
-      (o) => !newOrderIds.has(o.order_id)
+      (o) => !newOrderIds.has(o.order_id),
     )
 
     if (completedOrders.length > 0) {
@@ -229,7 +229,7 @@ export const useMarketOrdersStore: MarketOrdersStore = Object.assign(
       stateOverride?: {
         itemsById: Map<number, StoredOrder>
         visibilityByOwner: Map<string, Set<number>>
-      }
+      },
     ): number {
       const { itemsById, visibilityByOwner } =
         stateOverride ?? baseStore.getState()
@@ -281,7 +281,7 @@ export const useMarketOrdersStore: MarketOrdersStore = Object.assign(
 
       return result
     },
-  }
+  },
 )
 
 registerCollector('market-orders', (ids: ResolutionIds) => {

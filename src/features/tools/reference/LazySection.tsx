@@ -45,7 +45,7 @@ export function LazySection<T>({
             loading: false,
             error: null,
           },
-    [sectionState, typeId]
+    [sectionState, typeId],
   )
   const { isOpen, data, loading, error } = currentState
 

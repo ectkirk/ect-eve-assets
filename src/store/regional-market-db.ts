@@ -77,14 +77,14 @@ export async function deletePricesFromDB(typeIds: number[]): Promise<void> {
 }
 
 export async function saveStructureToDB(
-  record: TrackedStructureRecord
+  record: TrackedStructureRecord,
 ): Promise<void> {
   const db = await getDB()
   await idbPut(db, STORE_STRUCTURES, record)
 }
 
 export async function saveStructuresToDB(
-  records: TrackedStructureRecord[]
+  records: TrackedStructureRecord[],
 ): Promise<void> {
   if (records.length === 0) return
   const db = await getDB()
@@ -92,7 +92,7 @@ export async function saveStructuresToDB(
 }
 
 export async function deleteStructuresFromDB(
-  structureIds: number[]
+  structureIds: number[],
 ): Promise<void> {
   if (structureIds.length === 0) return
   const db = await getDB()

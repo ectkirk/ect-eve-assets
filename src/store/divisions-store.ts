@@ -72,7 +72,7 @@ export const useDivisionsStore = create<DivisionsStore>((set, get) => ({
         logger.error(
           'Failed to load divisions from DB',
           err instanceof Error ? err : undefined,
-          { module: 'DivisionsStore' }
+          { module: 'DivisionsStore' },
         )
         set({ initialized: true })
       }
@@ -92,7 +92,7 @@ export const useDivisionsStore = create<DivisionsStore>((set, get) => ({
     try {
       const response: ESICorporationDivisions = await getCorporationDivisions(
         owner.id,
-        owner.characterId
+        owner.characterId,
       )
 
       const divisions: CorporationDivisions = {
@@ -121,7 +121,7 @@ export const useDivisionsStore = create<DivisionsStore>((set, get) => ({
         {
           module: 'DivisionsStore',
           corporationId: owner.id,
-        }
+        },
       )
       set({ isLoading: false })
     }

@@ -79,26 +79,26 @@ const esi: ESIAPI = {
     ipcRenderer.invoke(
       'esi:fetchPaginatedWithMeta',
       endpoint,
-      options
+      options,
     ) as Promise<ESIResponseMeta<T[]>>,
   fetchPaginatedWithProgress: <T>(
     endpoint: string,
     options?: ESIRequestOptions,
-    progressChannel?: string
+    progressChannel?: string,
   ) =>
     ipcRenderer.invoke(
       'esi:fetchPaginatedWithProgress',
       endpoint,
       options,
-      progressChannel
+      progressChannel,
     ) as Promise<ESIResponseMeta<T[]>>,
   onPaginatedProgress: (
     channel: string,
-    callback: (progress: { current: number; total: number }) => void
+    callback: (progress: { current: number; total: number }) => void,
   ) => {
     const handler = (
       _event: IpcRendererEvent,
-      progress: { current: number; total: number }
+      progress: { current: number; total: number },
     ) => {
       callback(progress)
     }

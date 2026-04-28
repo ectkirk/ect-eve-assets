@@ -34,17 +34,17 @@ export const NAMESPACES = [
 export type Namespace = (typeof NAMESPACES)[number]
 
 async function loadLanguage(
-  lang: SupportedLanguage
+  lang: SupportedLanguage,
 ): Promise<Record<string, Record<string, string>>> {
   const modules = await Promise.all(
     NAMESPACES.map(
       (ns) =>
-        import(`./locales/${lang}/${ns}.json`) as Promise<TranslationModule>
-    )
+        import(`./locales/${lang}/${ns}.json`) as Promise<TranslationModule>,
+    ),
   )
 
   return Object.fromEntries(
-    NAMESPACES.map((ns, i) => [ns, modules.at(i)!.default])
+    NAMESPACES.map((ns, i) => [ns, modules.at(i)!.default]),
   )
 }
 

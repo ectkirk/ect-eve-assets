@@ -37,7 +37,7 @@ export function setupTransform(rc: RenderContext): void {
 
 export function renderStargates(
   rc: RenderContext,
-  stargates: IndexedStargate[]
+  stargates: IndexedStargate[],
 ): void {
   const { ctx, camera, visibleBounds } = rc
 
@@ -60,7 +60,7 @@ function isLineVisible(
   y1: number,
   x2: number,
   y2: number,
-  bounds: VisibleBounds
+  bounds: VisibleBounds,
 ): boolean {
   const minX = Math.min(x1, x2)
   const maxX = Math.max(x1, x2)
@@ -80,7 +80,10 @@ export function renderSystems(
   systems: IndexedSystem[],
   colorMode: ColorMode,
   fwData: Map<number, number> | null,
-  allianceData: Map<number, { allianceId: number; allianceName: string }> | null
+  allianceData: Map<
+    number,
+    { allianceId: number; allianceName: string }
+  > | null,
 ): void {
   const { ctx, camera, visibleBounds } = rc
   const radius = 2 / camera.zoom
@@ -101,7 +104,7 @@ const SYSTEM_LABEL_ZOOM_THRESHOLD = 6
 export function renderHighlightedSystem(
   rc: RenderContext,
   system: IndexedSystem,
-  stargates: IndexedStargate[]
+  stargates: IndexedStargate[],
 ): void {
   const { ctx, camera } = rc
   const { id, canvasX: x, canvasY: y } = system
@@ -135,7 +138,7 @@ export function renderHighlightedSystem(
 export function renderRoute(
   rc: RenderContext,
   path: number[],
-  systemMap: Map<number, IndexedSystem>
+  systemMap: Map<number, IndexedSystem>,
 ): void {
   if (path.length < 2) return
 
@@ -153,7 +156,7 @@ export function renderRoute(
       from.canvasX,
       from.canvasY,
       to.canvasX,
-      to.canvasY
+      to.canvasY,
     )
     gradient.addColorStop(0, getSecurityColor(from.security))
     gradient.addColorStop(1, getSecurityColor(to.security))
@@ -173,7 +176,7 @@ function renderEndpointMarker(
   color: string,
   ringRadius: number,
   ringWidth: number,
-  centerRadius: number
+  centerRadius: number,
 ): void {
   ctx.strokeStyle = color
   ctx.lineWidth = ringWidth
@@ -190,7 +193,7 @@ function renderEndpointMarker(
 export function renderRouteEndpoints(
   rc: RenderContext,
   origin: IndexedSystem | undefined,
-  destination: IndexedSystem | undefined
+  destination: IndexedSystem | undefined,
 ): void {
   const { ctx, camera } = rc
   const ringRadius = 10 / camera.zoom
@@ -205,7 +208,7 @@ export function renderRouteEndpoints(
       COLOR_ROUTE_ORIGIN,
       ringRadius,
       ringWidth,
-      centerRadius
+      centerRadius,
     )
   }
 
@@ -217,7 +220,7 @@ export function renderRouteEndpoints(
       COLOR_ROUTE_DESTINATION,
       ringRadius,
       ringWidth,
-      centerRadius
+      centerRadius,
     )
   }
 }
@@ -230,7 +233,7 @@ export interface AnsiblexEdge {
 export function renderAnsiblexConnections(
   rc: RenderContext,
   edges: AnsiblexEdge[],
-  systemMap: Map<number, IndexedSystem>
+  systemMap: Map<number, IndexedSystem>,
 ): void {
   if (edges.length === 0) return
 
@@ -258,7 +261,7 @@ export function renderAnsiblexConnections(
         from.canvasY,
         to.canvasX,
         to.canvasY,
-        visibleBounds
+        visibleBounds,
       )
     ) {
       continue
@@ -277,7 +280,7 @@ export function renderSystemRings(
   systemIds: Set<number>,
   systemMap: Map<number, IndexedSystem>,
   color: string,
-  baseRadius: number
+  baseRadius: number,
 ): void {
   if (systemIds.size === 0) return
 
@@ -305,7 +308,7 @@ export function renderHighlightedRegion(
   rc: RenderContext,
   regionId: number,
   systems: IndexedSystem[],
-  stargates: IndexedStargate[]
+  stargates: IndexedStargate[],
 ): void {
   const { ctx, camera } = rc
 
@@ -347,7 +350,7 @@ export function renderSystemLabels(
     number,
     { allianceId: number; allianceName: string }
   > | null,
-  routeIds?: Set<number>
+  routeIds?: Set<number>,
 ): void {
   const { ctx, camera, visibleBounds } = rc
 
@@ -399,7 +402,10 @@ function getSystemColor(
   system: IndexedSystem,
   colorMode: ColorMode,
   fwData: Map<number, number> | null,
-  allianceData: Map<number, { allianceId: number; allianceName: string }> | null
+  allianceData: Map<
+    number,
+    { allianceId: number; allianceName: string }
+  > | null,
 ): string {
   switch (colorMode) {
     case 'region':
@@ -456,7 +462,7 @@ export function renderLabels(rc: RenderContext, labels: LabelData[]): void {
       label.x - metrics.width / 2 - pad,
       rectY,
       metrics.width + pad * 2,
-      fontSize + pad * 2
+      fontSize + pad * 2,
     )
 
     const hsl = parseHSL(label.color)

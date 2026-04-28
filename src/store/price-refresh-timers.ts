@@ -40,7 +40,7 @@ export function scheduleEsiRefresh(store: PriceStoreActions): void {
 
 export function startJitaRefreshTimer(
   triggerImmediateIfStale: boolean,
-  triggerFn: () => Promise<void>
+  triggerFn: () => Promise<void>,
 ): void {
   if (jitaRefreshInterval) return
 

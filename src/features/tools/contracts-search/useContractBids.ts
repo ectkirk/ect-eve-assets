@@ -15,11 +15,11 @@ const MAX_CACHE_SIZE = 100
 
 const bidsCache = createLRUCache<number, ContractBid[]>(
   CACHE_TTL_MS,
-  MAX_CACHE_SIZE
+  MAX_CACHE_SIZE,
 )
 
 async function fetchBidsForContract(
-  contractId: number
+  contractId: number,
 ): Promise<ContractBid[]> {
   const cached = bidsCache.get(contractId)
   if (cached) return cached
@@ -89,7 +89,7 @@ export function useAuctionBids(auctionContractIds: number[]) {
 
   const idsKey = useMemo(
     () => auctionContractIds.slice().sort().join(','),
-    [auctionContractIds]
+    [auctionContractIds],
   )
 
   const highestBids = useMemo(() => {
@@ -133,7 +133,7 @@ export function useAuctionBids(auctionContractIds: number[]) {
       if (cachedResults.length > 0 && toFetch.length === 0) {
         setState((prev) => {
           const next = new Map<number, number>(
-            prev.key === idsKey ? prev.data : new Map<number, number>()
+            prev.key === idsKey ? prev.data : new Map<number, number>(),
           )
           for (const { contractId, highestBid } of cachedResults) {
             next.set(contractId, highestBid)
@@ -160,14 +160,14 @@ export function useAuctionBids(auctionContractIds: number[]) {
           } catch {
             return { contractId, highestBid: null }
           }
-        })
+        }),
       )
 
       if (controller.signal.aborted) return
 
       setState((prev) => {
         const next = new Map<number, number>(
-          prev.key === idsKey ? prev.data : new Map<number, number>()
+          prev.key === idsKey ? prev.data : new Map<number, number>(),
         )
         for (const { contractId, highestBid } of [
           ...cachedResults,

@@ -16,7 +16,7 @@ interface UseAnsiblexRoutingReturn {
 
 export function useAnsiblexRouting(): UseAnsiblexRoutingReturn {
   const ansiblexCharacterIds = useMapSettingsStore(
-    (s) => s.ansiblexCharacterIds
+    (s) => s.ansiblexCharacterIds,
   )
   const useAnsiblexes = useMapSettingsStore((s) => s.useAnsiblexes)
   const setUseAnsiblexes = useMapSettingsStore((s) => s.setUseAnsiblexes)

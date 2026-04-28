@@ -11,7 +11,7 @@ function checkRateLimit(): boolean {
     const remainingSec = Math.ceil((uiRateLimitedUntil - Date.now()) / 1000)
     showToast(
       'error',
-      i18n.t('common:ui.rateLimited', { seconds: remainingSec })
+      i18n.t('common:ui.rateLimited', { seconds: remainingSec }),
     )
     return true
   }
@@ -22,7 +22,7 @@ function executeUiAction(
   endpoint: string,
   characterId: number,
   logContext: Record<string, unknown>,
-  failureKey: string
+  failureKey: string,
 ): void {
   const action =
     typeof logContext['action'] === 'string' ? logContext['action'] : endpoint
@@ -54,7 +54,7 @@ function executeUiAction(
         uiRateLimitedUntil = Date.now() + waitSec * 1000
         showToast(
           'error',
-          i18n.t('common:ui.rateLimited', { seconds: waitSec })
+          i18n.t('common:ui.rateLimited', { seconds: waitSec }),
         )
       } else {
         showToast('error', i18n.t(failureKey))
@@ -68,7 +68,7 @@ export function postAutopilotWaypoint(
   options?: {
     addToBeginning?: boolean | undefined
     clearOthers?: boolean | undefined
-  }
+  },
 ): void {
   if (checkRateLimit()) return
   const params = new URLSearchParams({
@@ -80,13 +80,13 @@ export function postAutopilotWaypoint(
     `/ui/autopilot/waypoint?${params}`,
     characterId,
     { action: 'Setting autopilot waypoint', destinationId },
-    'common:ui.failedWaypoint'
+    'common:ui.failedWaypoint',
   )
 }
 
 export function postOpenContract(
   characterId: number,
-  contractId: number
+  contractId: number,
 ): void {
   if (checkRateLimit()) return
   const params = new URLSearchParams({ contract_id: String(contractId) })
@@ -94,13 +94,13 @@ export function postOpenContract(
     `/ui/openwindow/contract?${params}`,
     characterId,
     { action: 'Opening contract window', contractId },
-    'common:ui.failedContract'
+    'common:ui.failedContract',
   )
 }
 
 export function postOpenMarketDetails(
   characterId: number,
-  typeId: number
+  typeId: number,
 ): void {
   if (checkRateLimit()) return
   const params = new URLSearchParams({ type_id: String(typeId) })
@@ -108,6 +108,6 @@ export function postOpenMarketDetails(
     `/ui/openwindow/marketdetails?${params}`,
     characterId,
     { action: 'Opening market window', typeId },
-    'common:ui.failedMarket'
+    'common:ui.failedMarket',
   )
 }

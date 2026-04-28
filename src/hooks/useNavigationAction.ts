@@ -16,7 +16,7 @@ interface ActionStore<T> {
  */
 export function useNavigationAction<T>(
   store: StoreApi<ActionStore<T>>,
-  onAction: (action: T) => void
+  onAction: (action: T) => void,
 ): void {
   useEffect(() => {
     return store.subscribe((state, prevState) => {

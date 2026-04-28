@@ -199,7 +199,7 @@ export class ESICache {
   makeKey(
     characterId: number | undefined,
     endpoint: string,
-    language?: string
+    language?: string,
   ): string {
     const lang = language ?? 'en'
     return `${characterId ?? 'public'}:${lang}:${endpoint}`

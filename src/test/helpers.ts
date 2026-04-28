@@ -8,7 +8,7 @@ export function createMockOwner(
     id: number
     name: string
     type: 'character' | 'corporation'
-  }
+  },
 ): Owner {
   return {
     id: overrides.id,
@@ -42,7 +42,7 @@ export function createESIResponse<T>(
     expiresAt?: number
     etag?: string | null
     notModified?: boolean
-  }
+  },
 ) {
   return {
     data,
@@ -53,12 +53,12 @@ export function createESIResponse<T>(
 }
 
 export function createMockExpiryCacheState(
-  endpoints?: Map<string, EndpointExpiry>
+  endpoints?: Map<string, EndpointExpiry>,
 ) {
   return {
     isExpired: vi.fn(
       (ownerKey: string, endpoint: string) =>
-        !(endpoints ?? new Map()).has(`${ownerKey}:${endpoint}`)
+        !(endpoints ?? new Map()).has(`${ownerKey}:${endpoint}`),
     ),
     setExpiry: vi.fn(),
     clearForOwner: vi.fn(),

@@ -36,7 +36,7 @@ function isOwnedStructureOrStarbase(asset: ESIAsset): boolean {
 
 export function calculateStructureValues(
   assetsByOwner: { owner: Owner; assets: ESIAsset[] }[],
-  selectedOwnerIds?: string[]
+  selectedOwnerIds?: string[],
 ): StructureValueResult {
   const selectedSet = selectedOwnerIds ? new Set(selectedOwnerIds) : null
   const structureAssetMap = new Map<number, StructureAssetData>()
@@ -50,7 +50,7 @@ export function calculateStructureValues(
         const children = assets.filter(
           (a) =>
             a.location_id === asset.item_id &&
-            isFittedOrContentFlag(a.location_flag)
+            isFittedOrContentFlag(a.location_flag),
         )
         structureAssetMap.set(asset.item_id, { asset, children })
         ownedStructureIds.add(asset.item_id)

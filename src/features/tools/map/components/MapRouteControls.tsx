@@ -161,7 +161,7 @@ export const MapRouteControls = memo(function MapRouteControls({
 
   const indexedSystems = useMemo<IndexedSystemItem[]>(
     () => systems.map((s) => ({ ...s, nameLower: s.name.toLowerCase() })),
-    [systems]
+    [systems],
   )
 
   return (

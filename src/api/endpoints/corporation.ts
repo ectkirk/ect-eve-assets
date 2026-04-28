@@ -24,7 +24,7 @@ const DIRECTOR_ROLE = 'Director'
 
 export async function getCorporationAssets(
   corporationId: number,
-  characterId: number
+  characterId: number,
 ): Promise<ESIAsset[]> {
   return esi.fetchPaginated<ESIAsset>(`/corporations/${corporationId}/assets`, {
     characterId,
@@ -33,7 +33,7 @@ export async function getCorporationAssets(
 }
 
 export async function getCharacterRoles(
-  characterId: number
+  characterId: number,
 ): Promise<ESICharacterRoles> {
   return esi.fetch<ESICharacterRoles>(`/characters/${characterId}/roles`, {
     characterId,
@@ -46,7 +46,7 @@ export function hasDirectorRole(roles: string[]): boolean {
 }
 
 export async function getCharacterCorpRoles(
-  characterId: number
+  characterId: number,
 ): Promise<string[]> {
   try {
     const rolesResponse = await getCharacterRoles(characterId)
@@ -63,16 +63,16 @@ export async function getCharacterCorpRoles(
 
 export async function getCorporationDivisions(
   corporationId: number,
-  characterId: number
+  characterId: number,
 ): Promise<ESICorporationDivisions> {
   return esi.fetch<ESICorporationDivisions>(
     `/corporations/${corporationId}/divisions`,
-    { characterId, schema: ESICorporationDivisionsSchema }
+    { characterId, schema: ESICorporationDivisionsSchema },
   )
 }
 
 export async function getCharacterPublic(
-  characterId: number
+  characterId: number,
 ): Promise<ESICharacterPublic> {
   return esi.fetch<ESICharacterPublic>(`/characters/${characterId}`, {
     requiresAuth: false,

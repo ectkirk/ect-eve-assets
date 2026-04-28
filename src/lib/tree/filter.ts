@@ -9,7 +9,7 @@ function nodeMatchesSearch(node: TreeNode, searchLower: string): boolean {
     node.typeName,
     node.groupName,
     node.regionName,
-    node.systemName
+    node.systemName,
   )
 }
 
@@ -21,7 +21,7 @@ function nodeMatchesCategory(node: TreeNode, category: string): boolean {
 function filterTreeRecursive(
   nodes: TreeNode[],
   searchLower: string,
-  category?: string
+  category?: string,
 ): TreeNode[] {
   const result: TreeNode[] = []
 
@@ -29,7 +29,7 @@ function filterTreeRecursive(
     const filteredChildren = filterTreeRecursive(
       node.children,
       searchLower,
-      category
+      category,
     )
     const selfMatchesSearch =
       !searchLower || nodeMatchesSearch(node, searchLower)
@@ -53,7 +53,7 @@ function filterTreeRecursive(
 export function filterTree(
   nodes: TreeNode[],
   search: string,
-  category?: string
+  category?: string,
 ): TreeNode[] {
   if (!search && !category) return nodes
 

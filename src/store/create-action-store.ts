@@ -15,7 +15,7 @@ export function createActionStore<
   TArgs extends unknown[],
 >(
   triggerName: TTriggerName,
-  actionCreator: (...args: TArgs) => TAction
+  actionCreator: (...args: TArgs) => TAction,
 ): UseBoundStore<StoreApi<ActionStoreState<TAction, TTriggerName, TArgs>>> {
   type Store = ActionStoreState<TAction, TTriggerName, TArgs>
 

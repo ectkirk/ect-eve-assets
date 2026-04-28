@@ -22,13 +22,13 @@ export function MapSettingsModal({
 }: MapSettingsModalProps) {
   const { t } = useTranslation('dialogs')
   const ansiblexCharacterIds = useMapSettingsStore(
-    (s) => s.ansiblexCharacterIds
+    (s) => s.ansiblexCharacterIds,
   )
   const addAnsiblexCharacter = useMapSettingsStore(
-    (s) => s.addAnsiblexCharacter
+    (s) => s.addAnsiblexCharacter,
   )
   const removeAnsiblexCharacter = useMapSettingsStore(
-    (s) => s.removeAnsiblexCharacter
+    (s) => s.removeAnsiblexCharacter,
   )
   const owners = useAuthStore((s) => s.owners)
 
@@ -74,7 +74,7 @@ export function MapSettingsModal({
                     key={char.id}
                     label={char.name}
                     checked={ansiblexCharacterIds.includes(
-                      `character-${char.id}`
+                      `character-${char.id}`,
                     )}
                     onChange={(checked) => {
                       handleToggle(`character-${char.id}`, checked)

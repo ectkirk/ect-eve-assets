@@ -72,7 +72,7 @@ describe('contracts-store', () => {
         type: 'character',
       })
       vi.mocked(useAuthStore.getState).mockReturnValue(
-        createMockAuthState({ 'character-12345': mockOwner })
+        createMockAuthState({ 'character-12345': mockOwner }),
       )
       vi.mocked(findOwnerByKey).mockReturnValue(mockOwner)
 
@@ -123,7 +123,7 @@ describe('contracts-store', () => {
         corporationId: 98000001,
       })
       vi.mocked(useAuthStore.getState).mockReturnValue(
-        createMockAuthState({ 'character-12345': mockOwner })
+        createMockAuthState({ 'character-12345': mockOwner }),
       )
       vi.mocked(findOwnerByKey).mockReturnValue(mockOwner)
 

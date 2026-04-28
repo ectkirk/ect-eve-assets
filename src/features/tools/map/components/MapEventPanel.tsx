@@ -17,8 +17,8 @@ interface MapEventPanelProps {
     openContextMenu: (
       e: React.MouseEvent,
       systemId: number,
-      systemName: string
-    ) => void
+      systemName: string,
+    ) => void,
   ) => ReactNode
 }
 

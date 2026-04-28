@@ -139,7 +139,7 @@ export const ERROR_HTML = (error: string) => `<!DOCTYPE html>
 export function sendHtmlResponse(
   res: ServerResponse,
   statusCode: number,
-  html: string
+  html: string,
 ): void {
   res.writeHead(statusCode, { 'Content-Type': 'text/html; charset=utf-8' })
   res.end(html)

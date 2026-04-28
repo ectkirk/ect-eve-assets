@@ -22,7 +22,7 @@ export function CheckboxRow({
     <label
       className={cn(
         'flex items-start gap-3 py-1.5 px-2 rounded hover:bg-surface-tertiary cursor-pointer',
-        className
+        className,
       )}
     >
       <input
@@ -33,7 +33,7 @@ export function CheckboxRow({
         }}
         className={cn(
           'h-4 w-4 rounded border-border text-accent focus:ring-accent',
-          description && 'mt-0.5'
+          description && 'mt-0.5',
         )}
       />
       <div className="flex-1">

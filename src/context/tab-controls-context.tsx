@@ -80,7 +80,7 @@ export function useTabControls() {
       setCharacterSort: s.setCharacterSort,
       contractAvailabilityFilter: s.contractAvailabilityFilter,
       setContractAvailabilityFilter: s.setContractAvailabilityFilter,
-    }))
+    })),
   )
 }
 

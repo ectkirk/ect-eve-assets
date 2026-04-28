@@ -16,7 +16,7 @@ interface SkillGroupData {
 
 function buildCharacterSkillGroups(
   data: CharacterSkillsData,
-  filter: string
+  filter: string,
 ): SkillGroupData[] {
   const filterLower = filter.toLowerCase()
   const groupMap = new Map<number, SkillGroupData>()
@@ -68,7 +68,7 @@ export function CharacterSkillsPanel({
 
   const groups = useMemo(
     () => buildCharacterSkillGroups(data, filter),
-    [data, filter]
+    [data, filter],
   )
 
   const toggleGroup = useCallback((groupId: number) => {

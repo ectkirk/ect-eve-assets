@@ -40,7 +40,7 @@ export interface BlueprintAttributesLike {
 }
 
 export function hasBlueprintResearchData(
-  item: BlueprintAttributesLike
+  item: BlueprintAttributesLike,
 ): boolean {
   return (
     item.isBlueprintCopy === true ||
@@ -51,7 +51,7 @@ export function hasBlueprintResearchData(
 
 export function shouldValueBlueprintAtZero(
   item: ESIContractItemLike,
-  contractAvailability: string
+  contractAvailability: string,
 ): boolean {
   if (isContractItemBpc(item)) return true
   if (contractAvailability === 'public') return false
@@ -60,7 +60,7 @@ export function shouldValueBlueprintAtZero(
 
 export function resolveContractItems(
   items: ESIContractItemLike[],
-  contractAvailability: string
+  contractAvailability: string,
 ): ContractItem[] {
   const priceStore = usePriceStore.getState()
 

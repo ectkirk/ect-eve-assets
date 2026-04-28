@@ -97,7 +97,7 @@ export function TreeTab({ mode }: TreeTabProps) {
 
   const categories = useMemo(
     () => getTreeCategories(unfilteredNodes),
-    [unfilteredNodes]
+    [unfilteredNodes],
   )
 
   const treeNodes = useMemo(() => {
@@ -175,7 +175,7 @@ export function TreeTab({ mode }: TreeTabProps) {
         targetName: typeName,
       })
     },
-    []
+    [],
   )
 
   const handleSetAutopilotIngame = useCallback(
@@ -186,7 +186,7 @@ export function TreeTab({ mode }: TreeTabProps) {
         targetName: locationName,
       })
     },
-    []
+    [],
   )
 
   if (owners.length === 0) {

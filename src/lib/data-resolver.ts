@@ -63,7 +63,7 @@ export function collectResolutionIds(): ResolutionIds {
 }
 
 export async function resolveAllReferenceData(
-  ids: ResolutionIds
+  ids: ResolutionIds,
 ): Promise<void> {
   const { useStarbasesStore } = await import('@/store/starbases-store')
   const starbasesByOwner = useStarbasesStore.getState().dataByOwner
@@ -92,7 +92,7 @@ export async function resolveAllReferenceData(
   }
 
   const uncachedStarbases = Array.from(starbaseIds).filter(
-    (id) => !hasStructure(id)
+    (id) => !hasStructure(id),
   )
 
   const hasWork =

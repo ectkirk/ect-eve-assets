@@ -32,13 +32,13 @@ function ServiceBadge({
         'inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs',
         isOnline
           ? 'bg-semantic-success/20 text-status-positive'
-          : 'bg-surface-tertiary text-content-muted'
+          : 'bg-surface-tertiary text-content-muted',
       )}
     >
       <span
         className={cn(
           'w-1.5 h-1.5 rounded-full',
-          isOnline ? 'bg-status-positive' : 'bg-content-muted'
+          isOnline ? 'bg-status-positive' : 'bg-content-muted',
         )}
       />
       {name}

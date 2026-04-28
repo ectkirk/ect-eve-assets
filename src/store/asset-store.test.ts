@@ -75,7 +75,7 @@ describe('asset-store', () => {
         type: 'character',
       })
       vi.mocked(useAuthStore.getState).mockReturnValue(
-        createMockAuthState({ 'character-12345': mockOwner })
+        createMockAuthState({ 'character-12345': mockOwner }),
       )
 
       const futureExpiry = Date.now() + 3600000
@@ -149,7 +149,7 @@ describe('asset-store', () => {
       expect(
         useExpiryCacheStore
           .getState()
-          .endpoints.has('character-12345:/characters/12345/assets')
+          .endpoints.has('character-12345:/characters/12345/assets'),
       ).toBe(false)
     })
   })

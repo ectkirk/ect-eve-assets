@@ -5,7 +5,7 @@ import { z } from 'zod'
 export type ESIIndustryJob = z.infer<typeof ESIIndustryJobSchema>
 
 export async function getCharacterIndustryJobs(
-  characterId: number
+  characterId: number,
 ): Promise<ESIIndustryJob[]> {
   const endpoint = `/characters/${characterId}/industry/jobs`
   return esi.fetch<ESIIndustryJob[]>(endpoint, {
@@ -16,7 +16,7 @@ export async function getCharacterIndustryJobs(
 
 export async function getCorporationIndustryJobs(
   characterId: number,
-  corporationId: number
+  corporationId: number,
 ): Promise<ESIIndustryJob[]> {
   const endpoint = `/corporations/${corporationId}/industry/jobs`
   return esi.fetchPaginated<ESIIndustryJob>(endpoint, {

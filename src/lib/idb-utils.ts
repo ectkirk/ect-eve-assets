@@ -6,7 +6,7 @@ export type { DBConfig, DBStoreConfig }
 export type UpgradeHandler = (
   db: IDBDatabase,
   oldVersion: number,
-  tx: IDBTransaction
+  tx: IDBTransaction,
 ) => void
 
 interface OpenOptions {
@@ -21,7 +21,7 @@ function toDatabaseError(error: DOMException | null): Error {
 
 function createStoreWithIndexes(
   db: IDBDatabase,
-  storeConfig: DBStoreConfig
+  storeConfig: DBStoreConfig,
 ): void {
   const store = db.createObjectStore(storeConfig.name, {
     keyPath: storeConfig.keyPath,
@@ -35,7 +35,7 @@ function createStoreWithIndexes(
 
 export async function openDatabase(
   config: DBConfig,
-  options?: OpenOptions
+  options?: OpenOptions,
 ): Promise<IDBDatabase> {
   const cached = dbCache.get(config.name)
   if (cached) return cached
@@ -64,7 +64,7 @@ export async function openDatabase(
         `Database ${config.name} upgrade blocked by open connection`,
         {
           module: config.module,
-        }
+        },
       )
     }
 
@@ -119,7 +119,7 @@ export async function closeAllDatabases(): Promise<void> {
 
 export async function deleteDatabase(
   dbName: string,
-  module: string
+  module: string,
 ): Promise<void> {
   await closeDatabase(dbName)
   return new Promise((resolve, reject) => {
@@ -137,7 +137,7 @@ export async function deleteDatabase(
 
 export async function idbGetAll<T>(
   db: IDBDatabase,
-  storeName: string
+  storeName: string,
 ): Promise<T[]> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction([storeName], 'readonly')
@@ -156,7 +156,7 @@ export async function idbGetAll<T>(
 export async function idbGet<T>(
   db: IDBDatabase,
   storeName: string,
-  key: IDBValidKey
+  key: IDBValidKey,
 ): Promise<T | undefined> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction([storeName], 'readonly')
@@ -175,7 +175,7 @@ export async function idbGet<T>(
 export async function idbPut<T>(
   db: IDBDatabase,
   storeName: string,
-  item: T
+  item: T,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction([storeName], 'readwrite')
@@ -193,7 +193,7 @@ export async function idbPut<T>(
 export async function idbPutBatch<T>(
   db: IDBDatabase,
   storeName: string,
-  items: T[]
+  items: T[],
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction([storeName], 'readwrite')
@@ -213,7 +213,7 @@ export async function idbPutBatch<T>(
 export async function idbDelete(
   db: IDBDatabase,
   storeName: string,
-  key: IDBValidKey
+  key: IDBValidKey,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction([storeName], 'readwrite')
@@ -229,7 +229,7 @@ export async function idbDelete(
 
 export async function idbClear(
   db: IDBDatabase,
-  storeName: string
+  storeName: string,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction([storeName], 'readwrite')
@@ -245,7 +245,7 @@ export async function idbClear(
 
 export async function idbClearMultiple(
   db: IDBDatabase,
-  storeNames: string[]
+  storeNames: string[],
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(storeNames, 'readwrite')
@@ -264,7 +264,7 @@ export async function idbClearMultiple(
 export async function idbDeleteBatch(
   db: IDBDatabase,
   storeName: string,
-  keys: IDBValidKey[]
+  keys: IDBValidKey[],
 ): Promise<void> {
   if (keys.length === 0) return
   return new Promise((resolve, reject) => {
@@ -285,7 +285,7 @@ export async function idbDeleteBatch(
 export async function idbDeleteWhere(
   db: IDBDatabase,
   storeName: string,
-  predicate: (key: IDBValidKey) => boolean
+  predicate: (key: IDBValidKey) => boolean,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction([storeName], 'readwrite')
@@ -315,7 +315,7 @@ export async function idbGetByIndex<T>(
   db: IDBDatabase,
   storeName: string,
   indexName: string,
-  key: IDBValidKey
+  key: IDBValidKey,
 ): Promise<T[]> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction([storeName], 'readonly')
@@ -336,7 +336,7 @@ export async function idbGetKeysByIndex(
   db: IDBDatabase,
   storeName: string,
   indexName: string,
-  key: IDBValidKey
+  key: IDBValidKey,
 ): Promise<IDBValidKey[]> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction([storeName], 'readonly')

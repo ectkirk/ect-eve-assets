@@ -51,7 +51,7 @@ export class MainESIService {
   private inflightRequests = new Map<string, Promise<ESIResponse<unknown>>>()
 
   private assertSuccess(
-    result: ESIResponse<unknown>
+    result: ESIResponse<unknown>,
   ): asserts result is ESISuccessResponse<unknown> {
     if (!result.success) {
       throw new ESIError(result.error, result.status ?? 500, result.retryAfter)
@@ -60,7 +60,7 @@ export class MainESIService {
 
   private assertHasMeta(
     result: ESISuccessResponse<unknown>,
-    endpoint: string
+    endpoint: string,
   ): asserts result is ESISuccessResponse<unknown> & {
     meta: { expiresAt: number; etag: string | null; notModified: boolean }
   } {
@@ -86,7 +86,7 @@ export class MainESIService {
 
   async fetch<T>(
     endpoint: string,
-    options: ESIRequestOptions = {}
+    options: ESIRequestOptions = {},
   ): Promise<T> {
     const result = await this.executeWithRateLimit(endpoint, options)
     this.assertSuccess(result)
@@ -95,12 +95,12 @@ export class MainESIService {
 
   async fetchWithMeta<T>(
     endpoint: string,
-    options: ESIRequestOptions = {}
+    options: ESIRequestOptions = {},
   ): Promise<ESIResponseMeta<T>> {
     const cacheKey = this.cache.makeKey(
       options.characterId,
       endpoint,
-      options.language
+      options.language,
     )
     const cached = this.cache.get(cacheKey)
 
@@ -135,7 +135,7 @@ export class MainESIService {
 
   async fetchPaginated<T>(
     endpoint: string,
-    options: ESIRequestOptions = {}
+    options: ESIRequestOptions = {},
   ): Promise<T[]> {
     const result = await this.fetchPaginatedWithMeta<T>(endpoint, options)
     return result.data
@@ -143,7 +143,7 @@ export class MainESIService {
 
   async fetchPaginatedWithMeta<T>(
     endpoint: string,
-    options: ESIRequestOptions = {}
+    options: ESIRequestOptions = {},
   ): Promise<ESIResponseMeta<T[]>> {
     const results: T[] = []
     let page = 1
@@ -187,13 +187,13 @@ export class MainESIService {
   async fetchPaginatedWithProgress<T>(
     endpoint: string,
     options: ESIRequestOptions = {},
-    onProgress?: ProgressCallback
+    onProgress?: ProgressCallback,
   ): Promise<ESIResponseMeta<T[]>> {
     const separator = endpoint.includes('?') ? '&' : '?'
 
     const firstResult = await this.executeWithRateLimit(
       `${endpoint}${separator}page=1`,
-      options
+      options,
     )
     this.assertSuccess(firstResult)
 
@@ -213,7 +213,7 @@ export class MainESIService {
           limit(async () => {
             const result = await this.executeWithRateLimit(
               `${endpoint}${separator}page=${page}`,
-              options
+              options,
             )
             this.assertSuccess(result)
 
@@ -224,8 +224,8 @@ export class MainESIService {
               data: result.data as T[],
               meta: result.meta,
             }
-          })
-        )
+          }),
+        ),
       )
 
       for (const { data, meta } of pageResults) {
@@ -250,7 +250,7 @@ export class MainESIService {
 
   private async executeWithRateLimit(
     endpoint: string,
-    options: ESIRequestOptions
+    options: ESIRequestOptions,
   ): Promise<ESIResponse<unknown>> {
     while (this.paused) {
       await this.delay(100)
@@ -324,13 +324,13 @@ export class MainESIService {
   private async executeRequest(
     endpoint: string,
     options: ESIRequestOptions,
-    attempt = 0
+    attempt = 0,
   ): Promise<ESIResponse<unknown>> {
     const url = `${ESI_BASE_URL}${endpoint}`
     const cacheKey = this.cache.makeKey(
       options.characterId,
       endpoint,
-      options.language
+      options.language,
     )
 
     const headers: Record<string, string> = {
@@ -382,7 +382,7 @@ export class MainESIService {
 
       this.rateLimiter.updateFromHeaders(
         options.characterId ?? 0,
-        response.headers
+        response.headers,
       )
       this.scheduleSaveState()
 
@@ -428,7 +428,7 @@ export class MainESIService {
           return this.executeRequest(
             endpoint,
             { ...options, etag: undefined },
-            attempt
+            attempt,
           )
         }
       }
@@ -495,7 +495,7 @@ export class MainESIService {
             attempt: attempt + 1,
             error: message,
             backoffMs,
-          }
+          },
         )
         await this.delay(backoffMs)
         return this.executeRequest(endpoint, options, attempt + 1)

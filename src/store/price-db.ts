@@ -30,7 +30,7 @@ export async function loadAbyssalPricesFromDB(): Promise<AbyssalPriceRecord[]> {
 }
 
 export async function saveAbyssalPricesToDB(
-  prices: AbyssalPriceRecord[]
+  prices: AbyssalPriceRecord[],
 ): Promise<void> {
   if (prices.length === 0) return
   const db = await getDB()
@@ -59,7 +59,7 @@ export async function loadJitaPricesFromDB(): Promise<JitaPriceRecord[]> {
 }
 
 export async function saveJitaPricesToDB(
-  prices: JitaPriceRecord[]
+  prices: JitaPriceRecord[],
 ): Promise<void> {
   if (prices.length === 0) return
   const db = await getDB()
@@ -77,7 +77,7 @@ export async function loadEsiPricesFromDB(): Promise<EsiPriceRecord[]> {
 }
 
 export async function saveEsiPricesToDB(
-  prices: EsiPriceRecord[]
+  prices: EsiPriceRecord[],
 ): Promise<void> {
   if (prices.length === 0) return
   const db = await getDB()

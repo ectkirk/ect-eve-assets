@@ -421,7 +421,7 @@ export const useReferenceCacheStore = create<ReferenceCacheStore>(
       if (loaded) {
         setLocalStorage(
           REFERENCE_SCHEMA_VERSION_KEY,
-          String(REFERENCE_SCHEMA_VERSION)
+          String(REFERENCE_SCHEMA_VERSION),
         )
       } else {
         setLocalStorage(REFERENCE_SCHEMA_VERSION_KEY, null)
@@ -553,7 +553,7 @@ export const useReferenceCacheStore = create<ReferenceCacheStore>(
         initialized: false,
       })
     },
-  })
+  }),
 )
 
 export * from './getters'

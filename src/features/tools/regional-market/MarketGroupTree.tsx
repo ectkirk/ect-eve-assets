@@ -45,7 +45,7 @@ const MarketGroupRow = memo(function MarketGroupRow({
       e.stopPropagation()
       onToggleExpand(node.group.id)
     },
-    [onToggleExpand, node.group.id]
+    [onToggleExpand, node.group.id],
   )
 
   const handleRowClick = useCallback(() => {
@@ -57,7 +57,7 @@ const MarketGroupRow = memo(function MarketGroupRow({
     <div
       className={cn(
         'flex items-center gap-1 px-2 cursor-pointer hover:bg-surface-tertiary',
-        isSelected && 'bg-accent/20'
+        isSelected && 'bg-accent/20',
       )}
       style={{ height: ROW_HEIGHT, paddingLeft: `${indentPx + 8}px` }}
       onClick={handleRowClick}
@@ -92,7 +92,7 @@ const MarketGroupRow = memo(function MarketGroupRow({
       <span
         className={cn(
           'text-sm truncate min-w-0',
-          isSelected && 'text-accent font-medium'
+          isSelected && 'text-accent font-medium',
         )}
         title={node.group.name}
       >
@@ -119,7 +119,7 @@ const ItemRow = memo(function ItemRow({
     <div
       className={cn(
         'flex items-center gap-1.5 px-2 cursor-pointer hover:bg-surface-tertiary',
-        isSelected && 'bg-accent/20'
+        isSelected && 'bg-accent/20',
       )}
       style={{ height: ROW_HEIGHT, paddingLeft: `${indentPx + 8 + 22}px` }}
       onClick={() => {
@@ -130,7 +130,7 @@ const ItemRow = memo(function ItemRow({
       <span
         className={cn(
           'text-sm truncate min-w-0',
-          isSelected && 'text-accent font-medium'
+          isSelected && 'text-accent font-medium',
         )}
         title={type.name}
       >
@@ -154,7 +154,7 @@ export function MarketGroupTree({
 
   const flatRows = useMemo(
     () => flattenTreeWithItems(tree, expandedIds, types),
-    [tree, expandedIds, types]
+    [tree, expandedIds, types],
   )
 
   const getScrollElement = useCallback(() => containerRef.current, [])

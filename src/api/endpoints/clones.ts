@@ -5,7 +5,7 @@ import { z } from 'zod'
 export type ESIClone = z.infer<typeof ESICloneSchema>
 
 export async function getCharacterClones(
-  characterId: number
+  characterId: number,
 ): Promise<ESIClone> {
   return esi.fetch<ESIClone>(`/characters/${characterId}/clones`, {
     characterId,
@@ -14,7 +14,7 @@ export async function getCharacterClones(
 }
 
 export async function getCharacterImplants(
-  characterId: number
+  characterId: number,
 ): Promise<number[]> {
   return esi.fetch<number[]>(`/characters/${characterId}/implants`, {
     characterId,

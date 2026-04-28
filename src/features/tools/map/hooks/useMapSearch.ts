@@ -66,7 +66,7 @@ export function useMapSearch({
 
       performSearch(newQuery)
     },
-    [performSearch]
+    [performSearch],
   )
 
   const handleFocus = useCallback(() => {

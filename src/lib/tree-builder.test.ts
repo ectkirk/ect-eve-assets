@@ -211,7 +211,7 @@ function createAsset(overrides: Partial<ESIAsset> = {}): ESIAsset {
 }
 
 function createModeFlags(
-  overrides: Partial<AssetModeFlags> = {}
+  overrides: Partial<AssetModeFlags> = {},
 ): AssetModeFlags {
   return {
     inHangar: false,
@@ -233,7 +233,7 @@ function createModeFlags(
 function createResolvedAsset(
   asset: ESIAsset,
   overrides: Partial<Omit<ResolvedAsset, 'asset' | 'owner'>> = {},
-  owner: Owner = testOwner
+  owner: Owner = testOwner,
 ): ResolvedAsset {
   const typeMap: Record<
     number,
@@ -564,12 +564,12 @@ describe('buildTree', () => {
         createResolvedAsset(
           asset1,
           { modeFlags: createModeFlags({ inItemHangar: true }) },
-          testOwner
+          testOwner,
         ),
         createResolvedAsset(
           asset2,
           { modeFlags: createModeFlags({ inItemHangar: true }) },
-          otherOwner
+          otherOwner,
         ),
       ]
 

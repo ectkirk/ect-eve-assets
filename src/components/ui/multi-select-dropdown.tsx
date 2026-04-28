@@ -48,7 +48,7 @@ export function MultiSelectDropdown({
       }
       onChange(newSelected)
     },
-    [selected, onChange]
+    [selected, onChange],
   )
 
   const handleKeyDown = useCallback(
@@ -100,7 +100,7 @@ export function MultiSelectDropdown({
           break
       }
     },
-    [isOpen, focusedIndex, options, toggleOption, closeDropdown]
+    [isOpen, focusedIndex, options, toggleOption, closeDropdown],
   )
 
   const selectAll = () => {
@@ -146,7 +146,7 @@ export function MultiSelectDropdown({
         <ChevronDown
           className={cn(
             'h-3 w-3 text-content-muted transition-transform',
-            isOpen && 'rotate-180'
+            isOpen && 'rotate-180',
           )}
         />
       </button>
@@ -191,13 +191,13 @@ export function MultiSelectDropdown({
                   'flex items-center gap-2 w-full px-2 py-1.5 text-left text-xs cursor-pointer',
                   isFocused
                     ? 'bg-surface-tertiary'
-                    : 'hover:bg-surface-tertiary'
+                    : 'hover:bg-surface-tertiary',
                 )}
               >
                 <div
                   className={cn(
                     'w-3.5 h-3.5 rounded border flex items-center justify-center',
-                    isSelected ? 'bg-accent border-accent' : 'border-border'
+                    isSelected ? 'bg-accent border-accent' : 'border-border',
                   )}
                 >
                   {isSelected && <Check className="h-2.5 w-2.5 text-white" />}

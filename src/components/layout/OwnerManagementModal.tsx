@@ -49,7 +49,7 @@ export function OwnerManagementModal({
   const { t: tc } = useTranslation('common')
   const [state, dispatch] = useReducer(
     ownerModalReducer,
-    initialOwnerModalState
+    initialOwnerModalState,
   )
   const {
     authFlow,
@@ -78,7 +78,7 @@ export function OwnerManagementModal({
   const selectedOwnerIds = useAuthStore((state) => state.selectedOwnerIds)
   const selectedSet = useMemo(
     () => new Set(selectedOwnerIds),
-    [selectedOwnerIds]
+    [selectedOwnerIds],
   )
 
   const currentlyRefreshing = useExpiryCacheStore((s) => s.currentlyRefreshing)
@@ -86,11 +86,11 @@ export function OwnerManagementModal({
 
   const characterOwners = useMemo(
     () => owners.filter((o) => o.type === 'character'),
-    [owners]
+    [owners],
   )
   const corpOwners = useMemo(
     () => owners.filter((o) => o.type === 'corporation'),
-    [owners]
+    [owners],
   )
 
   const corpsByCharacterId = useMemo(() => {
@@ -105,7 +105,7 @@ export function OwnerManagementModal({
 
   const addedCorpIds = useMemo(
     () => new Set(corpOwners.map((c) => c.id)),
-    [corpOwners]
+    [corpOwners],
   )
 
   const filteredCharacters = useMemo(() => {
@@ -243,7 +243,7 @@ export function OwnerManagementModal({
         useExpiryCacheStore
           .getState()
           .queueAllEndpointsForOwner(
-            ownerKey(newCorpOwner.type, newCorpOwner.id)
+            ownerKey(newCorpOwner.type, newCorpOwner.id),
           )
       } else if (result.error && result.error !== 'Authentication cancelled') {
         dispatch({ type: 'SET_ERROR', error: result.error })
@@ -305,7 +305,7 @@ export function OwnerManagementModal({
     if (!window.electronAPI) return
 
     const hadCorporationScopes = owner.scopes?.some((s) =>
-      s.includes('corporation')
+      s.includes('corporation'),
     )
     const needsCorporationScopes =
       owner.type === 'corporation' || hadCorporationScopes
@@ -455,10 +455,10 @@ export function OwnerManagementModal({
                       character.corporationRoles?.roles?.includes('Director') ??
                       false
                     const characterCorps = getFilteredCorpsForCharacter(
-                      character.id
+                      character.id,
                     )
                     const corpAlreadyAdded = addedCorpIds.has(
-                      character.corporationId
+                      character.corporationId,
                     )
 
                     return (
@@ -487,7 +487,7 @@ export function OwnerManagementModal({
                             key={ownerKey(corp.type, corp.id)}
                             owner={corp}
                             isSelected={selectedSet.has(
-                              ownerKey(corp.type, corp.id)
+                              ownerKey(corp.type, corp.id),
                             )}
                             disabled={isBusy}
                             indented

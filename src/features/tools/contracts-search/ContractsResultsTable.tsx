@@ -50,10 +50,10 @@ export function ContractsResultsTable({
   const { t } = useTranslation('tools')
   const { sortColumn, sortDirection, handleSort } = useSortToggle<SortColumn>()
   const [hoveredContract, setHoveredContract] = useState<SearchContract | null>(
-    null
+    null,
   )
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(
-    null
+    null,
   )
   const [ingameAction, setIngameAction] = useState<{
     contractId: number
@@ -66,13 +66,13 @@ export function ContractsResultsTable({
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const tooltipRef = useRef<HTMLDivElement>(null)
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(
-    null
+    null,
   )
 
   const auctionContractIds = useMemo(
     () =>
       contracts.filter((c) => c.type === 'auction').map((c) => c.contractId),
-    [contracts]
+    [contracts],
   )
   const { highestBids } = useAuctionBids(auctionContractIds)
 
@@ -90,7 +90,7 @@ export function ContractsResultsTable({
         }, 300)
       }
     },
-    []
+    [],
   )
 
   const handleRowLeave = useCallback(() => {
@@ -131,7 +131,7 @@ export function ContractsResultsTable({
     (systemId: number, systemName: string) => {
       setWaypointAction({ systemId, systemName })
     },
-    []
+    [],
   )
 
   const handleOpenContractIngame = useCallback((contractId: number) => {

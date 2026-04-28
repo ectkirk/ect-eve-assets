@@ -43,7 +43,7 @@ export function IgnoredSystemsModal({
 
   const systemMap = useMemo(
     () => new Map(systems.map((s) => [s.id, s])),
-    [systems]
+    [systems],
   )
 
   const ignoredList = useMemo(() => {
@@ -58,7 +58,8 @@ export function IgnoredSystemsModal({
     const query = searchQuery.toLowerCase()
     return systems
       .filter(
-        (s) => s.name.toLowerCase().includes(query) && !ignoredSystems.has(s.id)
+        (s) =>
+          s.name.toLowerCase().includes(query) && !ignoredSystems.has(s.id),
       )
       .slice(0, 10)
   }, [searchQuery, systems, ignoredSystems])

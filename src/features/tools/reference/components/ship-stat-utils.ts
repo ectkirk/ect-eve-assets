@@ -47,7 +47,7 @@ export function extractShipSlots(attrMap: Map<number, number>): ShipSlots {
 }
 
 export function buildAttrMap(
-  attributes: { value: number; attributeID: number }[] | undefined
+  attributes: { value: number; attributeID: number }[] | undefined,
 ): Map<number, number> {
   const map = new Map<number, number>()
   if (!attributes) return map

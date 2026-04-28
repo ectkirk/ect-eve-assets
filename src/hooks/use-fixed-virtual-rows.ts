@@ -79,11 +79,11 @@ export function useFixedVirtualRows({
     const viewportSize = metrics.viewportSize || rowHeight * overscan
     const startIndex = Math.max(
       0,
-      Math.floor(metrics.scrollOffset / rowHeight) - overscan
+      Math.floor(metrics.scrollOffset / rowHeight) - overscan,
     )
     const endIndex = Math.min(
       count - 1,
-      Math.ceil((metrics.scrollOffset + viewportSize) / rowHeight) + overscan
+      Math.ceil((metrics.scrollOffset + viewportSize) / rowHeight) + overscan,
     )
 
     const virtualRows: FixedVirtualRow[] = []

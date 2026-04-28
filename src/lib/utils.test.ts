@@ -13,7 +13,7 @@ describe('cn', () => {
   it('handles conditional classes', () => {
     const condition = false
     expect(cn('base', condition && 'excluded', 'included')).toBe(
-      'base included'
+      'base included',
     )
   })
 
@@ -35,7 +35,7 @@ describe('cn', () => {
 
   it('handles complex combinations', () => {
     expect(cn('base', ['arr1', 'arr2'], { obj: true }, undefined, 'end')).toBe(
-      'base arr1 arr2 obj end'
+      'base arr1 arr2 obj end',
     )
   })
 

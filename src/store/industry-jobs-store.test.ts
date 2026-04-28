@@ -49,7 +49,7 @@ vi.mock('./price-store', () => ({
 
 vi.mock('@/store/reference-cache', () => ({
   getType: vi.fn((typeId: number) =>
-    typeId === 2000 ? { id: 2000, portionSize: 10 } : undefined
+    typeId === 2000 ? { id: 2000, portionSize: 10 } : undefined,
   ),
 }))
 
@@ -77,7 +77,7 @@ describe('industry-jobs-store', () => {
         type: 'character',
       })
       vi.mocked(useAuthStore.getState).mockReturnValue(
-        createMockAuthState({ 'character-12345': mockOwner })
+        createMockAuthState({ 'character-12345': mockOwner }),
       )
 
       vi.mocked(esi.fetchWithMeta).mockResolvedValue({
@@ -110,7 +110,7 @@ describe('industry-jobs-store', () => {
 
       expect(esi.fetchWithMeta).toHaveBeenCalledWith(
         expect.stringContaining('/characters/12345/industry/jobs'),
-        expect.anything()
+        expect.anything(),
       )
       expect(useIndustryJobsStore.getState().itemsById.size).toBe(1)
       expect(useIndustryJobsStore.getState().visibilityByOwner.size).toBe(1)

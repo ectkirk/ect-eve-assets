@@ -46,7 +46,7 @@ function buildSortedData(
   categories: Map<number, CachedCategory>,
   groups: Map<number, CachedGroup>,
   types: Map<number, CachedType>,
-  showUnpublished: boolean
+  showUnpublished: boolean,
 ): SortedData {
   const sortedCategories = Array.from(categories.values())
     .filter((c) => showUnpublished || c.published !== false)
@@ -80,7 +80,7 @@ function buildSortedData(
 function buildFlatRows(
   sortedData: SortedData,
   expandedCategoryIds: Set<number>,
-  expandedGroupIds: Set<number>
+  expandedGroupIds: Set<number>,
 ): FlatRow[] {
   const { sortedCategories, groupsByCategory, typesByGroup } = sortedData
   const rows: FlatRow[] = []
@@ -137,7 +137,7 @@ const FolderRow = memo(function FolderRow({
       className={cn(
         'flex items-center gap-1 px-2 cursor-pointer hover:bg-surface-tertiary',
         isSelected && 'bg-accent/20',
-        isUnpublished && 'opacity-60'
+        isUnpublished && 'opacity-60',
       )}
       style={{ height: ROW_HEIGHT, paddingLeft }}
       onClick={() => {
@@ -171,7 +171,7 @@ const FolderRow = memo(function FolderRow({
         className={cn(
           'text-sm truncate min-w-0',
           isSelected && 'text-accent font-medium',
-          isUnpublished && 'italic'
+          isUnpublished && 'italic',
         )}
         title={name}
       >
@@ -196,7 +196,7 @@ const TypeRow = memo(function TypeRow({
       className={cn(
         'flex items-center gap-1.5 px-2 cursor-pointer hover:bg-surface-tertiary',
         isSelected && 'bg-accent/20',
-        isUnpublished && 'opacity-60'
+        isUnpublished && 'opacity-60',
       )}
       style={{ height: ROW_HEIGHT, paddingLeft: INDENT_TYPE }}
       onClick={onSelect}
@@ -206,7 +206,7 @@ const TypeRow = memo(function TypeRow({
         className={cn(
           'text-sm truncate min-w-0',
           isSelected && 'text-accent font-medium',
-          isUnpublished && 'italic'
+          isUnpublished && 'italic',
         )}
         title={type.name}
       >
@@ -254,12 +254,12 @@ export function CategoryGroupTree({
 
   const sortedData = useMemo(
     () => buildSortedData(categories, groups, types, showUnpublished),
-    [categories, groups, types, showUnpublished]
+    [categories, groups, types, showUnpublished],
   )
 
   const flatRows = useMemo(
     () => buildFlatRows(sortedData, expandedCategoryIds, expandedGroupIds),
-    [sortedData, expandedCategoryIds, expandedGroupIds]
+    [sortedData, expandedCategoryIds, expandedGroupIds],
   )
 
   const getScrollElement = useCallback(() => containerRef.current, [])

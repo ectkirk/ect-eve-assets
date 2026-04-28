@@ -106,7 +106,7 @@ export const useRegionalOrdersStore = create<RegionalOrdersStore>(
           logger.error(
             'Failed to load regional orders from DB',
             err instanceof Error ? err : undefined,
-            { module: MODULE }
+            { module: MODULE },
           )
           set({ initialized: true })
         }
@@ -155,7 +155,7 @@ export const useRegionalOrdersStore = create<RegionalOrdersStore>(
           {
             requiresAuth: false,
             schema: ESIRegionOrderSchema,
-          }
+          },
         )
 
         const orders = result.data
@@ -185,7 +185,7 @@ export const useRegionalOrdersStore = create<RegionalOrdersStore>(
           logger.error(
             'Failed to save orders to DB',
             err instanceof Error ? err : undefined,
-            { module: MODULE }
+            { module: MODULE },
           )
         })
 
@@ -206,7 +206,7 @@ export const useRegionalOrdersStore = create<RegionalOrdersStore>(
         logger.error(
           'Failed to fetch type orders',
           err instanceof Error ? err : undefined,
-          { module: MODULE, regionId, typeId }
+          { module: MODULE, regionId, typeId },
         )
         return []
       }
@@ -240,7 +240,7 @@ export const useRegionalOrdersStore = create<RegionalOrdersStore>(
         initialized: false,
       })
     },
-  })
+  }),
 )
 
 useStoreRegistry.getState().register({

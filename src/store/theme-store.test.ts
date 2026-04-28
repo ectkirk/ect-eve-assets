@@ -31,7 +31,7 @@ describe('theme-store', () => {
       useThemeStore.getState().setTheme('dark')
       expect(document.documentElement.classList.contains('dark')).toBe(true)
       expect(document.documentElement.classList.contains('colorblind')).toBe(
-        false
+        false,
       )
     })
 
@@ -40,7 +40,7 @@ describe('theme-store', () => {
       useThemeStore.getState().setTheme('light')
       expect(document.documentElement.classList.contains('dark')).toBe(false)
       expect(document.documentElement.classList.contains('colorblind')).toBe(
-        false
+        false,
       )
     })
 
@@ -48,7 +48,7 @@ describe('theme-store', () => {
       useThemeStore.getState().setTheme('dark-colorblind')
       expect(document.documentElement.classList.contains('dark')).toBe(true)
       expect(document.documentElement.classList.contains('colorblind')).toBe(
-        true
+        true,
       )
     })
 
@@ -56,7 +56,7 @@ describe('theme-store', () => {
       useThemeStore.getState().setTheme('light-colorblind')
       expect(document.documentElement.classList.contains('dark')).toBe(false)
       expect(document.documentElement.classList.contains('colorblind')).toBe(
-        true
+        true,
       )
     })
   })
@@ -68,7 +68,7 @@ describe('theme-store', () => {
       initTheme()
       expect(document.documentElement.classList.contains('dark')).toBe(true)
       expect(document.documentElement.classList.contains('colorblind')).toBe(
-        true
+        true,
       )
     })
   })

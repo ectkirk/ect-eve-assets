@@ -24,7 +24,7 @@ interface OfficeInfo {
 
 function findOfficeInChain(
   parentChain: ESIAsset[],
-  currentAsset: { location_flag: string }
+  currentAsset: { location_flag: string },
 ): OfficeInfo | null {
   for (let i = 0; i < parentChain.length; i++) {
     const parent = parentChain.at(i)
@@ -47,7 +47,7 @@ export interface TreeBuilderOptions {
 
 export function shouldIncludeByMode(
   ra: ResolvedAsset,
-  mode: TreeMode
+  mode: TreeMode,
 ): boolean {
   const mf = ra.modeFlags
 
@@ -95,7 +95,7 @@ export function shouldIncludeByMode(
 
 export function buildTree(
   resolvedAssets: ResolvedAsset[],
-  options: TreeBuilderOptions
+  options: TreeBuilderOptions,
 ): TreeNode[] {
   const { mode, hangarDivisionNames } = options
 
@@ -137,7 +137,7 @@ export function buildTree(
           regionName: names.regionName,
           systemId: ra.systemId,
           systemName: names.systemName,
-        }
+        },
       )
       stationNodes.set(stationKey, stationNode)
     }
@@ -146,7 +146,7 @@ export function buildTree(
     // rootLocationId is the structure's item_id). For stations, rootLocationId is a station
     // ID which won't match any asset's item_id.
     const parentChain = ra.parentChain.filter(
-      (p) => p.item_id !== ra.rootLocationId
+      (p) => p.item_id !== ra.rootLocationId,
     )
 
     const officeInfo = findOfficeInChain(parentChain, ra.asset)
@@ -168,7 +168,7 @@ export function buildTree(
         parentNode = createItemNode(
           parentResolved,
           currentDepth,
-          names.locationName
+          names.locationName,
         )
         currentParent.children.push(parentNode)
         nodeIndex.set(parentNodeId, parentNode)
@@ -222,7 +222,7 @@ export function buildTree(
             parentAsset.item_id,
             divisionFlag,
             currentDepth,
-            hangarDivisionNames
+            hangarDivisionNames,
           )
           currentParent.children.push(divisionNode)
           nodeIndex.set(divisionNodeId, divisionNode)

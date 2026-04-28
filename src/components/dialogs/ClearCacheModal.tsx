@@ -290,15 +290,15 @@ export function ClearCacheModal({ open, onOpenChange }: ClearCacheModalProps) {
               .getState()
               .clearByEndpoint(option.endpointPattern)
             await window.electronAPI?.esi.clearCacheByPattern(
-              option.endpointPattern
+              option.endpointPattern,
             )
           }
           await option.clear()
-        })
+        }),
       )
 
       const clearsCharacterData = optionsToClear.some(
-        (o) => o.group === 'data' || o.group === 'structures'
+        (o) => o.group === 'data' || o.group === 'structures',
       )
       if (clearsCharacterData) {
         await useDivisionsStore.getState().clear()
@@ -324,7 +324,7 @@ export function ClearCacheModal({ open, onOpenChange }: ClearCacheModalProps) {
         err instanceof Error ? err : undefined,
         {
           module: 'ClearCacheModal',
-        }
+        },
       )
     } finally {
       setIsClearing(false)
@@ -332,7 +332,7 @@ export function ClearCacheModal({ open, onOpenChange }: ClearCacheModalProps) {
   }
 
   const selectedRequiresReload = CACHE_OPTIONS.some(
-    (o) => selected.has(o.id) && o.requiresReload
+    (o) => selected.has(o.id) && o.requiresReload,
   )
 
   return (
@@ -351,7 +351,7 @@ export function ClearCacheModal({ open, onOpenChange }: ClearCacheModalProps) {
                 <div key={group}>
                   <div className="text-xs font-medium text-content-muted uppercase tracking-wider mb-2">
                     {t(
-                      GROUP_LABEL_KEYS.get(group) ?? 'clearCache.groups.system'
+                      GROUP_LABEL_KEYS.get(group) ?? 'clearCache.groups.system',
                     )}
                   </div>
                   <div className="space-y-1">

@@ -17,10 +17,10 @@ interface UseExpandCollapseResult<T> {
 export function useExpandCollapse<T>(
   items: T[],
   setExpandCollapse?: ((control: ExpandCollapseControl | null) => void) | null,
-  initialExpanded?: Set<T>
+  initialExpanded?: Set<T>,
 ): UseExpandCollapseResult<T> {
   const [expandedSet, setExpandedSet] = useState<Set<T>>(
-    initialExpanded ?? new Set()
+    initialExpanded ?? new Set(),
   )
 
   const toggle = useCallback((id: T) => {
@@ -44,7 +44,7 @@ export function useExpandCollapse<T>(
 
   const isAllExpanded = useMemo(
     () => items.length > 0 && items.every((id) => expandedSet.has(id)),
-    [items, expandedSet]
+    [items, expandedSet],
   )
 
   useEffect(() => {

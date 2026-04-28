@@ -21,7 +21,7 @@ export function ToastContainer() {
           key={toast.id}
           className={cn(
             'flex items-center gap-2 rounded-md border px-4 py-2 text-sm shadow-lg backdrop-blur-sm',
-            typeStyles[toast.type]
+            typeStyles[toast.type],
           )}
         >
           <span className="flex-1">{toast.message}</span>

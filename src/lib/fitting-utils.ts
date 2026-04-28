@@ -91,7 +91,7 @@ function getSlotIndex(flag: string | undefined, pattern: RegExp): number {
 
 function extractModulesFromChildren(
   children: TreeNode[],
-  pattern: RegExp
+  pattern: RegExp,
 ): ModuleItem[] {
   const slotMap = new Map<number, ModuleItem>()
 
@@ -211,7 +211,7 @@ export const HOLD_LABEL_KEYS = new Map<keyof ShipHolds, string>([
 
 function extractItemsByFlag(
   children: TreeNode[],
-  targetFlag: string
+  targetFlag: string,
 ): ModuleItem[] {
   const items: ModuleItem[] = []
 
@@ -238,7 +238,7 @@ function extractShipHolds(children: TreeNode[]): ShipHolds {
     Array.from(HOLD_FLAG_MAP).map(([key, flag]) => [
       key,
       extractItemsByFlag(children, flag),
-    ])
+    ]),
   ) as unknown as ShipHolds
 }
 
@@ -283,20 +283,20 @@ export function extractFitting(shipNode: TreeNode): ExtractedFitting {
     shipGroupId: shipType?.groupId,
     highSlotModules: extractModulesFromChildren(
       children,
-      SLOT_FLAG_PATTERNS.high
+      SLOT_FLAG_PATTERNS.high,
     ),
     midSlotModules: extractModulesFromChildren(
       children,
-      SLOT_FLAG_PATTERNS.mid
+      SLOT_FLAG_PATTERNS.mid,
     ),
     lowSlotModules: extractModulesFromChildren(
       children,
-      SLOT_FLAG_PATTERNS.low
+      SLOT_FLAG_PATTERNS.low,
     ),
     rigModules: extractModulesFromChildren(children, SLOT_FLAG_PATTERNS.rig),
     subsystemModules: extractModulesFromChildren(
       children,
-      SLOT_FLAG_PATTERNS.subsystem
+      SLOT_FLAG_PATTERNS.subsystem,
     ),
     drones: extractDrones(children),
     fighterTubes: extractFighterTubes(children),

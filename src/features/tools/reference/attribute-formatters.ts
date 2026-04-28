@@ -15,7 +15,7 @@ export function formatAttributeValue(
   value: number,
   unitId: number | null,
   units: Record<string, DogmaUnit> | null,
-  translations?: AttributeTranslations
+  translations?: AttributeTranslations,
 ): string {
   const locale = getLocale()
   switch (unitId) {

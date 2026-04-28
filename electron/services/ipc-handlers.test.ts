@@ -77,7 +77,7 @@ type IpcHandler = (event: IpcMainInvokeEvent, ...args: unknown[]) => unknown
 
 function getRegisteredHandler(channel: string): IpcHandler {
   const call = mocks.ipcMain.handle.mock.calls.find(
-    (c: unknown[]) => c[0] === channel
+    (c: unknown[]) => c[0] === channel,
   )
   if (!call) throw new Error(`No handler registered for channel: ${channel}`)
   return call[1] as IpcHandler
@@ -371,7 +371,7 @@ describe('IPC Handlers', () => {
         await handler(mockEvent, 'INFO', 'info message')
         expect(mocks.logger.info).toHaveBeenCalledWith(
           'info message',
-          expect.objectContaining({ source: 'renderer' })
+          expect.objectContaining({ source: 'renderer' }),
         )
 
         await handler(mockEvent, 'WARN', 'warn message')
@@ -387,7 +387,7 @@ describe('IPC Handlers', () => {
 
         expect(mocks.logger.debug).toHaveBeenCalledWith(
           'debug message',
-          expect.objectContaining({ source: 'renderer' })
+          expect.objectContaining({ source: 'renderer' }),
         )
         expect(mocks.logger.info).not.toHaveBeenCalled()
         expect(mocks.logger.warn).not.toHaveBeenCalled()

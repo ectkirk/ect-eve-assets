@@ -125,7 +125,7 @@ if (!gotTheLock) {
       RENDERER_DIST,
       VITE_PUBLIC,
       path.join(__dirname, 'preload.cjs'),
-      windowManager
+      windowManager,
     )
     logger.info('Main window created', { module: 'Main' })
 
@@ -164,7 +164,7 @@ if (!gotTheLock) {
           RENDERER_DIST,
           VITE_PUBLIC,
           path.join(__dirname, 'preload.cjs'),
-          windowManager
+          windowManager,
         )
       }
     })

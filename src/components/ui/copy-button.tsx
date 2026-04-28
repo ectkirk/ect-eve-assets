@@ -37,7 +37,7 @@ export function CopyButton({
         onClick={handleCopy}
         className={cn(
           'inline-flex items-center gap-1 font-semibold hover:opacity-80',
-          className
+          className,
         )}
         title={t('accessibility.clickToCopy')}
       >
@@ -53,7 +53,7 @@ export function CopyButton({
       onClick={handleCopy}
       className={cn(
         'inline-flex items-center gap-2 rounded-lg border border-accent/50 bg-accent/10 px-3 py-1.5 text-sm text-accent transition-colors hover:bg-accent/20',
-        className
+        className,
       )}
       title={`Copy "${text}"`}
     >

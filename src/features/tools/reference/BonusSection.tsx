@@ -25,7 +25,7 @@ interface BonusSectionProps {
 
 function formatBonusValue(
   bonus: number | null | undefined,
-  unitID?: number | null
+  unitID?: number | null,
 ): string {
   if (bonus == null) return ''
   if (unitID === 104) return `${bonus}x `

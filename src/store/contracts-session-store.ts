@@ -70,7 +70,7 @@ interface ContractsSessionState {
   commitSearch: () => void
   updateMode: <T>(
     mode: SearchMode,
-    update: Partial<SearchModeState<T, unknown>>
+    update: Partial<SearchModeState<T, unknown>>,
   ) => void
   setResults: (update: ResultsUpdate<SearchContract>) => void
   setPage: (page: number) => void
@@ -88,7 +88,7 @@ interface ContractsSessionState {
 function applyModeUpdate(
   state: ContractsSessionState,
   mode: SearchMode,
-  update: Partial<SearchModeState<unknown, unknown>>
+  update: Partial<SearchModeState<unknown, unknown>>,
 ): Partial<ContractsSessionState> {
   if (mode === 'buySell') {
     return { buySell: { ...state.buySell, ...update } as BuySellState }
@@ -189,5 +189,5 @@ export const useContractsSessionStore = create<ContractsSessionState>(
         courier: DEFAULT_COURIER_STATE,
       })
     },
-  })
+  }),
 )

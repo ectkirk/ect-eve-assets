@@ -46,7 +46,7 @@ export function MapSystemContextMenu({
 
   const position = useMemo(
     () => clampToViewport(x, y, MENU_WIDTH, MENU_HEIGHT_ESTIMATE),
-    [x, y]
+    [x, y],
   )
 
   return (

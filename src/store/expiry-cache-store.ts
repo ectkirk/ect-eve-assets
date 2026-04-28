@@ -49,13 +49,13 @@ interface ExpiryCacheActions {
     endpoint: string,
     expiresAt: number,
     etag?: string | null,
-    isEmpty?: boolean
+    isEmpty?: boolean,
   ) => void
   getExpiry: (ownerKey: string, endpoint: string) => EndpointExpiry | undefined
   isExpired: (ownerKey: string, endpoint: string) => boolean
   registerRefreshCallback: (
     endpointPattern: string,
-    callback: RefreshCallback
+    callback: RefreshCallback,
   ) => () => void
   queueRefresh: (ownerKey: string, endpoint: string) => void
   queueAllEndpointsForOwner: (ownerKey: string) => void
@@ -127,7 +127,7 @@ async function saveToDB(key: string, expiry: EndpointExpiry): Promise<void> {
 }
 
 async function deleteFromDBWhere(
-  predicate: (key: IDBValidKey) => boolean
+  predicate: (key: IDBValidKey) => boolean,
 ): Promise<void> {
   const db = await getDB()
   await idbDeleteWhere(db, STORE_EXPIRY, predicate)
@@ -140,14 +140,14 @@ async function clearExpiryDB(): Promise<void> {
 
 function getSortedPatterns(callbacks: Map<string, RefreshCallback>): string[] {
   sortedPatternsCache ??= [...callbacks.keys()].sort(
-    (a, b) => b.length - a.length
+    (a, b) => b.length - a.length,
   )
   return sortedPatternsCache
 }
 
 function findCallback(
   callbacks: Map<string, RefreshCallback>,
-  endpoint: string
+  endpoint: string,
 ): RefreshCallback | undefined {
   for (const pattern of getSortedPatterns(callbacks)) {
     if (endpoint.includes(pattern)) return callbacks.get(pattern)
@@ -157,7 +157,7 @@ function findCallback(
 
 function findMatchingPattern(
   callbacks: Map<string, RefreshCallback>,
-  endpoint: string
+  endpoint: string,
 ): string | undefined {
   for (const pattern of getSortedPatterns(callbacks)) {
     if (endpoint.includes(pattern)) return pattern
@@ -262,7 +262,7 @@ function processQueue() {
             module: 'ExpiryCacheStore',
             ownerKey: item.ownerKey,
             endpoint: item.endpoint,
-          }
+          },
         )
       } finally {
         useExpiryCacheStore.setState({ currentlyRefreshing: null })
@@ -500,7 +500,7 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
         if (key.startsWith(prefix)) endpoints.delete(key)
       }
       const refreshQueue = state.refreshQueue.filter(
-        (q) => q.ownerKey !== ownerKey
+        (q) => q.ownerKey !== ownerKey,
       )
       return { endpoints, refreshQueue }
     })
@@ -511,7 +511,7 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
           module: 'ExpiryCacheStore',
           ownerKey,
         })
-      }
+      },
     )
   },
 
@@ -519,7 +519,7 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
     set((state) => {
       const endpoints = new Map(state.endpoints)
       const refreshQueue = state.refreshQueue.filter(
-        (q) => !q.endpoint.includes(pattern)
+        (q) => !q.endpoint.includes(pattern),
       )
       for (const key of endpoints.keys()) {
         if (key.includes(pattern)) endpoints.delete(key)
@@ -554,13 +554,13 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
     set((state) => {
       const newEndpoints = new Map(state.endpoints)
       const ownerKeysToRemove = new Set(
-        orphanedKeys.map((k) => parseKey(k)!.ownerKey)
+        orphanedKeys.map((k) => parseKey(k)!.ownerKey),
       )
       for (const key of orphanedKeys) {
         newEndpoints.delete(key)
       }
       const refreshQueue = state.refreshQueue.filter(
-        (q) => !ownerKeysToRemove.has(q.ownerKey)
+        (q) => !ownerKeysToRemove.has(q.ownerKey),
       )
       return { endpoints: newEndpoints, refreshQueue }
     })
@@ -570,7 +570,7 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
         ...new Set(orphanedKeys.map((k) => parseKey(k)!.ownerKey + ':')),
       ]
       await deleteFromDBWhere((key) =>
-        ownerPrefixes.some((prefix) => (key as string).startsWith(prefix))
+        ownerPrefixes.some((prefix) => (key as string).startsWith(prefix)),
       )
       logger.info('Pruned orphaned expiry entries', {
         module: 'ExpiryCacheStore',

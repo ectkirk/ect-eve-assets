@@ -138,7 +138,7 @@ export function FittingDialog({
 
   const slots = useMemo(
     () => (fitting ? getShipSlots(fitting.shipTypeId) : null),
-    [fitting]
+    [fitting],
   )
 
   const copyFitting = useCallback(async () => {
@@ -251,7 +251,7 @@ export function FittingDialog({
                     title={t(HOLD_LABEL_KEYS.get(key) ?? 'fitting.cargo')}
                     modules={items}
                   />
-                )
+                ),
             )}
           </div>
         </div>

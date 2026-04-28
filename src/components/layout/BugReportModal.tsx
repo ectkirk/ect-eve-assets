@@ -33,7 +33,7 @@ export function BugReportModal({ open, onOpenChange }: BugReportModalProps) {
     try {
       const result = await window.electronAPI?.submitBugReport(
         characterName,
-        description
+        description,
       )
       if (!result?.success) {
         throw new Error(result?.error ?? 'Failed to submit report')

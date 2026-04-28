@@ -3,7 +3,7 @@ import type { TreeNode } from '../tree-types'
 export function flattenTree(
   nodes: TreeNode[],
   expandedNodes: Set<string>,
-  result: TreeNode[] = []
+  result: TreeNode[] = [],
 ): TreeNode[] {
   for (const node of nodes) {
     result.push(node)
@@ -29,7 +29,7 @@ export function collectDescendantItems(node: TreeNode): TreeNode[] {
 
 export function getAllNodeIds(
   nodes: TreeNode[],
-  result: string[] = []
+  result: string[] = [],
 ): string[] {
   for (const node of nodes) {
     if (node.children.length > 0) {

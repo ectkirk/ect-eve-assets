@@ -19,7 +19,7 @@ export { formatTimeLeft, formatTimeRemaining, formatDateTime }
 
 export function localizeTypeName(
   typeId: number | undefined,
-  fallback: string
+  fallback: string,
 ): string {
   if (!typeId) return fallback
   return getTypeName(typeId) ?? fallback
@@ -35,7 +35,7 @@ export function localizeRegionName(regionId: number, fallback: string): string {
 
 export function localizeRegionFromSystem(
   systemId: number,
-  fallback: string
+  fallback: string,
 ): string {
   const system = getSystem(systemId)
   if (!system) return fallback
@@ -43,14 +43,14 @@ export function localizeRegionFromSystem(
 }
 
 function localizeStationById(
-  stationId: number | null | undefined
+  stationId: number | null | undefined,
 ): string | undefined {
   if (stationId == null || isPlayerStructure(stationId)) return undefined
   return getStation(stationId)?.name
 }
 
 function localizeStationBySystem(
-  systemId: number | null | undefined
+  systemId: number | null | undefined,
 ): string | undefined {
   if (systemId == null) return undefined
   const stations = getStationsBySystemId(systemId)
@@ -60,7 +60,7 @@ function localizeStationBySystem(
 function localizeStation(
   locationId: number | null | undefined,
   systemId: number | null | undefined,
-  fallback?: string
+  fallback?: string,
 ): string | undefined {
   return (
     localizeStationById(locationId) ??
@@ -120,7 +120,7 @@ export const HIGHSEC_DISPLAY_THRESHOLD = 0.5
 // =============================================================================
 
 export function isPlayerStructure(
-  locationId: number | null | undefined
+  locationId: number | null | undefined,
 ): boolean {
   return locationId != null && locationId >= PLAYER_STRUCTURE_ID_THRESHOLD
 }
@@ -149,7 +149,7 @@ export function getSecurityColor(sec: number): string {
 // =============================================================================
 
 export function mapToCourierContract(
-  c: ContractSearchContract
+  c: ContractSearchContract,
 ): CourierContract | null {
   if (
     isPlayerStructure(c.startLocationId) ||
@@ -179,14 +179,14 @@ export function mapToCourierContract(
     destRegion: destSystemId
       ? localizeRegionFromSystem(
           destSystemId,
-          c.destination?.regionName ?? 'Unknown'
+          c.destination?.regionName ?? 'Unknown',
         )
       : (c.destination?.regionName ?? 'Unknown'),
     destSecurity: c.destination?.securityStatus ?? null,
     destStation: localizeStation(
       c.endLocationId,
       c.destination?.systemId,
-      c.destination?.structureName
+      c.destination?.structureName,
     ),
     directJumps: c.routeInfo?.directJumps ?? 0,
     safeJumps: c.routeInfo?.safeJumps ?? null,
@@ -244,7 +244,7 @@ export interface ContractDisplayValues {
 
 export function calculateContractDisplayValues(
   contract: SearchContract,
-  highestBid: number | undefined
+  highestBid: number | undefined,
 ): ContractDisplayValues {
   const isWantToBuy = contract.isWantToBuy === true
 

@@ -7,7 +7,10 @@ import prettier from 'eslint-plugin-prettier'
 import prettierConfig from 'eslint-config-prettier'
 
 const securityRules = Object.fromEntries(
-  Object.keys(security.configs.recommended.rules).map((rule) => [rule, 'error'])
+  Object.keys(security.configs.recommended.rules).map((rule) => [
+    rule,
+    'error',
+  ]),
 )
 
 export default tseslint.config(
@@ -53,7 +56,7 @@ export default tseslint.config(
       ...reactHooks.configs.recommended.rules,
       ...securityRules,
       ...prettierConfig.rules,
-      'prettier/prettier': 'warn',
+      'prettier/prettier': 'error',
       '@typescript-eslint/no-unused-vars': [
         'error',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
@@ -93,5 +96,5 @@ export default tseslint.config(
     rules: {
       '@typescript-eslint/no-require-imports': 'off',
     },
-  }
+  },
 )

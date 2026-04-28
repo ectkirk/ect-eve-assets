@@ -25,7 +25,7 @@ const DEFAULT_CAMERA: Camera = { x: 0, y: 0, zoom: INITIAL_ZOOM }
 
 function computeInitialCamera(
   coordinateData: CoordinateData,
-  dimensions: { width: number; height: number }
+  dimensions: { width: number; height: number },
 ): Camera {
   const { minX, minY, maxX, maxY, scale, padding } = coordinateData
   const renderedMinX = padding
@@ -109,7 +109,7 @@ export function useMapCamera({
         const cam = cameraRef.current
         const newZoom = Math.max(
           0.1,
-          Math.min(30, cam.zoom * (1 + pendingZoomDelta))
+          Math.min(30, cam.zoom * (1 + pendingZoomDelta)),
         )
 
         const worldX = (mouseX - dimensions.width / 2 - cam.x) / cam.zoom
@@ -152,7 +152,7 @@ export function useMapCamera({
         y: e.clientY - cameraRef.current.y,
       }
     },
-    []
+    [],
   )
 
   const handleMouseMove = useCallback(
@@ -170,7 +170,7 @@ export function useMapCamera({
         })
       }
     },
-    [isDragging]
+    [isDragging],
   )
 
   const handleMouseUp = useCallback(() => {
@@ -196,7 +196,7 @@ export function useMapCamera({
       cameraRef.current = newCamera
       setCamera(newCamera)
     },
-    [dimensions]
+    [dimensions],
   )
 
   return {

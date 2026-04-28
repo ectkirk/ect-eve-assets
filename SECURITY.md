@@ -33,12 +33,12 @@ ECT EVE Assets is a desktop application that handles EVE Online SSO authenticati
 
 The application communicates with these external services:
 
-| Service                  | Purpose                                    |
-| ------------------------ | ------------------------------------------ |
-| ESI (esi.evetech.net)    | EVE Online API for character/corp data     |
-| EVE SSO (login.eveonline.com) | OAuth2 authentication                |
-| edencom.net              | Reference data (item types, prices, locations) |
-| mutamarket.com           | Abyssal module pricing                     |
+| Service                       | Purpose                                        |
+| ----------------------------- | ---------------------------------------------- |
+| ESI (esi.evetech.net)         | EVE Online API for character/corp data         |
+| EVE SSO (login.eveonline.com) | OAuth2 authentication                          |
+| edencom.net                   | Reference data (item types, prices, locations) |
+| mutamarket.com                | Abyssal module pricing                         |
 
 No other external services are contacted. All communication uses HTTPS.
 

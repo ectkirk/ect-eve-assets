@@ -33,7 +33,7 @@ export const useToastStore = create<ToastState>((set) => ({
 export function showToast(
   type: ToastType,
   message: string,
-  durationMs?: number
+  durationMs?: number,
 ) {
   useToastStore.getState().addToast(type, message, durationMs)
 }

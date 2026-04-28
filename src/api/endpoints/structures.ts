@@ -8,7 +8,7 @@ export type ESICorporationStructure = z.infer<
 
 export async function getCorporationStructures(
   characterId: number,
-  corporationId: number
+  corporationId: number,
 ): Promise<ESICorporationStructure[]> {
   const endpoint = `/corporations/${corporationId}/structures`
   return esi.fetchPaginated<ESICorporationStructure>(endpoint, {

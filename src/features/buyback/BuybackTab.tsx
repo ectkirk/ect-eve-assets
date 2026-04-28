@@ -96,7 +96,7 @@ export function BuybackTab({
 
     if (activeTab !== 'assetsafety') {
       const apiConfig = new Map(Object.entries(info.securityConfigs)).get(
-        activeTab
+        activeTab,
       )
       if (!apiConfig) return null
       return {
@@ -179,7 +179,7 @@ export function BuybackTab({
         }
         const res = await window.electronAPI!.refBuybackCalculate(
           text,
-          buybackConfig
+          buybackConfig,
         )
         if (res.error) {
           setError(res.error)
@@ -193,7 +193,7 @@ export function BuybackTab({
         setIsLoading(false)
       }
     },
-    [config]
+    [config],
   )
 
   const handleReset = () => {
@@ -270,7 +270,7 @@ export function BuybackTab({
           {activeTab === 'assetsafety'
             ? t('buyback.assetSafetyDescription', {
                 secLevel: t(
-                  `buyback.${assetSafetySecLevel === 'highsec' ? 'highSec' : assetSafetySecLevel === 'lowsec' ? 'lowSec' : 'nullSec'}`
+                  `buyback.${assetSafetySecLevel === 'highsec' ? 'highSec' : assetSafetySecLevel === 'lowsec' ? 'lowSec' : 'nullSec'}`,
                 ),
                 buyRate: formatRate(config?.buyRate ?? 0),
                 feeRate: formatRate(feeRate),

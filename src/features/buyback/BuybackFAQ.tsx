@@ -26,14 +26,14 @@ function parseMarkdown(md: string): string {
     return text
       .replace(
         /\*\*([^*]+)\*\*/g,
-        '<strong class="text-content font-semibold">$1</strong>'
+        '<strong class="text-content font-semibold">$1</strong>',
       )
       .replace(
         /\[([^\]]+)\]\(([^)]+)\)/g,
         (_, linkText: string, url: string) => {
           const safeUrl = sanitizeUrl(url)
           return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">${linkText}</a>`
-        }
+        },
       )
   }
 
@@ -57,7 +57,7 @@ function parseMarkdown(md: string): string {
       result.push('<tr class="border-b border-border">')
       headerRow.forEach((cell) => {
         result.push(
-          `<th scope="col" class="px-3 py-2 text-left font-semibold text-content">${processInline(cell)}</th>`
+          `<th scope="col" class="px-3 py-2 text-left font-semibold text-content">${processInline(cell)}</th>`,
         )
       })
       result.push('</tr>')
@@ -67,7 +67,7 @@ function parseMarkdown(md: string): string {
         result.push('<tr class="border-b border-border/50">')
         row.forEach((cell) => {
           result.push(
-            `<td class="px-3 py-2 text-content-secondary">${processInline(cell)}</td>`
+            `<td class="px-3 py-2 text-content-secondary">${processInline(cell)}</td>`,
           )
         })
         result.push('</tr>')
@@ -98,7 +98,7 @@ function parseMarkdown(md: string): string {
     if (line.startsWith('- ')) {
       if (!inList) {
         result.push(
-          '<ul class="list-disc list-inside space-y-1 my-2 text-content-secondary">'
+          '<ul class="list-disc list-inside space-y-1 my-2 text-content-secondary">',
         )
         inList = true
       }
@@ -113,7 +113,7 @@ function parseMarkdown(md: string): string {
     }
 
     result.push(
-      `<p class="my-2 text-content-secondary">${processInline(line)}</p>`
+      `<p class="my-2 text-content-secondary">${processInline(line)}</p>`,
     )
   }
 

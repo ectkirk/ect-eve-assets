@@ -35,7 +35,7 @@ export const useStarbasesStore = createOwnerStore<
   fetchData: async (owner) => {
     const result = await esi.fetchPaginatedWithMeta<ESIStarbase>(
       `/corporations/${owner.id}/starbases`,
-      { characterId: owner.characterId, schema: ESIStarbaseSchema }
+      { characterId: owner.characterId, schema: ESIStarbaseSchema },
     )
     return { data: result.data, expiresAt: result.expiresAt, etag: result.etag }
   },

@@ -21,27 +21,27 @@ Built with Electron, React, and TypeScript.
 
 ### Character Mode
 
-| Tab    | Description                        |
-| ------ | ---------------------------------- |
-| Clones | Jump clones with implant details   |
+| Tab    | Description                              |
+| ------ | ---------------------------------------- |
+| Clones | Jump clones with implant details         |
 | Mail   | In-game mail with conversation threading |
-| Skills | Skill queue and training progress  |
+| Skills | Skill queue and training progress        |
 
 ### Tools Mode
 
-| Tab             | Description                                  |
-| --------------- | -------------------------------------------- |
-| Contracts       | Cross-region contract search and filtering   |
-| Regional Market | Regional pricing data and market analysis    |
+| Tab             | Description                                             |
+| --------------- | ------------------------------------------------------- |
+| Contracts       | Cross-region contract search and filtering              |
+| Regional Market | Regional pricing data and market analysis               |
 | Map             | Universe map with routing, incursions, and insurgencies |
-| Reference       | Item database browser with descriptions      |
+| Reference       | Item database browser with descriptions                 |
 
 ### Additional Modes
 
-| Mode     | Description                                   |
-| -------- | --------------------------------------------- |
-| Buyback  | Item valuation by security level              |
-| Freight  | Shipping calculator for logistics             |
+| Mode    | Description                       |
+| ------- | --------------------------------- |
+| Buyback | Item valuation by security level  |
+| Freight | Shipping calculator for logistics |
 
 ### Core Capabilities
 
@@ -53,16 +53,16 @@ Built with Electron, React, and TypeScript.
 
 ## Tech Stack
 
-| Layer     | Technology                                                |
-| --------- | --------------------------------------------------------- |
-| Desktop   | Electron 40, electron-updater                             |
-| Frontend  | React 19, TypeScript 5.9, Vite 7                         |
-| State     | Zustand 5, IndexedDB persistence                         |
-| UI        | Tailwind 4, shadcn/ui (Radix), Lucide icons              |
-| Tables    | TanStack Table + TanStack Virtual                         |
-| Validation| Zod 4                                                     |
-| Auth      | EVE SSO OAuth2 PKCE (jose)                                |
-| Testing   | Vitest, React Testing Library, Playwright, fake-indexeddb |
+| Layer      | Technology                                                |
+| ---------- | --------------------------------------------------------- |
+| Desktop    | Electron 40, electron-updater                             |
+| Frontend   | React 19, TypeScript 5.9, Vite 7                          |
+| State      | Zustand 5, IndexedDB persistence                          |
+| UI         | Tailwind 4, shadcn/ui (Radix), Lucide icons               |
+| Tables     | TanStack Table + TanStack Virtual                         |
+| Validation | Zod 4                                                     |
+| Auth       | EVE SSO OAuth2 PKCE (jose)                                |
+| Testing    | Vitest, React Testing Library, Playwright, fake-indexeddb |
 
 ## Development
 
@@ -88,11 +88,11 @@ npm run dist:linux   # Linux (AppImage)
 
 Copy `.env.example` to `.env`:
 
-| Variable             | Required | Description                              |
-| -------------------- | -------- | ---------------------------------------- |
-| `EVE_CLIENT_ID`      | Yes      | EVE SSO OAuth2 client ID                 |
-| `REF_API_KEY`        | Release  | edencom.net reference API key            |
-| `DISCORD_BUG_WEBHOOK`| Release  | Discord webhook for bug reports          |
+| Variable              | Required | Description                     |
+| --------------------- | -------- | ------------------------------- |
+| `EVE_CLIENT_ID`       | Yes      | EVE SSO OAuth2 client ID        |
+| `REF_API_KEY`         | Release  | edencom.net reference API key   |
+| `DISCORD_BUG_WEBHOOK` | Release  | Discord webhook for bug reports |
 
 All variables are embedded at build time. For releases, they are injected from GitHub Actions secrets.
 
@@ -104,6 +104,7 @@ All variables are embedded at build time. For releases, they are injected from G
 4. Required scopes:
 
 **Character scopes:**
+
 - `publicData`
 - `esi-assets.read_assets.v1`
 - `esi-characters.read_blueprints.v1`
@@ -125,6 +126,7 @@ All variables are embedded at build time. For releases, they are injected from G
 - `esi-wallet.read_character_wallet.v1`
 
 **Additional corporation scopes:**
+
 - `esi-assets.read_corporation_assets.v1`
 - `esi-contracts.read_corporation_contracts.v1`
 - `esi-corporations.read_blueprints.v1`

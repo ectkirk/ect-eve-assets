@@ -68,7 +68,7 @@ export function ClonesTab() {
 
   const [sortBy, setSortBy] = useLocalStorageSort<CharacterSortValue>(
     'ecteve:sort:clones',
-    'name'
+    'name',
   )
 
   useEffect(() => {
@@ -112,7 +112,7 @@ export function ClonesTab() {
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
   const selectedSet = useMemo(
     () => new Set(selectedOwnerIds),
-    [selectedOwnerIds]
+    [selectedOwnerIds],
   )
 
   const characterClones = useMemo(() => {
@@ -120,7 +120,7 @@ export function ClonesTab() {
 
     const getLocationName = (
       locationId: number,
-      locationType: 'station' | 'structure'
+      locationType: 'station' | 'structure',
     ): string => {
       if (locationType === 'structure') {
         return (
@@ -137,7 +137,7 @@ export function ClonesTab() {
     const result: CharacterClones[] = []
 
     const filteredClonesByOwner = clonesByOwner.filter(({ owner }) =>
-      selectedSet.has(ownerKey(owner.type, owner.characterId))
+      selectedSet.has(ownerKey(owner.type, owner.characterId)),
     )
 
     for (const { owner, clones, activeImplants } of filteredClonesByOwner) {
@@ -152,7 +152,7 @@ export function ClonesTab() {
           typeId,
           name: getTypeName(typeId),
           slot: getImplantSlot(typeId),
-        })
+        }),
       )
 
       const activeClone: CloneInfo = {

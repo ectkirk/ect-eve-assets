@@ -226,7 +226,7 @@ function VirtualizedTableBody({
 
   const getScrollElement = useCallback(
     () => containerRef.current?.parentElement ?? null,
-    []
+    [],
   )
   const { virtualRows, totalSize } = useFixedVirtualRows({
     count: sortedOrders.length,
@@ -317,7 +317,7 @@ export function OrdersTable({
 }) {
   const { sortColumn, sortDirection, handleSort } = useSortable<SortColumn>(
     'total',
-    'desc'
+    'desc',
   )
   const [diffSortMode, setDiffSortMode] = useState<DiffSortMode>('number')
   const show = (col: string) => visibleColumns.has(col)
@@ -377,7 +377,7 @@ export function OrdersTable({
       <TableHeader
         className={cn(
           'sticky top-0 z-10 bg-surface-secondary',
-          useVirtualization && 'table w-full'
+          useVirtualization && 'table w-full',
         )}
       >
         <TableRow className="hover:bg-transparent border-b border-border">

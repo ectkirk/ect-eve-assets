@@ -26,7 +26,7 @@ const SIZE_CLASSES = new Map([
 export function getTypeVariation(
   categoryId?: number,
   isBlueprintCopy?: boolean,
-  isBlueprint?: boolean
+  isBlueprint?: boolean,
 ): TypeVariation {
   if (isBlueprintCopy) return 'bpc'
   if (isBlueprint || categoryId === BLUEPRINT_CATEGORY_ID) return 'bp'
@@ -42,7 +42,7 @@ export function getTypeIconUrl(
     isBlueprintCopy?: boolean | undefined
     isBlueprint?: boolean | undefined
     imageSize?: number | undefined
-  }
+  },
 ): string | null {
   const {
     categoryId,
@@ -89,7 +89,7 @@ export function TypeIcon({
         className={cn(
           sizeClass,
           'rounded bg-surface-tertiary flex-shrink-0',
-          className
+          className,
         )}
       />
     )

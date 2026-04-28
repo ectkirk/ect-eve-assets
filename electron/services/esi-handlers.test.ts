@@ -55,7 +55,7 @@ type IpcHandler = (event: IpcMainInvokeEvent, ...args: unknown[]) => unknown
 
 function getRegisteredHandler(channel: string): IpcHandler {
   const call = mocks.ipcMain.handle.mock.calls.find(
-    (c: unknown[]) => c[0] === channel
+    (c: unknown[]) => c[0] === channel,
   )
   if (!call) throw new Error(`No handler registered for channel: ${channel}`)
   return call[1] as IpcHandler
@@ -129,10 +129,10 @@ describe('ESI Handlers', () => {
         const handler = getRegisteredHandler('esi:fetch')
 
         await expect(handler(mockEvent, '', {})).rejects.toThrow(
-          'Invalid endpoint'
+          'Invalid endpoint',
         )
         await expect(handler(mockEvent, 123, {})).rejects.toThrow(
-          'Invalid endpoint'
+          'Invalid endpoint',
         )
       })
 
@@ -144,7 +144,7 @@ describe('ESI Handlers', () => {
 
         expect(mocks.esiService.fetch).toHaveBeenCalledWith(
           '/characters/12345/',
-          expect.any(Object)
+          expect.any(Object),
         )
       })
 
@@ -193,7 +193,7 @@ describe('ESI Handlers', () => {
         const handler = getRegisteredHandler('esi:fetch')
 
         await expect(handler(mockEvent, '/test/', {})).rejects.toThrow(
-          'Network failure'
+          'Network failure',
         )
       })
     })
@@ -202,7 +202,7 @@ describe('ESI Handlers', () => {
       it('rejects invalid endpoint', async () => {
         const handler = getRegisteredHandler('esi:fetchWithMeta')
         await expect(handler(mockEvent, '', {})).rejects.toThrow(
-          'Invalid endpoint'
+          'Invalid endpoint',
         )
       })
 
@@ -224,7 +224,7 @@ describe('ESI Handlers', () => {
       it('rejects invalid endpoint', async () => {
         const handler = getRegisteredHandler('esi:fetchPaginated')
         await expect(handler(mockEvent, '', {})).rejects.toThrow(
-          'Invalid endpoint'
+          'Invalid endpoint',
         )
       })
 
@@ -242,7 +242,7 @@ describe('ESI Handlers', () => {
       it('rejects invalid endpoint', async () => {
         const handler = getRegisteredHandler('esi:fetchPaginatedWithMeta')
         await expect(handler(mockEvent, '', {})).rejects.toThrow(
-          'Invalid endpoint'
+          'Invalid endpoint',
         )
       })
 
@@ -264,7 +264,7 @@ describe('ESI Handlers', () => {
       it('rejects invalid endpoint', async () => {
         const handler = getRegisteredHandler('esi:fetchPaginatedWithProgress')
         await expect(
-          handler(mockEvent, '', {}, 'esi:progress:123')
+          handler(mockEvent, '', {}, 'esi:progress:123'),
         ).rejects.toThrow('Invalid endpoint')
       })
 
@@ -279,11 +279,11 @@ describe('ESI Handlers', () => {
         await handler(mockEvent, '/test/', {}, 'esi:progress:123')
 
         expect(
-          mocks.esiService.fetchPaginatedWithProgress
+          mocks.esiService.fetchPaginatedWithProgress,
         ).toHaveBeenCalledWith(
           '/test/',
           expect.any(Object),
-          expect.any(Function)
+          expect.any(Function),
         )
       })
 
@@ -298,7 +298,7 @@ describe('ESI Handlers', () => {
         await handler(mockEvent, '/test/', {}, 'invalid-channel')
 
         expect(
-          mocks.esiService.fetchPaginatedWithProgress
+          mocks.esiService.fetchPaginatedWithProgress,
         ).toHaveBeenCalledWith('/test/', expect.any(Object), undefined)
       })
     })
@@ -328,7 +328,7 @@ describe('ESI Handlers', () => {
 
         expect(result).toBe(5)
         expect(mocks.esiService.clearCacheByPattern).toHaveBeenCalledWith(
-          '/characters/'
+          '/characters/',
         )
       })
     })

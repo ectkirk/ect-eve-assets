@@ -74,7 +74,7 @@ export const useStoreRegistry = create<StoreRegistry>((set, get) => ({
     const results = await Promise.allSettled(
       Array.from(stores.values())
         .filter((store) => store.removeForOwner)
-        .map((store) => store.removeForOwner!(ownerType, ownerId))
+        .map((store) => store.removeForOwner!(ownerType, ownerId)),
     )
     for (const result of results) {
       if (result.status === 'rejected') {
@@ -88,7 +88,7 @@ export const useStoreRegistry = create<StoreRegistry>((set, get) => ({
   clearAll: async () => {
     const { stores } = get()
     const results = await Promise.allSettled(
-      Array.from(stores.values()).map((store) => store.clear())
+      Array.from(stores.values()).map((store) => store.clear()),
     )
     for (const result of results) {
       if (result.status === 'rejected') {
@@ -121,7 +121,7 @@ export const useStoreRegistry = create<StoreRegistry>((set, get) => ({
     const results = await Promise.allSettled(
       Array.from(stores.values())
         .filter((store) => !excludeSet.has(store.name) && store.init)
-        .map((store) => store.init!())
+        .map((store) => store.init!()),
     )
     for (const result of results) {
       if (result.status === 'rejected') {

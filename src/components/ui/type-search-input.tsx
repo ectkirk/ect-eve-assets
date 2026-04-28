@@ -157,7 +157,7 @@ export function TypeSearchInput({
         setDebouncedQuery(newValue)
       }, SEARCH_DEBOUNCE_MS)
     },
-    [value, onChange]
+    [value, onChange],
   )
 
   const handleClear = useCallback(() => {
@@ -176,7 +176,7 @@ export function TypeSearchInput({
       setDebouncedQuery('')
       setIsOpen(false)
     },
-    [onChange]
+    [onChange],
   )
 
   const handleFocus = useCallback(() => {
@@ -235,7 +235,7 @@ export function TypeSearchInput({
       inputValue,
       handleClear,
       handleSelect,
-    ]
+    ],
   )
 
   return (

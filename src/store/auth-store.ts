@@ -37,7 +37,7 @@ const electronStorage: StateStorage = {
       .then(async () => {
         const existing = (await window.electronAPI!.storageGet()) ?? {}
         await window.electronAPI!.storageSet(
-          setRecordValue(existing, name, JSON.parse(value) as unknown)
+          setRecordValue(existing, name, JSON.parse(value) as unknown),
         )
       })
       .catch((err) => {
@@ -120,7 +120,7 @@ interface AuthState {
       refreshToken: string
       expiresAt: number
       scopes?: string[] | undefined
-    }
+    },
   ) => void
   setOwnerAuthFailed: (ownerId: string, failed: boolean) => void
   setOwnerScopesOutdated: (ownerId: string, outdated: boolean) => void
@@ -156,7 +156,7 @@ interface AuthState {
   isTokenExpired: (characterId: number) => boolean
   updateCharacterTokens: (
     characterId: number,
-    tokens: { accessToken: string; refreshToken: string; expiresAt: number }
+    tokens: { accessToken: string; refreshToken: string; expiresAt: number },
   ) => void
 }
 
@@ -207,7 +207,7 @@ export const useAuthStore = create<AuthState>()(
           return {
             owners: remaining,
             selectedOwnerIds: state.selectedOwnerIds.filter(
-              (id) => id !== ownerId
+              (id) => id !== ownerId,
             ),
             isAuthenticated: Object.keys(remaining).length > 0,
           }
@@ -240,7 +240,7 @@ export const useAuthStore = create<AuthState>()(
 
       updateOwnerTokens: (
         ownerId,
-        { accessToken, refreshToken, expiresAt, scopes }
+        { accessToken, refreshToken, expiresAt, scopes },
       ) => {
         set((state) => {
           const owner = getRecordValue(state.owners, ownerId)
@@ -369,7 +369,7 @@ export const useAuthStore = create<AuthState>()(
 
       getCorporationOwners: () => {
         return Object.values(get().owners).filter(
-          (o) => o.type === 'corporation'
+          (o) => o.type === 'corporation',
         )
       },
 
@@ -385,7 +385,7 @@ export const useAuthStore = create<AuthState>()(
         return Object.fromEntries(
           Object.values(owners)
             .filter((owner) => owner.type === 'character')
-            .map((owner) => [owner.id, owner])
+            .map((owner) => [owner.id, owner]),
         )
       },
 
@@ -454,7 +454,7 @@ export const useAuthStore = create<AuthState>()(
               accessToken: null,
               expiresAt: null,
             },
-          ])
+          ]),
         ),
         selectedOwnerIds: state.selectedOwnerIds,
       }),
@@ -481,8 +481,8 @@ export const useAuthStore = create<AuthState>()(
           }
         }
       },
-    }
-  )
+    },
+  ),
 )
 
 // Hook to get first selected character (legacy compatibility)

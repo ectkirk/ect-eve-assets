@@ -52,7 +52,7 @@ function getAssetSortValue(row: AssetRow, columnId: string): string | number {
 function compareAssetRows(
   a: AssetRow,
   b: AssetRow,
-  sorting: AssetSorting[]
+  sorting: AssetSorting[],
 ): number {
   for (const sort of sorting) {
     const aValue = getAssetSortValue(a, sort.id)
@@ -126,7 +126,7 @@ export function AssetsTab() {
   const blueprintsByItemId = useBlueprintsStore((s) => s.blueprintsByItemId)
   const navigateToType = useRegionalMarketActionStore((s) => s.navigateToType)
   const navigateToContracts = useContractsSearchActionStore(
-    (s) => s.navigateToContracts
+    (s) => s.navigateToContracts,
   )
   const navigateToReference = useReferenceActionStore((s) => s.navigateToType)
   const authOwners = useAuthStore((s) => s.owners)
@@ -135,7 +135,7 @@ export function AssetsTab() {
   const getContractEligibleCharacterIds = useCallback(
     (issuerId: number, issuerCorporationId: number): number[] => {
       const characterOwners = Object.values(authOwners).filter(
-        (o) => o.type === 'character'
+        (o) => o.type === 'character',
       )
       const issuerOwner = characterOwners.find((o) => o.id === issuerId)
       if (issuerOwner) return [issuerOwner.id]
@@ -143,11 +143,11 @@ export function AssetsTab() {
       const corpDirectors = characterOwners.filter(
         (o) =>
           o.corporationId === issuerCorporationId &&
-          ownerHasDirectorRole(`corporation-${o.corporationId}`)
+          ownerHasDirectorRole(`corporation-${o.corporationId}`),
       )
       return corpDirectors.map((o) => o.id)
     },
-    [authOwners, ownerHasDirectorRole]
+    [authOwners, ownerHasDirectorRole],
   )
 
   const { data, categories, groups } = useMemo(() => {
@@ -171,7 +171,7 @@ export function AssetsTab() {
       if (isAbyssal || (ra.asset.is_singleton && !isBlueprint)) {
         aggregated.set(
           `unique-${ra.asset.item_id}`,
-          createAssetRow(ra, displayFlag, isAbyssal, isAbyssalResolved)
+          createAssetRow(ra, displayFlag, isAbyssal, isAbyssalResolved),
         )
         continue
       }
@@ -193,7 +193,7 @@ export function AssetsTab() {
       } else {
         aggregated.set(
           key,
-          createAssetRow(ra, displayFlag, isAbyssal, isAbyssalResolved)
+          createAssetRow(ra, displayFlag, isAbyssal, isAbyssalResolved),
         )
       }
     }
@@ -244,7 +244,7 @@ export function AssetsTab() {
           row.groupName,
           row.locationName,
           row.systemName,
-          row.regionName
+          row.regionName,
         )
       )
         return false
@@ -280,12 +280,12 @@ export function AssetsTab() {
 
   const visibleColumns = useMemo(
     () => columns.filter((col) => columnVisibility[col.id] !== false),
-    [columnVisibility]
+    [columnVisibility],
   )
 
   const sortedData = useMemo(
     () => [...filteredData].sort((a, b) => compareAssetRows(a, b, sorting)),
-    [filteredData, sorting]
+    [filteredData, sorting],
   )
 
   const toggleSorting = useCallback((columnId: string, desc?: boolean) => {
@@ -373,7 +373,7 @@ export function AssetsTab() {
   const tableContainerRef = useRef<HTMLDivElement>(null)
   const getRowId = useCallback(
     (row: AssetRow) => `${row.itemId}-${row.locationId}`,
-    []
+    [],
   )
   const getCopyData = useCallback(
     (row: AssetRow) => {
@@ -394,7 +394,7 @@ export function AssetsTab() {
         blueprintSuffix,
       }
     },
-    [blueprintsByItemId]
+    [blueprintsByItemId],
   )
   const { selectedIds, handleRowClick } = useRowSelection({
     items: sortedData,
@@ -554,7 +554,7 @@ export function AssetsTab() {
                               'bg-row-industry',
                             !isRowSelected &&
                               modeFlags.isOwnedStructure &&
-                              'bg-row-structure'
+                              'bg-row-structure',
                           )}
                         >
                           {renderAssetCell(column, row)}
@@ -620,7 +620,7 @@ export function AssetsTab() {
                                 eligibleCharacterIds:
                                   getContractEligibleCharacterIds(
                                     ci.issuerId,
-                                    ci.issuerCorporationId
+                                    ci.issuerCorporationId,
                                   ),
                               })
                             }}
@@ -633,7 +633,7 @@ export function AssetsTab() {
                             onClick={() =>
                               window.open(
                                 getMutamarketUrl(row.typeName, row.itemId),
-                                '_blank'
+                                '_blank',
                               )
                             }
                           >

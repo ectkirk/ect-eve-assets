@@ -44,7 +44,7 @@ export function useSystemContextMenu(options: UseSystemContextMenuOptions) {
       e.preventDefault()
       setContextMenu({ x: e.clientX, y: e.clientY, systemId, systemName })
     },
-    []
+    [],
   )
 
   const closeContextMenu = useCallback(() => {
@@ -53,7 +53,7 @@ export function useSystemContextMenu(options: UseSystemContextMenuOptions) {
 
   const closeWaypointModal = useCallback(
     (open: boolean) => !open && setWaypointAction(null),
-    []
+    [],
   )
 
   const contextMenuProps = contextMenu

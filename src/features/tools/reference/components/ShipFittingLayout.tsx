@@ -35,7 +35,7 @@ export function ShipFittingLayout({ data }: ShipFittingLayoutProps) {
   const { t } = useTranslation('tools')
   const attrMap = useMemo(
     () => buildAttrMap(data.dogma?.attributes),
-    [data.dogma?.attributes]
+    [data.dogma?.attributes],
   )
 
   const slots = useMemo(() => extractShipSlots(attrMap), [attrMap])

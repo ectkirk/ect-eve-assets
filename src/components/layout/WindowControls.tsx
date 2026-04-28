@@ -93,7 +93,7 @@ function MenuItem({
 function useFocusTrap(
   ref: React.RefObject<HTMLElement | null>,
   isActive: boolean,
-  onEscape: () => void
+  onEscape: () => void,
 ) {
   useEffect(() => {
     if (!isActive || !ref.current) return
@@ -110,7 +110,7 @@ function useFocusTrap(
       if (e.key !== 'Tab') return
 
       const focusable = container.querySelectorAll<HTMLElement>(
-        'a[href], button, select, input, textarea, [tabindex]:not([tabindex="-1"])'
+        'a[href], button, select, input, textarea, [tabindex]:not([tabindex="-1"])',
       )
       if (focusable.length === 0) return
 
@@ -129,7 +129,7 @@ function useFocusTrap(
     container.addEventListener('keydown', handleKeyDown)
 
     const firstFocusable = container.querySelector<HTMLElement>(
-      'a[href], button, select, input, textarea, [tabindex]:not([tabindex="-1"])'
+      'a[href], button, select, input, textarea, [tabindex]:not([tabindex="-1"])',
     )
     firstFocusable?.focus()
 

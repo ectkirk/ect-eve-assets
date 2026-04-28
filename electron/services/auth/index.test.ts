@@ -186,7 +186,7 @@ describe('Auth Service', () => {
           headers: expect.objectContaining({
             'Content-Type': 'application/x-www-form-urlencoded',
           }),
-        })
+        }),
       )
     })
 
@@ -336,11 +336,11 @@ describe('Auth Service', () => {
           headers: expect.objectContaining({
             'Content-Type': 'application/x-www-form-urlencoded',
           }),
-        })
+        }),
       )
       expect(mocks.logger.info).toHaveBeenCalledWith(
         'Token revoked successfully',
-        expect.any(Object)
+        expect.any(Object),
       )
     })
 
@@ -364,7 +364,7 @@ describe('Auth Service', () => {
       expect(result).toBe(false)
       expect(mocks.logger.warn).toHaveBeenCalledWith(
         'Token revocation failed',
-        expect.objectContaining({ status: 400 })
+        expect.objectContaining({ status: 400 }),
       )
     })
 
@@ -385,7 +385,7 @@ describe('Auth Service', () => {
       expect(mocks.logger.error).toHaveBeenCalledWith(
         'Token revocation exception',
         expect.any(Error),
-        expect.any(Object)
+        expect.any(Object),
       )
     })
 
@@ -415,12 +415,12 @@ describe('Auth Service', () => {
       expect(httpMock.getMockServer().listen).toHaveBeenCalledWith(
         52742,
         '127.0.0.1',
-        expect.any(Function)
+        expect.any(Function),
       )
       expect(mocks.openExternal).toHaveBeenCalledWith(
         expect.stringContaining(
-          'https://login.eveonline.com/v2/oauth/authorize'
-        )
+          'https://login.eveonline.com/v2/oauth/authorize',
+        ),
       )
 
       cancelAuth()
@@ -435,7 +435,7 @@ describe('Auth Service', () => {
       expect(authUrl).toContain('response_type=code')
       expect(authUrl).toContain('client_id=test-client-id')
       expect(authUrl).toContain(
-        'redirect_uri=http%3A%2F%2Flocalhost%3A52742%2Fcallback'
+        'redirect_uri=http%3A%2F%2Flocalhost%3A52742%2Fcallback',
       )
       expect(authUrl).toContain('code_challenge=test-code-challenge')
       expect(authUrl).toContain('code_challenge_method=S256')
@@ -478,7 +478,7 @@ describe('Auth Service', () => {
       expect(result.error).toBe('Authentication timed out')
       expect(mocks.logger.warn).toHaveBeenCalledWith(
         'Authentication timed out',
-        expect.any(Object)
+        expect.any(Object),
       )
     })
 
@@ -576,7 +576,7 @@ describe('Auth Service', () => {
       expect(mocks.sendHtmlResponse).toHaveBeenCalledWith(
         res,
         400,
-        expect.stringContaining('No pending authentication')
+        expect.stringContaining('No pending authentication'),
       )
     })
 
@@ -585,7 +585,7 @@ describe('Auth Service', () => {
       await vi.advanceTimersByTimeAsync(0)
 
       const req = createMockRequest(
-        '/callback?code=test-code&state=wrong-state'
+        '/callback?code=test-code&state=wrong-state',
       )
       const res = createMockResponse()
       await httpMock.getRequestHandler()!(req, res)
@@ -596,7 +596,7 @@ describe('Auth Service', () => {
       expect(mocks.sendHtmlResponse).toHaveBeenCalledWith(
         res,
         400,
-        expect.stringContaining('State mismatch')
+        expect.stringContaining('State mismatch'),
       )
     })
 
@@ -608,7 +608,7 @@ describe('Auth Service', () => {
       const state = new URL(authUrl).searchParams.get('state')
 
       const req = createMockRequest(
-        `/callback?error=access_denied&state=${state}`
+        `/callback?error=access_denied&state=${state}`,
       )
       const res = createMockResponse()
       await httpMock.getRequestHandler()!(req, res)
@@ -671,13 +671,13 @@ describe('Auth Service', () => {
       expect(result.corporationRoles).toEqual({ roles: ['Director'] })
       expect(mocks.exchangeCodeForTokens).toHaveBeenCalledWith(
         'auth-code',
-        'test-code-verifier'
+        'test-code-verifier',
       )
     })
 
     it('handles token exchange failure', async () => {
       mocks.exchangeCodeForTokens.mockRejectedValue(
-        new Error('Token exchange failed')
+        new Error('Token exchange failed'),
       )
 
       const authPromise = startAuth()
@@ -696,7 +696,7 @@ describe('Auth Service', () => {
       expect(mocks.sendHtmlResponse).toHaveBeenCalledWith(
         res,
         500,
-        expect.stringContaining('Token exchange failed')
+        expect.stringContaining('Token exchange failed'),
       )
     })
   })

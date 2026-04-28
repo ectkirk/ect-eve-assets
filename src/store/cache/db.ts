@@ -94,7 +94,7 @@ export async function loadStore<T>(storeName: string): Promise<Map<number, T>> {
 export async function writeBatch<T extends { id: number }>(
   storeName: string,
   items: T[],
-  onComplete: () => void
+  onComplete: () => void,
 ): Promise<boolean> {
   if (items.length === 0) {
     onComplete()
@@ -109,7 +109,7 @@ export async function writeBatch<T extends { id: number }>(
     logger.error(
       'Failed to write batch to IndexedDB',
       err instanceof Error ? err : undefined,
-      { module: 'ReferenceCache', store: storeName, itemCount: items.length }
+      { module: 'ReferenceCache', store: storeName, itemCount: items.length },
     )
     return false
   }

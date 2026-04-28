@@ -10,13 +10,13 @@ describe('Token Handler', () => {
 
     it('throws on invalid sub format', () => {
       expect(() => extractCharacterId('INVALID')).toThrow(
-        'Invalid sub claim format'
+        'Invalid sub claim format',
       )
     })
 
     it('throws on sub with only two parts', () => {
       expect(() => extractCharacterId('CHARACTER:EVE')).toThrow(
-        'Invalid sub claim format'
+        'Invalid sub claim format',
       )
     })
 

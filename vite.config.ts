@@ -37,13 +37,13 @@ export default defineConfig({
         vite: {
           define: {
             'process.env.EVE_CLIENT_ID': JSON.stringify(
-              process.env['EVE_CLIENT_ID'] || ''
+              process.env['EVE_CLIENT_ID'] || '',
             ),
             'process.env.REF_API_KEY': JSON.stringify(
-              process.env['REF_API_KEY'] || ''
+              process.env['REF_API_KEY'] || '',
             ),
             'process.env.DISCORD_BUG_WEBHOOK': JSON.stringify(
-              process.env['DISCORD_BUG_WEBHOOK'] || ''
+              process.env['DISCORD_BUG_WEBHOOK'] || '',
             ),
           },
           build: {

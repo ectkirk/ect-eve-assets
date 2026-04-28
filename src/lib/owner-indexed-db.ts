@@ -43,7 +43,7 @@ export interface OwnerDB<T> {
   saveMeta: <M>(key: string, value: M) => Promise<void>
   getFromExtra: <V>(
     storeName: string,
-    key: IDBValidKey
+    key: IDBValidKey,
   ) => Promise<V | undefined>
   putToExtra: <V>(storeName: string, item: V) => Promise<void>
   clearExtra: (storeName: string) => Promise<void>
@@ -64,12 +64,12 @@ export function createOwnerDB<T>(config: OwnerDBConfig<T>): OwnerDB<T> {
 
   if (!dataKey && !deserialize) {
     throw new ConfigurationError(
-      `OwnerDB ${storeName}: either dataKey or deserialize must be provided`
+      `OwnerDB ${storeName}: either dataKey or deserialize must be provided`,
     )
   }
   if (!dataKey && !serialize) {
     throw new ConfigurationError(
-      `OwnerDB ${storeName}: either dataKey or serialize must be provided`
+      `OwnerDB ${storeName}: either dataKey or serialize must be provided`,
     )
   }
 
@@ -115,7 +115,7 @@ export function createOwnerDB<T>(config: OwnerDBConfig<T>): OwnerDB<T> {
   const save = async (
     ownerKey: string,
     owner: Owner,
-    data: T
+    data: T,
   ): Promise<void> => {
     const db = await getDB()
     const record = serialize
@@ -143,7 +143,7 @@ export function createOwnerDB<T>(config: OwnerDBConfig<T>): OwnerDB<T> {
     const record = await idbGet<{ key: string; value: M }>(
       db,
       metaStoreName,
-      key
+      key,
     )
     return record?.value
   }
@@ -156,7 +156,7 @@ export function createOwnerDB<T>(config: OwnerDBConfig<T>): OwnerDB<T> {
 
   const getFromExtra = async <V>(
     extraStoreName: string,
-    key: IDBValidKey
+    key: IDBValidKey,
   ): Promise<V | undefined> => {
     const db = await getDB()
     return idbGet<V>(db, extraStoreName, key)
@@ -164,7 +164,7 @@ export function createOwnerDB<T>(config: OwnerDBConfig<T>): OwnerDB<T> {
 
   const putToExtra = async <V>(
     extraStoreName: string,
-    item: V
+    item: V,
   ): Promise<void> => {
     const db = await getDB()
     await idbPut(db, extraStoreName, item)

@@ -296,14 +296,14 @@ describe('useAuthStore', () => {
 
     it('returns true for selected owner', () => {
       expect(useAuthStore.getState().isOwnerSelected('character-11111')).toBe(
-        true
+        true,
       )
     })
 
     it('returns false for non-selected owner', () => {
       useAuthStore.setState({ selectedOwnerIds: [] })
       expect(useAuthStore.getState().isOwnerSelected('character-11111')).toBe(
-        false
+        false,
       )
     })
   })
@@ -534,7 +534,7 @@ describe('useAuthStore', () => {
   describe('isOwnerTokenExpired', () => {
     it('returns true for unknown owner', () => {
       expect(
-        useAuthStore.getState().isOwnerTokenExpired('character-99999')
+        useAuthStore.getState().isOwnerTokenExpired('character-99999'),
       ).toBe(true)
     })
 
@@ -557,7 +557,7 @@ describe('useAuthStore', () => {
       })
 
       expect(
-        useAuthStore.getState().isOwnerTokenExpired('character-12345')
+        useAuthStore.getState().isOwnerTokenExpired('character-12345'),
       ).toBe(true)
     })
 
@@ -580,7 +580,7 @@ describe('useAuthStore', () => {
       })
 
       expect(
-        useAuthStore.getState().isOwnerTokenExpired('character-12345')
+        useAuthStore.getState().isOwnerTokenExpired('character-12345'),
       ).toBe(true)
     })
 
@@ -603,7 +603,7 @@ describe('useAuthStore', () => {
       })
 
       expect(
-        useAuthStore.getState().isOwnerTokenExpired('character-12345')
+        useAuthStore.getState().isOwnerTokenExpired('character-12345'),
       ).toBe(false)
     })
   })

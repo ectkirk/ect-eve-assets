@@ -23,7 +23,7 @@ let cachedJsonHeaders: Readonly<Record<string, string>> | null = null
 
 function getRefHeaders(
   contentType?: 'json',
-  language?: string
+  language?: string,
 ): Readonly<Record<string, string>> {
   const userAgent = makeUserAgent(app.getVersion())
   const lang = language ?? 'en'
@@ -84,7 +84,7 @@ async function waitForRefRateLimit(): Promise<void> {
   const timeSinceLastRequest = now - refLastRequestTime
   if (timeSinceLastRequest < REF_MIN_REQUEST_INTERVAL_MS) {
     await new Promise((r) =>
-      setTimeout(r, REF_MIN_REQUEST_INTERVAL_MS - timeSinceLastRequest)
+      setTimeout(r, REF_MIN_REQUEST_INTERVAL_MS - timeSinceLastRequest),
     )
   }
 
@@ -93,7 +93,7 @@ async function waitForRefRateLimit(): Promise<void> {
 
 async function fetchRefWithRetry(
   url: string,
-  options: RequestInit
+  options: RequestInit,
 ): Promise<Response> {
   let lastError: Error | null = null
 
@@ -164,7 +164,7 @@ async function refGetPaginated<T, C extends string | number>(
   /** Used only for error logging context in the catch block */
   channel: string,
   cursor?: C,
-  language?: string
+  language?: string,
 ): Promise<RefResult<PaginatedResult<T>>> {
   await waitForRefRateLimit()
   try {
@@ -197,7 +197,7 @@ async function refGetPaginated<T, C extends string | number>(
 async function refGet<T>(
   endpoint: string,
   channel: string,
-  language?: string
+  language?: string,
 ): Promise<RefResult<T>> {
   await waitForRefRateLimit()
   try {
@@ -219,7 +219,7 @@ async function refPost<T>(
   endpoint: string,
   body: unknown,
   channel: string,
-  language?: string
+  language?: string,
 ): Promise<RefResult<T>> {
   await waitForRefRateLimit()
   try {
@@ -282,7 +282,7 @@ export function registerRefAPIHandlers(): void {
       const result = await refGet<{ items: unknown[] }>(
         endpoint,
         channel,
-        language
+        language,
       )
       if ('error' in result) return result
       return { items: result.items }
@@ -292,7 +292,7 @@ export function registerRefAPIHandlers(): void {
   ipcMain.handle('ref:universe-stargates', async () => {
     const result = await refGet<{ items: unknown[] }>(
       '/reference/stargates',
-      'ref:universe-stargates'
+      'ref:universe-stargates',
     )
     if ('error' in result) return result
     return { items: result.items }
@@ -310,7 +310,7 @@ export function registerRefAPIHandlers(): void {
       '/reference/types',
       'ref:types-page',
       after,
-      language
+      language,
     )
   })
 
@@ -324,9 +324,9 @@ export function registerRefAPIHandlers(): void {
       return refGetPaginated(
         '/reference/structures',
         'ref:universe-structures-page',
-        after
+        after,
       )
-    }
+    },
   )
 
   ipcMain.handle('ref:moons', async (_event, ids: unknown, params: unknown) => {
@@ -413,7 +413,7 @@ export function registerRefAPIHandlers(): void {
             method: 'POST',
             headers: getRefHeaders('json'),
             body: JSON.stringify({ text, config }),
-          }
+          },
         )
         if (!response.ok) {
           const errorText = await response.text()
@@ -426,7 +426,7 @@ export function registerRefAPIHandlers(): void {
         })
         return { error: String(err) }
       }
-    }
+    },
   )
 
   ipcMain.handle(
@@ -440,7 +440,7 @@ export function registerRefAPIHandlers(): void {
         body.nullSec = true
       }
       return refPost('/shipping/calculate', body, 'ref:shippingCalculate')
-    }
+    },
   )
 
   const typeDetailEndpoints = [
@@ -474,7 +474,7 @@ export function registerRefAPIHandlers(): void {
           method: 'POST',
           headers: getRefHeaders('json'),
           body: JSON.stringify(params),
-        }
+        },
       )
       if (!response.ok) {
         const errorText = await response.text()

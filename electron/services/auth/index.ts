@@ -38,7 +38,7 @@ let pendingAuth: PendingAuth | null = null
 
 async function handleCallbackRequest(
   req: IncomingMessage,
-  res: ServerResponse
+  res: ServerResponse,
 ): Promise<void> {
   const url = new URL(req.url ?? '/', `http://localhost:${CALLBACK_PORT}`)
 
@@ -77,7 +77,7 @@ async function handleCallbackRequest(
     sendHtmlResponse(
       res,
       400,
-      ERROR_HTML('State mismatch - possible security issue')
+      ERROR_HTML('State mismatch - possible security issue'),
     )
     resolve({ success: false, error: 'State mismatch - possible CSRF' })
     stopCallbackServer()
@@ -102,7 +102,7 @@ async function handleCallbackRequest(
     const charInfo = await fetchCharacterInfo(characterId)
     const corporationRoles = await fetchCharacterRoles(
       characterId,
-      tokens.access_token
+      tokens.access_token,
     )
 
     logger.info('Authentication successful', {
@@ -181,7 +181,7 @@ export function cancelAuth(): void {
 }
 
 export async function startAuth(
-  includeCorporationScopes = false
+  includeCorporationScopes = false,
 ): Promise<AuthResult> {
   logger.info('Starting EVE SSO authentication', {
     module: 'Auth',
@@ -252,7 +252,7 @@ export async function startAuth(
 }
 
 export async function refreshAccessToken(
-  refreshToken: string
+  refreshToken: string,
 ): Promise<AuthResult> {
   try {
     const response = await fetch(EVE_SSO.tokenUrl, {

@@ -41,8 +41,8 @@ export const useThemeStore = create<ThemeState>()(
           applyThemeToDocument(state.theme)
         }
       },
-    }
-  )
+    },
+  ),
 )
 
 export function initTheme(): void {

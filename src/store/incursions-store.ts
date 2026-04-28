@@ -100,9 +100,9 @@ export const useIncursionsStore = create<IncursionsState>()(
         ...current,
         ...(persisted as object),
         infestedSystems: new Set(
-          (persisted as { infestedSystems?: number[] })?.infestedSystems ?? []
+          (persisted as { infestedSystems?: number[] })?.infestedSystems ?? [],
         ),
       }),
-    }
-  )
+    },
+  ),
 )

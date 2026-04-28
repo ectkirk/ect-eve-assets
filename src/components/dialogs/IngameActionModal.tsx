@@ -55,10 +55,10 @@ export function IngameActionModal({
   const setOwnerScopesOutdated = useAuthStore((s) => s.setOwnerScopesOutdated)
 
   const defaultMarketCharacterId = useIngameDefaultsStore(
-    (s) => s.defaultMarketCharacterId
+    (s) => s.defaultMarketCharacterId,
   )
   const setDefaultMarketCharacter = useIngameDefaultsStore(
-    (s) => s.setDefaultMarketCharacter
+    (s) => s.setDefaultMarketCharacter,
   )
 
   const requiredScope = REQUIRED_SCOPES.get(action) ?? 'esi-ui.open_window.v1'

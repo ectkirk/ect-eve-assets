@@ -49,7 +49,7 @@ test.describe('Application Launch', () => {
 
   test('shows info text for unauthenticated user', async () => {
     await expect(
-      page.getByText(/No characters logged in|Add a character/)
+      page.getByText(/No characters logged in|Add a character/),
     ).toBeVisible()
   })
 })

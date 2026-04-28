@@ -27,7 +27,7 @@ export const MapSearch = memo(function MapSearch({
       e.preventDefault()
       onSelectResult(result)
     },
-    [onSelectResult]
+    [onSelectResult],
   )
 
   return (

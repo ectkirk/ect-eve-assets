@@ -56,7 +56,7 @@ describe('ESI Client Integration', () => {
       mockFetch.mockResolvedValue({ id: 'not-a-number', name: 'Test' })
 
       await expect(esi.fetch('/test', { schema })).rejects.toThrow(
-        ValidationError
+        ValidationError,
       )
     })
 
@@ -138,7 +138,7 @@ describe('ESI Client Integration', () => {
       mockFetchPaginated.mockResolvedValue([{ id: 'bad' }])
 
       await expect(esi.fetchPaginated('/test', { schema })).rejects.toThrow(
-        ValidationError
+        ValidationError,
       )
     })
   })

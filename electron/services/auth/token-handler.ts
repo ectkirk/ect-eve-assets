@@ -51,7 +51,7 @@ export function extractScopes(scp: string | string[]): string[] {
 
 export async function exchangeCodeForTokens(
   code: string,
-  codeVerifier: string
+  codeVerifier: string,
 ): Promise<TokenResponse> {
   const response = await fetch(EVE_SSO.tokenUrl, {
     method: 'POST',
@@ -82,10 +82,10 @@ export interface ESICharacterInfo {
 }
 
 export async function fetchCharacterInfo(
-  characterId: number
+  characterId: number,
 ): Promise<ESICharacterInfo> {
   const response = await fetch(
-    `https://esi.evetech.net/characters/${characterId}`
+    `https://esi.evetech.net/characters/${characterId}`,
   )
   if (!response.ok) {
     throw new Error('Failed to fetch character info')
@@ -95,14 +95,14 @@ export async function fetchCharacterInfo(
 
 export async function fetchCharacterRoles(
   characterId: number,
-  accessToken: string
+  accessToken: string,
 ): Promise<CorporationRoles | null> {
   try {
     const response = await fetch(
       `https://esi.evetech.net/characters/${characterId}/roles`,
       {
         headers: { Authorization: `Bearer ${accessToken}` },
-      }
+      },
     )
     if (!response.ok) {
       logger.debug('Failed to fetch character roles', {

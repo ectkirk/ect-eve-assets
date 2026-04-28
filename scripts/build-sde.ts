@@ -115,7 +115,7 @@ async function buildStations(): Promise<void> {
   }
 
   const operations = await readJsonl<RawStationOperation>(
-    'stationOperations.jsonl'
+    'stationOperations.jsonl',
   )
   const operationNames = new Map<number, string>()
   for (const op of operations) {
@@ -185,7 +185,7 @@ async function buildStations(): Promise<void> {
 
   fs.writeFileSync(
     path.join(OUTPUT_PATH, 'stations.json'),
-    JSON.stringify(stations)
+    JSON.stringify(stations),
   )
   console.log(`  Wrote ${stations.length} stations`)
 }
@@ -206,7 +206,7 @@ async function buildSolarSystems(): Promise<void> {
 
   fs.writeFileSync(
     path.join(OUTPUT_PATH, 'solarSystems.json'),
-    JSON.stringify(systems)
+    JSON.stringify(systems),
   )
   console.log(`  Wrote ${systems.length} solar systems`)
 }
@@ -224,7 +224,7 @@ async function buildRegions(): Promise<void> {
 
   fs.writeFileSync(
     path.join(OUTPUT_PATH, 'regions.json'),
-    JSON.stringify(regions)
+    JSON.stringify(regions),
   )
   console.log(`  Wrote ${regions.length} regions`)
 }

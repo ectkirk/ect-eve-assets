@@ -21,62 +21,62 @@ import {
 import { useBuybackActionStore } from '@/store/buyback-action-store'
 
 const AssetsTab = lazy(() =>
-  import('@/features/assets').then((m) => ({ default: m.AssetsTab }))
+  import('@/features/assets').then((m) => ({ default: m.AssetsTab })),
 )
 const StructuresTab = lazy(() =>
-  import('@/features/structures').then((m) => ({ default: m.StructuresTab }))
+  import('@/features/structures').then((m) => ({ default: m.StructuresTab })),
 )
 const AssetsTreeTab = lazy(() =>
-  import('@/features/assets-tree').then((m) => ({ default: m.AssetsTreeTab }))
+  import('@/features/assets-tree').then((m) => ({ default: m.AssetsTreeTab })),
 )
 const MarketOrdersTab = lazy(() =>
   import('@/features/market-orders').then((m) => ({
     default: m.MarketOrdersTab,
-  }))
+  })),
 )
 const SkillsTab = lazy(() =>
-  import('@/features/skills').then((m) => ({ default: m.SkillsTab }))
+  import('@/features/skills').then((m) => ({ default: m.SkillsTab })),
 )
 const MailTab = lazy(() =>
-  import('@/features/mail').then((m) => ({ default: m.MailTab }))
+  import('@/features/mail').then((m) => ({ default: m.MailTab })),
 )
 const IndustryJobsTab = lazy(() =>
   import('@/features/industry-jobs').then((m) => ({
     default: m.IndustryJobsTab,
-  }))
+  })),
 )
 const ClonesTab = lazy(() =>
-  import('@/features/clones').then((m) => ({ default: m.ClonesTab }))
+  import('@/features/clones').then((m) => ({ default: m.ClonesTab })),
 )
 const LoyaltyTab = lazy(() =>
-  import('@/features/loyalty').then((m) => ({ default: m.LoyaltyTab }))
+  import('@/features/loyalty').then((m) => ({ default: m.LoyaltyTab })),
 )
 const ContractsTab = lazy(() =>
-  import('@/features/contracts').then((m) => ({ default: m.ContractsTab }))
+  import('@/features/contracts').then((m) => ({ default: m.ContractsTab })),
 )
 const WalletTab = lazy(() =>
-  import('@/features/wallet').then((m) => ({ default: m.WalletTab }))
+  import('@/features/wallet').then((m) => ({ default: m.WalletTab })),
 )
 const BuybackTab = lazy(() =>
-  import('@/features/buyback').then((m) => ({ default: m.BuybackTab }))
+  import('@/features/buyback').then((m) => ({ default: m.BuybackTab })),
 )
 const ContractsSearchPanel = lazy(() =>
   import('@/features/tools/contracts-search').then((m) => ({
     default: m.ContractsSearchPanel,
-  }))
+  })),
 )
 const RegionalMarketPanel = lazy(() =>
   import('@/features/tools/regional-market').then((m) => ({
     default: m.RegionalMarketPanel,
-  }))
+  })),
 )
 const ReferencePanel = lazy(() =>
   import('@/features/tools/reference').then((m) => ({
     default: m.ReferencePanel,
-  }))
+  })),
 )
 const MapPanel = lazy(() =>
-  import('@/features/tools/map').then((m) => ({ default: m.MapPanel }))
+  import('@/features/tools/map').then((m) => ({ default: m.MapPanel })),
 )
 import { useRegionalMarketActionStore } from '@/store/regional-market-action-store'
 import { useContractsSearchActionStore } from '@/store/contracts-search-action-store'
@@ -348,7 +348,7 @@ function MainLayoutInner() {
   const [activeCharacterTab, setActiveCharacterTab] =
     useState<CharacterTabId>('clones')
   const [activeBuybackTab, setActiveBuybackTab] = useState<BuybackTabType>(
-    BUYBACK_TABS[1]
+    BUYBACK_TABS[1],
   )
   const [activeToolsTab, setActiveToolsTab] = useState<ToolsTabId>('contracts')
   const [buybackPrefill, setBuybackPrefill] = useState<string | null>(null)
@@ -365,7 +365,7 @@ function MainLayoutInner() {
       setMode('buyback')
       setActiveBuybackTab(action.securityTab)
       setBuybackPrefill(action.text)
-    }, [])
+    }, []),
   )
 
   useNavigationAction(
@@ -374,7 +374,7 @@ function MainLayoutInner() {
       setMode('tools')
       setActiveToolsTab('market')
       setMarketTypeId(action.typeId)
-    }, [])
+    }, []),
   )
 
   useNavigationAction(
@@ -386,7 +386,7 @@ function MainLayoutInner() {
         typeId: action.typeId,
         typeName: action.typeName,
       })
-    }, [])
+    }, []),
   )
 
   useNavigationAction(
@@ -395,7 +395,7 @@ function MainLayoutInner() {
       setMode('tools')
       setActiveToolsTab('reference')
       setReferenceTypeId(action.typeId)
-    }, [])
+    }, []),
   )
 
   const resetSearch = useTabControlsStore((s) => s.resetSearch)
@@ -433,7 +433,7 @@ function MainLayoutInner() {
         tabRefs.current.get(newIndex)?.focus()
       }
     },
-    []
+    [],
   )
 
   const getTabLabel = (tab: string) => t(`tabs.${tab}`)

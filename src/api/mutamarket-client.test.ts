@@ -156,7 +156,7 @@ describe('mutamarket-client', () => {
       expect(mockSetAbyssalPrices).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({ itemId: 99999, price: -1 }),
-        ])
+        ]),
       )
     })
 
@@ -243,7 +243,7 @@ describe('mutamarket-client', () => {
       expect(mockSetAbyssalPrices).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({ itemId: 12345, price: -1 }),
-        ])
+        ]),
       )
     })
 
@@ -263,7 +263,7 @@ describe('mutamarket-client', () => {
       expect(mockSetAbyssalPrices).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({ itemId: 12345, price: 0 }),
-        ])
+        ]),
       )
     })
   })

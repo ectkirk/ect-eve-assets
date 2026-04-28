@@ -41,21 +41,21 @@ export function useMapData(dimensions: {
 
     const allRegions = getAllRegions()
     const filteredRegions = allRegions.filter(
-      (r) => !EXCLUDED_REGION_NAMES.has(r.name)
+      (r) => !EXCLUDED_REGION_NAMES.has(r.name),
     )
     const excludedRegionIds = new Set(
       allRegions
         .filter((r) => EXCLUDED_REGION_NAMES.has(r.name))
-        .map((r) => r.id)
+        .map((r) => r.id),
     )
 
     const filteredSystems = getAllSystems().filter(
-      (s) => !excludedRegionIds.has(s.regionId)
+      (s) => !excludedRegionIds.has(s.regionId),
     )
     const validSystemIds = new Set(filteredSystems.map((s) => s.id))
 
     const filteredStargates = getAllStargates().filter(
-      (g) => validSystemIds.has(g.from) && validSystemIds.has(g.to)
+      (g) => validSystemIds.has(g.from) && validSystemIds.has(g.to),
     )
 
     return {
@@ -67,14 +67,14 @@ export function useMapData(dimensions: {
 
   const regionMap = useMemo(
     () => new Map(regions.map((r) => [r.id, r])),
-    [regions]
+    [regions],
   )
 
   const bounds = useMemo(() => calculateBounds(systems), [systems])
 
   const coordinateData = useMemo(
     () => calculateCoordinateData(bounds, dimensions.width, dimensions.height),
-    [bounds, dimensions]
+    [bounds, dimensions],
   )
 
   const spatialIndex = useMemo(() => {
@@ -86,7 +86,7 @@ export function useMapData(dimensions: {
 
   const indexedStargates = useMemo(
     () => spatialIndex?.indexStargates(stargates) ?? [],
-    [spatialIndex, stargates]
+    [spatialIndex, stargates],
   )
 
   return {

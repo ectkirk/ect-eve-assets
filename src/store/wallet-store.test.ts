@@ -165,7 +165,7 @@ describe('wallet-store', () => {
         type: 'character',
       })
       vi.mocked(useAuthStore.getState).mockReturnValue(
-        createMockAuthState({ 'character-12345': mockOwner })
+        createMockAuthState({ 'character-12345': mockOwner }),
       )
 
       vi.mocked(esi.fetchWithMeta).mockResolvedValue({
@@ -181,7 +181,7 @@ describe('wallet-store', () => {
       expect(useWalletStore.getState().dataByOwner).toHaveLength(1)
       expect(
         (useWalletStore.getState().dataByOwner[0] as { balance: number })
-          .balance
+          .balance,
       ).toBe(5000000)
     })
 
@@ -196,7 +196,7 @@ describe('wallet-store', () => {
         type: 'corporation',
       })
       vi.mocked(useAuthStore.getState).mockReturnValue(
-        createMockAuthState({ 'corporation-98000001': mockCorpOwner })
+        createMockAuthState({ 'corporation-98000001': mockCorpOwner }),
       )
 
       vi.mocked(esi.fetchWithMeta).mockResolvedValue({
@@ -225,7 +225,7 @@ describe('wallet-store', () => {
         type: 'character',
       })
       vi.mocked(useAuthStore.getState).mockReturnValue(
-        createMockAuthState({ 'character-12345': mockOwner })
+        createMockAuthState({ 'character-12345': mockOwner }),
       )
 
       vi.mocked(esi.fetchWithMeta).mockRejectedValue(new Error('API Error'))

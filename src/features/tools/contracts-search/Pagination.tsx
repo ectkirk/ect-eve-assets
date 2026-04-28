@@ -45,7 +45,7 @@ export function Pagination({
   const { t } = useTranslation('tools')
   const visiblePages = useMemo(
     () => getVisiblePages(page, totalPages),
-    [page, totalPages]
+    [page, totalPages],
   )
 
   if (totalPages <= 1) return null

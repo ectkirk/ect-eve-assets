@@ -62,5 +62,5 @@ export const useRegionalMarketSessionStore = create<RegionalMarketSessionState>(
         expandedGroupIds: new Set(),
       })
     },
-  })
+  }),
 )

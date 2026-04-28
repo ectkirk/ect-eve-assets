@@ -52,7 +52,7 @@ async function processQueue(): Promise<void> {
       const timeSinceLastRequest = now - lastRequestTime
       if (timeSinceLastRequest < REQUEST_DELAY_MS) {
         await new Promise((r) =>
-          setTimeout(r, REQUEST_DELAY_MS - timeSinceLastRequest)
+          setTimeout(r, REQUEST_DELAY_MS - timeSinceLastRequest),
         )
       }
       lastRequestTime = Date.now()
@@ -83,7 +83,7 @@ function queueAbyssalRequest(item: AbyssalItem): Promise<FetchResult> {
 
 async function retryWithBackoff<T>(
   fn: () => Promise<T>,
-  retryCount: number
+  retryCount: number,
 ): Promise<T> {
   const delay = RETRY_DELAYS.at(retryCount) ?? 1000
   await new Promise((resolve) => setTimeout(resolve, delay))
@@ -92,7 +92,7 @@ async function retryWithBackoff<T>(
 
 async function fetchSingleAbyssalPriceInternal(
   item: AbyssalItem,
-  retryCount = 0
+  retryCount = 0,
 ): Promise<FetchResult> {
   const { itemId, typeId } = item
   try {
@@ -105,7 +105,7 @@ async function fetchSingleAbyssalPriceInternal(
       if (retryCount < MAX_RETRIES) {
         return retryWithBackoff(
           () => fetchSingleAbyssalPriceInternal(item, retryCount + 1),
-          retryCount
+          retryCount,
         )
       }
       logger.warn('Mutamarket API failed', {
@@ -132,7 +132,7 @@ async function fetchSingleAbyssalPriceInternal(
     if (retryCount < MAX_RETRIES) {
       return retryWithBackoff(
         () => fetchSingleAbyssalPriceInternal(item, retryCount + 1),
-        retryCount
+        retryCount,
       )
     }
     logger.warn('Mutamarket fetch failed after retries', {
@@ -148,7 +148,7 @@ async function fetchSingleAbyssalPriceInternal(
 
 export async function fetchAbyssalPrices(
   items: AbyssalItem[],
-  onProgress?: (fetched: number, total: number) => void
+  onProgress?: (fetched: number, total: number) => void,
 ): Promise<Map<number, number>> {
   const priceStore = usePriceStore.getState()
   const results = new Map<number, number>()

@@ -3,7 +3,7 @@ import { INSURGENCIES_REFRESH_INTERVAL_MS } from './insurgencies-store'
 let insurgenciesInterval: ReturnType<typeof setInterval> | null = null
 
 export function startInsurgenciesRefreshTimer(
-  fetchFn: () => Promise<void>
+  fetchFn: () => Promise<void>,
 ): void {
   if (insurgenciesInterval) return
   void fetchFn()

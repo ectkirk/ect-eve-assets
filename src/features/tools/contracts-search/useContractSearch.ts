@@ -28,7 +28,7 @@ const CACHE_MAX_SIZE = 20
 
 const buySellCache = createLRUCache<string, CachedSearchResult<SearchContract>>(
   CACHE_TTL_MS,
-  CACHE_MAX_SIZE
+  CACHE_MAX_SIZE,
 )
 const courierCache = createLRUCache<
   string,
@@ -116,7 +116,7 @@ async function fetchPage<T>({
 
 async function transformBuySellContracts(
   contracts: ContractSearchContract[],
-  filters: ContractSearchFilters
+  filters: ContractSearchFilters,
 ): Promise<SearchContract[]> {
   const mapped = contracts
     .map((c) => {
@@ -150,14 +150,14 @@ async function transformBuySellContracts(
     (item) =>
       !item.isBlueprintCopy &&
       (item.materialEfficiency ?? 0) === 0 &&
-      (item.timeEfficiency ?? 0) === 0
+      (item.timeEfficiency ?? 0) === 0,
   )
   const typeIds = [
     ...new Set(eligibleItems.map((item) => item.typeId).filter(Boolean)),
   ] as number[]
   const abyssalItemIds = eligibleItems
     .filter(
-      (item) => item.itemId && item.typeId && isAbyssalTypeId(item.typeId)
+      (item) => item.itemId && item.typeId && isAbyssalTypeId(item.typeId),
     )
     .map((item) => item.itemId!)
 
@@ -168,7 +168,7 @@ async function transformBuySellContracts(
   const priceStore = usePriceStore.getState()
 
   const calcItemsValue = (
-    items: ContractTopItem[]
+    items: ContractTopItem[],
   ): { value: number; hasUnpriceable: boolean } => {
     let total = 0
     let hasUnpriceableATShip = false
@@ -217,14 +217,14 @@ export function useContractSearch() {
       filters: ContractSearchFilters,
       sortPreset: SortPreset,
       callbacks: FetchCallbacks<SearchContract>,
-      cursor?: string
+      cursor?: string,
     ) => {
       const pagination = cursor ? { cursor } : { page: pageNum }
       const params = filtersToApiParams(
         filters,
         sortPreset,
         pagination,
-        PAGE_SIZE
+        PAGE_SIZE,
       )
 
       await fetchPage({
@@ -237,7 +237,7 @@ export function useContractSearch() {
         setError,
       })
     },
-    []
+    [],
   )
 
   const fetchCourierPage = useCallback(
@@ -246,14 +246,14 @@ export function useContractSearch() {
       filters: ContractSearchFilters,
       sortPreset: CourierSortPreset,
       callbacks: FetchCallbacks<CourierContract>,
-      cursor?: string
+      cursor?: string,
     ) => {
       const pagination = cursor ? { cursor } : { page: pageNum }
       const params = courierFiltersToApiParams(
         filters,
         sortPreset,
         pagination,
-        PAGE_SIZE
+        PAGE_SIZE,
       )
 
       await fetchPage({
@@ -269,7 +269,7 @@ export function useContractSearch() {
         setError,
       })
     },
-    []
+    [],
   )
 
   return { isLoading, error, fetchBuySellPage, fetchCourierPage }

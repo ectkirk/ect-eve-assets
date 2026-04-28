@@ -20,7 +20,7 @@ export interface LRUCache<K, V> {
  */
 export function createLRUCache<K, V>(
   ttlMs: number,
-  maxSize: number
+  maxSize: number,
 ): LRUCache<K, V> {
   const cache = new Map<K, CacheEntry<V>>()
 

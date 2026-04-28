@@ -11,7 +11,7 @@ interface ItemVariationsProps {
 }
 
 async function fetchVariations(
-  typeId: number
+  typeId: number,
 ): Promise<RefTypeVariationsResult> {
   if (!window.electronAPI) throw new Error('API not available')
   return window.electronAPI.refTypeVariations(typeId, {

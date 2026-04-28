@@ -115,7 +115,7 @@ export function formatSecurity(value: number): string {
 
 export function formatVolume(
   value: number,
-  options?: { decimals?: 0 | 2; suffix?: boolean }
+  options?: { decimals?: 0 | 2; suffix?: boolean },
 ): string {
   const { decimals = 2, suffix = false } = options ?? {}
   const formatted = value.toLocaleString(getLocale(), {

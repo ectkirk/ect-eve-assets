@@ -35,7 +35,7 @@ export interface VisibilityStoreConfig<
   getEndpoint: (owner: Owner) => string
   getItemId: (item: TItem) => number
   fetchData: (
-    owner: Owner
+    owner: Owner,
   ) => Promise<{ data: TItem[]; expiresAt: number; etag: string | null }>
   toStoredItem: (owner: Owner, item: TItem) => TStoredItem
   isEmpty?: ((items: TItem[]) => boolean) | undefined
@@ -45,7 +45,7 @@ export interface VisibilityStoreConfig<
   onBeforeOwnerUpdate?: (
     owner: Owner,
     previousVisibility: Set<number>,
-    itemsById: Map<number, TStoredItem>
+    itemsById: Map<number, TStoredItem>,
   ) => void | undefined
   onAfterOwnerUpdate?: (params: {
     owner: Owner
@@ -67,7 +67,7 @@ export interface VisibilityStoreConfig<
     get: () => VisibilityState<TStoredItem> &
       VisibilityActions &
       TExtraState &
-      TExtraActions
+      TExtraActions,
   ) => TExtraActions | undefined
 }
 
@@ -98,7 +98,7 @@ export type VisibilityStore<
   TExtraActions
 
 function collectVisibleItemIds(
-  visibilityByOwner: Map<string, Set<number>>
+  visibilityByOwner: Map<string, Set<number>>,
 ): Set<number> {
   const visible = new Set<number>()
   for (const itemIds of visibilityByOwner.values()) {
@@ -109,7 +109,7 @@ function collectVisibleItemIds(
 
 function removeStaleItems<TStoredItem>(
   itemsById: Map<number, TStoredItem>,
-  visibleIds: Set<number>
+  visibleIds: Set<number>,
 ): { filtered: Map<number, TStoredItem>; staleIds: number[] } {
   const staleIds: number[] = []
   const filtered = new Map<number, TStoredItem>()
@@ -129,7 +129,7 @@ export function createVisibilityStore<
   TExtraState extends object = object,
   TExtraActions extends object = object,
 >(
-  config: VisibilityStoreConfig<TItem, TStoredItem, TExtraState, TExtraActions>
+  config: VisibilityStoreConfig<TItem, TStoredItem, TExtraState, TExtraActions>,
 ): UseBoundStore<
   StoreApi<VisibilityStore<TStoredItem, TExtraState, TExtraActions>>
 > {
@@ -158,7 +158,7 @@ export function createVisibilityStore<
 
   const db = createVisibilityDB<TItem, TStoredItem>(
     { dbName, itemStoreName, itemKeyName, moduleName },
-    (stored) => getItemId(stored.item)
+    (stored) => getItemId(stored.item),
   )
 
   type FullStore = VisibilityStore<TStoredItem, TExtraState, TExtraActions>
@@ -219,7 +219,7 @@ export function createVisibilityStore<
               getErrorForLog(err),
               {
                 module: moduleName,
-              }
+              },
             )
             initPromise = null
             set({ initialized: true } as Partial<FullStore>)
@@ -243,7 +243,7 @@ export function createVisibilityStore<
         const expiryCacheStore = useExpiryCacheStore.getState()
         const ownersToUpdate = force
           ? allOwners.filter(
-              (o): o is Owner => o !== undefined && !o.authFailed
+              (o): o is Owner => o !== undefined && !o.authFailed,
             )
           : allOwners.filter((owner): owner is Owner => {
               if (!owner || owner.authFailed) return false
@@ -311,7 +311,7 @@ export function createVisibilityStore<
                   endpoint,
                   expiresAt,
                   etag,
-                  isDataEmpty
+                  isDataEmpty,
                 )
             } catch (err) {
               if (
@@ -349,7 +349,7 @@ export function createVisibilityStore<
             const visibleIds = collectVisibleItemIds(visibilityByOwner)
             const { filtered, staleIds } = removeStaleItems(
               itemsById,
-              visibleIds
+              visibleIds,
             )
             if (staleIds.length > 0) {
               itemsById = filtered
@@ -408,7 +408,7 @@ export function createVisibilityStore<
             {
               module: moduleName,
               owner: owner.name,
-            }
+            },
           )
           return
         }
@@ -463,7 +463,7 @@ export function createVisibilityStore<
             const visibleIds = collectVisibleItemIds(visibilityByOwner)
             const { filtered, staleIds } = removeStaleItems(
               itemsById,
-              visibleIds
+              visibleIds,
             )
             if (staleIds.length > 0) {
               itemsById = filtered
@@ -507,7 +507,7 @@ export function createVisibilityStore<
               {
                 module: moduleName,
                 owner: owner.name,
-              }
+              },
             )
           }
         } finally {

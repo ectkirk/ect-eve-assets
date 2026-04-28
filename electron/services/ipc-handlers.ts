@@ -40,7 +40,7 @@ export function registerAuthHandlers(ctx: WindowContext): void {
         ctx.characterTokens.set(result.characterId, result.refreshToken)
       }
       return result
-    }
+    },
   )
 
   ipcMain.handle('auth:cancel', () => {
@@ -65,7 +65,7 @@ export function registerAuthHandlers(ctx: WindowContext): void {
         ctx.characterTokens.set(characterId, result.refreshToken)
       }
       return result
-    }
+    },
   )
 
   ipcMain.handle('auth:logout', async (_event, characterId: unknown) => {
@@ -165,7 +165,7 @@ export function registerLoggingHandlers(): void {
           break
       }
       return { success: true }
-    }
+    },
   )
 
   ipcMain.handle('log:getDir', () => {
@@ -231,7 +231,7 @@ export function registerBugReportHandler(): void {
         })
         return { success: false, error: 'Failed to submit report' }
       }
-    }
+    },
   )
 }
 

@@ -60,24 +60,24 @@ export function TreeTable({
 
   const { getVisibleColumns, getColumnsForDropdown } = useColumnSettings(
     storageKey,
-    TREE_COLUMNS
+    TREE_COLUMNS,
   )
 
   const visibleColumns = getVisibleColumns()
 
   const { sortColumn, sortDirection, handleSort } = useSortable<TreeSortColumn>(
     'value',
-    'desc'
+    'desc',
   )
 
   const sortedNodes = useMemo(
     () => sortTreeNodes(nodes, sortColumn, sortDirection),
-    [nodes, sortColumn, sortDirection]
+    [nodes, sortColumn, sortDirection],
   )
 
   const flatRows = useMemo(
     () => flattenTree(sortedNodes, expandedNodes),
-    [sortedNodes, expandedNodes]
+    [sortedNodes, expandedNodes],
   )
 
   const getNodeId = useCallback((node: TreeNode) => node.id, [])
@@ -199,7 +199,7 @@ export function TreeTable({
         handleSellToBuyback()
       }
     },
-    [handleSellToBuyback, triggerBuyback]
+    [handleSellToBuyback, triggerBuyback],
   )
 
   const getScrollElement = useCallback(() => tableContainerRef.current, [])
@@ -254,7 +254,7 @@ export function TreeTable({
 
   const [fittingDialogOpen, setFittingDialogOpen] = useState(false)
   const [selectedShipNode, setSelectedShipNode] = useState<TreeNode | null>(
-    null
+    null,
   )
 
   const handleViewFitting = useCallback(
@@ -262,7 +262,7 @@ export function TreeTable({
       setSelectedShipNode(node)
       setFittingDialogOpen(true)
     },
-    [setFittingDialogOpen]
+    [setFittingDialogOpen],
   )
 
   if (sortedNodes.length === 0) {
@@ -296,7 +296,7 @@ export function TreeTable({
                     onSort={handleSort}
                     className={cn(
                       COLUMN_STYLES.get(colId)?.width,
-                      COLUMN_STYLES.get(colId)?.align
+                      COLUMN_STYLES.get(colId)?.align,
                     )}
                   />
                 )

@@ -77,7 +77,7 @@ export function DefenseLayer({
 }: DefenseLayerProps) {
   const { t } = useTranslation('tools')
   const validResistances = Object.values(resistances).filter(
-    (v): v is number => v !== undefined
+    (v): v is number => v !== undefined,
   )
   if (!validResistances.length) return null
 
@@ -182,7 +182,7 @@ export interface DefenseStatsData {
 }
 
 export function extractDefenseStats(
-  attrMap: Map<number, number>
+  attrMap: Map<number, number>,
 ): DefenseStatsData | null {
   const shieldRes = {
     em: attrMap.get(RESISTANCE_ATTR_IDS.shield.em),

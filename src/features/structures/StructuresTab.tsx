@@ -45,7 +45,7 @@ import type { UnifiedStructureRow } from './types'
 function buildStructureTreeNode(
   structureAsset: ESIAsset,
   childAssets: ESIAsset[],
-  assetNames: Map<number, string>
+  assetNames: Map<number, string>,
 ): TreeNode {
   const type = getType(structureAsset.type_id)
   const customName = assetNames.get(structureAsset.item_id)
@@ -177,7 +177,7 @@ export function StructuresTab() {
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
   const selectedSet = useMemo(
     () => new Set(selectedOwnerIds),
-    [selectedOwnerIds]
+    [selectedOwnerIds],
   )
 
   const { structureAssetMap, structuresTotal: structureTotalValue } =
@@ -212,28 +212,28 @@ export function StructuresTab() {
     (starbase: ESIStarbase, ownerName: string) => {
       setDialog({ type: 'posInfo', starbase, ownerName })
     },
-    []
+    [],
   )
 
   const handleViewStructureInfo = useCallback(
     (structure: ESICorporationStructure, ownerName: string) => {
       setDialog({ type: 'structureInfo', structure, ownerName })
     },
-    []
+    [],
   )
 
   const handleViewPocoInfo = useCallback(
     (customsOffice: ESICustomsOffice, ownerName: string) => {
       setDialog({ type: 'pocoInfo', customsOffice, ownerName })
     },
-    []
+    [],
   )
 
   const handleSetWaypoint = useCallback(
     (systemId: number, systemName: string) => {
       setDialog({ type: 'waypoint', systemId, systemName })
     },
-    []
+    [],
   )
 
   const unifiedRows = useMemo(() => {
@@ -243,7 +243,7 @@ export function StructuresTab() {
     const rows: UnifiedStructureRow[] = []
 
     const filteredStructures = structuresByOwner.filter(({ owner }) =>
-      selectedSet.has(ownerKey(owner.type, owner.id))
+      selectedSet.has(ownerKey(owner.type, owner.id)),
     )
 
     for (const { owner, structures: ownerStructures } of filteredStructures) {
@@ -254,7 +254,7 @@ export function StructuresTab() {
           ? buildStructureTreeNode(
               assetData.asset,
               assetData.children,
-              assetNames
+              assetNames,
             )
           : null
         const fuelInfo = formatFuelExpiry(structure.fuel_expires)
@@ -290,7 +290,7 @@ export function StructuresTab() {
     }
 
     const filteredStarbases = starbasesByOwner.filter(({ owner }) =>
-      selectedSet.has(ownerKey(owner.type, owner.id))
+      selectedSet.has(ownerKey(owner.type, owner.id)),
     )
 
     for (const { owner, starbases } of filteredStarbases) {
@@ -304,7 +304,7 @@ export function StructuresTab() {
         const fuelHours = calculateFuelHours(
           detail,
           type?.towerSize,
-          type?.fuelTier
+          type?.fuelTier,
         )
         const fuelInfo = formatFuelHours(fuelHours)
         const timerInfo = getStarbaseTimer(starbase)
@@ -341,7 +341,7 @@ export function StructuresTab() {
     }
 
     const filteredCustomsOffices = customsOfficesByOwner.filter(({ owner }) =>
-      selectedSet.has(ownerKey(owner.type, owner.id))
+      selectedSet.has(ownerKey(owner.type, owner.id)),
     )
 
     for (const { owner, customsOffices } of filteredCustomsOffices) {
@@ -385,8 +385,8 @@ export function StructuresTab() {
         row.name,
         row.typeName,
         row.owner.name,
-        row.regionName
-      )
+        row.regionName,
+      ),
     )
   }, [
     structuresByOwner,
@@ -433,7 +433,7 @@ export function StructuresTab() {
 
   const corpOwners = useMemo(
     () => owners.filter((o) => o.type === 'corporation'),
-    [owners]
+    [owners],
   )
 
   const loadingState = TabLoadingState({

@@ -18,7 +18,7 @@ const TYPE_DATA_CACHE_SIZE = 50
 const typeDataCache = new Map<number, CombinedTypeData>()
 
 export function getCachedTypeData(
-  typeId: number
+  typeId: number,
 ): CombinedTypeData | undefined {
   const cached = typeDataCache.get(typeId)
   if (cached) {
@@ -30,7 +30,7 @@ export function getCachedTypeData(
 
 export function setCachedTypeData(
   typeId: number,
-  data: CombinedTypeData
+  data: CombinedTypeData,
 ): void {
   typeDataCache.delete(typeId)
   if (typeDataCache.size >= TYPE_DATA_CACHE_SIZE) {
@@ -46,7 +46,7 @@ const dogmaUnitsCache = createAsyncCache<Record<string, DogmaUnit>>(
       language: getLanguage(),
     })
     return result?.items ?? null
-  }
+  },
 )
 
 const attrCategoriesCache = createAsyncCache<

@@ -43,7 +43,7 @@ export function readBinaryFile(filePath: string): Buffer {
 export function writeTextFile(
   filePath: string,
   data: string,
-  options?: Fs.WriteFileOptions
+  options?: Fs.WriteFileOptions,
 ): void {
   nodeFs.writeFileSync(assertPath(filePath), data, options)
 }
@@ -51,14 +51,14 @@ export function writeTextFile(
 export function writeBinaryFile(
   filePath: string,
   data: NodeJS.ArrayBufferView,
-  options?: Fs.WriteFileOptions
+  options?: Fs.WriteFileOptions,
 ): void {
   nodeFs.writeFileSync(assertPath(filePath), data, options)
 }
 
 export async function writeTextFileAsync(
   filePath: string,
-  data: string
+  data: string,
 ): Promise<void> {
   await nodeFs.promises.writeFile(assertPath(filePath), data)
 }

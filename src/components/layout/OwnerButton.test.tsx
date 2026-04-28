@@ -147,7 +147,7 @@ describe('OwnerButton', () => {
 
       render(<OwnerButton />)
       expect(
-        screen.getByTitle('Auth failure - click to re-authenticate')
+        screen.getByTitle('Auth failure - click to re-authenticate'),
       ).toBeInTheDocument()
     })
 
@@ -166,7 +166,7 @@ describe('OwnerButton', () => {
 
       render(<OwnerButton />)
       expect(
-        screen.getByTitle('Scopes outdated - click to upgrade')
+        screen.getByTitle('Scopes outdated - click to upgrade'),
       ).toBeInTheDocument()
     })
 
@@ -186,10 +186,10 @@ describe('OwnerButton', () => {
 
       render(<OwnerButton />)
       expect(
-        screen.getByTitle('Auth failure - click to re-authenticate')
+        screen.getByTitle('Auth failure - click to re-authenticate'),
       ).toBeInTheDocument()
       expect(
-        screen.queryByTitle('Scopes outdated - click to upgrade')
+        screen.queryByTitle('Scopes outdated - click to upgrade'),
       ).not.toBeInTheDocument()
     })
   })

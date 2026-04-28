@@ -75,7 +75,7 @@ function CopyButton({
 
 function getItemImageUrl(
   typeId: number | null,
-  itemName: string
+  itemName: string,
 ): string | null {
   if (!typeId) return null
   const isBPC = itemName.includes('(Copy)')
@@ -103,7 +103,7 @@ export function BuybackResults({ result, config }: BuybackResultsProps) {
     ...(result.unpricedCapitals || []),
   ])
   const displayItems = items.filter(
-    (item) => !excludedFromList.has(item.itemName)
+    (item) => !excludedFromList.has(item.itemName),
   )
 
   const hasExcludedItems =

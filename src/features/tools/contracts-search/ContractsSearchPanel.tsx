@@ -51,7 +51,7 @@ export function ContractsSearchPanel({
         committedFilters: s.committedFilters,
         buySell: s.buySell,
         courier: s.courier,
-      }))
+      })),
     )
 
   const {
@@ -81,7 +81,7 @@ export function ContractsSearchPanel({
       setHasSearched: s.setHasSearched,
       setCourierPage: s.setCourierPage,
       setCourierHasSearched: s.setCourierHasSearched,
-    }))
+    })),
   )
 
   const [selectedContract, setSelectedContract] =
@@ -101,7 +101,7 @@ export function ContractsSearchPanel({
       },
       onPage: storeSetPage,
     }),
-    [storeSetResults, storeSetPage]
+    [storeSetResults, storeSetPage],
   )
 
   const courierCallbacks = useMemo(
@@ -111,7 +111,7 @@ export function ContractsSearchPanel({
       },
       onPage: storeSetCourierPage,
     }),
-    [storeSetCourierResults, storeSetCourierPage]
+    [storeSetCourierResults, storeSetCourierPage],
   )
 
   const lastHandledTypeId = useRef<number | null>(null)
@@ -138,7 +138,7 @@ export function ContractsSearchPanel({
             1,
             newFilters,
             buySell.sortPreset,
-            buySellCallbacks
+            buySellCallbacks,
           )
           onInitialTypeConsumed?.()
         } catch {
@@ -192,7 +192,7 @@ export function ContractsSearchPanel({
           committedFilters,
           courier.committedSort,
           courierCallbacks,
-          cursor
+          cursor,
         )
       } else {
         const isNextPage = newPage === buySell.page + 1
@@ -203,7 +203,7 @@ export function ContractsSearchPanel({
           committedFilters,
           buySell.committedSort,
           buySellCallbacks,
-          cursor
+          cursor,
         )
       }
     },
@@ -219,7 +219,7 @@ export function ContractsSearchPanel({
       courier.committedSort,
       courier.page,
       courier.nextCursor,
-    ]
+    ],
   )
 
   const handleSortChange = useCallback(
@@ -237,7 +237,7 @@ export function ContractsSearchPanel({
       storeSetSortPreset,
       commitSort,
       committedFilters,
-    ]
+    ],
   )
 
   const handleCourierSortChange = useCallback(
@@ -255,7 +255,7 @@ export function ContractsSearchPanel({
       storeSetCourierSortPreset,
       commitCourierSort,
       committedFilters,
-    ]
+    ],
   )
 
   return (

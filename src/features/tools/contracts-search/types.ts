@@ -155,7 +155,7 @@ export function filtersToApiParams(
   filters: ContractSearchFilters,
   sortPreset: SortPreset,
   pagination: { page: number } | { cursor: string },
-  pageSize: number
+  pageSize: number,
 ): ContractSearchParams {
   const priceMin = filters.priceMin
     ? parseFloat(filters.priceMin) * 1_000_000
@@ -197,7 +197,7 @@ export function courierFiltersToApiParams(
   filters: ContractSearchFilters,
   sortPreset: CourierSortPreset,
   pagination: { page: number } | { cursor: string },
-  pageSize: number
+  pageSize: number,
 ): ContractSearchParams {
   const { sortBy, sortDirection } = courierPresetToApiSort(sortPreset)
 

@@ -13,12 +13,12 @@ import { formatSP } from './skill-utils'
 export function SkillsTab() {
   const { t } = useTranslation('common')
   const hasCharacters = useAuthStore((s) =>
-    Object.values(s.owners).some((o) => o.type === 'character')
+    Object.values(s.owners).some((o) => o.type === 'character'),
   )
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
   const selectedSet = useMemo(
     () => new Set(selectedOwnerIds),
-    [selectedOwnerIds]
+    [selectedOwnerIds],
   )
 
   const skillsByOwner = useSkillsStore((s) => s.dataByOwner)
@@ -33,7 +33,7 @@ export function SkillsTab() {
 
   const [sortBy, setSortBy] = useLocalStorageSort<CharacterSortValue>(
     'ecteve:sort:skills',
-    'name'
+    'name',
   )
 
   useEffect(() => {
@@ -76,7 +76,7 @@ export function SkillsTab() {
     () =>
       skillsByOwner
         .filter((data) =>
-          selectedSet.has(ownerKey(data.owner.type, data.owner.characterId))
+          selectedSet.has(ownerKey(data.owner.type, data.owner.characterId)),
         )
         .sort((a, b) => {
           if (sortBy === 'metric') {
@@ -85,7 +85,7 @@ export function SkillsTab() {
           }
           return a.owner.name.localeCompare(b.owner.name, getLocale())
         }),
-    [skillsByOwner, selectedSet, sortBy]
+    [skillsByOwner, selectedSet, sortBy],
   )
 
   const loadingState = TabLoadingState({

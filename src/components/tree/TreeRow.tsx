@@ -52,7 +52,7 @@ export const TreeRow = memo(function TreeRow({
   const { t } = useTranslation('common')
   const itemId = node.asset?.item_id
   const hasAbyssalPrice = usePriceStore((s) =>
-    itemId ? s.abyssalPrices.has(itemId) : false
+    itemId ? s.abyssalPrices.has(itemId) : false,
   )
   const hasChildren = node.children.length > 0
 
@@ -64,7 +64,7 @@ export const TreeRow = memo(function TreeRow({
         onRowClick(node.id, e)
       }
     },
-    [node.id, hasChildren, onRowClick, onToggleExpand]
+    [node.id, hasChildren, onRowClick, onToggleExpand],
   )
 
   const handleViewFittingClick = useCallback(() => {
@@ -85,7 +85,7 @@ export const TreeRow = memo(function TreeRow({
   }, [node.typeId, navigateToType])
 
   const navigateToContracts = useContractsSearchActionStore(
-    (s) => s.navigateToContracts
+    (s) => s.navigateToContracts,
   )
   const handleViewInContracts = useCallback(() => {
     if (node.typeId && node.typeName) {
@@ -130,7 +130,7 @@ export const TreeRow = memo(function TreeRow({
         !isSelected && node.isInContract && 'bg-row-contract',
         !isSelected && node.isInMarketOrder && 'bg-row-order',
         !isSelected && node.isInIndustryJob && 'bg-row-industry',
-        !isSelected && node.isOwnedStructure && 'bg-row-structure'
+        !isSelected && node.isOwnedStructure && 'bg-row-structure',
       )}
       onClick={handleRowClick}
     >

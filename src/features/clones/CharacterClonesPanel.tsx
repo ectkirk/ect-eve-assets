@@ -126,7 +126,7 @@ export function CharacterClonesPanel({
       filterLower,
       clone.locationName,
       clone.name,
-      ...clone.implants.map((i) => i.name)
+      ...clone.implants.map((i) => i.name),
     )
   }
 

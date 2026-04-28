@@ -41,7 +41,7 @@ interface IndustryJobsExtras {
     state?: {
       itemsById: Map<number, StoredJob>
       visibilityByOwner: Map<string, Set<number>>
-    }
+    },
   ) => number
   getJobsByOwner: (state?: {
     itemsById: Map<number, StoredJob>
@@ -79,7 +79,7 @@ async function fetchJobsForOwner(owner: Owner): Promise<{
 }
 
 async function fetchProductPrices(
-  jobsById: Map<number, StoredJob>
+  jobsById: Map<number, StoredJob>,
 ): Promise<void> {
   const priceStore = usePriceStore.getState()
   const typeIds: number[] = []
@@ -98,7 +98,7 @@ async function fetchProductPrices(
     logger.error(
       'Failed to fetch industry job prices',
       err instanceof Error ? err : undefined,
-      { module: 'IndustryJobsStore' }
+      { module: 'IndustryJobsStore' },
     )
   }
 }
@@ -138,7 +138,7 @@ export const useIndustryJobsStore: IndustryJobsStore = Object.assign(
       stateOverride?: {
         itemsById: Map<number, StoredJob>
         visibilityByOwner: Map<string, Set<number>>
-      }
+      },
     ): number {
       const { itemsById, visibilityByOwner } =
         stateOverride ?? baseStore.getState()
@@ -192,7 +192,7 @@ export const useIndustryJobsStore: IndustryJobsStore = Object.assign(
 
       return result
     },
-  }
+  },
 )
 
 registerCollector('industry-jobs', (ids: ResolutionIds) => {

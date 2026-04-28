@@ -39,7 +39,7 @@ const ASSET_TYPE_KEYS: { value: string; key: string }[] = [
 ]
 
 const EXCLUDED_FILTER_VALUES = new Set(
-  ASSET_SETTINGS_CONFIG.map((c) => c.filterValue)
+  ASSET_SETTINGS_CONFIG.map((c) => c.filterValue),
 )
 
 const SEARCH_DEBOUNCE_MS = 250
@@ -123,11 +123,11 @@ function ColumnsDropdown() {
     } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault()
       const items = dropdownRef.current?.querySelectorAll(
-        '[role="menuitemcheckbox"]'
+        '[role="menuitemcheckbox"]',
       )
       if (!items?.length) return
       const currentIndex = Array.from(items).findIndex(
-        (item) => item === document.activeElement
+        (item) => item === document.activeElement,
       )
       const nextIndex =
         e.key === 'ArrowDown'
@@ -208,7 +208,7 @@ export function SearchBar() {
     return ASSET_TYPE_KEYS.filter((opt) => {
       if (!EXCLUDED_FILTER_VALUES.has(opt.value)) return true
       const config = ASSET_SETTINGS_CONFIG.find(
-        (c) => c.filterValue === opt.value
+        (c) => c.filterValue === opt.value,
       )
       return config ? settings[config.key] : true
     })
@@ -256,7 +256,7 @@ export function SearchBar() {
                 'rounded px-3 py-1 text-sm capitalize transition-colors',
                 mailFilter.value === type
                   ? 'bg-accent text-white'
-                  : 'bg-surface-tertiary text-content-muted hover:bg-surface-tertiary/80'
+                  : 'bg-surface-tertiary text-content-muted hover:bg-surface-tertiary/80',
               )}
             >
               {type}

@@ -24,7 +24,7 @@ interface BlueprintsExtraState {
 }
 
 function buildBlueprintMap(
-  blueprintsByOwner: OwnerBlueprints[]
+  blueprintsByOwner: OwnerBlueprints[],
 ): Map<number, BlueprintInfo> {
   const map = new Map<number, BlueprintInfo>()
   for (const { blueprints } of blueprintsByOwner) {
@@ -58,7 +58,7 @@ export const useBlueprintsStore = createOwnerStore<
   fetchData: async (owner) => {
     const result = await esi.fetchPaginatedWithMeta<ESIBlueprint>(
       ownerEndpoint(owner, 'blueprints'),
-      { characterId: owner.characterId, schema: ESIBlueprintSchema }
+      { characterId: owner.characterId, schema: ESIBlueprintSchema },
     )
     return { data: result.data, expiresAt: result.expiresAt, etag: result.etag }
   },

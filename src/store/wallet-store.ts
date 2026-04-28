@@ -26,7 +26,7 @@ export interface CorporationWallet {
 export type OwnerWallet = CharacterWallet | CorporationWallet
 
 export function isCorporationWallet(
-  wallet: OwnerWallet
+  wallet: OwnerWallet,
 ): wallet is CorporationWallet {
   return wallet.owner.type === 'corporation'
 }
@@ -70,7 +70,7 @@ export const useWalletStore = createOwnerStore<
         {
           characterId: owner.characterId,
           schema: z.array(ESICorporationWalletDivisionSchema),
-        }
+        },
       )
       return {
         data: { divisions: result.data },
@@ -80,7 +80,7 @@ export const useWalletStore = createOwnerStore<
     }
     const result = await esi.fetchWithMeta<number>(
       `/characters/${owner.characterId}/wallet`,
-      { characterId: owner.characterId, schema: z.number() }
+      { characterId: owner.characterId, schema: z.number() },
     )
     return {
       data: { balance: result.data },

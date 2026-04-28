@@ -31,7 +31,7 @@ export interface HydratedState {
 export function hydrateFromRecords(
   prices: PriceRecord[],
   tracked: TrackedRecord[],
-  structures: TrackedStructureRecord[]
+  structures: TrackedStructureRecord[],
 ): HydratedState {
   const pricesByType = new Map<number, number>()
   const pricesByLocation = new Map<number, Map<number, number>>()
@@ -104,7 +104,7 @@ interface CollectTasksInput {
 
 export function collectTasks(
   state: CollectTasksInput,
-  now: number
+  now: number,
 ): {
   regionalTasks: RegionalTask[]
   structureTasks: StructureTask[]
@@ -141,7 +141,7 @@ export function cleanupLocationPrices(
   locationMap: Map<number, Map<number, number>>,
   typeMap: Map<number, number>,
   structureIds: Set<number>,
-  aggregateFn: (...values: number[]) => number
+  aggregateFn: (...values: number[]) => number,
 ): void {
   const emptyTypeIds: number[] = []
   for (const [typeId, locMap] of locationMap) {

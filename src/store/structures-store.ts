@@ -36,7 +36,7 @@ export const useStructuresStore = createOwnerStore<
   fetchData: async (owner) => {
     const result = await esi.fetchPaginatedWithMeta<ESICorporationStructure>(
       `/corporations/${owner.id}/structures`,
-      { characterId: owner.characterId, schema: ESICorporationStructureSchema }
+      { characterId: owner.characterId, schema: ESICorporationStructureSchema },
     )
     return { data: result.data, expiresAt: result.expiresAt, etag: result.etag }
   },

@@ -45,11 +45,11 @@ export function ResizableSidebar({
       const delta = e.clientX - startX.current
       const newWidth = Math.min(
         maxWidth,
-        Math.max(minWidth, startWidth.current + delta)
+        Math.max(minWidth, startWidth.current + delta),
       )
       setWidth(newWidth)
     },
-    [minWidth, maxWidth]
+    [minWidth, maxWidth],
   )
 
   const handleMouseUp = useCallback(() => {
@@ -60,7 +60,7 @@ export function ResizableSidebar({
     try {
       localStorage.setItem(
         `sidebar-width-${storageKey}`,
-        String(widthRef.current)
+        String(widthRef.current),
       )
     } catch {
       // ignore

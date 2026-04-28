@@ -76,7 +76,7 @@ export function StarMap() {
 
   const characterMarkers = useMemo(
     () => Array.from(characterLocations.values()),
-    [characterLocations]
+    [characterLocations],
   )
 
   const { ignoredSystems, addIgnored, removeIgnored, isIgnored } =
@@ -235,12 +235,12 @@ export function StarMap() {
         name: s.name,
         security: s.securityStatus ?? 0,
       })),
-    [systems]
+    [systems],
   )
 
   const systemLookupMap = useMemo(
     () => new Map(systemSearchList.map((s) => [s.id, s])),
-    [systemSearchList]
+    [systemSearchList],
   )
 
   // --- Side effects ---

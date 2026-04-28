@@ -35,7 +35,7 @@ function validate<T>(data: unknown, schema: z.ZodType<T>, endpoint: string): T {
     throw new ValidationError(
       `ESI validation failed for ${endpoint}: ${result.error.issues[0]?.message ?? 'unknown validation issue'}`,
       endpoint,
-      data
+      data,
     )
   }
   return result.data
@@ -56,7 +56,7 @@ function withLanguage(options: ESIRequestOptions): ESIRequestOptions {
 export const esi = {
   async fetch<T>(
     endpoint: string,
-    options: ESIRequestOptions & { schema?: z.ZodType<T> } = {}
+    options: ESIRequestOptions & { schema?: z.ZodType<T> } = {},
   ): Promise<T> {
     const { schema, ...esiOptions } = options
     const data = await getESI().fetch<T>(endpoint, withLanguage(esiOptions))
@@ -66,12 +66,12 @@ export const esi = {
 
   async fetchWithMeta<T>(
     endpoint: string,
-    options: ESIRequestOptions & { schema?: z.ZodType<T> } = {}
+    options: ESIRequestOptions & { schema?: z.ZodType<T> } = {},
   ): Promise<ESIResponseMeta<T>> {
     const { schema, ...esiOptions } = options
     const result = await getESI().fetchWithMeta<T>(
       endpoint,
-      withLanguage(esiOptions)
+      withLanguage(esiOptions),
     )
     checkForESIError(result)
     if (schema && !result.notModified) {
@@ -82,12 +82,12 @@ export const esi = {
 
   async fetchPaginated<T>(
     endpoint: string,
-    options: ESIRequestOptions & { schema?: z.ZodType<T> } = {}
+    options: ESIRequestOptions & { schema?: z.ZodType<T> } = {},
   ): Promise<T[]> {
     const { schema, ...esiOptions } = options
     const data = await getESI().fetchPaginated<T>(
       endpoint,
-      withLanguage(esiOptions)
+      withLanguage(esiOptions),
     )
     checkForESIError(data)
     return schema ? validate(data, schema.array(), endpoint) : data
@@ -95,12 +95,12 @@ export const esi = {
 
   async fetchPaginatedWithMeta<T>(
     endpoint: string,
-    options: ESIRequestOptions & { schema?: z.ZodType<T> } = {}
+    options: ESIRequestOptions & { schema?: z.ZodType<T> } = {},
   ): Promise<ESIResponseMeta<T[]>> {
     const { schema, ...esiOptions } = options
     const result = await getESI().fetchPaginatedWithMeta<T>(
       endpoint,
-      withLanguage(esiOptions)
+      withLanguage(esiOptions),
     )
     checkForESIError(result)
     if (schema && !result.notModified) {
@@ -117,7 +117,7 @@ export const esi = {
     options: ESIRequestOptions & {
       schema?: z.ZodType<T>
       onProgress?: (progress: { current: number; total: number }) => void
-    } = {}
+    } = {},
   ): Promise<ESIResponseMeta<T[]>> {
     const { schema, onProgress, ...esiOptions } = options
     const progressChannel = onProgress
@@ -133,7 +133,7 @@ export const esi = {
       const result = await getESI().fetchPaginatedWithProgress<T>(
         endpoint,
         withLanguage(esiOptions),
-        progressChannel
+        progressChannel,
       )
       checkForESIError(result)
       if (schema && !result.notModified) {
@@ -202,7 +202,7 @@ export function setupESITokenProvider(): () => void {
             try {
               const result = await window.electronAPI!.refreshToken(
                 owner.refreshToken,
-                owner.characterId
+                owner.characterId,
               )
               if (result.success && result.accessToken && result.refreshToken) {
                 store.updateOwnerTokens(ownerId, {
@@ -226,7 +226,7 @@ export function setupESITokenProvider(): () => void {
                   {
                     module: 'ESI',
                     ownerId,
-                  }
+                  },
                 )
               }
             } catch (err) {
@@ -250,10 +250,10 @@ export function setupESITokenProvider(): () => void {
 
         void window.electronAPI!.esi.provideToken(
           characterId,
-          owner.accessToken
+          owner.accessToken,
         )
       })()
-    }
+    },
   )
 
   return cleanup

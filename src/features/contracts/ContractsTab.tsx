@@ -56,9 +56,9 @@ export function ContractsTab() {
         visibilityByOwner,
         itemsById,
         itemsByContractId,
-        bidsByContractId
+        bidsByContractId,
       ),
-    [visibilityByOwner, itemsById, itemsByContractId, bidsByContractId]
+    [visibilityByOwner, itemsById, itemsByContractId, bidsByContractId],
   )
 
   const { isLoading: assetsUpdating } = useAssetData()
@@ -77,7 +77,7 @@ export function ContractsTab() {
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
   const selectedSet = useMemo(
     () => new Set(selectedOwnerIds),
-    [selectedOwnerIds]
+    [selectedOwnerIds],
   )
 
   const [hideAlliance, setHideAlliance] = useState(() => {
@@ -98,11 +98,11 @@ export function ContractsTab() {
 
   const { getColumnsForDropdown, getVisibleColumns } = useColumnSettings(
     'contracts',
-    CONTRACT_COLUMNS
+    CONTRACT_COLUMNS,
   )
   const visibleColumns = useMemo(
     () => new Set(getVisibleColumns()),
-    [getVisibleColumns]
+    [getVisibleColumns],
   )
 
   const {
@@ -117,7 +117,7 @@ export function ContractsTab() {
     void priceVersion
 
     const filteredContractsByOwner = contractsByOwner.filter(({ owner }) =>
-      selectedSet.has(ownerKey(owner.type, owner.id))
+      selectedSet.has(ownerKey(owner.type, owner.id)),
     )
 
     const ownerCharIds = new Set<number>()
@@ -158,7 +158,7 @@ export function ContractsTab() {
           owner.type,
           owner.id,
           isIssuer,
-          (key, options) => (options === undefined ? t(key) : t(key, options))
+          (key, options) => (options === undefined ? t(key) : t(key, options)),
         )
         allContracts.push(row)
       }
@@ -177,7 +177,7 @@ export function ContractsTab() {
           row.typeName,
           row.assignerName,
           row.locationName,
-          row.assigneeName
+          row.assigneeName,
         )
       )
         return false
@@ -233,7 +233,7 @@ export function ContractsTab() {
   const hasCorporationOwnerWithAlliance = useMemo(
     () =>
       owners.some((owner) => owner.type === 'corporation' && owner.allianceId),
-    [owners]
+    [owners],
   )
 
   useEffect(() => {

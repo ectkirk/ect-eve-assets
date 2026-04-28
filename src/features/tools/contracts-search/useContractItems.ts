@@ -22,7 +22,7 @@ const MAX_CACHE_SIZE = 100
 
 const itemsCache = createLRUCache<number, ContractItem[]>(
   CACHE_TTL_MS,
-  MAX_CACHE_SIZE
+  MAX_CACHE_SIZE,
 )
 
 export function useContractItems() {
@@ -43,7 +43,7 @@ export function useContractItems() {
     try {
       const esiItems = await esi.fetch<ESIPublicContractItem[]>(
         `/contracts/public/items/${contractId}`,
-        { requiresAuth: false }
+        { requiresAuth: false },
       )
 
       const { typeIds, abyssalItemIds } = extractPriceableIds(esiItems)

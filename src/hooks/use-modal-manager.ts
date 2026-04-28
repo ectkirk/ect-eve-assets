@@ -24,6 +24,6 @@ export function useModalManager<T extends string>(): ModalState<T> {
 
   return useMemo(
     () => ({ openModal, isOpen, open, close, setOpen }),
-    [openModal, isOpen, open, close, setOpen]
+    [openModal, isOpen, open, close, setOpen],
   )
 }

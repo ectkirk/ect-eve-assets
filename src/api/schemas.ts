@@ -194,7 +194,7 @@ export const ESICloneSchema = z.object({
       location_id: z.number(),
       location_type: z.enum(['station', 'structure']),
       name: z.string().optional(),
-    })
+    }),
   ),
   last_clone_jump_date: z.string().optional(),
   last_station_change_date: z.string().optional(),
