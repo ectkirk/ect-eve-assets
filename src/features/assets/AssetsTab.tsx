@@ -1,14 +1,6 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { matchesSearchLower } from '@/lib/utils'
-import {
-  useReactTable,
-  getCoreRowModel,
-  getSortedRowModel,
-  flexRender,
-  type SortingState,
-  type VisibilityState,
-} from '@tanstack/react-table'
 import { Loader2 } from 'lucide-react'
 import { isAbyssalTypeId, getMutamarketUrl } from '@/api/mutamarket-client'
 import {
@@ -41,6 +33,7 @@ import { useReferenceActionStore } from '@/store/reference-action-store'
 import { useFixedVirtualRows } from '@/hooks/use-fixed-virtual-rows'
 import {
   type AssetRow,
+  type AssetSorting,
   COLUMN_LABELS,
   TOGGLEABLE_COLUMNS,
   getDisplayFlag,
@@ -48,7 +41,36 @@ import {
   saveColumnVisibility,
   createAssetRow,
 } from './types'
-import { columns } from './columns'
+import { columns, renderAssetCell } from './columns'
+
+function getAssetSortValue(row: AssetRow, columnId: string): string | number {
+  const value = row[columnId as keyof AssetRow]
+  if (typeof value === 'number' || typeof value === 'string') return value
+  return ''
+}
+
+function compareAssetRows(
+  a: AssetRow,
+  b: AssetRow,
+  sorting: AssetSorting[]
+): number {
+  for (const sort of sorting) {
+    const aValue = getAssetSortValue(a, sort.id)
+    const bValue = getAssetSortValue(b, sort.id)
+    const direction = sort.desc ? -1 : 1
+
+    if (typeof aValue === 'number' && typeof bValue === 'number') {
+      const result = aValue - bValue
+      if (result !== 0) return result * direction
+      continue
+    }
+
+    const result = String(aValue).localeCompare(String(bValue))
+    if (result !== 0) return result * direction
+  }
+
+  return 0
+}
 
 export function AssetsTab() {
   const { t } = useTranslation('assets')
@@ -65,11 +87,10 @@ export function AssetsTab() {
   const types = useReferenceCacheStore((s) => s.types)
   const abyssalPrices = usePriceStore((s) => s.abyssalPrices)
 
-  const [sorting, setSorting] = useState<SortingState>([
+  const [sorting, setSorting] = useState<AssetSorting[]>([
     { id: 'totalValue', desc: true },
   ])
-  const [columnVisibility, setColumnVisibility] =
-    useState<VisibilityState>(loadColumnVisibility)
+  const [columnVisibility, setColumnVisibility] = useState(loadColumnVisibility)
   const [categoryFilterValue, setCategoryFilterValue] = useState('')
   const [groupFilterValue, setGroupFilterValue] = useState('')
   const [assetTypeFilterValue, setAssetTypeFilterValue] = useState('')
@@ -195,7 +216,6 @@ export function AssetsTab() {
 
   const { filteredData, filteredTotalValue, sourceCount } = useMemo(() => {
     const searchLower = search.toLowerCase()
-    let totalValue = 0
     let sourceShowing = 0
 
     for (const ra of selectedResolvedAssets) {
@@ -226,15 +246,18 @@ export function AssetsTab() {
         )
       )
         return false
-      if (
-        !row.modeFlags.isOwnedStructure &&
-        !row.modeFlags.isMarketOrder &&
-        !row.modeFlags.isContract
-      ) {
-        totalValue += row.totalValue
-      }
       return true
     })
+    const totalValue = filtered.reduce((sum, row) => {
+      if (
+        row.modeFlags.isOwnedStructure ||
+        row.modeFlags.isMarketOrder ||
+        row.modeFlags.isContract
+      ) {
+        return sum
+      }
+      return sum + row.totalValue
+    }, 0)
 
     return {
       filteredData: filtered,
@@ -253,32 +276,45 @@ export function AssetsTab() {
     search,
   ])
 
-  const table = useReactTable({
-    data: filteredData,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    onSortingChange: setSorting,
-    onColumnVisibilityChange: setColumnVisibility,
-    state: {
-      sorting,
-      columnVisibility,
-    },
-  })
+  const visibleColumns = useMemo(
+    () => columns.filter((col) => columnVisibility[col.id] !== false),
+    [columnVisibility]
+  )
+
+  const sortedData = useMemo(
+    () => [...filteredData].sort((a, b) => compareAssetRows(a, b, sorting)),
+    [filteredData, sorting]
+  )
+
+  const toggleSorting = useCallback((columnId: string, desc?: boolean) => {
+    setSorting((current) => {
+      const existing = current[0]
+      if (existing?.id === columnId) {
+        return [{ id: columnId, desc: desc ?? !existing.desc }]
+      }
+      return [{ id: columnId, desc: desc ?? false }]
+    })
+  }, [])
 
   useEffect(() => {
-    const cols = table
-      .getAllColumns()
-      .filter((col) => col.getCanHide() && TOGGLEABLE_COLUMNS.has(col.id))
-      .map((col) => ({
-        id: col.id,
-        label: COLUMN_LABELS[col.id] ?? col.id,
-        visible: col.getIsVisible(),
-        toggle: () => col.toggleVisibility(!col.getIsVisible()),
-      }))
+    const cols = columns
+      .filter((col) => TOGGLEABLE_COLUMNS.has(col.id))
+      .map((col) => {
+        const visible = columnVisibility[col.id] !== false
+        return {
+          id: col.id,
+          label: COLUMN_LABELS[col.id] ?? col.id,
+          visible,
+          toggle: () =>
+            setColumnVisibility((current) => ({
+              ...current,
+              [col.id]: !visible,
+            })),
+        }
+      })
     setColumns(cols)
     return () => setColumns([])
-  }, [table, columnVisibility, setColumns])
+  }, [columnVisibility, setColumns])
 
   useEffect(() => {
     setCategoryFilter({
@@ -320,9 +356,6 @@ export function AssetsTab() {
   }, [filteredTotalValue, setTotalValue])
 
   const tableContainerRef = useRef<HTMLDivElement>(null)
-  const { rows } = table.getRowModel()
-
-  const sortedData = useMemo(() => rows.map((r) => r.original), [rows])
   const getRowId = useCallback(
     (row: AssetRow) => `${row.itemId}-${row.locationId}`,
     []
@@ -357,23 +390,19 @@ export function AssetsTab() {
 
   const getScrollElement = useCallback(() => tableContainerRef.current, [])
   const { virtualRows, paddingStart, paddingEnd } = useFixedVirtualRows({
-    count: rows.length,
+    count: sortedData.length,
     getScrollElement,
     rowHeight: 41,
     overscan: 10,
   })
 
   const gridTemplateColumns = useMemo(() => {
-    void columnVisibility
-    return table
-      .getVisibleLeafColumns()
+    return visibleColumns
       .map((col) => {
-        const noFlex = (col.columnDef.meta as { noFlex?: boolean } | undefined)
-          ?.noFlex
-        return noFlex ? `${col.getSize()}px` : `minmax(${col.getSize()}px, 1fr)`
+        return col.noFlex ? `${col.size}px` : `minmax(${col.size}px, 1fr)`
       })
       .join(' ')
-  }, [table, columnVisibility])
+  }, [visibleColumns])
 
   if (owners.length === 0) {
     return (
@@ -432,28 +461,31 @@ export function AssetsTab() {
             style={{ gridTemplateColumns }}
           >
             <div role="rowgroup" className="contents">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <div role="row" className="contents" key={headerGroup.id}>
-                  {headerGroup.headers
-                    .filter((h) => h.column.getIsVisible())
-                    .map((header) => (
-                      <div
-                        key={header.id}
-                        role="columnheader"
-                        className={`sticky top-0 z-10 bg-surface-secondary py-3 text-left text-sm font-medium text-content-secondary border-b border-border ${header.column.id === 'ownerName' ? 'px-2' : 'px-4'}`}
-                      >
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                            )}
-                      </div>
-                    ))}
-                </div>
-              ))}
+              <div role="row" className="contents">
+                {visibleColumns.map((column) => {
+                  const sort = sorting[0]
+                  const isSorted =
+                    sort?.id === column.id
+                      ? sort.desc
+                        ? 'desc'
+                        : 'asc'
+                      : false
+                  return (
+                    <div
+                      key={column.id}
+                      role="columnheader"
+                      className={`sticky top-0 z-10 bg-surface-secondary py-3 text-left text-sm font-medium text-content-secondary border-b border-border ${column.id === 'ownerName' ? 'px-2' : 'px-4'}`}
+                    >
+                      {column.header({
+                        isSorted,
+                        toggleSorting: (desc) => toggleSorting(column.id, desc),
+                      })}
+                    </div>
+                  )
+                })}
+              </div>
             </div>
-            {rows.length ? (
+            {sortedData.length ? (
               <div role="rowgroup" className="contents">
                 {virtualRows.length > 0 && (
                   <div
@@ -465,30 +497,29 @@ export function AssetsTab() {
                   />
                 )}
                 {virtualRows.map((virtualRow) => {
-                  const row = rows[virtualRow.index]
+                  const row = sortedData[virtualRow.index]
                   if (!row) return null
-                  const modeFlags = row.original.modeFlags
-                  const isAbyssalResolved = row.original.isAbyssalResolved
-                  const isMarketItem = !!getType(row.original.typeId)
-                    ?.marketGroupId
-                  const rowId = getRowId(row.original)
+                  const modeFlags = row.modeFlags
+                  const isAbyssalResolved = row.isAbyssalResolved
+                  const isMarketItem = !!getType(row.typeId)?.marketGroupId
+                  const rowId = getRowId(row)
                   const isRowSelected = selectedIds.has(rowId)
                   const rowContent = (
                     <div
-                      key={row.id}
+                      key={rowId}
                       role="row"
                       aria-selected={isRowSelected}
                       data-index={virtualRow.index}
                       className="contents group cursor-pointer select-none"
                       onClick={(e) => handleRowClick(rowId, e)}
                     >
-                      {row.getVisibleCells().map((cell) => (
+                      {visibleColumns.map((column) => (
                         <div
-                          key={cell.id}
+                          key={`${rowId}-${column.id}`}
                           role="gridcell"
                           className={cn(
                             'py-2 text-sm border-b border-border/50 group-hover:bg-surface-tertiary/50 flex items-center',
-                            cell.column.id === 'ownerName' ? 'px-2' : 'px-4',
+                            column.id === 'ownerName' ? 'px-2' : 'px-4',
                             isRowSelected && 'bg-accent/20',
                             !isRowSelected &&
                               modeFlags.isActiveShip &&
@@ -507,33 +538,27 @@ export function AssetsTab() {
                               'bg-row-structure'
                           )}
                         >
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext()
-                          )}
+                          {renderAssetCell(column, row)}
                         </div>
                       ))}
                     </div>
                   )
                   return (
-                    <ContextMenu key={row.id}>
+                    <ContextMenu key={rowId}>
                       <ContextMenuTrigger asChild>
                         {rowContent}
                       </ContextMenuTrigger>
                       <ContextMenuContent>
                         <ContextMenuItem
                           onClick={() =>
-                            navigateToContracts(
-                              row.original.typeId,
-                              row.original.typeName
-                            )
+                            navigateToContracts(row.typeId, row.typeName)
                           }
                         >
                           {t('contextMenu.viewContracts')}
                         </ContextMenuItem>
                         {isMarketItem && (
                           <ContextMenuItem
-                            onClick={() => navigateToType(row.original.typeId)}
+                            onClick={() => navigateToType(row.typeId)}
                           >
                             {tCommon('contextMenu.viewInMarket')}
                           </ContextMenuItem>
@@ -543,31 +568,31 @@ export function AssetsTab() {
                             onClick={() =>
                               setIngameAction({
                                 action: 'market',
-                                targetId: row.original.typeId,
-                                targetName: row.original.typeName,
+                                targetId: row.typeId,
+                                targetName: row.typeName,
                               })
                             }
                           >
                             {tCommon('contextMenu.openMarketIngame')}
                           </ContextMenuItem>
                         )}
-                        {row.original.locationId && (
+                        {row.locationId && (
                           <ContextMenuItem
                             onClick={() =>
                               setIngameAction({
                                 action: 'autopilot',
-                                targetId: row.original.locationId,
-                                targetName: row.original.locationName,
+                                targetId: row.locationId,
+                                targetName: row.locationName,
                               })
                             }
                           >
                             {tCommon('contextMenu.setWaypoint')}
                           </ContextMenuItem>
                         )}
-                        {row.original.contractInfo && (
+                        {row.contractInfo && (
                           <ContextMenuItem
                             onClick={() => {
-                              const ci = row.original.contractInfo!
+                              const ci = row.contractInfo!
                               setIngameAction({
                                 action: 'contract',
                                 targetId: ci.contractId,
@@ -586,10 +611,7 @@ export function AssetsTab() {
                           <ContextMenuItem
                             onClick={() =>
                               window.open(
-                                getMutamarketUrl(
-                                  row.original.typeName,
-                                  row.original.itemId
-                                ),
+                                getMutamarketUrl(row.typeName, row.itemId),
                                 '_blank'
                               )
                             }
@@ -598,22 +620,20 @@ export function AssetsTab() {
                           </ContextMenuItem>
                         )}
                         <ContextMenuItem
-                          onClick={() =>
-                            navigateToReference(row.original.typeId)
-                          }
+                          onClick={() => navigateToReference(row.typeId)}
                         >
                           {tCommon('contextMenu.viewDetails')}
                         </ContextMenuItem>
-                        {row.original.parentTypeId && (
+                        {row.parentTypeId && (
                           <ContextMenuItem
                             onClick={() =>
-                              navigateToReference(row.original.parentTypeId!)
+                              navigateToReference(row.parentTypeId!)
                             }
                           >
                             {tCommon('contextMenu.viewParent', {
-                              name: row.original.parentCustomName
-                                ? `${row.original.parentTypeName} (${row.original.parentCustomName})`
-                                : row.original.parentTypeName,
+                              name: row.parentCustomName
+                                ? `${row.parentTypeName} (${row.parentCustomName})`
+                                : row.parentTypeName,
                             })}
                           </ContextMenuItem>
                         )}

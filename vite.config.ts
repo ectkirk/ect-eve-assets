@@ -49,8 +49,6 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          'react-vendor': ['react', 'react-dom'],
-          'tanstack-vendor': ['@tanstack/react-table'],
           'radix-vendor': [
             '@radix-ui/react-context-menu',
             '@radix-ui/react-dialog',

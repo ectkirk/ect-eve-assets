@@ -1,4 +1,4 @@
-import type { ColumnDef } from '@tanstack/react-table'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { TypeIcon, OwnerIcon } from '@/components/ui/type-icon'
 import { AbyssalPreview } from '@/components/ui/abyssal-preview'
@@ -6,6 +6,7 @@ import { SortButton } from '@/components/ui/sortable-header'
 import { formatNumber, formatFullNumber, cn } from '@/lib/utils'
 import type { AssetRow } from './types'
 import { DISPLAY_FLAGS, formatVolume } from './types'
+import type { SortDirection } from '@/hooks'
 
 function OwnerHeader() {
   const { t } = useTranslation('common')
@@ -75,16 +76,45 @@ function AssetBadges({ modeFlags }: { modeFlags: AssetRow['modeFlags'] }) {
   )
 }
 
-export const columns: ColumnDef<AssetRow>[] = [
+interface AssetHeaderContext {
+  isSorted: false | SortDirection
+  toggleSorting: (desc?: boolean) => void
+}
+
+interface AssetCellContext {
+  row: AssetRow
+  getValue: (columnId: string) => unknown
+}
+
+export interface AssetColumn {
+  id: keyof AssetRow & string
+  size: number
+  noFlex?: boolean
+  header: (context: AssetHeaderContext) => ReactNode
+  cell: (context: AssetCellContext) => ReactNode
+}
+
+function getCellValue(row: AssetRow, columnId: string): unknown {
+  return row[columnId as keyof AssetRow]
+}
+
+export function renderAssetCell(column: AssetColumn, row: AssetRow): ReactNode {
+  return column.cell({
+    row,
+    getValue: (columnId) => getCellValue(row, columnId),
+  })
+}
+
+export const columns: AssetColumn[] = [
   {
-    accessorKey: 'ownerName',
+    id: 'ownerName',
     size: 40,
-    meta: { noFlex: true },
+    noFlex: true,
     header: () => <OwnerHeader />,
-    cell: ({ row }) => {
-      const ownerId = row.original.ownerId
-      const name = row.getValue('ownerName') as string
-      const ownerType = row.original.ownerType
+    cell: ({ row, getValue }) => {
+      const ownerId = row.ownerId
+      const name = getValue('ownerName') as string
+      const ownerType = row.ownerType
       return (
         <span title={name}>
           <OwnerIcon ownerId={ownerId} ownerType={ownerType} size="lg" />
@@ -93,23 +123,23 @@ export const columns: ColumnDef<AssetRow>[] = [
     },
   },
   {
-    accessorKey: 'typeName',
+    id: 'typeName',
     size: 450,
-    header: ({ column }) => (
+    header: ({ isSorted, toggleSorting }) => (
       <SortButton
         label="columns.name"
-        isActive={!!column.getIsSorted()}
-        sortDirection={column.getIsSorted() || 'asc'}
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        isActive={!!isSorted}
+        sortDirection={isSorted || 'asc'}
+        onClick={() => toggleSorting(isSorted === 'asc')}
       />
     ),
-    cell: ({ row }) => {
-      const typeId = row.original.typeId
-      const typeName = row.getValue('typeName') as string
-      const isBpc = row.original.isBlueprintCopy
-      const categoryId = row.original.categoryId
-      const modeFlags = row.original.modeFlags
-      const isAbyssalResolved = row.original.isAbyssalResolved
+    cell: ({ row, getValue }) => {
+      const typeId = row.typeId
+      const typeName = getValue('typeName') as string
+      const isBpc = row.isBlueprintCopy
+      const categoryId = row.categoryId
+      const modeFlags = row.modeFlags
+      const isAbyssalResolved = row.isAbyssalResolved
       const nameSpan = (
         <span className={cn('truncate', isBpc && 'text-status-special')}>
           {typeName}
@@ -125,9 +155,7 @@ export const columns: ColumnDef<AssetRow>[] = [
             size="lg"
           />
           {isAbyssalResolved ? (
-            <AbyssalPreview itemId={row.original.itemId}>
-              {nameSpan}
-            </AbyssalPreview>
+            <AbyssalPreview itemId={row.itemId}>{nameSpan}</AbyssalPreview>
           ) : (
             nameSpan
           )}
@@ -137,37 +165,37 @@ export const columns: ColumnDef<AssetRow>[] = [
     },
   },
   {
-    accessorKey: 'quantity',
+    id: 'quantity',
     size: 140,
-    header: ({ column }) => (
+    header: ({ isSorted, toggleSorting }) => (
       <SortButton
         label="columns.quantity"
-        isActive={!!column.getIsSorted()}
-        sortDirection={column.getIsSorted() || 'asc'}
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        isActive={!!isSorted}
+        sortDirection={isSorted || 'asc'}
+        onClick={() => toggleSorting(isSorted === 'asc')}
         align="right"
       />
     ),
-    cell: ({ row }) => (
+    cell: ({ getValue }) => (
       <span className="tabular-nums text-right w-full">
-        {formatFullNumber(row.getValue('quantity') as number)}
+        {formatFullNumber(getValue('quantity') as number)}
       </span>
     ),
   },
   {
-    accessorKey: 'price',
+    id: 'price',
     size: 130,
-    header: ({ column }) => (
+    header: ({ isSorted, toggleSorting }) => (
       <SortButton
         label="columns.price"
-        isActive={!!column.getIsSorted()}
-        sortDirection={column.getIsSorted() || 'asc'}
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        isActive={!!isSorted}
+        sortDirection={isSorted || 'asc'}
+        onClick={() => toggleSorting(isSorted === 'asc')}
         align="right"
       />
     ),
-    cell: ({ row }) => {
-      const price = row.getValue('price') as number
+    cell: ({ getValue }) => {
+      const price = getValue('price') as number
       return (
         <span className="tabular-nums text-right w-full">
           {price > 0 ? formatNumber(price) : '-'}
@@ -176,19 +204,19 @@ export const columns: ColumnDef<AssetRow>[] = [
     },
   },
   {
-    accessorKey: 'totalValue',
+    id: 'totalValue',
     size: 130,
-    header: ({ column }) => (
+    header: ({ isSorted, toggleSorting }) => (
       <SortButton
         label="columns.value"
-        isActive={!!column.getIsSorted()}
-        sortDirection={column.getIsSorted() || 'asc'}
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        isActive={!!isSorted}
+        sortDirection={isSorted || 'asc'}
+        onClick={() => toggleSorting(isSorted === 'asc')}
         align="right"
       />
     ),
-    cell: ({ row }) => {
-      const value = row.getValue('totalValue') as number
+    cell: ({ getValue }) => {
+      const value = getValue('totalValue') as number
       return (
         <span className="tabular-nums text-right w-full text-status-positive">
           {value > 0 ? formatNumber(value) : '-'}
@@ -197,56 +225,56 @@ export const columns: ColumnDef<AssetRow>[] = [
     },
   },
   {
-    accessorKey: 'totalVolume',
+    id: 'totalVolume',
     size: 130,
-    header: ({ column }) => (
+    header: ({ isSorted, toggleSorting }) => (
       <SortButton
         label="columns.volume"
-        isActive={!!column.getIsSorted()}
-        sortDirection={column.getIsSorted() || 'asc'}
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        isActive={!!isSorted}
+        sortDirection={isSorted || 'asc'}
+        onClick={() => toggleSorting(isSorted === 'asc')}
         align="right"
       />
     ),
-    cell: ({ row }) => (
+    cell: ({ getValue }) => (
       <span className="tabular-nums text-right w-full text-content-secondary">
-        {formatVolume(row.getValue('totalVolume') as number)}
+        {formatVolume(getValue('totalVolume') as number)}
       </span>
     ),
   },
   {
-    accessorKey: 'locationName',
+    id: 'locationName',
     size: 450,
-    header: ({ column }) => (
+    header: ({ isSorted, toggleSorting }) => (
       <SortButton
         label="columns.location"
-        isActive={!!column.getIsSorted()}
-        sortDirection={column.getIsSorted() || 'asc'}
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        isActive={!!isSorted}
+        sortDirection={isSorted || 'asc'}
+        onClick={() => toggleSorting(isSorted === 'asc')}
         align="right"
       />
     ),
-    cell: ({ row }) => (
+    cell: ({ getValue }) => (
       <span className="text-right w-full">
-        {row.getValue('locationName') as string}
+        {getValue('locationName') as string}
       </span>
     ),
   },
   {
-    accessorKey: 'locationFlag',
+    id: 'locationFlag',
     size: 140,
-    meta: { noFlex: true },
-    header: ({ column }) => (
+    noFlex: true,
+    header: ({ isSorted, toggleSorting }) => (
       <SortButton
         label="columns.flag"
-        isActive={!!column.getIsSorted()}
-        sortDirection={column.getIsSorted() || 'asc'}
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        isActive={!!isSorted}
+        sortDirection={isSorted || 'asc'}
+        onClick={() => toggleSorting(isSorted === 'asc')}
         align="right"
       />
     ),
-    cell: ({ row }) => (
-      <LocationFlagCell flag={row.getValue('locationFlag') as string} />
+    cell: ({ getValue }) => (
+      <LocationFlagCell flag={getValue('locationFlag') as string} />
     ),
   },
 ]

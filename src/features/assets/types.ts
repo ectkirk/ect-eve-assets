@@ -1,4 +1,3 @@
-import type { VisibilityState } from '@tanstack/react-table'
 import type {
   AssetModeFlags,
   ContractInfo,
@@ -59,6 +58,13 @@ export interface AssetRow {
   parentCustomName?: string
 }
 
+export type AssetColumnVisibility = Record<string, boolean>
+
+export interface AssetSorting {
+  id: string
+  desc: boolean
+}
+
 export function formatVolume(value: number): string {
   return formatVolumeBase(value, { suffix: true })
 }
@@ -83,12 +89,12 @@ export const TOGGLEABLE_COLUMNS = new Set([
   'totalVolume',
 ])
 
-export const DEFAULT_COLUMN_VISIBILITY: VisibilityState = {
+export const DEFAULT_COLUMN_VISIBILITY: AssetColumnVisibility = {
   locationFlag: false,
   totalVolume: false,
 }
 
-export function loadColumnVisibility(): VisibilityState {
+export function loadColumnVisibility(): AssetColumnVisibility {
   try {
     const stored = localStorage.getItem(STORAGE_KEY_VISIBILITY)
     return stored ? JSON.parse(stored) : DEFAULT_COLUMN_VISIBILITY
@@ -97,7 +103,7 @@ export function loadColumnVisibility(): VisibilityState {
   }
 }
 
-export function saveColumnVisibility(state: VisibilityState): void {
+export function saveColumnVisibility(state: AssetColumnVisibility): void {
   try {
     localStorage.setItem(STORAGE_KEY_VISIBILITY, JSON.stringify(state))
   } catch {
