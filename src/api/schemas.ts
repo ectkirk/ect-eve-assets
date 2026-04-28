@@ -420,6 +420,7 @@ export const RefTypeSchema = z.object({
   groupId: z.number().nullable().optional(),
   volume: z.number().nullable().optional(),
   packagedVolume: z.number().nullable().optional(),
+  portionSize: z.number().nullable().optional(),
 })
 
 export const RefCategorySchema = z.object({

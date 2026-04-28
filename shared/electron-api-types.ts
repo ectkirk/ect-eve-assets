@@ -51,6 +51,7 @@ export interface RefTypesPageResult {
       marketGroupId?: number | null
       volume?: number | null
       packagedVolume?: number | null
+      portionSize?: number | null
       isPublished?: number
     }
   >

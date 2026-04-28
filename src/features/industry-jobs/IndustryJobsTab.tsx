@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { getIndustryJobOutputQuantity } from '@/lib/industry-output'
 import { matchesSearchLower } from '@/lib/utils'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
 import { usePriceStore, getJitaPrice } from '@/store/price-store'
@@ -460,7 +461,7 @@ export function IndustryJobsTab() {
         const productPrice = job.product_type_id
           ? (getJitaPrice(job.product_type_id) ?? 0)
           : 0
-        const productValue = productPrice * job.runs
+        const productValue = productPrice * getIndustryJobOutputQuantity(job)
 
         const locationId = job.location_id ?? job.facility_id
 

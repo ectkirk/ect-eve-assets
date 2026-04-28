@@ -65,6 +65,7 @@ export interface CachedType {
   marketGroupId?: number | null
   volume: number
   packagedVolume?: number
+  portionSize?: number
   implantSlot?: number
   slots?: TypeSlots
   towerSize?: number
@@ -191,6 +192,7 @@ const CachedTypeSchema = z.object({
   marketGroupId: z.number().nullable().optional(),
   volume: z.number(),
   packagedVolume: z.number().optional(),
+  portionSize: z.number().optional(),
   implantSlot: z.number().optional(),
   slots: TypeSlotsSchema.optional(),
   towerSize: z.number().optional(),

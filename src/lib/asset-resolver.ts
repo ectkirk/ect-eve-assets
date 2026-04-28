@@ -14,6 +14,7 @@ import {
 } from './tree-types'
 import { getType, getStructure, getLocation } from '@/store/reference-cache'
 import { usePriceStore } from '@/store/price-store'
+import { getIndustryJobOutputQuantity } from './industry-output'
 import {
   isIndustryJobBpcProduct,
   PLAYER_STRUCTURE_ID_THRESHOLD,
@@ -452,6 +453,7 @@ export function resolveIndustryJob(
   const loc = resolveSyntheticLocation(locationId)
   const productTypeId = job.product_type_id ?? job.blueprint_type_id
   const isBpcProduct = isIndustryJobBpcProduct(job.activity_id)
+  const outputQuantity = getIndustryJobOutputQuantity(job)
 
   const syntheticAsset: ESIAsset = {
     item_id: job.job_id,
@@ -459,7 +461,7 @@ export function resolveIndustryJob(
     location_id: locationId,
     location_type: loc.isStructure ? 'other' : 'station',
     location_flag: 'IndustryJob',
-    quantity: job.runs,
+    quantity: outputQuantity,
     is_singleton: false,
   }
 
@@ -484,8 +486,8 @@ export function resolveIndustryJob(
     groupId: sdeType?.groupId ?? 0,
     volume,
     price,
-    totalValue: price * job.runs,
-    totalVolume: volume * job.runs,
+    totalValue: price * outputQuantity,
+    totalVolume: volume * outputQuantity,
     modeFlags: createSyntheticModeFlags('industryJob', loc.isStructure),
     customName: undefined,
     isBlueprintCopy: isBpcProduct,

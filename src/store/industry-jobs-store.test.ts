@@ -47,6 +47,12 @@ vi.mock('./price-store', () => ({
   },
 }))
 
+vi.mock('@/store/reference-cache', () => ({
+  getType: vi.fn((typeId: number) =>
+    typeId === 2000 ? { id: 2000, portionSize: 10 } : undefined
+  ),
+}))
+
 describe('industry-jobs-store', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
@@ -162,9 +168,9 @@ describe('industry-jobs-store', () => {
 
       const total = useIndustryJobsStore.getTotal(['character-12345'])
 
-      // Only active job counts: price(2000) = 500, runs = 10, total = 5000
+      // Only active job counts: price(2000) = 500, runs = 10, portionSize = 10
       // Delivered job is excluded
-      expect(total).toBe(5000)
+      expect(total).toBe(50000)
     })
 
     it('uses blueprint_type_id when product_type_id is absent', () => {

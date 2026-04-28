@@ -3,6 +3,7 @@ import { type Owner, findOwnerByKey } from './auth-store'
 import { usePriceStore } from './price-store'
 import { esi } from '@/api/esi'
 import { ESIIndustryJobSchema } from '@/api/schemas'
+import { getIndustryJobOutputQuantity } from '@/lib/industry-output'
 import { logger } from '@/lib/logger'
 import { ownerEndpoint } from '@/lib/owner-utils'
 import {
@@ -159,7 +160,7 @@ export const useIndustryJobsStore: IndustryJobsStore = Object.assign(
         total +=
           priceStore.getItemPrice(productTypeId, {
             isBlueprintCopy: isIndustryJobBpcProduct(job.activity_id),
-          }) * job.runs
+          }) * getIndustryJobOutputQuantity(job)
       }
       return total
     },

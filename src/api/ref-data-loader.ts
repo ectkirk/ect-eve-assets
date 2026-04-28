@@ -113,6 +113,7 @@ interface RawType {
   marketGroupId?: number | null
   volume?: number | null
   packagedVolume?: number | null
+  portionSize?: number | null
   isPublished?: number
   productId?: number | null
   basePrice?: number | null
@@ -136,6 +137,7 @@ function enrichType(raw: RawType): CachedType {
     marketGroupId: raw.marketGroupId,
     volume: raw.volume ?? 0,
     packagedVolume: raw.packagedVolume ?? undefined,
+    portionSize: raw.portionSize ?? undefined,
     published: raw.isPublished === 1,
     productId: raw.productId ?? undefined,
     basePrice: raw.basePrice ?? undefined,

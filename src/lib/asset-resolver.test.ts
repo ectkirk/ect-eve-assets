@@ -8,6 +8,7 @@ import {
   computeModeFlags,
   resolveAsset,
   resolveMarketOrder,
+  resolveIndustryJob,
 } from './asset-resolver'
 
 vi.mock('@/store/reference-cache', () => ({
@@ -20,9 +21,17 @@ vi.mock('@/store/reference-cache', () => ({
         name: string
         volume?: number
         packagedVolume?: number
+        portionSize?: number
       }
     > = {
       34: { categoryId: 4, groupId: 18, name: 'Tritanium', volume: 0.01 },
+      35: {
+        categoryId: 4,
+        groupId: 18,
+        name: 'Pyerite',
+        volume: 0.01,
+        portionSize: 100,
+      },
       587: {
         categoryId: 6,
         groupId: 25,
@@ -392,6 +401,37 @@ describe('asset-resolver', () => {
       expect(resolved.asset.location_flag).toBe('SellOrder')
       expect(resolved.modeFlags.isMarketOrder).toBe(true)
       expect(resolved.rootFlag).toBe('SellOrder')
+    })
+  })
+
+  describe('resolveIndustryJob', () => {
+    it('uses product portion size for output quantity and totals', () => {
+      const owner = createMockOwner()
+      const job = {
+        job_id: 12345,
+        installer_id: 12345,
+        facility_id: 60003760,
+        station_id: 60003760,
+        activity_id: 1,
+        blueprint_id: 100,
+        blueprint_type_id: 1000,
+        product_type_id: 35,
+        blueprint_location_id: 60003760,
+        location_id: 60003760,
+        output_location_id: 60003760,
+        runs: 3,
+        status: 'active' as const,
+        start_date: '2024-01-01T00:00:00Z',
+        end_date: '2024-01-02T00:00:00Z',
+        duration: 86400,
+        cost: 1000,
+      }
+
+      const resolved = resolveIndustryJob(job, owner)
+
+      expect(resolved.asset.quantity).toBe(300)
+      expect(resolved.totalValue).toBe(100 * 300)
+      expect(resolved.totalVolume).toBe(0.01 * 300)
     })
   })
 })

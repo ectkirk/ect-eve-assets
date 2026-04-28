@@ -38,7 +38,7 @@ const ALL_TYPES_LOADED_KEY = 'ecteveassets-all-types-loaded'
 const UNIVERSE_LOADED_KEY = 'ecteveassets-universe-loaded'
 const REF_STRUCTURES_LOADED_KEY = 'ecteveassets-ref-structures-loaded'
 const TYPES_SCHEMA_VERSION_KEY = 'ecteveassets-types-schema-version'
-const TYPES_SCHEMA_VERSION = 3
+const TYPES_SCHEMA_VERSION = 4
 const REFERENCE_SCHEMA_VERSION_KEY = 'ecteveassets-reference-schema-version'
 const REFERENCE_SCHEMA_VERSION = 1
 
