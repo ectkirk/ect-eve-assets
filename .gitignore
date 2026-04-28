@@ -1,19 +1,19 @@
 # Dependencies
 node_modules/
 
+# Local dotfiles and tool state
+.*
+
 # Build outputs
 dist/
 dist-electron/
 release/
 
 # IDE
-.vscode/
-.idea/
 *.swp
 *.swo
 
 # OS
-.DS_Store
 Thumbs.db
 
 # Logs
@@ -34,9 +34,4 @@ test-results/
 *.tmp
 *.temp
 
-# Claude Code
-.claude/
-CLAUDE.md
-
-# Codex
 AGENTS.md
