@@ -1,6 +1,6 @@
-import { useMemo, useState, useRef } from 'react'
-import { useVirtualizer } from '@tanstack/react-virtual'
+import { useCallback, useMemo, useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useFixedVirtualRows } from '@/hooks/use-fixed-virtual-rows'
 import { useSortable, SortableHeader, sortRows } from '@/hooks'
 import {
   Table,
@@ -210,19 +210,21 @@ function VirtualizedTableBody({
 }) {
   const containerRef = useRef<HTMLTableSectionElement>(null)
 
-  const virtualizer = useVirtualizer({
+  const getScrollElement = useCallback(
+    () => containerRef.current?.parentElement ?? null,
+    []
+  )
+  const { virtualRows, totalSize } = useFixedVirtualRows({
     count: sortedOrders.length,
-    getScrollElement: () => containerRef.current?.parentElement ?? null,
-    estimateSize: () => ROW_HEIGHT,
+    getScrollElement,
+    rowHeight: ROW_HEIGHT,
     overscan: 10,
   })
-
-  const virtualRows = virtualizer.getVirtualItems()
 
   return (
     <TableBody
       ref={containerRef}
-      style={{ height: virtualizer.getTotalSize(), position: 'relative' }}
+      style={{ height: totalSize, position: 'relative' }}
     >
       {virtualRows.map((virtualRow) => {
         const row = sortedOrders[virtualRow.index]!

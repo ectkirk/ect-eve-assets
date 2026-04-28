@@ -1,6 +1,5 @@
 import { memo, useMemo, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useVirtualizer } from '@tanstack/react-virtual'
 import { Folder, ChevronRight } from 'lucide-react'
 import { TypeIcon } from '@/components/ui/type-icon'
 import {
@@ -9,6 +8,7 @@ import {
 } from '@/store/reference-cache'
 import type { MarketGroupNode } from './types'
 import { getDescendantMarketGroupIds } from './use-market-groups'
+import { useFixedVirtualRows } from '@/hooks/use-fixed-virtual-rows'
 
 interface TypeListPanelProps {
   selectedGroup: MarketGroupNode | null
@@ -93,10 +93,11 @@ export function TypeListPanel({
     return filteredTypes.map((type) => ({ kind: 'item', type }))
   }, [selectedGroup, filteredTypes])
 
-  const virtualizer = useVirtualizer({
+  const getScrollElement = useCallback(() => containerRef.current, [])
+  const { virtualRows, totalSize } = useFixedVirtualRows({
     count: rows.length,
-    getScrollElement: () => containerRef.current,
-    estimateSize: () => ROW_HEIGHT,
+    getScrollElement,
+    rowHeight: ROW_HEIGHT,
     overscan: 5,
   })
 
@@ -139,11 +140,11 @@ export function TypeListPanel({
           <div ref={containerRef} className="flex-1 overflow-auto">
             <div
               style={{
-                height: virtualizer.getTotalSize(),
+                height: totalSize,
                 position: 'relative',
               }}
             >
-              {virtualizer.getVirtualItems().map((virtualRow) => {
+              {virtualRows.map((virtualRow) => {
                 const row = rows[virtualRow.index]!
                 const key =
                   row.kind === 'subgroup'

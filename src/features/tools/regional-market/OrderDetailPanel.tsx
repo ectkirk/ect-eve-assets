@@ -2,13 +2,13 @@ import { useMemo, useRef, useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import i18next from 'i18next'
 import { useShallow } from 'zustand/shallow'
-import { useVirtualizer } from '@tanstack/react-virtual'
 import type { ESIRegionOrder } from '@/api/endpoints/market'
 import { useReferenceCacheStore } from '@/store/reference-cache'
 import { useRegionalOrdersStore } from '@/store/regional-orders-store'
 import { formatNumber, formatPrice, cn } from '@/lib/utils'
 import { formatCountdown, MS_PER_DAY } from '@/lib/timer-utils'
 import { PLAYER_STRUCTURE_ID_THRESHOLD } from '@/lib/eve-constants'
+import { useFixedVirtualRows } from '@/hooks/use-fixed-virtual-rows'
 
 interface OrderDetailPanelProps {
   typeId: number | null
@@ -49,10 +49,11 @@ function OrderTable({
     return sorted
   }, [orders, isBuyOrder])
 
-  const virtualizer = useVirtualizer({
+  const getScrollElement = useCallback(() => containerRef.current, [])
+  const { virtualRows, totalSize } = useFixedVirtualRows({
     count: sortedOrders.length,
-    getScrollElement: () => containerRef.current,
-    estimateSize: () => ROW_HEIGHT,
+    getScrollElement,
+    rowHeight: ROW_HEIGHT,
     overscan: 5,
   })
 
@@ -86,8 +87,6 @@ function OrderTable({
     )
   }
 
-  const virtualRows = virtualizer.getVirtualItems()
-
   return (
     <div className="flex-1 flex flex-col min-h-0 m-3 rounded-lg border border-border bg-surface-secondary/30 overflow-hidden">
       <div className="px-4 py-2 font-medium text-sm bg-surface-secondary border-b border-border">
@@ -102,7 +101,7 @@ function OrderTable({
       <div ref={containerRef} className="flex-1 overflow-auto">
         <div
           style={{
-            height: virtualizer.getTotalSize(),
+            height: totalSize,
             position: 'relative',
           }}
         >

@@ -1,6 +1,5 @@
 import { memo, useRef, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useVirtualizer } from '@tanstack/react-virtual'
 import { ChevronRight, ChevronDown, Folder, FolderOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { TypeIcon } from '@/components/ui/type-icon'
@@ -10,6 +9,7 @@ import {
 } from '@/store/reference-cache'
 import type { MarketGroupNode } from './types'
 import { flattenTreeWithItems } from './use-market-groups'
+import { useFixedVirtualRows } from '@/hooks/use-fixed-virtual-rows'
 
 interface MarketGroupTreeProps {
   tree: MarketGroupNode[]
@@ -155,20 +155,19 @@ export function MarketGroupTree({
     [tree, expandedIds, types]
   )
 
-  const virtualizer = useVirtualizer({
+  const getScrollElement = useCallback(() => containerRef.current, [])
+  const { virtualRows, totalSize } = useFixedVirtualRows({
     count: flatRows.length,
-    getScrollElement: () => containerRef.current,
-    estimateSize: () => ROW_HEIGHT,
+    getScrollElement,
+    rowHeight: ROW_HEIGHT,
     overscan: 10,
   })
-
-  const virtualRows = virtualizer.getVirtualItems()
 
   return (
     <div ref={containerRef} className="h-full overflow-auto">
       <div
         style={{
-          height: virtualizer.getTotalSize(),
+          height: totalSize,
           position: 'relative',
         }}
       >

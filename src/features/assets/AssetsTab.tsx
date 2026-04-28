@@ -9,7 +9,6 @@ import {
   type SortingState,
   type VisibilityState,
 } from '@tanstack/react-table'
-import { useVirtualizer } from '@tanstack/react-virtual'
 import { Loader2 } from 'lucide-react'
 import { isAbyssalTypeId, getMutamarketUrl } from '@/api/mutamarket-client'
 import {
@@ -39,6 +38,7 @@ import { useBlueprintsStore } from '@/store/blueprints-store'
 import { useRegionalMarketActionStore } from '@/store/regional-market-action-store'
 import { useContractsSearchActionStore } from '@/store/contracts-search-action-store'
 import { useReferenceActionStore } from '@/store/reference-action-store'
+import { useFixedVirtualRows } from '@/hooks/use-fixed-virtual-rows'
 import {
   type AssetRow,
   COLUMN_LABELS,
@@ -355,10 +355,11 @@ export function AssetsTab() {
     containerRef: tableContainerRef,
   })
 
-  const rowVirtualizer = useVirtualizer({
+  const getScrollElement = useCallback(() => tableContainerRef.current, [])
+  const { virtualRows, paddingStart, paddingEnd } = useFixedVirtualRows({
     count: rows.length,
-    getScrollElement: () => tableContainerRef.current,
-    estimateSize: () => 41,
+    getScrollElement,
+    rowHeight: 41,
     overscan: 10,
   })
 
@@ -454,16 +455,16 @@ export function AssetsTab() {
             </div>
             {rows.length ? (
               <div role="rowgroup" className="contents">
-                {rowVirtualizer.getVirtualItems().length > 0 && (
+                {virtualRows.length > 0 && (
                   <div
                     aria-hidden="true"
                     style={{
-                      height: rowVirtualizer.getVirtualItems()[0]?.start ?? 0,
+                      height: paddingStart,
                       gridColumn: `1 / -1`,
                     }}
                   />
                 )}
-                {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                {virtualRows.map((virtualRow) => {
                   const row = rows[virtualRow.index]
                   if (!row) return null
                   const modeFlags = row.original.modeFlags
@@ -620,13 +621,11 @@ export function AssetsTab() {
                     </ContextMenu>
                   )
                 })}
-                {rowVirtualizer.getVirtualItems().length > 0 && (
+                {virtualRows.length > 0 && (
                   <div
                     aria-hidden="true"
                     style={{
-                      height:
-                        rowVirtualizer.getTotalSize() -
-                        (rowVirtualizer.getVirtualItems().at(-1)?.end ?? 0),
+                      height: paddingEnd,
                       gridColumn: `1 / -1`,
                     }}
                   />

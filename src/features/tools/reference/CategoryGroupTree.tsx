@@ -1,8 +1,8 @@
-import { memo, useRef, useMemo } from 'react'
-import { useVirtualizer } from '@tanstack/react-virtual'
+import { memo, useCallback, useRef, useMemo } from 'react'
 import { ChevronRight, ChevronDown, Folder, FolderOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { TypeIcon } from '@/components/ui/type-icon'
+import { useFixedVirtualRows } from '@/hooks/use-fixed-virtual-rows'
 import type {
   CachedCategory,
   CachedGroup,
@@ -262,20 +262,19 @@ export function CategoryGroupTree({
     [sortedData, expandedCategoryIds, expandedGroupIds]
   )
 
-  const virtualizer = useVirtualizer({
+  const getScrollElement = useCallback(() => containerRef.current, [])
+  const { virtualRows, totalSize } = useFixedVirtualRows({
     count: flatRows.length,
-    getScrollElement: () => containerRef.current,
-    estimateSize: () => ROW_HEIGHT,
+    getScrollElement,
+    rowHeight: ROW_HEIGHT,
     overscan: 10,
   })
-
-  const virtualRows = virtualizer.getVirtualItems()
 
   return (
     <div ref={containerRef} className="h-full overflow-auto">
       <div
         style={{
-          height: virtualizer.getTotalSize(),
+          height: totalSize,
           position: 'relative',
         }}
       >

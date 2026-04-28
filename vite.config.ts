@@ -50,10 +50,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           'react-vendor': ['react', 'react-dom'],
-          'tanstack-vendor': [
-            '@tanstack/react-table',
-            '@tanstack/react-virtual',
-          ],
+          'tanstack-vendor': ['@tanstack/react-table'],
           'radix-vendor': [
             '@radix-ui/react-context-menu',
             '@radix-ui/react-dialog',

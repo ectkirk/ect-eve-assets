@@ -1,5 +1,4 @@
 import { useMemo, useRef, useCallback, useState, useEffect } from 'react'
-import { useVirtualizer } from '@tanstack/react-virtual'
 import { useTranslation } from 'react-i18next'
 import {
   Table,
@@ -25,6 +24,7 @@ import { useColumnSettings } from '@/hooks'
 import type { TreeNode, TreeNodeType } from '@/lib/tree-types'
 import { flattenTree, getAllNodeIds, collectDescendantItems } from '@/lib/tree'
 import { cn } from '@/lib/utils'
+import { useFixedVirtualRows } from '@/hooks/use-fixed-virtual-rows'
 
 const LOCATION_NODE_TYPES: Set<TreeNodeType> = new Set([
   'station',
@@ -202,10 +202,11 @@ export function TreeTable({
     [handleSellToBuyback, triggerBuyback]
   )
 
-  const rowVirtualizer = useVirtualizer({
+  const getScrollElement = useCallback(() => tableContainerRef.current, [])
+  const { virtualRows, paddingStart, paddingEnd } = useFixedVirtualRows({
     count: flatRows.length,
-    getScrollElement: () => tableContainerRef.current,
-    estimateSize: () => 36,
+    getScrollElement,
+    rowHeight: 36,
     overscan: 15,
   })
 
@@ -252,10 +253,13 @@ export function TreeTable({
     null
   )
 
-  const handleViewFitting = useCallback((node: TreeNode) => {
-    setSelectedShipNode(node)
-    setFittingDialogOpen(true)
-  }, [])
+  const handleViewFitting = useCallback(
+    (node: TreeNode) => {
+      setSelectedShipNode(node)
+      setFittingDialogOpen(true)
+    },
+    [setFittingDialogOpen]
+  )
 
   if (sortedNodes.length === 0) {
     return (
@@ -298,17 +302,15 @@ export function TreeTable({
           <TableBody>
             {flatRows.length > 0 ? (
               <>
-                {rowVirtualizer.getVirtualItems().length > 0 && (
+                {virtualRows.length > 0 && (
                   <tr>
                     <td
                       colSpan={visibleColumns.length}
-                      style={{
-                        height: rowVirtualizer.getVirtualItems()[0]?.start ?? 0,
-                      }}
+                      style={{ height: paddingStart }}
                     />
                   </tr>
                 )}
-                {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                {virtualRows.map((virtualRow) => {
                   const node = flatRows[virtualRow.index]
                   if (!node) return null
                   return (
@@ -329,15 +331,11 @@ export function TreeTable({
                     />
                   )
                 })}
-                {rowVirtualizer.getVirtualItems().length > 0 && (
+                {virtualRows.length > 0 && (
                   <tr>
                     <td
                       colSpan={visibleColumns.length}
-                      style={{
-                        height:
-                          rowVirtualizer.getTotalSize() -
-                          (rowVirtualizer.getVirtualItems().at(-1)?.end ?? 0),
-                      }}
+                      style={{ height: paddingEnd }}
                     />
                   </tr>
                 )}
