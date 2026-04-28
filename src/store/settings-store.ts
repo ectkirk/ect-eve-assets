@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 import { useReferenceCacheStore } from './reference-cache'
 import { clearNamesLRUCache } from '@/api/endpoints/universe'
 import { logger } from '@/lib/logger'
+import { getRecordValue } from '@/lib/record-utils'
 
 export type SupportedLanguage =
   | 'de'
@@ -135,5 +136,5 @@ export function getLocalizedText(
 ): string {
   if (!obj) return ''
   const lang = getLanguage()
-  return obj[lang] ?? obj.en
+  return getRecordValue(obj, lang) ?? obj.en
 }

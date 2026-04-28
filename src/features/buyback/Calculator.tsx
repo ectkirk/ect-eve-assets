@@ -15,6 +15,26 @@ interface CalculatorProps {
   result: BuybackCalculatorResult
 }
 
+function getSortValue(
+  item: BuybackCalculatorItem,
+  sortField: SortField
+): string | number {
+  switch (sortField) {
+    case 'itemName':
+      return item.itemName
+    case 'groupName':
+      return item.groupName
+    case 'quantity':
+      return item.quantity
+    case 'totalVolume':
+      return item.totalVolume
+    case 'totalJitaBuy':
+      return item.totalJitaBuy
+    case 'totalJitaSell':
+      return item.totalJitaSell
+  }
+}
+
 function getItemImageUrl(typeId: number, itemName: string): string {
   const isBPC = itemName.includes('(Copy)')
   const isBP = itemName.toLowerCase().includes('blueprint') && !isBPC
@@ -49,8 +69,8 @@ export function Calculator({ result }: CalculatorProps) {
 
   const sortedItems = useMemo(() => {
     return [...result.items].sort((a, b) => {
-      const aVal = a[sortField]
-      const bVal = b[sortField]
+      const aVal = getSortValue(a, sortField)
+      const bVal = getSortValue(b, sortField)
       if (typeof aVal === 'string' && typeof bVal === 'string') {
         return sortDirection === 'asc'
           ? aVal.localeCompare(bVal)

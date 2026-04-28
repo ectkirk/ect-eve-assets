@@ -1,6 +1,7 @@
 import { vi } from 'vitest'
 import type { Owner } from '@/store/auth-store'
 import type { EndpointExpiry } from '@/store/expiry-cache-store'
+import { getRecordValue } from '@/lib/record-utils'
 
 export function createMockOwner(
   overrides: Partial<Owner> & {
@@ -29,7 +30,7 @@ export function createMockAuthState(owners: Record<string, Owner>) {
   return {
     owners,
     ownerHasScope: (ownerId: string, scope: string) => {
-      const owner = owners[ownerId]
+      const owner = getRecordValue(owners, ownerId)
       return owner?.scopes?.includes(scope) ?? false
     },
   } as never

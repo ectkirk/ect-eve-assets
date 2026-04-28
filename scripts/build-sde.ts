@@ -2,6 +2,7 @@ import * as fs from 'fs'
 import * as readline from 'readline'
 import * as path from 'path'
 import { fileURLToPath } from 'url'
+import { createTextReadStream } from '../electron/services/safe-fs.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const SDE_PATH = path.resolve(__dirname, '../../eve-data')
@@ -62,7 +63,7 @@ async function readJsonl<T>(filename: string): Promise<T[]> {
   const filepath = path.join(SDE_PATH, filename)
   const items: T[] = []
 
-  const fileStream = fs.createReadStream(filepath)
+  const fileStream = createTextReadStream(filepath)
   const rl = readline.createInterface({
     input: fileStream,
     crlfDelay: Infinity,

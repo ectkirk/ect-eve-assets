@@ -1,12 +1,12 @@
 import { useTranslation } from 'react-i18next'
 import { formatNumber, formatDuration, formatPercent } from '@/lib/utils'
 
-export const DAMAGE_COLORS = {
-  em: { label: 'text-blue-400', bar: 'bg-blue-500' },
-  thermal: { label: 'text-red-400', bar: 'bg-red-500' },
-  kinetic: { label: 'text-gray-400', bar: 'bg-gray-300' },
-  explosive: { label: 'text-orange-400', bar: 'bg-orange-500' },
-} as const
+export const DAMAGE_COLORS = new Map([
+  ['em', { label: 'text-blue-400', bar: 'bg-blue-500' }],
+  ['thermal', { label: 'text-red-400', bar: 'bg-red-500' }],
+  ['kinetic', { label: 'text-gray-400', bar: 'bg-gray-300' }],
+  ['explosive', { label: 'text-orange-400', bar: 'bg-orange-500' }],
+] as const)
 
 export const RESISTANCE_ATTR_IDS = {
   shield: { em: 271, thermal: 274, kinetic: 273, explosive: 272 },
@@ -28,20 +28,20 @@ function ResistanceBar({
 }) {
   const { t } = useTranslation('tools')
   const resistance = (1 - resonance) * 100
-  const colors = DAMAGE_COLORS[type]
+  const colors = DAMAGE_COLORS.get(type)!
 
-  const damageTypeLabels: Record<string, string> = {
-    em: t('reference.em'),
-    thermal: t('reference.thermal'),
-    kinetic: t('reference.kinetic'),
-    explosive: t('reference.explosive'),
-  }
+  const damageTypeLabels = new Map([
+    ['em', t('reference.em')],
+    ['thermal', t('reference.thermal')],
+    ['kinetic', t('reference.kinetic')],
+    ['explosive', t('reference.explosive')],
+  ])
 
   return (
     <div className="space-y-1">
       <div className="flex justify-between text-xs">
         <span className={`${colors.label} font-medium`}>
-          {damageTypeLabels[type] || label}
+          {damageTypeLabels.get(type) || label}
         </span>
         <span className="font-mono text-content">
           {formatPercent(resistance)}

@@ -91,7 +91,7 @@ export function useMapHover({
       if (fwData) {
         const factionId = fwData.get(nearest.id)
         if (factionId) {
-          factionName = FACTION_NAMES[factionId] ?? `Faction ${factionId}`
+          factionName = FACTION_NAMES.get(factionId) ?? `Faction ${factionId}`
         }
       }
 

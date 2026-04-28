@@ -2,12 +2,12 @@ import { roundSecurity } from '@/lib/utils'
 
 export { roundSecurity }
 
-const FACTION_COLORS: Record<number, string> = {
-  500001: 'hsl(210, 100%, 50%)',
-  500002: 'hsl(0, 100%, 50%)',
-  500003: 'hsl(45, 100%, 50%)',
-  500004: 'hsl(120, 60%, 45%)',
-}
+const FACTION_COLORS = new Map<number, string>([
+  [500001, 'hsl(210, 100%, 50%)'],
+  [500002, 'hsl(0, 100%, 50%)'],
+  [500003, 'hsl(45, 100%, 50%)'],
+  [500004, 'hsl(120, 60%, 45%)'],
+])
 
 export function getSecurityColor(security: number): string {
   const rounded = roundSecurity(security)
@@ -33,7 +33,8 @@ export function getRegionColor(regionId: number): string {
 export function getFactionColor(factionId: number | undefined): string {
   if (!factionId) return 'hsl(0, 0%, 30%)'
   return (
-    FACTION_COLORS[factionId] ?? `hsl(${(factionId * 137.508) % 360}, 70%, 60%)`
+    FACTION_COLORS.get(factionId) ??
+    `hsl(${(factionId * 137.508) % 360}, 70%, 60%)`
   )
 }
 

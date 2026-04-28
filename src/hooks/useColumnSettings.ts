@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { logger } from '@/lib/logger'
+import { getRecordValue, setRecordValue } from '@/lib/record-utils'
 
 export interface ColumnConfig {
   id: string
@@ -42,15 +43,14 @@ export function useColumnSettings(storageKey: string, columns: ColumnConfig[]) {
   }, [storageKey, visibility])
 
   const toggleVisibility = useCallback((columnId: string) => {
-    setVisibility((prev) => ({
-      ...prev,
-      [columnId]: !prev[columnId],
-    }))
+    setVisibility((prev) =>
+      setRecordValue(prev, columnId, !(getRecordValue(prev, columnId) ?? true))
+    )
   }, [])
 
   const getVisibleColumns = useCallback(() => {
     return columns
-      .filter((col) => visibility[col.id] !== false)
+      .filter((col) => getRecordValue(visibility, col.id) !== false)
       .map((col) => col.id)
   }, [columns, visibility])
 
@@ -58,7 +58,7 @@ export function useColumnSettings(storageKey: string, columns: ColumnConfig[]) {
     return columns.map((col) => ({
       id: col.id,
       label: col.label,
-      visible: visibility[col.id] !== false,
+      visible: getRecordValue(visibility, col.id) !== false,
       toggle: () => toggleVisibility(col.id),
     }))
   }, [columns, visibility, toggleVisibility])

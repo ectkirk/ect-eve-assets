@@ -1,24 +1,23 @@
 import '@testing-library/jest-dom/vitest'
 import 'fake-indexeddb/auto'
 
-// jsdom 28 no longer provides a functional localStorage by default
-const store: Record<string, string> = {}
+const store = new Map<string, string>()
 Object.defineProperty(globalThis, 'localStorage', {
   value: {
-    getItem: (key: string) => store[key] ?? null,
+    getItem: (key: string) => store.get(key) ?? null,
     setItem: (key: string, value: string) => {
-      store[key] = String(value)
+      store.set(key, String(value))
     },
     removeItem: (key: string) => {
-      delete store[key]
+      store.delete(key)
     },
     clear: () => {
-      Object.keys(store).forEach((k) => delete store[k])
+      store.clear()
     },
     get length() {
-      return Object.keys(store).length
+      return store.size
     },
-    key: (i: number) => Object.keys(store)[i] ?? null,
+    key: (i: number) => Array.from(store.keys()).at(i) ?? null,
   },
   writable: true,
 })

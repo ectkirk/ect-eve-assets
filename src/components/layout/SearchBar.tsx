@@ -45,11 +45,11 @@ const EXCLUDED_FILTER_VALUES = new Set(
 const SEARCH_DEBOUNCE_MS = 250
 const MAX_LOYALTY_CORPS_DISPLAY = 6
 
-const ORDER_TYPE_KEYS: Record<OrderTypeValue, string> = {
-  all: 'searchBar.orderTypes.all',
-  sell: 'searchBar.orderTypes.sell',
-  buy: 'searchBar.orderTypes.buy',
-}
+const ORDER_TYPE_KEYS = new Map<OrderTypeValue, string>([
+  ['all', 'searchBar.orderTypes.all'],
+  ['sell', 'searchBar.orderTypes.sell'],
+  ['buy', 'searchBar.orderTypes.buy'],
+])
 
 function RefreshButton() {
   const { t } = useTranslation('common')
@@ -131,7 +131,7 @@ function ColumnsDropdown() {
         e.key === 'ArrowDown'
           ? (currentIndex + 1) % items.length
           : (currentIndex - 1 + items.length) % items.length
-      ;(items[nextIndex] as HTMLElement)?.focus()
+      ;(Array.from(items).at(nextIndex) as HTMLElement | undefined)?.focus()
     }
   }
 
@@ -314,7 +314,7 @@ export function SearchBar() {
         >
           {ORDER_TYPE_OPTIONS.map((opt) => (
             <option key={opt} value={opt}>
-              {t(ORDER_TYPE_KEYS[opt])}
+              {t(ORDER_TYPE_KEYS.get(opt) ?? 'searchBar.orderTypes.all')}
             </option>
           ))}
         </select>

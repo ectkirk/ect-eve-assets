@@ -56,7 +56,7 @@ interface TypeDataState {
 
 function getMetaGroupBadge(metaGroupId: number | null | undefined) {
   if (!metaGroupId) return null
-  const meta = META_GROUPS[metaGroupId]
+  const meta = META_GROUPS.get(metaGroupId)
   if (!meta) return null
   return (
     <span className={`rounded px-2 py-0.5 text-xs font-semibold ${meta.color}`}>

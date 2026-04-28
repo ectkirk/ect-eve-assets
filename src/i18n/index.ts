@@ -42,7 +42,7 @@ async function loadLanguage(
   )
 
   return Object.fromEntries(
-    NAMESPACES.map((ns, i) => [ns, modules[i]!.default])
+    NAMESPACES.map((ns, i) => [ns, modules.at(i)!.default])
   )
 }
 

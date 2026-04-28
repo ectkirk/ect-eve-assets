@@ -94,8 +94,8 @@ class MinHeap {
     if (this.heap.length === 0) return undefined
     if (this.heap.length === 1) return this.heap.pop()
 
-    const min = this.heap[0]
-    this.heap[0] = this.heap.pop()!
+    const min = this.heap.at(0)!
+    this.heap.splice(0, 1, this.heap.pop()!)
     this.bubbleDown(0)
     return min
   }
@@ -107,7 +107,9 @@ class MinHeap {
   private bubbleUp(index: number): void {
     while (index > 0) {
       const parentIndex = Math.floor((index - 1) / 2)
-      if (this.heap[parentIndex]!.cost <= this.heap[index]!.cost) break
+      const parent = this.heap.at(parentIndex)!
+      const current = this.heap.at(index)!
+      if (parent.cost <= current.cost) break
       this.swap(parentIndex, index)
       index = parentIndex
     }
@@ -122,13 +124,13 @@ class MinHeap {
 
       if (
         leftChild < length &&
-        this.heap[leftChild]!.cost < this.heap[smallest]!.cost
+        this.heap.at(leftChild)!.cost < this.heap.at(smallest)!.cost
       ) {
         smallest = leftChild
       }
       if (
         rightChild < length &&
-        this.heap[rightChild]!.cost < this.heap[smallest]!.cost
+        this.heap.at(rightChild)!.cost < this.heap.at(smallest)!.cost
       ) {
         smallest = rightChild
       }
@@ -140,9 +142,10 @@ class MinHeap {
   }
 
   private swap(i: number, j: number): void {
-    const temp = this.heap[i]!
-    this.heap[i] = this.heap[j]!
-    this.heap[j] = temp
+    const left = this.heap.at(i)!
+    const right = this.heap.at(j)!
+    this.heap.splice(i, 1, right)
+    this.heap.splice(j, 1, left)
   }
 }
 
@@ -190,7 +193,7 @@ export function findRoute(
 
       let ansiblexJumps = 0
       for (let i = 0; i < path.length - 1; i++) {
-        if (graph.ansiblexEdges.has(edgeKey(path[i]!, path[i + 1]!))) {
+        if (graph.ansiblexEdges.has(edgeKey(path.at(i)!, path.at(i + 1)!))) {
           ansiblexJumps++
         }
       }

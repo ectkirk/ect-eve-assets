@@ -21,8 +21,8 @@ function getSecurityClass(security: number): 'high' | 'low' | 'null' {
 
 function isBorderSystem(systems: RouteSystemInfo[], index: number): boolean {
   if (index >= systems.length - 1) return false
-  const current = systems[index]!
-  const next = systems[index + 1]!
+  const current = systems.at(index)!
+  const next = systems.at(index + 1)!
   return getSecurityClass(current.security) !== getSecurityClass(next.security)
 }
 
@@ -84,24 +84,24 @@ const ROUTE_PREFERENCE_KEYS: Array<{
   { pref: 'less-secure', labelKey: 'map.lessSecure' },
 ]
 
-const SEC_BG: Record<number, string> = {
-  10: 'bg-sec-10',
-  9: 'bg-sec-9',
-  8: 'bg-sec-8',
-  7: 'bg-sec-7',
-  6: 'bg-sec-6',
-  5: 'bg-sec-5',
-  4: 'bg-sec-4',
-  3: 'bg-sec-3',
-  2: 'bg-sec-2',
-  1: 'bg-sec-1',
-  0: 'bg-sec-0',
-}
+const SEC_BG = new Map([
+  [10, 'bg-sec-10'],
+  [9, 'bg-sec-9'],
+  [8, 'bg-sec-8'],
+  [7, 'bg-sec-7'],
+  [6, 'bg-sec-6'],
+  [5, 'bg-sec-5'],
+  [4, 'bg-sec-4'],
+  [3, 'bg-sec-3'],
+  [2, 'bg-sec-2'],
+  [1, 'bg-sec-1'],
+  [0, 'bg-sec-0'],
+])
 
 export function SecurityBadge({ security }: { security: number }) {
   const rounded = roundSecurity(security)
   const secKey = Math.max(0, Math.min(10, Math.round(rounded * 10)))
-  const bg = SEC_BG[secKey] ?? SEC_BG[0]
+  const bg = SEC_BG.get(secKey) ?? SEC_BG.get(0)
   return (
     <span
       className={`ml-1 rounded px-1 text-xs font-medium text-sec-foreground ${bg}`}

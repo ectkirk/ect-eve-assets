@@ -16,12 +16,12 @@ export interface TypeIconProps {
   className?: string
 }
 
-const SIZE_CLASSES = {
-  sm: 'h-4 w-4',
-  md: 'h-5 w-5',
-  lg: 'h-6 w-6',
-  xl: 'h-12 w-12',
-}
+const SIZE_CLASSES = new Map([
+  ['sm', 'h-4 w-4'],
+  ['md', 'h-5 w-5'],
+  ['lg', 'h-6 w-6'],
+  ['xl', 'h-12 w-12'],
+])
 
 export function getTypeVariation(
   categoryId?: number,
@@ -59,12 +59,12 @@ export function getTypeIconUrl(
   return `https://images.evetech.net/types/${typeId}/${variation}?size=${imageSize}`
 }
 
-const IMAGE_SIZES: Record<string, number> = {
-  sm: 32,
-  md: 32,
-  lg: 32,
-  xl: 64,
-}
+const IMAGE_SIZES = new Map([
+  ['sm', 32],
+  ['md', 32],
+  ['lg', 32],
+  ['xl', 64],
+])
 
 export function TypeIcon({
   typeId,
@@ -74,8 +74,8 @@ export function TypeIcon({
   size = 'md',
   className,
 }: TypeIconProps) {
-  const sizeClass = SIZE_CLASSES[size]
-  const imageSize = IMAGE_SIZES[size]
+  const sizeClass = SIZE_CLASSES.get(size) ?? SIZE_CLASSES.get('md')!
+  const imageSize = IMAGE_SIZES.get(size) ?? 32
   const url = getTypeIconUrl(typeId, {
     categoryId,
     isBlueprintCopy,
@@ -114,7 +114,7 @@ export function CharacterPortrait({
   size?: 'sm' | 'md' | 'lg'
   className?: string
 }) {
-  const sizeClass = SIZE_CLASSES[size]
+  const sizeClass = SIZE_CLASSES.get(size) ?? SIZE_CLASSES.get('md')!
   return (
     <img
       src={`https://images.evetech.net/characters/${characterId}/portrait?size=32`}
@@ -134,7 +134,7 @@ export function CorporationLogo({
   size?: 'sm' | 'md' | 'lg'
   className?: string
 }) {
-  const sizeClass = SIZE_CLASSES[size]
+  const sizeClass = SIZE_CLASSES.get(size) ?? SIZE_CLASSES.get('md')!
   return (
     <img
       src={`https://images.evetech.net/corporations/${corporationId}/logo?size=32`}

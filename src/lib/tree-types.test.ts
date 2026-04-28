@@ -161,15 +161,15 @@ describe('OFFICE_TYPE_ID', () => {
 
 describe('DIVISION_FLAG_NAMES', () => {
   it('maps division flags to display names', () => {
-    expect(DIVISION_FLAG_NAMES['CorpSAG1']).toBe('1st Division')
-    expect(DIVISION_FLAG_NAMES['CorpSAG2']).toBe('2nd Division')
-    expect(DIVISION_FLAG_NAMES['CorpSAG3']).toBe('3rd Division')
-    expect(DIVISION_FLAG_NAMES['CorpSAG4']).toBe('4th Division')
-    expect(DIVISION_FLAG_NAMES['CorpSAG5']).toBe('5th Division')
-    expect(DIVISION_FLAG_NAMES['CorpSAG6']).toBe('6th Division')
-    expect(DIVISION_FLAG_NAMES['CorpSAG7']).toBe('7th Division')
-    expect(DIVISION_FLAG_NAMES['OfficeFolder']).toBe('Office Folder')
-    expect(DIVISION_FLAG_NAMES['OfficeImpound']).toBe('Impounded')
+    expect(DIVISION_FLAG_NAMES.get('CorpSAG1')).toBe('1st Division')
+    expect(DIVISION_FLAG_NAMES.get('CorpSAG2')).toBe('2nd Division')
+    expect(DIVISION_FLAG_NAMES.get('CorpSAG3')).toBe('3rd Division')
+    expect(DIVISION_FLAG_NAMES.get('CorpSAG4')).toBe('4th Division')
+    expect(DIVISION_FLAG_NAMES.get('CorpSAG5')).toBe('5th Division')
+    expect(DIVISION_FLAG_NAMES.get('CorpSAG6')).toBe('6th Division')
+    expect(DIVISION_FLAG_NAMES.get('CorpSAG7')).toBe('7th Division')
+    expect(DIVISION_FLAG_NAMES.get('OfficeFolder')).toBe('Office Folder')
+    expect(DIVISION_FLAG_NAMES.get('OfficeImpound')).toBe('Impounded')
   })
 })
 

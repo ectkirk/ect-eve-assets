@@ -27,10 +27,10 @@ function findOfficeInChain(
   currentAsset: { location_flag: string }
 ): OfficeInfo | null {
   for (let i = 0; i < parentChain.length; i++) {
-    const parent = parentChain[i]
+    const parent = parentChain.at(i)
     if (!parent || !isOffice(parent.type_id)) continue
 
-    const flagSource = i === 0 ? currentAsset : parentChain[i - 1]
+    const flagSource = i === 0 ? currentAsset : parentChain.at(i - 1)
     const flag = flagSource?.location_flag
     const divisionFlag =
       flag && OFFICE_DIVISION_FLAGS.has(flag) ? flag : undefined
@@ -158,7 +158,7 @@ export function buildTree(
     let divisionInserted = false
 
     for (let i = parentChain.length - 1; i >= 0; i--) {
-      const parentAsset = parentChain[i]!
+      const parentAsset = parentChain.at(i)!
       const parentResolved = itemIdToResolved.get(parentAsset.item_id)
       const parentNodeId = `asset-${parentAsset.item_id}`
 

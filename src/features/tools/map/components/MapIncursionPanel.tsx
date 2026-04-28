@@ -15,12 +15,12 @@ interface MapIncursionPanelProps {
 }
 
 function StateBadge({ state }: { state: IncursionInfo['state'] }) {
-  const colors: Record<string, string> = {
-    established: 'bg-red-800 text-red-100',
-    mobilizing: 'bg-orange-700 text-orange-100',
-    withdrawing: 'bg-green-700 text-green-100',
-  }
-  const bg = colors[state] ?? colors.established
+  const colors = new Map([
+    ['established', 'bg-red-800 text-red-100'],
+    ['mobilizing', 'bg-orange-700 text-orange-100'],
+    ['withdrawing', 'bg-green-700 text-green-100'],
+  ])
+  const bg = colors.get(state) ?? colors.get('established')
   return (
     <span className={`rounded px-1.5 text-xs font-medium capitalize ${bg}`}>
       {state}

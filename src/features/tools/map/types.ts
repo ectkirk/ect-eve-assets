@@ -45,12 +45,12 @@ export interface SearchResult {
   id: number
 }
 
-export const FACTION_NAMES: Record<number, string> = {
-  500001: 'Caldari State',
-  500002: 'Minmatar Republic',
-  500003: 'Amarr Empire',
-  500004: 'Gallente Federation',
-}
+export const FACTION_NAMES = new Map<number, string>([
+  [500001, 'Caldari State'],
+  [500002, 'Minmatar Republic'],
+  [500003, 'Amarr Empire'],
+  [500004, 'Gallente Federation'],
+])
 
 export const CLICK_RADIUS = 15
 

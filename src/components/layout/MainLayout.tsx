@@ -166,14 +166,18 @@ function TabButtons<T extends string>({
   activeTab: T
   onTabChange: (tab: T) => void
   onKeyDown: (e: KeyboardEvent, index: number) => void
-  tabRefs: React.MutableRefObject<(HTMLButtonElement | null)[]>
+  tabRefs: React.MutableRefObject<Map<number, HTMLButtonElement>>
   getLabel: (tab: T) => string
 }) {
   return tabs.map((tab, index) => (
     <button
       key={tab}
       ref={(el) => {
-        tabRefs.current[index] = el
+        if (el) {
+          tabRefs.current.set(index, el)
+        } else {
+          tabRefs.current.delete(index)
+        }
       }}
       onClick={() => onTabChange(tab)}
       onKeyDown={(e) => onKeyDown(e, index)}
@@ -401,7 +405,7 @@ function MainLayoutInner() {
     []
   )
 
-  const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
+  const tabRefs = useRef(new Map<number, HTMLButtonElement>())
 
   const handleTabKeyDown = useCallback(
     (e: KeyboardEvent, tabs: readonly string[], currentIndex: number) => {
@@ -417,7 +421,7 @@ function MainLayoutInner() {
       }
       if (newIndex !== null) {
         e.preventDefault()
-        tabRefs.current[newIndex]?.focus()
+        tabRefs.current.get(newIndex)?.focus()
       }
     },
     []
@@ -517,7 +521,11 @@ function MainLayoutInner() {
                 <button
                   key={tab}
                   ref={(el) => {
-                    tabRefs.current[index] = el
+                    if (el) {
+                      tabRefs.current.set(index, el)
+                    } else {
+                      tabRefs.current.delete(index)
+                    }
                   }}
                   onClick={() => setActiveBuybackTab(tab)}
                   onKeyDown={(e) => handleTabKeyDown(e, BUYBACK_TABS, index)}

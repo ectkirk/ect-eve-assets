@@ -9,6 +9,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import fs from 'fs'
 import os from 'os'
+import { writeTextFile } from '../electron/services/safe-fs.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -40,7 +41,7 @@ const mockAuthState = {
 test.beforeAll(async () => {
   tempUserDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ecteveassets-test-'))
   const authStoragePath = path.join(tempUserDataDir, 'auth-storage.json')
-  fs.writeFileSync(authStoragePath, JSON.stringify(mockAuthState))
+  writeTextFile(authStoragePath, JSON.stringify(mockAuthState))
 
   electronApp = await electron.launch({
     args: [path.join(__dirname, '../dist-electron/main.js')],

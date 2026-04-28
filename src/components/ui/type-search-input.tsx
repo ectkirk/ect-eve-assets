@@ -212,7 +212,7 @@ export function TypeSearchInput({
           break
         case 'Enter': {
           e.preventDefault()
-          const selected = searchResults[highlightedIndex]
+          const selected = searchResults.at(highlightedIndex)
           if (selected) handleSelect(selected)
           break
         }

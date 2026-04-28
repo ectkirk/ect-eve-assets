@@ -260,18 +260,17 @@ export const ASSET_SAFETY_FLAGS = new Set(['AssetSafety'])
 // Office container type ID
 export const OFFICE_TYPE_ID = 27
 
-// Corporate division flag to display name mapping
-export const DIVISION_FLAG_NAMES: Record<string, string> = {
-  CorpSAG1: '1st Division',
-  CorpSAG2: '2nd Division',
-  CorpSAG3: '3rd Division',
-  CorpSAG4: '4th Division',
-  CorpSAG5: '5th Division',
-  CorpSAG6: '6th Division',
-  CorpSAG7: '7th Division',
-  OfficeFolder: 'Office Folder',
-  OfficeImpound: 'Impounded',
-}
+export const DIVISION_FLAG_NAMES = new Map<string, string>([
+  ['CorpSAG1', '1st Division'],
+  ['CorpSAG2', '2nd Division'],
+  ['CorpSAG3', '3rd Division'],
+  ['CorpSAG4', '4th Division'],
+  ['CorpSAG5', '5th Division'],
+  ['CorpSAG6', '6th Division'],
+  ['CorpSAG7', '7th Division'],
+  ['OfficeFolder', 'Office Folder'],
+  ['OfficeImpound', 'Impounded'],
+])
 
 // Flags that belong to corporate office divisions
 export const OFFICE_DIVISION_FLAGS = new Set([

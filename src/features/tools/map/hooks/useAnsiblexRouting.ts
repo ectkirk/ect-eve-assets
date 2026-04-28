@@ -3,6 +3,7 @@ import { useMapSettingsStore } from '@/store/map-settings-store'
 import { useAnsiblexStore, type Ansiblex } from '@/store/ansiblex-store'
 import { useAuthStore } from '@/store/auth-store'
 import { logger } from '@/lib/logger'
+import { getRecordValue } from '@/lib/record-utils'
 import { edgeKey } from '../utils/pathfinder'
 
 interface UseAnsiblexRoutingReturn {
@@ -31,7 +32,7 @@ export function useAnsiblexRouting(): UseAnsiblexRoutingReturn {
     const result: string[] = []
 
     for (const ownerKey of ansiblexCharacterIds) {
-      const owner = owners[ownerKey]
+      const owner = getRecordValue(owners, ownerKey)
       if (!owner || owner.type !== 'character') continue
 
       if (seenCorps.has(owner.corporationId)) continue

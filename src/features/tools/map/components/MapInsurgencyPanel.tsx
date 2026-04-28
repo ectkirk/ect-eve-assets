@@ -14,15 +14,15 @@ interface MapInsurgencyPanelProps {
 }
 
 export function CorruptionBadge({ level }: { level: number }) {
-  const colors: Record<number, string> = {
-    5: 'bg-red-800 text-red-100',
-    4: 'bg-orange-700 text-orange-100',
-    3: 'bg-orange-600 text-orange-100',
-    2: 'bg-yellow-700 text-yellow-100',
-    1: 'bg-yellow-600 text-yellow-100',
-    0: 'bg-green-700 text-green-100',
-  }
-  const bg = colors[level] ?? colors[0]
+  const colors = new Map([
+    [5, 'bg-red-800 text-red-100'],
+    [4, 'bg-orange-700 text-orange-100'],
+    [3, 'bg-orange-600 text-orange-100'],
+    [2, 'bg-yellow-700 text-yellow-100'],
+    [1, 'bg-yellow-600 text-yellow-100'],
+    [0, 'bg-green-700 text-green-100'],
+  ])
+  const bg = colors.get(level) ?? colors.get(0)
   return (
     <span className={`rounded px-1.5 text-xs font-medium ${bg}`}>{level}</span>
   )

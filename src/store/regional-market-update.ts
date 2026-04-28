@@ -49,17 +49,14 @@ function updateLocationPrice(
   const sellLocationMap = ctx.sellPricesByLocation.get(typeId)
   const buyLocationMap = ctx.buyPricesByLocation.get(typeId)
 
-  const locationPricesObj: Record<number, number> =
-    existing?.locationPrices ?? {}
-  const buyLocationPricesObj: Record<number, number> =
-    existing?.buyLocationPrices ?? {}
-
-  if (sellLocationMap) {
-    for (const [locId, p] of sellLocationMap) locationPricesObj[locId] = p
-  }
-  if (buyLocationMap) {
-    for (const [locId, p] of buyLocationMap) buyLocationPricesObj[locId] = p
-  }
+  const locationPricesObj = Object.fromEntries([
+    ...Object.entries(existing?.locationPrices ?? {}),
+    ...(sellLocationMap ? Array.from(sellLocationMap) : []),
+  ])
+  const buyLocationPricesObj = Object.fromEntries([
+    ...Object.entries(existing?.buyLocationPrices ?? {}),
+    ...(buyLocationMap ? Array.from(buyLocationMap) : []),
+  ])
 
   ctx.priceUpdates.set(typeId, {
     typeId,

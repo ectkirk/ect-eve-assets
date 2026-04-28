@@ -13,7 +13,7 @@ import {
 
 vi.mock('@/store/reference-cache', () => ({
   getType: vi.fn((typeId: number) => {
-    const types: Record<
+    const types = new Map<
       number,
       {
         categoryId: number
@@ -23,26 +23,35 @@ vi.mock('@/store/reference-cache', () => ({
         packagedVolume?: number
         portionSize?: number
       }
-    > = {
-      34: { categoryId: 4, groupId: 18, name: 'Tritanium', volume: 0.01 },
-      35: {
-        categoryId: 4,
-        groupId: 18,
-        name: 'Pyerite',
-        volume: 0.01,
-        portionSize: 100,
-      },
-      587: {
-        categoryId: 6,
-        groupId: 25,
-        name: 'Rifter',
-        volume: 27289,
-        packagedVolume: 2500,
-      },
-      35832: { categoryId: 65, groupId: 1404, name: 'Astrahus', volume: 8000 },
-      27: { categoryId: 2, groupId: 10, name: 'Office' },
-    }
-    return types[typeId]
+    >([
+      [34, { categoryId: 4, groupId: 18, name: 'Tritanium', volume: 0.01 }],
+      [
+        35,
+        {
+          categoryId: 4,
+          groupId: 18,
+          name: 'Pyerite',
+          volume: 0.01,
+          portionSize: 100,
+        },
+      ],
+      [
+        587,
+        {
+          categoryId: 6,
+          groupId: 25,
+          name: 'Rifter',
+          volume: 27289,
+          packagedVolume: 2500,
+        },
+      ],
+      [
+        35832,
+        { categoryId: 65, groupId: 1404, name: 'Astrahus', volume: 8000 },
+      ],
+      [27, { categoryId: 2, groupId: 10, name: 'Office' }],
+    ])
+    return types.get(typeId)
   }),
   getStructure: vi.fn((id: number) => {
     if (id === 1000000000001) {
@@ -51,19 +60,22 @@ vi.mock('@/store/reference-cache', () => ({
     return undefined
   }),
   getLocation: vi.fn((id: number) => {
-    const locations: Record<
+    const locations = new Map<
       number,
       { id: number; name: string; regionId?: number; solarSystemId?: number }
-    > = {
-      60003760: {
-        id: 60003760,
-        name: 'Jita 4-4',
-        solarSystemId: 30000142,
-        regionId: 10000002,
-      },
-      30000142: { id: 30000142, name: 'Jita', regionId: 10000002 },
-    }
-    return locations[id]
+    >([
+      [
+        60003760,
+        {
+          id: 60003760,
+          name: 'Jita 4-4',
+          solarSystemId: 30000142,
+          regionId: 10000002,
+        },
+      ],
+      [30000142, { id: 30000142, name: 'Jita', regionId: 10000002 }],
+    ])
+    return locations.get(id)
   }),
   CategoryIds: {
     SHIP: 6,

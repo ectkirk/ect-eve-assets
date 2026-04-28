@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
 import { ESICache } from './cache'
+import { pathExists, removeFile, writeTextFile } from '../safe-fs.js'
 
 describe('ESICache', () => {
   let cache: ESICache
@@ -115,9 +115,9 @@ describe('ESICache', () => {
 
     afterEach(() => {
       try {
-        fs.unlinkSync(testFilePath)
+        removeFile(testFilePath)
       } catch {
-        // Ignore cleanup errors
+        return
       }
     })
 
@@ -148,7 +148,7 @@ describe('ESICache', () => {
           },
         ],
       })
-      fs.writeFileSync(testFilePath, savedData)
+      writeTextFile(testFilePath, savedData)
 
       const newCache = new ESICache()
       newCache.setFilePath(testFilePath)
@@ -161,7 +161,7 @@ describe('ESICache', () => {
     it('does not save if no file path set', () => {
       cache.set('key', { data: 'value' }, 'etag', Date.now() + 60000)
       cache.saveImmediately()
-      expect(fs.existsSync(testFilePath)).toBe(false)
+      expect(pathExists(testFilePath)).toBe(false)
     })
   })
 })

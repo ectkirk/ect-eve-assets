@@ -4,6 +4,11 @@ import {
   createJSONStorage,
   type StateStorage,
 } from 'zustand/middleware'
+import {
+  getRecordValue,
+  removeRecordValue,
+  setRecordValue,
+} from '@/lib/record-utils'
 import type { CorporationRoles } from '../../shared/electron-api-types'
 
 export type { CorporationRoles }
@@ -19,7 +24,7 @@ const electronStorage: StateStorage = {
     }
     const data = await window.electronAPI.storageGet()
     if (data && name in data) {
-      return JSON.stringify(data[name])
+      return JSON.stringify(getRecordValue(data, name))
     }
     return null
   },
@@ -31,8 +36,9 @@ const electronStorage: StateStorage = {
     writeQueue = writeQueue
       .then(async () => {
         const existing = (await window.electronAPI!.storageGet()) ?? {}
-        existing[name] = JSON.parse(value)
-        await window.electronAPI!.storageSet(existing)
+        await window.electronAPI!.storageSet(
+          setRecordValue(existing, name, JSON.parse(value) as unknown)
+        )
       })
       .catch((err) => {
         console.error('[electronStorage] setItem failed:', err)
@@ -46,8 +52,7 @@ const electronStorage: StateStorage = {
     writeQueue = writeQueue
       .then(async () => {
         const existing = (await window.electronAPI!.storageGet()) ?? {}
-        delete existing[name]
-        await window.electronAPI!.storageSet(existing)
+        await window.electronAPI!.storageSet(removeRecordValue(existing, name))
       })
       .catch((err) => {
         console.error('[electronStorage] removeItem failed:', err)
@@ -172,22 +177,19 @@ export const useAuthStore = create<AuthState>()(
       }) => {
         const key = ownerKey(owner.type, owner.id)
         set((state) => {
-          const newOwners = {
-            ...state.owners,
-            [key]: {
-              id: owner.id,
-              type: owner.type,
-              name: owner.name,
-              characterId: owner.characterId,
-              corporationId: owner.corporationId,
-              allianceId: owner.allianceId,
-              accessToken,
-              refreshToken,
-              expiresAt,
-              scopes,
-              corporationRoles,
-            },
-          }
+          const newOwners = setRecordValue(state.owners, key, {
+            id: owner.id,
+            type: owner.type,
+            name: owner.name,
+            characterId: owner.characterId,
+            corporationId: owner.corporationId,
+            allianceId: owner.allianceId,
+            accessToken,
+            refreshToken,
+            expiresAt,
+            scopes,
+            corporationRoles,
+          })
           const alreadySelected = state.selectedOwnerIds.includes(key)
           return {
             owners: newOwners,
@@ -201,7 +203,7 @@ export const useAuthStore = create<AuthState>()(
 
       removeOwner: (ownerId) => {
         set((state) => {
-          const { [ownerId]: _removed, ...remaining } = state.owners
+          const remaining = removeRecordValue(state.owners, ownerId)
           return {
             owners: remaining,
             selectedOwnerIds: state.selectedOwnerIds.filter(
@@ -214,7 +216,7 @@ export const useAuthStore = create<AuthState>()(
 
       toggleOwnerSelection: (ownerId) => {
         const { owners, selectedOwnerIds } = get()
-        if (!owners[ownerId]) return
+        if (!getRecordValue(owners, ownerId)) return
         const isSelected = selectedOwnerIds.includes(ownerId)
         set({
           selectedOwnerIds: isSelected
@@ -241,85 +243,70 @@ export const useAuthStore = create<AuthState>()(
         { accessToken, refreshToken, expiresAt, scopes }
       ) => {
         set((state) => {
-          const owner = state.owners[ownerId]
+          const owner = getRecordValue(state.owners, ownerId)
           if (!owner) return state
           return {
-            owners: {
-              ...state.owners,
-              [ownerId]: {
-                ...owner,
-                accessToken,
-                refreshToken,
-                expiresAt,
-                scopes: scopes ?? owner.scopes,
-                authFailed: false,
-                scopesOutdated: false,
-              },
-            },
+            owners: setRecordValue(state.owners, ownerId, {
+              ...owner,
+              accessToken,
+              refreshToken,
+              expiresAt,
+              scopes: scopes ?? owner.scopes,
+              authFailed: false,
+              scopesOutdated: false,
+            }),
           }
         })
       },
 
       setOwnerAuthFailed: (ownerId, failed) => {
         set((state) => {
-          const owner = state.owners[ownerId]
+          const owner = getRecordValue(state.owners, ownerId)
           if (!owner) return state
           return {
-            owners: {
-              ...state.owners,
-              [ownerId]: {
-                ...owner,
-                authFailed: failed,
-              },
-            },
+            owners: setRecordValue(state.owners, ownerId, {
+              ...owner,
+              authFailed: failed,
+            }),
           }
         })
       },
 
       setOwnerScopesOutdated: (ownerId, outdated) => {
         set((state) => {
-          const owner = state.owners[ownerId]
+          const owner = getRecordValue(state.owners, ownerId)
           if (!owner) return state
           return {
-            owners: {
-              ...state.owners,
-              [ownerId]: {
-                ...owner,
-                scopesOutdated: outdated,
-              },
-            },
+            owners: setRecordValue(state.owners, ownerId, {
+              ...owner,
+              scopesOutdated: outdated,
+            }),
           }
         })
       },
 
       updateOwnerRoles: (ownerId, roles) => {
         set((state) => {
-          const owner = state.owners[ownerId]
+          const owner = getRecordValue(state.owners, ownerId)
           if (!owner) return state
           return {
-            owners: {
-              ...state.owners,
-              [ownerId]: {
-                ...owner,
-                corporationRoles: roles,
-              },
-            },
+            owners: setRecordValue(state.owners, ownerId, {
+              ...owner,
+              corporationRoles: roles,
+            }),
           }
         })
       },
 
       updateOwnerCorporationId: (ownerId, corporationId) => {
         set((state) => {
-          const owner = state.owners[ownerId]
+          const owner = getRecordValue(state.owners, ownerId)
           if (!owner) return state
           return {
-            owners: {
-              ...state.owners,
-              [ownerId]: {
-                ...owner,
-                corporationId,
-              },
-            },
+            owners: setRecordValue(state.owners, ownerId, {
+              ...owner,
+              corporationId,
+            }),
           }
         })
       },
@@ -334,34 +321,34 @@ export const useAuthStore = create<AuthState>()(
 
       getActiveOwner: () => {
         const { owners, selectedOwnerIds } = get()
-        const firstId = selectedOwnerIds[0]
+        const firstId = selectedOwnerIds.at(0)
         if (!firstId) return null
-        return owners[firstId] ?? null
+        return getRecordValue(owners, firstId) ?? null
       },
 
       hasOwnerAuthFailed: (ownerId) => {
-        const owner = get().owners[ownerId]
+        const owner = getRecordValue(get().owners, ownerId)
         return owner?.authFailed === true
       },
 
       hasOwnerScopesOutdated: (ownerId) => {
-        const owner = get().owners[ownerId]
+        const owner = getRecordValue(get().owners, ownerId)
         return owner?.scopesOutdated === true
       },
 
       ownerHasScope: (ownerId, scope) => {
-        const owner = get().owners[ownerId]
+        const owner = getRecordValue(get().owners, ownerId)
         if (!owner?.scopes) return false
         return owner.scopes.includes(scope)
       },
 
       ownerHasDirectorRole: (ownerId) => {
-        const owner = get().owners[ownerId]
+        const owner = getRecordValue(get().owners, ownerId)
         return owner?.corporationRoles?.roles?.includes('Director') ?? false
       },
 
       getOwner: (ownerId) => {
-        return get().owners[ownerId] ?? null
+        return getRecordValue(get().owners, ownerId) ?? null
       },
 
       getOwnerByCharacterId: (characterId) => {
@@ -387,7 +374,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       isOwnerTokenExpired: (ownerId) => {
-        const owner = get().owners[ownerId]
+        const owner = getRecordValue(get().owners, ownerId)
         if (!owner?.expiresAt) return true
         return Date.now() >= owner.expiresAt - TOKEN_EXPIRY_BUFFER_MS
       },
@@ -395,20 +382,18 @@ export const useAuthStore = create<AuthState>()(
       // Legacy compatibility - computed getters
       get characters() {
         const { owners } = get()
-        const chars: Record<number, Owner> = {}
-        for (const owner of Object.values(owners)) {
-          if (owner.type === 'character') {
-            chars[owner.id] = owner
-          }
-        }
-        return chars
+        return Object.fromEntries(
+          Object.values(owners)
+            .filter((owner) => owner.type === 'character')
+            .map((owner) => [owner.id, owner])
+        )
       },
 
       get activeCharacterId() {
         const { selectedOwnerIds, owners } = get()
-        const firstId = selectedOwnerIds[0]
+        const firstId = selectedOwnerIds.at(0)
         if (!firstId) return null
-        const owner = owners[firstId]
+        const owner = getRecordValue(owners, firstId)
         return owner?.type === 'character' ? owner.id : null
       },
 
@@ -504,12 +489,12 @@ export const useAuthStore = create<AuthState>()(
 export function useActiveCharacter() {
   const owners = useAuthStore((state) => state.owners)
   const selectedOwnerIds = useAuthStore((state) => state.selectedOwnerIds)
-  const firstId = selectedOwnerIds[0]
+  const firstId = selectedOwnerIds.at(0)
   if (!firstId) return null
-  const owner = owners[firstId]
+  const owner = getRecordValue(owners, firstId)
   return owner?.type === 'character' ? owner : null
 }
 
 export function findOwnerByKey(ownerKeyStr: string): Owner | undefined {
-  return useAuthStore.getState().owners[ownerKeyStr]
+  return getRecordValue(useAuthStore.getState().owners, ownerKeyStr)
 }

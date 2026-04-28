@@ -90,7 +90,8 @@ export function StructuresTable({
   const [columnVisibility, setColumnVisibility] = useState(loadColumnVisibility)
   const { setColumns } = useTabControls()
 
-  const show = (col: string) => columnVisibility[col] ?? true
+  const show = (col: string) =>
+    new Map(Object.entries(columnVisibility)).get(col) ?? true
 
   useEffect(() => {
     saveColumnVisibility(columnVisibility)

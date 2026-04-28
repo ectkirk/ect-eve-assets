@@ -223,14 +223,14 @@ export function ContractDetailModal({
 
   const title = contract.topItemName ?? t('contractsSearch.row.multipleItems')
   const getContractTypeLabel = (type: string) => {
-    const typeMap: Record<string, string> = {
-      item_exchange: t('contractsSearch.types.itemExchange'),
-      auction: t('contractsSearch.types.auction'),
-      courier: t('contractsSearch.types.courier'),
-      loan: t('contractsSearch.types.loan'),
-      unknown: t('contractsSearch.types.unknown'),
-    }
-    return typeMap[type] ?? type
+    const typeMap = new Map([
+      ['item_exchange', t('contractsSearch.types.itemExchange')],
+      ['auction', t('contractsSearch.types.auction')],
+      ['courier', t('contractsSearch.types.courier')],
+      ['loan', t('contractsSearch.types.loan')],
+      ['unknown', t('contractsSearch.types.unknown')],
+    ])
+    return typeMap.get(type) ?? type
   }
   const localizedRegion =
     contract.regionId && contract.regionName

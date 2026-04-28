@@ -82,7 +82,7 @@ export function createDivisionNode(
   const customName = divisionNum
     ? hangarDivisionNames?.get(divisionNum)
     : undefined
-  const defaultName = DIVISION_FLAG_NAMES[flag] || flag
+  const defaultName = DIVISION_FLAG_NAMES.get(flag) || flag
   const divisionName = customName || defaultName
 
   return {

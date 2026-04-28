@@ -63,14 +63,14 @@ export const SUCCESS_HTML = `<!DOCTYPE html>
 </html>`
 
 export function escapeHtml(str: string): string {
-  const map: Record<string, string> = {
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;',
-  }
-  return str.replace(/[&<>"']/g, (c) => map[c]!)
+  const entities = new Map<string, string>([
+    ['&', '&amp;'],
+    ['<', '&lt;'],
+    ['>', '&gt;'],
+    ['"', '&quot;'],
+    ["'", '&#39;'],
+  ])
+  return str.replace(/[&<>"']/g, (c) => entities.get(c)!)
 }
 
 export const ERROR_HTML = (error: string) => `<!DOCTYPE html>

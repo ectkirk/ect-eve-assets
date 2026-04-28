@@ -29,11 +29,11 @@ interface IngameActionModalProps {
   eligibleCharacterIds?: number[]
 }
 
-const REQUIRED_SCOPES: Record<IngameAction, string> = {
-  autopilot: 'esi-ui.write_waypoint.v1',
-  contract: 'esi-ui.open_window.v1',
-  market: 'esi-ui.open_window.v1',
-}
+const REQUIRED_SCOPES = new Map<IngameAction, string>([
+  ['autopilot', 'esi-ui.write_waypoint.v1'],
+  ['contract', 'esi-ui.open_window.v1'],
+  ['market', 'esi-ui.open_window.v1'],
+])
 
 export function IngameActionModal({
   open,
@@ -56,7 +56,7 @@ export function IngameActionModal({
     (s) => s.setDefaultMarketCharacter
   )
 
-  const requiredScope = REQUIRED_SCOPES[action]
+  const requiredScope = REQUIRED_SCOPES.get(action) ?? 'esi-ui.open_window.v1'
 
   const eligibleCharacters = useMemo(() => {
     return Object.values(owners).filter((owner) => {

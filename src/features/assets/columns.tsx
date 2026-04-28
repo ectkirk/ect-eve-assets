@@ -13,16 +13,16 @@ function OwnerHeader() {
   return <span className="sr-only">{t('columns.owner')}</span>
 }
 
-const FLAG_TRANSLATION_KEYS: Record<string, string> = {
-  [DISPLAY_FLAGS.IN_CONTRACT]: 'flags.inContract',
-  [DISPLAY_FLAGS.SELL_ORDER]: 'flags.sellOrder',
-  [DISPLAY_FLAGS.INDUSTRY_JOB]: 'flags.industryJob',
-  [DISPLAY_FLAGS.ACTIVE_SHIP]: 'flags.activeShip',
-}
+const FLAG_TRANSLATION_KEYS = new Map<string, string>([
+  [DISPLAY_FLAGS.IN_CONTRACT, 'flags.inContract'],
+  [DISPLAY_FLAGS.SELL_ORDER, 'flags.sellOrder'],
+  [DISPLAY_FLAGS.INDUSTRY_JOB, 'flags.industryJob'],
+  [DISPLAY_FLAGS.ACTIVE_SHIP, 'flags.activeShip'],
+])
 
 function LocationFlagCell({ flag }: { flag: string }) {
   const { t } = useTranslation('assets')
-  const key = FLAG_TRANSLATION_KEYS[flag]
+  const key = FLAG_TRANSLATION_KEYS.get(flag)
   return (
     <div className="w-full text-right">
       <span className="text-content-secondary text-xs">

@@ -1,8 +1,12 @@
-import * as fs from 'fs'
-import * as fsPromises from 'fs/promises'
 import { ESI_CONFIG, type CacheEntry } from './types'
 import { logger } from '../logger.js'
 import { getErrorMessage } from '../fetch-utils.js'
+import {
+  pathExists,
+  readTextFile,
+  writeTextFile,
+  writeTextFileAsync,
+} from '../safe-fs.js'
 
 interface SerializedCache {
   version: 1
@@ -23,8 +27,8 @@ export class ESICache {
   load(): void {
     if (!this.filePath) return
     try {
-      if (fs.existsSync(this.filePath)) {
-        const data = fs.readFileSync(this.filePath, 'utf-8')
+      if (pathExists(this.filePath)) {
+        const data = readTextFile(this.filePath)
         const parsed = JSON.parse(data) as SerializedCache
         if (parsed.version === 1) {
           for (const { key, entry } of parsed.entries) {
@@ -73,7 +77,7 @@ export class ESICache {
         version: 1,
         entries: this.collectValidEntries(),
       }
-      await fsPromises.writeFile(this.filePath, JSON.stringify(serialized))
+      await writeTextFileAsync(this.filePath, JSON.stringify(serialized))
     } catch (err) {
       logger.debug('Failed to save ESI cache', {
         module: 'ESICache',
@@ -99,7 +103,7 @@ export class ESICache {
         version: 1,
         entries: this.collectValidEntries(),
       }
-      fs.writeFileSync(this.filePath, JSON.stringify(serialized))
+      writeTextFile(this.filePath, JSON.stringify(serialized))
     } catch (err) {
       logger.debug('Failed to save ESI cache immediately', {
         module: 'ESICache',

@@ -24,15 +24,16 @@ export const TreeNodeIcon = memo(function TreeNodeIcon({
   nodeType: TreeNodeType
   divisionNumber?: number
 }) {
-  const Icon = NODE_TYPE_ICONS[nodeType]
-  let colorClass = NODE_TYPE_COLORS[nodeType]
+  const Icon = NODE_TYPE_ICONS.get(nodeType) ?? NODE_TYPE_ICONS.get('item')!
+  let colorClass =
+    NODE_TYPE_COLORS.get(nodeType) ?? NODE_TYPE_COLORS.get('item')!
   if (
     nodeType === 'division' &&
     divisionNumber !== undefined &&
     divisionNumber >= 1 &&
     divisionNumber <= 7
   ) {
-    colorClass = DIVISION_COLORS[divisionNumber - 1]!
+    colorClass = DIVISION_COLORS.at(divisionNumber - 1)!
   }
   return (
     <Icon

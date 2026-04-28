@@ -291,8 +291,8 @@ export function TreeTable({
                     sortDirection={sortDirection}
                     onSort={handleSort}
                     className={cn(
-                      COLUMN_STYLES[colId]?.width,
-                      COLUMN_STYLES[colId]?.align
+                      COLUMN_STYLES.get(colId)?.width,
+                      COLUMN_STYLES.get(colId)?.align
                     )}
                   />
                 )

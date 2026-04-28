@@ -9,6 +9,7 @@ import {
   idbPutBatch,
   idbClear,
 } from '@/lib/idb-utils'
+import { getRecordValue } from '@/lib/record-utils'
 import { cacheSchemas } from './types'
 
 async function getDB(): Promise<IDBDatabase> {
@@ -57,7 +58,7 @@ async function getDB(): Promise<IDBDatabase> {
 
 export async function loadStore<T>(storeName: string): Promise<Map<number, T>> {
   const db = await getDB()
-  const schema = cacheSchemas[storeName]
+  const schema = getRecordValue(cacheSchemas, storeName)
   const items = await idbGetAll<unknown>(db, storeName)
   const map = new Map<number, T>()
   let invalidCount = 0

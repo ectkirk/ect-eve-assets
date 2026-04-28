@@ -451,57 +451,66 @@ function ExcludedSection({
   description?: string
   footer: string
 }) {
-  const colorClasses = {
-    orange:
+  const colorClasses = new Map([
+    [
+      'orange',
       'border-category-orange/30 bg-category-orange/10 text-category-orange',
-    red: 'border-category-red/30 bg-category-red/10 text-category-red',
-    pink: 'border-category-pink/30 bg-category-pink/10 text-category-pink',
-    purple:
+    ],
+    ['red', 'border-category-red/30 bg-category-red/10 text-category-red'],
+    ['pink', 'border-category-pink/30 bg-category-pink/10 text-category-pink'],
+    [
+      'purple',
       'border-category-purple/30 bg-category-purple/10 text-category-purple',
-    gray: 'border-border bg-surface-tertiary/50 text-content-secondary',
-    blue: 'border-category-blue/30 bg-category-blue/10 text-category-blue',
-    cyan: 'border-category-cyan/30 bg-category-cyan/10 text-category-cyan',
-    indigo:
+    ],
+    ['gray', 'border-border bg-surface-tertiary/50 text-content-secondary'],
+    ['blue', 'border-category-blue/30 bg-category-blue/10 text-category-blue'],
+    ['cyan', 'border-category-cyan/30 bg-category-cyan/10 text-category-cyan'],
+    [
+      'indigo',
       'border-category-indigo/30 bg-category-indigo/10 text-category-indigo',
-    amber: 'border-category-amber/30 bg-category-amber/10 text-category-amber',
-  }
+    ],
+    [
+      'amber',
+      'border-category-amber/30 bg-category-amber/10 text-category-amber',
+    ],
+  ])
 
-  const textClasses = {
-    orange: 'text-category-orange/80',
-    red: 'text-category-red/80',
-    pink: 'text-category-pink/80',
-    purple: 'text-category-purple/80',
-    gray: 'text-content-secondary/80',
-    blue: 'text-category-blue/80',
-    cyan: 'text-category-cyan/80',
-    indigo: 'text-category-indigo/80',
-    amber: 'text-category-amber/80',
-  }
+  const textClasses = new Map([
+    ['orange', 'text-category-orange/80'],
+    ['red', 'text-category-red/80'],
+    ['pink', 'text-category-pink/80'],
+    ['purple', 'text-category-purple/80'],
+    ['gray', 'text-content-secondary/80'],
+    ['blue', 'text-category-blue/80'],
+    ['cyan', 'text-category-cyan/80'],
+    ['indigo', 'text-category-indigo/80'],
+    ['amber', 'text-category-amber/80'],
+  ])
 
-  const footerClasses = {
-    orange: 'text-category-orange/60',
-    red: 'text-category-red/60',
-    pink: 'text-category-pink/60',
-    purple: 'text-category-purple/60',
-    gray: 'text-content-secondary/60',
-    blue: 'text-category-blue/60',
-    cyan: 'text-category-cyan/60',
-    indigo: 'text-category-indigo/60',
-    amber: 'text-category-amber/60',
-  }
+  const footerClasses = new Map([
+    ['orange', 'text-category-orange/60'],
+    ['red', 'text-category-red/60'],
+    ['pink', 'text-category-pink/60'],
+    ['purple', 'text-category-purple/60'],
+    ['gray', 'text-content-secondary/60'],
+    ['blue', 'text-category-blue/60'],
+    ['cyan', 'text-category-cyan/60'],
+    ['indigo', 'text-category-indigo/60'],
+    ['amber', 'text-category-amber/60'],
+  ])
 
   return (
-    <div className={`rounded-lg border p-4 ${colorClasses[color]}`}>
+    <div className={`rounded-lg border p-4 ${colorClasses.get(color)}`}>
       <div className="mb-1 font-medium">{title}</div>
       {description && (
-        <div className={`mb-2 text-sm ${textClasses[color]}`}>
+        <div className={`mb-2 text-sm ${textClasses.get(color)}`}>
           {description}
         </div>
       )}
-      <div className={`mb-2 text-sm ${textClasses[color]}`}>
+      <div className={`mb-2 text-sm ${textClasses.get(color)}`}>
         {items.join(', ')}
       </div>
-      <div className={`text-xs ${footerClasses[color]}`}>{footer}</div>
+      <div className={`text-xs ${footerClasses.get(color)}`}>{footer}</div>
     </div>
   )
 }

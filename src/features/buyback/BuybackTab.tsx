@@ -93,7 +93,9 @@ export function BuybackTab({
     if (!info?.securityConfigs || !info?.assetSafetyRates) return null
 
     if (activeTab !== 'assetsafety') {
-      const apiConfig = info.securityConfigs[activeTab]
+      const apiConfig = new Map(Object.entries(info.securityConfigs)).get(
+        activeTab
+      )
       if (!apiConfig) return null
       return {
         name: apiConfig.name,
@@ -105,7 +107,10 @@ export function BuybackTab({
       }
     }
 
-    const assetSafetyRates = info.assetSafetyRates[assetSafetySecLevel]
+    const assetSafetyRates = new Map(Object.entries(info.assetSafetyRates)).get(
+      assetSafetySecLevel
+    )
+    if (!assetSafetyRates) return null
     const buyRate =
       npcStation === 'yes'
         ? assetSafetyRates.npcStation

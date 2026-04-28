@@ -10,36 +10,48 @@ export interface SecurityStyling {
 
 type SecurityKey = 'highsec' | 'lowsec' | 'nullsec' | 'assetsafety'
 
-const SECURITY_STYLING: Record<SecurityKey, SecurityStyling> = {
-  highsec: {
-    color: 'bg-semantic-success',
-    colorForeground: 'text-semantic-success-foreground',
-    textColor: 'text-status-positive',
-    borderColor: 'border-semantic-success/30',
-    bgColor: 'bg-semantic-success/20',
-  },
-  lowsec: {
-    color: 'bg-semantic-warning',
-    colorForeground: 'text-semantic-warning-foreground',
-    textColor: 'text-status-highlight',
-    borderColor: 'border-semantic-warning/30',
-    bgColor: 'bg-semantic-warning/20',
-  },
-  nullsec: {
-    color: 'bg-semantic-danger',
-    colorForeground: 'text-semantic-danger-foreground',
-    textColor: 'text-status-negative',
-    borderColor: 'border-semantic-danger/30',
-    bgColor: 'bg-semantic-danger/20',
-  },
-  assetsafety: {
-    color: 'bg-semantic-asset-safety',
-    colorForeground: 'text-semantic-asset-safety-foreground',
-    textColor: 'text-status-time',
-    borderColor: 'border-semantic-asset-safety/30',
-    bgColor: 'bg-semantic-asset-safety/20',
-  },
-}
+const SECURITY_STYLING = new Map<SecurityKey, SecurityStyling>([
+  [
+    'highsec',
+    {
+      color: 'bg-semantic-success',
+      colorForeground: 'text-semantic-success-foreground',
+      textColor: 'text-status-positive',
+      borderColor: 'border-semantic-success/30',
+      bgColor: 'bg-semantic-success/20',
+    },
+  ],
+  [
+    'lowsec',
+    {
+      color: 'bg-semantic-warning',
+      colorForeground: 'text-semantic-warning-foreground',
+      textColor: 'text-status-highlight',
+      borderColor: 'border-semantic-warning/30',
+      bgColor: 'bg-semantic-warning/20',
+    },
+  ],
+  [
+    'nullsec',
+    {
+      color: 'bg-semantic-danger',
+      colorForeground: 'text-semantic-danger-foreground',
+      textColor: 'text-status-negative',
+      borderColor: 'border-semantic-danger/30',
+      bgColor: 'bg-semantic-danger/20',
+    },
+  ],
+  [
+    'assetsafety',
+    {
+      color: 'bg-semantic-asset-safety',
+      colorForeground: 'text-semantic-asset-safety-foreground',
+      textColor: 'text-status-time',
+      borderColor: 'border-semantic-asset-safety/30',
+      bgColor: 'bg-semantic-asset-safety/20',
+    },
+  ],
+])
 
 export const BUYBACK_TABS = [
   'highsec',
@@ -68,9 +80,9 @@ export interface RuntimeSecurityConfig {
 }
 
 function isSecurityKey(key: string): key is SecurityKey {
-  return key in SECURITY_STYLING
+  return SECURITY_STYLING.has(key as SecurityKey)
 }
 
 export function getStyling(key: string): SecurityStyling {
-  return isSecurityKey(key) ? SECURITY_STYLING[key] : SECURITY_STYLING.highsec
+  return SECURITY_STYLING.get(isSecurityKey(key) ? key : 'highsec')!
 }

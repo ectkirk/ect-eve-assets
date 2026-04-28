@@ -87,7 +87,7 @@ export function MultiSelectDropdown({
         case 'Enter':
         case ' ': {
           e.preventDefault()
-          const focusedOption = options[focusedIndex]
+          const focusedOption = options.at(focusedIndex)
           if (focusedOption) {
             toggleOption(focusedOption.value)
           }

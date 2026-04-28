@@ -1,13 +1,22 @@
 import path from 'node:path'
-import fs from 'node:fs'
 import { app, BrowserWindow, shell, safeStorage, screen } from 'electron'
 import { logger } from './logger.js'
 import { getErrorMessage } from './fetch-utils.js'
 import { getESIService } from './esi/index.js'
+import {
+  ensureDirectory,
+  pathExists,
+  readBinaryFile,
+  readTextFile,
+  removeFile,
+  resolveSafePath,
+  writeBinaryFile,
+  writeTextFile,
+} from './safe-fs.js'
 
 const userDataPath = app.getPath('userData')
-const storageFile = path.join(userDataPath, 'auth-storage.json')
-const windowStateFile = path.join(userDataPath, 'window-state.json')
+const storageFile = resolveSafePath(userDataPath, 'auth-storage.json')
+const windowStateFile = resolveSafePath(userDataPath, 'window-state.json')
 
 interface WindowState {
   x?: number
@@ -24,8 +33,8 @@ const DEFAULT_WINDOW_STATE: WindowState = {
 
 function loadWindowState(): WindowState {
   try {
-    if (fs.existsSync(windowStateFile)) {
-      const data = JSON.parse(fs.readFileSync(windowStateFile, 'utf-8'))
+    if (pathExists(windowStateFile)) {
+      const data = JSON.parse(readTextFile(windowStateFile))
       if (data.width && data.height) {
         return data
       }
@@ -38,8 +47,8 @@ function loadWindowState(): WindowState {
 
 function saveWindowState(state: WindowState): void {
   try {
-    fs.mkdirSync(userDataPath, { recursive: true })
-    fs.writeFileSync(windowStateFile, JSON.stringify(state, null, 2), 'utf-8')
+    ensureDirectory(userDataPath)
+    writeTextFile(windowStateFile, JSON.stringify(state, null, 2), 'utf-8')
   } catch (err) {
     logger.error('Failed to save window state', err, { module: 'Window' })
   }
@@ -51,9 +60,9 @@ function canEncrypt(): boolean {
 
 export function readStorage(): Record<string, unknown> | null {
   try {
-    if (!fs.existsSync(storageFile)) return null
+    if (!pathExists(storageFile)) return null
 
-    const fileData = fs.readFileSync(storageFile)
+    const fileData = readBinaryFile(storageFile)
 
     if (canEncrypt()) {
       try {
@@ -63,7 +72,7 @@ export function readStorage(): Record<string, unknown> | null {
         logger.warn('Failed to decrypt storage, deleting corrupted file', {
           module: 'Storage',
         })
-        fs.unlinkSync(storageFile)
+        removeFile(storageFile)
         return null
       }
     } else {
@@ -80,16 +89,16 @@ export function readStorage(): Record<string, unknown> | null {
 
 export function writeStorage(data: Record<string, unknown>): void {
   try {
-    fs.mkdirSync(userDataPath, { recursive: true })
+    ensureDirectory(userDataPath)
 
     if (canEncrypt()) {
       const encrypted = safeStorage.encryptString(JSON.stringify(data))
-      fs.writeFileSync(storageFile, encrypted, { mode: 0o600 })
+      writeBinaryFile(storageFile, encrypted, { mode: 0o600 })
     } else {
       logger.warn('Encryption not available, using plaintext', {
         module: 'Storage',
       })
-      fs.writeFileSync(storageFile, JSON.stringify(data, null, 2), {
+      writeTextFile(storageFile, JSON.stringify(data, null, 2), {
         mode: 0o600,
         encoding: 'utf-8',
       })

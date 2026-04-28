@@ -1,9 +1,14 @@
 import js from '@eslint/js'
 import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
+import security from 'eslint-plugin-security'
 import tseslint from 'typescript-eslint'
 import prettier from 'eslint-plugin-prettier'
 import prettierConfig from 'eslint-config-prettier'
+
+const securityRules = Object.fromEntries(
+  Object.keys(security.configs.recommended.rules).map((rule) => [rule, 'error'])
+)
 
 export default tseslint.config(
   { ignores: ['dist', 'dist-electron', 'release', 'node_modules', 'coverage'] },
@@ -19,10 +24,12 @@ export default tseslint.config(
     },
     plugins: {
       'react-hooks': reactHooks,
+      security,
       prettier,
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      ...securityRules,
       ...prettierConfig.rules,
       'prettier/prettier': 'warn',
       '@typescript-eslint/no-unused-vars': [

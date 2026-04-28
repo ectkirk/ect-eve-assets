@@ -51,7 +51,7 @@ export function formatAttributeValue(
             translations.sizeCapital,
           ]
         : ['', 'Small', 'Medium', 'Large', 'Capital']
-      return sizes[value] ?? String(value)
+      return sizes.at(value) ?? String(value)
     }
     case 137:
       return value ? (translations?.yes ?? 'Yes') : (translations?.no ?? 'No')

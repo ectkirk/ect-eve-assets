@@ -1,6 +1,14 @@
 import { app } from 'electron'
-import fs from 'node:fs'
-import path from 'node:path'
+import {
+  appendTextFile,
+  ensureDirectory,
+  getFileStats,
+  listDirectory,
+  pathExists,
+  removeFile,
+  renameFile,
+  resolveSafePath,
+} from './safe-fs.js'
 
 export type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR'
 
@@ -9,12 +17,12 @@ export interface LogContext {
   [key: string]: unknown
 }
 
-const LOG_LEVELS: Record<LogLevel, number> = {
-  DEBUG: 0,
-  INFO: 1,
-  WARN: 2,
-  ERROR: 3,
-}
+const LOG_LEVELS = new Map<LogLevel, number>([
+  ['DEBUG', 0],
+  ['INFO', 1],
+  ['WARN', 2],
+  ['ERROR', 3],
+])
 
 const LOG_RETENTION_DAYS = 7
 const MAX_LOG_SIZE_MB = 10
@@ -36,10 +44,10 @@ let currentLogLevel: LogLevel = 'DEBUG'
 function ensureLogDir(): void {
   if (!logDir) {
     if (!app?.getPath) return
-    logDir = path.join(app.getPath('userData'), 'logs')
+    logDir = resolveSafePath(app.getPath('userData'), 'logs')
   }
-  if (!fs.existsSync(logDir)) {
-    fs.mkdirSync(logDir, { recursive: true })
+  if (!pathExists(logDir)) {
+    ensureDirectory(logDir)
   }
 }
 
@@ -47,33 +55,32 @@ function getLogFilePath(): string | null {
   ensureLogDir()
   if (!logDir) return null
   const date = new Date().toISOString().split('T')[0]
-  return path.join(logDir, `app-${date}.log`)
+  return resolveSafePath(logDir, `app-${date}.log`)
 }
 
 function rotateLogsIfNeeded(): void {
   ensureLogDir()
   if (!logDir) return
 
-  if (logFile && fs.existsSync(logFile)) {
-    const stats = fs.statSync(logFile)
+  if (logFile && pathExists(logFile)) {
+    const stats = getFileStats(logFile)
     const sizeMB = stats.size / (1024 * 1024)
     if (sizeMB > MAX_LOG_SIZE_MB) {
       const timestamp = Date.now()
       const rotatedPath = logFile.replace('.log', `-${timestamp}.log`)
-      fs.renameSync(logFile, rotatedPath)
+      renameFile(logFile, rotatedPath)
     }
   }
 
-  // Clean up old log files
-  const files = fs.readdirSync(logDir)
+  const files = listDirectory(logDir)
   const cutoffDate = Date.now() - LOG_RETENTION_DAYS * 24 * 60 * 60 * 1000
 
   for (const file of files) {
     if (!file.startsWith('app-') || !file.endsWith('.log')) continue
-    const filePath = path.join(logDir, file)
-    const stats = fs.statSync(filePath)
+    const filePath = resolveSafePath(logDir, file)
+    const stats = getFileStats(filePath)
     if (stats.mtimeMs < cutoffDate) {
-      fs.unlinkSync(filePath)
+      removeFile(filePath)
     }
   }
 }
@@ -91,19 +98,16 @@ function sanitizeValue(value: unknown): unknown {
 function sanitizeContext(
   context: Record<string, unknown>
 ): Record<string, unknown> {
-  const sanitized: Record<string, unknown> = {}
-  for (const [key, value] of Object.entries(context)) {
-    if (
+  return Object.fromEntries(
+    Object.entries(context).map(([key, value]) => [
+      key,
       SENSITIVE_KEYS.some((sensitive) =>
         key.toLowerCase().includes(sensitive.toLowerCase())
       )
-    ) {
-      sanitized[key] = '[REDACTED]'
-    } else {
-      sanitized[key] = sanitizeValue(value)
-    }
-  }
-  return sanitized
+        ? '[REDACTED]'
+        : sanitizeValue(value),
+    ])
+  )
 }
 
 function formatMessage(
@@ -132,14 +136,14 @@ function writeToFile(formatted: string): void {
       logFile = currentPath
       rotateLogsIfNeeded()
     }
-    fs.appendFileSync(logFile, formatted + '\n', 'utf-8')
+    appendTextFile(logFile, formatted + '\n')
   } catch (err) {
     console.error('[Logger] Failed to write to file:', err)
   }
 }
 
 function shouldLog(level: LogLevel): boolean {
-  return LOG_LEVELS[level] >= LOG_LEVELS[currentLogLevel]
+  return (LOG_LEVELS.get(level) ?? 0) >= (LOG_LEVELS.get(currentLogLevel) ?? 0)
 }
 
 function extractError(error: unknown): { message: string; stack?: string } {

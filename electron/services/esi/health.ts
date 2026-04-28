@@ -186,18 +186,20 @@ export class ESIHealthChecker {
 
   private buildBaseHealthMap(routes: ESIRouteHealth[]): void {
     const baseWorst = new Map<string, ESIRouteStatus>()
-    const statusPriority: Record<ESIRouteStatus, number> = {
-      Down: 4,
-      Unknown: 3,
-      Degraded: 2,
-      Recovering: 1,
-      OK: 0,
-    }
+    const statusPriority = new Map<ESIRouteStatus, number>([
+      ['Down', 4],
+      ['Unknown', 3],
+      ['Degraded', 2],
+      ['Recovering', 1],
+      ['OK', 0],
+    ])
 
     for (const route of routes) {
       const base = this.extractBase(route.path)
       const current = baseWorst.get(base)
-      if (!current || statusPriority[route.status] > statusPriority[current]) {
+      const routePriority = statusPriority.get(route.status) ?? 0
+      const currentPriority = current ? (statusPriority.get(current) ?? 0) : -1
+      if (routePriority > currentPriority) {
         baseWorst.set(base, route.status)
       }
     }

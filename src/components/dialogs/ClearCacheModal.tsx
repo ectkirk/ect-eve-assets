@@ -233,12 +233,12 @@ const CACHE_OPTIONS: CacheOption[] = [
   },
 ]
 
-const GROUP_LABEL_KEYS: Record<CacheGroup, string> = {
-  reference: 'clearCache.groups.reference',
-  data: 'clearCache.groups.data',
-  structures: 'clearCache.groups.structures',
-  system: 'clearCache.groups.system',
-}
+const GROUP_LABEL_KEYS = new Map<CacheGroup, string>([
+  ['reference', 'clearCache.groups.reference'],
+  ['data', 'clearCache.groups.data'],
+  ['structures', 'clearCache.groups.structures'],
+  ['system', 'clearCache.groups.system'],
+])
 
 const GROUP_ORDER: CacheGroup[] = ['reference', 'data', 'structures', 'system']
 
@@ -350,7 +350,9 @@ export function ClearCacheModal({ open, onOpenChange }: ClearCacheModalProps) {
               return (
                 <div key={group}>
                   <div className="text-xs font-medium text-content-muted uppercase tracking-wider mb-2">
-                    {t(GROUP_LABEL_KEYS[group])}
+                    {t(
+                      GROUP_LABEL_KEYS.get(group) ?? 'clearCache.groups.system'
+                    )}
                   </div>
                   <div className="space-y-1">
                     {options.map((option) => (

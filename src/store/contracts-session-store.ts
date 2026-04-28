@@ -85,6 +85,17 @@ interface ContractsSessionState {
   reset: () => void
 }
 
+function applyModeUpdate(
+  state: ContractsSessionState,
+  mode: SearchMode,
+  update: Partial<SearchModeState<unknown, unknown>>
+): Partial<ContractsSessionState> {
+  if (mode === 'buySell') {
+    return { buySell: { ...state.buySell, ...update } as BuySellState }
+  }
+  return { courier: { ...state.courier, ...update } as CourierState }
+}
+
 export const useContractsSessionStore = create<ContractsSessionState>(
   (set) => ({
     filters: DEFAULT_FILTERS,
@@ -102,9 +113,7 @@ export const useContractsSessionStore = create<ContractsSessionState>(
       })),
 
     updateMode: (mode, update) =>
-      set((state) => ({
-        [mode]: { ...state[mode], ...update },
-      })),
+      set((state) => applyModeUpdate(state, mode, update)),
 
     setResults: (update) =>
       set((state) => ({

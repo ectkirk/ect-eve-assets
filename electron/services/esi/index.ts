@@ -1,6 +1,4 @@
 import { app } from 'electron'
-import * as fs from 'fs'
-import * as path from 'path'
 import pLimit from 'p-limit'
 import { ESICache } from './cache'
 import { ESIHealthChecker } from './health'
@@ -23,6 +21,12 @@ import {
 } from './types'
 import { ESIError } from '../../../shared/esi-types'
 import { isAbortError, getErrorMessage } from '../fetch-utils.js'
+import {
+  pathExists,
+  readTextFile,
+  resolveSafePath,
+  writeTextFile,
+} from '../safe-fs.js'
 
 const RATE_LIMIT_FILE = 'rate-limits.json'
 const CACHE_FILE = 'esi-cache.json'
@@ -69,8 +73,8 @@ export class MainESIService {
 
   constructor() {
     const userData = app.getPath('userData')
-    this.rateLimitFilePath = path.join(userData, RATE_LIMIT_FILE)
-    this.cache.setFilePath(path.join(userData, CACHE_FILE))
+    this.rateLimitFilePath = resolveSafePath(userData, RATE_LIMIT_FILE)
+    this.cache.setFilePath(resolveSafePath(userData, CACHE_FILE))
     this.userAgent = makeUserAgent(app.getVersion())
     this.healthChecker = new ESIHealthChecker(app.getVersion())
     this.loadState()
@@ -549,8 +553,8 @@ export class MainESIService {
 
   private loadState(): void {
     try {
-      if (fs.existsSync(this.rateLimitFilePath)) {
-        const data = fs.readFileSync(this.rateLimitFilePath, 'utf-8')
+      if (pathExists(this.rateLimitFilePath)) {
+        const data = readTextFile(this.rateLimitFilePath)
         const state = JSON.parse(data)
         this.rateLimiter.loadState(state.rateLimiter)
         this.paused = state.paused ?? false
@@ -578,7 +582,7 @@ export class MainESIService {
         rateLimiter: this.rateLimiter.exportState(),
         paused: this.paused,
       }
-      fs.writeFileSync(this.rateLimitFilePath, JSON.stringify(state, null, 2))
+      writeTextFile(this.rateLimitFilePath, JSON.stringify(state, null, 2))
     } catch (err) {
       logger.warn('Failed to save rate limit state', {
         module: 'ESI',

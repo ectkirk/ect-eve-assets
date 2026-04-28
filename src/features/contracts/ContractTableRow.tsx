@@ -365,34 +365,43 @@ function DaysCell({
   )
 }
 
-const STATUS_CONFIG: Record<
-  string,
-  { key: string; className: string } | undefined
-> = {
-  outstanding: {
-    key: 'status.outstanding',
-    className: 'text-status-highlight',
-  },
-  in_progress: { key: 'status.inProgress', className: 'text-status-info' },
-  finished: { key: 'status.finished', className: 'text-status-positive' },
-  finished_issuer: {
-    key: 'status.finished',
-    className: 'text-status-positive',
-  },
-  finished_contractor: {
-    key: 'status.finished',
-    className: 'text-status-positive',
-  },
-  cancelled: { key: 'status.cancelled', className: 'text-content-secondary' },
-  rejected: { key: 'status.rejected', className: 'text-status-negative' },
-  failed: { key: 'status.failed', className: 'text-status-negative' },
-  deleted: { key: 'status.deleted', className: 'text-content-muted' },
-  reversed: { key: 'status.reversed', className: 'text-status-warning' },
-}
+const STATUS_CONFIG = new Map<string, { key: string; className: string }>([
+  [
+    'outstanding',
+    {
+      key: 'status.outstanding',
+      className: 'text-status-highlight',
+    },
+  ],
+  ['in_progress', { key: 'status.inProgress', className: 'text-status-info' }],
+  ['finished', { key: 'status.finished', className: 'text-status-positive' }],
+  [
+    'finished_issuer',
+    {
+      key: 'status.finished',
+      className: 'text-status-positive',
+    },
+  ],
+  [
+    'finished_contractor',
+    {
+      key: 'status.finished',
+      className: 'text-status-positive',
+    },
+  ],
+  [
+    'cancelled',
+    { key: 'status.cancelled', className: 'text-content-secondary' },
+  ],
+  ['rejected', { key: 'status.rejected', className: 'text-status-negative' }],
+  ['failed', { key: 'status.failed', className: 'text-status-negative' }],
+  ['deleted', { key: 'status.deleted', className: 'text-content-muted' }],
+  ['reversed', { key: 'status.reversed', className: 'text-status-warning' }],
+])
 
 function ContractStatus({ status }: { status: ContractRow['status'] }) {
   const { t } = useTranslation('contracts')
-  const config = STATUS_CONFIG[status]
+  const config = STATUS_CONFIG.get(status)
   if (!config) return null
   return <span className={config.className}>{t(config.key)}</span>
 }

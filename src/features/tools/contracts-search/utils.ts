@@ -125,23 +125,23 @@ export function isPlayerStructure(
   return locationId != null && locationId >= PLAYER_STRUCTURE_ID_THRESHOLD
 }
 
-const SEC_TEXT_CLASSES: Record<number, string> = {
-  10: 'text-sec-10',
-  9: 'text-sec-9',
-  8: 'text-sec-8',
-  7: 'text-sec-7',
-  6: 'text-sec-6',
-  5: 'text-sec-5',
-  4: 'text-sec-4',
-  3: 'text-sec-3',
-  2: 'text-sec-2',
-  1: 'text-sec-1',
-  0: 'text-sec-0',
-}
+const SEC_TEXT_CLASSES = new Map([
+  [10, 'text-sec-10'],
+  [9, 'text-sec-9'],
+  [8, 'text-sec-8'],
+  [7, 'text-sec-7'],
+  [6, 'text-sec-6'],
+  [5, 'text-sec-5'],
+  [4, 'text-sec-4'],
+  [3, 'text-sec-3'],
+  [2, 'text-sec-2'],
+  [1, 'text-sec-1'],
+  [0, 'text-sec-0'],
+])
 
 export function getSecurityColor(sec: number): string {
   const rounded = Math.round(Math.max(0, Math.min(1, sec)) * 10)
-  return SEC_TEXT_CLASSES[rounded] ?? SEC_TEXT_CLASSES[0]!
+  return SEC_TEXT_CLASSES.get(rounded) ?? SEC_TEXT_CLASSES.get(0)!
 }
 
 // =============================================================================

@@ -213,18 +213,26 @@ export function FittingWheel({
       {SLOT_POSITIONS.high.slice(0, slots.high).map((pos, i) => (
         <SlotIcon
           key={`high-${i}`}
-          module={highSlotModules[i]}
+          module={highSlotModules.at(i)}
           position={pos}
         />
       ))}
       {SLOT_POSITIONS.mid.slice(0, slots.mid).map((pos, i) => (
-        <SlotIcon key={`mid-${i}`} module={midSlotModules[i]} position={pos} />
+        <SlotIcon
+          key={`mid-${i}`}
+          module={midSlotModules.at(i)}
+          position={pos}
+        />
       ))}
       {SLOT_POSITIONS.low.slice(0, slots.low).map((pos, i) => (
-        <SlotIcon key={`low-${i}`} module={lowSlotModules[i]} position={pos} />
+        <SlotIcon
+          key={`low-${i}`}
+          module={lowSlotModules.at(i)}
+          position={pos}
+        />
       ))}
       {SLOT_POSITIONS.rig.slice(0, slots.rig).map((pos, i) => (
-        <SlotIcon key={`rig-${i}`} module={rigModules[i]} position={pos} />
+        <SlotIcon key={`rig-${i}`} module={rigModules.at(i)} position={pos} />
       ))}
       {slots.subsystem > 0 &&
         SLOT_POSITIONS.subsystem
@@ -232,7 +240,7 @@ export function FittingWheel({
           .map((pos, i) => (
             <SlotIcon
               key={`sub-${i}`}
-              module={subsystemModules[i]}
+              module={subsystemModules.at(i)}
               position={pos}
             />
           ))}

@@ -280,7 +280,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
       const allNames = new Map(get().assetNames)
 
       for (let i = 0; i < ownersToUpdate.length; i++) {
-        const owner = ownersToUpdate[i]
+        const owner = ownersToUpdate.at(i)
         if (!owner) continue
         set({ updateProgress: { current: i, total: ownersToUpdate.length } })
 

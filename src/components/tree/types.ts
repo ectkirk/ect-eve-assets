@@ -89,25 +89,25 @@ export interface TreeTableProps {
   onSetAutopilotIngame?: (locationId: number, locationName?: string) => void
 }
 
-export const NODE_TYPE_ICONS: Record<TreeNodeType, LucideIcon> = {
-  region: Globe,
-  system: Sun,
-  station: Building2,
-  office: Briefcase,
-  division: Layers,
-  ship: Rocket,
-  item: Box,
-}
+export const NODE_TYPE_ICONS = new Map<TreeNodeType, LucideIcon>([
+  ['region', Globe],
+  ['system', Sun],
+  ['station', Building2],
+  ['office', Briefcase],
+  ['division', Layers],
+  ['ship', Rocket],
+  ['item', Box],
+])
 
-export const NODE_TYPE_COLORS: Record<TreeNodeType, string> = {
-  region: 'text-accent',
-  system: 'text-status-highlight',
-  station: 'text-status-info',
-  office: 'text-status-highlight',
-  division: 'text-content-secondary',
-  ship: 'text-status-special',
-  item: 'text-content-secondary',
-}
+export const NODE_TYPE_COLORS = new Map<TreeNodeType, string>([
+  ['region', 'text-accent'],
+  ['system', 'text-status-highlight'],
+  ['station', 'text-status-info'],
+  ['office', 'text-status-highlight'],
+  ['division', 'text-content-secondary'],
+  ['ship', 'text-status-special'],
+  ['item', 'text-content-secondary'],
+])
 
 export const DIVISION_COLORS = [
   'text-status-negative',
@@ -127,10 +127,10 @@ export const TREE_COLUMNS: ColumnConfig[] = [
   { id: 'volume', label: 'columns.volume', defaultVisible: false },
 ]
 
-export const COLUMN_STYLES: Record<string, { width: string; align: string }> = {
-  name: { width: 'w-auto', align: 'text-left' },
-  region: { width: 'w-40', align: 'text-left' },
-  quantity: { width: 'w-24', align: 'text-right' },
-  value: { width: 'w-32', align: 'text-right' },
-  volume: { width: 'w-32', align: 'text-right' },
-}
+export const COLUMN_STYLES = new Map<string, { width: string; align: string }>([
+  ['name', { width: 'w-auto', align: 'text-left' }],
+  ['region', { width: 'w-40', align: 'text-left' }],
+  ['quantity', { width: 'w-24', align: 'text-right' }],
+  ['value', { width: 'w-32', align: 'text-right' }],
+  ['volume', { width: 'w-32', align: 'text-right' }],
+])

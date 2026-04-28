@@ -34,11 +34,10 @@ function getMaterialQuantity(
   typeId: number,
   kind: 'materials' | 'products'
 ): number {
-  return (
-    blueprint?.activities?.manufacturing?.[kind]?.find(
-      (m) => m.typeID === typeId
-    )?.quantity ?? 1
-  )
+  const manufacturing = blueprint?.activities?.manufacturing
+  const materials =
+    kind === 'materials' ? manufacturing?.materials : manufacturing?.products
+  return materials?.find((m) => m.typeID === typeId)?.quantity ?? 1
 }
 
 export function BlueprintSourcesSection({

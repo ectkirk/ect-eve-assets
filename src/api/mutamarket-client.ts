@@ -85,7 +85,7 @@ async function retryWithBackoff<T>(
   fn: () => Promise<T>,
   retryCount: number
 ): Promise<T> {
-  const delay = RETRY_DELAYS[retryCount] ?? 1000
+  const delay = RETRY_DELAYS.at(retryCount) ?? 1000
   await new Promise((resolve) => setTimeout(resolve, delay))
   return fn()
 }

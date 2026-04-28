@@ -147,67 +147,67 @@ function extractDrones(children: TreeNode[]): ModuleItem[] {
   return drones
 }
 
-const HOLD_FLAG_MAP: Record<keyof ShipHolds, string> = {
-  cargo: 'Cargo',
-  fleetHangar: 'FleetHangar',
-  shipHangar: 'ShipHangar',
-  fuelBay: 'SpecializedFuelBay',
-  oreBay: 'SpecializedOreHold',
-  gasBay: 'SpecializedGasHold',
-  mineralBay: 'SpecializedMineralHold',
-  salvageBay: 'SpecializedSalvageHold',
-  shipBay: 'SpecializedShipHold',
-  smallShipBay: 'SpecializedSmallShipHold',
-  mediumShipBay: 'SpecializedMediumShipHold',
-  largeShipBay: 'SpecializedLargeShipHold',
-  industrialShipBay: 'SpecializedIndustrialShipHold',
-  ammoBay: 'SpecializedAmmoHold',
-  commandCenterBay: 'SpecializedCommandCenterHold',
-  planetaryBay: 'SpecializedPlanetaryCommoditiesHold',
-  materialBay: 'SpecializedMaterialBay',
-  asteroidBay: 'SpecializedAsteroidHold',
-  iceBay: 'SpecializedIceHold',
-  boosterBay: 'BoosterBay',
-  corpseBay: 'CorpseBay',
-  frigateEscapeBay: 'FrigateEscapeBay',
-  subsystemBay: 'SubSystemBay',
-  mobileDepotBay: 'MobileDepotHold',
-  moonMaterialBay: 'MoonMaterialBay',
-  quafeBay: 'QuafeBay',
-  structureDeedBay: 'StructureDeedBay',
-  expeditionBay: 'ExpeditionHold',
-}
+const HOLD_FLAG_MAP = new Map<keyof ShipHolds, string>([
+  ['cargo', 'Cargo'],
+  ['fleetHangar', 'FleetHangar'],
+  ['shipHangar', 'ShipHangar'],
+  ['fuelBay', 'SpecializedFuelBay'],
+  ['oreBay', 'SpecializedOreHold'],
+  ['gasBay', 'SpecializedGasHold'],
+  ['mineralBay', 'SpecializedMineralHold'],
+  ['salvageBay', 'SpecializedSalvageHold'],
+  ['shipBay', 'SpecializedShipHold'],
+  ['smallShipBay', 'SpecializedSmallShipHold'],
+  ['mediumShipBay', 'SpecializedMediumShipHold'],
+  ['largeShipBay', 'SpecializedLargeShipHold'],
+  ['industrialShipBay', 'SpecializedIndustrialShipHold'],
+  ['ammoBay', 'SpecializedAmmoHold'],
+  ['commandCenterBay', 'SpecializedCommandCenterHold'],
+  ['planetaryBay', 'SpecializedPlanetaryCommoditiesHold'],
+  ['materialBay', 'SpecializedMaterialBay'],
+  ['asteroidBay', 'SpecializedAsteroidHold'],
+  ['iceBay', 'SpecializedIceHold'],
+  ['boosterBay', 'BoosterBay'],
+  ['corpseBay', 'CorpseBay'],
+  ['frigateEscapeBay', 'FrigateEscapeBay'],
+  ['subsystemBay', 'SubSystemBay'],
+  ['mobileDepotBay', 'MobileDepotHold'],
+  ['moonMaterialBay', 'MoonMaterialBay'],
+  ['quafeBay', 'QuafeBay'],
+  ['structureDeedBay', 'StructureDeedBay'],
+  ['expeditionBay', 'ExpeditionHold'],
+])
 
-export const HOLD_LABEL_KEYS: Record<keyof ShipHolds, string> = {
-  cargo: 'fitting.cargo',
-  fleetHangar: 'fitting.fleetHangar',
-  shipHangar: 'fitting.shipHangar',
-  fuelBay: 'fitting.fuelBay',
-  oreBay: 'fitting.oreHold',
-  gasBay: 'fitting.gasBay',
-  mineralBay: 'fitting.mineralHold',
-  salvageBay: 'fitting.specializedSalvage',
-  shipBay: 'fitting.specializedShipHold',
-  smallShipBay: 'fitting.smallShipBay',
-  mediumShipBay: 'fitting.mediumShipBay',
-  largeShipBay: 'fitting.largeShipBay',
-  industrialShipBay: 'fitting.industrialShipBay',
-  ammoBay: 'fitting.specializedAmmo',
-  commandCenterBay: 'fitting.specializedCommandCenter',
-  planetaryBay: 'fitting.specializedPlanetaryCommodities',
-  materialBay: 'fitting.materialBay',
-  asteroidBay: 'fitting.asteroidBay',
-  iceBay: 'fitting.specializedIce',
-  boosterBay: 'fitting.boosterHold',
-  corpseBay: 'fitting.corpseBay',
-  frigateEscapeBay: 'fitting.frigateEscapeBay',
-  subsystemBay: 'fitting.subsystemHold',
-  mobileDepotBay: 'fitting.mobileDepotBay',
-  moonMaterialBay: 'fitting.moonMaterialBay',
-  quafeBay: 'fitting.quafeBay',
-  structureDeedBay: 'fitting.structureDeedBay',
-  expeditionBay: 'fitting.expeditionBay',
-}
+export const HOLD_LABEL_KEYS = new Map<keyof ShipHolds, string>([
+  ['cargo', 'fitting.cargo'],
+  ['fleetHangar', 'fitting.fleetHangar'],
+  ['shipHangar', 'fitting.shipHangar'],
+  ['fuelBay', 'fitting.fuelBay'],
+  ['oreBay', 'fitting.oreHold'],
+  ['gasBay', 'fitting.gasBay'],
+  ['mineralBay', 'fitting.mineralHold'],
+  ['salvageBay', 'fitting.specializedSalvage'],
+  ['shipBay', 'fitting.specializedShipHold'],
+  ['smallShipBay', 'fitting.smallShipBay'],
+  ['mediumShipBay', 'fitting.mediumShipBay'],
+  ['largeShipBay', 'fitting.largeShipBay'],
+  ['industrialShipBay', 'fitting.industrialShipBay'],
+  ['ammoBay', 'fitting.specializedAmmo'],
+  ['commandCenterBay', 'fitting.specializedCommandCenter'],
+  ['planetaryBay', 'fitting.specializedPlanetaryCommodities'],
+  ['materialBay', 'fitting.materialBay'],
+  ['asteroidBay', 'fitting.asteroidBay'],
+  ['iceBay', 'fitting.specializedIce'],
+  ['boosterBay', 'fitting.boosterHold'],
+  ['corpseBay', 'fitting.corpseBay'],
+  ['frigateEscapeBay', 'fitting.frigateEscapeBay'],
+  ['subsystemBay', 'fitting.subsystemHold'],
+  ['mobileDepotBay', 'fitting.mobileDepotBay'],
+  ['moonMaterialBay', 'fitting.moonMaterialBay'],
+  ['quafeBay', 'fitting.quafeBay'],
+  ['structureDeedBay', 'fitting.structureDeedBay'],
+  ['expeditionBay', 'fitting.expeditionBay'],
+])
 
 function extractItemsByFlag(
   children: TreeNode[],
@@ -234,11 +234,12 @@ function extractItemsByFlag(
 }
 
 function extractShipHolds(children: TreeNode[]): ShipHolds {
-  const holds = {} as ShipHolds
-  for (const key of Object.keys(HOLD_FLAG_MAP) as (keyof ShipHolds)[]) {
-    holds[key] = extractItemsByFlag(children, HOLD_FLAG_MAP[key])
-  }
-  return holds
+  return Object.fromEntries(
+    Array.from(HOLD_FLAG_MAP).map(([key, flag]) => [
+      key,
+      extractItemsByFlag(children, flag),
+    ])
+  ) as unknown as ShipHolds
 }
 
 function extractFighterTubes(children: TreeNode[]): ModuleItem[] {
@@ -263,10 +264,10 @@ function extractFighterTubes(children: TreeNode[]): ModuleItem[] {
 }
 
 function extractFittingName(fullName: string, typeName: string): string {
-  const escaped = typeName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const pattern = new RegExp(`^${escaped}\\s*\\((.+)\\)$`)
-  const match = fullName.match(pattern)
-  return match?.[1] ?? fullName
+  const prefix = `${typeName} (`
+  return fullName.startsWith(prefix) && fullName.endsWith(')')
+    ? fullName.slice(prefix.length, -1)
+    : fullName
 }
 
 export function extractFitting(shipNode: TreeNode): ExtractedFitting {

@@ -246,7 +246,7 @@ export function FittingDialog({
                 items.length > 0 && (
                   <ModuleList
                     key={key}
-                    title={t(HOLD_LABEL_KEYS[key])}
+                    title={t(HOLD_LABEL_KEYS.get(key) ?? 'fitting.cargo')}
                     modules={items}
                   />
                 )

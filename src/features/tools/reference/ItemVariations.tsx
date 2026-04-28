@@ -35,7 +35,7 @@ export function ItemVariations({ typeId, onNavigate }: ItemVariationsProps) {
       {(data) => (
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {data.variations?.map((v) => {
-            const meta = v.metaGroupId ? META_GROUPS[v.metaGroupId] : null
+            const meta = v.metaGroupId ? META_GROUPS.get(v.metaGroupId) : null
             return (
               <button
                 key={v.id}

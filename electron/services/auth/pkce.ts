@@ -8,9 +8,11 @@ export function generateCodeVerifier(): string {
   let result = ''
   while (result.length < 128) {
     const bytes = randomBytes(256)
-    for (let i = 0; i < bytes.length && result.length < 128; i++) {
-      if (bytes[i]! < maxValid) {
-        result += chars[bytes[i]! % charsLength]
+    for (const byte of bytes.values()) {
+      if (result.length >= 128) break
+      if (byte < maxValid) {
+        const char = chars.at(byte % charsLength)
+        if (char) result += char
       }
     }
   }

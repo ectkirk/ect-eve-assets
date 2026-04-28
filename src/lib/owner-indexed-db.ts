@@ -10,6 +10,7 @@ import {
   idbGet,
   type DBConfig,
 } from '@/lib/idb-utils'
+import { getRecordValue } from '@/lib/record-utils'
 
 export interface OwnerData<T> {
   owner: Owner
@@ -104,7 +105,7 @@ export function createOwnerDB<T>(config: OwnerDBConfig<T>): OwnerDB<T> {
       } else if (dataKey) {
         results.push({
           owner: stored.owner as Owner,
-          data: stored[dataKey] as T,
+          data: getRecordValue(stored, dataKey) as T,
         })
       }
     }

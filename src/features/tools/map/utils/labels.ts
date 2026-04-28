@@ -94,7 +94,7 @@ export function calculateFactionLabels(
         existing,
         system.canvasX,
         system.canvasY,
-        FACTION_NAMES[factionId] ?? `Faction ${factionId}`
+        FACTION_NAMES.get(factionId) ?? `Faction ${factionId}`
       )
     )
   }
@@ -140,7 +140,7 @@ export function calculateAllianceLabels(
     if (systemsList.length === 0) continue
 
     const clusters = clusterPoints(systemsList, proximityThresholdSq)
-    const allianceName = systemsList[0]!.name
+    const allianceName = systemsList.at(0)!.name
 
     for (const cluster of clusters) {
       let sumX = 0,
@@ -174,7 +174,7 @@ function clusterPoints(
 
   const grid = new Map<string, number[]>()
   for (let i = 0; i < n; i++) {
-    const p = points[i]!
+    const p = points.at(i)!
     const cellX = Math.floor(p.x / cellSize)
     const cellY = Math.floor(p.y / cellSize)
     const key = `${cellX},${cellY}`
@@ -186,20 +186,25 @@ function clusterPoints(
     }
   }
 
-  const parent: number[] = Array.from({ length: n }, (_, i) => i)
+  const parent = new Map<number, number>(
+    Array.from({ length: n }, (_, i) => [i, i])
+  )
 
   function find(i: number): number {
-    if (parent[i] !== i) {
-      parent[i] = find(parent[i]!)
+    const parentIndex = parent.get(i) ?? i
+    if (parentIndex !== i) {
+      const root = find(parentIndex)
+      parent.set(i, root)
+      return root
     }
-    return parent[i]!
+    return parentIndex
   }
 
   function union(i: number, j: number): void {
     const pi = find(i)
     const pj = find(j)
     if (pi !== pj) {
-      parent[pi] = pj
+      parent.set(pi, pj)
     }
   }
 
@@ -214,10 +219,10 @@ function clusterPoints(
         if (dx === 0 && dy <= 0) {
           for (let a = 0; a < indices.length; a++) {
             for (let b = a + 1; b < indices.length; b++) {
-              const i = indices[a]!
-              const j = indices[b]!
-              const pi = points[i]!
-              const pj = points[j]!
+              const i = indices.at(a)!
+              const j = indices.at(b)!
+              const pi = points.at(i)!
+              const pj = points.at(j)!
               const ddx = pi.x - pj.x
               const ddy = pi.y - pj.y
               if (ddx * ddx + ddy * ddy < thresholdSq) {
@@ -234,8 +239,8 @@ function clusterPoints(
 
         for (const i of indices) {
           for (const j of neighborIndices) {
-            const pi = points[i]!
-            const pj = points[j]!
+            const pi = points.at(i)!
+            const pj = points.at(j)!
             const ddx = pi.x - pj.x
             const ddy = pi.y - pj.y
             if (ddx * ddx + ddy * ddy < thresholdSq) {
@@ -250,7 +255,7 @@ function clusterPoints(
   const clusters = new Map<number, Array<{ x: number; y: number }>>()
   for (let i = 0; i < n; i++) {
     const root = find(i)
-    const point = points[i]!
+    const point = points.at(i)!
     const cluster = clusters.get(root)
     if (cluster) {
       cluster.push(point)

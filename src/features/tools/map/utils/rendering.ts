@@ -145,8 +145,8 @@ export function renderRoute(
   ctx.lineCap = 'round'
 
   for (let i = 0; i < path.length - 1; i++) {
-    const from = systemMap.get(path[i]!)
-    const to = systemMap.get(path[i + 1]!)
+    const from = systemMap.get(path.at(i)!)
+    const to = systemMap.get(path.at(i + 1)!)
     if (!from || !to) continue
 
     const gradient = ctx.createLinearGradient(

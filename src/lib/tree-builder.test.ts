@@ -7,7 +7,7 @@ import type { ResolvedAsset, AssetModeFlags } from './resolved-asset'
 
 vi.mock('@/store/reference-cache', () => ({
   getType: vi.fn((id: number) => {
-    const types: Record<
+    const types = new Map<
       number,
       {
         id: number
@@ -19,64 +19,82 @@ vi.mock('@/store/reference-cache', () => ({
         volume: number
         packagedVolume?: number
       }
-    > = {
-      34: {
-        id: 34,
-        name: 'Tritanium',
-        categoryId: 4,
-        categoryName: 'Material',
-        groupId: 18,
-        groupName: 'Mineral',
-        volume: 0.01,
-      },
-      35: {
-        id: 35,
-        name: 'Pyerite',
-        categoryId: 4,
-        categoryName: 'Material',
-        groupId: 18,
-        groupName: 'Mineral',
-        volume: 0.01,
-      },
-      587: {
-        id: 587,
-        name: 'Rifter',
-        categoryId: 6,
-        categoryName: 'Ship',
-        groupId: 25,
-        groupName: 'Frigate',
-        volume: 27289,
-        packagedVolume: 2500,
-      },
-      17366: {
-        id: 17366,
-        name: 'Station Container',
-        categoryId: 2,
-        categoryName: 'Celestial',
-        groupId: 448,
-        groupName: 'Audit Log Secure Container',
-        volume: 10000,
-      },
-      27: {
-        id: 27,
-        name: 'Office',
-        categoryId: 2,
-        categoryName: 'Celestial',
-        groupId: 16,
-        groupName: 'Station Services',
-        volume: 0,
-      },
-      35832: {
-        id: 35832,
-        name: 'Astrahus',
-        categoryId: 65,
-        categoryName: 'Structure',
-        groupId: 1657,
-        groupName: 'Citadel',
-        volume: 8000,
-      },
-    }
-    return types[id]
+    >([
+      [
+        34,
+        {
+          id: 34,
+          name: 'Tritanium',
+          categoryId: 4,
+          categoryName: 'Material',
+          groupId: 18,
+          groupName: 'Mineral',
+          volume: 0.01,
+        },
+      ],
+      [
+        35,
+        {
+          id: 35,
+          name: 'Pyerite',
+          categoryId: 4,
+          categoryName: 'Material',
+          groupId: 18,
+          groupName: 'Mineral',
+          volume: 0.01,
+        },
+      ],
+      [
+        587,
+        {
+          id: 587,
+          name: 'Rifter',
+          categoryId: 6,
+          categoryName: 'Ship',
+          groupId: 25,
+          groupName: 'Frigate',
+          volume: 27289,
+          packagedVolume: 2500,
+        },
+      ],
+      [
+        17366,
+        {
+          id: 17366,
+          name: 'Station Container',
+          categoryId: 2,
+          categoryName: 'Celestial',
+          groupId: 448,
+          groupName: 'Audit Log Secure Container',
+          volume: 10000,
+        },
+      ],
+      [
+        27,
+        {
+          id: 27,
+          name: 'Office',
+          categoryId: 2,
+          categoryName: 'Celestial',
+          groupId: 16,
+          groupName: 'Station Services',
+          volume: 0,
+        },
+      ],
+      [
+        35832,
+        {
+          id: 35832,
+          name: 'Astrahus',
+          categoryId: 65,
+          categoryName: 'Structure',
+          groupId: 1657,
+          groupName: 'Citadel',
+          volume: 8000,
+        },
+      ],
+    ])
+    return types.get(id)
   }),
   getStructure: vi.fn((id: number) => {
     if (id === 1000000000001) {
@@ -91,7 +109,7 @@ vi.mock('@/store/reference-cache', () => ({
     return undefined
   }),
   getLocation: vi.fn((id: number) => {
-    const locations: Record<
+    const locations = new Map<
       number,
       {
         id: number
@@ -102,49 +120,53 @@ vi.mock('@/store/reference-cache', () => ({
         regionId?: number
         regionName?: string
       }
-    > = {
-      60003760: {
-        id: 60003760,
-        name: 'Jita IV - Moon 4 - Caldari Navy Assembly Plant',
-        type: 'station',
-        solarSystemId: 30000142,
-        solarSystemName: 'Jita',
-        regionId: 10000002,
-        regionName: 'The Forge',
-      },
-      30000142: {
-        id: 30000142,
-        name: 'Jita',
-        type: 'system',
-        regionId: 10000002,
-        regionName: 'The Forge',
-      },
-      10000002: { id: 10000002, name: 'The Forge', type: 'region' },
-    }
-    return locations[id]
+    >([
+      [
+        60003760,
+        {
+          id: 60003760,
+          name: 'Jita IV - Moon 4 - Caldari Navy Assembly Plant',
+          type: 'station',
+          solarSystemId: 30000142,
+          solarSystemName: 'Jita',
+          regionId: 10000002,
+          regionName: 'The Forge',
+        },
+      ],
+      [
+        30000142,
+        {
+          id: 30000142,
+          name: 'Jita',
+          type: 'system',
+          regionId: 10000002,
+          regionName: 'The Forge',
+        },
+      ],
+      [10000002, { id: 10000002, name: 'The Forge', type: 'region' }],
+    ])
+    return locations.get(id)
   }),
   getSystem: vi.fn((id: number) => {
-    const systems: Record<
+    const systems = new Map<
       number,
       { id: number; name: string; regionId: number }
-    > = {
-      30000142: { id: 30000142, name: 'Jita', regionId: 10000002 },
-    }
-    return systems[id]
+    >([[30000142, { id: 30000142, name: 'Jita', regionId: 10000002 }]])
+    return systems.get(id)
   }),
   getRegion: vi.fn((id: number) => {
-    const regions: Record<number, { id: number; name: string }> = {
-      10000002: { id: 10000002, name: 'The Forge' },
-    }
-    return regions[id]
+    const regions = new Map<number, { id: number; name: string }>([
+      [10000002, { id: 10000002, name: 'The Forge' }],
+    ])
+    return regions.get(id)
   }),
   getLocationName: vi.fn((id: number) => {
-    const names: Record<number, string> = {
-      60003760: 'Jita IV - Moon 4 - Caldari Navy Assembly Plant',
-      30000142: 'Jita',
-      10000002: 'The Forge',
-    }
-    return names[id] ?? `Location ${id}`
+    const names = new Map([
+      [60003760, 'Jita IV - Moon 4 - Caldari Navy Assembly Plant'],
+      [30000142, 'Jita'],
+      [10000002, 'The Forge'],
+    ])
+    return names.get(id) ?? `Location ${id}`
   }),
   getAbyssalPrice: vi.fn(() => undefined),
   CategoryIds: {

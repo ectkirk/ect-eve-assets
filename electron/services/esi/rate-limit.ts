@@ -188,19 +188,17 @@ export class RateLimitTracker {
   }
 
   exportState(): RateLimitExportedState {
-    const groups: Record<string, RateLimitState> = {}
-    for (const [key, state] of this.groups) {
-      groups[key] = state
-    }
+    const groups = Object.fromEntries(this.groups)
     const now = Date.now()
     const cutoff = now - RATE_LIMIT_CONFIG.contractItemsWindowMs
-    const contractItemsTimestamps: Record<number, number[]> = {}
-    for (const [charId, timestamps] of this.contractItemsTimestamps) {
-      const recent = timestamps.filter((t) => t > cutoff)
-      if (recent.length > 0) {
-        contractItemsTimestamps[charId] = recent
-      }
-    }
+    const contractItemsTimestamps = Object.fromEntries(
+      Array.from(this.contractItemsTimestamps)
+        .map(([charId, timestamps]): [number, number[]] => [
+          charId,
+          timestamps.filter((t) => t > cutoff),
+        ])
+        .filter(([, timestamps]) => timestamps.length > 0)
+    )
     return {
       groups,
       errorLimit: this.errorLimit,
