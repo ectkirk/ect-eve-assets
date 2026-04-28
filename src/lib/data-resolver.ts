@@ -27,10 +27,15 @@ export interface ResolutionIds {
 
 export type CollectorFn = (ids: ResolutionIds) => void
 
-const collectors = new Map<string, CollectorFn>()
+let collectors: Map<string, CollectorFn> | null = null
+
+function getCollectors(): Map<string, CollectorFn> {
+  collectors ??= new Map<string, CollectorFn>()
+  return collectors
+}
 
 export function registerCollector(name: string, collector: CollectorFn): void {
-  collectors.set(name, collector)
+  getCollectors().set(name, collector)
 }
 
 export function needsTypeResolution(typeId: number): boolean {
@@ -55,7 +60,7 @@ export function collectResolutionIds(): ResolutionIds {
     entityIds: new Set(),
   }
 
-  for (const collector of collectors.values()) {
+  for (const collector of getCollectors().values()) {
     collector(ids)
   }
 

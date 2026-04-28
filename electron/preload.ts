@@ -3,6 +3,21 @@ import type { IpcRendererEvent } from 'electron'
 const { contextBridge, ipcRenderer } =
   require('electron') as typeof import('electron')
 
+window.addEventListener('error', (event) => {
+  console.error(
+    'Renderer startup error',
+    event.error instanceof Error ? event.error.stack : event.message,
+  )
+})
+
+window.addEventListener('unhandledrejection', (event) => {
+  const reason = event.reason
+  console.error(
+    'Renderer unhandled rejection',
+    reason instanceof Error ? reason.stack : String(reason),
+  )
+})
+
 export type {
   AuthResult,
   BuybackCalculatorItem,

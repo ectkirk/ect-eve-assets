@@ -1,6 +1,6 @@
 {
   "name": "ecteveassets",
-  "version": "2.7.5",
+  "version": "2.7.6",
   "type": "module",
   "description": "EVE Online Asset Management Desktop Application",
   "main": "dist-electron/main.cjs",

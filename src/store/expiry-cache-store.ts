@@ -268,22 +268,10 @@ function processQueue() {
         useExpiryCacheStore.setState({ currentlyRefreshing: null })
       }
     } else {
-      const nextDeferCount = (item.deferCount ?? 0) + 1
-      if (nextDeferCount > 3) {
-        logger.warn('Dropping queue item with no matching callback', {
-          module: 'ExpiryCacheStore',
-          ownerKey: item.ownerKey,
-          endpoint: item.endpoint,
-        })
-      } else {
-        deferredCount++
-        useExpiryCacheStore.setState((state) => ({
-          refreshQueue: [
-            ...state.refreshQueue,
-            { ...item, deferCount: nextDeferCount },
-          ],
-        }))
-      }
+      deferredCount++
+      useExpiryCacheStore.setState((state) => ({
+        refreshQueue: [...state.refreshQueue, item],
+      }))
       const remaining = useExpiryCacheStore.getState().refreshQueue.length
       if (deferredCount >= remaining) {
         useExpiryCacheStore.setState({ isProcessingQueue: false })

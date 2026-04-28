@@ -2,8 +2,6 @@ import { create } from 'zustand'
 import { getMarketPrices } from '@/api/endpoints/market'
 import { logger } from '@/lib/logger'
 import { getTypeBasePrice, isTypeBlueprint } from '@/store/reference-cache'
-import { useStoreRegistry } from '@/store/store-registry'
-import { useMarketOrdersStore } from './market-orders-store'
 import { isAbyssalTypeId } from './price-utils'
 import {
   setLastJitaRefreshAt,
@@ -93,6 +91,7 @@ async function triggerJitaRefreshIfNeeded(): Promise<void> {
     const { useExpiryCacheStore } = await import('./expiry-cache-store')
     const { useAssetStore } = await import('./asset-store')
     const { collectOwnedIds } = await import('./type-id-collector')
+    const { useMarketOrdersStore } = await import('./market-orders-store')
     const { useContractsStore } = await import('./contracts-store')
     const { useIndustryJobsStore } = await import('./industry-jobs-store')
     const { useStructuresStore } = await import('./structures-store')
@@ -467,12 +466,15 @@ export function getEsiAdjustedPrice(typeId: number): number | undefined {
   return usePriceStore.getState().esiPrices.get(typeId)?.adjusted
 }
 
-useStoreRegistry.getState().register({
-  name: 'prices',
-  clear: usePriceStore.getState().clear,
-  getIsUpdating: () => {
-    const state = usePriceStore.getState()
-    return state.isUpdatingJita || state.isUpdatingEsi
-  },
-  init: usePriceStore.getState().init,
+queueMicrotask(async () => {
+  const { useStoreRegistry } = await import('@/store/store-registry')
+  useStoreRegistry.getState().register({
+    name: 'prices',
+    clear: () => usePriceStore.getState().clear(),
+    getIsUpdating: () => {
+      const state = usePriceStore.getState()
+      return state.isUpdatingJita || state.isUpdatingEsi
+    },
+    init: () => usePriceStore.getState().init(),
+  })
 })

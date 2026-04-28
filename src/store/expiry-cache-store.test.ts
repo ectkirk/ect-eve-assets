@@ -21,6 +21,7 @@ import { useExpiryCacheStore } from './expiry-cache-store'
 import { useAuthStore } from './auth-store'
 import { openDatabase, closeDatabase, idbPut, idbGetAll } from '@/lib/idb-utils'
 import { DB } from '@/lib/db-constants'
+import { logger } from '@/lib/logger'
 
 async function resetStore() {
   // clear() resets the module-level initPromise
@@ -344,6 +345,39 @@ describe('expiry-cache-store', () => {
       await flushMicrotasks()
 
       // Now register a callback for /late
+      const lateCb = vi.fn().mockResolvedValue(undefined)
+      useExpiryCacheStore.getState().registerRefreshCallback('/late', lateCb)
+
+      await vi.waitFor(() => {
+        expect(lateCb).toHaveBeenCalledWith('char-1', '/late')
+      })
+    })
+
+    it('keeps deferred items across repeated processing attempts', async () => {
+      useExpiryCacheStore.setState({
+        refreshQueue: [{ ownerKey: 'char-1', endpoint: '/late' }],
+      })
+
+      for (let i = 0; i < 5; i++) {
+        useExpiryCacheStore
+          .getState()
+          .registerRefreshCallback(`/unrelated-${i}`, vi.fn())
+        await flushMicrotasks()
+        await flushMicrotasks()
+      }
+
+      expect(
+        useExpiryCacheStore
+          .getState()
+          .refreshQueue.some(
+            (item) => item.ownerKey === 'char-1' && item.endpoint === '/late',
+          ),
+      ).toBe(true)
+      expect(logger.warn).not.toHaveBeenCalledWith(
+        'Dropping queue item with no matching callback',
+        expect.anything(),
+      )
+
       const lateCb = vi.fn().mockResolvedValue(undefined)
       useExpiryCacheStore.getState().registerRefreshCallback('/late', lateCb)
 
