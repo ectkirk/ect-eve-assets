@@ -55,11 +55,11 @@ Built with Electron, React, and TypeScript.
 
 | Layer      | Technology                                                |
 | ---------- | --------------------------------------------------------- |
-| Desktop    | Electron 40, electron-updater                             |
-| Frontend   | React 19, TypeScript 5.9, Vite 7                          |
+| Desktop    | Electron 41, electron-updater                             |
+| Frontend   | React 19, TypeScript 6, Vite 8                            |
 | State      | Zustand 5, IndexedDB persistence                          |
 | UI         | Tailwind 4, shadcn/ui (Radix), Lucide icons               |
-| Tables     | TanStack Table + TanStack Virtual                         |
+| Tables     | Custom React tables with fixed-row virtualization         |
 | Validation | Zod 4                                                     |
 | Auth       | EVE SSO OAuth2 PKCE (jose)                                |
 | Testing    | Vitest, React Testing Library, Playwright, fake-indexeddb |
