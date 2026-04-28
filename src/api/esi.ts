@@ -160,7 +160,7 @@ export const esi = {
 const pendingRefreshes = new Map<string, Promise<string | null>>()
 
 export function setupESITokenProvider(): () => void {
-  if (!window.electronAPI) return () => {}
+  if (!window.electronAPI) return () => undefined
 
   const cleanup = window.electronAPI.esi.onRequestToken(
     (characterId: number) => {
@@ -169,9 +169,7 @@ export function setupESITokenProvider(): () => void {
         const charOwnerKey = ownerKey('character', characterId)
         let owner = store.getOwner(charOwnerKey)
 
-        if (!owner) {
-          owner = store.getOwnerByCharacterId(characterId)
-        }
+        owner ??= store.getOwnerByCharacterId(characterId)
 
         if (!owner) {
           logger.warn('No owner found for token request', {

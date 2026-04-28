@@ -406,7 +406,7 @@ export function BuybackResults({ result, config }: BuybackResultsProps) {
                         {item.typeId ? (
                           <img
                             src={
-                              getItemImageUrl(item.typeId, item.itemName) || ''
+                              getItemImageUrl(item.typeId, item.itemName) ?? ''
                             }
                             alt=""
                             width={32}

@@ -63,12 +63,10 @@ export function setupESIService(
 ): void {
   const esiService = getESIService()
 
-  if (!cleanupInterval) {
-    cleanupInterval = setInterval(
-      cleanupStaleRequests,
-      ESI_CONFIG.staleCleanupIntervalMs
-    )
-  }
+  cleanupInterval ??= setInterval(
+    cleanupStaleRequests,
+    ESI_CONFIG.staleCleanupIntervalMs
+  )
 
   esiService.setTokenProvider(async (characterId: number) => {
     const win = getMainWindow()

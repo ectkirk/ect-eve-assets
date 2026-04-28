@@ -128,7 +128,7 @@ export function StructuresTab() {
 
   const isUpdating =
     isUpdatingStructures || isUpdatingStarbases || isUpdatingCustomsOffices
-  const updateError = structureError || starbaseError || customsOfficeError
+  const updateError = structureError ?? starbaseError ?? customsOfficeError
   const initialized =
     structuresInitialized && starbasesInitialized && customsOfficesInitialized
 
@@ -265,7 +265,7 @@ export function StructuresTab() {
           id: `upwell-${structure.structure_id}`,
           kind: 'upwell',
           name:
-            structure.name ||
+            structure.name ??
             t('fallback.structure', { id: structure.structure_id }),
           owner,
           typeId: structure.type_id,

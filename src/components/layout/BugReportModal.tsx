@@ -36,7 +36,7 @@ export function BugReportModal({ open, onOpenChange }: BugReportModalProps) {
         description
       )
       if (!result?.success) {
-        throw new Error(result?.error || 'Failed to submit report')
+        throw new Error(result?.error ?? 'Failed to submit report')
       }
       setSubmitted(true)
       setCharacterName('')

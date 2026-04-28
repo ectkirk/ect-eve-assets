@@ -145,7 +145,7 @@ export function StructureInfoDialog({
             />
             <div>
               <DialogTitle className="text-lg">
-                {structure.name || t('structureInfo.unnamedStructure')}
+                {structure.name ?? t('structureInfo.unnamedStructure')}
               </DialogTitle>
               <DialogDescription>{typeName}</DialogDescription>
             </div>

@@ -40,7 +40,7 @@ async function handleCallbackRequest(
   req: IncomingMessage,
   res: ServerResponse
 ): Promise<void> {
-  const url = new URL(req.url || '/', `http://localhost:${CALLBACK_PORT}`)
+  const url = new URL(req.url ?? '/', `http://localhost:${CALLBACK_PORT}`)
 
   if (url.pathname !== '/callback') {
     res.writeHead(404)

@@ -29,7 +29,7 @@ export const LANGUAGE_OPTIONS: { value: SupportedLanguage; label: string }[] = [
 const SUPPORTED_CODES = new Set(LANGUAGE_OPTIONS.map((opt) => opt.value))
 
 export function detectSystemLocale(): SupportedLanguage {
-  const browserLocale = navigator.language || navigator.languages?.[0] || 'en'
+  const browserLocale = navigator.language ?? navigator.languages?.[0] ?? 'en'
   const langCode = (browserLocale.split('-')[0] ?? 'en').toLowerCase()
   return SUPPORTED_CODES.has(langCode as SupportedLanguage)
     ? (langCode as SupportedLanguage)

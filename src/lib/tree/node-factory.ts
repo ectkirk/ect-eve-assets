@@ -82,8 +82,8 @@ export function createDivisionNode(
   const customName = divisionNum
     ? hangarDivisionNames?.get(divisionNum)
     : undefined
-  const defaultName = DIVISION_FLAG_NAMES.get(flag) || flag
-  const divisionName = customName || defaultName
+  const defaultName = DIVISION_FLAG_NAMES.get(flag) ?? flag
+  const divisionName = customName ?? defaultName
 
   return {
     id: `division-${officeItemId}-${flag}`,
@@ -181,9 +181,7 @@ export function stackIdenticalItems(nodes: TreeNode[]): TreeNode[] {
       existing.totalCount += node.totalCount
       existing.totalValue += node.totalValue
       existing.totalVolume += node.totalVolume
-      if (!existing.stackedAssets) {
-        existing.stackedAssets = [existing.asset!]
-      }
+      existing.stackedAssets ??= [existing.asset!]
       existing.stackedAssets.push(node.asset!)
     } else {
       stackMap.set(stackKey, node)

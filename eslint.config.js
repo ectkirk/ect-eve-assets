@@ -30,6 +30,7 @@ export default tseslint.config(
     extends: [
       js.configs.recommended,
       ...tseslint.configs.recommendedTypeChecked,
+      ...tseslint.configs.stylisticTypeChecked,
     ],
     files: ['**/*.{ts,tsx}'],
     languageOptions: {
@@ -76,6 +77,13 @@ export default tseslint.config(
           allowNullish: false,
           allowNumber: true,
           allowRegExp: false,
+        },
+      ],
+      '@typescript-eslint/prefer-nullish-coalescing': [
+        'error',
+        {
+          ignoreConditionalTests: true,
+          ignoreMixedLogicalExpressions: true,
         },
       ],
     },

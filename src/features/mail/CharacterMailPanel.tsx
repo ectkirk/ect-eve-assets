@@ -162,7 +162,7 @@ export function CharacterMailPanel({
       if (!conv) {
         conv = {
           id: convKey,
-          subject: merged.mail.subject || NO_SUBJECT,
+          subject: merged.mail.subject ?? NO_SUBJECT,
           partnerName: resolveName(partnerId),
           partnerId,
           mails: [],
@@ -176,7 +176,7 @@ export function CharacterMailPanel({
       if (merged.mail.is_read === false) conv.hasUnread = true
       if (new Date(merged.mail.timestamp) > new Date(conv.latestTimestamp)) {
         conv.latestTimestamp = merged.mail.timestamp
-        conv.subject = merged.mail.subject || NO_SUBJECT
+        conv.subject = merged.mail.subject ?? NO_SUBJECT
       }
     }
 
@@ -305,7 +305,7 @@ export function CharacterMailPanel({
                                   item.mail.is_read === false && 'font-medium'
                                 )}
                               >
-                                {item.mail.subject || NO_SUBJECT}
+                                {item.mail.subject ?? NO_SUBJECT}
                               </span>
                               {item.mail.is_read === false && <UnreadDot />}
                             </div>

@@ -59,9 +59,7 @@ export function initUpdater(mainWindow: BrowserWindow): void {
   }
 
   checkForUpdates()
-  if (!updateCheckInterval) {
-    updateCheckInterval = setInterval(checkForUpdates, CHECK_INTERVAL_MS)
-  }
+  updateCheckInterval ??= setInterval(checkForUpdates, CHECK_INTERVAL_MS)
 }
 
 export function stopUpdater(): void {

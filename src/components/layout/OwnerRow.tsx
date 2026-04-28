@@ -48,7 +48,8 @@ export function OwnerRow({
 }: OwnerRowProps) {
   const { t } = useTranslation('layout')
   const isCorp = owner.type === 'corporation'
-  const needsAttention = owner.authFailed || owner.scopesOutdated
+  const needsAttention =
+    owner.authFailed === true || owner.scopesOutdated === true
   const CheckIcon = isSelected ? CheckSquare : Square
   const canAddCorporation =
     hasDirectorRole && !hasCorporation && onAddCorporation

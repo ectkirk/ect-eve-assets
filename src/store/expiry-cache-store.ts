@@ -139,11 +139,9 @@ async function clearExpiryDB(): Promise<void> {
 }
 
 function getSortedPatterns(callbacks: Map<string, RefreshCallback>): string[] {
-  if (!sortedPatternsCache) {
-    sortedPatternsCache = [...callbacks.keys()].sort(
-      (a, b) => b.length - a.length
-    )
-  }
+  sortedPatternsCache ??= [...callbacks.keys()].sort(
+    (a, b) => b.length - a.length
+  )
   return sortedPatternsCache
 }
 

@@ -41,7 +41,7 @@ export const EVE_SSO = {
   jwksUrl: 'https://login.eveonline.com/oauth/jwks',
   issuer: 'https://login.eveonline.com',
   get clientId() {
-    return process.env['EVE_CLIENT_ID'] || ''
+    return process.env['EVE_CLIENT_ID'] ?? ''
   },
 }
 

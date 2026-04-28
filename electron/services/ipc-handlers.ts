@@ -9,7 +9,7 @@ import { logger, type LogLevel, type LogContext } from './logger.js'
 import { installUpdate } from './updater.js'
 import { isValidCharacterId, isValidObject } from './validation.js'
 
-const BUG_REPORT_WEBHOOK = process.env['DISCORD_BUG_WEBHOOK'] || ''
+const BUG_REPORT_WEBHOOK = process.env['DISCORD_BUG_WEBHOOK'] ?? ''
 
 const VALID_LOG_LEVELS = ['DEBUG', 'INFO', 'WARN', 'ERROR'] as const
 const MAX_LOG_MESSAGE_LENGTH = 10000

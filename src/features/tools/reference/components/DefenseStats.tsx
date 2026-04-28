@@ -41,7 +41,7 @@ function ResistanceBar({
     <div className="space-y-1">
       <div className="flex justify-between text-xs">
         <span className={`${colors.label} font-medium`}>
-          {damageTypeLabels.get(type) || label}
+          {damageTypeLabels.get(type) ?? label}
         </span>
         <span className="font-mono text-content">
           {formatPercent(resistance)}

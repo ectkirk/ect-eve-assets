@@ -337,7 +337,7 @@ export class MainESIService {
       'Content-Type': 'application/json',
       'X-Compatibility-Date': ESI_COMPATIBILITY_DATE,
       'User-Agent': this.userAgent,
-      'Accept-Language': options.language || 'en',
+      'Accept-Language': options.language ?? 'en',
     }
 
     if (options.requiresAuth !== false && options.characterId) {
@@ -609,8 +609,6 @@ export class MainESIService {
 let instance: MainESIService | null = null
 
 export function getESIService(): MainESIService {
-  if (!instance) {
-    instance = new MainESIService()
-  }
+  instance ??= new MainESIService()
   return instance
 }

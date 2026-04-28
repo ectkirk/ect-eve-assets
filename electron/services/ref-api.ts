@@ -10,7 +10,7 @@ import { makeUserAgent } from './esi/types.js'
 import { isAbortError } from './fetch-utils.js'
 
 const REF_API_BASE = 'https://edencom.net/api/v1'
-const REF_API_KEY = process.env['REF_API_KEY'] || ''
+const REF_API_KEY = process.env['REF_API_KEY'] ?? ''
 const REF_MAX_RETRIES = 3
 const REF_RETRY_BASE_DELAY_MS = 2000
 const REF_MIN_REQUEST_INTERVAL_MS = 250
@@ -26,7 +26,7 @@ function getRefHeaders(
   language?: string
 ): Readonly<Record<string, string>> {
   const userAgent = makeUserAgent(app.getVersion())
-  const lang = language || 'en'
+  const lang = language ?? 'en'
 
   if (contentType === 'json') {
     if (language) {
@@ -37,14 +37,12 @@ function getRefHeaders(
         ...(REF_API_KEY && { 'X-App-Key': REF_API_KEY }),
       }
     }
-    if (!cachedJsonHeaders) {
-      cachedJsonHeaders = Object.freeze({
-        'User-Agent': userAgent,
-        'Content-Type': 'application/json',
-        'Accept-Language': 'en',
-        ...(REF_API_KEY && { 'X-App-Key': REF_API_KEY }),
-      })
-    }
+    cachedJsonHeaders ??= Object.freeze({
+      'User-Agent': userAgent,
+      'Content-Type': 'application/json',
+      'Accept-Language': 'en',
+      ...(REF_API_KEY && { 'X-App-Key': REF_API_KEY }),
+    })
     return cachedJsonHeaders
   }
 
@@ -55,13 +53,11 @@ function getRefHeaders(
       ...(REF_API_KEY && { 'X-App-Key': REF_API_KEY }),
     }
   }
-  if (!cachedBaseHeaders) {
-    cachedBaseHeaders = Object.freeze({
-      'User-Agent': userAgent,
-      'Accept-Language': 'en',
-      ...(REF_API_KEY && { 'X-App-Key': REF_API_KEY }),
-    })
-  }
+  cachedBaseHeaders ??= Object.freeze({
+    'User-Agent': userAgent,
+    'Accept-Language': 'en',
+    ...(REF_API_KEY && { 'X-App-Key': REF_API_KEY }),
+  })
   return cachedBaseHeaders
 }
 

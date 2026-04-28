@@ -270,7 +270,7 @@ function WalletRow({
             const defaultName = divKey
               ? t(`divisions.${divKey}`)
               : t('divisions.division', { number: div.division })
-            const displayName = customName || defaultName
+            const displayName = customName ?? defaultName
 
             return (
               <TableRow

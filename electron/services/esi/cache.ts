@@ -201,7 +201,7 @@ export class ESICache {
     endpoint: string,
     language?: string
   ): string {
-    const lang = language || 'en'
+    const lang = language ?? 'en'
     return `${characterId ?? 'public'}:${lang}:${endpoint}`
   }
 }

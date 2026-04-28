@@ -76,7 +76,7 @@ export function MailDetailModal({ mail, onClose }: MailDetailModalProps) {
             />
             <div>
               <h2 className="text-lg font-medium text-content">
-                {mail.mail.subject || NO_SUBJECT}
+                {mail.mail.subject ?? NO_SUBJECT}
               </h2>
               <div className="text-sm text-content-secondary">
                 <span>{t('mail.from', { name: mail.fromName })}</span>

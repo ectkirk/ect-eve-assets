@@ -55,7 +55,7 @@ function buildSortedData(
   const groupsByCategory = new Map<number, CachedGroup[]>()
   for (const group of groups.values()) {
     if (!showUnpublished && group.published === false) continue
-    const list = groupsByCategory.get(group.categoryId) || []
+    const list = groupsByCategory.get(group.categoryId) ?? []
     list.push(group)
     groupsByCategory.set(group.categoryId, list)
   }
@@ -66,7 +66,7 @@ function buildSortedData(
   const typesByGroup = new Map<number, CachedType[]>()
   for (const type of types.values()) {
     if (!showUnpublished && type.published === false) continue
-    const list = typesByGroup.get(type.groupId) || []
+    const list = typesByGroup.get(type.groupId) ?? []
     list.push(type)
     typesByGroup.set(type.groupId, list)
   }
@@ -89,12 +89,12 @@ function buildFlatRows(
     rows.push({ kind: 'category', category, depth: 0 })
 
     if (expandedCategoryIds.has(category.id)) {
-      const catGroups = groupsByCategory.get(category.id) || []
+      const catGroups = groupsByCategory.get(category.id) ?? []
       for (const group of catGroups) {
         rows.push({ kind: 'group', group, depth: 1 })
 
         if (expandedGroupIds.has(group.id)) {
-          const groupTypes = typesByGroup.get(group.id) || []
+          const groupTypes = typesByGroup.get(group.id) ?? []
           for (const type of groupTypes) {
             rows.push({ kind: 'type', type, depth: 2 })
           }
@@ -238,7 +238,7 @@ export function CategoryGroupTree({
     const map = new Map<number, number>()
     for (const type of types.values()) {
       if (!showUnpublished && type.published === false) continue
-      map.set(type.groupId, (map.get(type.groupId) || 0) + 1)
+      map.set(type.groupId, (map.get(type.groupId) ?? 0) + 1)
     }
     return map
   }, [types, showUnpublished])
@@ -247,7 +247,7 @@ export function CategoryGroupTree({
     const map = new Map<number, number>()
     for (const group of groups.values()) {
       if (!showUnpublished && group.published === false) continue
-      map.set(group.categoryId, (map.get(group.categoryId) || 0) + 1)
+      map.set(group.categoryId, (map.get(group.categoryId) ?? 0) + 1)
     }
     return map
   }, [groups, showUnpublished])
@@ -294,7 +294,7 @@ export function CategoryGroupTree({
                 isSelected={selectedCategoryId === row.category.id}
                 isUnpublished={row.category.published === false}
                 hasChildren={
-                  (groupCountsByCategory.get(row.category.id) || 0) > 0
+                  (groupCountsByCategory.get(row.category.id) ?? 0) > 0
                 }
                 paddingLeft={INDENT_CATEGORY}
                 folderColor={FOLDER_COLORS.category}
@@ -314,7 +314,7 @@ export function CategoryGroupTree({
                 isExpanded={expandedGroupIds.has(row.group.id)}
                 isSelected={selectedGroupId === row.group.id}
                 isUnpublished={row.group.published === false}
-                hasChildren={(typeCountsByGroup.get(row.group.id) || 0) > 0}
+                hasChildren={(typeCountsByGroup.get(row.group.id) ?? 0) > 0}
                 paddingLeft={INDENT_GROUP}
                 folderColor={FOLDER_COLORS.group}
                 onToggle={() => {
