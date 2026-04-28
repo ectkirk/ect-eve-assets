@@ -64,7 +64,9 @@ export function Pagination({
       </span>
       <div className="flex gap-1">
         <button
-          onClick={() => onPageChange(1)}
+          onClick={() => {
+            onPageChange(1)
+          }}
           disabled={isLoading || page === 1}
           className="rounded px-1.5 py-1 text-sm hover:bg-surface-tertiary disabled:opacity-50"
           aria-label="First page"
@@ -74,7 +76,9 @@ export function Pagination({
         {visiblePages.map((p) => (
           <button
             key={p}
-            onClick={() => onPageChange(p)}
+            onClick={() => {
+              onPageChange(p)
+            }}
             disabled={isLoading || p === page}
             aria-label={`Page ${p}`}
             aria-current={p === page ? 'page' : undefined}
@@ -86,7 +90,9 @@ export function Pagination({
           </button>
         ))}
         <button
-          onClick={() => onPageChange(totalPages)}
+          onClick={() => {
+            onPageChange(totalPages)
+          }}
           disabled={isLoading || page === totalPages}
           className="rounded px-1.5 py-1 text-sm hover:bg-surface-tertiary disabled:opacity-50"
           aria-label="Last page"

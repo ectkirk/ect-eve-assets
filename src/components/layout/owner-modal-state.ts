@@ -1,6 +1,6 @@
 import type { Owner } from '@/store/auth-store'
 
-export type OwnerModalState = {
+export interface OwnerModalState {
   authFlow: 'idle' | 'character' | 'corporation'
   isUpdatingData: boolean
   searchQuery: string

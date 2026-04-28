@@ -14,7 +14,7 @@ export function edgeKey(from: number, to: number): string {
 }
 
 export function buildGraph(
-  systems: Array<{ id: number; security: number }>,
+  systems: { id: number; security: number }[],
   stargates: CachedStargate[],
   ansiblexes?: Ansiblex[]
 ): PathfinderGraph {
@@ -83,7 +83,7 @@ export interface RouteResult {
 }
 
 class MinHeap {
-  private heap: Array<{ system: number; cost: number }> = []
+  private heap: { system: number; cost: number }[] = []
 
   push(item: { system: number; cost: number }): void {
     this.heap.push(item)
@@ -154,7 +154,7 @@ export function findRoute(
   origin: number,
   destination: number,
   preference: RoutePreference = 'shorter',
-  securityPenalty: number = 50,
+  securityPenalty = 50,
   ignoredSystems?: Set<number>
 ): RouteResult | null {
   if (origin === destination) {

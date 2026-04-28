@@ -76,9 +76,9 @@ export function MapSettingsModal({
                     checked={ansiblexCharacterIds.includes(
                       `character-${char.id}`
                     )}
-                    onChange={(checked) =>
+                    onChange={(checked) => {
                       handleToggle(`character-${char.id}`, checked)
-                    }
+                    }}
                   />
                 ))}
               </div>

@@ -53,7 +53,7 @@ interface StarbaseDetailsActions {
     force?: boolean
   ) => Promise<ESIStarbaseDetail | null>
   getDetail: (starbaseId: number) => ESIStarbaseDetail | undefined
-  removeOrphans: (validStarbaseIds: Set<number>) => Promise<void>
+  removeOrphans: (validStarbaseIds: Set<number>) => void
   removeForOwner: (ownerType: string, ownerId: number) => Promise<void>
   clear: () => Promise<void>
 }
@@ -101,7 +101,7 @@ async function saveToDB(
     corporationId,
     detail,
     fetchedAt: Date.now(),
-  } as StoredDetail)
+  })
 }
 
 async function deleteFromDB(starbaseId: number): Promise<void> {
@@ -242,7 +242,7 @@ export const useStarbaseDetailsStore = create<StarbaseDetailsStore>(
 
     getDetail: (starbaseId) => get().details.get(starbaseId),
 
-    removeOrphans: async (validStarbaseIds) => {
+    removeOrphans: (validStarbaseIds) => {
       const state = get()
       const toRemove: number[] = []
 

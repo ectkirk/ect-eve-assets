@@ -8,7 +8,7 @@ interface AsyncCache<T> {
 export function createAsyncCache<T>(fetcher: Fetcher<T>): AsyncCache<T> {
   let cache: T | null = null
   let fetching = false
-  const callbacks: Array<(value: T | null) => void> = []
+  const callbacks: ((value: T | null) => void)[] = []
 
   return {
     get: async () => {
@@ -27,7 +27,9 @@ export function createAsyncCache<T>(fetcher: Fetcher<T>): AsyncCache<T> {
         cache = null
       }
       fetching = false
-      callbacks.forEach((cb) => cb(cache))
+      callbacks.forEach((cb) => {
+        cb(cache)
+      })
       callbacks.length = 0
       return cache
     },

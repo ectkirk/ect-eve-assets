@@ -81,7 +81,9 @@ export function ContractRow({
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <TableRow
-          onMouseEnter={(e) => onMouseEnter(contract, e)}
+          onMouseEnter={(e) => {
+            onMouseEnter(contract, e)
+          }}
           onMouseLeave={onMouseLeave}
           className={isHovered ? 'bg-surface-tertiary' : ''}
         >
@@ -214,16 +216,24 @@ export function ContractRow({
         </TableRow>
       </ContextMenuTrigger>
       <ContextMenuContent>
-        <ContextMenuItem onClick={() => onViewContract(contract)}>
+        <ContextMenuItem
+          onClick={() => {
+            onViewContract(contract)
+          }}
+        >
           {t('contractsSearch.viewContract')}
         </ContextMenuItem>
         <ContextMenuItem
-          onClick={() => onSetWaypoint(contract.systemId, contract.systemName)}
+          onClick={() => {
+            onSetWaypoint(contract.systemId, contract.systemName)
+          }}
         >
           {tCommon('contextMenu.setWaypoint')}
         </ContextMenuItem>
         <ContextMenuItem
-          onClick={() => onOpenContractIngame(contract.contractId)}
+          onClick={() => {
+            onOpenContractIngame(contract.contractId)
+          }}
         >
           {tCommon('contextMenu.openContractIngame')}
         </ContextMenuItem>

@@ -55,7 +55,9 @@ export function BuybackForm({
         <textarea
           id="items-input"
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => {
+            setText(e.target.value)
+          }}
           placeholder={t('buyback.placeholder')}
           rows={12}
           className={`w-full rounded-lg border px-4 py-3 font-mono text-sm transition-colors focus:outline-none ${

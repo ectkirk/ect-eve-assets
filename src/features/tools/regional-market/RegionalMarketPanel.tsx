@@ -107,7 +107,7 @@ export function RegionalMarketPanel({
   )
 
   useEffect(() => {
-    initOrdersStore()
+    void initOrdersStore()
   }, [initOrdersStore])
 
   useEffect(() => {

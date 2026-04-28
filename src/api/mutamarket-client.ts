@@ -75,7 +75,7 @@ function queueAbyssalRequest(item: AbyssalItem): Promise<FetchResult> {
 
   const promise = new Promise<FetchResult>((resolve) => {
     requestQueue.push({ item, resolve })
-    processQueue()
+    void processQueue()
   })
   pendingItems.set(item.itemId, promise)
   return promise
@@ -168,7 +168,7 @@ export async function fetchAbyssalPrices(
   }
 
   let fetched = 0
-  const toSave: Array<{ itemId: number; price: number }> = []
+  const toSave: { itemId: number; price: number }[] = []
 
   for (const item of uncachedItems) {
     const result = await queueAbyssalRequest(item)

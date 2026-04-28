@@ -297,7 +297,7 @@ export class MainESIService {
       })()
 
       this.inflightRequests.set(cacheKey, requestPromise)
-      requestPromise.finally(() => {
+      void requestPromise.finally(() => {
         this.inflightRequests.delete(cacheKey)
       })
 
@@ -365,10 +365,9 @@ export class MainESIService {
     }
 
     const controller = new AbortController()
-    const timeoutId = setTimeout(
-      () => controller.abort(),
-      ESI_CONFIG.requestTimeoutMs
-    )
+    const timeoutId = setTimeout(() => {
+      controller.abort()
+    }, ESI_CONFIG.requestTimeoutMs)
 
     this.activeRequests++
     try {
@@ -459,7 +458,7 @@ export class MainESIService {
         }
       }
 
-      const data = await response.json()
+      const data = (await response.json()) as unknown
 
       if (etag && expiresAt) {
         this.cache.set(cacheKey, data, etag, expiresAt)
@@ -556,8 +555,13 @@ export class MainESIService {
     try {
       if (pathExists(this.rateLimitFilePath)) {
         const data = readTextFile(this.rateLimitFilePath)
-        const state = JSON.parse(data)
-        this.rateLimiter.loadState(state.rateLimiter)
+        const state = JSON.parse(data) as {
+          rateLimiter?: Parameters<RateLimitTracker['loadState']>[0]
+          paused?: boolean
+        }
+        if (state.rateLimiter) {
+          this.rateLimiter.loadState(state.rateLimiter)
+        }
         this.paused = state.paused ?? false
       }
     } catch (err) {

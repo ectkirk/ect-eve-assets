@@ -53,15 +53,15 @@ async function writeLog(
 
 export const logger = {
   debug(message: string, context?: LogContext): void {
-    writeLog('DEBUG', message, context)
+    void writeLog('DEBUG', message, context)
   },
 
   info(message: string, context?: LogContext): void {
-    writeLog('INFO', message, context)
+    void writeLog('INFO', message, context)
   },
 
   warn(message: string, context?: LogContext): void {
-    writeLog('WARN', message, context)
+    void writeLog('WARN', message, context)
   },
 
   error(message: string, error?: unknown, context?: LogContext): void {
@@ -69,7 +69,7 @@ export const logger = {
     const fullContext = errorInfo
       ? { ...context, error: errorInfo.message, stack: errorInfo.stack }
       : context
-    writeLog('ERROR', message, fullContext)
+    void writeLog('ERROR', message, fullContext)
   },
 
   async getLogDir(): Promise<string | null> {

@@ -132,7 +132,9 @@ export function useAuctionBids(auctionContractIds: number[]) {
 
       if (cachedResults.length > 0 && toFetch.length === 0) {
         setState((prev) => {
-          const next = new Map(prev.key === idsKey ? prev.data : new Map())
+          const next = new Map<number, number>(
+            prev.key === idsKey ? prev.data : new Map<number, number>()
+          )
           for (const { contractId, highestBid } of cachedResults) {
             next.set(contractId, highestBid)
           }
@@ -164,7 +166,9 @@ export function useAuctionBids(auctionContractIds: number[]) {
       if (controller.signal.aborted) return
 
       setState((prev) => {
-        const next = new Map(prev.key === idsKey ? prev.data : new Map())
+        const next = new Map<number, number>(
+          prev.key === idsKey ? prev.data : new Map<number, number>()
+        )
         for (const { contractId, highestBid } of [
           ...cachedResults,
           ...results,

@@ -25,9 +25,11 @@ function CopyButton({
   const [copied, setCopied] = useState(false)
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(text)
+    void navigator.clipboard.writeText(text)
     setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    setTimeout(() => {
+      setCopied(false)
+    }, 2000)
   }
 
   return (
@@ -180,7 +182,9 @@ export function BuybackResults({ result, config }: BuybackResultsProps) {
         <div className="rounded-lg border-2 border-semantic-warning/50 bg-semantic-warning/5">
           <button
             type="button"
-            onClick={() => setShowExcluded(!showExcluded)}
+            onClick={() => {
+              setShowExcluded(!showExcluded)
+            }}
             className="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-semantic-warning/10"
           >
             <span className="flex items-center gap-2 text-sm">
@@ -499,18 +503,18 @@ function ExcludedSection({
     ['amber', 'text-category-amber/60'],
   ])
 
+  const borderClass = colorClasses.get(color) ?? ''
+  const textClass = textClasses.get(color) ?? ''
+  const footerClass = footerClasses.get(color) ?? ''
+
   return (
-    <div className={`rounded-lg border p-4 ${colorClasses.get(color)}`}>
+    <div className={`rounded-lg border p-4 ${borderClass}`}>
       <div className="mb-1 font-medium">{title}</div>
       {description && (
-        <div className={`mb-2 text-sm ${textClasses.get(color)}`}>
-          {description}
-        </div>
+        <div className={`mb-2 text-sm ${textClass}`}>{description}</div>
       )}
-      <div className={`mb-2 text-sm ${textClasses.get(color)}`}>
-        {items.join(', ')}
-      </div>
-      <div className={`text-xs ${footerClasses.get(color)}`}>{footer}</div>
+      <div className={`mb-2 text-sm ${textClass}`}>{items.join(', ')}</div>
+      <div className={`text-xs ${footerClass}`}>{footer}</div>
     </div>
   )
 }

@@ -22,7 +22,7 @@ export function CorruptionBadge({ level }: { level: number }) {
     [1, 'bg-yellow-600 text-yellow-100'],
     [0, 'bg-green-700 text-green-100'],
   ])
-  const bg = colors.get(level) ?? colors.get(0)
+  const bg = colors.get(level) ?? colors.get(0) ?? ''
   return (
     <span className={`rounded px-1.5 text-xs font-medium ${bg}`}>{level}</span>
   )
@@ -56,7 +56,9 @@ export const MapInsurgencyPanel = memo(function MapInsurgencyPanel({
             <div
               key={system.id}
               className="flex cursor-context-menu items-center justify-between rounded px-1 py-0.5 hover:bg-surface-tertiary"
-              onContextMenu={(e) => openContextMenu(e, system.id, system.name)}
+              onContextMenu={(e) => {
+                openContextMenu(e, system.id, system.name)
+              }}
             >
               <div className="flex items-center gap-0.5 truncate">
                 <span className="truncate text-content-secondary">

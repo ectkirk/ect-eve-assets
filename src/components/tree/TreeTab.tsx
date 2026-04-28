@@ -54,14 +54,14 @@ export function TreeTab({ mode }: TreeTabProps) {
   const fetchDivisionsForOwner = useDivisionsStore((s) => s.fetchForOwner)
 
   useEffect(() => {
-    divisionsInit()
+    void divisionsInit()
   }, [divisionsInit])
 
   useEffect(() => {
     if (!divisionsInitialized) return
     for (const owner of owners) {
       if (owner.type === 'corporation') {
-        fetchDivisionsForOwner(owner)
+        void fetchDivisionsForOwner(owner)
       }
     }
   }, [divisionsInitialized, owners, fetchDivisionsForOwner])
@@ -110,7 +110,9 @@ export function TreeTab({ mode }: TreeTabProps) {
       value: categoryFilter,
       onChange: setCategoryFilterValue,
     })
-    return () => setCategoryFilter(null)
+    return () => {
+      setCategoryFilter(null)
+    }
   }, [categories, categoryFilter, setCategoryFilter])
 
   useEffect(() => {
@@ -120,7 +122,9 @@ export function TreeTab({ mode }: TreeTabProps) {
         onChange: setAssetTypeFilterValue,
       })
     }
-    return () => setAssetTypeFilter(null)
+    return () => {
+      setAssetTypeFilter(null)
+    }
   }, [mode, assetTypeFilter, setAssetTypeFilter])
 
   const { sourceCount, totalValue } = useMemo(() => {
@@ -148,12 +152,16 @@ export function TreeTab({ mode }: TreeTabProps) {
 
   useEffect(() => {
     setResultCount(sourceCount)
-    return () => setResultCount(null)
+    return () => {
+      setResultCount(null)
+    }
   }, [sourceCount, setResultCount])
 
   useEffect(() => {
     setTotalValue({ value: totalValue })
-    return () => setTotalValue(null)
+    return () => {
+      setTotalValue(null)
+    }
   }, [totalValue, setTotalValue])
 
   const { expandedNodes, toggleExpand, expandAll, collapseAll } =

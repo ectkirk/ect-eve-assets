@@ -30,9 +30,13 @@ export function useSystemContextMenu(options: UseSystemContextMenuOptions) {
 
   useEffect(() => {
     if (!contextMenu) return
-    const handler = () => setContextMenu(null)
+    const handler = () => {
+      setContextMenu(null)
+    }
     window.addEventListener('click', handler)
-    return () => window.removeEventListener('click', handler)
+    return () => {
+      window.removeEventListener('click', handler)
+    }
   }, [contextMenu])
 
   const openContextMenu = useCallback(
@@ -43,7 +47,9 @@ export function useSystemContextMenu(options: UseSystemContextMenuOptions) {
     []
   )
 
-  const closeContextMenu = useCallback(() => setContextMenu(null), [])
+  const closeContextMenu = useCallback(() => {
+    setContextMenu(null)
+  }, [])
 
   const closeWaypointModal = useCallback(
     (open: boolean) => !open && setWaypointAction(null),

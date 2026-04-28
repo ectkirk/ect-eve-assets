@@ -1,9 +1,5 @@
 import { type Owner } from './auth-store'
-import {
-  createOwnerStore,
-  type BaseState,
-  type BaseActions,
-} from './create-owner-store'
+import { createOwnerStore } from './create-owner-store'
 import { esi } from '@/api/esi'
 import { ESICorporationWalletDivisionSchema } from '@/api/schemas'
 import { z } from 'zod'
@@ -94,15 +90,13 @@ export const useWalletStore = createOwnerStore<
   },
   toOwnerData: (owner, data) => {
     if (data.divisions) {
-      return { owner, divisions: data.divisions } as CorporationWallet
+      return { owner, divisions: data.divisions }
     }
-    return { owner, balance: data.balance ?? 0 } as CharacterWallet
+    return { owner, balance: data.balance ?? 0 }
   },
   extraActions: (_, get) => ({
     getTotalBalance: () => {
-      const state = get() as BaseState<OwnerWallet> &
-        BaseActions &
-        WalletExtraActions
+      const state = get()
       let total = 0
       for (const wallet of state.dataByOwner) {
         if (isCorporationWallet(wallet)) {

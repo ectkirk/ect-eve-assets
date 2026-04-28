@@ -1,4 +1,7 @@
-const { contextBridge, ipcRenderer } = require('electron')
+import type { IpcRendererEvent } from 'electron'
+
+const { contextBridge, ipcRenderer } =
+  require('electron') as typeof import('electron')
 
 export type {
   AuthResult,
@@ -94,9 +97,11 @@ const esi: ESIAPI = {
     callback: (progress: { current: number; total: number }) => void
   ) => {
     const handler = (
-      _event: unknown,
+      _event: IpcRendererEvent,
       progress: { current: number; total: number }
-    ) => callback(progress)
+    ) => {
+      callback(progress)
+    }
     ipcRenderer.on(channel, handler)
     return () => ipcRenderer.removeListener(channel, handler)
   },
@@ -107,8 +112,9 @@ const esi: ESIAPI = {
   provideToken: (characterId: number, token: string | null) =>
     ipcRenderer.invoke('esi:provideToken', characterId, token),
   onRequestToken: (callback: (characterId: number) => void) => {
-    const handler = (_event: unknown, characterId: number) =>
+    const handler = (_event: IpcRendererEvent, characterId: number) => {
       callback(characterId)
+    }
     ipcRenderer.on('esi:requestToken', handler)
     return () => ipcRenderer.removeListener('esi:requestToken', handler)
   },
@@ -189,18 +195,24 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.invoke('mutamarket:module', itemId, typeId),
   insurgencyGet: () => ipcRenderer.invoke('insurgency:get'),
   onUpdateAvailable: (callback: (version: string) => void) => {
-    const handler = (_event: unknown, version: string) => callback(version)
+    const handler = (_event: IpcRendererEvent, version: string) => {
+      callback(version)
+    }
     ipcRenderer.on('updater:update-available', handler)
     return () => ipcRenderer.removeListener('updater:update-available', handler)
   },
   onUpdateDownloadProgress: (callback: (percent: number) => void) => {
-    const handler = (_event: unknown, percent: number) => callback(percent)
+    const handler = (_event: IpcRendererEvent, percent: number) => {
+      callback(percent)
+    }
     ipcRenderer.on('updater:download-progress', handler)
     return () =>
       ipcRenderer.removeListener('updater:download-progress', handler)
   },
   onUpdateDownloaded: (callback: (version: string) => void) => {
-    const handler = (_event: unknown, version: string) => callback(version)
+    const handler = (_event: IpcRendererEvent, version: string) => {
+      callback(version)
+    }
     ipcRenderer.on('updater:update-downloaded', handler)
     return () =>
       ipcRenderer.removeListener('updater:update-downloaded', handler)
@@ -217,14 +229,16 @@ const electronAPI: ElectronAPI = {
     height?: number
   }) => ipcRenderer.invoke('window:setTitleBarOverlay', options),
   onWindowMaximizeChange: (callback: (isMaximized: boolean) => void) => {
-    const handler = (_event: unknown, isMaximized: boolean) =>
+    const handler = (_event: IpcRendererEvent, isMaximized: boolean) => {
       callback(isMaximized)
+    }
     ipcRenderer.on('window:maximizeChange', handler)
     return () => ipcRenderer.removeListener('window:maximizeChange', handler)
   },
   onWindowMinimizeChange: (callback: (isMinimized: boolean) => void) => {
-    const handler = (_event: unknown, isMinimized: boolean) =>
+    const handler = (_event: IpcRendererEvent, isMinimized: boolean) => {
       callback(isMinimized)
+    }
     ipcRenderer.on('window:minimizeChange', handler)
     return () => ipcRenderer.removeListener('window:minimizeChange', handler)
   },

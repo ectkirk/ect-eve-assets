@@ -155,7 +155,9 @@ export function CharacterClonesPanel({
             key={clone.id}
             clone={clone}
             isExpanded={isExpanded}
-            onToggle={() => toggleClone(clone.id)}
+            onToggle={() => {
+              toggleClone(clone.id)
+            }}
           />
         )
       })}

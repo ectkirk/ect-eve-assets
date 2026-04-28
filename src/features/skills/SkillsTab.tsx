@@ -37,21 +37,25 @@ export function SkillsTab() {
   )
 
   useEffect(() => {
-    init().then(() => update())
+    void init().then(() => update())
   }, [init, update])
 
   const handleRefresh = useCallback(() => {
-    update(true)
+    void update(true)
   }, [update])
 
   useEffect(() => {
     setSearchPlaceholder(t('search.placeholder'))
-    return () => setSearchPlaceholder(null)
+    return () => {
+      setSearchPlaceholder(null)
+    }
   }, [setSearchPlaceholder, t])
 
   useEffect(() => {
     setRefreshAction({ onRefresh: handleRefresh, isRefreshing: isUpdating })
-    return () => setRefreshAction(null)
+    return () => {
+      setRefreshAction(null)
+    }
   }, [setRefreshAction, handleRefresh, isUpdating])
 
   useEffect(() => {
@@ -63,7 +67,9 @@ export function SkillsTab() {
       value: sortBy,
       onChange: setSortBy,
     })
-    return () => setCharacterSort(null)
+    return () => {
+      setCharacterSort(null)
+    }
   }, [setCharacterSort, setSortBy, sortBy, t])
 
   const sortedSkillsByOwner = useMemo(

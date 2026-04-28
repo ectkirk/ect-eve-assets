@@ -86,7 +86,7 @@ export function buildOwnerContracts(
   visibilityByOwner: Map<string, Set<number>>,
   itemsById: Map<number, StoredContract>,
   itemsByContractId: Map<number, ESIContractItem[]>,
-  bidsByContractId: Map<number, number> = new Map()
+  bidsByContractId = new Map<number, number>()
 ): OwnerContracts[] {
   const result: OwnerContracts[] = []
   for (const [key, contractIds] of visibilityByOwner) {
@@ -184,7 +184,7 @@ async function loadAllItems(): Promise<Map<number, ESIContractItem[]>> {
 }
 
 async function saveItemsBatch(
-  items: Array<{ contractId: number; items: ESIContractItem[] }>
+  items: { contractId: number; items: ESIContractItem[] }[]
 ): Promise<void> {
   if (items.length === 0) return
   const db = await getItemsDb()
@@ -232,7 +232,7 @@ function collectContractsToFetch(
 
 async function fetchAndSaveItems(
   toFetch: Map<number, ContractFetchInfo>
-): Promise<Array<{ contractId: number; items: ESIContractItem[] }>> {
+): Promise<{ contractId: number; items: ESIContractItem[] }[]> {
   if (toFetch.size === 0) return []
 
   const results = await Promise.allSettled(
@@ -246,7 +246,7 @@ async function fetchAndSaveItems(
     })
   )
 
-  const fetched: Array<{ contractId: number; items: ESIContractItem[] }> = []
+  const fetched: { contractId: number; items: ESIContractItem[] }[] = []
   for (const result of results) {
     if (result.status === 'fulfilled') {
       fetched.push(result.value)
@@ -350,10 +350,10 @@ async function fetchBidsForAuctions(
       })
     )
 
-    const fetched: Array<{
+    const fetched: {
       contractId: number
       highestBid: number | undefined
-    }> = []
+    }[] = []
     for (const result of results) {
       if (result.status === 'fulfilled') {
         fetched.push(result.value)
@@ -437,68 +437,70 @@ const baseStore = createVisibilityStore<
   },
 
   onAfterOwnerUpdate: ({ itemsById }) => {
-    fetchItemsForContracts(itemsById)
-    fetchBidsForAuctions(itemsById)
+    void fetchItemsForContracts(itemsById)
+    void fetchBidsForAuctions(itemsById)
   },
 
-  onAfterBatchUpdate: async (updatedItemsById) => {
-    const itemsState = baseStore.getState().itemsByContractId
-    let toFetch: Map<number, ContractFetchInfo> | undefined
-    try {
-      toFetch = collectContractsToFetch(updatedItemsById, itemsState)
+  onAfterBatchUpdate: (updatedItemsById) => {
+    void (async () => {
+      const itemsState = baseStore.getState().itemsByContractId
+      let toFetch: Map<number, ContractFetchInfo> | undefined
+      try {
+        toFetch = collectContractsToFetch(updatedItemsById, itemsState)
 
-      const toDelete: number[] = []
-      for (const contractId of itemsState.keys()) {
-        if (!updatedItemsById.has(contractId)) {
-          toDelete.push(contractId)
-        }
-      }
-
-      if (toFetch.size === 0 && toDelete.length === 0) return
-
-      const currentItems = new Map(baseStore.getState().itemsByContractId)
-      let hasChanges = false
-      const allNewItems: ESIContractItem[] = []
-
-      if (toFetch.size > 0) {
-        const fetched = await fetchAndSaveItems(toFetch)
-        for (const { contractId, items } of fetched) {
-          currentItems.set(contractId, items)
-          hasChanges = true
-          if (items) {
-            allNewItems.push(...items)
+        const toDelete: number[] = []
+        for (const contractId of itemsState.keys()) {
+          if (!updatedItemsById.has(contractId)) {
+            toDelete.push(contractId)
           }
         }
-      }
 
-      if (toDelete.length > 0) {
-        for (const id of toDelete) {
-          currentItems.delete(id)
-        }
-        await deleteItems(toDelete)
-        hasChanges = true
-      }
+        if (toFetch.size === 0 && toDelete.length === 0) return
 
-      if (hasChanges) {
-        baseStore.setState({
-          itemsByContractId: currentItems,
-        })
+        const currentItems = new Map(baseStore.getState().itemsByContractId)
+        let hasChanges = false
+        const allNewItems: ESIContractItem[] = []
 
-        const { typeIds, abyssalItemIds } = extractPriceableIds(allNewItems)
-        if (typeIds.length > 0 || abyssalItemIds.length > 0) {
-          const { usePriceStore } = await import('./price-store')
-          await usePriceStore
-            .getState()
-            .ensureJitaPrices(typeIds, abyssalItemIds)
+        if (toFetch.size > 0) {
+          const fetched = await fetchAndSaveItems(toFetch)
+          for (const { contractId, items } of fetched) {
+            currentItems.set(contractId, items)
+            hasChanges = true
+            if (items) {
+              allNewItems.push(...items)
+            }
+          }
         }
 
-        triggerResolution()
+        if (toDelete.length > 0) {
+          for (const id of toDelete) {
+            currentItems.delete(id)
+          }
+          await deleteItems(toDelete)
+          hasChanges = true
+        }
+
+        if (hasChanges) {
+          baseStore.setState({
+            itemsByContractId: currentItems,
+          })
+
+          const { typeIds, abyssalItemIds } = extractPriceableIds(allNewItems)
+          if (typeIds.length > 0 || abyssalItemIds.length > 0) {
+            const { usePriceStore } = await import('./price-store')
+            await usePriceStore
+              .getState()
+              .ensureJitaPrices(typeIds, abyssalItemIds)
+          }
+
+          triggerResolution()
+        }
+      } finally {
+        if (toFetch) {
+          clearPendingFetches(toFetch)
+        }
       }
-    } finally {
-      if (toFetch) {
-        clearPendingFetches(toFetch)
-      }
-    }
+    })()
   },
 })
 

@@ -341,9 +341,9 @@ function JobsTable({ jobs, visibleColumns, onSetWaypoint }: JobsTableProps) {
                 </ContextMenuTrigger>
                 <ContextMenuContent>
                   <ContextMenuItem
-                    onClick={() =>
+                    onClick={() => {
                       onSetWaypoint(row.locationId, row.locationName)
-                    }
+                    }}
                   >
                     {tc('contextMenu.setWaypoint')}
                   </ContextMenuItem>
@@ -390,7 +390,7 @@ export function IndustryJobsTab() {
 
   useEffect(() => {
     if (initialized) {
-      update()
+      void update()
     }
   }, [initialized, update])
 
@@ -478,7 +478,7 @@ export function IndustryJobsTab() {
           locationId,
           locationName: getLocationName(locationId),
           activityName: ACTIVITY_IDS[job.activity_id]
-            ? t(`activities.${ACTIVITY_IDS[job.activity_id]}`)
+            ? t(`activities.${ACTIVITY_IDS[job.activity_id] ?? 'unknown'}`)
             : t('activities.unknown', { id: job.activity_id }),
           productValue,
         })
@@ -507,12 +507,16 @@ export function IndustryJobsTab() {
 
   useEffect(() => {
     setTotalValue({ value: totalValue })
-    return () => setTotalValue(null)
+    return () => {
+      setTotalValue(null)
+    }
   }, [totalValue, setTotalValue])
 
   useEffect(() => {
     setColumns(getColumnsForDropdown())
-    return () => setColumns([])
+    return () => {
+      setColumns([])
+    }
   }, [getColumnsForDropdown, setColumns])
 
   const loadingState = TabLoadingState({

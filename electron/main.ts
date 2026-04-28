@@ -50,7 +50,9 @@ const windowManager: WindowManager = {
 
 const windowContext = {
   getMainWindow: () => windowManager.mainWindow,
-  toggleMaximize: () => toggleMaximize(windowManager),
+  toggleMaximize: () => {
+    toggleMaximize(windowManager)
+  },
   isMaximized: () => windowManager.manualMaximized,
   characterTokens,
   readStorage,
@@ -91,8 +93,12 @@ if (!gotTheLock) {
     app.quit()
   }
 
-  process.on('SIGTERM', () => handleShutdownSignal('SIGTERM'))
-  process.on('SIGINT', () => handleShutdownSignal('SIGINT'))
+  process.on('SIGTERM', () => {
+    handleShutdownSignal('SIGTERM')
+  })
+  process.on('SIGINT', () => {
+    handleShutdownSignal('SIGINT')
+  })
   process.on('uncaughtException', (err) => {
     logger.error('Uncaught exception', err, { module: 'Main' })
   })
@@ -108,7 +114,7 @@ if (!gotTheLock) {
     }
   })
 
-  app.whenReady().then(() => {
+  void app.whenReady().then(() => {
     initLogger()
     logger.info('App starting', { module: 'Main', version: app.getVersion() })
 

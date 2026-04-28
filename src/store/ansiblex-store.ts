@@ -58,7 +58,7 @@ let initPromise: Promise<void> | null = null
 function parseAnsiblexName(
   name: string
 ): { fromSystem: string; toSystem: string } | null {
-  const match = name.match(/^(.+?)\s*»\s*(.+?)(?:\s+-|$)/)
+  const match = /^(.+?)\s*»\s*(.+?)(?:\s+-|$)/.exec(name)
   if (!match) return null
   return {
     fromSystem: match[1]!.trim(),
@@ -196,7 +196,7 @@ export const useAnsiblexStore = create<AnsiblexState>()((set, get) => ({
             { characterId: charId, requiresAuth: true }
           )
 
-          if (!details || details.type_id !== ANSIBLEX_TYPE_ID) continue
+          if (details?.type_id !== ANSIBLEX_TYPE_ID) continue
 
           const parsed = parseAnsiblexName(details.name)
           if (!parsed) continue

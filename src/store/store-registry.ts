@@ -101,12 +101,11 @@ export const useStoreRegistry = create<StoreRegistry>((set, get) => ({
 
   clearByNames: async (names) => {
     const { stores } = get()
-    const results = await Promise.allSettled(
-      names.map((name) => {
-        const store = stores.get(name)
-        return store?.clear()
-      })
-    )
+    const clearTasks = names
+      .map((name) => stores.get(name))
+      .filter((store): store is RegisteredStore => store !== undefined)
+      .map((store) => store.clear())
+    const results = await Promise.allSettled(clearTasks)
     for (const result of results) {
       if (result.status === 'rejected') {
         logger.error('Store clear failed', result.reason, {

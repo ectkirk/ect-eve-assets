@@ -224,9 +224,13 @@ export function useMapInteraction({
 
   useEffect(() => {
     if (!contextMenu) return
-    const handler = () => setContextMenu(null)
+    const handler = () => {
+      setContextMenu(null)
+    }
     window.addEventListener('click', handler)
-    return () => window.removeEventListener('click', handler)
+    return () => {
+      window.removeEventListener('click', handler)
+    }
   }, [contextMenu])
 
   return {

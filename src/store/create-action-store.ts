@@ -7,7 +7,7 @@ type ActionStoreState<
 > = {
   pendingAction: TAction | null
   clearAction: () => void
-} & { [K in TTriggerName]: (...args: TArgs) => void }
+} & Record<TTriggerName, (...args: TArgs) => void>
 
 export function createActionStore<
   TAction,
@@ -22,12 +22,14 @@ export function createActionStore<
   return create<Store>((set) => {
     const store = {
       pendingAction: null as TAction | null,
-      clearAction: () =>
-        set({ pendingAction: null } as unknown as Partial<Store>),
-      [triggerName]: (...args: TArgs) =>
+      clearAction: () => {
+        set({ pendingAction: null } as unknown as Partial<Store>)
+      },
+      [triggerName]: (...args: TArgs) => {
         set({
           pendingAction: actionCreator(...args),
-        } as unknown as Partial<Store>),
+        } as unknown as Partial<Store>)
+      },
     }
     return store as Store
   })

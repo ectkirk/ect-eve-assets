@@ -65,7 +65,7 @@ export function ContractsTab() {
   const isUpdating = assetsUpdating || contractsUpdating
 
   useEffect(() => {
-    init()
+    void init()
   }, [init])
 
   const types = useReferenceCacheStore((s) => s.types)
@@ -218,12 +218,16 @@ export function ContractsTab() {
       tertiaryValue: totalCollateral > 0 ? totalCollateral : undefined,
       tertiaryLabel: t('totals.collateral'),
     })
-    return () => setTotalValue(null)
+    return () => {
+      setTotalValue(null)
+    }
   }, [totalItemValue, totalContractPrice, totalCollateral, setTotalValue, t])
 
   useEffect(() => {
     setColumns(getColumnsForDropdown())
-    return () => setColumns([])
+    return () => {
+      setColumns([])
+    }
   }, [getColumnsForDropdown, setColumns])
 
   const hasCorporationOwnerWithAlliance = useMemo(
@@ -241,7 +245,9 @@ export function ContractsTab() {
     } else {
       setContractAvailabilityFilter(null)
     }
-    return () => setContractAvailabilityFilter(null)
+    return () => {
+      setContractAvailabilityFilter(null)
+    }
   }, [
     hasCorporationOwnerWithAlliance,
     hideAlliance,

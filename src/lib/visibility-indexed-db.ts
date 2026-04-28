@@ -37,9 +37,7 @@ export interface VisibilityDB<TStoredItem> {
     items: Map<number, TStoredItem>
     visibility: Map<string, Set<number>>
   }>
-  saveItems: (
-    items: Array<{ id: number; stored: TStoredItem }>
-  ) => Promise<void>
+  saveItems: (items: { id: number; stored: TStoredItem }[]) => Promise<void>
   deleteItems: (itemIds: number[]) => Promise<void>
   saveVisibility: (ownerKey: string, itemIds: Set<number>) => Promise<void>
   deleteVisibility: (ownerKey: string) => Promise<void>
@@ -107,7 +105,7 @@ export function createVisibilityDB<T, TStoredItem extends StoredItem<T>>(
   }
 
   const saveItems = async (
-    items: Array<{ id: number; stored: TStoredItem }>
+    items: { id: number; stored: TStoredItem }[]
   ): Promise<void> => {
     if (items.length === 0) return
     const db = await getDB()
@@ -129,7 +127,7 @@ export function createVisibilityDB<T, TStoredItem extends StoredItem<T>>(
     await idbPut(db, visibilityStoreName, {
       ownerKey,
       itemIds: [...itemIds],
-    } as VisibilityRecord)
+    })
   }
 
   const deleteVisibility = async (ownerKey: string): Promise<void> => {

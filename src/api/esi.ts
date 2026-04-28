@@ -22,7 +22,7 @@ function checkForESIError(result: unknown): void {
     typeof result === 'object' &&
     result !== null &&
     '__esiError' in result &&
-    isSerializedESIError((result as { __esiError: unknown }).__esiError)
+    isSerializedESIError(result.__esiError)
   ) {
     const err = (result as { __esiError: SerializedESIError }).__esiError
     throw new ESIError(err.message, err.status, err.retryAfter)
@@ -33,7 +33,7 @@ function validate<T>(data: unknown, schema: z.ZodType<T>, endpoint: string): T {
   const result = schema.safeParse(data)
   if (!result.success) {
     throw new ValidationError(
-      `ESI validation failed for ${endpoint}: ${result.error.issues[0]?.message}`,
+      `ESI validation failed for ${endpoint}: ${result.error.issues[0]?.message ?? 'unknown validation issue'}`,
       endpoint,
       data
     )
@@ -149,7 +149,7 @@ export const esi = {
   },
 
   clearCache(): void {
-    getESI().clearCache()
+    void getESI().clearCache()
   },
 
   getRateLimitInfo() {
@@ -163,90 +163,98 @@ export function setupESITokenProvider(): () => void {
   if (!window.electronAPI) return () => {}
 
   const cleanup = window.electronAPI.esi.onRequestToken(
-    async (characterId: number) => {
-      const store = useAuthStore.getState()
-      const charOwnerKey = ownerKey('character', characterId)
-      let owner = store.getOwner(charOwnerKey)
+    (characterId: number) => {
+      void (async () => {
+        const store = useAuthStore.getState()
+        const charOwnerKey = ownerKey('character', characterId)
+        let owner = store.getOwner(charOwnerKey)
 
-      if (!owner) {
-        owner = store.getOwnerByCharacterId(characterId)
-      }
+        if (!owner) {
+          owner = store.getOwnerByCharacterId(characterId)
+        }
 
-      if (!owner) {
-        logger.warn('No owner found for token request', {
-          module: 'ESI',
-          characterId,
-        })
-        window.electronAPI!.esi.provideToken(characterId, null)
-        return
-      }
-
-      const ownerId = ownerKey(owner.type, owner.id)
-
-      if (owner.authFailed) {
-        window.electronAPI!.esi.provideToken(characterId, null)
-        return
-      }
-
-      const needsRefresh =
-        !owner.accessToken || store.isOwnerTokenExpired(ownerId)
-
-      if (needsRefresh && owner.refreshToken) {
-        const existingRefresh = pendingRefreshes.get(ownerId)
-        if (existingRefresh) {
-          const token = await existingRefresh
-          window.electronAPI!.esi.provideToken(characterId, token)
+        if (!owner) {
+          logger.warn('No owner found for token request', {
+            module: 'ESI',
+            characterId,
+          })
+          void window.electronAPI!.esi.provideToken(characterId, null)
           return
         }
 
-        const refreshPromise = (async (): Promise<string | null> => {
-          try {
-            const result = await window.electronAPI!.refreshToken(
-              owner.refreshToken!,
-              owner.characterId
-            )
-            if (result.success && result.accessToken && result.refreshToken) {
-              store.updateOwnerTokens(ownerId, {
-                accessToken: result.accessToken,
-                refreshToken: result.refreshToken,
-                expiresAt: result.expiresAt ?? Date.now() + 1200000,
-                scopes: result.scopes,
-              })
-              return result.accessToken
-            }
-            logger.warn('Token refresh returned failure', {
-              module: 'ESI',
-              ownerId,
-              success: result.success,
-              isAuthFailure: result.isAuthFailure,
-            })
-            if (result.isAuthFailure) {
-              store.setOwnerAuthFailed(ownerId, true)
-              logger.warn('Owner auth failed, marking for re-authentication', {
+        const ownerId = ownerKey(owner.type, owner.id)
+
+        if (owner.authFailed) {
+          void window.electronAPI!.esi.provideToken(characterId, null)
+          return
+        }
+
+        const needsRefresh =
+          !owner.accessToken || store.isOwnerTokenExpired(ownerId)
+
+        if (needsRefresh && owner.refreshToken) {
+          const existingRefresh = pendingRefreshes.get(ownerId)
+          if (existingRefresh) {
+            const token = await existingRefresh
+            void window.electronAPI!.esi.provideToken(characterId, token)
+            return
+          }
+
+          const refreshPromise = (async (): Promise<string | null> => {
+            try {
+              const result = await window.electronAPI!.refreshToken(
+                owner.refreshToken,
+                owner.characterId
+              )
+              if (result.success && result.accessToken && result.refreshToken) {
+                store.updateOwnerTokens(ownerId, {
+                  accessToken: result.accessToken,
+                  refreshToken: result.refreshToken,
+                  expiresAt: result.expiresAt ?? Date.now() + 1200000,
+                  scopes: result.scopes,
+                })
+                return result.accessToken
+              }
+              logger.warn('Token refresh returned failure', {
                 module: 'ESI',
                 ownerId,
+                success: result.success,
+                isAuthFailure: result.isAuthFailure,
+              })
+              if (result.isAuthFailure) {
+                store.setOwnerAuthFailed(ownerId, true)
+                logger.warn(
+                  'Owner auth failed, marking for re-authentication',
+                  {
+                    module: 'ESI',
+                    ownerId,
+                  }
+                )
+              }
+            } catch (err) {
+              logger.error('Token refresh threw error', getErrorForLog(err), {
+                module: 'ESI',
+                characterId,
               })
             }
-          } catch (err) {
-            logger.error('Token refresh threw error', getErrorForLog(err), {
-              module: 'ESI',
-              characterId,
-            })
+            return null
+          })()
+
+          pendingRefreshes.set(ownerId, refreshPromise)
+          try {
+            const token = await refreshPromise
+            void window.electronAPI!.esi.provideToken(characterId, token)
+          } finally {
+            pendingRefreshes.delete(ownerId)
           }
-          return null
-        })()
-
-        pendingRefreshes.set(ownerId, refreshPromise)
-        try {
-          const token = await refreshPromise
-          window.electronAPI!.esi.provideToken(characterId, token)
-        } finally {
-          pendingRefreshes.delete(ownerId)
+          return
         }
-        return
-      }
 
-      window.electronAPI!.esi.provideToken(characterId, owner.accessToken)
+        void window.electronAPI!.esi.provideToken(
+          characterId,
+          owner.accessToken
+        )
+      })()
     }
   )
 

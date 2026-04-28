@@ -8,7 +8,7 @@
 export interface DBStoreConfig {
   name: string
   keyPath: string
-  indexes?: Array<{ name: string; keyPath: string; unique?: boolean }>
+  indexes?: { name: string; keyPath: string; unique?: boolean }[]
 }
 
 export interface DBConfig {

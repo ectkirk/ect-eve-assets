@@ -122,8 +122,12 @@ const baseStore = createVisibilityStore<ESIIndustryJob, StoredJob>({
     },
   }),
   shouldUpdateExisting: true,
-  onAfterInit: fetchProductPrices,
-  onAfterBatchUpdate: fetchProductPrices,
+  onAfterInit: (itemsById) => {
+    void fetchProductPrices(itemsById)
+  },
+  onAfterBatchUpdate: (itemsById) => {
+    void fetchProductPrices(itemsById)
+  },
 })
 
 export const useIndustryJobsStore: IndustryJobsStore = Object.assign(

@@ -122,7 +122,9 @@ const ItemRow = memo(function ItemRow({
         isSelected && 'bg-accent/20'
       )}
       style={{ height: ROW_HEIGHT, paddingLeft: `${indentPx + 8 + 22}px` }}
-      onClick={() => onSelect(type.id)}
+      onClick={() => {
+        onSelect(type.id)
+      }}
     >
       <TypeIcon typeId={type.id} categoryId={type.categoryId} size="sm" />
       <span

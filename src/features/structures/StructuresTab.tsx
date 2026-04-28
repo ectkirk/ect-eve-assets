@@ -135,10 +135,10 @@ export function StructuresTab() {
   const { assetsByOwner, assetNames, priceVersion } = useAssetData()
 
   useEffect(() => {
-    initStructures()
-    initStarbases()
-    initStarbaseDetails()
-    initCustomsOffices()
+    void initStructures()
+    void initStarbases()
+    void initStarbaseDetails()
+    void initCustomsOffices()
   }, [initStructures, initStarbases, initStarbaseDetails, initCustomsOffices])
 
   useEffect(() => {
@@ -147,7 +147,7 @@ export function StructuresTab() {
       for (const starbase of starbases) {
         const state = starbase.state ?? 'unknown'
         if (validStates.has(state)) {
-          fetchStarbaseDetail({
+          void fetchStarbaseDetail({
             corporationId: owner.id,
             starbaseId: starbase.starbase_id,
             systemId: starbase.system_id,
@@ -200,7 +200,9 @@ export function StructuresTab() {
     | { type: 'waypoint'; systemId: number; systemName: string }
 
   const [dialog, setDialog] = useState<DialogState>({ type: 'none' })
-  const closeDialog = useCallback(() => setDialog({ type: 'none' }), [])
+  const closeDialog = useCallback(() => {
+    setDialog({ type: 'none' })
+  }, [])
 
   const handleViewFitting = useCallback((node: TreeNode) => {
     setDialog({ type: 'fitting', node })
@@ -417,12 +419,16 @@ export function StructuresTab() {
 
   useEffect(() => {
     setResultCount({ showing: unifiedRows.length, total: totalCount })
-    return () => setResultCount(null)
+    return () => {
+      setResultCount(null)
+    }
   }, [unifiedRows.length, totalCount, setResultCount])
 
   useEffect(() => {
     setTotalValue({ value: structureTotalValue })
-    return () => setTotalValue(null)
+    return () => {
+      setTotalValue(null)
+    }
   }, [structureTotalValue, setTotalValue])
 
   const corpOwners = useMemo(

@@ -75,10 +75,10 @@ interface MapRouteControlsProps {
   onClear: () => void
 }
 
-const ROUTE_PREFERENCE_KEYS: Array<{
+const ROUTE_PREFERENCE_KEYS: {
   pref: RoutePreference
   labelKey: string
-}> = [
+}[] = [
   { pref: 'shorter', labelKey: 'map.shortest' },
   { pref: 'safer', labelKey: 'map.safer' },
   { pref: 'less-secure', labelKey: 'map.lessSecure' },
@@ -101,7 +101,7 @@ const SEC_BG = new Map([
 export function SecurityBadge({ security }: { security: number }) {
   const rounded = roundSecurity(security)
   const secKey = Math.max(0, Math.min(10, Math.round(rounded * 10)))
-  const bg = SEC_BG.get(secKey) ?? SEC_BG.get(0)
+  const bg = SEC_BG.get(secKey) ?? SEC_BG.get(0) ?? ''
   return (
     <span
       className={`ml-1 rounded px-1 text-xs font-medium text-sec-foreground ${bg}`}
@@ -231,7 +231,9 @@ export const MapRouteControls = memo(function MapRouteControls({
             </span>
             {routeSystems.length > 0 && (
               <button
-                onClick={() => setExpanded(!expanded)}
+                onClick={() => {
+                  setExpanded(!expanded)
+                }}
                 className="text-xs text-accent hover:text-accent/80"
               >
                 {expanded ? t('map.hideRoute') : t('map.showRoute')}
@@ -244,7 +246,9 @@ export const MapRouteControls = memo(function MapRouteControls({
           {ROUTE_PREFERENCE_KEYS.map(({ pref, labelKey }) => (
             <button
               key={pref}
-              onClick={() => onRoutePreferenceChange(pref)}
+              onClick={() => {
+                onRoutePreferenceChange(pref)
+              }}
               className={`rounded px-2 py-1 text-xs transition-colors ${
                 routePreference === pref
                   ? 'bg-accent text-white'
@@ -296,9 +300,9 @@ export const MapRouteControls = memo(function MapRouteControls({
               <div
                 key={system.id}
                 className="flex cursor-context-menu items-center gap-2 rounded px-1 hover:bg-surface-tertiary"
-                onContextMenu={(e) =>
+                onContextMenu={(e) => {
                   openContextMenu(e, system.id, system.name)
-                }
+                }}
               >
                 <span className="w-5 text-right text-content-muted">
                   {index}

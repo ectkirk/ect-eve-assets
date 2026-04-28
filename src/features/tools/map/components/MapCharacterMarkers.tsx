@@ -38,12 +38,12 @@ export const MapCharacterMarkers = memo(function MapCharacterMarkers({
   }, [markers])
 
   const visibleGroups = useMemo(() => {
-    const result: Array<{
+    const result: {
       systemId: number
       screenX: number
       screenY: number
       characters: CharacterLocation[]
-    }> = []
+    }[] = []
 
     for (const [systemId, characters] of groupedMarkers) {
       const system = systemMap.get(systemId)
@@ -83,7 +83,9 @@ export const MapCharacterMarkers = memo(function MapCharacterMarkers({
               top: screenY - PORTRAIT_SIZE / 2 - 8,
               transform: 'translateY(-50%)',
             }}
-            onClick={() => onSystemClick(systemId)}
+            onClick={() => {
+              onSystemClick(systemId)
+            }}
           >
             <div className="flex items-center">
               {characters.map((char, i) => (

@@ -169,11 +169,12 @@ export function createVisibilityStore<
   let storeGeneration = 0
 
   const store = create<FullStore>((set, get) => {
-    const baseSet = (partial: Partial<FullState>) =>
+    const baseSet = (partial: Partial<FullState>) => {
       set(partial as Partial<FullStore>)
+    }
 
     const extras = extraActions
-      ? (extraActions(baseSet, get as () => FullStore) ?? ({} as TExtraActions))
+      ? (extraActions(baseSet, get) ?? ({} as TExtraActions))
       : ({} as TExtraActions)
 
     return {
@@ -262,7 +263,7 @@ export function createVisibilityStore<
         try {
           const newItems = new Map<number, TStoredItem>()
           const updatedVisibility = new Map<string, Set<number>>()
-          const itemBatch: Array<{ id: number; stored: TStoredItem }> = []
+          const itemBatch: { id: number; stored: TStoredItem }[] = []
           const failedOwners: string[] = []
 
           for (const owner of ownersToUpdate) {
@@ -433,7 +434,7 @@ export function createVisibilityStore<
           const currentState = get()
           let itemsById = new Map(currentState.itemsById)
           const visibilityByOwner = new Map(currentState.visibilityByOwner)
-          const itemBatch: Array<{ id: number; stored: TStoredItem }> = []
+          const itemBatch: { id: number; stored: TStoredItem }[] = []
 
           const ownerVisibility = new Set<number>()
           for (const item of items) {

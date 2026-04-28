@@ -20,9 +20,11 @@ export function CopyButton({
   const [copied, setCopied] = useState(false)
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(text)
+    void navigator.clipboard.writeText(text)
     setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    setTimeout(() => {
+      setCopied(false)
+    }, 2000)
   }
 
   const Icon = copied ? Check : Copy

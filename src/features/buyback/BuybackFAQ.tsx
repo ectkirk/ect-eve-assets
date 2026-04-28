@@ -28,10 +28,13 @@ function parseMarkdown(md: string): string {
         /\*\*([^*]+)\*\*/g,
         '<strong class="text-content font-semibold">$1</strong>'
       )
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, linkText, url) => {
-        const safeUrl = sanitizeUrl(url)
-        return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">${linkText}</a>`
-      })
+      .replace(
+        /\[([^\]]+)\]\(([^)]+)\)/g,
+        (_, linkText: string, url: string) => {
+          const safeUrl = sanitizeUrl(url)
+          return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">${linkText}</a>`
+        }
+      )
   }
 
   const flushList = () => {
@@ -142,7 +145,9 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
   return (
     <div className="border-b border-border last:border-b-0">
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          setIsOpen(!isOpen)
+        }}
         className="flex w-full items-center justify-between py-4 text-left text-content hover:text-accent"
       >
         <span className="font-medium">{question}</span>

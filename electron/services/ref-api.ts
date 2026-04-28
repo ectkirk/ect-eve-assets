@@ -103,10 +103,9 @@ async function fetchRefWithRetry(
 
   for (let attempt = 0; attempt <= REF_MAX_RETRIES; attempt++) {
     const controller = new AbortController()
-    const timeoutId = setTimeout(
-      () => controller.abort(),
-      REF_REQUEST_TIMEOUT_MS
-    )
+    const timeoutId = setTimeout(() => {
+      controller.abort()
+    }, REF_REQUEST_TIMEOUT_MS)
 
     try {
       const response = await fetch(url, {
@@ -159,7 +158,7 @@ async function fetchRefWithRetry(
 
 type RefResult<T> = T | { error: string }
 
-type PaginatedResult<T> = {
+interface PaginatedResult<T> {
   items: T[]
   pagination: { hasMore: boolean; nextCursor: string | number | null }
 }
@@ -185,7 +184,13 @@ async function refGetPaginated<T, C extends string | number>(
       return { error: `HTTP ${response.status}` }
     }
 
-    const data = await response.json()
+    const data = (await response.json()) as {
+      items: T[]
+      pagination: {
+        hasMore: boolean
+        nextCursor: string | number | null
+      }
+    }
     return { items: data.items, pagination: data.pagination }
   } catch (err) {
     logger.error(`${channel} fetch failed`, err, { module: 'RefAPI' })
@@ -207,7 +212,7 @@ async function refGet<T>(
     if (!response.ok) {
       return { error: `HTTP ${response.status}` }
     }
-    return await response.json()
+    return (await response.json()) as RefResult<T>
   } catch (err) {
     logger.error(`${channel} fetch failed`, err, { module: 'RefAPI' })
     return { error: String(err) }
@@ -230,7 +235,7 @@ async function refPost<T>(
     if (!response.ok) {
       return { error: `HTTP ${response.status}` }
     }
-    return await response.json()
+    return (await response.json()) as RefResult<T>
   } catch (err) {
     logger.error(`${channel} fetch failed`, err, { module: 'RefAPI' })
     return { error: String(err) }
@@ -418,7 +423,7 @@ export function registerRefAPIHandlers(): void {
           const errorText = await response.text()
           return { error: `HTTP ${response.status}: ${errorText}` }
         }
-        return await response.json()
+        return (await response.json()) as unknown
       } catch (err) {
         logger.error('ref:buybackCalculate fetch failed', err, {
           module: 'RefAPI',
@@ -479,7 +484,7 @@ export function registerRefAPIHandlers(): void {
         const errorText = await response.text()
         return { error: `HTTP ${response.status}: ${errorText}` }
       }
-      return await response.json()
+      return (await response.json()) as unknown
     } catch (err) {
       logger.error('ref:contractsSearch fetch failed', err, {
         module: 'RefAPI',

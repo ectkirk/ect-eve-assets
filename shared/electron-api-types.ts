@@ -447,7 +447,7 @@ export interface BuybackInfoResult {
     { name: string; adjustment: number; adjustmentPercent: number }
   >
   alwaysExcluded?: string[]
-  highsecIslands?: Array<{ region: string; systems: string[] }>
+  highsecIslands?: { region: string; systems: string[] }[]
   faq?: BuybackFAQItem[]
   note?: string
   error?: string
@@ -480,8 +480,8 @@ export interface ShippingInfoResult {
     maxItemsPerRequest: number
   }
   contractSettings?: { corporation: string; expiration: string }
-  excludedItems?: Array<{ type: string; reason: string }>
-  faq?: Array<{ question: string; answer: string }>
+  excludedItems?: { type: string; reason: string }[]
+  faq?: { question: string; answer: string }[]
   error?: string
 }
 
@@ -538,11 +538,11 @@ export interface ShippingCalculateResult {
       totalShippingCost: number
       totalCargoVolume: number
       totalCargoValue: number
-      costBreakdown: Array<{
+      costBreakdown: {
         tierName: string
         count: number
         subtotal: number
-      }>
+      }[]
     }
   }
   serviceTiers?: ShippingTier[]
@@ -591,8 +591,8 @@ export interface RefTypeDetailResult {
     activities?: {
       manufacturing?: {
         time?: number
-        materials?: Array<{ typeID: number; quantity: number }>
-        products?: Array<{ typeID: number; quantity: number }>
+        materials?: { typeID: number; quantity: number }[]
+        products?: { typeID: number; quantity: number }[]
       }
       copying?: { time?: number }
       research_time?: { time?: number }
@@ -600,18 +600,18 @@ export interface RefTypeDetailResult {
     }
   } | null
   blueprintTypes?: {
-    materials?: Array<{ id: number; name: string; categoryId: number }>
-    products?: Array<{ id: number; name: string; categoryId: number }>
+    materials?: { id: number; name: string; categoryId: number }[]
+    products?: { id: number; name: string; categoryId: number }[]
   }
-  producedBy?: Array<{ id: number; name: string; categoryId: number }>
-  materials?: Array<{
+  producedBy?: { id: number; name: string; categoryId: number }[]
+  materials?: {
     typeId: number
     name: string
     quantity: number
     categoryId: number
-  }>
+  }[]
   dogma?: {
-    attributes?: Array<{ value: number; attributeID: number }>
+    attributes?: { value: number; attributeID: number }[]
     attributeDefinitions?: Record<
       string,
       {
@@ -625,41 +625,41 @@ export interface RefTypeDetailResult {
     computedAttributes?: Record<string, number | null>
   }
   bonuses?: {
-    roleBonuses?: Array<{
+    roleBonuses?: {
       bonus?: number
       unitID?: number
       bonusText: { en: string }
       importance: number
-    }>
-    types?: Array<{
+    }[]
+    types?: {
       _key: number
-      _value: Array<{
+      _value: {
         bonus: number
         bonusText: { en: string }
         importance: number
         unitID: number | null
-      }>
-    }>
+      }[]
+    }[]
   } | null
   market?: {
     price?: { averagePrice: string; adjustedPrice: string } | null
-    groupPath?: Array<{ id: number; name: string }>
+    groupPath?: { id: number; name: string }[]
   }
   skills?: {
-    required?: Array<{
+    required?: {
       skillId: number
       skillName: string
       level: number
-      children: Array<{
+      children: {
         skillId: number
         skillName: string
         level: number
         children: unknown[]
-      }>
-    }>
+      }[]
+    }[]
     blueprintRequired?: unknown[]
   }
-  variations?: Array<{ id: number; name: string; metaGroupId: number | null }>
+  variations?: { id: number; name: string; metaGroupId: number | null }[]
   error?: string
 }
 
@@ -717,9 +717,9 @@ export interface RefTypeBlueprintResult {
     activities?: {
       manufacturing?: {
         time?: number
-        materials?: Array<{ typeID: number; quantity: number }>
-        products?: Array<{ typeID: number; quantity: number }>
-        skills?: Array<{ typeID: number; level: number }>
+        materials?: { typeID: number; quantity: number }[]
+        products?: { typeID: number; quantity: number }[]
+        skills?: { typeID: number; level: number }[]
       }
       copying?: { time?: number }
       research_time?: { time?: number }
@@ -727,21 +727,21 @@ export interface RefTypeBlueprintResult {
     }
   } | null
   blueprintTypes?: {
-    materials?: Array<{ id: number; name: string; categoryId: number }>
-    products?: Array<{ id: number; name: string; categoryId: number }>
+    materials?: { id: number; name: string; categoryId: number }[]
+    products?: { id: number; name: string; categoryId: number }[]
   }
-  producedBy?: Array<{ id: number; name: string; categoryId: number }>
-  materials?: Array<{
+  producedBy?: { id: number; name: string; categoryId: number }[]
+  materials?: {
     typeId: number
     name: string
     quantity: number
     categoryId: number
-  }>
+  }[]
   error?: string
 }
 
 export interface RefTypeDogmaResult {
-  attributes?: Array<{ attributeID: number; value: number }>
+  attributes?: { attributeID: number; value: number }[]
   attributeDefinitions?: Record<
     string,
     {
@@ -755,23 +755,23 @@ export interface RefTypeDogmaResult {
   computedAttributes?: Record<string, number | null>
   bonuses?: {
     _key?: number
-    roleBonuses?: Array<{
+    roleBonuses?: {
       bonus?: number
       unitID?: number
       bonusText: { en: string }
       importance: number
-    }>
-    types?: Array<{
+    }[]
+    types?: {
       _key: number
-      _value: Array<{
+      _value: {
         bonus: number
         bonusText: { en: string }
         importance: number
         unitID: number | null
-      }>
-    }>
+      }[]
+    }[]
   } | null
-  bonusSkillTypes?: Array<{ id: number; name: string }>
+  bonusSkillTypes?: { id: number; name: string }[]
   fuelTypeNames?: Record<string, string> | null
   error?: string
 }
@@ -781,12 +781,12 @@ export interface RefTypeMarketResult {
     averagePrice: number
     adjustedPrice: number
   } | null
-  groupPath?: Array<{ id: number; name: string }>
+  groupPath?: { id: number; name: string }[]
   error?: string
 }
 
 export interface RefTypeVariationsResult {
-  variations?: Array<{ id: number; name: string; metaGroupId: number | null }>
+  variations?: { id: number; name: string; metaGroupId: number | null }[]
   error?: string
 }
 

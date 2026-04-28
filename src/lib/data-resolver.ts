@@ -230,17 +230,19 @@ export function triggerResolution(): void {
     return
   }
 
-  resolutionTimeout = setTimeout(async () => {
-    resolutionPending = true
-    resolutionTimeout = null
-    try {
-      await runResolution()
-      while (resolutionQueued) {
-        resolutionQueued = false
+  resolutionTimeout = setTimeout(() => {
+    void (async () => {
+      resolutionPending = true
+      resolutionTimeout = null
+      try {
         await runResolution()
+        while (resolutionQueued) {
+          resolutionQueued = false
+          await runResolution()
+        }
+      } finally {
+        resolutionPending = false
       }
-    } finally {
-      resolutionPending = false
-    }
+    })()
   }, 50)
 }

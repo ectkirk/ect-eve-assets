@@ -70,7 +70,7 @@ interface PriceActions {
     abyssalItemIds?: number[]
   ) => Promise<Map<number, number>>
   setAbyssalPrices: (
-    prices: Array<{ itemId: number; price: number }>
+    prices: { itemId: number; price: number }[]
   ) => Promise<void>
   setMarketPrices: (prices: Map<number, number>) => void
   refreshAllJitaPrices: (
@@ -180,7 +180,7 @@ export const usePriceStore = create<PriceStore>((set, get) => ({
         })
 
         if (shouldRefreshEsi()) {
-          get().refreshEsiPrices()
+          void get().refreshEsiPrices()
         }
 
         scheduleEsiRefresh(get())

@@ -260,7 +260,9 @@ export function ReferencePanel({
       if (cat) {
         parts.push({
           label: cat.name,
-          onClick: () => handleSelectCategory(selectedCategoryId),
+          onClick: () => {
+            handleSelectCategory(selectedCategoryId)
+          },
         })
       }
     }
@@ -270,7 +272,9 @@ export function ReferencePanel({
       if (grp) {
         parts.push({
           label: grp.name,
-          onClick: () => handleSelectGroup(selectedGroupId),
+          onClick: () => {
+            handleSelectGroup(selectedGroupId)
+          },
         })
       }
     }
@@ -301,7 +305,9 @@ export function ReferencePanel({
           <input
             type="checkbox"
             checked={showUnpublished}
-            onChange={(e) => setShowUnpublished(e.target.checked)}
+            onChange={(e) => {
+              setShowUnpublished(e.target.checked)
+            }}
             className="h-4 w-4 rounded border-border text-accent focus:ring-accent"
           />
           <span className="text-sm text-content-secondary">
@@ -335,8 +341,12 @@ export function ReferencePanel({
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onFocus={() => setDropdownOpen(true)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value)
+                }}
+                onFocus={() => {
+                  setDropdownOpen(true)
+                }}
                 onBlur={(e) => {
                   if (!searchContainerRef.current?.contains(e.relatedTarget)) {
                     setDropdownOpen(false)
@@ -351,7 +361,9 @@ export function ReferencePanel({
               />
               {searchQuery && (
                 <button
-                  onClick={() => setSearchQuery('')}
+                  onClick={() => {
+                    setSearchQuery('')
+                  }}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-content-secondary hover:text-content"
                 >
                   <X className="h-4 w-4" />
@@ -367,7 +379,9 @@ export function ReferencePanel({
                       {searchResults.categories.map((cat) => (
                         <button
                           key={cat.id}
-                          onClick={() => handleSearchCategoryClick(cat.id)}
+                          onClick={() => {
+                            handleSearchCategoryClick(cat.id)
+                          }}
                           className={`flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-surface-tertiary ${cat.published === false ? 'opacity-60' : ''}`}
                         >
                           <span
@@ -387,7 +401,9 @@ export function ReferencePanel({
                       {searchResults.groups.map((grp) => (
                         <button
                           key={grp.id}
-                          onClick={() => handleSearchGroupClick(grp.id)}
+                          onClick={() => {
+                            handleSearchGroupClick(grp.id)
+                          }}
                           className={`flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-surface-tertiary ${grp.published === false ? 'opacity-60' : ''}`}
                         >
                           <div>
@@ -412,7 +428,9 @@ export function ReferencePanel({
                       {searchResults.types.map((type) => (
                         <button
                           key={type.id}
-                          onClick={() => handleSelectType(type.id)}
+                          onClick={() => {
+                            handleSelectType(type.id)
+                          }}
                           className={`flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-surface-tertiary ${type.published === false ? 'opacity-60' : ''}`}
                         >
                           <TypeIcon

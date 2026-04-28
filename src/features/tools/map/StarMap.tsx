@@ -256,21 +256,31 @@ export function StarMap() {
     }
     updateDimensions()
     window.addEventListener('resize', updateDimensions)
-    return () => window.removeEventListener('resize', updateDimensions)
+    return () => {
+      window.removeEventListener('resize', updateDimensions)
+    }
   }, [])
 
   useEffect(() => {
     if (!showCharacterLocations) return
-    fetchLocations()
-    const interval = setInterval(fetchLocations, 30000)
-    return () => clearInterval(interval)
+    void fetchLocations()
+    const interval = setInterval(() => {
+      void fetchLocations()
+    }, 30000)
+    return () => {
+      clearInterval(interval)
+    }
   }, [fetchLocations, showCharacterLocations])
 
   useEffect(() => {
     if (!showIncursions) return
-    fetchIncursions()
-    const interval = setInterval(fetchIncursions, 300000)
-    return () => clearInterval(interval)
+    void fetchIncursions()
+    const interval = setInterval(() => {
+      void fetchIncursions()
+    }, 300000)
+    return () => {
+      clearInterval(interval)
+    }
   }, [fetchIncursions, showIncursions])
 
   useEffect(() => {
@@ -279,7 +289,9 @@ export function StarMap() {
       return
     }
     startInsurgenciesRefreshTimer(fetchInsurgencies)
-    return () => stopInsurgenciesRefreshTimer()
+    return () => {
+      stopInsurgenciesRefreshTimer()
+    }
   }, [fetchInsurgencies, showInsurgencies])
 
   // --- Render ---
@@ -397,7 +409,9 @@ export function StarMap() {
         isSystemInIncursion={isSystemInIncursion}
         getCorruptionLevel={getCorruptionLevel}
         onRoutePreferenceChange={setRoutePreference}
-        onOpenIgnoredSystems={() => setIgnoredSystemsModalOpen(true)}
+        onOpenIgnoredSystems={() => {
+          setIgnoredSystemsModalOpen(true)
+        }}
         onIgnoreSystem={addIgnored}
         onUnignoreSystem={removeIgnored}
         onUseAnsiblexesChange={setUseAnsiblexes}
@@ -437,7 +451,9 @@ export function StarMap() {
             })
             setContextMenu(null)
           }}
-          onClose={() => setContextMenu(null)}
+          onClose={() => {
+            setContextMenu(null)
+          }}
         />
       )}
 

@@ -112,7 +112,7 @@ export function calculateAllianceLabels(
 ): LabelData[] {
   const allianceSystems = new Map<
     number,
-    Array<{ x: number; y: number; name: string }>
+    { x: number; y: number; name: string }[]
   >()
 
   for (const system of systems) {
@@ -163,9 +163,9 @@ export function calculateAllianceLabels(
 }
 
 function clusterPoints(
-  points: Array<{ x: number; y: number }>,
+  points: { x: number; y: number }[],
   thresholdSq: number
-): Array<Array<{ x: number; y: number }>> {
+): { x: number; y: number }[][] {
   const n = points.length
   if (n === 0) return []
 
@@ -252,7 +252,7 @@ function clusterPoints(
     }
   }
 
-  const clusters = new Map<number, Array<{ x: number; y: number }>>()
+  const clusters = new Map<number, { x: number; y: number }[]>()
   for (let i = 0; i < n; i++) {
     const root = find(i)
     const point = points.at(i)!

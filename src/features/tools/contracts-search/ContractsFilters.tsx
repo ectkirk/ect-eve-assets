@@ -100,7 +100,9 @@ export function ContractsFilters({
     >
       <div className="flex border-b border-border">
         <button
-          onClick={() => updateFilter('mode', 'buySell')}
+          onClick={() => {
+            updateFilter('mode', 'buySell')
+          }}
           className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
             filters.mode === 'buySell'
               ? 'border-b-2 border-accent text-accent'
@@ -110,7 +112,9 @@ export function ContractsFilters({
           {t('contractsSearch.filters.buySell')}
         </button>
         <button
-          onClick={() => updateFilter('mode', 'courier')}
+          onClick={() => {
+            updateFilter('mode', 'courier')
+          }}
           className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
             filters.mode === 'courier'
               ? 'border-b-2 border-accent text-accent'
@@ -132,7 +136,9 @@ export function ContractsFilters({
               placeholder={t('common:search.placeholder')}
               className={inputClass}
               value={filters.searchText}
-              onChange={(e) => updateFilter('searchText', e.target.value)}
+              onChange={(e) => {
+                updateFilter('searchText', e.target.value)
+              }}
               onKeyDown={handleKeyDown}
             />
           </div>
@@ -147,12 +153,12 @@ export function ContractsFilters({
           <select
             className={selectClass}
             value={filters.regionId ?? ''}
-            onChange={(e) =>
+            onChange={(e) => {
               updateFilter(
                 'regionId',
                 e.target.value ? Number(e.target.value) : null
               )
-            }
+            }}
           >
             <option value="">{t('contractsSearch.filters.allRegions')}</option>
             {sortedRegions.map((region) => (
@@ -171,9 +177,9 @@ export function ContractsFilters({
             <select
               className={selectClass}
               value={filters.contractType}
-              onChange={(e) =>
+              onChange={(e) => {
                 updateFilter('contractType', e.target.value as ContractType)
-              }
+              }}
             >
               <option value="want_to_sell">
                 {t('contractsSearch.filters.wantToSell')}
@@ -197,12 +203,12 @@ export function ContractsFilters({
               <select
                 className={selectClass}
                 value={filters.categoryId ?? ''}
-                onChange={(e) =>
+                onChange={(e) => {
                   updateFilter(
                     'categoryId',
                     e.target.value ? Number(e.target.value) : null
                   )
-                }
+                }}
               >
                 <option value="">
                   {t('contractsSearch.filters.allCategories')}
@@ -223,12 +229,12 @@ export function ContractsFilters({
                 <select
                   className={selectClass}
                   value={filters.groupId ?? ''}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     updateFilter(
                       'groupId',
                       e.target.value ? Number(e.target.value) : null
                     )
-                  }
+                  }}
                 >
                   <option value="">
                     {t('contractsSearch.filters.allGroups')}
@@ -251,9 +257,9 @@ export function ContractsFilters({
                 type="checkbox"
                 className={checkboxClass}
                 checked={filters.excludeMultiple}
-                onChange={(e) =>
+                onChange={(e) => {
                   updateFilter('excludeMultiple', e.target.checked)
-                }
+                }}
               />
               <span className="text-sm text-content">
                 {t('contractsSearch.filters.excludeMultiple')}
@@ -304,7 +310,9 @@ export function ContractsFilters({
                 placeholder={t('contractsSearch.filters.min')}
                 className={inputClass}
                 value={filters.priceMin}
-                onChange={(e) => updateFilter('priceMin', e.target.value)}
+                onChange={(e) => {
+                  updateFilter('priceMin', e.target.value)
+                }}
                 onKeyDown={handleKeyDown}
               />
               <span className="text-content-muted">-</span>
@@ -313,7 +321,9 @@ export function ContractsFilters({
                 placeholder={t('contractsSearch.filters.max')}
                 className={inputClass}
                 value={filters.priceMax}
-                onChange={(e) => updateFilter('priceMax', e.target.value)}
+                onChange={(e) => {
+                  updateFilter('priceMax', e.target.value)
+                }}
                 onKeyDown={handleKeyDown}
               />
             </div>
@@ -331,9 +341,9 @@ export function ContractsFilters({
                   type="checkbox"
                   className={checkboxClass}
                   checked={filters.securityHigh}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     updateFilter('securityHigh', e.target.checked)
-                  }
+                  }}
                 />
                 <span className="text-sm text-status-positive">
                   {t('contractsSearch.filters.high')}
@@ -344,9 +354,9 @@ export function ContractsFilters({
                   type="checkbox"
                   className={checkboxClass}
                   checked={filters.securityLow}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     updateFilter('securityLow', e.target.checked)
-                  }
+                  }}
                 />
                 <span className="text-sm text-status-warning">
                   {t('contractsSearch.filters.low')}
@@ -357,9 +367,9 @@ export function ContractsFilters({
                   type="checkbox"
                   className={checkboxClass}
                   checked={filters.securityNull}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     updateFilter('securityNull', e.target.checked)
-                  }
+                  }}
                 />
                 <span className="text-sm text-status-negative">
                   {t('contractsSearch.filters.null')}

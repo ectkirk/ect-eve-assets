@@ -41,7 +41,9 @@ function ToggleGroup<T extends string>({
             key={option.value}
             type="button"
             disabled={disabled}
-            onClick={() => onChange(option.value)}
+            onClick={() => {
+              onChange(option.value)
+            }}
             className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
               value === option.value
                 ? 'bg-semantic-asset-safety text-semantic-asset-safety-foreground'
@@ -86,7 +88,7 @@ export function BuybackTab({
   const [npcStation, setNpcStation] = useState<NPCStationOption>('no')
 
   useEffect(() => {
-    fetchInfo()
+    void fetchInfo()
   }, [fetchInfo])
 
   const config: RuntimeSecurityConfig | null = useMemo(() => {
@@ -107,9 +109,12 @@ export function BuybackTab({
       }
     }
 
-    const assetSafetyRates = new Map(Object.entries(info.assetSafetyRates)).get(
-      assetSafetySecLevel
-    )
+    const assetSafetyRates =
+      assetSafetySecLevel === 'highsec'
+        ? info.assetSafetyRates.highsec
+        : assetSafetySecLevel === 'lowsec'
+          ? info.assetSafetyRates.lowsec
+          : info.assetSafetyRates.nullsec
     if (!assetSafetyRates) return null
     const buyRate =
       npcStation === 'yes'
@@ -213,11 +218,13 @@ export function BuybackTab({
 
     const timer = setTimeout(() => {
       setAutoSubmitText(prefillText)
-      handleSubmit(prefillText)
+      void handleSubmit(prefillText)
       onPrefillConsumed?.()
     }, 0)
 
-    return () => clearTimeout(timer)
+    return () => {
+      clearTimeout(timer)
+    }
   }, [prefillText, config, isLoading, result, handleSubmit, onPrefillConsumed])
 
   if (isLoadingInfo && !info) {

@@ -128,7 +128,9 @@ export function AbyssalSyncModal({
 
         <DialogFooter className="gap-2 sm:gap-2">
           <button
-            onClick={() => onOpenChange(false)}
+            onClick={() => {
+              onOpenChange(false)
+            }}
             className="rounded-md border border-border px-4 py-2 text-sm font-medium hover:bg-surface-tertiary"
           >
             {tc('buttons.close')}

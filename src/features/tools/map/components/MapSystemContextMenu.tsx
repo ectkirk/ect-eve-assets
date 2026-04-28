@@ -39,7 +39,9 @@ export function MapSystemContextMenu({
       }
     }
     window.addEventListener('mousedown', handleClickOutside)
-    return () => window.removeEventListener('mousedown', handleClickOutside)
+    return () => {
+      window.removeEventListener('mousedown', handleClickOutside)
+    }
   }, [onClose])
 
   const position = useMemo(

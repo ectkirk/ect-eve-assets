@@ -7,7 +7,7 @@ interface MapControlsProps {
   onColorModeChange: (mode: ColorMode) => void
 }
 
-const COLOR_MODE_KEYS: Array<{ mode: ColorMode; labelKey: string }> = [
+const COLOR_MODE_KEYS: { mode: ColorMode; labelKey: string }[] = [
   { mode: 'region', labelKey: 'map.colorRegion' },
   { mode: 'security', labelKey: 'map.colorSecurity' },
   { mode: 'faction', labelKey: 'map.colorFaction' },
@@ -28,7 +28,9 @@ export const MapControls = memo(function MapControls({
         {COLOR_MODE_KEYS.map(({ mode, labelKey }) => (
           <button
             key={mode}
-            onClick={() => onColorModeChange(mode)}
+            onClick={() => {
+              onColorModeChange(mode)
+            }}
             className={`rounded px-3 py-1 text-sm transition-colors ${
               colorMode === mode
                 ? 'bg-accent text-white'

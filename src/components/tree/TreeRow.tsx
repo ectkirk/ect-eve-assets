@@ -28,11 +28,9 @@ interface TreeRowProps {
   onRowClick: (id: string, event: React.MouseEvent) => void
   onViewFitting: (node: TreeNode) => void
   onSellToBuyback: (node: TreeNode) => void
-  onOpenMarketIngame?:
-    | ((typeId: number, typeName?: string | undefined) => void)
-    | undefined
+  onOpenMarketIngame?: ((typeId: number, typeName?: string) => void) | undefined
   onSetAutopilotIngame?:
-    | ((locationId: number, locationName?: string | undefined) => void)
+    | ((locationId: number, locationName?: string) => void)
     | undefined
   visibleColumns: string[]
 }
@@ -190,7 +188,11 @@ export const TreeRow = memo(function TreeRow({
             </ContextMenuItem>
           )}
           {showBuyback && (
-            <ContextMenuItem onClick={() => onSellToBuyback(node)}>
+            <ContextMenuItem
+              onClick={() => {
+                onSellToBuyback(node)
+              }}
+            >
               {t('contextMenu.sellToBuyback')}
             </ContextMenuItem>
           )}

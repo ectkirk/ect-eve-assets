@@ -15,6 +15,10 @@ interface OpenOptions {
 
 const dbCache = new Map<string, Promise<IDBDatabase>>()
 
+function toDatabaseError(error: DOMException | null): Error {
+  return error ?? new Error('IndexedDB request failed')
+}
+
 function createStoreWithIndexes(
   db: IDBDatabase,
   storeConfig: DBStoreConfig
@@ -43,7 +47,7 @@ export async function openDatabase(
       logger.error(`Failed to open ${config.name} DB`, request.error, {
         module: config.module,
       })
-      reject(request.error)
+      reject(toDatabaseError(request.error))
     }
 
     request.onsuccess = () => {
@@ -122,7 +126,7 @@ export async function deleteDatabase(
     const request = indexedDB.deleteDatabase(dbName)
     request.onerror = () => {
       logger.error(`Failed to delete ${dbName} DB`, request.error, { module })
-      reject(request.error)
+      reject(toDatabaseError(request.error))
     }
     request.onsuccess = () => {
       logger.info(`Database ${dbName} deleted`, { module })
@@ -140,8 +144,12 @@ export async function idbGetAll<T>(
     const store = tx.objectStore(storeName)
     const request = store.getAll()
 
-    tx.oncomplete = () => resolve(request.result as T[])
-    tx.onerror = () => reject(tx.error)
+    tx.oncomplete = () => {
+      resolve(request.result as T[])
+    }
+    tx.onerror = () => {
+      reject(toDatabaseError(tx.error))
+    }
   })
 }
 
@@ -155,8 +163,12 @@ export async function idbGet<T>(
     const store = tx.objectStore(storeName)
     const request = store.get(key)
 
-    tx.oncomplete = () => resolve(request.result as T | undefined)
-    tx.onerror = () => reject(tx.error)
+    tx.oncomplete = () => {
+      resolve(request.result as T | undefined)
+    }
+    tx.onerror = () => {
+      reject(toDatabaseError(tx.error))
+    }
   })
 }
 
@@ -169,8 +181,12 @@ export async function idbPut<T>(
     const tx = db.transaction([storeName], 'readwrite')
     const store = tx.objectStore(storeName)
     store.put(item)
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
+    tx.oncomplete = () => {
+      resolve()
+    }
+    tx.onerror = () => {
+      reject(toDatabaseError(tx.error))
+    }
   })
 }
 
@@ -185,8 +201,12 @@ export async function idbPutBatch<T>(
     for (const item of items) {
       store.put(item)
     }
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
+    tx.oncomplete = () => {
+      resolve()
+    }
+    tx.onerror = () => {
+      reject(toDatabaseError(tx.error))
+    }
   })
 }
 
@@ -198,8 +218,12 @@ export async function idbDelete(
   return new Promise((resolve, reject) => {
     const tx = db.transaction([storeName], 'readwrite')
     tx.objectStore(storeName).delete(key)
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
+    tx.oncomplete = () => {
+      resolve()
+    }
+    tx.onerror = () => {
+      reject(toDatabaseError(tx.error))
+    }
   })
 }
 
@@ -210,8 +234,12 @@ export async function idbClear(
   return new Promise((resolve, reject) => {
     const tx = db.transaction([storeName], 'readwrite')
     tx.objectStore(storeName).clear()
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
+    tx.oncomplete = () => {
+      resolve()
+    }
+    tx.onerror = () => {
+      reject(toDatabaseError(tx.error))
+    }
   })
 }
 
@@ -224,8 +252,12 @@ export async function idbClearMultiple(
     for (const name of storeNames) {
       tx.objectStore(name).clear()
     }
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
+    tx.oncomplete = () => {
+      resolve()
+    }
+    tx.onerror = () => {
+      reject(toDatabaseError(tx.error))
+    }
   })
 }
 
@@ -241,8 +273,12 @@ export async function idbDeleteBatch(
     for (const key of keys) {
       store.delete(key)
     }
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
+    tx.oncomplete = () => {
+      resolve()
+    }
+    tx.onerror = () => {
+      reject(toDatabaseError(tx.error))
+    }
   })
 }
 
@@ -266,8 +302,12 @@ export async function idbDeleteWhere(
       }
     }
 
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
+    tx.oncomplete = () => {
+      resolve()
+    }
+    tx.onerror = () => {
+      reject(toDatabaseError(tx.error))
+    }
   })
 }
 
@@ -283,8 +323,12 @@ export async function idbGetByIndex<T>(
     const index = store.index(indexName)
     const request = index.getAll(key)
 
-    tx.oncomplete = () => resolve(request.result as T[])
-    tx.onerror = () => reject(tx.error)
+    tx.oncomplete = () => {
+      resolve(request.result as T[])
+    }
+    tx.onerror = () => {
+      reject(toDatabaseError(tx.error))
+    }
   })
 }
 
@@ -300,7 +344,11 @@ export async function idbGetKeysByIndex(
     const index = store.index(indexName)
     const request = index.getAllKeys(key)
 
-    tx.oncomplete = () => resolve(request.result)
-    tx.onerror = () => reject(tx.error)
+    tx.oncomplete = () => {
+      resolve(request.result)
+    }
+    tx.onerror = () => {
+      reject(toDatabaseError(tx.error))
+    }
   })
 }

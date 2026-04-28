@@ -133,7 +133,9 @@ function useFocusTrap(
     )
     firstFocusable?.focus()
 
-    return () => container.removeEventListener('keydown', handleKeyDown)
+    return () => {
+      container.removeEventListener('keydown', handleKeyDown)
+    }
   }, [ref, isActive, onEscape])
 }
 
@@ -155,11 +157,13 @@ export function WindowControls() {
     modals.open(modal)
   }
 
-  const closeSettings = useCallback(() => setSettingsOpen(false), [])
+  const closeSettings = useCallback(() => {
+    setSettingsOpen(false)
+  }, [])
 
   useEffect(() => {
     if (!window.electronAPI) return
-    window.electronAPI.windowIsMaximized().then(setIsMaximized)
+    void window.electronAPI.windowIsMaximized().then(setIsMaximized)
     return window.electronAPI.onWindowMaximizeChange(setIsMaximized)
   }, [])
 
@@ -173,7 +177,9 @@ export function WindowControls() {
     >
       {abyssalSyncing && (
         <button
-          onClick={() => modals.open('abyssal')}
+          onClick={() => {
+            modals.open('abyssal')
+          }}
           aria-label={t('accessibility.abyssalSyncInProgress')}
           className="flex h-10 items-center gap-1.5 px-3 text-xs text-content-secondary hover:bg-surface-tertiary hover:text-content"
         >
@@ -187,7 +193,9 @@ export function WindowControls() {
       )}
       <div ref={settingsPanelRef} className="relative">
         <button
-          onClick={() => setSettingsOpen(!settingsOpen)}
+          onClick={() => {
+            setSettingsOpen(!settingsOpen)
+          }}
           aria-label={t('settings.title')}
           aria-haspopup="menu"
           aria-expanded={settingsOpen}
@@ -212,7 +220,9 @@ export function WindowControls() {
                 </label>
                 <select
                   value={theme}
-                  onChange={(e) => setTheme(e.target.value as typeof theme)}
+                  onChange={(e) => {
+                    setTheme(e.target.value as typeof theme)
+                  }}
                   className="w-full rounded border border-border bg-surface-tertiary px-2 py-1.5 text-sm text-content-secondary focus:border-accent focus:outline-hidden"
                 >
                   {THEME_OPTIONS.map((opt) => (
@@ -228,9 +238,9 @@ export function WindowControls() {
                 </label>
                 <select
                   value={language}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setLanguage(e.target.value as typeof language)
-                  }
+                  }}
                   className="w-full rounded border border-border bg-surface-tertiary px-2 py-1.5 text-sm text-content-secondary focus:border-accent focus:outline-hidden"
                 >
                   {LANGUAGE_OPTIONS.map((opt) => (
@@ -243,28 +253,60 @@ export function WindowControls() {
               <div className="my-2 border-t border-border" />
               <MenuItem
                 icon={Package}
-                onClick={() => openModal('assetSettings')}
+                onClick={() => {
+                  openModal('assetSettings')
+                }}
               >
                 {t('settings.assetView')}
               </MenuItem>
-              <MenuItem icon={Map} onClick={() => openModal('mapSettings')}>
+              <MenuItem
+                icon={Map}
+                onClick={() => {
+                  openModal('mapSettings')
+                }}
+              >
                 {t('settings.mapRouting')}
               </MenuItem>
               <div className="my-2 border-t border-border" />
-              <MenuItem icon={Sparkles} onClick={() => openModal('abyssal')}>
+              <MenuItem
+                icon={Sparkles}
+                onClick={() => {
+                  openModal('abyssal')
+                }}
+              >
                 {t('settings.abyssalPricing')}
               </MenuItem>
               <div className="my-2 border-t border-border" />
-              <MenuItem icon={History} onClick={() => openModal('changelog')}>
+              <MenuItem
+                icon={History}
+                onClick={() => {
+                  openModal('changelog')
+                }}
+              >
                 {t('settings.changelog')}
               </MenuItem>
-              <MenuItem icon={Info} onClick={() => openModal('credits')}>
+              <MenuItem
+                icon={Info}
+                onClick={() => {
+                  openModal('credits')
+                }}
+              >
                 {t('settings.credits')}
               </MenuItem>
-              <MenuItem icon={Heart} onClick={() => openModal('support')}>
+              <MenuItem
+                icon={Heart}
+                onClick={() => {
+                  openModal('support')
+                }}
+              >
                 {t('settings.supportUs')}
               </MenuItem>
-              <MenuItem icon={Users} onClick={() => openModal('supporters')}>
+              <MenuItem
+                icon={Users}
+                onClick={() => {
+                  openModal('supporters')
+                }}
+              >
                 {t('settings.supporters')}
               </MenuItem>
               <div className="my-2 border-t border-border" />
@@ -274,7 +316,12 @@ export function WindowControls() {
               >
                 {t('settings.openLogsFolder')}
               </MenuItem>
-              <MenuItem icon={Bug} onClick={() => openModal('bugReport')}>
+              <MenuItem
+                icon={Bug}
+                onClick={() => {
+                  openModal('bugReport')
+                }}
+              >
                 {t('settings.reportBug')}
               </MenuItem>
               <div className="my-2 border-t border-border" />
@@ -291,7 +338,9 @@ export function WindowControls() {
               <MenuItem
                 icon={Trash2}
                 variant="danger"
-                onClick={() => openModal('clearCache')}
+                onClick={() => {
+                  openModal('clearCache')
+                }}
               >
                 {t('settings.clearCache')}
               </MenuItem>
@@ -301,39 +350,57 @@ export function WindowControls() {
       </div>
       <ChangelogModal
         open={modals.isOpen('changelog')}
-        onOpenChange={(open) => modals.setOpen('changelog', open)}
+        onOpenChange={(open) => {
+          modals.setOpen('changelog', open)
+        }}
       />
       <CreditsModal
         open={modals.isOpen('credits')}
-        onOpenChange={(open) => modals.setOpen('credits', open)}
+        onOpenChange={(open) => {
+          modals.setOpen('credits', open)
+        }}
       />
       <SupportModal
         open={modals.isOpen('support')}
-        onOpenChange={(open) => modals.setOpen('support', open)}
+        onOpenChange={(open) => {
+          modals.setOpen('support', open)
+        }}
       />
       <SupportersModal
         open={modals.isOpen('supporters')}
-        onOpenChange={(open) => modals.setOpen('supporters', open)}
+        onOpenChange={(open) => {
+          modals.setOpen('supporters', open)
+        }}
       />
       <ClearCacheModal
         open={modals.isOpen('clearCache')}
-        onOpenChange={(open) => modals.setOpen('clearCache', open)}
+        onOpenChange={(open) => {
+          modals.setOpen('clearCache', open)
+        }}
       />
       <AbyssalSyncModal
         open={modals.isOpen('abyssal')}
-        onOpenChange={(open) => modals.setOpen('abyssal', open)}
+        onOpenChange={(open) => {
+          modals.setOpen('abyssal', open)
+        }}
       />
       <BugReportModal
         open={modals.isOpen('bugReport')}
-        onOpenChange={(open) => modals.setOpen('bugReport', open)}
+        onOpenChange={(open) => {
+          modals.setOpen('bugReport', open)
+        }}
       />
       <AssetSettingsModal
         open={modals.isOpen('assetSettings')}
-        onOpenChange={(open) => modals.setOpen('assetSettings', open)}
+        onOpenChange={(open) => {
+          modals.setOpen('assetSettings', open)
+        }}
       />
       <MapSettingsModal
         open={modals.isOpen('mapSettings')}
-        onOpenChange={(open) => modals.setOpen('mapSettings', open)}
+        onOpenChange={(open) => {
+          modals.setOpen('mapSettings', open)
+        }}
       />
       <button
         onClick={() => window.electronAPI?.windowMinimize()}

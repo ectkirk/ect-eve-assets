@@ -183,7 +183,7 @@ export function useCorporationDivisions(owner: Owner | null) {
 
   useEffect(() => {
     if (!initialized) {
-      init()
+      void init()
     }
   }, [initialized, init])
 
@@ -193,7 +193,7 @@ export function useCorporationDivisions(owner: Owner | null) {
       initialized &&
       !divisionsByCorp.has(owner.id)
     ) {
-      fetchForOwner(owner)
+      void fetchForOwner(owner)
     }
   }, [owner, initialized, divisionsByCorp, fetchForOwner])
 

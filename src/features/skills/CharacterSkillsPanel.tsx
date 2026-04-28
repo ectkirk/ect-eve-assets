@@ -100,7 +100,9 @@ export function CharacterSkillsPanel({
         return (
           <div key={group.id}>
             <button
-              onClick={() => toggleGroup(group.id)}
+              onClick={() => {
+                toggleGroup(group.id)
+              }}
               className="flex w-full items-center gap-2 rounded bg-surface-tertiary px-2 py-1.5 text-left hover:bg-surface-tertiary/70"
             >
               <ChevronIcon className="h-4 w-4 shrink-0 text-content-secondary" />

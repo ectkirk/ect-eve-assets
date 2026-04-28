@@ -143,7 +143,9 @@ export function ContractTableRow({
             <TableCell className="py-1.5">
               {contract.type === 'courier' ? (
                 <button
-                  onClick={() => onSelectContract(toDisplayContract(row, t))}
+                  onClick={() => {
+                    onSelectContract(toDisplayContract(row, t))
+                  }}
                   className="hover:text-link text-accent"
                 >
                   {t('types.courier')}
@@ -153,7 +155,9 @@ export function ContractTableRow({
               ) : (
                 <div>
                   <button
-                    onClick={() => onSelectContract(toDisplayContract(row, t))}
+                    onClick={() => {
+                      onSelectContract(toDisplayContract(row, t))
+                    }}
                     className="flex items-center gap-2 hover:text-link text-accent"
                   >
                     {hasMultipleItems ? (
@@ -277,37 +281,37 @@ export function ContractTableRow({
       </ContextMenuTrigger>
       <ContextMenuContent>
         <ContextMenuItem
-          onClick={() =>
+          onClick={() => {
             onOpenContractIngame({
               contractId: contract.contract_id,
               ownerId: row.ownerId,
               ownerType: row.ownerType,
               availability: contract.availability,
             })
-          }
+          }}
         >
           {tCommon('contextMenu.openContractIngame')}
         </ContextMenuItem>
         {contract.start_location_id && (
           <ContextMenuItem
-            onClick={() =>
+            onClick={() => {
               onSetWaypoint({
                 locationId: contract.start_location_id!,
                 locationName: row.locationName,
               })
-            }
+            }}
           >
             {tCommon('contextMenu.setWaypoint')}
           </ContextMenuItem>
         )}
         {contract.type === 'courier' && contract.end_location_id && (
           <ContextMenuItem
-            onClick={() =>
+            onClick={() => {
               onSetWaypoint({
                 locationId: contract.end_location_id!,
                 locationName: row.endLocationName,
               })
-            }
+            }}
           >
             {tCommon('contextMenu.setWaypointDestination')}
           </ContextMenuItem>

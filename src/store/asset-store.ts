@@ -231,7 +231,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
 
         if (abyssalItemIds.length > 0) {
           const { usePriceStore } = await import('./price-store')
-          usePriceStore.getState().ensureJitaPrices([], abyssalItemIds)
+          void usePriceStore.getState().ensureJitaPrices([], abyssalItemIds)
         }
       } catch (err) {
         logger.error('Failed to load assets from DB', getErrorForLog(err), {
@@ -542,7 +542,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
 
     logger.info('Assets removed for owner', { module: 'AssetStore', ownerKey })
 
-    get().pruneStaleMetadata()
+    void get().pruneStaleMetadata()
   },
 
   pruneStaleMetadata: async () => {

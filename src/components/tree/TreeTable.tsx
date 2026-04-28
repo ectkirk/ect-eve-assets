@@ -26,7 +26,7 @@ import { flattenTree, getAllNodeIds, collectDescendantItems } from '@/lib/tree'
 import { cn } from '@/lib/utils'
 import { useFixedVirtualRows } from '@/hooks/use-fixed-virtual-rows'
 
-const LOCATION_NODE_TYPES: Set<TreeNodeType> = new Set([
+const LOCATION_NODE_TYPES = new Set<TreeNodeType>([
   'station',
   'office',
   'division',
@@ -219,7 +219,9 @@ export function TreeTable({
 
   useEffect(() => {
     setColumns(getColumnsForDropdown())
-    return () => setColumns([])
+    return () => {
+      setColumns([])
+    }
   }, [getColumnsForDropdown, setColumns])
 
   useEffect(() => {
@@ -239,7 +241,9 @@ export function TreeTable({
       },
     })
 
-    return () => setExpandCollapse(null)
+    return () => {
+      setExpandCollapse(null)
+    }
   }, [
     hasExpandableNodes,
     isAllExpanded,

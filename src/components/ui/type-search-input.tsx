@@ -44,7 +44,9 @@ const SearchResult = memo(function SearchResult({
       className={`flex items-center gap-2 px-3 py-1.5 cursor-pointer ${
         isHighlighted ? 'bg-surface-tertiary' : 'hover:bg-surface-tertiary'
       }`}
-      onClick={() => onSelect(type)}
+      onClick={() => {
+        onSelect(type)
+      }}
     >
       <TypeIcon typeId={type.id} categoryId={type.categoryId} size="sm" />
       <span className="text-sm truncate">{type.name}</span>
@@ -128,7 +130,9 @@ export function TypeSearchInput({
     }
 
     document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
   }, [isOpen])
 
   const valueId = value?.id ?? null
@@ -253,7 +257,9 @@ export function TypeSearchInput({
           }
           placeholder={t('search.placeholder')}
           value={inputValue}
-          onChange={(e) => handleChange(e.target.value)}
+          onChange={(e) => {
+            handleChange(e.target.value)
+          }}
           onFocus={handleFocus}
           onKeyDown={handleKeyDown}
           className="w-full rounded border border-border bg-surface-tertiary pl-8 pr-7 py-1.5 text-sm placeholder-content-muted focus:border-accent focus:outline-hidden"

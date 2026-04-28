@@ -70,7 +70,7 @@ export function OwnerManagementModal({
   const syncPause = useESIPauseStore((s) => s.sync)
 
   useEffect(() => {
-    if (open) syncPause()
+    if (open) void syncPause()
   }, [open, syncPause])
 
   const ownersRecord = useAuthStore((state) => state.owners)
@@ -254,7 +254,7 @@ export function OwnerManagementModal({
   }
 
   const handleCancelAuth = () => {
-    window.electronAPI?.cancelAuth()
+    void window.electronAPI?.cancelAuth()
   }
 
   const handleRemoveOwnerClick = (owner: Owner, e: React.MouseEvent) => {
@@ -408,9 +408,9 @@ export function OwnerManagementModal({
               type="text"
               placeholder={tc('search.placeholder')}
               value={searchQuery}
-              onChange={(e) =>
+              onChange={(e) => {
                 dispatch({ type: 'SET_SEARCH', query: e.target.value })
-              }
+              }}
               className="w-full rounded-md border border-border bg-surface-secondary py-2 pl-10 pr-4 text-sm text-content placeholder:text-content-muted focus:border-accent focus:outline-hidden focus:ring-1 focus:ring-accent"
             />
           </div>
@@ -470,8 +470,12 @@ export function OwnerManagementModal({
                           isRefreshingRoles={refreshingRolesOwner === charKey}
                           hasDirectorRole={hasDirector}
                           hasCorporation={corpAlreadyAdded}
-                          onToggle={() => handleToggleOwner(character)}
-                          onRemove={(e) => handleRemoveOwnerClick(character, e)}
+                          onToggle={() => {
+                            handleToggleOwner(character)
+                          }}
+                          onRemove={(e) => {
+                            handleRemoveOwnerClick(character, e)
+                          }}
                           onReauth={(e) => handleReauth(character, e)}
                           onRefreshRoles={() => handleRefreshRoles(character)}
                           onAddCorporation={() =>
@@ -487,8 +491,12 @@ export function OwnerManagementModal({
                             )}
                             disabled={isBusy}
                             indented
-                            onToggle={() => handleToggleOwner(corp)}
-                            onRemove={(e) => handleRemoveOwnerClick(corp, e)}
+                            onToggle={() => {
+                              handleToggleOwner(corp)
+                            }}
+                            onRemove={(e) => {
+                              handleRemoveOwnerClick(corp, e)
+                            }}
                             onReauth={(e) => handleReauth(corp, e)}
                           />
                         ))}
@@ -580,9 +588,9 @@ export function OwnerManagementModal({
 
         <ConfirmDialog
           open={showLogoutAllConfirm}
-          onOpenChange={(open) =>
+          onOpenChange={(open) => {
             dispatch({ type: open ? 'SHOW_LOGOUT_ALL' : 'HIDE_LOGOUT_ALL' })
-          }
+          }}
           title={t('ownerModal.logoutAllTitle')}
           description={t('ownerModal.logoutAllConfirm')}
           confirmLabel={t('ownerModal.logoutAll')}

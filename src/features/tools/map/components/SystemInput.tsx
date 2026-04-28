@@ -118,7 +118,9 @@ export function SystemInput({
         </div>
       ) : (
         <button
-          onClick={() => setIsEditing(true)}
+          onClick={() => {
+            setIsEditing(true)
+          }}
           className="flex-1 text-left text-sm text-content-secondary hover:text-content-primary"
         >
           {selectedName}

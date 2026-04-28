@@ -20,7 +20,7 @@ function StateBadge({ state }: { state: IncursionInfo['state'] }) {
     ['mobilizing', 'bg-orange-700 text-orange-100'],
     ['withdrawing', 'bg-green-700 text-green-100'],
   ])
-  const bg = colors.get(state) ?? colors.get('established')
+  const bg = colors.get(state) ?? colors.get('established') ?? ''
   return (
     <span className={`rounded px-1.5 text-xs font-medium capitalize ${bg}`}>
       {state}
@@ -61,9 +61,9 @@ export const MapIncursionPanel = memo(function MapIncursionPanel({
               <div
                 key={inc.constellationId}
                 className="cursor-context-menu rounded border border-border bg-surface-primary p-2 hover:bg-surface-tertiary"
-                onContextMenu={(e) =>
+                onContextMenu={(e) => {
                   openContextMenu(e, inc.stagingSystemId, systemName)
-                }
+                }}
               >
                 <div className="mb-1 flex items-center justify-between">
                   <div className="flex items-center gap-0.5 truncate">

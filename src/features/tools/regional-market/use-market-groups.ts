@@ -73,7 +73,7 @@ export function useMarketGroups(): UseMarketGroupsResult {
       }
     }
 
-    load()
+    void load()
     return () => {
       cancelled = true
     }

@@ -127,7 +127,9 @@ export function MultiSelectDropdown({
       <button
         ref={buttonRef}
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          setIsOpen(!isOpen)
+        }}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         className="flex items-center gap-1 text-xs bg-surface-secondary border border-border rounded px-2 py-1 hover:bg-surface-tertiary"
@@ -182,7 +184,9 @@ export function MultiSelectDropdown({
                 role="option"
                 aria-selected={isSelected}
                 tabIndex={-1}
-                onClick={() => toggleOption(option.value)}
+                onClick={() => {
+                  toggleOption(option.value)
+                }}
                 className={cn(
                   'flex items-center gap-2 w-full px-2 py-1.5 text-left text-xs cursor-pointer',
                   isFocused

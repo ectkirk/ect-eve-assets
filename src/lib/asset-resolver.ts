@@ -81,7 +81,7 @@ export interface ResolutionContext {
 }
 
 export function buildAssetLookupMap(
-  assetsByOwner: Array<{ owner: Owner; assets: ESIAsset[] }>
+  assetsByOwner: { owner: Owner; assets: ESIAsset[] }[]
 ): AssetLookupMap {
   const itemIdToAsset = new Map<number, ESIAsset>()
   const itemIdToOwner = new Map<number, Owner>()
@@ -319,7 +319,7 @@ export function resolveAsset(
 }
 
 export function resolveAllAssets(
-  assetsByOwner: Array<{ owner: Owner; assets: ESIAsset[] }>,
+  assetsByOwner: { owner: Owner; assets: ESIAsset[] }[],
   context: ResolutionContext
 ): ResolvedAsset[] {
   const lookupMap = buildAssetLookupMap(assetsByOwner)

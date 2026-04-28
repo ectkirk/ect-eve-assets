@@ -96,7 +96,9 @@ export function OwnerButton() {
   return (
     <>
       <button
-        onClick={() => setModalOpen(true)}
+        onClick={() => {
+          setModalOpen(true)
+        }}
         className="flex items-center gap-2 rounded px-2 py-1 hover:bg-surface-tertiary"
       >
         {hasAuthFailure && (

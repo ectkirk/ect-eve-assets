@@ -165,24 +165,38 @@ function OrderRowWithContext({
           <OrderRowCells
             row={row}
             show={show}
-            onItemDoubleClick={() =>
+            onItemDoubleClick={() => {
               onItemDoubleClick(row.typeId, row.typeName)
-            }
+            }}
           />
         </TableRow>
       </ContextMenuTrigger>
       <ContextMenuContent>
-        <ContextMenuItem onClick={() => navigateToType(row.typeId)}>
+        <ContextMenuItem
+          onClick={() => {
+            navigateToType(row.typeId)
+          }}
+        >
           <TranslatedContextMenuText labelKey="contextMenu.viewInMarket" />
         </ContextMenuItem>
-        <ContextMenuItem onClick={() => onOpenMarket(row.typeId, row.typeName)}>
+        <ContextMenuItem
+          onClick={() => {
+            onOpenMarket(row.typeId, row.typeName)
+          }}
+        >
           <TranslatedContextMenuText labelKey="contextMenu.openMarketIngame" />
         </ContextMenuItem>
-        <ContextMenuItem onClick={() => navigateToReference(row.typeId)}>
+        <ContextMenuItem
+          onClick={() => {
+            navigateToReference(row.typeId)
+          }}
+        >
           <TranslatedContextMenuText labelKey="contextMenu.viewDetails" />
         </ContextMenuItem>
         <ContextMenuItem
-          onClick={() => onSetWaypoint(row.locationId, row.locationName)}
+          onClick={() => {
+            onSetWaypoint(row.locationId, row.locationName)
+          }}
         >
           <TranslatedContextMenuText labelKey="contextMenu.setWaypoint" />
         </ContextMenuItem>

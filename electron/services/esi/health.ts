@@ -11,18 +11,18 @@ import {
 import { isAbortError } from '../fetch-utils.js'
 
 interface HealthApiResponse {
-  routes: Array<{
+  routes: {
     method: string
     path: string
     status: string
-  }>
+  }[]
 }
 
 export class ESIHealthChecker {
   private cache: ESIHealthStatus | null = null
   private fetchPromise: Promise<ESIHealthStatus> | null = null
   private userAgent: string
-  private baseHealthMap: Map<string, ESIRouteStatus> = new Map()
+  private baseHealthMap = new Map<string, ESIRouteStatus>()
 
   constructor(appVersion: string) {
     this.userAgent = makeUserAgent(appVersion)
@@ -77,10 +77,9 @@ export class ESIHealthChecker {
 
   private async fetchHealthStatus(): Promise<ESIHealthStatus> {
     const controller = new AbortController()
-    const timeoutId = setTimeout(
-      () => controller.abort(),
-      ESI_CONFIG.healthRequestTimeoutMs
-    )
+    const timeoutId = setTimeout(() => {
+      controller.abort()
+    }, ESI_CONFIG.healthRequestTimeoutMs)
 
     try {
       const response = await fetch(`${ESI_BASE_URL}/meta/status`, {

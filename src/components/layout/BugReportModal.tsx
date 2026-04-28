@@ -74,7 +74,9 @@ export function BugReportModal({ open, onOpenChange }: BugReportModalProps) {
               </p>
             </div>
             <button
-              onClick={() => handleClose(false)}
+              onClick={() => {
+                handleClose(false)
+              }}
               className="w-full rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent/90"
             >
               {tc('buttons.close')}
@@ -97,7 +99,9 @@ export function BugReportModal({ open, onOpenChange }: BugReportModalProps) {
               <input
                 type="text"
                 value={characterName}
-                onChange={(e) => setCharacterName(e.target.value)}
+                onChange={(e) => {
+                  setCharacterName(e.target.value)
+                }}
                 placeholder={t('bugReport.characterPlaceholder')}
                 className="w-full rounded-lg border border-border bg-surface-tertiary px-3 py-2 text-content placeholder:text-content-muted focus:border-accent focus:outline-none"
               />
@@ -109,7 +113,9 @@ export function BugReportModal({ open, onOpenChange }: BugReportModalProps) {
               </label>
               <textarea
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) => {
+                  setDescription(e.target.value)
+                }}
                 placeholder={t('bugReport.descriptionPlaceholder')}
                 rows={5}
                 required

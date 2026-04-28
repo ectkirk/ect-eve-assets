@@ -292,7 +292,9 @@ export function CharacterMailPanel({
                       {conv.mails.map((item) => (
                         <button
                           key={item.mail.mail_id}
-                          onClick={() => onSelectMail(item)}
+                          onClick={() => {
+                            onSelectMail(item)
+                          }}
                           className="flex w-full items-center gap-2 rounded bg-surface-tertiary/50 px-2 py-1.5 text-left hover:bg-surface-tertiary"
                         >
                           <div className="min-w-0 flex-1">

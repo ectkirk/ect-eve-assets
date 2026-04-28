@@ -28,10 +28,10 @@ export interface IndexedStargate {
 
 export class SpatialIndex {
   private cellSize: number
-  private grid: Map<string, IndexedSystem[]> = new Map()
+  private grid = new Map<string, IndexedSystem[]>()
   private allSystems: IndexedSystem[] = []
-  private systemById: Map<number, IndexedSystem> = new Map()
-  private regionCentroids: Map<number, RegionCentroid> = new Map()
+  private systemById = new Map<number, IndexedSystem>()
+  private regionCentroids = new Map<number, RegionCentroid>()
 
   constructor(cellSize = 20) {
     this.cellSize = cellSize

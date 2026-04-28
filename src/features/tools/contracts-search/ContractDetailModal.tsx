@@ -200,10 +200,10 @@ export function ContractDetailModal({
 
   useEffect(() => {
     if (!preloadedItems) {
-      fetchItems(contract.contractId)
+      void fetchItems(contract.contractId)
     }
     if (needsFetchBids) {
-      fetchBids(contract.contractId)
+      void fetchBids(contract.contractId)
     }
   }, [
     contract.contractId,
@@ -218,7 +218,9 @@ export function ContractDetailModal({
       if (e.key === 'Escape') onClose()
     }
     window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
+    return () => {
+      window.removeEventListener('keydown', handler)
+    }
   }, [onClose])
 
   const title = contract.topItemName ?? t('contractsSearch.row.multipleItems')
@@ -257,7 +259,9 @@ export function ContractDetailModal({
     >
       <div
         className="flex max-h-[80vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-xl"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation()
+        }}
       >
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <div className="flex items-center gap-3">

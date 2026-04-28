@@ -15,7 +15,7 @@ import { SecurityBadge } from './MapRouteControls'
 interface IgnoredSystemsModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  systems: Array<{ id: number; name: string; security: number }>
+  systems: { id: number; name: string; security: number }[]
 }
 
 export function IgnoredSystemsModal({
@@ -76,7 +76,9 @@ export function IgnoredSystemsModal({
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value)
+              }}
               placeholder={t('map.ignoredSystems.searchPlaceholder')}
               className="w-full rounded border border-border bg-surface-primary py-2 pl-9 pr-3 text-sm focus:border-accent focus:outline-none"
             />
@@ -108,7 +110,9 @@ export function IgnoredSystemsModal({
                 type="checkbox"
                 checked={avoidIncursions}
                 disabled={!showIncursions}
-                onChange={(e) => setAvoidIncursions(e.target.checked)}
+                onChange={(e) => {
+                  setAvoidIncursions(e.target.checked)
+                }}
                 className="h-3.5 w-3.5 rounded border-border text-accent focus:ring-accent disabled:cursor-not-allowed"
               />
               <span className="text-sm text-content-secondary">
@@ -127,7 +131,9 @@ export function IgnoredSystemsModal({
                 type="checkbox"
                 checked={avoidInsurgencies}
                 disabled={!showInsurgencies}
-                onChange={(e) => setAvoidInsurgencies(e.target.checked)}
+                onChange={(e) => {
+                  setAvoidInsurgencies(e.target.checked)
+                }}
                 className="h-3.5 w-3.5 rounded border-border text-accent focus:ring-accent disabled:cursor-not-allowed"
               />
               <span className="text-sm text-content-secondary">
@@ -171,7 +177,9 @@ export function IgnoredSystemsModal({
                     <SecurityBadge security={system.security} />
                   </div>
                   <button
-                    onClick={() => removeIgnored(system.id)}
+                    onClick={() => {
+                      removeIgnored(system.id)
+                    }}
                     className="rounded p-1 text-content-muted hover:bg-surface-tertiary hover:text-semantic-danger"
                   >
                     <X className="h-4 w-4" />

@@ -130,7 +130,7 @@ async function transformBuySellContracts(
         estValue: null as number | null,
         estRequestedValue: null as number | null,
         isWantToBuy,
-      } as SearchContract
+      }
     })
     .filter((c) => {
       const ct = filters.contractType

@@ -66,15 +66,15 @@ export function WalletTab() {
   const isUpdating = assetsUpdating || walletUpdating
 
   useEffect(() => {
-    init()
-    divisionsInit()
+    void init()
+    void divisionsInit()
   }, [init, divisionsInit])
 
   useEffect(() => {
     if (!divisionsInitialized) return
     for (const owner of owners) {
       if (owner.type === 'corporation') {
-        fetchDivisionsForOwner(owner)
+        void fetchDivisionsForOwner(owner)
       }
     }
   }, [divisionsInitialized, owners, fetchDivisionsForOwner])
@@ -134,7 +134,9 @@ export function WalletTab() {
 
   useEffect(() => {
     setTotalValue({ value: totalBalance })
-    return () => setTotalValue(null)
+    return () => {
+      setTotalValue(null)
+    }
   }, [totalBalance, setTotalValue])
 
   const loadingState = TabLoadingState({
@@ -208,7 +210,7 @@ interface WalletRowProps {
   ownerTotal: number
   toggle: (key: string) => void
   getWalletName: (corporationId: number, division: number) => string | undefined
-  t: (key: string, options?: Record<string, unknown> | undefined) => string
+  t: (key: string, options?: Record<string, unknown>) => string
 }
 
 function WalletRow({

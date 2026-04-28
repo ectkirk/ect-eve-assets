@@ -72,21 +72,25 @@ export function ClonesTab() {
   )
 
   useEffect(() => {
-    init().then(() => update())
+    void init().then(() => update())
   }, [init, update])
 
   const handleRefresh = useCallback(() => {
-    update(true)
+    void update(true)
   }, [update])
 
   useEffect(() => {
     setSearchPlaceholder(tc('search.placeholder'))
-    return () => setSearchPlaceholder(null)
+    return () => {
+      setSearchPlaceholder(null)
+    }
   }, [setSearchPlaceholder, tc])
 
   useEffect(() => {
     setRefreshAction({ onRefresh: handleRefresh, isRefreshing: isUpdating })
-    return () => setRefreshAction(null)
+    return () => {
+      setRefreshAction(null)
+    }
   }, [setRefreshAction, handleRefresh, isUpdating])
 
   useEffect(() => {
@@ -98,7 +102,9 @@ export function ClonesTab() {
       value: sortBy,
       onChange: setSortBy,
     })
-    return () => setCharacterSort(null)
+    return () => {
+      setCharacterSort(null)
+    }
   }, [setCharacterSort, setSortBy, sortBy, tc])
 
   const structures = useReferenceCacheStore((s) => s.structures)

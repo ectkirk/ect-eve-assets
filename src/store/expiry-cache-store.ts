@@ -30,11 +30,11 @@ type RefreshCallback = (ownerKey: string, endpoint: string) => Promise<void>
 interface ExpiryCacheState {
   endpoints: Map<string, EndpointExpiry>
   callbacks: Map<string, RefreshCallback>
-  refreshQueue: Array<{
+  refreshQueue: {
     ownerKey: string
     endpoint: string
     deferCount?: number
-  }>
+  }[]
   initialized: boolean
   isProcessingQueue: boolean
   pollingGeneration: number
@@ -123,7 +123,7 @@ async function saveToDB(key: string, expiry: EndpointExpiry): Promise<void> {
     key,
     expiresAt: expiry.expiresAt,
     etag: expiry.etag,
-  } as StoredExpiry)
+  })
 }
 
 async function deleteFromDBWhere(
@@ -231,7 +231,9 @@ function processQueue() {
     useExpiryCacheStore.setState({ refreshQueue: refreshQueue.slice(1) })
 
     if (!item || skippedOwners.has(item.ownerKey)) {
-      queueMicrotask(processNext)
+      queueMicrotask(() => {
+        void processNext()
+      })
       return
     }
 
@@ -242,7 +244,9 @@ function processQueue() {
         module: 'ExpiryCacheStore',
         ownerKey: item.ownerKey,
       })
-      queueMicrotask(processNext)
+      queueMicrotask(() => {
+        void processNext()
+      })
       return
     }
 
@@ -289,10 +293,14 @@ function processQueue() {
       }
     }
 
-    queueMicrotask(processNext)
+    queueMicrotask(() => {
+      void processNext()
+    })
   }
 
-  queueMicrotask(processNext)
+  queueMicrotask(() => {
+    void processNext()
+  })
 }
 
 export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
@@ -319,7 +327,7 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
         set({ endpoints, initialized: true })
 
         const now = Date.now()
-        const expired: Array<{ ownerKey: string; endpoint: string }> = []
+        const expired: { ownerKey: string; endpoint: string }[] = []
 
         for (const [key, expiry] of endpoints) {
           if (expiry.expiresAt <= now) {

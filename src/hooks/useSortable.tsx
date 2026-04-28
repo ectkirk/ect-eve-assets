@@ -60,7 +60,9 @@ export function SortableHeader<T extends string>({
   return (
     <TableHead
       className={`cursor-pointer select-none hover:bg-surface-tertiary/50 ${className}`}
-      onClick={() => onSort(column)}
+      onClick={() => {
+        onSort(column)
+      }}
     >
       <div
         className={`flex items-center gap-1 ${isRightAligned ? 'justify-end' : ''}`}

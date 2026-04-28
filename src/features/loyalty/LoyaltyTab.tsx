@@ -41,7 +41,7 @@ export function LoyaltyTab() {
   const initialized = useLoyaltyStore((s) => s.initialized)
 
   useEffect(() => {
-    init().then(() => update())
+    void init().then(() => update())
   }, [init, update])
 
   const corporations = useReferenceCacheStore((s) => s.corporations)
@@ -141,12 +141,16 @@ export function LoyaltyTab() {
 
   useEffect(() => {
     setSearchPlaceholder(tc('search.placeholder'))
-    return () => setSearchPlaceholder(null)
+    return () => {
+      setSearchPlaceholder(null)
+    }
   }, [setSearchPlaceholder, tc])
 
   useEffect(() => {
     setLoyaltyCorporations({ corporations: corpTotals })
-    return () => setLoyaltyCorporations(null)
+    return () => {
+      setLoyaltyCorporations(null)
+    }
   }, [corpTotals, setLoyaltyCorporations])
 
   const charactersNeedingReauth = useMemo(

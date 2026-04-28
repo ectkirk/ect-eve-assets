@@ -31,7 +31,9 @@ export function LanguageSelectionModal({
           {LANGUAGE_OPTIONS.map((option) => (
             <button
               key={option.value}
-              onClick={() => setSelected(option.value)}
+              onClick={() => {
+                setSelected(option.value)
+              }}
               className={`rounded-md border px-3 py-2 text-sm transition-colors ${
                 selected === option.value
                   ? 'border-accent bg-accent/10 text-accent'
@@ -49,7 +51,9 @@ export function LanguageSelectionModal({
         </div>
 
         <button
-          onClick={() => onSelect(selected)}
+          onClick={() => {
+            onSelect(selected)
+          }}
           className="mt-6 w-full rounded-md bg-accent py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
         >
           {t('languageSelect.continue')}

@@ -26,7 +26,7 @@ export function getValidDefaultMarketCharacterId(): number | null {
 
   const { owners, ownerHasScope } = useAuthStore.getState()
   const owner = owners[ownerKey('character', defaultMarketCharacterId)]
-  if (!owner || owner.type !== 'character' || owner.authFailed) return null
+  if (owner?.type !== 'character' || owner.authFailed) return null
   if (
     !ownerHasScope(
       ownerKey('character', defaultMarketCharacterId),

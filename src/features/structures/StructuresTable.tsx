@@ -49,7 +49,12 @@ const DEFAULT_VISIBILITY: Record<string, boolean> = Object.fromEntries(
 function loadColumnVisibility(): Record<string, boolean> {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) return { ...DEFAULT_VISIBILITY, ...JSON.parse(stored) }
+    if (stored) {
+      return {
+        ...DEFAULT_VISIBILITY,
+        ...(JSON.parse(stored) as Record<string, boolean>),
+      }
+    }
   } catch {
     return DEFAULT_VISIBILITY
   }
@@ -102,11 +107,14 @@ export function StructuresTable({
       id: col.id,
       label: col.label,
       visible: columnVisibility[col.id] ?? true,
-      toggle: () =>
-        setColumnVisibility((prev) => ({ ...prev, [col.id]: !prev[col.id] })),
+      toggle: () => {
+        setColumnVisibility((prev) => ({ ...prev, [col.id]: !prev[col.id] }))
+      },
     }))
     setColumns(cols)
-    return () => setColumns([])
+    return () => {
+      setColumns([])
+    }
   }, [columnVisibility, setColumns])
 
   const sortedRows = useMemo(() => {
@@ -303,32 +311,44 @@ function StructureRowWithContext({
       <ContextMenuContent>
         {row.kind === 'upwell' && row.structure && (
           <ContextMenuItem
-            onClick={() => onViewStructureInfo(row.structure!, row.owner.name)}
+            onClick={() => {
+              onViewStructureInfo(row.structure!, row.owner.name)
+            }}
           >
             {t('contextMenu.showStructureInfo')}
           </ContextMenuItem>
         )}
         {row.kind === 'pos' && row.starbase && (
           <ContextMenuItem
-            onClick={() => onViewPosInfo(row.starbase!, row.owner.name)}
+            onClick={() => {
+              onViewPosInfo(row.starbase!, row.owner.name)
+            }}
           >
             {t('contextMenu.showPosInfo')}
           </ContextMenuItem>
         )}
         {row.kind === 'poco' && row.customsOffice && (
           <ContextMenuItem
-            onClick={() => onViewPocoInfo(row.customsOffice!, row.owner.name)}
+            onClick={() => {
+              onViewPocoInfo(row.customsOffice!, row.owner.name)
+            }}
           >
             {t('contextMenu.showPocoInfo')}
           </ContextMenuItem>
         )}
         {hasFitting && (
-          <ContextMenuItem onClick={() => onViewFitting(row.treeNode!)}>
+          <ContextMenuItem
+            onClick={() => {
+              onViewFitting(row.treeNode!)
+            }}
+          >
             {t('contextMenu.viewFitting')}
           </ContextMenuItem>
         )}
         <ContextMenuItem
-          onClick={() => onSetWaypoint(row.systemId, row.systemName)}
+          onClick={() => {
+            onSetWaypoint(row.systemId, row.systemName)
+          }}
         >
           {t('contextMenu.setWaypoint')}
         </ContextMenuItem>

@@ -108,7 +108,7 @@ export const useRegionalMarketStore = create<RegionalMarketStore>(
             structures: hydrated.trackedStructures.size,
           })
 
-          get().update()
+          void get().update()
         } catch (err) {
           logger.error(
             'Failed to load regional market from DB',
@@ -217,7 +217,7 @@ export const useRegionalMarketStore = create<RegionalMarketStore>(
           )
         })
 
-        if (state.initialized && !state.isUpdating) get().update()
+        if (state.initialized && !state.isUpdating) void get().update()
       }
     },
 
@@ -340,7 +340,7 @@ export const useRegionalMarketStore = create<RegionalMarketStore>(
           })
         }
 
-        if (state.initialized && !state.isUpdating) get().update()
+        if (state.initialized && !state.isUpdating) void get().update()
       }
     },
 

@@ -189,7 +189,7 @@ export async function resolveNames(
       for (const item of names) {
         namesCache.set(item.id, item)
         results.set(item.id, item)
-        toSave.push(item as CachedName)
+        toSave.push(item)
       }
     } catch {
       logger.warn('Failed to resolve names', {

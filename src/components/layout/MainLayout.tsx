@@ -179,8 +179,12 @@ function TabButtons<T extends string>({
           tabRefs.current.delete(index)
         }
       }}
-      onClick={() => onTabChange(tab)}
-      onKeyDown={(e) => onKeyDown(e, index)}
+      onClick={() => {
+        onTabChange(tab)
+      }}
+      onKeyDown={(e) => {
+        onKeyDown(e, index)
+      }}
       role="tab"
       aria-selected={activeTab === tab}
       aria-controls="main-content"
@@ -214,7 +218,9 @@ function ModeSwitcher({
       {APP_MODE_IDS.map((id) => (
         <button
           key={id}
-          onClick={() => onModeChange(id)}
+          onClick={() => {
+            onModeChange(id)
+          }}
           role="tab"
           aria-selected={mode === id}
           className={`rounded px-3 py-1 text-sm font-medium transition-colors ${
@@ -260,7 +266,7 @@ function ESIPausedIndicator() {
   const sync = useESIPauseStore((s) => s.sync)
 
   useEffect(() => {
-    sync()
+    void sync()
   }, [sync])
 
   if (!isPaused) return null
@@ -398,12 +404,15 @@ function MainLayoutInner() {
     resetSearch()
   }, [mode, activeAssetTab, activeCharacterTab, resetSearch])
 
-  const clearMarketTypeId = useCallback(() => setMarketTypeId(null), [])
-  const clearReferenceTypeId = useCallback(() => setReferenceTypeId(null), [])
-  const clearContractsSearchType = useCallback(
-    () => setContractsSearchType(null),
-    []
-  )
+  const clearMarketTypeId = useCallback(() => {
+    setMarketTypeId(null)
+  }, [])
+  const clearReferenceTypeId = useCallback(() => {
+    setReferenceTypeId(null)
+  }, [])
+  const clearContractsSearchType = useCallback(() => {
+    setContractsSearchType(null)
+  }, [])
 
   const tabRefs = useRef(new Map<number, HTMLButtonElement>())
 
@@ -499,7 +508,9 @@ function MainLayoutInner() {
               tabs={ASSET_TAB_IDS}
               activeTab={activeAssetTab}
               onTabChange={setActiveAssetTab}
-              onKeyDown={(e, i) => handleTabKeyDown(e, ASSET_TAB_IDS, i)}
+              onKeyDown={(e, i) => {
+                handleTabKeyDown(e, ASSET_TAB_IDS, i)
+              }}
               tabRefs={tabRefs}
               getLabel={getTabLabel}
             />
@@ -509,7 +520,9 @@ function MainLayoutInner() {
               tabs={CHARACTER_TAB_IDS}
               activeTab={activeCharacterTab}
               onTabChange={setActiveCharacterTab}
-              onKeyDown={(e, i) => handleTabKeyDown(e, CHARACTER_TAB_IDS, i)}
+              onKeyDown={(e, i) => {
+                handleTabKeyDown(e, CHARACTER_TAB_IDS, i)
+              }}
               tabRefs={tabRefs}
               getLabel={getTabLabel}
             />
@@ -527,8 +540,12 @@ function MainLayoutInner() {
                       tabRefs.current.delete(index)
                     }
                   }}
-                  onClick={() => setActiveBuybackTab(tab)}
-                  onKeyDown={(e) => handleTabKeyDown(e, BUYBACK_TABS, index)}
+                  onClick={() => {
+                    setActiveBuybackTab(tab)
+                  }}
+                  onKeyDown={(e) => {
+                    handleTabKeyDown(e, BUYBACK_TABS, index)
+                  }}
                   role="tab"
                   aria-selected={activeBuybackTab === tab}
                   aria-controls="main-content"
@@ -552,7 +569,9 @@ function MainLayoutInner() {
               tabs={TOOLS_TAB_IDS}
               activeTab={activeToolsTab}
               onTabChange={setActiveToolsTab}
-              onKeyDown={(e, i) => handleTabKeyDown(e, TOOLS_TAB_IDS, i)}
+              onKeyDown={(e, i) => {
+                handleTabKeyDown(e, TOOLS_TAB_IDS, i)
+              }}
               tabRefs={tabRefs}
               getLabel={getTabLabel}
             />
@@ -595,7 +614,9 @@ function MainLayoutInner() {
                 <BuybackTab
                   activeTab={activeBuybackTab}
                   prefillText={buybackPrefill}
-                  onPrefillConsumed={() => setBuybackPrefill(null)}
+                  onPrefillConsumed={() => {
+                    setBuybackPrefill(null)
+                  }}
                 />
               </div>
             </FeatureErrorBoundary>

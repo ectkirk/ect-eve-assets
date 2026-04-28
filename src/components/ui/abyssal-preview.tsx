@@ -29,7 +29,9 @@ export function AbyssalPreview({ itemId, children }: AbyssalPreviewProps) {
             src={`https://mutamarket.com/og/module/${itemId}.png`}
             alt="Abyssal module preview"
             className="rounded"
-            onError={() => setHasError(true)}
+            onError={() => {
+              setHasError(true)
+            }}
           />
         </HoverCard.Content>
       </HoverCard.Portal>

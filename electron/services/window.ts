@@ -34,9 +34,18 @@ const DEFAULT_WINDOW_STATE: WindowState = {
 function loadWindowState(): WindowState {
   try {
     if (pathExists(windowStateFile)) {
-      const data = JSON.parse(readTextFile(windowStateFile))
+      const data = JSON.parse(
+        readTextFile(windowStateFile)
+      ) as Partial<WindowState>
       if (data.width && data.height) {
-        return data
+        const state: WindowState = {
+          width: data.width,
+          height: data.height,
+        }
+        if (data.x !== undefined) state.x = data.x
+        if (data.y !== undefined) state.y = data.y
+        if (data.isMaximized !== undefined) state.isMaximized = data.isMaximized
+        return state
       }
     }
   } catch (err) {
@@ -67,7 +76,7 @@ export function readStorage(): Record<string, unknown> | null {
     if (canEncrypt()) {
       try {
         const decrypted = safeStorage.decryptString(fileData)
-        return JSON.parse(decrypted)
+        return JSON.parse(decrypted) as Record<string, unknown>
       } catch {
         logger.warn('Failed to decrypt storage, deleting corrupted file', {
           module: 'Storage',
@@ -79,7 +88,7 @@ export function readStorage(): Record<string, unknown> | null {
       logger.warn('Encryption not available, using plaintext', {
         module: 'Storage',
       })
-      return JSON.parse(fileData.toString('utf-8'))
+      return JSON.parse(fileData.toString('utf-8')) as Record<string, unknown>
     }
   } catch (err) {
     logger.error('Failed to read storage', err, { module: 'Storage' })
@@ -294,7 +303,7 @@ export function createWindow(
     try {
       const parsed = new URL(url)
       if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
-        shell.openExternal(url)
+        void shell.openExternal(url)
       }
     } catch (err) {
       logger.debug('Invalid URL in window open handler', {
@@ -307,10 +316,10 @@ export function createWindow(
   })
 
   if (VITE_DEV_SERVER_URL) {
-    manager.mainWindow.loadURL(VITE_DEV_SERVER_URL)
+    void manager.mainWindow.loadURL(VITE_DEV_SERVER_URL)
     manager.mainWindow.webContents.openDevTools({ mode: 'detach' })
   } else {
-    manager.mainWindow.loadFile(path.join(RENDERER_DIST, 'index.html'))
+    void manager.mainWindow.loadFile(path.join(RENDERER_DIST, 'index.html'))
   }
 
   setupKeyboardShortcuts(manager.mainWindow)

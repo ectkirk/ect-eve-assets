@@ -10,7 +10,6 @@ import { CheckboxRow } from '@/components/ui/checkbox-row'
 import {
   useAssetSettings,
   ASSET_SETTINGS_CONFIG,
-  type AssetSettingKey,
 } from '@/store/asset-settings-store'
 
 interface AssetSettingsModalProps {
@@ -42,9 +41,9 @@ export function AssetSettingsModal({
               label={t(config.labelKey)}
               description={t(config.descriptionKey)}
               checked={settings[config.key]}
-              onChange={(value) =>
-                settings.setSetting(config.key as AssetSettingKey, value)
-              }
+              onChange={(value) => {
+                settings.setSetting(config.key, value)
+              }}
             />
           ))}
         </div>

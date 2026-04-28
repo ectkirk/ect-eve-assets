@@ -108,7 +108,9 @@ class ErrorBoundary extends Component<
               {this.state.errorInfo?.componentStack}
             </pre>
             <button
-              onClick={() => window.location.reload()}
+              onClick={() => {
+                window.location.reload()
+              }}
               className="mt-4 px-4 py-2 bg-accent rounded hover:bg-accent-hover"
             >
               Reload App
@@ -288,7 +290,9 @@ function App() {
       <div className="flex h-screen flex-col bg-surface text-content">
         <RefDataWarningBanner
           warnings={refDataWarnings}
-          onDismiss={() => setRefDataWarnings([])}
+          onDismiss={() => {
+            setRefDataWarnings([])
+          }}
         />
         <div className="flex-1 overflow-hidden">
           <MainLayout />

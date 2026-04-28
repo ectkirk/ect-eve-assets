@@ -134,7 +134,9 @@ export function IngameActionModal({
                 <div key={char.id} className="flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => handleExecute(char.id)}
+                    onClick={() => {
+                      handleExecute(char.id)
+                    }}
                     className="flex flex-1 items-center gap-3 rounded-md px-3 py-2 text-left transition-colors hover:bg-surface-tertiary"
                   >
                     <OwnerIcon
@@ -147,9 +149,9 @@ export function IngameActionModal({
                   {action === 'market' && (
                     <button
                       type="button"
-                      onClick={() =>
+                      onClick={() => {
                         setDefaultMarketCharacter(isDefault ? null : char.id)
-                      }
+                      }}
                       className="rounded-md p-2 text-content-muted transition-colors hover:bg-surface-tertiary hover:text-content-secondary"
                       title={
                         isDefault

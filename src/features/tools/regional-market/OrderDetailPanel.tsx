@@ -165,7 +165,7 @@ export function OrderDetailPanel({ typeId }: OrderDetailPanelProps) {
 
   useEffect(() => {
     if (typeId && regionId) {
-      fetchOrdersForType(typeId)
+      void fetchOrdersForType(typeId)
     }
   }, [typeId, regionId, fetchOrdersForType])
 

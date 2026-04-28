@@ -6,8 +6,10 @@ export function startInsurgenciesRefreshTimer(
   fetchFn: () => Promise<void>
 ): void {
   if (insurgenciesInterval) return
-  fetchFn()
-  insurgenciesInterval = setInterval(fetchFn, INSURGENCIES_REFRESH_INTERVAL_MS)
+  void fetchFn()
+  insurgenciesInterval = setInterval(() => {
+    void fetchFn()
+  }, INSURGENCIES_REFRESH_INTERVAL_MS)
 }
 
 export function stopInsurgenciesRefreshTimer(): void {

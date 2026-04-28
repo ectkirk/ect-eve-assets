@@ -97,7 +97,12 @@ export const DEFAULT_COLUMN_VISIBILITY: AssetColumnVisibility = {
 export function loadColumnVisibility(): AssetColumnVisibility {
   try {
     const stored = localStorage.getItem(STORAGE_KEY_VISIBILITY)
-    return stored ? JSON.parse(stored) : DEFAULT_COLUMN_VISIBILITY
+    return stored
+      ? {
+          ...DEFAULT_COLUMN_VISIBILITY,
+          ...(JSON.parse(stored) as AssetColumnVisibility),
+        }
+      : DEFAULT_COLUMN_VISIBILITY
   } catch {
     return DEFAULT_COLUMN_VISIBILITY
   }

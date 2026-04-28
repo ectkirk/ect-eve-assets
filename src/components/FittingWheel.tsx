@@ -112,7 +112,7 @@ function SlotIcon({
   module: ModuleItem | undefined
   position: { x: number; y: number }
 }) {
-  if (!module || !module.type_id) {
+  if (!module?.type_id) {
     return (
       <div
         className="absolute"

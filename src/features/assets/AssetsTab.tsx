@@ -114,7 +114,9 @@ export function AssetsTab() {
 
   useEffect(() => {
     setSearchPlaceholder(tCommon('search.placeholder'))
-    return () => setSearchPlaceholder(null)
+    return () => {
+      setSearchPlaceholder(null)
+    }
   }, [setSearchPlaceholder, tCommon])
 
   useEffect(() => {
@@ -305,15 +307,18 @@ export function AssetsTab() {
           id: col.id,
           label: COLUMN_LABELS[col.id] ?? col.id,
           visible,
-          toggle: () =>
+          toggle: () => {
             setColumnVisibility((current) => ({
               ...current,
               [col.id]: !visible,
-            })),
+            }))
+          },
         }
       })
     setColumns(cols)
-    return () => setColumns([])
+    return () => {
+      setColumns([])
+    }
   }, [columnVisibility, setColumns])
 
   useEffect(() => {
@@ -325,7 +330,9 @@ export function AssetsTab() {
         setGroupFilterValue('')
       },
     })
-    return () => setCategoryFilter(null)
+    return () => {
+      setCategoryFilter(null)
+    }
   }, [categories, categoryFilterValue, setCategoryFilter])
 
   useEffect(() => {
@@ -334,7 +341,9 @@ export function AssetsTab() {
       value: groupFilterValue,
       onChange: setGroupFilterValue,
     })
-    return () => setGroupFilter(null)
+    return () => {
+      setGroupFilter(null)
+    }
   }, [filteredGroups, groupFilterValue, setGroupFilter])
 
   useEffect(() => {
@@ -342,17 +351,23 @@ export function AssetsTab() {
       value: assetTypeFilterValue,
       onChange: setAssetTypeFilterValue,
     })
-    return () => setAssetTypeFilter(null)
+    return () => {
+      setAssetTypeFilter(null)
+    }
   }, [assetTypeFilterValue, setAssetTypeFilter])
 
   useEffect(() => {
     setResultCount(sourceCount)
-    return () => setResultCount(null)
+    return () => {
+      setResultCount(null)
+    }
   }, [sourceCount, setResultCount])
 
   useEffect(() => {
     setTotalValue({ value: filteredTotalValue })
-    return () => setTotalValue(null)
+    return () => {
+      setTotalValue(null)
+    }
   }, [filteredTotalValue, setTotalValue])
 
   const tableContainerRef = useRef<HTMLDivElement>(null)
@@ -478,7 +493,9 @@ export function AssetsTab() {
                     >
                       {column.header({
                         isSorted,
-                        toggleSorting: (desc) => toggleSorting(column.id, desc),
+                        toggleSorting: (desc) => {
+                          toggleSorting(column.id, desc)
+                        },
                       })}
                     </div>
                   )
@@ -511,7 +528,9 @@ export function AssetsTab() {
                       aria-selected={isRowSelected}
                       data-index={virtualRow.index}
                       className="contents group cursor-pointer select-none"
-                      onClick={(e) => handleRowClick(rowId, e)}
+                      onClick={(e) => {
+                        handleRowClick(rowId, e)
+                      }}
                     >
                       {visibleColumns.map((column) => (
                         <div
@@ -550,41 +569,43 @@ export function AssetsTab() {
                       </ContextMenuTrigger>
                       <ContextMenuContent>
                         <ContextMenuItem
-                          onClick={() =>
+                          onClick={() => {
                             navigateToContracts(row.typeId, row.typeName)
-                          }
+                          }}
                         >
                           {t('contextMenu.viewContracts')}
                         </ContextMenuItem>
                         {isMarketItem && (
                           <ContextMenuItem
-                            onClick={() => navigateToType(row.typeId)}
+                            onClick={() => {
+                              navigateToType(row.typeId)
+                            }}
                           >
                             {tCommon('contextMenu.viewInMarket')}
                           </ContextMenuItem>
                         )}
                         {isMarketItem && (
                           <ContextMenuItem
-                            onClick={() =>
+                            onClick={() => {
                               setIngameAction({
                                 action: 'market',
                                 targetId: row.typeId,
                                 targetName: row.typeName,
                               })
-                            }
+                            }}
                           >
                             {tCommon('contextMenu.openMarketIngame')}
                           </ContextMenuItem>
                         )}
                         {row.locationId && (
                           <ContextMenuItem
-                            onClick={() =>
+                            onClick={() => {
                               setIngameAction({
                                 action: 'autopilot',
                                 targetId: row.locationId,
                                 targetName: row.locationName,
                               })
-                            }
+                            }}
                           >
                             {tCommon('contextMenu.setWaypoint')}
                           </ContextMenuItem>
@@ -620,20 +641,23 @@ export function AssetsTab() {
                           </ContextMenuItem>
                         )}
                         <ContextMenuItem
-                          onClick={() => navigateToReference(row.typeId)}
+                          onClick={() => {
+                            navigateToReference(row.typeId)
+                          }}
                         >
                           {tCommon('contextMenu.viewDetails')}
                         </ContextMenuItem>
                         {row.parentTypeId && (
                           <ContextMenuItem
-                            onClick={() =>
+                            onClick={() => {
                               navigateToReference(row.parentTypeId!)
-                            }
+                            }}
                           >
                             {tCommon('contextMenu.viewParent', {
-                              name: row.parentCustomName
-                                ? `${row.parentTypeName} (${row.parentCustomName})`
-                                : row.parentTypeName,
+                              name:
+                                row.parentCustomName && row.parentTypeName
+                                  ? `${row.parentTypeName} (${row.parentCustomName})`
+                                  : row.parentTypeName,
                             })}
                           </ContextMenuItem>
                         )}

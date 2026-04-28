@@ -158,7 +158,7 @@ const baseStore = createVisibilityStore<MarketOrder, StoredOrder>({
     for (const { item } of itemsById.values()) {
       activeTypeIds.add(item.type_id)
     }
-    useRegionalMarketStore.getState().syncTypesWithOrders(activeTypeIds)
+    void useRegionalMarketStore.getState().syncTypesWithOrders(activeTypeIds)
   },
   onBeforeOwnerUpdate: (owner, previousVisibility, itemsById) => {
     const ownerKey = `${owner.type}:${owner.id}`
@@ -171,7 +171,8 @@ const baseStore = createVisibilityStore<MarketOrder, StoredOrder>({
   },
   onAfterOwnerUpdate: ({ owner, newItems, itemsById }) => {
     const ownerKey = `${owner.type}:${owner.id}`
-    const previousOrders = previousOrdersByOwner.get(ownerKey) ?? new Map()
+    const previousOrders =
+      previousOrdersByOwner.get(ownerKey) ?? new Map<number, MarketOrder>()
     previousOrdersByOwner.delete(ownerKey)
 
     const newOrderIds = new Set(newItems.map((o) => o.order_id))
@@ -200,7 +201,7 @@ const baseStore = createVisibilityStore<MarketOrder, StoredOrder>({
         .filter((typeId) => !remainingTypeIds.has(typeId))
 
       if (typesToUntrack.length > 0) {
-        useRegionalMarketStore.getState().untrackTypes(typesToUntrack)
+        void useRegionalMarketStore.getState().untrackTypes(typesToUntrack)
       }
 
       const structuresToUntrack = completedOrders
@@ -209,7 +210,9 @@ const baseStore = createVisibilityStore<MarketOrder, StoredOrder>({
         .filter((locId) => !remainingStructureIds.has(locId))
 
       if (structuresToUntrack.length > 0) {
-        useRegionalMarketStore.getState().untrackStructures(structuresToUntrack)
+        void useRegionalMarketStore
+          .getState()
+          .untrackStructures(structuresToUntrack)
       }
     }
 

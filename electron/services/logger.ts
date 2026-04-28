@@ -54,7 +54,7 @@ function ensureLogDir(): void {
 function getLogFilePath(): string | null {
   ensureLogDir()
   if (!logDir) return null
-  const date = new Date().toISOString().split('T')[0]
+  const date = new Date().toISOString().slice(0, 10)
   return resolveSafePath(logDir, `app-${date}.log`)
 }
 
@@ -117,7 +117,9 @@ function formatMessage(
 ): string {
   const timestamp = new Date().toISOString()
   const sanitizedContext = context ? sanitizeContext(context) : undefined
-  const moduleName = sanitizedContext?.['module']
+  const moduleValue = sanitizedContext?.['module']
+  const moduleName =
+    typeof moduleValue === 'string' ? moduleValue : JSON.stringify(moduleValue)
   const module = moduleName ? `[${moduleName}]` : ''
   const contextStr = sanitizedContext
     ? Object.entries(sanitizedContext)

@@ -27,14 +27,18 @@ export function Pagination({
       </span>
       <div className="flex gap-1">
         <button
-          onClick={() => onPageChange(0)}
+          onClick={() => {
+            onPageChange(0)
+          }}
           disabled={page === 0}
           className={BTN_CLASS}
         >
           {t('pagination.first')}
         </button>
         <button
-          onClick={() => onPageChange(page - 1)}
+          onClick={() => {
+            onPageChange(page - 1)
+          }}
           disabled={page === 0}
           className={BTN_CLASS}
         >
@@ -44,14 +48,18 @@ export function Pagination({
           {page + 1} / {totalPages}
         </span>
         <button
-          onClick={() => onPageChange(page + 1)}
+          onClick={() => {
+            onPageChange(page + 1)
+          }}
           disabled={page >= totalPages - 1}
           className={BTN_CLASS}
         >
           {t('pagination.next')}
         </button>
         <button
-          onClick={() => onPageChange(totalPages - 1)}
+          onClick={() => {
+            onPageChange(totalPages - 1)
+          }}
           disabled={page >= totalPages - 1}
           className={BTN_CLASS}
         >

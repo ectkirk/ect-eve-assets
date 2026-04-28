@@ -116,7 +116,7 @@ function generateEFTFitting(fitting: ExtractedFitting): string {
     sections.push('')
   }
 
-  const allHolds = Object.values(fitting.holds).flat()
+  const allHolds = (Object.values(fitting.holds) as ModuleItem[][]).flat()
   const holds = formatItemsForEFT(allHolds)
   if (holds) sections.push(holds)
 
@@ -147,7 +147,9 @@ export function FittingDialog({
       const eft = generateEFTFitting(fitting)
       await navigator.clipboard.writeText(eft)
       setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      setTimeout(() => {
+        setCopied(false)
+      }, 2000)
     } catch (error) {
       logger.warn('Failed to copy fitting to clipboard', {
         module: 'Fitting',

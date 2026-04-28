@@ -22,9 +22,11 @@ export function CopyButton({ text }: { text: string }) {
 
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation()
-    navigator.clipboard.writeText(text)
+    void navigator.clipboard.writeText(text)
     setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    setTimeout(() => {
+      setCopied(false)
+    }, 2000)
   }
 
   return (
@@ -109,7 +111,9 @@ export function DiffHeader({
   const [menuPos, setMenuPos] = useState({ x: 0, y: 0 })
   const isActive = sortColumn === 'diff'
 
-  const handleClick = () => onSort('diff')
+  const handleClick = () => {
+    onSort('diff')
+  }
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -119,9 +123,13 @@ export function DiffHeader({
 
   useEffect(() => {
     if (!menuOpen) return undefined
-    const close = () => setMenuOpen(false)
+    const close = () => {
+      setMenuOpen(false)
+    }
     window.addEventListener('click', close)
-    return () => window.removeEventListener('click', close)
+    return () => {
+      window.removeEventListener('click', close)
+    }
   }, [menuOpen])
 
   return (

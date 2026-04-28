@@ -21,8 +21,8 @@ export async function storeAndPersistPrices(
   const stored = new Map<number, number>()
   if (fetched.size === 0) return stored
 
-  const jitaPriceUpdates: Array<{ typeId: number; price: number }> = []
-  const abyssalUpdates: Array<{ itemId: number; price: number }> = []
+  const jitaPriceUpdates: { typeId: number; price: number }[] = []
+  const abyssalUpdates: { itemId: number; price: number }[] = []
 
   for (const [id, price] of fetched) {
     if (abyssalIdSet.has(id)) {

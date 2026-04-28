@@ -27,7 +27,7 @@ export function registerMutamarketHandlers(): void {
         )
 
         if (getResponse.ok) {
-          return await getResponse.json()
+          return (await getResponse.json()) as unknown
         }
 
         if (getResponse.status !== 404) {
@@ -57,7 +57,7 @@ export function registerMutamarketHandlers(): void {
             status: postResponse.status,
           }
         }
-        return await postResponse.json()
+        return (await postResponse.json()) as unknown
       } catch (err) {
         if (isAbortError(err)) {
           return { error: 'Timeout' }

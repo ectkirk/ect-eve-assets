@@ -337,31 +337,31 @@ export function CourierResultsTable({
                 </ContextMenuTrigger>
                 <ContextMenuContent>
                   <ContextMenuItem
-                    onClick={() =>
+                    onClick={() => {
                       setWaypointAction({
                         systemId: c.originSystemId,
                         systemName: c.originSystem,
                       })
-                    }
+                    }}
                   >
                     {tCommon('contextMenu.setWaypoint')}
                   </ContextMenuItem>
                   {c.destSystemId && (
                     <ContextMenuItem
-                      onClick={() =>
+                      onClick={() => {
                         setWaypointAction({
                           systemId: c.destSystemId!,
                           systemName: c.destSystem,
                         })
-                      }
+                      }}
                     >
                       {tCommon('contextMenu.setWaypointDestination')}
                     </ContextMenuItem>
                   )}
                   <ContextMenuItem
-                    onClick={() =>
+                    onClick={() => {
                       setIngameAction({ contractId: c.contractId })
-                    }
+                    }}
                   >
                     {tCommon('contextMenu.openContractIngame')}
                   </ContextMenuItem>

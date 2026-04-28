@@ -63,7 +63,9 @@ export function useExpandCollapse<T>(
       },
     })
 
-    return () => setExpandCollapse(null)
+    return () => {
+      setExpandCollapse(null)
+    }
   }, [items.length, isAllExpanded, expandAll, collapseAll, setExpandCollapse])
 
   return {

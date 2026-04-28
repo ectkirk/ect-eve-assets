@@ -31,7 +31,9 @@ export const MarketBreadcrumb = memo(function MarketBreadcrumb({
       )}
       <div className="flex items-center gap-1">
         <button
-          onClick={() => onNavigate(null)}
+          onClick={() => {
+            onNavigate(null)
+          }}
           className="text-content-secondary hover:text-accent shrink-0"
         >
           {t('regionalMarket.market')}
@@ -43,7 +45,9 @@ export const MarketBreadcrumb = memo(function MarketBreadcrumb({
           >
             <span className="text-content-tertiary">/</span>
             <button
-              onClick={() => onNavigate(node.group.id)}
+              onClick={() => {
+                onNavigate(node.group.id)
+              }}
               className={
                 node.group.id === selectedGroupId && !selectedType
                   ? 'text-content font-medium'

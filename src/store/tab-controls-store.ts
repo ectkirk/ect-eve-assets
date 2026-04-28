@@ -105,21 +105,52 @@ export const useTabControlsStore = create<
   characterSort: null,
   contractAvailabilityFilter: null,
 
-  setColumns: (columns) => set({ columns }),
-  setExpandCollapse: (expandCollapse) => set({ expandCollapse }),
-  setSearch: (search) => set({ search }),
-  setSearchPlaceholder: (searchPlaceholder) => set({ searchPlaceholder }),
-  setCategoryFilter: (categoryFilter) => set({ categoryFilter }),
-  setGroupFilter: (groupFilter) => set({ groupFilter }),
-  setAssetTypeFilter: (assetTypeFilter) => set({ assetTypeFilter }),
-  setResultCount: (resultCount) => set({ resultCount }),
-  setTotalValue: (totalValue) => set({ totalValue }),
-  setRefreshAction: (refreshAction) => set({ refreshAction }),
-  setMailFilter: (mailFilter) => set({ mailFilter }),
-  setLoyaltyCorporations: (loyaltyCorporations) => set({ loyaltyCorporations }),
-  setOrderTypeFilter: (orderTypeFilter) => set({ orderTypeFilter }),
-  setCharacterSort: (characterSort) => set({ characterSort }),
-  setContractAvailabilityFilter: (contractAvailabilityFilter) =>
-    set({ contractAvailabilityFilter }),
-  resetSearch: () => set({ search: '' }),
+  setColumns: (columns) => {
+    set({ columns })
+  },
+  setExpandCollapse: (expandCollapse) => {
+    set({ expandCollapse })
+  },
+  setSearch: (search) => {
+    set({ search })
+  },
+  setSearchPlaceholder: (searchPlaceholder) => {
+    set({ searchPlaceholder })
+  },
+  setCategoryFilter: (categoryFilter) => {
+    set({ categoryFilter })
+  },
+  setGroupFilter: (groupFilter) => {
+    set({ groupFilter })
+  },
+  setAssetTypeFilter: (assetTypeFilter) => {
+    set({ assetTypeFilter })
+  },
+  setResultCount: (resultCount) => {
+    set({ resultCount })
+  },
+  setTotalValue: (totalValue) => {
+    set({ totalValue })
+  },
+  setRefreshAction: (refreshAction) => {
+    set({ refreshAction })
+  },
+  setMailFilter: (mailFilter) => {
+    set({ mailFilter })
+  },
+  setLoyaltyCorporations: (loyaltyCorporations) => {
+    set({ loyaltyCorporations })
+  },
+  setOrderTypeFilter: (orderTypeFilter) => {
+    set({ orderTypeFilter })
+  },
+  setCharacterSort: (characterSort) => {
+    set({ characterSort })
+  },
+  setContractAvailabilityFilter: (contractAvailabilityFilter) => {
+    set({ contractAvailabilityFilter })
+  },
+  resetSearch: () => {
+    set({ search: '' })
+  },
 }))

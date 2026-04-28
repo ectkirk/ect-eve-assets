@@ -101,8 +101,10 @@ export function ItemDetailPanel({
 
   useEffect(() => {
     let mounted = true
-    getDogmaUnits().then((data) => mounted && setDogmaUnits(data))
-    getAttributeCategories().then((data) => mounted && setAttrCategories(data))
+    void getDogmaUnits().then((data) => mounted && setDogmaUnits(data))
+    void getAttributeCategories().then(
+      (data) => mounted && setAttrCategories(data)
+    )
     return () => {
       mounted = false
     }
@@ -176,7 +178,7 @@ export function ItemDetailPanel({
       }
     }
 
-    fetchData()
+    void fetchData()
 
     return () => {
       cancelled = true
@@ -215,9 +217,9 @@ export function ItemDetailPanel({
 
     if (isShipOrStructure) {
       Object.values(SHIP_STAT_ATTRS).forEach((id) => ids.add(id))
-      Object.values(SHIP_RESISTANCE_ATTR_IDS).forEach((layer) =>
+      Object.values(SHIP_RESISTANCE_ATTR_IDS).forEach((layer) => {
         Object.values(layer).forEach((id) => ids.add(id))
-      )
+      })
       Object.values(SHIP_HP_ATTR_IDS).forEach((id) => ids.add(id))
       ids.add(SHIP_SHIELD_RECHARGE_ATTR_ID)
     }
@@ -230,12 +232,12 @@ export function ItemDetailPanel({
 
     const grouped = new Map<
       number,
-      Array<{
+      {
         attributeID: number
         value: number
         displayName: string
         unitId: number | null
-      }>
+      }[]
     >()
 
     for (const attr of dogma.attributes) {

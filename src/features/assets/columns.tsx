@@ -87,7 +87,7 @@ interface AssetCellContext {
 }
 
 export interface AssetColumn {
-  id: keyof AssetRow & string
+  id: keyof AssetRow
   size: number
   noFlex?: boolean
   header: (context: AssetHeaderContext) => ReactNode
@@ -130,7 +130,9 @@ export const columns: AssetColumn[] = [
         label="columns.name"
         isActive={!!isSorted}
         sortDirection={isSorted || 'asc'}
-        onClick={() => toggleSorting(isSorted === 'asc')}
+        onClick={() => {
+          toggleSorting(isSorted === 'asc')
+        }}
       />
     ),
     cell: ({ row, getValue }) => {
@@ -172,7 +174,9 @@ export const columns: AssetColumn[] = [
         label="columns.quantity"
         isActive={!!isSorted}
         sortDirection={isSorted || 'asc'}
-        onClick={() => toggleSorting(isSorted === 'asc')}
+        onClick={() => {
+          toggleSorting(isSorted === 'asc')
+        }}
         align="right"
       />
     ),
@@ -190,7 +194,9 @@ export const columns: AssetColumn[] = [
         label="columns.price"
         isActive={!!isSorted}
         sortDirection={isSorted || 'asc'}
-        onClick={() => toggleSorting(isSorted === 'asc')}
+        onClick={() => {
+          toggleSorting(isSorted === 'asc')
+        }}
         align="right"
       />
     ),
@@ -211,7 +217,9 @@ export const columns: AssetColumn[] = [
         label="columns.value"
         isActive={!!isSorted}
         sortDirection={isSorted || 'asc'}
-        onClick={() => toggleSorting(isSorted === 'asc')}
+        onClick={() => {
+          toggleSorting(isSorted === 'asc')
+        }}
         align="right"
       />
     ),
@@ -232,7 +240,9 @@ export const columns: AssetColumn[] = [
         label="columns.volume"
         isActive={!!isSorted}
         sortDirection={isSorted || 'asc'}
-        onClick={() => toggleSorting(isSorted === 'asc')}
+        onClick={() => {
+          toggleSorting(isSorted === 'asc')
+        }}
         align="right"
       />
     ),
@@ -250,7 +260,9 @@ export const columns: AssetColumn[] = [
         label="columns.location"
         isActive={!!isSorted}
         sortDirection={isSorted || 'asc'}
-        onClick={() => toggleSorting(isSorted === 'asc')}
+        onClick={() => {
+          toggleSorting(isSorted === 'asc')
+        }}
         align="right"
       />
     ),
@@ -269,7 +281,9 @@ export const columns: AssetColumn[] = [
         label="columns.flag"
         isActive={!!isSorted}
         sortDirection={isSorted || 'asc'}
-        onClick={() => toggleSorting(isSorted === 'asc')}
+        onClick={() => {
+          toggleSorting(isSorted === 'asc')
+        }}
         align="right"
       />
     ),

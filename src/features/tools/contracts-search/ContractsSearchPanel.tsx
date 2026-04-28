@@ -96,8 +96,9 @@ export function ContractsSearchPanel({
 
   const buySellCallbacks = useMemo(
     () => ({
-      onResults: (update: ResultsUpdate<SearchContract>) =>
-        storeSetResults(update),
+      onResults: (update: ResultsUpdate<SearchContract>) => {
+        storeSetResults(update)
+      },
       onPage: storeSetPage,
     }),
     [storeSetResults, storeSetPage]
@@ -105,8 +106,9 @@ export function ContractsSearchPanel({
 
   const courierCallbacks = useMemo(
     () => ({
-      onResults: (update: ResultsUpdate<CourierContract>) =>
-        storeSetCourierResults(update),
+      onResults: (update: ResultsUpdate<CourierContract>) => {
+        storeSetCourierResults(update)
+      },
       onPage: storeSetCourierPage,
     }),
     [storeSetCourierResults, storeSetCourierPage]
@@ -127,20 +129,22 @@ export function ContractsSearchPanel({
     }
     storeSetFilters(newFilters)
 
-    queueMicrotask(async () => {
-      storeSetHasSearched(true)
-      commitSearch()
-      try {
-        await fetchBuySellPage(
-          1,
-          newFilters,
-          buySell.sortPreset,
-          buySellCallbacks
-        )
-        onInitialTypeConsumed?.()
-      } catch {
-        lastHandledTypeId.current = null
-      }
+    queueMicrotask(() => {
+      void (async () => {
+        storeSetHasSearched(true)
+        commitSearch()
+        try {
+          await fetchBuySellPage(
+            1,
+            newFilters,
+            buySell.sortPreset,
+            buySellCallbacks
+          )
+          onInitialTypeConsumed?.()
+        } catch {
+          lastHandledTypeId.current = null
+        }
+      })()
     })
   }, [
     initialType,
@@ -183,7 +187,7 @@ export function ContractsSearchPanel({
         const isNextPage = newPage === courier.page + 1
         const cursor =
           isNextPage && courier.nextCursor ? courier.nextCursor : undefined
-        fetchCourierPage(
+        void fetchCourierPage(
           newPage,
           committedFilters,
           courier.committedSort,
@@ -194,7 +198,7 @@ export function ContractsSearchPanel({
         const isNextPage = newPage === buySell.page + 1
         const cursor =
           isNextPage && buySell.nextCursor ? buySell.nextCursor : undefined
-        fetchBuySellPage(
+        void fetchBuySellPage(
           newPage,
           committedFilters,
           buySell.committedSort,
@@ -223,7 +227,7 @@ export function ContractsSearchPanel({
       storeSetSortPreset(newSort)
       if (buySell.hasSearched) {
         commitSort()
-        fetchBuySellPage(1, committedFilters, newSort, buySellCallbacks)
+        void fetchBuySellPage(1, committedFilters, newSort, buySellCallbacks)
       }
     },
     [
@@ -241,7 +245,7 @@ export function ContractsSearchPanel({
       storeSetCourierSortPreset(newSort)
       if (courier.hasSearched) {
         commitCourierSort()
-        fetchCourierPage(1, committedFilters, newSort, courierCallbacks)
+        void fetchCourierPage(1, committedFilters, newSort, courierCallbacks)
       }
     },
     [
@@ -281,9 +285,9 @@ export function ContractsSearchPanel({
             (isCourier ? (
               <select
                 value={courier.sortPreset}
-                onChange={(e) =>
+                onChange={(e) => {
                   handleCourierSortChange(e.target.value as CourierSortPreset)
-                }
+                }}
                 disabled={isLoading}
                 aria-label="Sort courier contracts by"
                 className="rounded border border-border bg-surface-tertiary px-2 py-1 text-sm focus:border-accent focus:outline-hidden disabled:opacity-50"
@@ -297,7 +301,9 @@ export function ContractsSearchPanel({
             ) : (
               <select
                 value={buySell.sortPreset}
-                onChange={(e) => handleSortChange(e.target.value as SortPreset)}
+                onChange={(e) => {
+                  handleSortChange(e.target.value as SortPreset)
+                }}
                 disabled={isLoading}
                 aria-label="Sort contracts by"
                 className="rounded border border-border bg-surface-tertiary px-2 py-1 text-sm focus:border-accent focus:outline-hidden disabled:opacity-50"
@@ -347,7 +353,9 @@ export function ContractsSearchPanel({
       {selectedContract && (
         <ContractDetailModal
           contract={toDisplayContract(selectedContract)}
-          onClose={() => setSelectedContract(null)}
+          onClose={() => {
+            setSelectedContract(null)
+          }}
         />
       )}
     </div>

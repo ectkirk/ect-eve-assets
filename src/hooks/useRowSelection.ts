@@ -101,10 +101,12 @@ export function useRowSelection<T>({
     if (selectedItems.length === 1 && selectedItems[0]) {
       const data = getCopyData(selectedItems[0])
       if (!data.isItem && data.fullRowData) {
-        navigator.clipboard.writeText(data.fullRowData)
+        void navigator.clipboard.writeText(data.fullRowData)
       } else {
         const suffix = data.blueprintSuffix ? `\t${data.blueprintSuffix}` : ''
-        navigator.clipboard.writeText(`${data.name}\t${data.quantity}${suffix}`)
+        void navigator.clipboard.writeText(
+          `${data.name}\t${data.quantity}${suffix}`
+        )
       }
       return
     }
@@ -119,7 +121,7 @@ export function useRowSelection<T>({
     }
 
     if (lines.length > 0) {
-      navigator.clipboard.writeText(lines.join('\n'))
+      void navigator.clipboard.writeText(lines.join('\n'))
     }
   }, [selectedIds, getId, getCopyData])
 
@@ -142,7 +144,9 @@ export function useRowSelection<T>({
     }
 
     container.addEventListener('keydown', handleKeyDown)
-    return () => container.removeEventListener('keydown', handleKeyDown)
+    return () => {
+      container.removeEventListener('keydown', handleKeyDown)
+    }
   }, [containerRef, selectAll, copySelected, clearSelection, selectedIds.size])
 
   return {

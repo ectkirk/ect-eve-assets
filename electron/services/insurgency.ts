@@ -27,7 +27,7 @@ export function registerInsurgencyHandlers(): void {
         return { error: `HTTP ${response.status}`, status: response.status }
       }
 
-      const data = await response.json()
+      const data = (await response.json()) as unknown
       return { data }
     } catch (err) {
       if (isAbortError(err)) {

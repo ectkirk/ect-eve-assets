@@ -51,7 +51,7 @@ export interface HSL {
 }
 
 export function parseHSL(color: string): HSL | null {
-  const match = color.match(/hsl\(([\d.]+),\s*(\d+)%,\s*(\d+)%\)/)
+  const match = /hsl\(([\d.]+),\s*(\d+)%,\s*(\d+)%\)/.exec(color)
   if (!match || match.length < 4) return null
   return {
     h: parseFloat(match[1]!),

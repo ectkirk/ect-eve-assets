@@ -20,7 +20,7 @@ export function UpdateBanner() {
   if (!updateReady || dismissed) return null
 
   const handleInstall = () => {
-    window.electronAPI?.installUpdate()
+    void window.electronAPI?.installUpdate()
   }
 
   return (
@@ -37,7 +37,9 @@ export function UpdateBanner() {
           {t('buttons.restartNow', { ns: 'common' })}
         </button>
         <button
-          onClick={() => setDismissed(true)}
+          onClick={() => {
+            setDismissed(true)
+          }}
           aria-label={t('accessibility.dismissUpdateNotification')}
           className="rounded p-1 hover:bg-accent-hover"
         >

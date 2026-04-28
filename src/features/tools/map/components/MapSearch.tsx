@@ -48,7 +48,9 @@ export const MapSearch = memo(function MapSearch({
             {results.map((result) => (
               <button
                 key={`${result.type}-${result.id}`}
-                onMouseDown={(e) => handleResultMouseDown(e, result)}
+                onMouseDown={(e) => {
+                  handleResultMouseDown(e, result)
+                }}
                 className="flex w-full items-center justify-between px-4 py-2 text-left transition-colors hover:bg-surface-tertiary"
               >
                 <span className="text-sm text-content">{result.name}</span>

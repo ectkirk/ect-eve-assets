@@ -271,7 +271,9 @@ export function ContractsTable({
         <ContractDetailModal
           contract={selectedContract.display}
           preloadedItems={selectedContract.items}
-          onClose={() => setSelectedContract(null)}
+          onClose={() => {
+            setSelectedContract(null)
+          }}
         />
       )}
       <IngameActionModal

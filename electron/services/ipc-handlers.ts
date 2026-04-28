@@ -113,7 +113,7 @@ export function registerStorageHandlers(ctx: WindowContext): void {
       })
       return false
     }
-    ctx.writeStorage(data as Record<string, unknown>)
+    ctx.writeStorage(data)
     return true
   })
 }
@@ -143,7 +143,7 @@ export function registerLoggingHandlers(): void {
           if (contextJson.length > MAX_LOG_CONTEXT_SIZE) {
             return { success: false, error: 'Context too large' }
           }
-          validContext = context as LogContext
+          validContext = context
         } catch {
           return { success: false, error: 'Context not serializable' }
         }
@@ -174,7 +174,7 @@ export function registerLoggingHandlers(): void {
 
   ipcMain.handle('log:openFolder', () => {
     const logDir = logger.getLogDir()
-    shell.openPath(logDir)
+    void shell.openPath(logDir)
   })
 }
 

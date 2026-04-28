@@ -298,8 +298,12 @@ export function CategoryGroupTree({
                 }
                 paddingLeft={INDENT_CATEGORY}
                 folderColor={FOLDER_COLORS.category}
-                onToggle={() => onToggleCategory(row.category.id)}
-                onSelect={() => onSelectCategory(row.category.id)}
+                onToggle={() => {
+                  onToggleCategory(row.category.id)
+                }}
+                onSelect={() => {
+                  onSelectCategory(row.category.id)
+                }}
               />
             )
           } else if (row.kind === 'group') {
@@ -313,8 +317,12 @@ export function CategoryGroupTree({
                 hasChildren={(typeCountsByGroup.get(row.group.id) || 0) > 0}
                 paddingLeft={INDENT_GROUP}
                 folderColor={FOLDER_COLORS.group}
-                onToggle={() => onToggleGroup(row.group.id)}
-                onSelect={() => onSelectGroup(row.group.id)}
+                onToggle={() => {
+                  onToggleGroup(row.group.id)
+                }}
+                onSelect={() => {
+                  onSelectGroup(row.group.id)
+                }}
               />
             )
           } else {
@@ -323,7 +331,9 @@ export function CategoryGroupTree({
               <TypeRow
                 type={row.type}
                 isSelected={selectedTypeId === row.type.id}
-                onSelect={() => onSelectType(row.type.id)}
+                onSelect={() => {
+                  onSelectType(row.type.id)
+                }}
               />
             )
           }

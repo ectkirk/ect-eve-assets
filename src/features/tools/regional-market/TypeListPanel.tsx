@@ -33,7 +33,9 @@ const TypeRow = memo(function TypeRow({
     <div
       className="flex items-center gap-3 px-4 border-b border-border/50 hover:bg-surface-tertiary/50 cursor-pointer"
       style={{ height: ROW_HEIGHT }}
-      onClick={() => onSelect(type.id)}
+      onClick={() => {
+        onSelect(type.id)
+      }}
     >
       <TypeIcon typeId={type.id} categoryId={type.categoryId} size="sm" />
       <span className="text-sm truncate">{type.name}</span>
@@ -52,7 +54,9 @@ const SubgroupRow = memo(function SubgroupRow({
     <div
       className="flex items-center gap-3 px-4 border-b border-border/50 hover:bg-surface-tertiary/50 cursor-pointer"
       style={{ height: ROW_HEIGHT }}
-      onClick={() => onSelect(node.group.id)}
+      onClick={() => {
+        onSelect(node.group.id)
+      }}
     >
       <Folder className="h-4 w-4 text-content-secondary flex-shrink-0" />
       <span className="text-sm truncate flex-1">{node.group.name}</span>

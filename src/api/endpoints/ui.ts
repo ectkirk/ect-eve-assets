@@ -24,8 +24,9 @@ function executeUiAction(
   logContext: Record<string, unknown>,
   failureKey: string
 ): void {
-  const action = logContext['action']
-  logger.info(`${action}`, {
+  const action =
+    typeof logContext['action'] === 'string' ? logContext['action'] : endpoint
+  logger.info(action, {
     module: 'UI',
     characterId,
     ...logContext,

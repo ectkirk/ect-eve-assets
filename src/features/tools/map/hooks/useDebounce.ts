@@ -20,7 +20,9 @@ export function useDebounce<T>(
   return useCallback(
     (arg: T) => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current)
-      timeoutRef.current = setTimeout(() => callbackRef.current(arg), delay)
+      timeoutRef.current = setTimeout(() => {
+        callbackRef.current(arg)
+      }, delay)
     },
     [delay]
   )

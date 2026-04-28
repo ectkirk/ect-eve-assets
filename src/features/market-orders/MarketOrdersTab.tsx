@@ -42,7 +42,7 @@ export function MarketOrdersTab() {
   const isUpdating = assetsUpdating || ordersUpdating
 
   useEffect(() => {
-    init()
+    void init()
   }, [init])
 
   const types = useReferenceCacheStore((s) => s.types)
@@ -209,7 +209,9 @@ export function MarketOrdersTab() {
       value: orderTypeValue,
       onChange: setOrderTypeValue,
     })
-    return () => setOrderTypeFilter(null)
+    return () => {
+      setOrderTypeFilter(null)
+    }
   }, [orderTypeValue, setOrderTypeFilter])
 
   useEffect(() => {
@@ -219,12 +221,16 @@ export function MarketOrdersTab() {
       secondaryValue: totals.buyValue,
       secondaryLabel: t('totals.buyOrders'),
     })
-    return () => setTotalValue(null)
+    return () => {
+      setTotalValue(null)
+    }
   }, [totals.sellValue, totals.buyValue, setTotalValue, t])
 
   useEffect(() => {
     setColumns(getColumnsForDropdown())
-    return () => setColumns([])
+    return () => {
+      setColumns([])
+    }
   }, [getColumnsForDropdown, setColumns])
 
   const loadingState = TabLoadingState({

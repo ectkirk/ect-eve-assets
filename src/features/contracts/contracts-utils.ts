@@ -138,7 +138,7 @@ export function buildContractRow(
   ownerType: 'character' | 'corporation',
   ownerId: number,
   isIssuer: boolean,
-  t: (key: string, options?: Record<string, unknown> | undefined) => string
+  t: (key: string, options?: Record<string, unknown>) => string
 ): ContractRow {
   const contract = contractWithItems.contract
   const items = contractWithItems.items ?? []

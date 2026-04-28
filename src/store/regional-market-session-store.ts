@@ -24,12 +24,19 @@ export const useRegionalMarketSessionStore = create<RegionalMarketSessionState>(
     selectedTypeId: null,
     expandedGroupIds: new Set(),
 
-    setSelectedRegionId: (selectedRegionId) => set({ selectedRegionId }),
-    setSelectedMarketGroupId: (selectedMarketGroupId) =>
-      set({ selectedMarketGroupId }),
-    setSelectedTypeId: (selectedTypeId) => set({ selectedTypeId }),
-    setExpandedGroupIds: (expandedGroupIds) => set({ expandedGroupIds }),
-    toggleExpandedGroup: (id) =>
+    setSelectedRegionId: (selectedRegionId) => {
+      set({ selectedRegionId })
+    },
+    setSelectedMarketGroupId: (selectedMarketGroupId) => {
+      set({ selectedMarketGroupId })
+    },
+    setSelectedTypeId: (selectedTypeId) => {
+      set({ selectedTypeId })
+    },
+    setExpandedGroupIds: (expandedGroupIds) => {
+      set({ expandedGroupIds })
+    },
+    toggleExpandedGroup: (id) => {
       set((state) => {
         const next = new Set(state.expandedGroupIds)
         if (next.has(id)) {
@@ -38,19 +45,22 @@ export const useRegionalMarketSessionStore = create<RegionalMarketSessionState>(
           next.add(id)
         }
         return { expandedGroupIds: next }
-      }),
-    expandGroups: (ids) =>
+      })
+    },
+    expandGroups: (ids) => {
       set((state) => {
         const next = new Set(state.expandedGroupIds)
         for (const id of ids) next.add(id)
         return { expandedGroupIds: next }
-      }),
-    reset: () =>
+      })
+    },
+    reset: () => {
       set({
         selectedRegionId: THE_FORGE_REGION_ID,
         selectedMarketGroupId: null,
         selectedTypeId: null,
         expandedGroupIds: new Set(),
-      }),
+      })
+    },
   })
 )

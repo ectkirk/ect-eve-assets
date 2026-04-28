@@ -68,7 +68,7 @@ export function createItemNode(
 }
 
 function getDivisionNumber(flag: string): number | undefined {
-  const match = flag.match(/^CorpSAG([1-7])$/)
+  const match = /^CorpSAG([1-7])$/.exec(flag)
   return match ? parseInt(match[1]!, 10) : undefined
 }
 
@@ -173,7 +173,7 @@ export function stackIdenticalItems(nodes: TreeNode[]): TreeNode[] {
     }
 
     const locationFlag = node.asset?.location_flag ?? ''
-    const stackKey = `${node.typeId}-${node.isBlueprintCopy ?? false}-${node.ownerId}-${locationFlag}-${node.name}`
+    const stackKey = `${node.typeId ?? 'unknown'}-${node.isBlueprintCopy ?? false}-${node.ownerId ?? 'unknown'}-${locationFlag}-${node.name}`
 
     const existing = stackMap.get(stackKey)
     if (existing) {

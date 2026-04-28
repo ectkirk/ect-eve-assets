@@ -33,7 +33,7 @@ export function useAnsiblexRouting(): UseAnsiblexRoutingReturn {
 
     for (const ownerKey of ansiblexCharacterIds) {
       const owner = getRecordValue(owners, ownerKey)
-      if (!owner || owner.type !== 'character') continue
+      if (owner?.type !== 'character') continue
 
       if (seenCorps.has(owner.corporationId)) continue
       seenCorps.add(owner.corporationId)
@@ -70,9 +70,9 @@ export function useAnsiblexRouting(): UseAnsiblexRoutingReturn {
         characterCount: characterIdsToFetch.length,
         characterIds: characterIdsToFetch,
       })
-      initAnsiblex().then(() => {
+      void initAnsiblex().then(() => {
         for (const charId of characterIdsToFetch) {
-          fetchAnsiblexForCharacter(charId)
+          void fetchAnsiblexForCharacter(charId)
         }
       })
     }

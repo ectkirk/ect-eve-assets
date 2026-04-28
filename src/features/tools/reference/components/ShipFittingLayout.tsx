@@ -12,7 +12,7 @@ interface ShipFittingLayoutProps {
     }
     dogma?:
       | {
-          attributes?: Array<{ attributeID: number; value: number }> | undefined
+          attributes?: { attributeID: number; value: number }[] | undefined
           attributeDefinitions?:
             | Record<
                 string,

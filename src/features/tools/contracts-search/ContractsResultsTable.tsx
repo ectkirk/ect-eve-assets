@@ -118,7 +118,9 @@ export function ContractsResultsTable({
       y = cursorPos.y - rect.height - padding
     }
 
-    requestAnimationFrame(() => setTooltipPos({ x, y }))
+    requestAnimationFrame(() => {
+      setTooltipPos({ x, y })
+    })
   }, [cursorPos, hoveredContract])
 
   useEffect(() => {

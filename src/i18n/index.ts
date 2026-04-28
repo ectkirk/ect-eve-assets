@@ -2,7 +2,9 @@ import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import { getLanguage, type SupportedLanguage } from '@/store/settings-store'
 
-type TranslationModule = { default: Record<string, string> }
+interface TranslationModule {
+  default: Record<string, string>
+}
 
 const CJK_LANGUAGES: SupportedLanguage[] = ['ja', 'ko', 'zh']
 

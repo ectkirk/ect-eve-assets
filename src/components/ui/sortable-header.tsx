@@ -75,7 +75,9 @@ export function SortableHeader<T extends string>({
     <TableHead className={className}>
       <button
         type="button"
-        onClick={() => onSort(column)}
+        onClick={() => {
+          onSort(column)
+        }}
         className={`flex w-full items-center gap-1 cursor-pointer select-none rounded px-2 py-1 -mx-2 -my-1 hover:bg-surface-tertiary focus:outline-none focus:ring-2 focus:ring-content-secondary ${isCentered ? 'justify-center' : ''}`}
         aria-sort={
           isActive

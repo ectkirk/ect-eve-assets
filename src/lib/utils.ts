@@ -73,11 +73,11 @@ export function formatNumber(value: number): string {
   return value.toLocaleString(locale)
 }
 
-export function formatFullNumber(value: number, decimals: number = 0): string {
+export function formatFullNumber(value: number, decimals = 0): string {
   return value.toLocaleString(getLocale(), { maximumFractionDigits: decimals })
 }
 
-export function formatDecimal(value: number, decimals: number = 1): string {
+export function formatDecimal(value: number, decimals = 1): string {
   return value.toLocaleString(getLocale(), {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
@@ -95,7 +95,7 @@ export function formatPrice(value: number): string {
   return formatted.endsWith(trailingSuffix) ? formatted.slice(0, -3) : formatted
 }
 
-export function formatPercent(value: number, decimals: number = 1): string {
+export function formatPercent(value: number, decimals = 1): string {
   return formatDecimal(value, decimals) + '%'
 }
 

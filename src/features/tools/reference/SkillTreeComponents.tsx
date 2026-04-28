@@ -1,7 +1,7 @@
 import { TypeIcon } from '@/components/ui/type-icon'
 export { Section } from './Section'
 
-export type SkillNode = {
+export interface SkillNode {
   skillId: number
   skillName: string
   level: number

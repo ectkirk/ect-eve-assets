@@ -10,7 +10,7 @@ import {
 
 interface SerializedCache {
   version: 1
-  entries: Array<{ key: string; entry: CacheEntry }>
+  entries: { key: string; entry: CacheEntry }[]
 }
 
 export class ESICache {
@@ -44,9 +44,9 @@ export class ESICache {
     }
   }
 
-  private collectValidEntries(): Array<{ key: string; entry: CacheEntry }> {
+  private collectValidEntries(): { key: string; entry: CacheEntry }[] {
     const now = Date.now()
-    const entries: Array<{ key: string; entry: CacheEntry }> = []
+    const entries: { key: string; entry: CacheEntry }[] = []
     for (const [key, entry] of this.cache) {
       if (entry.expires > now) {
         entries.push({ key, entry })
@@ -59,7 +59,7 @@ export class ESICache {
     if (this.saveTimeout) return
     this.saveTimeout = setTimeout(() => {
       this.saveTimeout = null
-      this.saveAsync()
+      void this.saveAsync()
     }, 1000)
   }
 
@@ -87,7 +87,7 @@ export class ESICache {
       this.saveInProgress = false
       if (this.pendingSave) {
         this.pendingSave = false
-        this.saveAsync()
+        void this.saveAsync()
       }
     }
   }

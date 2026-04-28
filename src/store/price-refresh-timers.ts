@@ -21,7 +21,9 @@ export function scheduleEsiRefresh(store: PriceStoreActions): void {
   const maxTimeout = 2147483647
 
   if (msUntilUpdate > maxTimeout) {
-    esiRefreshTimer = setTimeout(() => scheduleEsiRefresh(store), maxTimeout)
+    esiRefreshTimer = setTimeout(() => {
+      scheduleEsiRefresh(store)
+    }, maxTimeout)
     return
   }
 
@@ -31,7 +33,7 @@ export function scheduleEsiRefresh(store: PriceStoreActions): void {
   })
 
   esiRefreshTimer = setTimeout(() => {
-    store.refreshEsiPrices()
+    void store.refreshEsiPrices()
     scheduleEsiRefresh(store)
   }, msUntilUpdate)
 }
@@ -43,10 +45,12 @@ export function startJitaRefreshTimer(
   if (jitaRefreshInterval) return
 
   if (triggerImmediateIfStale) {
-    triggerFn()
+    void triggerFn()
   }
 
-  jitaRefreshInterval = setInterval(triggerFn, JITA_REFRESH_INTERVAL_MS)
+  jitaRefreshInterval = setInterval(() => {
+    void triggerFn()
+  }, JITA_REFRESH_INTERVAL_MS)
 }
 
 export function stopPriceRefreshTimers(): void {

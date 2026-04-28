@@ -204,7 +204,9 @@ export function Calculator({ result }: CalculatorProps) {
                 <th
                   scope="col"
                   className="cursor-pointer pb-3 pr-4 hover:text-content"
-                  onClick={() => handleSort('itemName')}
+                  onClick={() => {
+                    handleSort('itemName')
+                  }}
                 >
                   {tc('columns.item')}
                   <SortIcon
@@ -216,7 +218,9 @@ export function Calculator({ result }: CalculatorProps) {
                 <th
                   scope="col"
                   className="cursor-pointer pb-3 pr-4 text-right hover:text-content"
-                  onClick={() => handleSort('quantity')}
+                  onClick={() => {
+                    handleSort('quantity')
+                  }}
                 >
                   {tc('columns.qty')}
                   <SortIcon
@@ -228,7 +232,9 @@ export function Calculator({ result }: CalculatorProps) {
                 <th
                   scope="col"
                   className="cursor-pointer pb-3 pr-4 text-right hover:text-content"
-                  onClick={() => handleSort('totalVolume')}
+                  onClick={() => {
+                    handleSort('totalVolume')
+                  }}
                 >
                   m³
                   <SortIcon
@@ -240,7 +246,9 @@ export function Calculator({ result }: CalculatorProps) {
                 <th
                   scope="col"
                   className="cursor-pointer pb-3 pr-4 hover:text-content"
-                  onClick={() => handleSort('groupName')}
+                  onClick={() => {
+                    handleSort('groupName')
+                  }}
                 >
                   {tc('columns.group')}
                   <SortIcon
@@ -252,7 +260,9 @@ export function Calculator({ result }: CalculatorProps) {
                 <th
                   scope="col"
                   className="cursor-pointer pb-3 pr-4 text-right hover:text-content"
-                  onClick={() => handleSort('totalJitaBuy')}
+                  onClick={() => {
+                    handleSort('totalJitaBuy')
+                  }}
                 >
                   {t('calculator.jitaBuy')}
                   <SortIcon
@@ -264,7 +274,9 @@ export function Calculator({ result }: CalculatorProps) {
                 <th
                   scope="col"
                   className="cursor-pointer pb-3 text-right hover:text-content"
-                  onClick={() => handleSort('totalJitaSell')}
+                  onClick={() => {
+                    handleSort('totalJitaSell')
+                  }}
                 >
                   {t('calculator.jitaSell')}
                   <SortIcon

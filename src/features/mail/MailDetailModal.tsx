@@ -23,7 +23,7 @@ export function MailDetailModal({ mail, onClose }: MailDetailModalProps) {
     error?: string
   } | null>(null)
 
-  const loading = !result || result.mailId !== mail.mail.mail_id
+  const loading = result?.mailId !== mail.mail.mail_id
   const body = result?.mailId === mail.mail.mail_id ? result.body : undefined
   const error = result?.mailId === mail.mail.mail_id ? result.error : undefined
 
@@ -34,11 +34,11 @@ export function MailDetailModal({ mail, onClose }: MailDetailModalProps) {
       .then((data) => {
         if (!cancelled) setResult({ mailId: mail.mail.mail_id, body: data })
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         if (!cancelled)
           setResult({
             mailId: mail.mail.mail_id,
-            error: err.message ?? 'Failed to load mail',
+            error: err instanceof Error ? err.message : 'Failed to load mail',
           })
       })
 
@@ -52,7 +52,9 @@ export function MailDetailModal({ mail, onClose }: MailDetailModalProps) {
       if (e.key === 'Escape') onClose()
     }
     window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
+    return () => {
+      window.removeEventListener('keydown', handler)
+    }
   }, [onClose])
 
   return (
@@ -62,7 +64,9 @@ export function MailDetailModal({ mail, onClose }: MailDetailModalProps) {
     >
       <div
         className="flex max-h-[80vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-xl"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation()
+        }}
       >
         <div className="flex items-center justify-between border-b border-border/50 bg-surface-secondary px-4 py-3">
           <div className="flex items-center gap-3">

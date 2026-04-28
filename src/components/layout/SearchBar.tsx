@@ -109,7 +109,9 @@ function ColumnsDropdown() {
   const { columns } = useTabControls()
   const [open, setOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
-  const closeDropdown = useCallback(() => setOpen(false), [])
+  const closeDropdown = useCallback(() => {
+    setOpen(false)
+  }, [])
 
   useClickOutside(dropdownRef, open, closeDropdown)
 
@@ -138,7 +140,9 @@ function ColumnsDropdown() {
   return (
     <div className="relative" ref={dropdownRef} onKeyDown={handleKeyDown}>
       <button
-        onClick={() => setOpen(!open)}
+        onClick={() => {
+          setOpen(!open)
+        }}
         aria-expanded={open}
         aria-haspopup="menu"
         className="flex items-center gap-1 rounded border border-border bg-surface-tertiary px-2.5 py-1 text-sm hover:bg-surface-tertiary/70"
@@ -155,7 +159,9 @@ function ColumnsDropdown() {
               key={col.id}
               role="menuitemcheckbox"
               aria-checked={col.visible}
-              onClick={() => col.toggle()}
+              onClick={() => {
+                col.toggle()
+              }}
               className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-surface-tertiary focus:bg-surface-tertiary focus:outline-hidden"
             >
               <span className="flex h-4 w-4 items-center justify-center">
@@ -221,7 +227,9 @@ export function SearchBar() {
           type="text"
           placeholder={searchPlaceholder ?? t('search.placeholder')}
           value={inputValue}
-          onChange={(e) => setInputState({ search, value: e.target.value })}
+          onChange={(e) => {
+            setInputState({ search, value: e.target.value })
+          }}
           aria-label={t('accessibility.search')}
           className="w-full rounded border border-border bg-surface-tertiary pl-9 pr-8 py-1.5 text-sm placeholder-content-muted focus:border-accent focus:outline-hidden"
         />
@@ -241,7 +249,9 @@ export function SearchBar() {
           {MAIL_FILTER_OPTIONS.map((type) => (
             <button
               key={type}
-              onClick={() => mailFilter.onChange(type)}
+              onClick={() => {
+                mailFilter.onChange(type)
+              }}
               className={cn(
                 'rounded px-3 py-1 text-sm capitalize transition-colors',
                 mailFilter.value === type
@@ -258,9 +268,9 @@ export function SearchBar() {
       {characterSort && (
         <select
           value={characterSort.value}
-          onChange={(e) =>
+          onChange={(e) => {
             characterSort.onChange(e.target.value as CharacterSortValue)
-          }
+          }}
           aria-label={t('accessibility.sortCharacters')}
           className="w-36 rounded border border-border bg-surface-tertiary px-2 py-1.5 text-sm focus:border-accent focus:outline-hidden"
         >
@@ -306,9 +316,9 @@ export function SearchBar() {
       {orderTypeFilter && (
         <select
           value={orderTypeFilter.value}
-          onChange={(e) =>
+          onChange={(e) => {
             orderTypeFilter.onChange(e.target.value as OrderTypeValue)
-          }
+          }}
           aria-label={t('accessibility.filterByOrderType')}
           className="w-32 rounded border border-border bg-surface-tertiary px-2 py-1.5 text-sm focus:border-accent focus:outline-hidden"
         >
@@ -323,7 +333,9 @@ export function SearchBar() {
       {assetTypeFilter && (
         <select
           value={assetTypeFilter.value}
-          onChange={(e) => assetTypeFilter.onChange(e.target.value)}
+          onChange={(e) => {
+            assetTypeFilter.onChange(e.target.value)
+          }}
           aria-label={t('accessibility.filterByAssetType')}
           className="w-36 rounded border border-border bg-surface-tertiary px-2 py-1.5 text-sm focus:border-accent focus:outline-hidden"
         >
@@ -338,7 +350,9 @@ export function SearchBar() {
       {categoryFilter && (
         <select
           value={categoryFilter.value}
-          onChange={(e) => categoryFilter.onChange(e.target.value)}
+          onChange={(e) => {
+            categoryFilter.onChange(e.target.value)
+          }}
           aria-label={t('accessibility.filterByCategory')}
           className="w-40 rounded border border-border bg-surface-tertiary px-2 py-1.5 text-sm focus:border-accent focus:outline-hidden"
         >
@@ -354,7 +368,9 @@ export function SearchBar() {
       {groupFilter && groupFilter.groups.length > 0 && (
         <select
           value={groupFilter.value}
-          onChange={(e) => groupFilter.onChange(e.target.value)}
+          onChange={(e) => {
+            groupFilter.onChange(e.target.value)
+          }}
           aria-label={t('accessibility.filterByGroup')}
           className="w-44 rounded border border-border bg-surface-tertiary px-2 py-1.5 text-sm focus:border-accent focus:outline-hidden"
         >
@@ -372,9 +388,9 @@ export function SearchBar() {
           <input
             type="checkbox"
             checked={contractAvailabilityFilter.hideAlliance}
-            onChange={(e) =>
+            onChange={(e) => {
               contractAvailabilityFilter.onToggleAlliance(e.target.checked)
-            }
+            }}
             className="h-4 w-4 rounded border-border bg-surface-tertiary accent-accent"
           />
           {t('searchBar.hideAlliance')}

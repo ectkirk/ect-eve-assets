@@ -360,7 +360,9 @@ export function ClearCacheModal({ open, onOpenChange }: ClearCacheModalProps) {
                         key={option.id}
                         label={t(option.labelKey)}
                         checked={selected.has(option.id)}
-                        onChange={() => toggleOption(option.id)}
+                        onChange={() => {
+                          toggleOption(option.id)
+                        }}
                         suffix={
                           option.requiresReload && (
                             <span className="text-xs text-semantic-warning">
@@ -401,7 +403,9 @@ export function ClearCacheModal({ open, onOpenChange }: ClearCacheModalProps) {
 
         <DialogFooter className="gap-2 sm:gap-2">
           <button
-            onClick={() => onOpenChange(false)}
+            onClick={() => {
+              onOpenChange(false)
+            }}
             disabled={isClearing}
             className="rounded-md border border-border px-4 py-2 text-sm font-medium hover:bg-surface-tertiary disabled:opacity-50"
           >

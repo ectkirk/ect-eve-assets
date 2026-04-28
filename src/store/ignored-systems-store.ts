@@ -13,6 +13,13 @@ interface IgnoredSystemsState {
   setAvoidInsurgencies: (avoid: boolean) => void
 }
 
+interface PersistedIgnoredSystems {
+  state?: Partial<Omit<IgnoredSystemsState, 'ignoredSystems'>> & {
+    ignoredSystems?: number[]
+  }
+  version?: number
+}
+
 export const useIgnoredSystemsStore = create<IgnoredSystemsState>()(
   persist(
     (set, get) => ({
@@ -56,12 +63,12 @@ export const useIgnoredSystemsStore = create<IgnoredSystemsState>()(
         getItem: (name) => {
           const str = localStorage.getItem(name)
           if (!str) return null
-          const parsed = JSON.parse(str)
+          const parsed = JSON.parse(str) as PersistedIgnoredSystems
           return {
             ...parsed,
             state: {
               ...parsed.state,
-              ignoredSystems: new Set(parsed.state.ignoredSystems || []),
+              ignoredSystems: new Set(parsed.state?.ignoredSystems ?? []),
             },
           }
         },
@@ -75,7 +82,9 @@ export const useIgnoredSystemsStore = create<IgnoredSystemsState>()(
           }
           localStorage.setItem(name, JSON.stringify(serialized))
         },
-        removeItem: (name) => localStorage.removeItem(name),
+        removeItem: (name) => {
+          localStorage.removeItem(name)
+        },
       },
     }
   )

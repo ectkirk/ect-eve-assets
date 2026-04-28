@@ -111,7 +111,7 @@ export class RateLimitTracker {
     let windowMs = 15 * 60 * 1000
 
     if (limitHeader) {
-      const match = limitHeader.match(/(\d+)\/(\d+)([smh])/)
+      const match = /(\d+)\/(\d+)([smh])/.exec(limitHeader)
       if (match?.[1] && match[2] && match[3]) {
         limit = parseInt(match[1], 10)
         const windowValue = parseInt(match[2], 10)

@@ -59,7 +59,9 @@ export function useColumnSettings(storageKey: string, columns: ColumnConfig[]) {
       id: col.id,
       label: col.label,
       visible: getRecordValue(visibility, col.id) !== false,
-      toggle: () => toggleVisibility(col.id),
+      toggle: () => {
+        toggleVisibility(col.id)
+      },
     }))
   }, [columns, visibility, toggleVisibility])
 

@@ -28,7 +28,9 @@ export function CheckboxRow({
       <input
         type="checkbox"
         checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
+        onChange={(e) => {
+          onChange(e.target.checked)
+        }}
         className={cn(
           'h-4 w-4 rounded border-border text-accent focus:ring-accent',
           description && 'mt-0.5'

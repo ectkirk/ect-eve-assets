@@ -165,20 +165,14 @@ export function createOwnerStore<
   const storeCreator: StateCreator<
     OwnerStore<TOwnerData, TExtraState, TExtraActions>
   > = (set, get) => {
-    const baseSet = (partial: Partial<BaseState<TOwnerData> & TExtraState>) =>
+    const baseSet = (partial: Partial<BaseState<TOwnerData> & TExtraState>) => {
       set(
         partial as Partial<OwnerStore<TOwnerData, TExtraState, TExtraActions>>
       )
+    }
 
     const extras = extraActions
-      ? extraActions(
-          baseSet,
-          get as () => BaseState<TOwnerData> &
-            TExtraState &
-            BaseActions &
-            TExtraActions,
-          db
-        )
+      ? extraActions(baseSet, get, db)
       : ({} as TExtraActions)
 
     return {
@@ -315,7 +309,7 @@ export function createOwnerStore<
             return
           }
 
-          const current = get().dataByOwner as TOwnerData[]
+          const current = get().dataByOwner
           const results = current
             .filter(
               (d: TOwnerData) =>
@@ -374,10 +368,7 @@ export function createOwnerStore<
         const gen = storeGeneration
         const state = get()
         const preHookResult = onBeforeOwnerUpdate
-          ? onBeforeOwnerUpdate(
-              owner,
-              state as BaseState<TOwnerData> & TExtraState
-            )
+          ? onBeforeOwnerUpdate(owner, state)
           : {}
 
         try {
@@ -400,7 +391,7 @@ export function createOwnerStore<
               owner,
               newData: data,
               previousData: preHookResult.previousData,
-              state: currentState as BaseState<TOwnerData> & TExtraState,
+              state: currentState,
             })
           }
 
@@ -409,7 +400,7 @@ export function createOwnerStore<
             .getState()
             .setExpiry(ownerKey, endpoint, expiresAt, etag, isDataEmpty)
 
-          const updated = (get().dataByOwner as TOwnerData[]).filter(
+          const updated = get().dataByOwner.filter(
             (d: TOwnerData) =>
               makeOwnerKey(d.owner.type, d.owner.id) !== ownerKey
           )
@@ -451,7 +442,7 @@ export function createOwnerStore<
         await db.delete(ownerKey)
 
         set((current) => {
-          const updated = (current.dataByOwner as TOwnerData[]).filter(
+          const updated = current.dataByOwner.filter(
             (d: TOwnerData) =>
               makeOwnerKey(d.owner.type, d.owner.id) !== ownerKey
           )

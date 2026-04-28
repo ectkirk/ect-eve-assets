@@ -106,7 +106,10 @@ function getPersistedState(): {
   try {
     const stored = localStorage.getItem('settings')
     if (stored) {
-      return JSON.parse(stored)?.state ?? null
+      const parsed = JSON.parse(stored) as {
+        state?: { language?: string; hasSelectedLanguage?: boolean }
+      }
+      return parsed.state ?? null
     }
   } catch {
     // Fall through

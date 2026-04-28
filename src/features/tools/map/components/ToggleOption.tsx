@@ -20,7 +20,9 @@ export const ToggleOption = memo(function ToggleOption({
       <input
         type="checkbox"
         checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
+        onChange={(e) => {
+          onChange(e.target.checked)
+        }}
         className="h-3.5 w-3.5 rounded border-border text-accent focus:ring-accent"
       />
       <span className="text-xs text-content-secondary">
