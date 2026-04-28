@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, ReactNode } from 'react'
+import { useState, useCallback, useMemo, useRef, ReactNode } from 'react'
 import { ChevronRight, ChevronDown, Loader2, CircleAlert } from 'lucide-react'
 
 interface LazySectionProps<T> {
@@ -9,6 +9,14 @@ interface LazySectionProps<T> {
   children: (data: T) => ReactNode
 }
 
+interface LazySectionState<T> {
+  typeId: number
+  isOpen: boolean
+  data: T | null
+  loading: boolean
+  error: string | null
+}
+
 export function LazySection<T>({
   title,
   typeId,
@@ -16,33 +24,48 @@ export function LazySection<T>({
   hasData,
   children,
 }: LazySectionProps<T>) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [data, setData] = useState<T | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [sectionState, setSectionState] = useState<LazySectionState<T>>({
+    typeId,
+    isOpen: false,
+    data: null,
+    loading: false,
+    error: null,
+  })
   const currentTypeIdRef = useRef(typeId)
+  currentTypeIdRef.current = typeId
 
-  useEffect(() => {
-    currentTypeIdRef.current = typeId
-    setIsOpen(false)
-    setData(null)
-    setLoading(false)
-    setError(null)
-  }, [typeId])
+  const currentState = useMemo(
+    () =>
+      sectionState.typeId === typeId
+        ? sectionState
+        : {
+            typeId,
+            isOpen: false,
+            data: null,
+            loading: false,
+            error: null,
+          },
+    [sectionState, typeId]
+  )
+  const { isOpen, data, loading, error } = currentState
 
   const handleToggle = useCallback(async () => {
     if (isOpen) {
-      setIsOpen(false)
+      setSectionState({ ...currentState, isOpen: false })
       return
     }
 
-    setIsOpen(true)
+    setSectionState({ ...currentState, isOpen: true })
 
     if (data !== null) return
 
     const fetchTypeId = typeId
-    setLoading(true)
-    setError(null)
+    setSectionState({
+      ...currentState,
+      isOpen: true,
+      loading: true,
+      error: null,
+    })
 
     try {
       const result = await fetcher(fetchTypeId)
@@ -50,19 +73,39 @@ export function LazySection<T>({
 
       const errorResult = result as { error?: string }
       if (errorResult.error) {
-        setError(errorResult.error)
+        setSectionState((state) => ({
+          ...(state.typeId === fetchTypeId ? state : currentState),
+          typeId: fetchTypeId,
+          error: errorResult.error ?? null,
+          loading: false,
+        }))
       } else {
-        setData(result)
+        setSectionState((state) => ({
+          ...(state.typeId === fetchTypeId ? state : currentState),
+          typeId: fetchTypeId,
+          data: result,
+          loading: false,
+          error: null,
+        }))
       }
     } catch (err) {
       if (currentTypeIdRef.current !== fetchTypeId) return
-      setError(String(err))
+      setSectionState((state) => ({
+        ...(state.typeId === fetchTypeId ? state : currentState),
+        typeId: fetchTypeId,
+        error: String(err),
+        loading: false,
+      }))
     } finally {
       if (currentTypeIdRef.current === fetchTypeId) {
-        setLoading(false)
+        setSectionState((state) => ({
+          ...(state.typeId === fetchTypeId ? state : currentState),
+          typeId: fetchTypeId,
+          loading: false,
+        }))
       }
     }
-  }, [isOpen, data, fetcher, typeId])
+  }, [isOpen, data, fetcher, typeId, currentState])
 
   if (data !== null && !hasData(data)) {
     return null

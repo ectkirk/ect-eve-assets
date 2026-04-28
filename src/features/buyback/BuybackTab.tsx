@@ -78,18 +78,8 @@ export function BuybackTab({
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const prevTabRef = useRef(activeTab)
-  const [formKey, setFormKey] = useState(0)
-  const [pendingAutoSubmit, setPendingAutoSubmit] = useState<string | null>(
-    null
-  )
-
-  useEffect(() => {
-    if (prefillText && prefillText !== pendingAutoSubmit) {
-      setFormKey((k) => k + 1)
-      setPendingAutoSubmit(prefillText)
-      onPrefillConsumed?.()
-    }
-  }, [prefillText, pendingAutoSubmit, onPrefillConsumed])
+  const handledPrefillRef = useRef<string | null>(null)
+  const [autoSubmitText, setAutoSubmitText] = useState('')
 
   const [assetSafetySecLevel, setAssetSafetySecLevel] =
     useState<AssetSafetySecurityLevel>('nullsec')
@@ -197,16 +187,33 @@ export function BuybackTab({
   )
 
   const handleReset = () => {
+    handledPrefillRef.current = null
+    setAutoSubmitText('')
     setResult(null)
     setError(null)
   }
 
   useEffect(() => {
-    if (pendingAutoSubmit && config && !isLoading && !result) {
-      handleSubmit(pendingAutoSubmit)
-      setPendingAutoSubmit(null)
+    if (
+      !prefillText ||
+      handledPrefillRef.current === prefillText ||
+      !config ||
+      isLoading ||
+      result
+    ) {
+      return
     }
-  }, [pendingAutoSubmit, config, isLoading, result, handleSubmit])
+
+    handledPrefillRef.current = prefillText
+
+    const timer = setTimeout(() => {
+      setAutoSubmitText(prefillText)
+      handleSubmit(prefillText)
+      onPrefillConsumed?.()
+    }, 0)
+
+    return () => clearTimeout(timer)
+  }, [prefillText, config, isLoading, result, handleSubmit, onPrefillConsumed])
 
   if (isLoadingInfo && !info) {
     return (
@@ -232,6 +239,7 @@ export function BuybackTab({
       ? info.assetSafetyRates.npcStationFeeRate
       : info.assetSafetyRates.feeRate
     : 0.15
+  const formText = prefillText ?? autoSubmitText
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -290,12 +298,12 @@ export function BuybackTab({
 
         <div className="rounded-lg border border-border bg-surface-secondary/50 p-6">
           <BuybackForm
-            key={formKey}
+            key={formText}
             onSubmit={handleSubmit}
             isLoading={isLoading}
             hasQuote={!!result}
             onReset={handleReset}
-            defaultText={pendingAutoSubmit ?? ''}
+            defaultText={formText}
           />
         </div>
 

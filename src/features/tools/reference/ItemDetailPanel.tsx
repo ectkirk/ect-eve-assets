@@ -47,6 +47,13 @@ interface ItemDetailPanelProps {
   showUnpublished?: boolean
 }
 
+interface TypeDataState {
+  typeId: number
+  data: CombinedTypeData | null
+  loading: boolean
+  error: string | null
+}
+
 function getMetaGroupBadge(metaGroupId: number | null | undefined) {
   if (!metaGroupId) return null
   const meta = META_GROUPS[metaGroupId]
@@ -64,9 +71,13 @@ export function ItemDetailPanel({
   showUnpublished = false,
 }: ItemDetailPanelProps) {
   const { t } = useTranslation('tools')
-  const [data, setData] = useState<CombinedTypeData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const cachedData = getCachedTypeData(typeId)
+  const [typeDataState, setTypeDataState] = useState<TypeDataState>(() => ({
+    typeId,
+    data: cachedData ?? null,
+    loading: !cachedData,
+    error: null,
+  }))
   const [dogmaUnits, setDogmaUnits] = useState<Record<
     string,
     DogmaUnit
@@ -100,22 +111,17 @@ export function ItemDetailPanel({
   useEffect(() => {
     let cancelled = false
 
-    const cached = getCachedTypeData(typeId)
-    if (cached) {
-      setData(cached)
-      setLoading(false)
-      setError(null)
-      return
-    }
-
-    setLoading(true)
-    setError(null)
+    if (getCachedTypeData(typeId)) return
 
     const fetchData = async () => {
       if (!window.electronAPI) {
         if (!cancelled) {
-          setError('API not available')
-          setLoading(false)
+          setTypeDataState({
+            typeId,
+            data: null,
+            loading: false,
+            error: 'API not available',
+          })
         }
         return
       }
@@ -136,7 +142,12 @@ export function ItemDetailPanel({
           marketResult.error,
         ].filter(Boolean)
         if (errors.length > 0) {
-          setError(errors.join('; '))
+          setTypeDataState({
+            typeId,
+            data: null,
+            loading: false,
+            error: errors.join('; '),
+          })
           return
         }
 
@@ -147,11 +158,21 @@ export function ItemDetailPanel({
         }
 
         setCachedTypeData(typeId, combined)
-        setData(combined)
+        setTypeDataState({
+          typeId,
+          data: combined,
+          loading: false,
+          error: null,
+        })
       } catch (err) {
-        if (!cancelled) setError(String(err))
-      } finally {
-        if (!cancelled) setLoading(false)
+        if (!cancelled) {
+          setTypeDataState({
+            typeId,
+            data: null,
+            loading: false,
+            error: String(err),
+          })
+        }
       }
     }
 
@@ -162,6 +183,16 @@ export function ItemDetailPanel({
     }
   }, [typeId])
 
+  const currentTypeDataState =
+    typeDataState.typeId === typeId
+      ? typeDataState
+      : {
+          typeId,
+          data: cachedData ?? null,
+          loading: !cachedData,
+          error: null,
+        }
+  const { data, loading, error } = currentTypeDataState
   const type = data?.core.type
   const group = data?.core.group
   const category = data?.core.category
@@ -240,14 +271,7 @@ export function ItemDetailPanel({
           .sort((a, b) => a.displayName.localeCompare(b.displayName)),
       })
     )
-  }, [
-    dogma?.attributes,
-    dogma?.attributeDefinitions,
-    attrCategories,
-    excludedAttrIds,
-    showUnpublished,
-    t,
-  ])
+  }, [dogma, attrCategories, excludedAttrIds, showUnpublished, t])
 
   const shipFittingData = useMemo(() => {
     if (!type || !dogma) return null

@@ -187,13 +187,10 @@ export function SearchBar() {
     characterSort,
     contractAvailabilityFilter,
   } = useTabControls()
-  const [inputValue, setInputValue] = useState(search)
+  const [inputState, setInputState] = useState({ search, value: search })
   const settings = useAssetSettings()
 
-  // Sync input when search is reset externally (e.g. tab change)
-  useEffect(() => {
-    setInputValue(search)
-  }, [search])
+  const inputValue = inputState.search === search ? inputState.value : search
 
   const debouncedInput = useDebouncedValue(inputValue, SEARCH_DEBOUNCE_MS)
 
@@ -212,7 +209,7 @@ export function SearchBar() {
   }, [settings])
 
   const handleClear = () => {
-    setInputValue('')
+    setInputState({ search, value: '' })
     setSearch('')
   }
 
@@ -224,7 +221,7 @@ export function SearchBar() {
           type="text"
           placeholder={searchPlaceholder ?? t('search.placeholder')}
           value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
+          onChange={(e) => setInputState({ search, value: e.target.value })}
           aria-label={t('accessibility.search')}
           className="w-full rounded border border-border bg-surface-tertiary pl-9 pr-8 py-1.5 text-sm placeholder-content-muted focus:border-accent focus:outline-hidden"
         />

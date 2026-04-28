@@ -58,10 +58,16 @@ export function TypeSearchInput({
   filterFn,
 }: TypeSearchInputProps) {
   const { t } = useTranslation('common')
-  const [inputValue, setInputValue] = useState('')
+  const [inputState, setInputState] = useState({
+    valueId: value?.id ?? null,
+    value: value?.name ?? '',
+  })
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
-  const [highlightedIndex, setHighlightedIndex] = useState(-1)
+  const [highlightState, setHighlightState] = useState({
+    query: '',
+    index: -1,
+  })
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -125,18 +131,20 @@ export function TypeSearchInput({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [isOpen])
 
+  const valueId = value?.id ?? null
   const valueName = value?.name ?? ''
-  useEffect(() => {
-    setInputValue(valueName)
-  }, [valueName])
-
-  useEffect(() => {
-    setHighlightedIndex(-1)
-  }, [searchResults])
+  const inputValue =
+    inputState.valueId === valueId ? inputState.value : valueName
+  const rawHighlightedIndex =
+    highlightState.query === debouncedQuery ? highlightState.index : -1
+  const highlightedIndex =
+    rawHighlightedIndex >= 0 && rawHighlightedIndex < searchResults.length
+      ? rawHighlightedIndex
+      : -1
 
   const handleChange = useCallback(
     (newValue: string) => {
-      setInputValue(newValue)
+      setInputState({ valueId: null, value: newValue })
       setIsOpen(true)
       if (value) onChange(null)
 
@@ -150,7 +158,7 @@ export function TypeSearchInput({
 
   const handleClear = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    setInputValue('')
+    setInputState({ valueId: null, value: '' })
     setDebouncedQuery('')
     setIsOpen(false)
     onChange(null)
@@ -160,7 +168,7 @@ export function TypeSearchInput({
   const handleSelect = useCallback(
     (type: CachedType) => {
       onChange(type)
-      setInputValue(type.name)
+      setInputState({ valueId: type.id, value: type.name })
       setDebouncedQuery('')
       setIsOpen(false)
     },
@@ -184,15 +192,23 @@ export function TypeSearchInput({
       switch (e.key) {
         case 'ArrowDown':
           e.preventDefault()
-          setHighlightedIndex((prev) =>
-            prev < searchResults.length - 1 ? prev + 1 : 0
-          )
+          setHighlightState((prev) => {
+            const current = prev.query === debouncedQuery ? prev.index : -1
+            return {
+              query: debouncedQuery,
+              index: current < searchResults.length - 1 ? current + 1 : 0,
+            }
+          })
           break
         case 'ArrowUp':
           e.preventDefault()
-          setHighlightedIndex((prev) =>
-            prev > 0 ? prev - 1 : searchResults.length - 1
-          )
+          setHighlightState((prev) => {
+            const current = prev.query === debouncedQuery ? prev.index : -1
+            return {
+              query: debouncedQuery,
+              index: current > 0 ? current - 1 : searchResults.length - 1,
+            }
+          })
           break
         case 'Enter': {
           e.preventDefault()
@@ -203,13 +219,14 @@ export function TypeSearchInput({
         case 'Escape':
           e.preventDefault()
           setIsOpen(false)
-          setHighlightedIndex(-1)
+          setHighlightState({ query: debouncedQuery, index: -1 })
           break
       }
     },
     [
       isOpen,
       searchResults,
+      debouncedQuery,
       highlightedIndex,
       inputValue,
       handleClear,
