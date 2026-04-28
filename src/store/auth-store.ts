@@ -4,6 +4,7 @@ import {
   createJSONStorage,
   type StateStorage,
 } from 'zustand/middleware'
+import { logger } from '@/lib/logger'
 import {
   getRecordValue,
   removeRecordValue,
@@ -41,7 +42,10 @@ const electronStorage: StateStorage = {
         )
       })
       .catch((err) => {
-        console.error('[electronStorage] setItem failed:', err)
+        logger.error('Failed to write auth storage item', err, {
+          module: 'AuthStorage',
+          key: name,
+        })
       })
   },
   removeItem: (name: string): void => {
@@ -55,7 +59,10 @@ const electronStorage: StateStorage = {
         await window.electronAPI!.storageSet(removeRecordValue(existing, name))
       })
       .catch((err) => {
-        console.error('[electronStorage] removeItem failed:', err)
+        logger.error('Failed to remove auth storage item', err, {
+          module: 'AuthStorage',
+          key: name,
+        })
       })
   },
 }
@@ -63,11 +70,9 @@ const electronStorage: StateStorage = {
 export type OwnerType = 'character' | 'corporation'
 
 export interface Owner {
-  id: number // Character ID or Corporation ID
+  id: number
   type: OwnerType
   name: string
-  // For corporations, this is the character ID with Director role
-  // For characters, this is the same as id
   characterId: number
   corporationId: number
   allianceId?: number | undefined
@@ -92,7 +97,6 @@ interface AuthState {
   selectedOwnerIds: string[]
   isAuthenticated: boolean
 
-  // Actions
   addOwner: (auth: {
     accessToken: string
     refreshToken: string
@@ -128,7 +132,6 @@ interface AuthState {
   updateOwnerCorporationId: (ownerId: string, corporationId: number) => void
   clearAuth: () => void
 
-  // Helpers
   getActiveOwner: () => Owner | null
   hasOwnerAuthFailed: (ownerId: string) => boolean
   hasOwnerScopesOutdated: (ownerId: string) => boolean
@@ -141,7 +144,6 @@ interface AuthState {
   getCorporationOwners: () => Owner[]
   isOwnerTokenExpired: (ownerId: string) => boolean
 
-  // Legacy compatibility (computed from owners)
   characters: Record<number, Owner>
   activeCharacterId: number | null
   addCharacter: (auth: {

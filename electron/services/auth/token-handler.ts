@@ -24,11 +24,37 @@ export interface JWTPayload {
   exp: number
 }
 
+function toVerifiedJwtPayload(payload: jose.JWTPayload): JWTPayload {
+  const name = payload['name']
+  const scp = payload['scp']
+
+  if (
+    typeof payload.sub !== 'string' ||
+    typeof name !== 'string' ||
+    typeof payload.iss !== 'string' ||
+    typeof payload.exp !== 'number' ||
+    !(
+      typeof scp === 'string' ||
+      (Array.isArray(scp) && scp.every((scope) => typeof scope === 'string'))
+    )
+  ) {
+    throw new Error('Invalid JWT payload')
+  }
+
+  return {
+    sub: payload.sub,
+    name,
+    scp,
+    iss: payload.iss,
+    exp: payload.exp,
+  }
+}
+
 export async function verifyToken(token: string): Promise<JWTPayload> {
   const { payload } = await jose.jwtVerify(token, JWKS, {
     issuer: EVE_SSO.issuer,
   })
-  return payload as unknown as JWTPayload
+  return toVerifiedJwtPayload(payload)
 }
 
 export function extractCharacterId(sub: string): number {

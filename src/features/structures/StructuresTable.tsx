@@ -21,6 +21,7 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
+import { parseBooleanRecord } from '@/lib/persisted-json'
 import { cn } from '@/lib/utils'
 import { TypeIcon, CorporationLogo } from '@/components/ui/type-icon'
 import { useTabControls } from '@/context'
@@ -52,7 +53,7 @@ function loadColumnVisibility(): Record<string, boolean> {
     if (stored) {
       return {
         ...DEFAULT_VISIBILITY,
-        ...(JSON.parse(stored) as Record<string, boolean>),
+        ...parseBooleanRecord(stored),
       }
     }
   } catch {
@@ -65,7 +66,7 @@ function saveColumnVisibility(visibility: Record<string, boolean>) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(visibility))
   } catch {
-    // localStorage may be unavailable
+    return
   }
 }
 

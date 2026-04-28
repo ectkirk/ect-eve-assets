@@ -3,6 +3,7 @@ import type {
   ContractInfo,
   ResolvedAsset,
 } from '@/lib/resolved-asset'
+import { parseBooleanRecord } from '@/lib/persisted-json'
 import { getAssetDisplayNames } from '@/lib/resolved-asset'
 import { formatVolume as formatVolumeBase } from '@/lib/utils'
 
@@ -100,7 +101,7 @@ export function loadColumnVisibility(): AssetColumnVisibility {
     return stored
       ? {
           ...DEFAULT_COLUMN_VISIBILITY,
-          ...(JSON.parse(stored) as AssetColumnVisibility),
+          ...parseBooleanRecord(stored),
         }
       : DEFAULT_COLUMN_VISIBILITY
   } catch {
@@ -112,7 +113,7 @@ export function saveColumnVisibility(state: AssetColumnVisibility): void {
   try {
     localStorage.setItem(STORAGE_KEY_VISIBILITY, JSON.stringify(state))
   } catch {
-    // Ignore storage errors
+    return
   }
 }
 

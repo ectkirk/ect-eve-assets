@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 import { useReferenceCacheStore } from './reference-cache'
 import { clearNamesLRUCache } from '@/api/endpoints/universe'
 import { logger } from '@/lib/logger'
+import { isJsonRecord, parseJsonRecord } from '@/lib/persisted-json'
 import { getRecordValue } from '@/lib/record-utils'
 
 export type SupportedLanguage =
@@ -106,13 +107,30 @@ function getPersistedState(): {
   try {
     const stored = localStorage.getItem('settings')
     if (stored) {
-      const parsed = JSON.parse(stored) as {
-        state?: { language?: string; hasSelectedLanguage?: boolean }
+      const parsed = parseJsonRecord(stored)
+      const state = parsed['state']
+      if (!isJsonRecord(state)) {
+        return null
       }
-      return parsed.state ?? null
+
+      const persisted: {
+        language?: string
+        hasSelectedLanguage?: boolean
+      } = {}
+      const language = state['language']
+      const hasSelectedLanguage = state['hasSelectedLanguage']
+
+      if (typeof language === 'string') {
+        persisted.language = language
+      }
+      if (typeof hasSelectedLanguage === 'boolean') {
+        persisted.hasSelectedLanguage = hasSelectedLanguage
+      }
+
+      return persisted
     }
   } catch {
-    // Fall through
+    return null
   }
   return null
 }

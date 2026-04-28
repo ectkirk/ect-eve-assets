@@ -234,12 +234,41 @@ function extractItemsByFlag(
 }
 
 function extractShipHolds(children: TreeNode[]): ShipHolds {
-  return Object.fromEntries(
-    Array.from(HOLD_FLAG_MAP).map(([key, flag]) => [
-      key,
-      extractItemsByFlag(children, flag),
-    ]),
-  ) as unknown as ShipHolds
+  const items = (key: keyof ShipHolds) => {
+    const flag = HOLD_FLAG_MAP.get(key)
+    return flag ? extractItemsByFlag(children, flag) : []
+  }
+
+  return {
+    cargo: items('cargo'),
+    fleetHangar: items('fleetHangar'),
+    shipHangar: items('shipHangar'),
+    fuelBay: items('fuelBay'),
+    oreBay: items('oreBay'),
+    gasBay: items('gasBay'),
+    mineralBay: items('mineralBay'),
+    salvageBay: items('salvageBay'),
+    shipBay: items('shipBay'),
+    smallShipBay: items('smallShipBay'),
+    mediumShipBay: items('mediumShipBay'),
+    largeShipBay: items('largeShipBay'),
+    industrialShipBay: items('industrialShipBay'),
+    ammoBay: items('ammoBay'),
+    commandCenterBay: items('commandCenterBay'),
+    planetaryBay: items('planetaryBay'),
+    materialBay: items('materialBay'),
+    asteroidBay: items('asteroidBay'),
+    iceBay: items('iceBay'),
+    boosterBay: items('boosterBay'),
+    corpseBay: items('corpseBay'),
+    frigateEscapeBay: items('frigateEscapeBay'),
+    subsystemBay: items('subsystemBay'),
+    mobileDepotBay: items('mobileDepotBay'),
+    moonMaterialBay: items('moonMaterialBay'),
+    quafeBay: items('quafeBay'),
+    structureDeedBay: items('structureDeedBay'),
+    expeditionBay: items('expeditionBay'),
+  }
 }
 
 function extractFighterTubes(children: TreeNode[]): ModuleItem[] {

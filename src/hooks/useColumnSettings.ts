@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { logger } from '@/lib/logger'
+import { parseBooleanRecord } from '@/lib/persisted-json'
 import { getRecordValue, setRecordValue } from '@/lib/record-utils'
 
 export interface ColumnConfig {
@@ -18,7 +19,7 @@ export function useColumnSettings(storageKey: string, columns: ColumnConfig[]) {
     try {
       const stored = localStorage.getItem(storageKey)
       if (stored) {
-        const parsed = JSON.parse(stored) as Record<string, boolean>
+        const parsed = parseBooleanRecord(stored)
         return { ...defaults, ...parsed }
       }
     } catch (e) {

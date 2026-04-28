@@ -20,17 +20,25 @@ export function createActionStore<
   type Store = ActionStoreState<TAction, TTriggerName, TArgs>
 
   return create<Store>((set) => {
+    const trigger = {
+      [triggerName]: (...args: TArgs) => {
+        set((state) => ({
+          ...state,
+          pendingAction: actionCreator(...args),
+        }))
+      },
+    } as Record<TTriggerName, (...args: TArgs) => void>
+
     const store = {
       pendingAction: null as TAction | null,
       clearAction: () => {
-        set({ pendingAction: null } as unknown as Partial<Store>)
+        set((state) => ({
+          ...state,
+          pendingAction: null,
+        }))
       },
-      [triggerName]: (...args: TArgs) => {
-        set({
-          pendingAction: actionCreator(...args),
-        } as unknown as Partial<Store>)
-      },
+      ...trigger,
     }
-    return store as Store
+    return store
   })
 }
