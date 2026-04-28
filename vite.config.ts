@@ -8,6 +8,25 @@ import path from 'node:path'
 
 config()
 
+const RADIX_VENDOR_PACKAGES = [
+  '@radix-ui/react-context-menu',
+  '@radix-ui/react-dialog',
+  '@radix-ui/react-hover-card',
+  '@radix-ui/react-scroll-area',
+]
+
+const UTILS_VENDOR_PACKAGES = [
+  'zustand',
+  'zod',
+  'jose',
+  'clsx',
+  'tailwind-merge',
+]
+
+function chunkForPackage(id: string, packages: readonly string[]): boolean {
+  return packages.some((pkg) => id.includes(`/node_modules/${pkg}/`))
+}
+
 export default defineConfig({
   base: './',
   plugins: [
@@ -48,14 +67,13 @@ export default defineConfig({
     outDir: 'dist',
     rollupOptions: {
       output: {
-        manualChunks: {
-          'radix-vendor': [
-            '@radix-ui/react-context-menu',
-            '@radix-ui/react-dialog',
-            '@radix-ui/react-hover-card',
-            '@radix-ui/react-scroll-area',
-          ],
-          'utils-vendor': ['zustand', 'zod', 'jose', 'clsx', 'tailwind-merge'],
+        manualChunks(id) {
+          if (chunkForPackage(id, RADIX_VENDOR_PACKAGES)) {
+            return 'radix-vendor'
+          }
+          if (chunkForPackage(id, UTILS_VENDOR_PACKAGES)) {
+            return 'utils-vendor'
+          }
         },
       },
     },
