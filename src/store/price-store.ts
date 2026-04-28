@@ -3,6 +3,7 @@ import { getMarketPrices } from '@/api/endpoints/market'
 import { logger } from '@/lib/logger'
 import { getTypeBasePrice, isTypeBlueprint } from '@/store/reference-cache'
 import { useStoreRegistry } from '@/store/store-registry'
+import { useMarketOrdersStore } from './market-orders-store'
 import { isAbyssalTypeId } from './price-utils'
 import {
   setLastJitaRefreshAt,
@@ -93,7 +94,6 @@ async function triggerJitaRefreshIfNeeded(): Promise<void> {
     const { useAssetStore } = await import('./asset-store')
     const { collectOwnedIds } = await import('./type-id-collector')
     const { useContractsStore } = await import('./contracts-store')
-    const { useMarketOrdersStore } = await import('./market-orders-store')
     const { useIndustryJobsStore } = await import('./industry-jobs-store')
     const { useStructuresStore } = await import('./structures-store')
 

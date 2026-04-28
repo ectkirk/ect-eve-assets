@@ -3,7 +3,6 @@ import { config } from 'dotenv'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import electron from 'vite-plugin-electron'
-import electronRenderer from 'vite-plugin-electron-renderer'
 import path from 'node:path'
 
 config()
@@ -56,7 +55,6 @@ export default defineConfig({
         },
       },
     ]),
-    electronRenderer(),
   ],
   resolve: {
     alias: {

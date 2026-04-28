@@ -3,6 +3,7 @@ import { DEFAULT_REGION_ID } from '@/api/endpoints/market'
 import { useExpiryCacheStore } from '@/store/expiry-cache-store'
 import { useStoreRegistry } from '@/store/store-registry'
 import { usePriceStore } from '@/store/price-store'
+import { useMarketOrdersStore } from '@/store/market-orders-store'
 import { logger } from '@/lib/logger'
 import { getErrorMessage } from '@/lib/errors'
 import {
@@ -432,7 +433,6 @@ export const useRegionalMarketStore = create<RegionalMarketStore>(
         })
       }
 
-      const { useMarketOrdersStore } = await import('./market-orders-store')
       const activeTypeIds = new Set<number>()
       for (const stored of useMarketOrdersStore.getState().itemsById.values()) {
         activeTypeIds.add(stored.item.type_id)
