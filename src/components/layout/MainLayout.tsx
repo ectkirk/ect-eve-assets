@@ -17,7 +17,7 @@ import {
   BUYBACK_TABS,
   getStyling,
   type BuybackTabType,
-} from '@/features/buyback'
+} from '@/features/buyback/config'
 import { useBuybackActionStore } from '@/store/buyback-action-store'
 
 const AssetsTab = lazy(() =>
