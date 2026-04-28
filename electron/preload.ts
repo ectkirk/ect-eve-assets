@@ -11,7 +11,7 @@ window.addEventListener('error', (event) => {
 })
 
 window.addEventListener('unhandledrejection', (event) => {
-  const reason = event.reason
+  const reason: unknown = event.reason
   console.error(
     'Renderer unhandled rejection',
     reason instanceof Error ? reason.stack : String(reason),

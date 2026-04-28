@@ -466,15 +466,16 @@ export function getEsiAdjustedPrice(typeId: number): number | undefined {
   return usePriceStore.getState().esiPrices.get(typeId)?.adjusted
 }
 
-queueMicrotask(async () => {
-  const { useStoreRegistry } = await import('@/store/store-registry')
-  useStoreRegistry.getState().register({
-    name: 'prices',
-    clear: () => usePriceStore.getState().clear(),
-    getIsUpdating: () => {
-      const state = usePriceStore.getState()
-      return state.isUpdatingJita || state.isUpdatingEsi
-    },
-    init: () => usePriceStore.getState().init(),
+queueMicrotask(() => {
+  void import('@/store/store-registry').then(({ useStoreRegistry }) => {
+    useStoreRegistry.getState().register({
+      name: 'prices',
+      clear: () => usePriceStore.getState().clear(),
+      getIsUpdating: () => {
+        const state = usePriceStore.getState()
+        return state.isUpdatingJita || state.isUpdatingEsi
+      },
+      init: () => usePriceStore.getState().init(),
+    })
   })
 })
