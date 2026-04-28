@@ -19,10 +19,10 @@ export function isAbyssalTypeId(typeId: number): boolean {
 }
 
 export interface PriceableItem {
-  type_id?: number
-  typeId?: number
-  item_id?: number
-  itemId?: number
+  type_id?: number | undefined
+  typeId?: number | undefined
+  item_id?: number | undefined
+  itemId?: number | undefined
 }
 
 export function extractPriceableIds(items: PriceableItem[]): {

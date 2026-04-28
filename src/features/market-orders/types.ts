@@ -21,7 +21,7 @@ export interface OrderRow {
   ownerName: string
   typeId: number
   typeName: string
-  categoryId?: number
+  categoryId?: number | undefined
   locationId: number
   locationName: string
   regionName: string

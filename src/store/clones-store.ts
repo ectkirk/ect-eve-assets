@@ -37,8 +37,8 @@ export const useClonesStore = createOwnerStore<CloneData, CharacterCloneData>({
       activeImplants: data.activeImplants,
     }),
     deserialize: (stored) => ({
-      clones: stored.clones as ESIClone,
-      activeImplants: stored.activeImplants as number[],
+      clones: stored['clones'] as ESIClone,
+      activeImplants: stored['activeImplants'] as number[],
     }),
   },
   ownerFilter: 'character',

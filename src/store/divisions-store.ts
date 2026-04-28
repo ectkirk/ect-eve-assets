@@ -18,8 +18,8 @@ import {
 
 export interface CorporationDivisions {
   corporationId: number
-  hangar: { division: number; name?: string }[]
-  wallet: { division: number; name?: string }[]
+  hangar: { division: number; name?: string | undefined }[]
+  wallet: { division: number; name?: string | undefined }[]
 }
 
 interface DivisionsState {

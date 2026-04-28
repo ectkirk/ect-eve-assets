@@ -83,12 +83,12 @@ export interface OwnerStoreConfig<
     owner: Owner,
     state: BaseState<TOwnerData> & TExtraState
   ) => {
-    previousData?: TDBData
+    previousData?: TDBData | undefined
   }
   onAfterOwnerUpdate?: (params: {
     owner: Owner
     newData: TDBData
-    previousData?: TDBData
+    previousData?: TDBData | undefined
     state: BaseState<TOwnerData> & TExtraState
   }) => void
 }

@@ -2,7 +2,7 @@ import i18next from 'i18next'
 import { LOW_FUEL_THRESHOLD_DAYS } from './structure-constants'
 
 const t = (key: string, options?: Record<string, unknown>) =>
-  i18next.t(key, options)
+  options === undefined ? i18next.t(key) : i18next.t(key, options)
 
 export const MS_PER_MINUTE = 60 * 1000
 export const MS_PER_HOUR = 60 * MS_PER_MINUTE
@@ -170,9 +170,9 @@ export function getTimerColorClass(type: TimerType, isUrgent: boolean): string {
 }
 
 interface StarbaseTimerInput {
-  state?: string
-  reinforced_until?: string
-  unanchor_at?: string
+  state?: string | undefined
+  reinforced_until?: string | undefined
+  unanchor_at?: string | undefined
 }
 
 export function getStarbaseTimer(starbase: StarbaseTimerInput): TimerInfo {
@@ -219,8 +219,8 @@ export function getStarbaseTimer(starbase: StarbaseTimerInput): TimerInfo {
 
 interface StructureTimerInput {
   state: string
-  state_timer_end?: string
-  unanchors_at?: string
+  state_timer_end?: string | undefined
+  unanchors_at?: string | undefined
 }
 
 export function getStructureTimer(structure: StructureTimerInput): TimerInfo {

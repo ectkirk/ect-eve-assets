@@ -4,15 +4,15 @@ import { formatFullNumber } from '@/lib/utils'
 interface TypeItem {
   id: number
   name: string
-  categoryId?: number
-  quantity?: number
+  categoryId?: number | undefined
+  quantity?: number | undefined
 }
 
 interface TypeItemListProps {
   items: TypeItem[]
-  onNavigate?: (typeId: number) => void
-  showQuantity?: boolean
-  iconSize?: 'sm' | 'md' | 'lg'
+  onNavigate?: ((typeId: number) => void) | undefined
+  showQuantity?: boolean | undefined
+  iconSize?: 'sm' | 'md' | 'lg' | undefined
 }
 
 export function TypeItemList({

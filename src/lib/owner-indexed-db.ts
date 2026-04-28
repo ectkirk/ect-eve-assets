@@ -99,12 +99,12 @@ export function createOwnerDB<T>(config: OwnerDBConfig<T>): OwnerDB<T> {
     for (const stored of records) {
       if (deserialize) {
         results.push({
-          owner: stored.owner as Owner,
+          owner: stored['owner'] as Owner,
           data: deserialize(stored),
         })
       } else if (dataKey) {
         results.push({
-          owner: stored.owner as Owner,
+          owner: stored['owner'] as Owner,
           data: getRecordValue(stored, dataKey) as T,
         })
       }

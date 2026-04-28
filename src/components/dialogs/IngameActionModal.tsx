@@ -24,9 +24,14 @@ interface IngameActionModalProps {
   onOpenChange: (open: boolean) => void
   action: IngameAction
   targetId: number
-  targetName?: string
-  autopilotOptions?: { addToBeginning?: boolean; clearOthers?: boolean }
-  eligibleCharacterIds?: number[]
+  targetName?: string | undefined
+  autopilotOptions?:
+    | {
+        addToBeginning?: boolean | undefined
+        clearOthers?: boolean | undefined
+      }
+    | undefined
+  eligibleCharacterIds?: number[] | undefined
 }
 
 const REQUIRED_SCOPES = new Map<IngameAction, string>([

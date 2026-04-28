@@ -32,19 +32,19 @@ export interface TreeNode {
   children: TreeNode[]
 
   // Asset data (only for item/container/ship nodes)
-  asset?: ESIAsset
-  typeId?: number
-  typeName?: string
-  categoryId?: number
-  categoryName?: string
-  groupName?: string
+  asset?: ESIAsset | undefined
+  typeId?: number | undefined
+  typeName?: string | undefined
+  categoryId?: number | undefined
+  categoryName?: string | undefined
+  groupName?: string | undefined
 
   // Location hierarchy (for location nodes)
-  locationId?: number
-  regionId?: number
-  regionName?: string
-  systemId?: number
-  systemName?: string
+  locationId?: number | undefined
+  regionId?: number | undefined
+  regionName?: string | undefined
+  systemId?: number | undefined
+  systemName?: string | undefined
 
   // Aggregated totals (sum of self + children)
   totalCount: number
@@ -52,29 +52,29 @@ export interface TreeNode {
   totalVolume: number
 
   // For stacked items
-  stackedAssets?: ESIAsset[]
-  quantity?: number
+  stackedAssets?: ESIAsset[] | undefined
+  quantity?: number | undefined
 
   // Owner info
-  ownerId?: number
-  ownerName?: string
-  ownerType?: 'character' | 'corporation'
+  ownerId?: number | undefined
+  ownerName?: string | undefined
+  ownerType?: 'character' | 'corporation' | undefined
 
   // Blueprint info
-  isBlueprintCopy?: boolean
+  isBlueprintCopy?: boolean | undefined
 
   // Division info (for division nodes)
-  divisionNumber?: number
+  divisionNumber?: number | undefined
 
   // Price info (for leaf items)
-  price?: number
+  price?: number | undefined
 
   // Source flags for color coding
-  isInContract?: boolean
-  isInMarketOrder?: boolean
-  isInIndustryJob?: boolean
-  isOwnedStructure?: boolean
-  isActiveShip?: boolean
+  isInContract?: boolean | undefined
+  isInMarketOrder?: boolean | undefined
+  isInIndustryJob?: boolean | undefined
+  isOwnedStructure?: boolean | undefined
+  isActiveShip?: boolean | undefined
 }
 
 export interface TreeState {

@@ -349,28 +349,33 @@ export function registerRefAPIHandlers(): void {
       includePlex?: boolean
     } = {}
 
-    if (Array.isArray(p.typeIds) && p.typeIds.length > 0) {
-      if (!isValidIdArray(p.typeIds, 1000)) {
+    const typeIds = p['typeIds']
+    const itemIds = p['itemIds']
+    const contractTypeIds = p['contractTypeIds']
+    const includePlex = p['includePlex']
+
+    if (Array.isArray(typeIds) && typeIds.length > 0) {
+      if (!isValidIdArray(typeIds, 1000)) {
         return { error: 'Invalid typeIds array (max 1000)' }
       }
-      body.typeIds = p.typeIds
+      body.typeIds = typeIds
     }
 
-    if (Array.isArray(p.itemIds) && p.itemIds.length > 0) {
-      if (!isValidIdArray(p.itemIds, 1000)) {
+    if (Array.isArray(itemIds) && itemIds.length > 0) {
+      if (!isValidIdArray(itemIds, 1000)) {
         return { error: 'Invalid itemIds array (max 1000)' }
       }
-      body.itemIds = p.itemIds
+      body.itemIds = itemIds
     }
 
-    if (Array.isArray(p.contractTypeIds) && p.contractTypeIds.length > 0) {
-      if (!isValidIdArray(p.contractTypeIds, 100)) {
+    if (Array.isArray(contractTypeIds) && contractTypeIds.length > 0) {
+      if (!isValidIdArray(contractTypeIds, 100)) {
         return { error: 'Invalid contractTypeIds array (max 100)' }
       }
-      body.contractTypeIds = p.contractTypeIds
+      body.contractTypeIds = contractTypeIds
     }
 
-    if (p.includePlex === true) {
+    if (includePlex === true) {
       body.includePlex = true
     }
 

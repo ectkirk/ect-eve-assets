@@ -104,11 +104,11 @@ export function createLocationNode(
   name: string,
   depth: number,
   locationInfo?: {
-    locationId?: number
-    regionId?: number
-    regionName?: string
-    systemId?: number
-    systemName?: string
+    locationId?: number | undefined
+    regionId?: number | undefined
+    regionName?: string | undefined
+    systemId?: number | undefined
+    systemName?: string | undefined
   }
 ): TreeNode {
   return {

@@ -48,25 +48,25 @@ export interface ContractSearchFilters {
 }
 
 export interface ContractTopItem {
-  typeId?: number
-  itemId?: number
+  typeId?: number | undefined
+  itemId?: number | undefined
   typeName: string
   quantity: number
-  isBlueprintCopy?: boolean
-  materialEfficiency?: number | null
-  timeEfficiency?: number | null
-  runs?: number | null
-  isIncluded?: boolean
+  isBlueprintCopy?: boolean | undefined
+  materialEfficiency?: number | null | undefined
+  timeEfficiency?: number | null | undefined
+  runs?: number | null | undefined
+  isIncluded?: boolean | undefined
 }
 
 export interface SearchContract {
   contractId: number
   type: 'item_exchange' | 'auction' | 'courier'
   price: number
-  buyout?: number
-  collateral?: number
-  volume?: number
-  reward?: number
+  buyout?: number | undefined
+  collateral?: number | undefined
+  volume?: number | undefined
+  reward?: number | undefined
   regionName: string
   regionId: number
   systemName: string
@@ -76,10 +76,10 @@ export interface SearchContract {
   dateExpired: string
   title: string
   topItems: ContractTopItem[]
-  requestedItems?: ContractTopItem[]
+  requestedItems?: ContractTopItem[] | undefined
   estValue: number | null
-  estRequestedValue?: number | null
-  isWantToBuy?: boolean
+  estRequestedValue?: number | null | undefined
+  isWantToBuy?: boolean | undefined
 }
 
 export interface CourierContract {
@@ -93,12 +93,12 @@ export interface CourierContract {
   originRegion: string
   originRegionId: number
   originSecurity: number | null
-  originStation?: string
+  originStation?: string | undefined
   destSystem: string
   destSystemId: number | null
   destRegion: string
   destSecurity: number | null
-  destStation?: string
+  destStation?: string | undefined
   directJumps: number
   safeJumps: number | null
   dateIssued: string

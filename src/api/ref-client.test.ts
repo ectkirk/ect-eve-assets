@@ -155,18 +155,21 @@ describe('ref-client', () => {
       },
     })
 
-    window.electronAPI = {
-      refTypesPage: mockRefTypesPage,
-      refMoons: mockRefMoons,
-      refMarketJita: mockRefMarketJita,
-      refCategories: mockRefCategories,
-      refGroups: mockRefGroups,
-      refCorporations: mockRefCorporations,
-      refUniverseRegions: mockRefUniverseRegions,
-      refUniverseSystems: mockRefUniverseSystems,
-      refUniverseStations: mockRefUniverseStations,
-      refUniverseStargates: mockRefUniverseStargates,
-    } as unknown as typeof window.electronAPI
+    Object.defineProperty(window, 'electronAPI', {
+      configurable: true,
+      value: {
+        refTypesPage: mockRefTypesPage,
+        refMoons: mockRefMoons,
+        refMarketJita: mockRefMarketJita,
+        refCategories: mockRefCategories,
+        refGroups: mockRefGroups,
+        refCorporations: mockRefCorporations,
+        refUniverseRegions: mockRefUniverseRegions,
+        refUniverseSystems: mockRefUniverseSystems,
+        refUniverseStations: mockRefUniverseStations,
+        refUniverseStargates: mockRefUniverseStargates,
+      } as unknown as typeof window.electronAPI,
+    })
   })
 
   describe('resolveTypes', () => {

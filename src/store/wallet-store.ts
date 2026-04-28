@@ -13,8 +13,8 @@ export type ESICorporationWalletDivision = z.infer<
 >
 
 interface WalletData {
-  balance?: number
-  divisions?: ESICorporationWalletDivision[]
+  balance?: number | undefined
+  divisions?: ESICorporationWalletDivision[] | undefined
 }
 
 export interface CharacterWallet {
@@ -57,8 +57,10 @@ export const useWalletStore = createOwnerStore<
       return { balance: data.balance }
     },
     deserialize: (stored) => ({
-      balance: stored.balance as number | undefined,
-      divisions: stored.divisions as ESICorporationWalletDivision[] | undefined,
+      balance: stored['balance'] as number | undefined,
+      divisions: stored['divisions'] as
+        | ESICorporationWalletDivision[]
+        | undefined,
     }),
   },
   getEndpoint: (owner) =>

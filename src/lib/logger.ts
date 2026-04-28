@@ -10,7 +10,9 @@ function formatForConsole(
 
 function extractError(error: unknown): { message: string; stack?: string } {
   if (error instanceof Error) {
-    return { message: error.message, stack: error.stack }
+    return error.stack
+      ? { message: error.message, stack: error.stack }
+      : { message: error.message }
   }
   if (typeof error === 'string') {
     return { message: error }

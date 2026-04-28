@@ -219,9 +219,7 @@ export function createWindow(
 ): void {
   const savedState = getValidatedWindowState(loadWindowState())
 
-  manager.mainWindow = new BrowserWindow({
-    x: savedState.x,
-    y: savedState.y,
+  const windowOptions: Electron.BrowserWindowConstructorOptions = {
     width: savedState.width,
     height: savedState.height,
     minWidth: 1024,
@@ -236,7 +234,11 @@ export function createWindow(
     icon: path.join(VITE_PUBLIC, 'icon.png'),
     title: 'ECT EVE Assets',
     backgroundColor: '#0f172a',
-  })
+  }
+  if (savedState.x !== undefined) windowOptions.x = savedState.x
+  if (savedState.y !== undefined) windowOptions.y = savedState.y
+
+  manager.mainWindow = new BrowserWindow(windowOptions)
 
   manager.normalBounds = manager.mainWindow.getBounds()
 

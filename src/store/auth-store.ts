@@ -70,14 +70,14 @@ export interface Owner {
   // For characters, this is the same as id
   characterId: number
   corporationId: number
-  allianceId?: number
+  allianceId?: number | undefined
   accessToken: string | null
   refreshToken: string
   expiresAt: number | null
-  scopes?: string[]
-  corporationRoles?: CorporationRoles | null
-  authFailed?: boolean
-  scopesOutdated?: boolean
+  scopes?: string[] | undefined
+  corporationRoles?: CorporationRoles | null | undefined
+  authFailed?: boolean | undefined
+  scopesOutdated?: boolean | undefined
 }
 
 export function ownerKey(type: OwnerType, id: number): string {
@@ -97,15 +97,15 @@ interface AuthState {
     accessToken: string
     refreshToken: string
     expiresAt: number
-    scopes?: string[]
-    corporationRoles?: CorporationRoles | null
+    scopes?: string[] | undefined
+    corporationRoles?: CorporationRoles | null | undefined
     owner: {
       id: number
       type: OwnerType
       name: string
       characterId: number
       corporationId: number
-      allianceId?: number
+      allianceId?: number | undefined
     }
   }) => void
   removeOwner: (ownerId: string) => void
@@ -119,7 +119,7 @@ interface AuthState {
       accessToken: string
       refreshToken: string
       expiresAt: number
-      scopes?: string[]
+      scopes?: string[] | undefined
     }
   ) => void
   setOwnerAuthFailed: (ownerId: string, failed: boolean) => void

@@ -9,7 +9,7 @@ import { logger, type LogLevel, type LogContext } from './logger.js'
 import { installUpdate } from './updater.js'
 import { isValidCharacterId, isValidObject } from './validation.js'
 
-const BUG_REPORT_WEBHOOK = process.env.DISCORD_BUG_WEBHOOK || ''
+const BUG_REPORT_WEBHOOK = process.env['DISCORD_BUG_WEBHOOK'] || ''
 
 const VALID_LOG_LEVELS = ['DEBUG', 'INFO', 'WARN', 'ERROR'] as const
 const MAX_LOG_MESSAGE_LENGTH = 10000
@@ -268,10 +268,13 @@ export function registerWindowControlHandlers(ctx: WindowContext): void {
     if (typeof options !== 'object' || options === null) return
     const opts = options as Record<string, unknown>
     const overlayOptions: Electron.TitleBarOverlayOptions = {}
-    if (typeof opts.color === 'string') overlayOptions.color = opts.color
-    if (typeof opts.symbolColor === 'string')
-      overlayOptions.symbolColor = opts.symbolColor
-    if (typeof opts.height === 'number') overlayOptions.height = opts.height
+    const color = opts['color']
+    const symbolColor = opts['symbolColor']
+    const height = opts['height']
+    if (typeof color === 'string') overlayOptions.color = color
+    if (typeof symbolColor === 'string')
+      overlayOptions.symbolColor = symbolColor
+    if (typeof height === 'number') overlayOptions.height = height
     mainWindow.setTitleBarOverlay(overlayOptions)
   })
 

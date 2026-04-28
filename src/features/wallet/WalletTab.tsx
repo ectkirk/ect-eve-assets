@@ -187,7 +187,9 @@ export function WalletTab() {
                   ownerTotal={ownerTotal}
                   toggle={toggle}
                   getWalletName={getWalletName}
-                  t={t}
+                  t={(key, options) =>
+                    options === undefined ? t(key) : t(key, options)
+                  }
                 />
               )
             })}
@@ -206,7 +208,7 @@ interface WalletRowProps {
   ownerTotal: number
   toggle: (key: string) => void
   getWalletName: (corporationId: number, division: number) => string | undefined
-  t: (key: string, options?: Record<string, unknown>) => string
+  t: (key: string, options?: Record<string, unknown> | undefined) => string
 }
 
 function WalletRow({

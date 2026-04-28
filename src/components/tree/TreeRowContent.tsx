@@ -22,7 +22,7 @@ export const TreeNodeIcon = memo(function TreeNodeIcon({
   divisionNumber,
 }: {
   nodeType: TreeNodeType
-  divisionNumber?: number
+  divisionNumber?: number | undefined
 }) {
   const Icon = NODE_TYPE_ICONS.get(nodeType) ?? NODE_TYPE_ICONS.get('item')!
   let colorClass =

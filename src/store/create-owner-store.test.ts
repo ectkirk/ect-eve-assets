@@ -708,7 +708,7 @@ describe('createOwnerStore', () => {
         (params: {
           owner: Owner
           newData: number[]
-          previousData?: number[]
+          previousData?: number[] | undefined
         }) => {
           callOrder.push('after')
           expect(params.previousData).toEqual([1, 2])

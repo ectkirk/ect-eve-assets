@@ -42,9 +42,12 @@ const item = (itemId: number, typeId = 47408): AbyssalItem => ({
 describe('mutamarket-client', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    window.electronAPI = {
-      mutamarketModule: mockMutamarketModule,
-    } as unknown as typeof window.electronAPI
+    Object.defineProperty(window, 'electronAPI', {
+      configurable: true,
+      value: {
+        mutamarketModule: mockMutamarketModule,
+      } as unknown as typeof window.electronAPI,
+    })
   })
 
   describe('isAbyssalTypeId', () => {

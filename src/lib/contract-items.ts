@@ -3,30 +3,30 @@ import { usePriceStore } from '@/store/price-store'
 
 export interface ContractItem {
   typeId: number
-  itemId?: number
+  itemId?: number | undefined
   typeName: string
   groupName: string
-  categoryId?: number
+  categoryId?: number | undefined
   categoryName: string
   quantity: number
   price: number
-  isBlueprintCopy?: boolean
-  materialEfficiency?: number
-  timeEfficiency?: number
-  runs?: number
-  isIncluded?: boolean
+  isBlueprintCopy?: boolean | undefined
+  materialEfficiency?: number | undefined
+  timeEfficiency?: number | undefined
+  runs?: number | undefined
+  isIncluded?: boolean | undefined
 }
 
 export interface ESIContractItemLike {
   type_id: number
   quantity: number
-  item_id?: number
-  is_blueprint_copy?: boolean
-  raw_quantity?: number
-  material_efficiency?: number
-  time_efficiency?: number
-  runs?: number
-  is_included?: boolean
+  item_id?: number | undefined
+  is_blueprint_copy?: boolean | undefined
+  raw_quantity?: number | undefined
+  material_efficiency?: number | undefined
+  time_efficiency?: number | undefined
+  runs?: number | undefined
+  is_included?: boolean | undefined
 }
 
 export function isContractItemBpc(item: ESIContractItemLike): boolean {
@@ -34,9 +34,9 @@ export function isContractItemBpc(item: ESIContractItemLike): boolean {
 }
 
 export interface BlueprintAttributesLike {
-  isBlueprintCopy?: boolean | null
-  materialEfficiency?: number | null
-  timeEfficiency?: number | null
+  isBlueprintCopy?: boolean | null | undefined
+  materialEfficiency?: number | null | undefined
+  timeEfficiency?: number | null | undefined
 }
 
 export function hasBlueprintResearchData(

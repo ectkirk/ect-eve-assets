@@ -61,11 +61,11 @@ export interface ResolvedAsset {
   customName: string | undefined
   isBlueprintCopy: boolean
 
-  contractInfo?: ContractInfo
+  contractInfo?: ContractInfo | undefined
 
-  parentTypeId?: number
-  parentTypeName?: string
-  parentCustomName?: string
+  parentTypeId?: number | undefined
+  parentTypeName?: string | undefined
+  parentCustomName?: string | undefined
 }
 
 export interface AssetDisplayNames {

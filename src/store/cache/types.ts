@@ -9,8 +9,8 @@ export interface CachedSystem {
   id: number
   name: string
   regionId: number
-  securityStatus?: number | null
-  position2D?: { x: number; y: number } | null
+  securityStatus?: number | null | undefined
+  position2D?: { x: number; y: number } | null | undefined
 }
 
 export interface CachedStation {
@@ -22,27 +22,27 @@ export interface CachedStation {
 export interface CachedRefStructure {
   id: number
   name: string
-  systemId?: number | null
+  systemId?: number | null | undefined
 }
 
 export interface CachedCategory {
   id: number
   name: string
-  published?: boolean
+  published?: boolean | undefined
 }
 
 export interface CachedCorporation {
   id: number
   name: string
   tickerName: string
-  factionId?: number | null
+  factionId?: number | null | undefined
 }
 
 export interface CachedGroup {
   id: number
   name: string
   categoryId: number
-  published?: boolean
+  published?: boolean | undefined
 }
 
 export interface TypeSlots {
@@ -62,17 +62,17 @@ export interface CachedType {
   groupName: string
   categoryId: number
   categoryName: string
-  marketGroupId?: number | null
+  marketGroupId?: number | null | undefined
   volume: number
-  packagedVolume?: number
-  portionSize?: number
-  implantSlot?: number
-  slots?: TypeSlots
-  towerSize?: number
-  fuelTier?: number
-  published?: boolean
-  productId?: number
-  basePrice?: number
+  packagedVolume?: number | undefined
+  portionSize?: number | undefined
+  implantSlot?: number | undefined
+  slots?: TypeSlots | undefined
+  towerSize?: number | undefined
+  fuelTier?: number | undefined
+  published?: boolean | undefined
+  productId?: number | undefined
+  basePrice?: number | undefined
 }
 
 export interface CachedStructure {
@@ -81,18 +81,18 @@ export interface CachedStructure {
   solarSystemId: number
   typeId: number
   ownerId: number
-  resolvedByCharacterId?: number
-  inaccessible?: boolean
+  resolvedByCharacterId?: number | undefined
+  inaccessible?: boolean | undefined
 }
 
 export interface CachedLocation {
   id: number
   name: string
   type: 'region' | 'system' | 'station' | 'structure' | 'celestial'
-  solarSystemId?: number
-  solarSystemName?: string
-  regionId?: number
-  regionName?: string
+  solarSystemId?: number | undefined
+  solarSystemName?: string | undefined
+  regionId?: number | undefined
+  regionName?: string | undefined
 }
 
 export interface CachedAbyssal {

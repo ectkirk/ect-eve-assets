@@ -281,7 +281,7 @@ describe('IPC Handlers', () => {
       it('rejects non-serializable data', async () => {
         const handler = getRegisteredHandler('storage:set')
         const circular: Record<string, unknown> = {}
-        circular.self = circular
+        circular['self'] = circular
         const result = await handler(mockEvent, circular)
         expect(result).toBe(false)
       })

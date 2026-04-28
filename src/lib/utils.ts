@@ -4,7 +4,7 @@ import i18next from 'i18next'
 import { getLanguage } from '@/store/settings-store'
 
 const t = (key: string, options?: Record<string, unknown>) =>
-  i18next.t(key, options)
+  options === undefined ? i18next.t(key) : i18next.t(key, options)
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))

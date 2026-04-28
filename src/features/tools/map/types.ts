@@ -13,12 +13,12 @@ export interface HoveredSystem {
   security: number
   screenX: number
   screenY: number
-  regionName?: string
-  factionName?: string
-  allianceName?: string
-  stationNames?: string[]
-  isIncursion?: boolean
-  corruptionLevel?: number
+  regionName?: string | undefined
+  factionName?: string | undefined
+  allianceName?: string | undefined
+  stationNames?: string[] | undefined
+  isIncursion?: boolean | undefined
+  corruptionLevel?: number | undefined
 }
 
 export interface Camera {

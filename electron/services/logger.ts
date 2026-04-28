@@ -117,7 +117,8 @@ function formatMessage(
 ): string {
   const timestamp = new Date().toISOString()
   const sanitizedContext = context ? sanitizeContext(context) : undefined
-  const module = sanitizedContext?.module ? `[${sanitizedContext.module}]` : ''
+  const moduleName = sanitizedContext?.['module']
+  const module = moduleName ? `[${moduleName}]` : ''
   const contextStr = sanitizedContext
     ? Object.entries(sanitizedContext)
         .filter(([key]) => key !== 'module')
@@ -148,7 +149,9 @@ function shouldLog(level: LogLevel): boolean {
 
 function extractError(error: unknown): { message: string; stack?: string } {
   if (error instanceof Error) {
-    return { message: error.message, stack: error.stack }
+    return error.stack
+      ? { message: error.message, stack: error.stack }
+      : { message: error.message }
   }
   if (typeof error === 'string') {
     return { message: error }

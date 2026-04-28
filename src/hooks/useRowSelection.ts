@@ -10,8 +10,8 @@ export interface CopyData {
   name: string
   quantity: number
   isItem: boolean
-  fullRowData?: string
-  blueprintSuffix?: string
+  fullRowData?: string | undefined
+  blueprintSuffix?: string | undefined
 }
 
 interface UseRowSelectionOptions<T> {

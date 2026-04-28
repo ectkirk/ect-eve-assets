@@ -21,7 +21,7 @@ export interface ExtractedFitting {
   shipTypeId: number
   shipTypeName: string
   shipName: string
-  shipGroupId?: number
+  shipGroupId?: number | undefined
   highSlotModules: ModuleItem[]
   midSlotModules: ModuleItem[]
   lowSlotModules: ModuleItem[]

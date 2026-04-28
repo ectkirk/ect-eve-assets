@@ -49,8 +49,8 @@ export interface JitaPriceRecord {
 
 export interface EsiPriceRecord {
   typeId: number
-  average?: number
-  adjusted?: number
+  average?: number | undefined
+  adjusted?: number | undefined
 }
 
 export async function loadJitaPricesFromDB(): Promise<JitaPriceRecord[]> {

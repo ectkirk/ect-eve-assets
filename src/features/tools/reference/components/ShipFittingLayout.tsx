@@ -10,20 +10,24 @@ interface ShipFittingLayoutProps {
       _key: number
       name: { en: string }
     }
-    dogma?: {
-      attributes?: Array<{ attributeID: number; value: number }>
-      attributeDefinitions?: Record<
-        string,
-        {
-          name: string
-          displayName: string | null
-          unitId: number | null
-          categoryId: number | null
-          published: boolean
+    dogma?:
+      | {
+          attributes?: Array<{ attributeID: number; value: number }> | undefined
+          attributeDefinitions?:
+            | Record<
+                string,
+                {
+                  name: string
+                  displayName: string | null
+                  unitId: number | null
+                  categoryId: number | null
+                  published: boolean
+                }
+              >
+            | undefined
+          computedAttributes?: Record<string, number | null> | undefined
         }
-      >
-      computedAttributes?: Record<string, number | null>
-    }
+      | undefined
   }
 }
 

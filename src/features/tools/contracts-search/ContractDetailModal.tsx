@@ -38,30 +38,30 @@ const BLUEPRINT_CATEGORY_ID = 9
 export interface DisplayContract {
   contractId: number
   type: 'item_exchange' | 'auction' | 'courier' | 'unknown' | 'loan'
-  title?: string
-  assigneeName?: string
+  title?: string | undefined
+  assigneeName?: string | undefined
   locationName: string
-  endLocationName?: string
-  regionName?: string
-  regionId?: number
-  systemName?: string
-  systemId?: number
-  securityStatus?: number | null
+  endLocationName?: string | undefined
+  regionName?: string | undefined
+  regionId?: number | undefined
+  systemName?: string | undefined
+  systemId?: number | undefined
+  securityStatus?: number | null | undefined
   dateIssued: string
   dateExpired: string
-  dateAccepted?: string
+  dateAccepted?: string | undefined
   price: number
-  buyout?: number | null
-  reward?: number
-  collateral?: number
-  volume?: number
-  daysToComplete?: number
-  status?: string
-  availability?: 'public' | 'personal' | 'corporation' | 'alliance'
-  topItemName?: string
-  isWantToBuy?: boolean
-  currentBid?: number
-  isIssuer?: boolean
+  buyout?: number | null | undefined
+  reward?: number | undefined
+  collateral?: number | undefined
+  volume?: number | undefined
+  daysToComplete?: number | undefined
+  status?: string | undefined
+  availability?: 'public' | 'personal' | 'corporation' | 'alliance' | undefined
+  topItemName?: string | undefined
+  isWantToBuy?: boolean | undefined
+  currentBid?: number | undefined
+  isIssuer?: boolean | undefined
 }
 
 function InfoRow({

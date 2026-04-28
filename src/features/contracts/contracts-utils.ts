@@ -108,9 +108,9 @@ export interface ContractRow {
   ownerId: number
   locationName: string
   endLocationName: string
-  firstItemTypeId?: number
-  firstItemCategoryId?: number
-  firstItemIsBlueprintCopy?: boolean
+  firstItemTypeId?: number | undefined
+  firstItemCategoryId?: number | undefined
+  firstItemIsBlueprintCopy?: boolean | undefined
   typeName: string
   direction: ContractDirection
   assignerName: string
@@ -120,7 +120,7 @@ export interface ContractRow {
   isWantToBuy: boolean
   includedItemCount: number
   requestedItemCount: number
-  highestBid?: number
+  highestBid?: number | undefined
 }
 
 export function getContractValue(
@@ -138,7 +138,7 @@ export function buildContractRow(
   ownerType: 'character' | 'corporation',
   ownerId: number,
   isIssuer: boolean,
-  t: (key: string, options?: Record<string, unknown>) => string
+  t: (key: string, options?: Record<string, unknown> | undefined) => string
 ): ContractRow {
   const contract = contractWithItems.contract
   const items = contractWithItems.items ?? []

@@ -22,7 +22,7 @@ export class FeatureErrorBoundary extends Component<Props, State> {
     return { hasError: true, error }
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     logger.error(`Error in ${this.props.feature}`, error, {
       module: 'FeatureErrorBoundary',
       feature: this.props.feature,
@@ -34,7 +34,7 @@ export class FeatureErrorBoundary extends Component<Props, State> {
     this.setState({ hasError: false, error: null })
   }
 
-  render() {
+  override render() {
     if (this.state.hasError) {
       return (
         <div

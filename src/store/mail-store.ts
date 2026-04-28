@@ -47,7 +47,7 @@ export const useMailStore = createOwnerStore<
     version: 2,
     serialize: (data: MailData) => ({ mails: data.mails }),
     deserialize: (stored: Record<string, unknown>) => ({
-      mails: stored.mails as ESIMailHeader[],
+      mails: stored['mails'] as ESIMailHeader[],
     }),
   },
   ownerFilter: 'character',

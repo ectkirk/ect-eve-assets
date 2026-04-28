@@ -49,8 +49,8 @@ export interface StoredContract extends StoredItem<ESIContract> {
 
 export interface ContractWithItems {
   contract: ESIContract
-  items?: ESIContractItem[]
-  highestBid?: number
+  items?: ESIContractItem[] | undefined
+  highestBid?: number | undefined
 }
 
 export interface OwnerContracts {
@@ -421,7 +421,6 @@ const baseStore = createVisibilityStore<
   shouldDeleteStaleItems: true,
 
   extraState: { itemsByContractId: new Map(), bidsByContractId: new Map() },
-  rebuildExtraState: undefined,
 
   onAfterInit: async () => {
     const loadedItems = await loadAllItems()

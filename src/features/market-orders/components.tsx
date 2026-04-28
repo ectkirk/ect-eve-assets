@@ -118,11 +118,10 @@ export function DiffHeader({
   }
 
   useEffect(() => {
-    if (menuOpen) {
-      const close = () => setMenuOpen(false)
-      window.addEventListener('click', close)
-      return () => window.removeEventListener('click', close)
-    }
+    if (!menuOpen) return undefined
+    const close = () => setMenuOpen(false)
+    window.addEventListener('click', close)
+    return () => window.removeEventListener('click', close)
   }, [menuOpen])
 
   return (

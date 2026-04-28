@@ -7,7 +7,7 @@ import type { RefTypeBlueprintResult } from '../../../../shared/electron-api-typ
 
 interface BlueprintSourcesSectionProps {
   typeId: number
-  onNavigate?: (typeId: number) => void
+  onNavigate?: ((typeId: number) => void) | undefined
 }
 
 async function fetchBlueprint(typeId: number): Promise<RefTypeBlueprintResult> {

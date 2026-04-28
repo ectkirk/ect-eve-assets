@@ -9,11 +9,11 @@ type TypeVariation = 'icon' | 'render' | 'bp' | 'bpc' | 'relic'
 
 export interface TypeIconProps {
   typeId: number
-  categoryId?: number
-  isBlueprintCopy?: boolean
-  isBlueprint?: boolean
+  categoryId?: number | undefined
+  isBlueprintCopy?: boolean | undefined
+  isBlueprint?: boolean | undefined
   size?: 'sm' | 'md' | 'lg' | 'xl'
-  className?: string
+  className?: string | undefined
 }
 
 const SIZE_CLASSES = new Map([
@@ -38,10 +38,10 @@ export function getTypeVariation(
 export function getTypeIconUrl(
   typeId: number,
   options?: {
-    categoryId?: number
-    isBlueprintCopy?: boolean
-    isBlueprint?: boolean
-    imageSize?: number
+    categoryId?: number | undefined
+    isBlueprintCopy?: boolean | undefined
+    isBlueprint?: boolean | undefined
+    imageSize?: number | undefined
   }
 ): string | null {
   const {
@@ -112,7 +112,7 @@ export function CharacterPortrait({
 }: {
   characterId: number
   size?: 'sm' | 'md' | 'lg'
-  className?: string
+  className?: string | undefined
 }) {
   const sizeClass = SIZE_CLASSES.get(size) ?? SIZE_CLASSES.get('md')!
   return (
@@ -132,7 +132,7 @@ export function CorporationLogo({
 }: {
   corporationId: number
   size?: 'sm' | 'md' | 'lg'
-  className?: string
+  className?: string | undefined
 }) {
   const sizeClass = SIZE_CLASSES.get(size) ?? SIZE_CLASSES.get('md')!
   return (

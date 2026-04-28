@@ -140,7 +140,7 @@ export function OwnerRow({
         <ContextMenuContent>
           <ContextMenuItem
             onClick={onRefreshRoles}
-            disabled={isRefreshingRoles}
+            disabled={isRefreshingRoles ?? false}
           >
             {isRefreshingRoles
               ? t('ownerRow.refreshing')

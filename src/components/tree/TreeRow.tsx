@@ -28,8 +28,12 @@ interface TreeRowProps {
   onRowClick: (id: string, event: React.MouseEvent) => void
   onViewFitting: (node: TreeNode) => void
   onSellToBuyback: (node: TreeNode) => void
-  onOpenMarketIngame?: (typeId: number, typeName?: string) => void
-  onSetAutopilotIngame?: (locationId: number, locationName?: string) => void
+  onOpenMarketIngame?:
+    | ((typeId: number, typeName?: string | undefined) => void)
+    | undefined
+  onSetAutopilotIngame?:
+    | ((locationId: number, locationName?: string | undefined) => void)
+    | undefined
   visibleColumns: string[]
 }
 

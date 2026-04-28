@@ -73,13 +73,13 @@ export function ReferencePanel({
     const matchedCategories: {
       id: number
       name: string
-      published?: boolean
+      published?: boolean | undefined
     }[] = []
     const matchedGroups: {
       id: number
       name: string
       categoryName: string
-      published?: boolean
+      published?: boolean | undefined
     }[] = []
     const matchedTypes: {
       id: number
@@ -87,7 +87,7 @@ export function ReferencePanel({
       groupName: string
       categoryId: number
       categoryName: string
-      published?: boolean
+      published?: boolean | undefined
     }[] = []
 
     for (const cat of categories.values()) {

@@ -38,33 +38,37 @@ export interface VisibilityStoreConfig<
     owner: Owner
   ) => Promise<{ data: TItem[]; expiresAt: number; etag: string | null }>
   toStoredItem: (owner: Owner, item: TItem) => TStoredItem
-  isEmpty?: (items: TItem[]) => boolean
-  onAfterInit?: (itemsById: Map<number, TStoredItem>) => void | Promise<void>
+  isEmpty?: ((items: TItem[]) => boolean) | undefined
+  onAfterInit?:
+    | ((itemsById: Map<number, TStoredItem>) => void | Promise<void>)
+    | undefined
   onBeforeOwnerUpdate?: (
     owner: Owner,
     previousVisibility: Set<number>,
     itemsById: Map<number, TStoredItem>
-  ) => void
+  ) => void | undefined
   onAfterOwnerUpdate?: (params: {
     owner: Owner
     newItems: TItem[]
     previousVisibility: Set<number>
     itemsById: Map<number, TStoredItem>
-  }) => void
-  onAfterBatchUpdate?: (itemsById: Map<number, TStoredItem>) => void
-  shouldDeleteStaleItems?: boolean
-  shouldUpdateExisting?: boolean
-  extraState?: TExtraState
-  rebuildExtraState?: (
-    itemsById: Map<number, TStoredItem>
-  ) => Partial<TExtraState>
+  }) => void | undefined
+  onAfterBatchUpdate?:
+    | ((itemsById: Map<number, TStoredItem>) => void)
+    | undefined
+  shouldDeleteStaleItems?: boolean | undefined
+  shouldUpdateExisting?: boolean | undefined
+  extraState?: TExtraState | undefined
+  rebuildExtraState?:
+    | ((itemsById: Map<number, TStoredItem>) => Partial<TExtraState>)
+    | undefined
   extraActions?: (
     set: (partial: Partial<VisibilityState<TStoredItem> & TExtraState>) => void,
     get: () => VisibilityState<TStoredItem> &
       VisibilityActions &
       TExtraState &
       TExtraActions
-  ) => TExtraActions
+  ) => TExtraActions | undefined
 }
 
 export interface VisibilityState<TStoredItem> {
@@ -169,7 +173,7 @@ export function createVisibilityStore<
       set(partial as Partial<FullStore>)
 
     const extras = extraActions
-      ? extraActions(baseSet, get as () => FullStore)
+      ? (extraActions(baseSet, get as () => FullStore) ?? ({} as TExtraActions))
       : ({} as TExtraActions)
 
     return {

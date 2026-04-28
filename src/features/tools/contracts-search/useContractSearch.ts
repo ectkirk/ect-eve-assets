@@ -17,8 +17,8 @@ import { createLRUCache, type LRUCache } from '@/lib/lru-cache'
 
 interface CachedSearchResult<T> {
   contracts: T[]
-  total?: number
-  totalPages?: number
+  total?: number | undefined
+  totalPages?: number | undefined
   nextCursor: string | null
   hasMore: boolean
 }
@@ -37,10 +37,10 @@ const courierCache = createLRUCache<
 
 export interface ResultsUpdate<T> {
   contracts: T[]
-  total?: number
-  totalPages?: number
-  nextCursor?: string | null
-  hasMore?: boolean
+  total?: number | undefined
+  totalPages?: number | undefined
+  nextCursor?: string | null | undefined
+  hasMore?: boolean | undefined
 }
 
 interface FetchCallbacks<T> {

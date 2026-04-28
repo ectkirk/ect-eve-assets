@@ -85,7 +85,7 @@ class ErrorBoundary extends Component<
     return { hasError: true, error }
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     logger.error('Uncaught error in component tree', error, {
       module: 'ErrorBoundary',
       componentStack: errorInfo.componentStack,
@@ -93,7 +93,7 @@ class ErrorBoundary extends Component<
     this.setState({ errorInfo })
   }
 
-  render() {
+  override render() {
     if (this.state.hasError) {
       return (
         <div className="flex h-screen items-center justify-center bg-surface text-content">

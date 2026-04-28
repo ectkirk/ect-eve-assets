@@ -7,7 +7,7 @@ export function InfoRow({
 }: {
   label: string
   value: React.ReactNode
-  className?: string
+  className?: string | undefined
 }) {
   return (
     <div className="flex justify-between items-center py-1.5 border-b border-border/50 last:border-0">

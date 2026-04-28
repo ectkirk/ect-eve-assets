@@ -40,8 +40,8 @@ export {
 export { stopPriceRefreshTimers } from './price-refresh-timers'
 
 export interface EsiPriceData {
-  average?: number
-  adjusted?: number
+  average?: number | undefined
+  adjusted?: number | undefined
 }
 
 interface PriceState {
@@ -56,8 +56,8 @@ interface PriceState {
 }
 
 export interface GetItemPriceOptions {
-  itemId?: number
-  isBlueprintCopy?: boolean
+  itemId?: number | undefined
+  isBlueprintCopy?: boolean | undefined
 }
 
 interface PriceActions {

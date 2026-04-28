@@ -70,7 +70,7 @@ interface JobRow {
   ownerName: string
   blueprintName: string
   productName: string
-  productCategoryId?: number
+  productCategoryId?: number | undefined
   locationId: number
   locationName: string
   activityName: string
@@ -79,9 +79,9 @@ interface JobRow {
 
 interface DurationResult {
   isComplete: boolean
-  days?: number
-  hours?: number
-  minutes?: number
+  days?: number | undefined
+  hours?: number | undefined
+  minutes?: number | undefined
 }
 
 function getDuration(endDate: string): DurationResult {

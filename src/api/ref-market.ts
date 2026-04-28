@@ -37,9 +37,9 @@ const EXCLUDED_TYPE_IDS = new Set([670, 33328]) // Capsules - no market price
 
 interface JitaRequestParams {
   typeIds: number[]
-  itemIds?: number[]
-  contractTypeIds?: number[]
-  includePlex?: boolean
+  itemIds?: number[] | undefined
+  contractTypeIds?: number[] | undefined
+  includePlex?: boolean | undefined
 }
 
 async function fetchJitaPricesFromAPI(

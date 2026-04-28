@@ -24,7 +24,8 @@ function executeUiAction(
   logContext: Record<string, unknown>,
   failureKey: string
 ): void {
-  logger.info(`${logContext.action}`, {
+  const action = logContext['action']
+  logger.info(`${action}`, {
     module: 'UI',
     characterId,
     ...logContext,
@@ -32,14 +33,14 @@ function executeUiAction(
   esi
     .fetch<void>(endpoint, { method: 'POST', characterId })
     .then(() => {
-      logger.info(`${logContext.action} succeeded`, {
+      logger.info(`${action} succeeded`, {
         module: 'UI',
         characterId,
         ...logContext,
       })
     })
     .catch((err) => {
-      logger.error(`${logContext.action} failed`, err, {
+      logger.error(`${action} failed`, err, {
         module: 'UI',
         characterId,
         ...logContext,
@@ -63,7 +64,10 @@ function executeUiAction(
 export function postAutopilotWaypoint(
   characterId: number,
   destinationId: number,
-  options?: { addToBeginning?: boolean; clearOthers?: boolean }
+  options?: {
+    addToBeginning?: boolean | undefined
+    clearOthers?: boolean | undefined
+  }
 ): void {
   if (checkRateLimit()) return
   const params = new URLSearchParams({

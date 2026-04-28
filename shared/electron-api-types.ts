@@ -1,23 +1,23 @@
 export interface CorporationRoles {
   roles: string[]
-  roles_at_hq?: string[]
-  roles_at_base?: string[]
-  roles_at_other?: string[]
+  roles_at_hq?: string[] | undefined
+  roles_at_base?: string[] | undefined
+  roles_at_other?: string[] | undefined
 }
 
 export interface AuthResult {
   success: boolean
-  accessToken?: string
-  refreshToken?: string
-  expiresAt?: number
-  characterId?: number
-  characterName?: string
-  corporationId?: number
-  allianceId?: number
-  scopes?: string[]
-  corporationRoles?: CorporationRoles | null
-  error?: string
-  isAuthFailure?: boolean
+  accessToken?: string | undefined
+  refreshToken?: string | undefined
+  expiresAt?: number | undefined
+  characterId?: number | undefined
+  characterName?: string | undefined
+  corporationId?: number | undefined
+  allianceId?: number | undefined
+  scopes?: string[] | undefined
+  corporationRoles?: CorporationRoles | null | undefined
+  error?: string | undefined
+  isAuthFailure?: boolean | undefined
 }
 
 export type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR'
@@ -33,12 +33,12 @@ export interface RefApiResult {
 }
 
 export interface LanguageParams {
-  language?: string
+  language?: string | undefined
 }
 
 export interface RefTypesPageParams {
-  after?: number
-  language?: string
+  after?: number | undefined
+  language?: string | undefined
 }
 
 export interface RefTypesPageResult {
@@ -47,12 +47,12 @@ export interface RefTypesPageResult {
     {
       id: number
       name: string
-      groupId?: number | null
-      marketGroupId?: number | null
-      volume?: number | null
-      packagedVolume?: number | null
-      portionSize?: number | null
-      isPublished?: number
+      groupId?: number | null | undefined
+      marketGroupId?: number | null | undefined
+      volume?: number | null | undefined
+      packagedVolume?: number | null | undefined
+      portionSize?: number | null | undefined
+      isPublished?: number | undefined
     }
   >
   pagination?: {
@@ -76,8 +76,8 @@ export interface RefSystemsResult {
       id: number
       name: string
       regionId: number
-      securityStatus?: number | null
-      position2D?: { x: number; y: number } | null
+      securityStatus?: number | null | undefined
+      position2D?: { x: number; y: number } | null | undefined
     }
   >
   error?: string
@@ -94,15 +94,18 @@ export interface RefStargatesResult {
 }
 
 export interface RefStructuresPageParams {
-  after?: string
+  after?: string | undefined
 }
 
 export interface RefStructuresPageResult {
-  items?: Record<string, { id: string; name: string; systemId?: number | null }>
+  items?: Record<
+    string,
+    { id: string; name: string; systemId?: number | null | undefined }
+  >
   pagination?: {
     total: number
     limit: number
-    nextCursor?: string | null
+    nextCursor?: string | null | undefined
     hasMore: boolean
   }
   error?: string
@@ -124,7 +127,7 @@ export interface RefMarketGroupsResult {
       iconId: number | null
     }
   >
-  total?: number
+  total?: number | undefined
   error?: string
 }
 
@@ -135,16 +138,16 @@ export interface RefCorporationsResult {
       id: number
       name: string
       tickerName: string
-      factionId?: number | null
+      factionId?: number | null | undefined
     }
   >
   error?: string
 }
 
 export interface MutamarketResult {
-  estimated_value?: number | null
-  error?: string
-  status?: number
+  estimated_value?: number | null | undefined
+  error?: string | undefined
+  status?: number | undefined
 }
 
 export interface InsurgencySolarSystem {
@@ -179,9 +182,9 @@ export interface InsurgencyCampaign {
 }
 
 export interface InsurgencyResult {
-  data?: InsurgencyCampaign[]
-  error?: string
-  status?: number
+  data?: InsurgencyCampaign[] | undefined
+  error?: string | undefined
+  status?: number | undefined
 }
 
 export interface RefMarketContractItem {
@@ -192,10 +195,10 @@ export interface RefMarketContractItem {
 }
 
 export interface RefMarketJitaParams {
-  typeIds?: number[]
-  itemIds?: number[]
-  contractTypeIds?: number[]
-  includePlex?: boolean
+  typeIds?: number[] | undefined
+  itemIds?: number[] | undefined
+  contractTypeIds?: number[] | undefined
+  includePlex?: boolean | undefined
 }
 
 export interface RefMarketJitaResult {
@@ -212,55 +215,55 @@ export interface RefMarketJitaResult {
 
 export interface ContractSearchParams {
   mode: 'buySell' | 'courier'
-  searchText?: string
-  regionId?: number | null
-  systemId?: number | null
+  searchText?: string | undefined
+  regionId?: number | null | undefined
+  systemId?: number | null | undefined
   contractType?:
     | 'want_to_sell'
     | 'want_to_buy'
     | 'auction'
     | 'exclude_want_to_buy'
-  categoryId?: number | null
-  groupId?: number | null
-  typeId?: number | null
-  excludeMultiple?: boolean
-  priceMin?: number | null
-  priceMax?: number | null
-  securityHigh?: boolean
-  securityLow?: boolean
-  securityNull?: boolean
-  issuer?: string
-  page?: number
-  pageSize?: number
+  categoryId?: number | null | undefined
+  groupId?: number | null | undefined
+  typeId?: number | null | undefined
+  excludeMultiple?: boolean | undefined
+  priceMin?: number | null | undefined
+  priceMax?: number | null | undefined
+  securityHigh?: boolean | undefined
+  securityLow?: boolean | undefined
+  securityNull?: boolean | undefined
+  issuer?: string | undefined
+  page?: number | undefined
+  pageSize?: number | undefined
   sortBy?: 'price' | 'dateIssued' | 'dateExpired'
   sortDirection?: 'asc' | 'desc'
-  cursor?: string
-  destRegionId?: number | null
-  collateralMin?: number | null
-  collateralMax?: number | null
-  maxVolume?: number | null
-  maxJumps?: number | null
+  cursor?: string | undefined
+  destRegionId?: number | null | undefined
+  collateralMin?: number | null | undefined
+  collateralMax?: number | null | undefined
+  maxVolume?: number | null | undefined
+  maxJumps?: number | null | undefined
 }
 
 export interface ContractSearchItem {
   typeId: number
-  itemId?: number
+  itemId?: number | undefined
   typeName: string
   quantity: number
-  isBlueprintCopy?: boolean
-  materialEfficiency?: number
-  timeEfficiency?: number
-  runs?: number
+  isBlueprintCopy?: boolean | undefined
+  materialEfficiency?: number | undefined
+  timeEfficiency?: number | undefined
+  runs?: number | undefined
 }
 
 export interface ContractSearchContract {
   contractId: number
   type: 'item_exchange' | 'auction' | 'courier'
   price: number
-  buyout?: number
-  reward?: number
-  collateral?: number
-  volume?: number
+  buyout?: number | undefined
+  reward?: number | undefined
+  collateral?: number | undefined
+  volume?: number | undefined
   title: string
   issuerCharacterId: number
   issuerCorporationId: number
@@ -272,22 +275,24 @@ export interface ContractSearchContract {
   dateIssued: string
   dateExpired: string
   items: ContractSearchItem[]
-  requestedItems?: ContractSearchItem[]
-  startLocationId?: number | null
-  endLocationId?: number | null
-  startSystemId?: number | null
+  requestedItems?: ContractSearchItem[] | undefined
+  startLocationId?: number | null | undefined
+  endLocationId?: number | null | undefined
+  startSystemId?: number | null | undefined
   destination?: {
     regionName: string
     systemName: string
     systemId: number
     securityStatus: number | null
-    structureName?: string
+    structureName?: string | undefined
   }
-  routeInfo?: {
-    directJumps: number | null
-    safeJumps: number | null
-  }
-  daysToComplete?: number
+  routeInfo?:
+    | {
+        directJumps: number | null
+        safeJumps: number | null
+      }
+    | undefined
+  daysToComplete?: number | undefined
 }
 
 export interface ContractSearchResult {
@@ -305,7 +310,7 @@ export interface BuybackConfig {
   buyRate: number
   iskPerM3: number
   acceptCapitals: boolean
-  assetSafetyRate?: number
+  assetSafetyRate?: number | undefined
 }
 
 export interface BuybackItem {
@@ -319,7 +324,7 @@ export interface BuybackItem {
   matched: boolean
   profitable: boolean
   isCapital: boolean
-  assetSafetyCost?: number
+  assetSafetyCost?: number | undefined
 }
 
 export interface BuybackTotals {

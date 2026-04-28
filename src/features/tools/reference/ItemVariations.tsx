@@ -7,7 +7,7 @@ import type { RefTypeVariationsResult } from '../../../../shared/electron-api-ty
 
 interface ItemVariationsProps {
   typeId: number
-  onNavigate?: (typeId: number) => void
+  onNavigate?: ((typeId: number) => void) | undefined
 }
 
 async function fetchVariations(

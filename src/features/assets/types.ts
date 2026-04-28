@@ -52,10 +52,10 @@ export interface AssetRow {
   ownerName: string
   ownerType: 'character' | 'corporation'
   modeFlags: AssetModeFlags
-  contractInfo?: ContractInfo
-  parentTypeId?: number
-  parentTypeName?: string
-  parentCustomName?: string
+  contractInfo?: ContractInfo | undefined
+  parentTypeId?: number | undefined
+  parentTypeName?: string | undefined
+  parentCustomName?: string | undefined
 }
 
 export type AssetColumnVisibility = Record<string, boolean>

@@ -33,15 +33,17 @@ export function makeUserAgent(version: string): string {
 export interface ESISuccessResponse<T> {
   success: true
   data: T
-  meta?: { expiresAt: number; etag: string | null; notModified: boolean }
-  xPages?: number
+  meta?:
+    | { expiresAt: number; etag: string | null; notModified: boolean }
+    | undefined
+  xPages?: number | undefined
 }
 
 export interface ESIErrorResponse {
   success: false
   error: string
-  status?: number
-  retryAfter?: number
+  status?: number | undefined
+  retryAfter?: number | undefined
 }
 
 export type ESIResponse<T> = ESISuccessResponse<T> | ESIErrorResponse

@@ -59,13 +59,13 @@ function ResistanceBar({
 
 export interface DefenseLayerProps {
   title: string
-  hp?: number
-  rechargeMs?: number
+  hp?: number | undefined
+  rechargeMs?: number | undefined
   resistances: {
-    em?: number
-    thermal?: number
-    kinetic?: number
-    explosive?: number
+    em?: number | undefined
+    thermal?: number | undefined
+    kinetic?: number | undefined
+    explosive?: number | undefined
   }
 }
 
@@ -152,31 +152,31 @@ export function DefenseLayer({
 
 export interface DefenseStatsData {
   shield: {
-    hp?: number
-    rechargeMs?: number
+    hp?: number | undefined
+    rechargeMs?: number | undefined
     resistances: {
-      em?: number
-      thermal?: number
-      kinetic?: number
-      explosive?: number
+      em?: number | undefined
+      thermal?: number | undefined
+      kinetic?: number | undefined
+      explosive?: number | undefined
     }
   } | null
   armor: {
-    hp?: number
+    hp?: number | undefined
     resistances: {
-      em?: number
-      thermal?: number
-      kinetic?: number
-      explosive?: number
+      em?: number | undefined
+      thermal?: number | undefined
+      kinetic?: number | undefined
+      explosive?: number | undefined
     }
   } | null
   hull: {
-    hp?: number
+    hp?: number | undefined
     resistances: {
-      em?: number
-      thermal?: number
-      kinetic?: number
-      explosive?: number
+      em?: number | undefined
+      thermal?: number | undefined
+      kinetic?: number | undefined
+      explosive?: number | undefined
     }
   } | null
 }

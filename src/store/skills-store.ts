@@ -26,7 +26,7 @@ export const useSkillsStore = createOwnerStore<SkillsData, CharacterSkillsData>(
       metaStoreName: 'meta',
       serialize: (data) => ({ skills: data.skills }),
       deserialize: (stored) => ({
-        skills: stored.skills as ESICharacterSkills,
+        skills: stored['skills'] as ESICharacterSkills,
       }),
     },
     ownerFilter: 'character',

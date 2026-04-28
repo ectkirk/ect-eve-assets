@@ -78,8 +78,8 @@ export function createVisibilityDB<T, TStoredItem extends StoredItem<T>>(
 
   const fromRecord = (record: Record<string, unknown>): TStoredItem =>
     ({
-      item: record.item as T,
-      sourceOwner: record.sourceOwner as SourceOwner,
+      item: record['item'] as T,
+      sourceOwner: record['sourceOwner'] as SourceOwner,
     }) as TStoredItem
 
   const loadAll = async (): Promise<{

@@ -1,7 +1,7 @@
 import { ESIError } from '../../shared/esi-types'
 
 export class ValidationError extends Error {
-  field?: string
+  field: string | undefined
   value?: unknown
 
   constructor(message: string, field?: string, value?: unknown) {

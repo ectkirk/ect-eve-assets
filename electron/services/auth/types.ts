@@ -2,17 +2,17 @@ import type { CorporationRoles } from './token-handler.js'
 
 export interface AuthResult {
   success: boolean
-  accessToken?: string
-  refreshToken?: string
-  expiresAt?: number
-  characterId?: number
-  characterName?: string
-  corporationId?: number
-  allianceId?: number
-  scopes?: string[]
-  corporationRoles?: CorporationRoles | null
-  error?: string
-  isAuthFailure?: boolean
+  accessToken?: string | undefined
+  refreshToken?: string | undefined
+  expiresAt?: number | undefined
+  characterId?: number | undefined
+  characterName?: string | undefined
+  corporationId?: number | undefined
+  allianceId?: number | undefined
+  scopes?: string[] | undefined
+  corporationRoles?: CorporationRoles | null | undefined
+  error?: string | undefined
+  isAuthFailure?: boolean | undefined
 }
 
 export interface PendingAuth {

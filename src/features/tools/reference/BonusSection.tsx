@@ -5,8 +5,8 @@ import { processEveLinks } from './eve-text-utils'
 import { Section } from './Section'
 
 interface Bonus {
-  bonus?: number | null
-  unitID?: number | null
+  bonus?: number | null | undefined
+  unitID?: number | null | undefined
   bonusText: LocalizedText
 }
 
@@ -17,10 +17,10 @@ interface BonusType {
 
 interface BonusSectionProps {
   bonuses: {
-    roleBonuses?: Bonus[]
-    types?: BonusType[]
+    roleBonuses?: Bonus[] | undefined
+    types?: BonusType[] | undefined
   }
-  onNavigate?: (typeId: number) => void
+  onNavigate?: ((typeId: number) => void) | undefined
 }
 
 function formatBonusValue(
@@ -38,7 +38,7 @@ function BonusList({
   onNavigate,
 }: {
   bonuses: Bonus[]
-  onNavigate?: (typeId: number) => void
+  onNavigate?: ((typeId: number) => void) | undefined
 }) {
   return (
     <ul className="list-inside list-disc space-y-1 text-sm text-content-secondary">

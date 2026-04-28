@@ -78,12 +78,12 @@ export function getItemTypeName(item: ContractTopItem): string {
 }
 
 interface BlueprintInfo {
-  typeId?: number
+  typeId?: number | undefined
   typeName: string
-  isBlueprintCopy?: boolean | null
-  materialEfficiency?: number | null
-  timeEfficiency?: number | null
-  runs?: number | null
+  isBlueprintCopy?: boolean | null | undefined
+  materialEfficiency?: number | null | undefined
+  timeEfficiency?: number | null | undefined
+  runs?: number | null | undefined
 }
 
 export function formatBlueprintName(item: BlueprintInfo): string {

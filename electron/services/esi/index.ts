@@ -372,12 +372,13 @@ export class MainESIService {
 
     this.activeRequests++
     try {
-      const response = await fetch(url, {
+      const init: RequestInit = {
         method: options.method ?? 'GET',
         headers,
-        body: options.body,
         signal: controller.signal,
-      })
+      }
+      if (options.body !== undefined) init.body = options.body
+      const response = await fetch(url, init)
       clearTimeout(timeoutId)
 
       this.rateLimiter.updateFromHeaders(

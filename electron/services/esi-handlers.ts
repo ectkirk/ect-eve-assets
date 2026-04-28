@@ -143,15 +143,19 @@ function parseESIOptions(options: unknown): ESIRequestOptions {
   const esiOptions: ESIRequestOptions = {}
   if (options && typeof options === 'object' && !Array.isArray(options)) {
     const opts = options as Record<string, unknown>
-    if (opts.method === 'GET' || opts.method === 'POST')
-      esiOptions.method = opts.method
-    if (typeof opts.body === 'string') esiOptions.body = opts.body
-    if (typeof opts.characterId === 'number')
-      esiOptions.characterId = opts.characterId
-    if (typeof opts.requiresAuth === 'boolean')
-      esiOptions.requiresAuth = opts.requiresAuth
-    if (typeof opts.etag === 'string') esiOptions.etag = opts.etag
-    if (typeof opts.language === 'string') esiOptions.language = opts.language
+    const method = opts['method']
+    const body = opts['body']
+    const characterId = opts['characterId']
+    const requiresAuth = opts['requiresAuth']
+    const etag = opts['etag']
+    const language = opts['language']
+    if (method === 'GET' || method === 'POST') esiOptions.method = method
+    if (typeof body === 'string') esiOptions.body = body
+    if (typeof characterId === 'number') esiOptions.characterId = characterId
+    if (typeof requiresAuth === 'boolean')
+      esiOptions.requiresAuth = requiresAuth
+    if (typeof etag === 'string') esiOptions.etag = etag
+    if (typeof language === 'string') esiOptions.language = language
   }
   return esiOptions
 }

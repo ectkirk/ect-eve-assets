@@ -38,7 +38,7 @@ export function TreeTab({ mode }: TreeTabProps) {
   const [ingameAction, setIngameAction] = useState<{
     action: 'market' | 'autopilot'
     targetId: number
-    targetName?: string
+    targetName?: string | undefined
   } | null>(null)
   const {
     search,

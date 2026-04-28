@@ -158,7 +158,7 @@ export function ContractsTab() {
           owner.type,
           owner.id,
           isIssuer,
-          t
+          (key, options) => (options === undefined ? t(key) : t(key, options))
         )
         allContracts.push(row)
       }

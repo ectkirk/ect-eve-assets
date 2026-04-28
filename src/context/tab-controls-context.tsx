@@ -3,11 +3,11 @@ import { useTabControlsStore } from '@/store/tab-controls-store'
 
 export interface TotalValueConfig {
   value: number
-  label?: string
-  secondaryValue?: number
-  secondaryLabel?: string
-  tertiaryValue?: number
-  tertiaryLabel?: string
+  label?: string | undefined
+  secondaryValue?: number | undefined
+  secondaryLabel?: string | undefined
+  tertiaryValue?: number | undefined
+  tertiaryLabel?: string | undefined
 }
 
 export const MAIL_FILTER_OPTIONS = ['inbox', 'sent', 'all'] as const
