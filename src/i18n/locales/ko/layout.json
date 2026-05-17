@@ -79,6 +79,7 @@
   "ownerModal.logoutAllConfirm": "모든 계정에서 로그아웃하시겠습니까? 모든 캐시 데이터가 삭제되며 각 계정을 다시 인증해야 합니다.",
   "ownerModal.pauseESI": "ESI 업데이트 일시정지",
   "ownerModal.resumeESI": "ESI 업데이트 재개",
+  "ownerModal.refreshESI": "지금 ESI 새로고침",
   "ownerModal.errors.wrongCharacterForCorp": "{{name}}으로 인증하여 코퍼레이션을 추가하세요.",
   "ownerModal.errors.wrongCharacter": "잘못된 캐릭터로 인증되었습니다. {{name}}을(를) 예상했지만 다른 캐릭터가 확인되었습니다. 다시 시도해 주세요.",
   "ownerModal.errors.failedRefreshRoles": "코퍼레이션 역할 새로고침 실패",

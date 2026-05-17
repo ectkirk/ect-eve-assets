@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Loader2, User, Search, Pause, Play } from 'lucide-react'
+import { Loader2, User, Search, Pause, Play, RefreshCw } from 'lucide-react'
 import { OwnerRow } from './OwnerRow'
 
 interface OwnerManagementModalProps {
@@ -300,6 +300,13 @@ export function OwnerManagementModal({
     useAuthStore.getState().deselectAllOwners()
   }
 
+  const handleRefreshESI = () => {
+    const expiryStore = useExpiryCacheStore.getState()
+    for (const owner of owners) {
+      expiryStore.queueAllEndpointsForOwner(ownerKey(owner.type, owner.id))
+    }
+  }
+
   const handleReauth = async (owner: Owner, e: React.MouseEvent) => {
     e.stopPropagation()
     if (!window.electronAPI) return
@@ -558,6 +565,16 @@ export function OwnerManagementModal({
                   {t('ownerModal.pauseESI')}
                 </>
               )}
+            </button>
+          )}
+          {owners.length > 0 && !isBusy && authFlow === 'idle' && (
+            <button
+              onClick={handleRefreshESI}
+              disabled={isPaused}
+              className="flex w-full items-center justify-center gap-2 rounded-md border border-accent/50 px-4 py-2 text-sm font-medium text-accent hover:bg-accent/10 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <RefreshCw className="h-4 w-4" />
+              {t('ownerModal.refreshESI')}
             </button>
           )}
           {owners.length > 0 && !isBusy && authFlow === 'idle' && (

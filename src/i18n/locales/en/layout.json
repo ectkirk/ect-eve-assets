@@ -79,6 +79,7 @@
   "ownerModal.logoutAllConfirm": "Are you sure you want to logout all accounts? All cached data will be deleted and you will need to re-authenticate each account.",
   "ownerModal.pauseESI": "Pause ESI Updates",
   "ownerModal.resumeESI": "Resume ESI Updates",
+  "ownerModal.refreshESI": "Refresh ESI Now",
   "ownerModal.errors.wrongCharacterForCorp": "Please authenticate with {{name}} to add their corporation.",
   "ownerModal.errors.wrongCharacter": "Wrong character authenticated. Expected {{name}}, got a different character. Please try again.",
   "ownerModal.errors.failedRefreshRoles": "Failed to refresh corporation roles",

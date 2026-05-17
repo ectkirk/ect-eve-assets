@@ -79,6 +79,7 @@
   "ownerModal.logoutAllConfirm": "¿Estás seguro de que quieres cerrar sesión de todas las cuentas? Todos los datos en caché serán eliminados y tendrás que volver a autenticar cada cuenta.",
   "ownerModal.pauseESI": "Pausar actualizaciones de ESI",
   "ownerModal.resumeESI": "Reanudar actualizaciones de ESI",
+  "ownerModal.refreshESI": "Actualizar ESI ahora",
   "ownerModal.errors.wrongCharacterForCorp": "Por favor autentícate con {{name}} para añadir su corporación.",
   "ownerModal.errors.wrongCharacter": "Se autenticó el personaje incorrecto. Se esperaba {{name}}, pero se obtuvo un personaje diferente. Por favor intenta de nuevo.",
   "ownerModal.errors.failedRefreshRoles": "Error al actualizar los roles de la corporación",

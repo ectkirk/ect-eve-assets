@@ -79,6 +79,7 @@
   "ownerModal.logoutAllConfirm": "Вы уверены, что хотите выйти из всех аккаунтов? Все кэшированные данные будут удалены, и вам потребуется повторная авторизация каждого аккаунта.",
   "ownerModal.pauseESI": "Приостановить обновления ESI",
   "ownerModal.resumeESI": "Возобновить обновления ESI",
+  "ownerModal.refreshESI": "Обновить ESI сейчас",
   "ownerModal.errors.wrongCharacterForCorp": "Пожалуйста, авторизуйтесь как {{name}}, чтобы добавить их корпорацию.",
   "ownerModal.errors.wrongCharacter": "Авторизован неправильный персонаж. Ожидался {{name}}, но получен другой персонаж. Пожалуйста, попробуйте снова.",
   "ownerModal.errors.failedRefreshRoles": "Не удалось обновить роли корпорации",
