@@ -100,7 +100,7 @@ describe('clones-store', () => {
 
       await useClonesStore.getState().update(true)
 
-      expect(esi.fetchWithMeta).toHaveBeenCalledTimes(2)
+      expect(esi.fetchWithMeta).toHaveBeenCalledTimes(3)
     })
 
     it('fetches clones and implants together', async () => {
@@ -174,7 +174,12 @@ describe('clones-store', () => {
     it('resets store state', async () => {
       useClonesStore.setState({
         dataByOwner: [
-          { owner: {} as never, clones: {} as never, activeImplants: [] },
+          {
+            owner: {} as never,
+            clones: {} as never,
+            activeImplants: [],
+            activeLocation: undefined,
+          },
         ],
         updateError: 'error',
       })

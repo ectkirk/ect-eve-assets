@@ -15,7 +15,7 @@ export interface CloneInfo {
   name: string
   locationId: number
   locationName: string
-  locationType: 'station' | 'structure'
+  locationType: 'station' | 'structure' | 'solar_system'
   implants: ImplantInfo[]
   isActive?: boolean
 }

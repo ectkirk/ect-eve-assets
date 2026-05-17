@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore, ownerKey } from '@/store/auth-store'
-import { useClonesStore } from '@/store/clones-store'
+import { useClonesStore, type ESICharacterLocation } from '@/store/clones-store'
 import { useAssetData } from '@/hooks/useAssetData'
 import { useLocalStorageSort } from '@/hooks/useLocalStorageSort'
 import { useTabControls, type CharacterSortValue } from '@/context'
@@ -33,6 +33,8 @@ interface CharacterClones {
   clonesData: CharacterClonesData
   jumpCloneCount: number
 }
+
+type CloneLocationType = 'station' | 'structure' | 'solar_system'
 
 function getImplantSlot(typeId: number): number {
   const type = getType(typeId)
@@ -120,7 +122,7 @@ export function ClonesTab() {
 
     const getLocationName = (
       locationId: number,
-      locationType: 'station' | 'structure',
+      locationType: CloneLocationType,
     ): string => {
       if (locationType === 'structure') {
         return (
@@ -134,17 +136,55 @@ export function ClonesTab() {
       )
     }
 
+    const getActiveCloneLocation = (
+      activeLocation: ESICharacterLocation | undefined,
+      homeLocation:
+        | { location_id: number; location_type: 'station' | 'structure' }
+        | undefined,
+    ): {
+      locationId: number | undefined
+      locationType: CloneLocationType
+    } => {
+      if (activeLocation?.structure_id) {
+        return {
+          locationId: activeLocation.structure_id,
+          locationType: 'structure',
+        }
+      }
+      if (activeLocation?.station_id) {
+        return {
+          locationId: activeLocation.station_id,
+          locationType: 'station',
+        }
+      }
+      if (activeLocation?.solar_system_id) {
+        return {
+          locationId: activeLocation.solar_system_id,
+          locationType: 'solar_system',
+        }
+      }
+      return {
+        locationId: homeLocation?.location_id,
+        locationType: homeLocation?.location_type ?? 'station',
+      }
+    }
+
     const result: CharacterClones[] = []
 
     const filteredClonesByOwner = clonesByOwner.filter(({ owner }) =>
       selectedSet.has(ownerKey(owner.type, owner.characterId)),
     )
 
-    for (const { owner, clones, activeImplants } of filteredClonesByOwner) {
-      const homeLocationId = clones.home_location?.location_id
-      const homeLocationType = clones.home_location?.location_type ?? 'station'
-      const homeLocationName = homeLocationId
-        ? getLocationName(homeLocationId, homeLocationType)
+    for (const {
+      owner,
+      clones,
+      activeImplants,
+      activeLocation,
+    } of filteredClonesByOwner) {
+      const { locationId: activeLocationId, locationType: activeLocationType } =
+        getActiveCloneLocation(activeLocation, clones.home_location)
+      const activeLocationName = activeLocationId
+        ? getLocationName(activeLocationId, activeLocationType)
         : t('fallback.unknown')
 
       const activeImplantInfos: ImplantInfo[] = activeImplants.map(
@@ -158,9 +198,9 @@ export function ClonesTab() {
       const activeClone: CloneInfo = {
         id: 0,
         name: t('activeClone'),
-        locationId: homeLocationId ?? 0,
-        locationName: homeLocationName,
-        locationType: homeLocationType,
+        locationId: activeLocationId ?? 0,
+        locationName: activeLocationName,
+        locationType: activeLocationType,
         implants: activeImplantInfos,
         isActive: true,
       }
