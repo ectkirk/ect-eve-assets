@@ -89,8 +89,25 @@ function parseKey(key: string): { ownerKey: string; endpoint: string } | null {
 
 function isPatternApplicable(pattern: string, ownerKey: string): boolean {
   const isCharacter = ownerKey.startsWith('character-')
-  if (pattern === '/structures' && isCharacter) return false
-  if (pattern === '/clones/' && !isCharacter) return false
+  const normalizedPattern = normalizeEndpoint(pattern)
+  if (
+    ['/clones', '/loyalty/points', '/mail', '/skills'].includes(
+      normalizedPattern,
+    ) &&
+    !isCharacter
+  )
+    return false
+  if (
+    [
+      '/customs_offices',
+      '/starbases',
+      '/structures',
+      '/wallet/journal',
+      '/wallets',
+    ].includes(normalizedPattern) &&
+    isCharacter
+  )
+    return false
   return true
 }
 
@@ -165,6 +182,45 @@ function findMatchingPattern(
   return undefined
 }
 
+function hasEndpointForPattern(
+  endpoints: Map<string, EndpointExpiry>,
+  ownerKey: string,
+  pattern: string,
+): boolean {
+  const normalizedPattern = normalizeEndpoint(pattern)
+  const prefix = `${ownerKey}:`
+  for (const key of endpoints.keys()) {
+    if (key.startsWith(prefix) && key.includes(normalizedPattern)) return true
+  }
+  return false
+}
+
+function queueExpiredEndpoints(now = Date.now()): void {
+  const state = useExpiryCacheStore.getState()
+  for (const [key, expiry] of state.endpoints) {
+    if (expiry.expiresAt <= now) {
+      const parsed = parseKey(key)
+      if (parsed) {
+        useExpiryCacheStore
+          .getState()
+          .queueRefresh(parsed.ownerKey, parsed.endpoint)
+      }
+    }
+  }
+}
+
+function queueMissingEndpointPattern(pattern: string): number {
+  const { endpoints } = useExpiryCacheStore.getState()
+  let queued = 0
+  for (const ownerKey of Object.keys(useAuthStore.getState().owners)) {
+    if (!isPatternApplicable(pattern, ownerKey)) continue
+    if (hasEndpointForPattern(endpoints, ownerKey, pattern)) continue
+    useExpiryCacheStore.getState().queueRefresh(ownerKey, pattern)
+    queued++
+  }
+  return queued
+}
+
 function schedulePoll(generation: number) {
   setTimeout(() => {
     const state = useExpiryCacheStore.getState()
@@ -175,18 +231,7 @@ function schedulePoll(generation: number) {
       return
     }
 
-    const now = Date.now()
-
-    for (const [key, expiry] of state.endpoints) {
-      if (expiry.expiresAt <= now) {
-        const parsed = parseKey(key)
-        if (parsed) {
-          useExpiryCacheStore
-            .getState()
-            .queueRefresh(parsed.ownerKey, parsed.endpoint)
-        }
-      }
-    }
+    queueExpiredEndpoints()
 
     schedulePoll(generation)
   }, POLL_INTERVAL_MS)
@@ -391,6 +436,7 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
       sortedPatternsCache = null
       return { callbacks }
     })
+    queueMissingEndpointPattern(endpointPattern)
     processQueue()
 
     return () => {
@@ -598,6 +644,7 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
 
   resume: () => {
     set({ isPaused: false })
+    queueExpiredEndpoints()
     processQueue()
   },
 }))

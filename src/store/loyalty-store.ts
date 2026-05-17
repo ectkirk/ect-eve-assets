@@ -26,7 +26,6 @@ export const useLoyaltyStore = createOwnerStore<
   },
   ownerFilter: 'character',
   requiredScope: 'esi-characters.read_loyalty.v1',
-  disableAutoRefresh: true,
   getEndpoint: (owner) => `/characters/${owner.characterId}/loyalty/points`,
   fetchData: async (owner) => {
     return esi.fetchWithMeta<ESILoyaltyPoints[]>(

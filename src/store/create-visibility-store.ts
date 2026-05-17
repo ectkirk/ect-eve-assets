@@ -285,6 +285,8 @@ export function createVisibilityStore<
               })
               const { data: items, expiresAt, etag } = await fetchData(owner)
 
+              if (gen !== storeGeneration) continue
+
               const ownerVisibility = new Set<number>()
               for (const item of items) {
                 const itemId = getItemId(item)
@@ -335,6 +337,11 @@ export function createVisibilityStore<
           }
 
           await db.saveItems(itemBatch)
+
+          if (gen !== storeGeneration) {
+            set({ isUpdating: false } as Partial<FullStore>)
+            return
+          }
 
           let itemsById = new Map(get().itemsById)
           for (const [id, stored] of newItems) {
@@ -449,8 +456,10 @@ export function createVisibilityStore<
           }
 
           await db.saveItems(itemBatch)
+          if (gen !== storeGeneration) return
           visibilityByOwner.set(currentOwnerKey, ownerVisibility)
           await db.saveVisibility(currentOwnerKey, ownerVisibility)
+          if (gen !== storeGeneration) return
 
           onAfterOwnerUpdate?.({
             owner,

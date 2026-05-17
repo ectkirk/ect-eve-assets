@@ -31,7 +31,6 @@ export const useSkillsStore = createOwnerStore<SkillsData, CharacterSkillsData>(
     },
     ownerFilter: 'character',
     requiredScope: 'esi-skills.read_skills.v1',
-    disableAutoRefresh: true,
     getEndpoint: (owner) => `/characters/${owner.characterId}/skills`,
     fetchData: async (owner) => {
       const result = await esi.fetchWithMeta<ESICharacterSkills>(

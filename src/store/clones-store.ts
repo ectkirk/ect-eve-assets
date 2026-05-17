@@ -50,7 +50,6 @@ export const useClonesStore = createOwnerStore<CloneData, CharacterCloneData>({
     }),
   },
   ownerFilter: 'character',
-  disableAutoRefresh: true,
   getEndpoint: (owner) => `/characters/${owner.characterId}/clones`,
   fetchData: async (owner) => {
     const [clonesResult, implantsResult, locationResult] = await Promise.all([

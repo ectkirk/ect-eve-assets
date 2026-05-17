@@ -52,7 +52,6 @@ export const useMailStore = createOwnerStore<
   },
   ownerFilter: 'character',
   requiredScope: 'esi-mail.read_mail.v1',
-  disableAutoRefresh: true,
   getEndpoint: (owner) => `/characters/${owner.characterId}/mail`,
   fetchData: async (owner) => {
     const result = await esi.fetchWithMeta<ESIMailHeader[]>(

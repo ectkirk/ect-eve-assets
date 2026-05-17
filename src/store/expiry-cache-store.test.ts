@@ -241,6 +241,38 @@ describe('expiry-cache-store', () => {
         false,
       )
     })
+
+    it('queues missing endpoints for already-loaded owners when callback registers late', async () => {
+      const cb = vi.fn().mockResolvedValue(undefined)
+      vi.mocked(useAuthStore.getState).mockReturnValue({
+        owners: {
+          'character-1': { type: 'character', id: 1 },
+        },
+        getOwner: mockGetOwner,
+      } as never)
+
+      useExpiryCacheStore.getState().registerRefreshCallback('/mail', cb)
+
+      await vi.waitFor(() => {
+        expect(cb).toHaveBeenCalledWith('character-1', '/mail')
+      })
+    })
+
+    it('does not queue missing character-only endpoints for corporation owners', async () => {
+      const cb = vi.fn().mockResolvedValue(undefined)
+      vi.mocked(useAuthStore.getState).mockReturnValue({
+        owners: {
+          'corporation-1': { type: 'corporation', id: 1 },
+        },
+        getOwner: mockGetOwner,
+      } as never)
+
+      useExpiryCacheStore.getState().registerRefreshCallback('/mail', cb)
+      await flushMicrotasks()
+
+      expect(cb).not.toHaveBeenCalled()
+      expect(useExpiryCacheStore.getState().refreshQueue).toHaveLength(0)
+    })
   })
 
   describe('queueRefresh', () => {
@@ -702,6 +734,26 @@ describe('expiry-cache-store', () => {
 
       await vi.waitFor(() => {
         expect(cb).toHaveBeenCalledWith('char-1', '/assets')
+      })
+    })
+
+    it('resume immediately queues endpoints that expired while paused', async () => {
+      const cb = vi.fn().mockResolvedValue(undefined)
+      useExpiryCacheStore.getState().registerRefreshCallback('/assets', cb)
+      useExpiryCacheStore.setState({
+        endpoints: new Map([
+          [
+            'character-1:/assets',
+            { expiresAt: Date.now() - 1_000, etag: null },
+          ],
+        ]),
+      })
+
+      useExpiryCacheStore.getState().pause()
+      useExpiryCacheStore.getState().resume()
+
+      await vi.waitFor(() => {
+        expect(cb).toHaveBeenCalledWith('character-1', '/assets')
       })
     })
   })
