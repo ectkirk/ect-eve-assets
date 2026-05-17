@@ -24,6 +24,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install Electron binary
+        run: npm run electron:install
+
       - name: Build Electron app
         run: npm run dist:win -- --publish never
         env:
@@ -55,6 +58,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install Electron binary
+        run: npm run electron:install
+
       - name: Build Electron app
         run: npm run dist:linux -- --publish never
         env:
@@ -85,6 +91,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Install Electron binary
+        run: npm run electron:install
 
       - name: Build Electron app
         run: npm run dist:mac -- --publish never

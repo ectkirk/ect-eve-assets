@@ -15,6 +15,7 @@
     "build": "vite build && npm run build:main && npm run build:preload",
     "build:main": "node scripts/build-electron-main.mjs",
     "build:preload": "npx esbuild electron/preload.ts --bundle --platform=node --target=node18 --external:electron --format=cjs --outfile=dist-electron/preload.cjs",
+    "electron:install": "install-electron --no",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
