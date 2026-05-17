@@ -55,7 +55,7 @@ Built with Electron, React, and TypeScript.
 
 | Layer      | Technology                                                |
 | ---------- | --------------------------------------------------------- |
-| Desktop    | Electron 41, electron-updater                             |
+| Desktop    | Electron 42, electron-updater                             |
 | Frontend   | React 19, TypeScript 6, Vite 8                            |
 | State      | Zustand 5, IndexedDB persistence                          |
 | UI         | Tailwind 4, shadcn/ui (Radix), Lucide icons               |

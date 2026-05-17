@@ -1,56 +1,41 @@
 {
-  "version": "2.5.0",
-  "date": "2026-01-23",
+  "version": "2.7.7",
+  "date": "2026-05-17",
   "changes": [
     {
-      "type": "feat",
-      "scope": "contracts",
-      "description": "Add auction bid support with batch fetching and current bid display"
+      "type": "fix",
+      "scope": "refresh",
+      "description": "Refresh owner stores reliably through the shared ESI expiry queue"
     },
     {
       "type": "feat",
-      "scope": "contracts",
-      "description": "Add hide alliance filter for personal contracts"
+      "scope": "esi",
+      "description": "Add a manual Refresh ESI Now action that respects existing refresh queues"
     },
     {
-      "type": "feat",
-      "scope": "assets",
-      "description": "Add right-click context menu to view parent container location"
+      "type": "fix",
+      "scope": "clones",
+      "description": "Show active clone live location instead of home station when available"
     },
     {
-      "type": "feat",
-      "scope": "assets",
-      "description": "Include blueprint ME/TE/R info in copy output"
+      "type": "fix",
+      "scope": "locations",
+      "description": "Resolve player-owned structure names in industry job locations"
     },
     {
       "type": "feat",
       "scope": "ui",
-      "description": "Add double-click to open market in-game from market orders"
-    },
-    {
-      "type": "feat",
-      "scope": "ui",
-      "description": "Add sorting controls to character tabs (Mail, Skills, Clones)"
+      "description": "Show character names when hovering over character portraits"
     },
     {
       "type": "fix",
-      "scope": "contracts",
-      "description": "Show courier reward as negative when you are the issuer"
+      "scope": "ci",
+      "description": "Install the Electron binary explicitly in CI and release workflows"
     },
     {
-      "type": "fix",
-      "scope": "contracts",
-      "description": "Fix price calculations and totals display"
-    },
-    {
-      "type": "fix",
-      "scope": "search",
-      "description": "Sync search input field with context search value"
-    },
-    {
-      "type": "refactor",
-      "scope": "hooks",
-      "description": "Add useLocalStorageSort hook for DRY character tab sorting"
+      "type": "chore",
+      "scope": "dependencies",
+      "description": "Update npm dependencies, including Electron 42"
     }
   ]
 }
