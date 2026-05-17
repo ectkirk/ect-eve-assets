@@ -299,6 +299,19 @@ describe('expiry-cache-store', () => {
       )
       expect(matching.length).toBeLessThanOrEqual(1)
     })
+
+    it('deduplicates against the currently refreshing item', () => {
+      const cb = vi.fn()
+      useExpiryCacheStore.getState().registerRefreshCallback('/assets', cb)
+      useExpiryCacheStore.setState({
+        refreshQueue: [],
+        currentlyRefreshing: { ownerKey: 'char-1', endpoint: '/assets' },
+      })
+
+      useExpiryCacheStore.getState().queueRefresh('char-1', '/assets')
+
+      expect(useExpiryCacheStore.getState().refreshQueue).toHaveLength(0)
+    })
   })
 
   describe('processQueue', () => {

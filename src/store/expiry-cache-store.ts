@@ -431,6 +431,13 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
     set((state) => {
       const { callbacks } = state
       const incomingPattern = findMatchingPattern(callbacks, endpoint)
+      const current = state.currentlyRefreshing
+      if (current?.ownerKey === ownerKey) {
+        if (current.endpoint === endpoint) return state
+        const currentPattern = findMatchingPattern(callbacks, current.endpoint)
+        if (currentPattern !== undefined && currentPattern === incomingPattern)
+          return state
+      }
 
       const alreadyQueued = state.refreshQueue.some((q) => {
         if (q.ownerKey !== ownerKey) return false

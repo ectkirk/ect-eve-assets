@@ -82,7 +82,10 @@ export function OwnerManagementModal({
   )
 
   const currentlyRefreshing = useExpiryCacheStore((s) => s.currentlyRefreshing)
-  const isBusy = isUpdatingData || !!currentlyRefreshing
+  const isRefreshQueueActive = useExpiryCacheStore(
+    (s) => s.isProcessingQueue || s.refreshQueue.length > 0,
+  )
+  const isBusy = isUpdatingData || !!currentlyRefreshing || isRefreshQueueActive
 
   const characterOwners = useMemo(
     () => owners.filter((o) => o.type === 'character'),
