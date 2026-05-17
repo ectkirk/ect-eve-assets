@@ -75,6 +75,10 @@ export function OwnerManagementModal({
 
   const ownersRecord = useAuthStore((state) => state.owners)
   const owners = useMemo(() => Object.values(ownersRecord), [ownersRecord])
+  const ownerKeys = useMemo(
+    () => owners.map((owner) => ownerKey(owner.type, owner.id)),
+    [owners],
+  )
   const selectedOwnerIds = useAuthStore((state) => state.selectedOwnerIds)
   const selectedSet = useMemo(
     () => new Set(selectedOwnerIds),
@@ -82,10 +86,10 @@ export function OwnerManagementModal({
   )
 
   const currentlyRefreshing = useExpiryCacheStore((s) => s.currentlyRefreshing)
-  const isRefreshQueueActive = useExpiryCacheStore(
-    (s) => s.isProcessingQueue || s.refreshQueue.length > 0,
+  const hasQueueableEsiRefresh = useExpiryCacheStore((s) =>
+    s.hasQueueableEndpoints(ownerKeys),
   )
-  const isBusy = isUpdatingData || !!currentlyRefreshing || isRefreshQueueActive
+  const isBusy = isUpdatingData || !!currentlyRefreshing
 
   const characterOwners = useMemo(
     () => owners.filter((o) => o.type === 'character'),
@@ -534,7 +538,7 @@ export function OwnerManagementModal({
                 {tc('buttons.cancel')}
               </button>
             </div>
-          ) : isBusy ? (
+          ) : isUpdatingData ? (
             <div className="flex items-center justify-center gap-2 py-2 text-content-secondary">
               <Loader2 className="h-4 w-4 animate-spin" />
               <span>{t('ownerModal.updatingData')}</span>
@@ -548,7 +552,7 @@ export function OwnerManagementModal({
               {t('ownerModal.addCharacter')}
             </button>
           )}
-          {!isBusy && authFlow === 'idle' && (
+          {!isUpdatingData && authFlow === 'idle' && (
             <button
               onClick={togglePause}
               className={`flex w-full items-center justify-center gap-2 rounded-md border px-4 py-2 text-sm font-medium ${
@@ -570,16 +574,19 @@ export function OwnerManagementModal({
               )}
             </button>
           )}
-          {owners.length > 0 && !isBusy && authFlow === 'idle' && (
-            <button
-              onClick={handleRefreshESI}
-              disabled={isPaused}
-              className="flex w-full items-center justify-center gap-2 rounded-md border border-accent/50 px-4 py-2 text-sm font-medium text-accent hover:bg-accent/10 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <RefreshCw className="h-4 w-4" />
-              {t('ownerModal.refreshESI')}
-            </button>
-          )}
+          {owners.length > 0 &&
+            !isUpdatingData &&
+            authFlow === 'idle' &&
+            hasQueueableEsiRefresh && (
+              <button
+                onClick={handleRefreshESI}
+                disabled={isPaused}
+                className="flex w-full items-center justify-center gap-2 rounded-md border border-accent/50 px-4 py-2 text-sm font-medium text-accent hover:bg-accent/10 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <RefreshCw className="h-4 w-4" />
+                {t('ownerModal.refreshESI')}
+              </button>
+            )}
           {owners.length > 0 && !isBusy && authFlow === 'idle' && (
             <button
               onClick={handleLogoutAllClick}

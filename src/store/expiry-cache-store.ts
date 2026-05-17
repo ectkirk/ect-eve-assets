@@ -56,8 +56,9 @@ interface ExpiryCacheActions {
     endpointPattern: string,
     callback: RefreshCallback,
   ) => () => void
-  queueRefresh: (ownerKey: string, endpoint: string) => void
-  queueAllEndpointsForOwner: (ownerKey: string) => void
+  queueRefresh: (ownerKey: string, endpoint: string) => boolean
+  queueAllEndpointsForOwner: (ownerKey: string) => number
+  hasQueueableEndpoints: (ownerKeys: string[]) => boolean
   queueMissingEndpoints: (ownerKeys: string[]) => void
   clearForOwner: (ownerKey: string) => void
   clearByEndpoint: (pattern: string) => Promise<void>
@@ -177,6 +178,35 @@ function findMatchingPattern(
     if (endpoint.includes(pattern)) return pattern
   }
   return undefined
+}
+
+function isRefreshScheduled(
+  state: Pick<
+    ExpiryCacheState,
+    'callbacks' | 'currentlyRefreshing' | 'refreshQueue'
+  >,
+  ownerKey: string,
+  endpoint: string,
+): boolean {
+  const incomingPattern = findMatchingPattern(state.callbacks, endpoint)
+  const current = state.currentlyRefreshing
+  if (current?.ownerKey === ownerKey) {
+    if (current.endpoint === endpoint) return true
+    const currentPattern = findMatchingPattern(
+      state.callbacks,
+      current.endpoint,
+    )
+    if (currentPattern !== undefined && currentPattern === incomingPattern) {
+      return true
+    }
+  }
+
+  return state.refreshQueue.some((queued) => {
+    if (queued.ownerKey !== ownerKey) return false
+    if (queued.endpoint === endpoint) return true
+    const queuedPattern = findMatchingPattern(state.callbacks, queued.endpoint)
+    return queuedPattern !== undefined && queuedPattern === incomingPattern
+  })
 }
 
 function hasEndpointForPattern(
@@ -428,27 +458,14 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
   },
 
   queueRefresh: (ownerKey, endpoint) => {
+    let queued = false
     set((state) => {
-      const { callbacks } = state
-      const incomingPattern = findMatchingPattern(callbacks, endpoint)
-      const current = state.currentlyRefreshing
-      if (current?.ownerKey === ownerKey) {
-        if (current.endpoint === endpoint) return state
-        const currentPattern = findMatchingPattern(callbacks, current.endpoint)
-        if (currentPattern !== undefined && currentPattern === incomingPattern)
-          return state
-      }
-
-      const alreadyQueued = state.refreshQueue.some((q) => {
-        if (q.ownerKey !== ownerKey) return false
-        if (q.endpoint === endpoint) return true
-        const queuedPattern = findMatchingPattern(callbacks, q.endpoint)
-        return queuedPattern !== undefined && queuedPattern === incomingPattern
-      })
-      if (alreadyQueued) return state
+      if (isRefreshScheduled(state, ownerKey, endpoint)) return state
+      queued = true
       return { refreshQueue: [...state.refreshQueue, { ownerKey, endpoint }] }
     })
-    processQueue()
+    if (queued) processQueue()
+    return queued
   },
 
   queueAllEndpointsForOwner: (ownerKey) => {
@@ -456,14 +473,25 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
     let count = 0
     for (const pattern of callbacks.keys()) {
       if (!isPatternApplicable(pattern, ownerKey)) continue
-      get().queueRefresh(ownerKey, pattern)
-      count++
+      if (get().queueRefresh(ownerKey, pattern)) count++
     }
     logger.info('Queued all endpoints for owner', {
       module: 'ExpiryCacheStore',
       ownerKey,
       count,
     })
+    return count
+  },
+
+  hasQueueableEndpoints: (ownerKeys) => {
+    const state = get()
+    for (const ownerKey of ownerKeys) {
+      for (const pattern of state.callbacks.keys()) {
+        if (!isPatternApplicable(pattern, ownerKey)) continue
+        if (!isRefreshScheduled(state, ownerKey, pattern)) return true
+      }
+    }
+    return false
   },
 
   queueMissingEndpoints: (ownerKeys) => {

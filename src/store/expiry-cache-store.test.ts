@@ -312,6 +312,46 @@ describe('expiry-cache-store', () => {
 
       expect(useExpiryCacheStore.getState().refreshQueue).toHaveLength(0)
     })
+
+    it('queueAllEndpointsForOwner only counts endpoints accepted by the queue', () => {
+      const cb = vi.fn().mockResolvedValue(undefined)
+      useExpiryCacheStore.getState().registerRefreshCallback('/assets', cb)
+      useExpiryCacheStore.getState().registerRefreshCallback('/contracts', cb)
+      useExpiryCacheStore.setState({
+        isProcessingQueue: true,
+        refreshQueue: [],
+        currentlyRefreshing: { ownerKey: 'character-1', endpoint: '/assets' },
+      })
+
+      const count = useExpiryCacheStore
+        .getState()
+        .queueAllEndpointsForOwner('character-1')
+
+      expect(count).toBe(1)
+      expect(useExpiryCacheStore.getState().refreshQueue).toEqual([
+        { ownerKey: 'character-1', endpoint: '/contracts' },
+      ])
+    })
+
+    it('reports whether any endpoint is queueable for a set of owners', () => {
+      const cb = vi.fn().mockResolvedValue(undefined)
+      useExpiryCacheStore.getState().registerRefreshCallback('/assets', cb)
+      useExpiryCacheStore.getState().registerRefreshCallback('/contracts', cb)
+      useExpiryCacheStore.setState({
+        refreshQueue: [{ ownerKey: 'character-1', endpoint: '/contracts' }],
+        currentlyRefreshing: { ownerKey: 'character-1', endpoint: '/assets' },
+      })
+
+      expect(
+        useExpiryCacheStore.getState().hasQueueableEndpoints(['character-1']),
+      ).toBe(false)
+
+      useExpiryCacheStore.setState({ refreshQueue: [] })
+
+      expect(
+        useExpiryCacheStore.getState().hasQueueableEndpoints(['character-1']),
+      ).toBe(true)
+    })
   })
 
   describe('processQueue', () => {
