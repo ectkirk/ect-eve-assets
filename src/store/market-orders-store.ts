@@ -72,7 +72,10 @@ function registerPricesFromOrders(ordersById: Map<number, StoredOrder>): void {
     typeIds.add(order.type_id)
     regionIds.add(order.region_id)
 
-    if (!order.is_buy_order && order.location_id >= 1000000000000) {
+    if (
+      !order.is_buy_order &&
+      order.location_id >= PLAYER_STRUCTURE_ID_THRESHOLD
+    ) {
       let entry = structuresByCharacter.get(sourceOwner.characterId)
       if (!entry) {
         entry = { structureIds: new Set(), typeIds: new Set() }
@@ -191,7 +194,7 @@ const baseStore = createVisibilityStore<MarketOrder, StoredOrder>({
       const remainingStructureIds = new Set<number>()
       for (const { item: o } of itemsById.values()) {
         remainingTypeIds.add(o.type_id)
-        if (!o.is_buy_order && o.location_id >= 1000000000000) {
+        if (!o.is_buy_order && o.location_id >= PLAYER_STRUCTURE_ID_THRESHOLD) {
           remainingStructureIds.add(o.location_id)
         }
       }
@@ -205,7 +208,10 @@ const baseStore = createVisibilityStore<MarketOrder, StoredOrder>({
       }
 
       const structuresToUntrack = completedOrders
-        .filter((o) => !o.is_buy_order && o.location_id >= 1000000000000)
+        .filter(
+          (o) =>
+            !o.is_buy_order && o.location_id >= PLAYER_STRUCTURE_ID_THRESHOLD,
+        )
         .map((o) => o.location_id)
         .filter((locId) => !remainingStructureIds.has(locId))
 

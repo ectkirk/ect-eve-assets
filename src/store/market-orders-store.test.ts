@@ -24,7 +24,7 @@ vi.mock('@/lib/data-resolver', () => ({
   needsTypeResolution: vi.fn(() => false),
   hasLocation: vi.fn(() => true),
   hasStructure: vi.fn(() => true),
-  PLAYER_STRUCTURE_ID_THRESHOLD: 1000000000000,
+  PLAYER_STRUCTURE_ID_THRESHOLD: 1000000000,
 }))
 
 vi.mock('./regional-market-store', () => ({

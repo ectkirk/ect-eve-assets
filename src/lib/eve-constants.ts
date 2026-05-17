@@ -1,4 +1,8 @@
-export const PLAYER_STRUCTURE_ID_THRESHOLD = 1_000_000_000_000
+export const PLAYER_STRUCTURE_ID_THRESHOLD = 1_000_000_000
+
+export function isPlayerStructureLocationId(locationId: number): boolean {
+  return locationId >= PLAYER_STRUCTURE_ID_THRESHOLD
+}
 
 export const CAPITAL_TYPE_IDS = new Set([
   11567, 671, 3764, 23773, 42126, 42241, 45649, 78576, 23919, 22852, 23913,
