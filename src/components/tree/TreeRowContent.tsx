@@ -134,6 +134,7 @@ export const TreeRowContent = memo(function TreeRowContent({
                   <OwnerIcon
                     ownerId={node.ownerId}
                     ownerType={node.ownerType}
+                    ownerName={node.ownerName}
                     size="sm"
                   />
                 )}

@@ -244,6 +244,7 @@ function WalletRow({
             <OwnerIcon
               ownerId={wallet.owner.id}
               ownerType={wallet.owner.type}
+              ownerName={wallet.owner.name}
               size="sm"
             />
             <span>{wallet.owner.name}</span>

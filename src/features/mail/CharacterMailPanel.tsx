@@ -258,6 +258,7 @@ export function CharacterMailPanel({
                     {conv.partnerId > 0 && (
                       <CharacterPortrait
                         characterId={conv.partnerId}
+                        characterName={conv.partnerName}
                         size="sm"
                       />
                     )}

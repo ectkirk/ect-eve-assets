@@ -57,6 +57,7 @@ function OrderRowCells({ row, show, onItemDoubleClick }: OrderRowCellsProps) {
             <OwnerIcon
               ownerId={row.ownerId}
               ownerType={row.ownerType}
+              ownerName={row.ownerName}
               size="sm"
             />
             <TypeIcon typeId={row.typeId} categoryId={row.categoryId} />

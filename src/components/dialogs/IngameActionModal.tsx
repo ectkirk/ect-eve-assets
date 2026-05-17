@@ -142,6 +142,7 @@ export function IngameActionModal({
                     <OwnerIcon
                       ownerId={char.id}
                       ownerType="character"
+                      ownerName={char.name}
                       size="lg"
                     />
                     <span className="flex-1 text-sm">{char.name}</span>

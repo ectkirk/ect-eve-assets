@@ -224,7 +224,11 @@ export function LoyaltyTab() {
                 className="border-b border-border/50 hover:bg-surface-tertiary/50"
               >
                 <TableCell className="py-1.5 w-8">
-                  <CharacterPortrait characterId={row.ownerId} size="sm" />
+                  <CharacterPortrait
+                    characterId={row.ownerId}
+                    characterName={row.ownerName}
+                    size="sm"
+                  />
                 </TableCell>
                 <TableCell className="py-1.5">
                   <div className="flex items-center gap-2">

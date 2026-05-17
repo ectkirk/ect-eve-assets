@@ -130,6 +130,7 @@ export function ContractTableRow({
               <OwnerIcon
                 ownerId={row.ownerId}
                 ownerType={row.ownerType}
+                ownerName={row.ownerName}
                 size="sm"
               />
             </TableCell>

@@ -106,6 +106,7 @@ export interface ContractRow {
   items: ESIContractItem[]
   ownerType: 'character' | 'corporation'
   ownerId: number
+  ownerName: string
   locationName: string
   endLocationName: string
   firstItemTypeId?: number | undefined
@@ -137,6 +138,7 @@ export function buildContractRow(
   contractWithItems: ContractWithItems,
   ownerType: 'character' | 'corporation',
   ownerId: number,
+  ownerName: string,
   isIssuer: boolean,
   t: (key: string, options?: Record<string, unknown>) => string,
 ): ContractRow {
@@ -189,6 +191,7 @@ export function buildContractRow(
     items,
     ownerType,
     ownerId,
+    ownerName,
     locationName: getLocationName(contract.start_location_id),
     endLocationName: contract.end_location_id
       ? getLocationName(contract.end_location_id)

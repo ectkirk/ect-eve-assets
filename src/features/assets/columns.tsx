@@ -117,7 +117,12 @@ export const columns: AssetColumn[] = [
       const ownerType = row.ownerType
       return (
         <span title={name}>
-          <OwnerIcon ownerId={ownerId} ownerType={ownerType} size="lg" />
+          <OwnerIcon
+            ownerId={ownerId}
+            ownerType={ownerType}
+            ownerName={name}
+            size="lg"
+          />
         </span>
       )
     },

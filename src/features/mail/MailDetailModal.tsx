@@ -72,6 +72,7 @@ export function MailDetailModal({ mail, onClose }: MailDetailModalProps) {
           <div className="flex items-center gap-3">
             <CharacterPortrait
               characterId={mail.mail.from ?? mail.characterId}
+              characterName={mail.fromName}
               size="lg"
             />
             <div>

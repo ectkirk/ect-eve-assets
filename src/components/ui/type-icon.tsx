@@ -107,10 +107,12 @@ export function TypeIcon({
 
 export function CharacterPortrait({
   characterId,
+  characterName,
   size = 'md',
   className,
 }: {
   characterId: number
+  characterName?: string | undefined
   size?: 'sm' | 'md' | 'lg'
   className?: string | undefined
 }) {
@@ -118,7 +120,8 @@ export function CharacterPortrait({
   return (
     <img
       src={`https://images.evetech.net/characters/${characterId}/portrait?size=32`}
-      alt=""
+      alt={characterName ?? ''}
+      title={characterName}
       className={cn(sizeClass, 'rounded flex-shrink-0', className)}
       loading="lazy"
     />
@@ -148,11 +151,13 @@ export function CorporationLogo({
 export function OwnerIcon({
   ownerId,
   ownerType,
+  ownerName,
   size = 'md',
   className,
 }: {
   ownerId: number
   ownerType: 'character' | 'corporation'
+  ownerName?: string | undefined
   size?: 'sm' | 'md' | 'lg'
   className?: string
 }) {
@@ -168,6 +173,7 @@ export function OwnerIcon({
   return (
     <CharacterPortrait
       characterId={ownerId}
+      characterName={ownerName}
       size={size}
       className={className}
     />

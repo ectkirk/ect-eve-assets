@@ -145,6 +145,7 @@ export function OwnerButton() {
                             <OwnerIcon
                               ownerId={owner.id}
                               ownerType={owner.type}
+                              ownerName={owner.name}
                               size="lg"
                             />
                           </div>
@@ -175,6 +176,7 @@ export function OwnerButton() {
                             <OwnerIcon
                               ownerId={owner.id}
                               ownerType={owner.type}
+                              ownerName={owner.name}
                               size="lg"
                             />
                           </div>

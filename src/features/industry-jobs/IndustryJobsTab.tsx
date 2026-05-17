@@ -265,6 +265,7 @@ function JobsTable({ jobs, visibleColumns, onSetWaypoint }: JobsTableProps) {
                         <OwnerIcon
                           ownerId={row.ownerId}
                           ownerType={row.ownerType}
+                          ownerName={row.ownerName}
                           size="sm"
                         />
                       </TableCell>

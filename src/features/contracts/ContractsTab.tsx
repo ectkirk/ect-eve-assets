@@ -157,6 +157,7 @@ export function ContractsTab() {
           contractWithItems,
           owner.type,
           owner.id,
+          owner.name,
           isIssuer,
           (key, options) => (options === undefined ? t(key) : t(key, options)),
         )

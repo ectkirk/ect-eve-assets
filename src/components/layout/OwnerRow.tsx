@@ -78,7 +78,12 @@ export function OwnerRow({
         <CheckIcon
           className={`h-4 w-4 ${isSelected ? 'text-accent' : 'text-content-muted'}`}
         />
-        <OwnerIcon ownerId={owner.id} ownerType={owner.type} size="lg" />
+        <OwnerIcon
+          ownerId={owner.id}
+          ownerType={owner.type}
+          ownerName={owner.name}
+          size="lg"
+        />
         <span className={`text-sm ${isCorp ? 'text-status-corp' : ''}`}>
           {owner.name}
         </span>
