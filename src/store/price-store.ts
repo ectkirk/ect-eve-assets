@@ -88,7 +88,6 @@ let initPromise: Promise<void> | null = null
 
 async function triggerJitaRefreshIfNeeded(): Promise<void> {
   try {
-    const { useExpiryCacheStore } = await import('./expiry-cache-store')
     const { useAssetStore } = await import('./asset-store')
     const { collectOwnedIds } = await import('./type-id-collector')
     const { useMarketOrdersStore } = await import('./market-orders-store')
@@ -98,7 +97,6 @@ async function triggerJitaRefreshIfNeeded(): Promise<void> {
 
     const state = usePriceStore.getState()
     if (!state.initialized || state.isUpdatingJita) return
-    if (useExpiryCacheStore.getState().isPaused) return
 
     const { typeIds, abyssalItemIds } = collectOwnedIds(
       useAssetStore.getState().assetsByOwner,

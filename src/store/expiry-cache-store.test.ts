@@ -34,7 +34,6 @@ async function resetStore() {
     isProcessingQueue: false,
     pollingGeneration: 0,
     currentlyRefreshing: null,
-    isPaused: false,
   })
 }
 
@@ -702,59 +701,6 @@ describe('expiry-cache-store', () => {
       }>(db, 'expiry')
       expect(records.some((r) => r.key.startsWith('character-1:'))).toBe(false)
       expect(records.some((r) => r.key.startsWith('character-2:'))).toBe(true)
-    })
-  })
-
-  describe('pause/resume', () => {
-    it('pause stops queue processing', async () => {
-      const cb = vi.fn().mockResolvedValue(undefined)
-      useExpiryCacheStore.getState().registerRefreshCallback('/assets', cb)
-
-      useExpiryCacheStore.getState().pause()
-
-      useExpiryCacheStore.getState().queueRefresh('char-1', '/assets')
-
-      await flushMicrotasks()
-      await flushMicrotasks()
-
-      expect(cb).not.toHaveBeenCalled()
-    })
-
-    it('resume restarts processing', async () => {
-      const cb = vi.fn().mockResolvedValue(undefined)
-      useExpiryCacheStore.getState().registerRefreshCallback('/assets', cb)
-
-      useExpiryCacheStore.getState().pause()
-      useExpiryCacheStore.getState().queueRefresh('char-1', '/assets')
-
-      await flushMicrotasks()
-      expect(cb).not.toHaveBeenCalled()
-
-      useExpiryCacheStore.getState().resume()
-
-      await vi.waitFor(() => {
-        expect(cb).toHaveBeenCalledWith('char-1', '/assets')
-      })
-    })
-
-    it('resume immediately queues endpoints that expired while paused', async () => {
-      const cb = vi.fn().mockResolvedValue(undefined)
-      useExpiryCacheStore.getState().registerRefreshCallback('/assets', cb)
-      useExpiryCacheStore.setState({
-        endpoints: new Map([
-          [
-            'character-1:/assets',
-            { expiresAt: Date.now() - 1_000, etag: null },
-          ],
-        ]),
-      })
-
-      useExpiryCacheStore.getState().pause()
-      useExpiryCacheStore.getState().resume()
-
-      await vi.waitFor(() => {
-        expect(cb).toHaveBeenCalledWith('character-1', '/assets')
-      })
     })
   })
 })

@@ -39,7 +39,6 @@ interface ExpiryCacheState {
   isProcessingQueue: boolean
   pollingGeneration: number
   currentlyRefreshing: { ownerKey: string; endpoint: string } | null
-  isPaused: boolean
 }
 
 interface ExpiryCacheActions {
@@ -64,8 +63,6 @@ interface ExpiryCacheActions {
   clearByEndpoint: (pattern: string) => Promise<void>
   pruneOrphaned: () => Promise<number>
   clear: () => Promise<void>
-  pause: () => void
-  resume: () => void
 }
 
 type ExpiryCacheStore = ExpiryCacheState & ExpiryCacheActions
@@ -226,11 +223,6 @@ function schedulePoll(generation: number) {
     const state = useExpiryCacheStore.getState()
     if (generation !== state.pollingGeneration) return
 
-    if (state.isPaused) {
-      schedulePoll(generation)
-      return
-    }
-
     queueExpiredEndpoints()
 
     schedulePoll(generation)
@@ -239,12 +231,7 @@ function schedulePoll(generation: number) {
 
 function processQueue() {
   const state = useExpiryCacheStore.getState()
-  if (
-    state.isProcessingQueue ||
-    state.refreshQueue.length === 0 ||
-    state.isPaused
-  )
-    return
+  if (state.isProcessingQueue || state.refreshQueue.length === 0) return
 
   useExpiryCacheStore.setState({ isProcessingQueue: true })
 
@@ -253,14 +240,6 @@ function processQueue() {
 
   const processNext = async () => {
     const currentState = useExpiryCacheStore.getState()
-    if (currentState.isPaused) {
-      useExpiryCacheStore.setState({
-        isProcessingQueue: false,
-        currentlyRefreshing: null,
-      })
-      return
-    }
-
     const { refreshQueue, callbacks } = currentState
     if (refreshQueue.length === 0) {
       useExpiryCacheStore.setState({
@@ -342,7 +321,6 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
   isProcessingQueue: false,
   pollingGeneration: 0,
   currentlyRefreshing: null,
-  isPaused: false,
 
   init: async () => {
     if (get().initialized) return
@@ -636,15 +614,5 @@ export const useExpiryCacheStore = create<ExpiryCacheStore>((set, get) => ({
         module: 'ExpiryCacheStore',
       })
     }
-  },
-
-  pause: () => {
-    set({ isPaused: true })
-  },
-
-  resume: () => {
-    set({ isPaused: false })
-    queueExpiredEndpoints()
-    processQueue()
   },
 }))
