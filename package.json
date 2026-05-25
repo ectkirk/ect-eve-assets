@@ -107,12 +107,12 @@
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "16.3.2",
     "@testing-library/user-event": "^14.6.1",
-    "@types/node": "^25.8.0",
-    "@types/react": "19.2.14",
+    "@types/node": "^25.9.1",
+    "@types/react": "19.2.15",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "^6.0.2",
-    "@vitest/coverage-v8": "^4.1.6",
-    "electron": "^42.1.0",
+    "@vitest/coverage-v8": "^4.1.7",
+    "electron": "^42.2.0",
     "electron-builder": "^26.8.1",
     "eslint": "^10.4.0",
     "eslint-config-prettier": "^10.1.8",
@@ -124,11 +124,11 @@
     "jsdom": "^29.1.1",
     "prettier": "3.8.3",
     "tailwindcss": "^4.1.17",
-    "tsx": "^4.22.1",
+    "tsx": "^4.22.3",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.59.3",
-    "vite": "^8.0.13",
+    "typescript-eslint": "^8.59.4",
+    "vite": "^8.0.14",
     "vite-plugin-electron": "0.29.1",
-    "vitest": "^4.1.6"
+    "vitest": "^4.1.7"
   }
 }
