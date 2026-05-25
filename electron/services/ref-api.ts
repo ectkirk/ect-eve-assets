@@ -159,6 +159,32 @@ interface PaginatedResult<T> {
   pagination: { hasMore: boolean; nextCursor: string | number | null }
 }
 
+async function logRefRejectedResponse(
+  response: Response,
+  context: { channel: string; endpoint: string },
+): Promise<void> {
+  let bodySnippet: string
+  try {
+    bodySnippet = (await response.clone().text()).slice(0, 300)
+  } catch {
+    bodySnippet = '[unavailable]'
+  }
+
+  logger.warn('Ref API rejected response', {
+    module: 'RefAPI',
+    channel: context.channel,
+    endpoint: context.endpoint,
+    status: response.status,
+    statusText: response.statusText,
+    url: response.url,
+    server: response.headers.get('server'),
+    via: response.headers.get('via'),
+    cfRay: response.headers.get('cf-ray'),
+    contentType: response.headers.get('content-type'),
+    bodySnippet,
+  })
+}
+
 async function refGetPaginated<T, C extends string | number>(
   endpoint: string,
   /** Used only for error logging context in the catch block */
@@ -177,6 +203,7 @@ async function refGetPaginated<T, C extends string | number>(
     })
 
     if (!response.ok) {
+      await logRefRejectedResponse(response, { channel, endpoint })
       return { error: `HTTP ${response.status}` }
     }
 
@@ -206,6 +233,7 @@ async function refGet<T>(
       headers,
     })
     if (!response.ok) {
+      await logRefRejectedResponse(response, { channel, endpoint })
       return { error: `HTTP ${response.status}` }
     }
     return (await response.json()) as RefResult<T>
@@ -229,6 +257,7 @@ async function refPost<T>(
       body: JSON.stringify(body),
     })
     if (!response.ok) {
+      await logRefRejectedResponse(response, { channel, endpoint })
       return { error: `HTTP ${response.status}` }
     }
     return (await response.json()) as RefResult<T>

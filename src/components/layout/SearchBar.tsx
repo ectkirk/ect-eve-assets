@@ -402,7 +402,7 @@ export function SearchBar() {
           <span className="text-content-secondary">
             {totalValue.label ?? t('columns.value')}:{' '}
           </span>
-          <span className="text-semantic-positive">
+          <span className="text-semantic-positive font-features-tnum">
             {formatNumber(totalValue.value)}
           </span>
           {totalValue.secondaryValue !== undefined && (
@@ -411,7 +411,7 @@ export function SearchBar() {
               <span className="text-content-secondary">
                 {totalValue.secondaryLabel ?? 'Secondary'}:{' '}
               </span>
-              <span className="text-semantic-warning">
+              <span className="text-semantic-warning font-features-tnum">
                 {formatNumber(totalValue.secondaryValue)}
               </span>
             </>
@@ -422,7 +422,7 @@ export function SearchBar() {
               <span className="text-content-secondary">
                 {totalValue.tertiaryLabel ?? 'Tertiary'}:{' '}
               </span>
-              <span className="text-accent">
+              <span className="text-accent font-features-tnum">
                 {formatNumber(totalValue.tertiaryValue)}
               </span>
             </>

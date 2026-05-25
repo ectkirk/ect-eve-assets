@@ -295,37 +295,37 @@ function HeaderControls() {
     <div className="flex items-center gap-4 text-sm">
       <div>
         <span className="text-content-secondary">{t('header.total')} </span>
-        <span className="font-medium text-semantic-positive">
+        <span className="font-medium font-features-tnum text-semantic-positive">
           {formatNumber(totals.total)}
         </span>
       </div>
       <div>
         <span className="text-content-secondary">{t('header.assets')} </span>
-        <span className="font-medium text-accent">
+        <span className="font-medium font-features-tnum text-accent">
           {formatNumber(totals.assetsTotal)}
         </span>
       </div>
       <div>
         <span className="text-content-secondary">{t('header.market')} </span>
-        <span className="font-medium text-status-info">
+        <span className="font-medium font-features-tnum text-status-info">
           {formatNumber(totals.marketTotal)}
         </span>
       </div>
       <div>
         <span className="text-content-secondary">{t('header.industry')} </span>
-        <span className="font-medium text-semantic-warning">
+        <span className="font-medium font-features-tnum text-semantic-warning">
           {formatNumber(totals.industryTotal)}
         </span>
       </div>
       <div>
         <span className="text-content-secondary">{t('header.contracts')} </span>
-        <span className="font-medium text-status-corp">
+        <span className="font-medium font-features-tnum text-status-corp">
           {formatNumber(totals.contractsTotal)}
         </span>
       </div>
       <div>
         <span className="text-content-secondary">{t('header.wallet')} </span>
-        <span className="font-medium text-semantic-success">
+        <span className="font-medium font-features-tnum text-semantic-success">
           {formatNumber(totals.walletTotal)}
         </span>
       </div>
@@ -333,7 +333,7 @@ function HeaderControls() {
         <span className="text-content-secondary">
           {t('header.structures')}{' '}
         </span>
-        <span className="font-medium text-status-special">
+        <span className="font-medium font-features-tnum text-status-special">
           {formatNumber(totals.structuresTotal)}
         </span>
       </div>
