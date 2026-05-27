@@ -1,11 +1,9 @@
-import { defineConfig } from 'vite'
-import { config } from 'dotenv'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import electron from 'vite-plugin-electron'
 import path from 'node:path'
 
-config()
 
 const RADIX_VENDOR_PACKAGES = [
   '@radix-ui/react-context-menu',
@@ -26,8 +24,11 @@ function chunkForPackage(id: string, packages: readonly string[]): boolean {
   return packages.some((pkg) => id.includes(`/node_modules/${pkg}/`))
 }
 
-export default defineConfig({
-  base: './',
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+
+  return {
+    base: './',
   plugins: [
     react(),
     tailwindcss(),
@@ -37,13 +38,13 @@ export default defineConfig({
         vite: {
           define: {
             'process.env.EVE_CLIENT_ID': JSON.stringify(
-              process.env['EVE_CLIENT_ID'] || '',
+              env['EVE_CLIENT_ID'] || '',
             ),
             'process.env.REF_API_KEY': JSON.stringify(
-              process.env['REF_API_KEY'] || '',
+              env['REF_API_KEY'] || '',
             ),
             'process.env.DISCORD_BUG_WEBHOOK': JSON.stringify(
-              process.env['DISCORD_BUG_WEBHOOK'] || '',
+              env['DISCORD_BUG_WEBHOOK'] || '',
             ),
           },
           build: {
@@ -92,4 +93,5 @@ export default defineConfig({
       },
     },
   },
+  }
 })
