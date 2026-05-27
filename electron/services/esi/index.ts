@@ -1,5 +1,5 @@
 import { app } from 'electron'
-import pLimit from 'p-limit'
+
 import { ESICache } from './cache'
 import { ESIHealthChecker } from './health'
 import {
@@ -20,7 +20,7 @@ import {
   type ESIHealthStatus,
 } from './types'
 import { ESIError } from '../../../shared/esi-types'
-import { isAbortError, getErrorMessage } from '../fetch-utils.js'
+import { isAbortError, getErrorMessage, pLimit } from '../fetch-utils.js'
 import {
   pathExists,
   readTextFile,

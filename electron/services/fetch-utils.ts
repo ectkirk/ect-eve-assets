@@ -30,3 +30,30 @@ export function isAbortError(error: unknown): boolean {
 export function getErrorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err)
 }
+
+export function pLimit(concurrency: number) {
+  let activeCount = 0
+  const queue: (() => void)[] = []
+
+  const next = () => {
+    activeCount--
+    if (queue.length > 0) {
+      const resolve = queue.shift()
+      resolve?.()
+    }
+  }
+
+  return async <T>(fn: () => Promise<T>): Promise<T> => {
+    if (activeCount >= concurrency) {
+      await new Promise<void>((resolve) => {
+        queue.push(resolve)
+      })
+    }
+    activeCount++
+    try {
+      return await fn()
+    } finally {
+      next()
+    }
+  }
+}
