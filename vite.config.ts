@@ -16,7 +16,6 @@ const UTILS_VENDOR_PACKAGES = [
   'zustand',
   'zod',
   'jose',
-  'clsx',
   'tailwind-merge',
 ]
 

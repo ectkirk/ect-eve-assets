@@ -1,13 +1,12 @@
-import { type ClassValue, clsx } from 'clsx'
-import { twMerge } from 'tailwind-merge'
+import { type ClassNameValue, twMerge } from 'tailwind-merge'
 import i18next from 'i18next'
 import { getLanguage } from '@/store/settings-store'
 
 const t = (key: string, options?: Record<string, unknown>) =>
   options === undefined ? i18next.t(key) : i18next.t(key, options)
 
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+export function cn(...inputs: ClassNameValue[]) {
+  return twMerge(...inputs)
 }
 
 const LOCALE_MAP: Record<string, string> = {

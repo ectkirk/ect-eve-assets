@@ -29,15 +29,7 @@ describe('cn', () => {
     expect(cn(['foo', 'bar'])).toBe('foo bar')
   })
 
-  it('handles objects', () => {
-    expect(cn({ foo: true, bar: false, baz: true })).toBe('foo baz')
-  })
 
-  it('handles complex combinations', () => {
-    expect(cn('base', ['arr1', 'arr2'], { obj: true }, undefined, 'end')).toBe(
-      'base arr1 arr2 obj end',
-    )
-  })
 
   it('returns empty string for no inputs', () => {
     expect(cn()).toBe('')
