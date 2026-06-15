@@ -84,7 +84,7 @@
     "@radix-ui/react-dialog": "^1.1.16",
     "@radix-ui/react-hover-card": "^1.1.16",
     "@radix-ui/react-scroll-area": "^1.2.11",
-    "dompurify": "^3.4.8",
+    "dompurify": "^3.4.10",
     "electron-updater": "^6.8.9",
     "i18next": "^26.3.1",
     "jose": "^6.2.3",
