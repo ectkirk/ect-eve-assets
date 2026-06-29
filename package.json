@@ -88,7 +88,7 @@
     "electron-updater": "^6.8.9",
     "i18next": "^26.3.3",
     "jose": "^6.2.3",
-    "lucide-react": "^1.21.0",
+    "lucide-react": "^1.22.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-i18next": "^17.0.8",
