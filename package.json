@@ -80,13 +80,13 @@
     }
   },
   "dependencies": {
-    "@radix-ui/react-context-menu": "^2.3.1",
-    "@radix-ui/react-dialog": "^1.1.17",
-    "@radix-ui/react-hover-card": "^1.1.17",
-    "@radix-ui/react-scroll-area": "^1.2.12",
+    "@radix-ui/react-context-menu": "^2.3.2",
+    "@radix-ui/react-dialog": "^1.1.18",
+    "@radix-ui/react-hover-card": "^1.1.18",
+    "@radix-ui/react-scroll-area": "^1.2.13",
     "dompurify": "^3.4.11",
     "electron-updater": "^6.8.9",
-    "i18next": "^26.3.3",
+    "i18next": "^26.3.4",
     "jose": "^6.2.3",
     "lucide-react": "^1.22.0",
     "react": "^19.2.7",
