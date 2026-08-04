@@ -109,7 +109,7 @@
     "@types/react-dom": "19.2.4",
     "@vitejs/plugin-react": "^6.0.5",
     "@vitest/coverage-v8": "^4.1.10",
-    "electron": "^42.5.0",
+    "electron": "^43.2.0",
     "electron-builder": "^26.15.3",
     "eslint": "^10.8.0",
     "eslint-config-prettier": "^10.1.8",
