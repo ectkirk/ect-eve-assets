@@ -87,7 +87,7 @@
     "dompurify": "^3.4.14",
     "electron-updater": "^6.8.9",
     "i18next": "^26.4.0",
-    "jose": "^6.2.9",
+    "jose": "^6.2.10",
     "lucide-react": "^1.33.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
