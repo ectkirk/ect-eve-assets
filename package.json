@@ -118,7 +118,7 @@
     "eslint-plugin-security": "^4.0.1",
     "fake-indexeddb": "^6.2.5",
     "globals": "^17.11.0",
-    "jsdom": "^29.1.1",
+    "jsdom": "^30.0.1",
     "prettier": "3.9.6",
     "tailwindcss": "^4.1.17",
     "tsx": "^4.23.12",
