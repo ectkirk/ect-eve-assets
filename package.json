@@ -93,7 +93,7 @@
     "react-dom": "^19.2.8",
     "react-i18next": "^17.0.13",
     "tailwind-merge": "3.6.0",
-    "zod": "^4.4.3",
+    "zod": "^4.5.4",
     "zustand": "5.0.15"
   },
   "devDependencies": {
