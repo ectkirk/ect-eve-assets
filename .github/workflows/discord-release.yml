@@ -11,21 +11,30 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Post to Discord
+        # Release values are passed as environment variables, never pasted into
+        # the script, so quotes or code in release notes cannot break or run in it.
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          RELEASE_BODY: ${{ github.event.release.body }}
+          RELEASE_NAME: ${{ github.event.release.name }}
+          RELEASE_URL: ${{ github.event.release.html_url }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_AUTHOR: ${{ github.event.release.author.login }}
+          REPOSITORY: ${{ github.repository }}
         shell: pwsh
         run: |
-          $releaseBody = "${{ github.event.release.body }}".Substring(0, [Math]::Min(500, "${{ github.event.release.body }}".Length))
+          $releaseBody = "$env:RELEASE_BODY"
+          if ($releaseBody.Length -gt 500) { $releaseBody = $releaseBody.Substring(0, 500) }
           $body = @{
             embeds = @(@{
-              title = "New Release: ${{ github.event.release.name }}"
+              title = "New Release: $env:RELEASE_NAME"
               description = $releaseBody
-              url = "${{ github.event.release.html_url }}"
+              url = $env:RELEASE_URL
               color = 3066993
               fields = @(
-                @{ name = "Version"; value = "${{ github.event.release.tag_name }}"; inline = $true }
-                @{ name = "Author"; value = "${{ github.event.release.author.login }}"; inline = $true }
-                @{ name = "Repository"; value = "${{ github.repository }}"; inline = $true }
+                @{ name = "Version"; value = $env:RELEASE_TAG; inline = $true }
+                @{ name = "Author"; value = $env:RELEASE_AUTHOR; inline = $true }
+                @{ name = "Repository"; value = $env:REPOSITORY; inline = $true }
               )
             })
           } | ConvertTo-Json -Depth 4

@@ -85,6 +85,8 @@
   "ownerModal.errors.failedRefreshRoles": "Не удалось обновить роли корпорации",
 
   "update.versionReady": "Версия {{version}} готова к установке",
+  "update.versionAvailable": "Доступна версия {{version}}",
+  "update.download": "Скачать",
 
   "settings.title": "Настройки",
   "settings.theme": "Тема",

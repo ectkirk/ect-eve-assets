@@ -85,6 +85,8 @@
   "ownerModal.errors.failedRefreshRoles": "코퍼레이션 역할 새로고침 실패",
 
   "update.versionReady": "버전 {{version}} 설치 준비 완료",
+  "update.versionAvailable": "버전 {{version}}을(를) 사용할 수 있습니다",
+  "update.download": "다운로드",
 
   "settings.title": "설정",
   "settings.theme": "테마",

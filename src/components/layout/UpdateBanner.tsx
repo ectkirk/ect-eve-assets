@@ -4,20 +4,30 @@ import { Download, X } from 'lucide-react'
 
 export function UpdateBanner() {
   const { t } = useTranslation('layout')
-  const [updateReady, setUpdateReady] = useState<string | null>(null)
+  const [update, setUpdate] = useState<{
+    version: string
+    manual: boolean
+  } | null>(null)
   const [dismissed, setDismissed] = useState(false)
 
   useEffect(() => {
-    if (!window.electronAPI) return
+    const api = window.electronAPI
+    if (!api) return
 
-    const unsubscribe = window.electronAPI.onUpdateDownloaded((version) => {
-      setUpdateReady(version)
+    const unsubscribeDownloaded = api.onUpdateDownloaded((version) => {
+      setUpdate({ version, manual: false })
+    })
+    const unsubscribeManual = api.onManualUpdateAvailable((version) => {
+      setUpdate({ version, manual: true })
     })
 
-    return unsubscribe
+    return () => {
+      unsubscribeDownloaded()
+      unsubscribeManual()
+    }
   }, [])
 
-  if (!updateReady || dismissed) return null
+  if (!update || dismissed) return null
 
   const handleInstall = () => {
     void window.electronAPI?.installUpdate()
@@ -27,14 +37,23 @@ export function UpdateBanner() {
     <div className="flex items-center justify-between bg-accent px-4 py-2 text-sm text-accent-foreground">
       <div className="flex items-center gap-2">
         <Download className="h-4 w-4" />
-        <span>{t('update.versionReady', { version: updateReady })}</span>
+        <span>
+          {t(
+            update.manual ? 'update.versionAvailable' : 'update.versionReady',
+            {
+              version: update.version,
+            },
+          )}
+        </span>
       </div>
       <div className="flex items-center gap-2">
         <button
           onClick={handleInstall}
           className="rounded bg-surface-inverse px-3 py-1 text-sm font-medium text-surface-inverse-foreground hover:opacity-90"
         >
-          {t('buttons.restartNow', { ns: 'common' })}
+          {update.manual
+            ? t('update.download')
+            : t('buttons.restartNow', { ns: 'common' })}
         </button>
         <button
           onClick={() => {
