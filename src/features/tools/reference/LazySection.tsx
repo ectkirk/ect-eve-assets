@@ -1,4 +1,11 @@
-import { useState, useCallback, useMemo, useRef, ReactNode } from 'react'
+import {
+  useState,
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  ReactNode,
+} from 'react'
 import { ChevronRight, ChevronDown, Loader2, CircleAlert } from 'lucide-react'
 
 interface LazySectionProps<T> {
@@ -32,7 +39,9 @@ export function LazySection<T>({
     error: null,
   })
   const currentTypeIdRef = useRef(typeId)
-  currentTypeIdRef.current = typeId
+  useLayoutEffect(() => {
+    currentTypeIdRef.current = typeId
+  }, [typeId])
 
   const currentState = useMemo(
     () =>

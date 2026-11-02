@@ -6,7 +6,7 @@ import type { SpatialIndex } from '../utils/spatial-index'
 
 interface UseMapInteractionOptions {
   canvasRef: React.RefObject<HTMLCanvasElement | null>
-  cameraRef: React.MutableRefObject<Camera>
+  cameraRef: React.RefObject<Camera>
   spatialIndex: SpatialIndex | null
   dimensions: { width: number; height: number }
   isDragging: boolean

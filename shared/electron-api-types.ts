@@ -219,10 +219,7 @@ export interface ContractSearchParams {
   regionId?: number | null | undefined
   systemId?: number | null | undefined
   contractType?:
-    | 'want_to_sell'
-    | 'want_to_buy'
-    | 'auction'
-    | 'exclude_want_to_buy'
+    'want_to_sell' | 'want_to_buy' | 'auction' | 'exclude_want_to_buy'
   categoryId?: number | null | undefined
   groupId?: number | null | undefined
   typeId?: number | null | undefined

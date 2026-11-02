@@ -6,8 +6,8 @@ interface WindowContext {
   toggleMaximize: () => void
   isMaximized: () => boolean
   characterTokens: Map<number, string>
-  readStorage: () => Record<string, unknown> | null
-  writeStorage: (data: Record<string, unknown>) => void
+  readStorage: () => Promise<Record<string, unknown> | null>
+  writeStorage: (data: Record<string, unknown>) => Promise<void>
 }
 
 const mocks = vi.hoisted(() => ({
@@ -107,8 +107,8 @@ describe('IPC Handlers', () => {
       toggleMaximize: vi.fn(),
       isMaximized: vi.fn(() => false),
       characterTokens: new Map(),
-      readStorage: vi.fn(() => ({ test: 'data' })),
-      writeStorage: vi.fn(),
+      readStorage: vi.fn(() => Promise.resolve({ test: 'data' })),
+      writeStorage: vi.fn(() => Promise.resolve()),
     }
   })
 

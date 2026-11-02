@@ -55,8 +55,7 @@ export const useWalletStore = createOwnerStore<
     deserialize: (stored) => ({
       balance: stored['balance'] as number | undefined,
       divisions: stored['divisions'] as
-        | ESICorporationWalletDivision[]
-        | undefined,
+        ESICorporationWalletDivision[] | undefined,
     }),
   },
   getEndpoint: (owner) =>
