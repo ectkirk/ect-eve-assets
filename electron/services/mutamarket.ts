@@ -5,7 +5,9 @@ import { isValidCharacterId } from './validation.js'
 import { makeUserAgent } from './esi/types.js'
 
 const MUTAMARKET_API_BASE = 'https://mutamarket.com/api'
-const MUTAMARKET_TIMEOUT_MS = 5000
+const LOOKUP_TIMEOUT_MS = 10_000
+// POST imports the module from ESI and prices it synchronously.
+const IMPORT_TIMEOUT_MS = 30_000
 
 export function registerMutamarketHandlers(): void {
   ipcMain.handle(
@@ -23,7 +25,7 @@ export function registerMutamarketHandlers(): void {
       try {
         const getResponse = await fetchWithTimeout(
           `${MUTAMARKET_API_BASE}/modules/${itemId}`,
-          { headers, timeoutMs: MUTAMARKET_TIMEOUT_MS },
+          { headers, timeoutMs: LOOKUP_TIMEOUT_MS },
         )
 
         if (getResponse.ok) {
@@ -47,7 +49,7 @@ export function registerMutamarketHandlers(): void {
             method: 'POST',
             headers,
             body: JSON.stringify({ type_id: typeId, item_id: itemId }),
-            timeoutMs: MUTAMARKET_TIMEOUT_MS,
+            timeoutMs: IMPORT_TIMEOUT_MS,
           },
         )
 

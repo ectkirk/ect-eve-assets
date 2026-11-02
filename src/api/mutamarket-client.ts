@@ -1,11 +1,8 @@
 import { logger } from '@/lib/logger'
 import { usePriceStore, isAbyssalTypeId } from '@/store/price-store'
-import { MutamarketModuleSchema } from './schemas'
-import { z } from 'zod'
+import { MutamarketModuleResponseSchema } from './schemas'
 
 export { isAbyssalTypeId }
-
-export type MutamarketModule = z.infer<typeof MutamarketModuleSchema>
 
 export function getMutamarketUrl(typeName: string, itemId: number): string {
   const slug = typeName.toLowerCase().replace(/\s+/g, '-')
@@ -116,7 +113,7 @@ async function fetchSingleAbyssalPriceInternal(
       return null
     }
 
-    const parseResult = MutamarketModuleSchema.safeParse(rawData)
+    const parseResult = MutamarketModuleResponseSchema.safeParse(rawData)
     if (!parseResult.success) {
       logger.warn('Mutamarket response validation failed', {
         module: 'Mutamarket',
@@ -126,7 +123,7 @@ async function fetchSingleAbyssalPriceInternal(
       return null
     }
 
-    const price = parseResult.data.estimated_value ?? -1
+    const price = parseResult.data.data.estimated_value ?? -1
     return { price, persist: true }
   } catch (error) {
     if (retryCount < MAX_RETRIES) {
