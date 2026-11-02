@@ -89,6 +89,7 @@
   "accessibility.filterByAssetType": "按资产类型筛选",
   "accessibility.filterByCategory": "按分类筛选",
   "accessibility.filterByGroup": "按分组筛选",
+  "accessibility.filterByRegion": "按星域筛选",
   "accessibility.sortCharacters": "角色排序",
   "accessibility.clickToCopy": "点击复制",
   "accessibility.resizeColumn": "拖动以调整列宽。双击可重置列宽。",
@@ -132,6 +133,9 @@
   "searchBar.more": "+{{count}} 更多",
   "searchBar.allCategories": "所有分类",
   "searchBar.allGroups": "全部分组",
+  "searchBar.allRegions": "所有星域",
+  "searchBar.proximityTo": "距离星系...",
+  "searchBar.clearProximity": "清除距离星系",
 
   "searchBar.assetTypes.all": "所有类型",
   "searchBar.assetTypes.activeShip": "当前舰船",
@@ -166,6 +170,8 @@
   "pagination.range": "{{start}}-{{end}} / {{total}}",
 
   "columns.region": "星域",
+  "columns.jumps": "跳数",
+  "columns.noRoute": "无星门路线",
   "columns.best": "最优",
   "columns.eveEst": "EVE估价",
   "columns.total": "总计",

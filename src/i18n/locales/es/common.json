@@ -89,6 +89,7 @@
   "accessibility.filterByAssetType": "Filtrar por tipo de activo",
   "accessibility.filterByCategory": "Filtrar por categoría",
   "accessibility.filterByGroup": "Filtrar por grupo",
+  "accessibility.filterByRegion": "Filtrar por región",
   "accessibility.sortCharacters": "Ordenar personajes",
   "accessibility.clickToCopy": "Clic para copiar",
   "accessibility.resizeColumn": "Arrastra para cambiar el ancho de la columna. Haz doble clic para restablecer los anchos de columna.",
@@ -132,6 +133,9 @@
   "searchBar.more": "+{{count}} más",
   "searchBar.allCategories": "Todas las categorías",
   "searchBar.allGroups": "Todos los grupos",
+  "searchBar.allRegions": "Todas las regiones",
+  "searchBar.proximityTo": "Cercanía a sistema...",
+  "searchBar.clearProximity": "Quitar sistema de cercanía",
 
   "searchBar.assetTypes.all": "Todos los tipos",
   "searchBar.assetTypes.activeShip": "Nave activa",
@@ -166,6 +170,8 @@
   "pagination.range": "{{start}}-{{end}} de {{total}}",
 
   "columns.region": "Región",
+  "columns.jumps": "Saltos",
+  "columns.noRoute": "Sin ruta por portales estelares",
   "columns.best": "Mejor",
   "columns.eveEst": "Est EVE",
   "columns.total": "Total",

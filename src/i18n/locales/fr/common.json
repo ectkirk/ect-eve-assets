@@ -89,6 +89,7 @@
   "accessibility.filterByAssetType": "Filtrer par type d'actif",
   "accessibility.filterByCategory": "Filtrer par catégorie",
   "accessibility.filterByGroup": "Filtrer par groupe",
+  "accessibility.filterByRegion": "Filtrer par région",
   "accessibility.sortCharacters": "Trier les personnages",
   "accessibility.clickToCopy": "Cliquer pour copier",
   "accessibility.resizeColumn": "Faites glisser pour redimensionner la colonne. Double-cliquez pour réinitialiser les largeurs de colonne.",
@@ -132,6 +133,9 @@
   "searchBar.more": "+{{count}} de plus",
   "searchBar.allCategories": "Toutes les catégories",
   "searchBar.allGroups": "Tous les groupes",
+  "searchBar.allRegions": "Toutes les régions",
+  "searchBar.proximityTo": "Proximité d’un système...",
+  "searchBar.clearProximity": "Effacer le système de proximité",
 
   "searchBar.assetTypes.all": "Tous les types",
   "searchBar.assetTypes.activeShip": "Vaisseau actif",
@@ -166,6 +170,8 @@
   "pagination.range": "{{start}}-{{end}} sur {{total}}",
 
   "columns.region": "Région",
+  "columns.jumps": "Sauts",
+  "columns.noRoute": "Aucune route par portail stellaire",
   "columns.best": "Meilleur",
   "columns.eveEst": "Est EVE",
   "columns.total": "Total",

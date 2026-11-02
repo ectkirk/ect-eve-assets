@@ -89,6 +89,7 @@
   "accessibility.filterByAssetType": "アセットタイプでフィルター",
   "accessibility.filterByCategory": "カテゴリでフィルター",
   "accessibility.filterByGroup": "グループでフィルタ",
+  "accessibility.filterByRegion": "リージョンで絞り込み",
   "accessibility.sortCharacters": "キャラクターを並べ替え",
   "accessibility.clickToCopy": "クリックしてコピー",
   "accessibility.resizeColumn": "ドラッグして列幅を変更します。ダブルクリックで列幅をリセットします。",
@@ -132,6 +133,9 @@
   "searchBar.more": "+{{count}} 件",
   "searchBar.allCategories": "すべてのカテゴリ",
   "searchBar.allGroups": "全グループ",
+  "searchBar.allRegions": "すべてのリージョン",
+  "searchBar.proximityTo": "基準の星系...",
+  "searchBar.clearProximity": "基準の星系をクリア",
 
   "searchBar.assetTypes.all": "すべてのタイプ",
   "searchBar.assetTypes.activeShip": "アクティブシップ",
@@ -166,6 +170,8 @@
   "pagination.range": "{{start}}-{{end}} / {{total}}",
 
   "columns.region": "リージョン",
+  "columns.jumps": "ジャンプ数",
+  "columns.noRoute": "スターゲートのルートなし",
   "columns.best": "最良",
   "columns.eveEst": "EVE見積",
   "columns.total": "合計",

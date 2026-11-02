@@ -89,6 +89,7 @@
   "accessibility.filterByAssetType": "Filter by asset type",
   "accessibility.filterByCategory": "Filter by category",
   "accessibility.filterByGroup": "Filter by group",
+  "accessibility.filterByRegion": "Filter by region",
   "accessibility.sortCharacters": "Sort characters",
   "accessibility.clickToCopy": "Click to copy",
   "accessibility.resizeColumn": "Drag to resize column. Double-click to reset column widths.",
@@ -132,6 +133,9 @@
   "searchBar.more": "+{{count}} more",
   "searchBar.allCategories": "All Categories",
   "searchBar.allGroups": "All Groups",
+  "searchBar.allRegions": "All Regions",
+  "searchBar.proximityTo": "Proximity to system...",
+  "searchBar.clearProximity": "Clear proximity system",
 
   "searchBar.assetTypes.all": "All Types",
   "searchBar.assetTypes.activeShip": "Active Ship",
@@ -166,6 +170,8 @@
   "pagination.range": "{{start}}-{{end}} of {{total}}",
 
   "columns.region": "Region",
+  "columns.jumps": "Jumps",
+  "columns.noRoute": "No stargate route",
   "columns.best": "Best",
   "columns.eveEst": "EVE Est",
   "columns.total": "Total",

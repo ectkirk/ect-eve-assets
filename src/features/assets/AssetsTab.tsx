@@ -32,6 +32,11 @@ import { useContractsSearchActionStore } from '@/store/contracts-search-action-s
 import { useReferenceActionStore } from '@/store/reference-action-store'
 import { useFixedVirtualRows } from '@/hooks/use-fixed-virtual-rows'
 import { useColumnWidths, type ColumnWidths } from '@/hooks/useColumnWidths'
+import {
+  buildJumpGraph,
+  computeJumpDistances,
+  UNREACHABLE_JUMPS,
+} from '@/lib/jump-distance'
 import { ColumnResizeHandle } from '@/components/ui/column-resize-handle'
 import { getRecordValue, setRecordValue } from '@/lib/record-utils'
 import {
@@ -109,6 +114,10 @@ export function AssetsTab() {
   const [columnVisibility, setColumnVisibility] = useState(loadColumnVisibility)
   const [categoryFilterValue, setCategoryFilterValue] = useState('')
   const [groupFilterValue, setGroupFilterValue] = useState('')
+  const [regionFilterValue, setRegionFilterValue] = useState('')
+  const [proximitySystemId, setProximitySystemId] = useState<number | null>(
+    null,
+  )
   const [assetTypeFilterValue, setAssetTypeFilterValue] = useState('')
   const [ingameAction, setIngameAction] = useState<{
     action: 'market' | 'autopilot' | 'contract'
@@ -123,6 +132,8 @@ export function AssetsTab() {
     setSearchPlaceholder,
     setCategoryFilter,
     setGroupFilter,
+    setRegionFilter,
+    setProximityFilter,
     setAssetTypeFilter,
     setResultCount,
     setTotalValue,
@@ -166,12 +177,13 @@ export function AssetsTab() {
     [authOwners, ownerHasDirectorRole],
   )
 
-  const { data, categories, groups } = useMemo(() => {
+  const { data, categories, groups, regions } = useMemo(() => {
     void types
 
     const aggregated = new Map<string, AssetRow>()
     const cats = new Set<string>()
     const grps = new Set<string>()
+    const regs = new Set<string>()
 
     for (const ra of selectedResolvedAssets) {
       const displayFlag = getDisplayFlag(ra.modeFlags, ra.asset.location_flag)
@@ -183,6 +195,7 @@ export function AssetsTab() {
 
       if (names.categoryName) cats.add(names.categoryName)
       if (names.groupName) grps.add(names.groupName)
+      if (names.regionName) regs.add(names.regionName)
 
       if (isAbyssal || (ra.asset.is_singleton && !isBlueprint)) {
         aggregated.set(
@@ -218,8 +231,32 @@ export function AssetsTab() {
       data: Array.from(aggregated.values()),
       categories: Array.from(cats).sort(),
       groups: Array.from(grps).sort(),
+      regions: Array.from(regs).sort(),
     }
   }, [selectedResolvedAssets, types, blueprintsByItemId, abyssalPrices])
+
+  const stargates = useReferenceCacheStore((s) => s.stargates)
+  const jumpGraph = useMemo(
+    () => buildJumpGraph(stargates.values()),
+    [stargates],
+  )
+  const jumpDistances = useMemo(
+    () =>
+      proximitySystemId === null
+        ? null
+        : computeJumpDistances(jumpGraph, proximitySystemId),
+    [jumpGraph, proximitySystemId],
+  )
+  const rows = useMemo(() => {
+    if (!jumpDistances) return data
+    return data.map((row) => ({
+      ...row,
+      jumps:
+        row.systemId === undefined
+          ? UNREACHABLE_JUMPS
+          : (jumpDistances.get(row.systemId) ?? UNREACHABLE_JUMPS),
+    }))
+  }, [data, jumpDistances])
 
   const filteredGroups = useMemo(() => {
     if (!categoryFilterValue) return groups
@@ -242,16 +279,19 @@ export function AssetsTab() {
       if (categoryFilterValue && names.categoryName !== categoryFilterValue)
         continue
       if (groupFilterValue && names.groupName !== groupFilterValue) continue
+      if (regionFilterValue && names.regionName !== regionFilterValue) continue
       if (search && !matchesSearch(ra, search)) continue
       sourceShowing++
     }
 
-    const filtered = data.filter((row) => {
+    const filtered = rows.filter((row) => {
       if (!matchesAssetTypeFilter(row.modeFlags, assetTypeFilterValue))
         return false
       if (categoryFilterValue && row.categoryName !== categoryFilterValue)
         return false
       if (groupFilterValue && row.groupName !== groupFilterValue) return false
+      if (regionFilterValue && row.regionName !== regionFilterValue)
+        return false
       if (
         search &&
         !matchesSearchLower(
@@ -286,17 +326,23 @@ export function AssetsTab() {
       },
     }
   }, [
-    data,
+    rows,
     selectedResolvedAssets,
     assetTypeFilterValue,
     categoryFilterValue,
     groupFilterValue,
+    regionFilterValue,
     search,
   ])
 
   const visibleColumns = useMemo(
-    () => columns.filter((col) => columnVisibility[col.id] !== false),
-    [columnVisibility],
+    () =>
+      columns.filter((col) =>
+        col.id === 'jumps'
+          ? proximitySystemId !== null
+          : columnVisibility[col.id] !== false,
+      ),
+    [columnVisibility, proximitySystemId],
   )
 
   const sortedData = useMemo(
@@ -361,6 +407,35 @@ export function AssetsTab() {
       setGroupFilter(null)
     }
   }, [filteredGroups, groupFilterValue, setGroupFilter])
+
+  useEffect(() => {
+    setRegionFilter({
+      regions,
+      value: regionFilterValue,
+      onChange: setRegionFilterValue,
+    })
+    return () => {
+      setRegionFilter(null)
+    }
+  }, [regions, regionFilterValue, setRegionFilter])
+
+  useEffect(() => {
+    setProximityFilter({
+      systemId: proximitySystemId,
+      onChange: (systemId) => {
+        setProximitySystemId(systemId)
+        setSorting((current) => {
+          if (systemId !== null) return [{ id: 'jumps', desc: false }]
+          return current[0]?.id === 'jumps'
+            ? [{ id: 'totalValue', desc: true }]
+            : current
+        })
+      },
+    })
+    return () => {
+      setProximityFilter(null)
+    }
+  }, [proximitySystemId, setProximityFilter])
 
   useEffect(() => {
     setAssetTypeFilter({

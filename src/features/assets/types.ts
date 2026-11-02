@@ -57,6 +57,7 @@ export interface AssetRow {
   parentTypeId?: number | undefined
   parentTypeName?: string | undefined
   parentCustomName?: string | undefined
+  jumps?: number | undefined
 }
 
 export type AssetColumnVisibility = Record<string, boolean>
@@ -77,6 +78,7 @@ export const COLUMN_LABELS: Record<string, string> = {
   price: 'columns.price',
   totalValue: 'columns.value',
   totalVolume: 'columns.volume',
+  regionName: 'columns.region',
 }
 
 export const STORAGE_KEY_VISIBILITY = 'assets-column-visibility'
@@ -88,11 +90,13 @@ export const TOGGLEABLE_COLUMNS = new Set([
   'price',
   'totalValue',
   'totalVolume',
+  'regionName',
 ])
 
 export const DEFAULT_COLUMN_VISIBILITY: AssetColumnVisibility = {
   locationFlag: false,
   totalVolume: false,
+  regionName: false,
 }
 
 export function loadColumnVisibility(): AssetColumnVisibility {
