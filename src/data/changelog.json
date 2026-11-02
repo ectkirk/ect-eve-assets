@@ -1,41 +1,51 @@
 {
-  "version": "2.7.7",
-  "date": "2026-05-17",
+  "version": "3.0.0",
+  "date": "2026-11-02",
   "changes": [
     {
-      "type": "fix",
-      "scope": "refresh",
-      "description": "Refresh owner stores reliably through the shared ESI expiry queue"
+      "type": "feat",
+      "scope": "tables",
+      "description": "Resize any table column by dragging its header edge; widths are remembered and double-click resets"
     },
     {
       "type": "feat",
-      "scope": "esi",
-      "description": "Add a manual Refresh ESI Now action that respects existing refresh queues"
-    },
-    {
-      "type": "fix",
-      "scope": "clones",
-      "description": "Show active clone live location instead of home station when available"
-    },
-    {
-      "type": "fix",
-      "scope": "locations",
-      "description": "Resolve player-owned structure names in industry job locations"
+      "scope": "assets",
+      "description": "Sort assets by jumps to any system with the new Proximity picker, and filter or sort by region"
     },
     {
       "type": "feat",
+      "scope": "industry",
+      "description": "Show which character installed each industry job, including corporation jobs"
+    },
+    {
+      "type": "fix",
+      "scope": "mutamarket",
+      "description": "Fix Mutamarket sync not pricing abyssal modules after an API change"
+    },
+    {
+      "type": "fix",
+      "scope": "tables",
+      "description": "Keep table headers pinned while scrolling and stop cells wrapping onto extra lines"
+    },
+    {
+      "type": "fix",
       "scope": "ui",
-      "description": "Show character names when hovering over character portraits"
+      "description": "Remove the Beta label from the startup screen"
     },
     {
-      "type": "fix",
-      "scope": "ci",
-      "description": "Install the Electron binary explicitly in CI and release workflows"
+      "type": "perf",
+      "scope": "market",
+      "description": "Render large market order lists faster and keep columns aligned"
+    },
+    {
+      "type": "feat",
+      "scope": "accessibility",
+      "description": "Sort columns and resize panels with the keyboard"
     },
     {
       "type": "chore",
       "scope": "dependencies",
-      "description": "Update npm dependencies, including Electron 42"
+      "description": "Update to Electron 45 and TypeScript 7, and migrate stored login data to Electron's new encryption API"
     }
   ]
 }
