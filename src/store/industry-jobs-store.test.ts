@@ -262,9 +262,14 @@ describe('industry-jobs-store', () => {
       const { findOwnerByKey } = await import('./auth-store')
       expect(industryJobsCollector).toBeDefined()
 
-      const character = createMockOwner({ id: 1, type: 'character' })
+      const character = createMockOwner({
+        id: 1,
+        name: 'Pilot',
+        type: 'character',
+      })
       const corporation = createMockOwner({
         id: 98000001,
+        name: 'Corp',
         characterId: 1,
         type: 'corporation',
       })
