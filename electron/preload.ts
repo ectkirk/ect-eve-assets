@@ -232,6 +232,14 @@ const electronAPI: ElectronAPI = {
     return () =>
       ipcRenderer.removeListener('updater:update-downloaded', handler)
   },
+  onManualUpdateAvailable: (callback: (version: string) => void) => {
+    const handler = (_event: IpcRendererEvent, version: string) => {
+      callback(version)
+    }
+    ipcRenderer.on('updater:manual-update-available', handler)
+    return () =>
+      ipcRenderer.removeListener('updater:manual-update-available', handler)
+  },
   installUpdate: () => ipcRenderer.invoke('updater:install'),
   windowMinimize: () => ipcRenderer.invoke('window:minimize'),
   windowMaximize: () => ipcRenderer.invoke('window:maximize'),

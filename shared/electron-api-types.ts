@@ -942,6 +942,8 @@ export interface ElectronAPI {
   onUpdateAvailable: (callback: (version: string) => void) => () => void
   onUpdateDownloadProgress: (callback: (percent: number) => void) => () => void
   onUpdateDownloaded: (callback: (version: string) => void) => () => void
+  onManualUpdateAvailable: (callback: (version: string) => void) => () => void
+  /** Restarts into the downloaded update, or on macOS opens the release page. */
   installUpdate: () => Promise<void>
   windowMinimize: () => Promise<void>
   windowMaximize: () => Promise<void>

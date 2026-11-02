@@ -1,51 +1,26 @@
 {
-  "version": "3.0.0",
+  "version": "3.0.1",
   "date": "2026-11-02",
   "changes": [
     {
       "type": "feat",
-      "scope": "tables",
-      "description": "Resize any table column by dragging its header edge; widths are remembered and double-click resets"
+      "scope": "mac",
+      "description": "Add an Intel Mac download alongside the Apple Silicon one"
     },
     {
-      "type": "feat",
+      "type": "fix",
+      "scope": "mac",
+      "description": "Tell Mac users when a new version is available, with a Download button, instead of failing silently in the background"
+    },
+    {
+      "type": "fix",
       "scope": "assets",
-      "description": "Sort assets by jumps to any system with the new Proximity picker, and filter or sort by region"
-    },
-    {
-      "type": "feat",
-      "scope": "industry",
-      "description": "Show which character installed each industry job, including corporation jobs"
+      "description": "Keep long location names on one line in the Assets list (full name on hover)"
     },
     {
       "type": "fix",
-      "scope": "mutamarket",
-      "description": "Fix Mutamarket sync not pricing abyssal modules after an API change"
-    },
-    {
-      "type": "fix",
-      "scope": "tables",
-      "description": "Keep table headers pinned while scrolling and stop cells wrapping onto extra lines"
-    },
-    {
-      "type": "fix",
-      "scope": "ui",
-      "description": "Remove the Beta label from the startup screen"
-    },
-    {
-      "type": "perf",
-      "scope": "market",
-      "description": "Render large market order lists faster and keep columns aligned"
-    },
-    {
-      "type": "feat",
-      "scope": "accessibility",
-      "description": "Sort columns and resize panels with the keyboard"
-    },
-    {
-      "type": "chore",
-      "scope": "dependencies",
-      "description": "Update to Electron 45 and TypeScript 7, and migrate stored login data to Electron's new encryption API"
+      "scope": "releases",
+      "description": "Release notes now list the changes in each version"
     }
   ]
 }

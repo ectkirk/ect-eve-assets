@@ -164,6 +164,12 @@ jobs:
       contents: write
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Write release notes from the in-app changelog
+        run: node scripts/release-notes.mjs "$RELEASE_TAG" > release-notes.md
+
       - name: Download all artifacts
         uses: actions/download-artifact@v8
         with:
@@ -178,5 +184,5 @@ jobs:
           tag_name: ${{ env.RELEASE_TAG }}
           target_commitish: ${{ github.sha }}
           files: artifacts/**/*
-          generate_release_notes: true
+          body_path: release-notes.md
           prerelease: ${{ contains(env.RELEASE_TAG, '-alpha') || contains(env.RELEASE_TAG, '-beta') || contains(env.RELEASE_TAG, '-rc') }}

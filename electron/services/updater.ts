@@ -1,10 +1,24 @@
 import { autoUpdater, type UpdateInfo } from 'electron-updater'
-import { BrowserWindow } from 'electron'
+import { BrowserWindow, shell } from 'electron'
 import { logger } from './logger.js'
 
-autoUpdater.autoDownload = true
-autoUpdater.autoInstallOnAppQuit = true
+// macOS only installs updates signed with an Apple Developer ID. The Mac build
+// is ad-hoc signed, so Mac users are pointed to the release page instead.
+const MANUAL_UPDATES = process.platform === 'darwin'
+const RELEASES_URL = 'https://github.com/ectkirk/ect-eve-assets/releases'
+const VERSION_PATTERN = /^[0-9A-Za-z.-]+$/
+
+autoUpdater.autoDownload = !MANUAL_UPDATES
+autoUpdater.autoInstallOnAppQuit = !MANUAL_UPDATES
 autoUpdater.allowPrerelease = false
+
+let availableVersion: string | null = null
+
+export function releasePageUrl(version: string | null): string {
+  return version && VERSION_PATTERN.test(version)
+    ? `${RELEASES_URL}/tag/v${version}`
+    : `${RELEASES_URL}/latest`
+}
 
 const CHECK_INTERVAL_MS = 30 * 60 * 1000
 
@@ -34,8 +48,15 @@ export function initUpdater(mainWindow: BrowserWindow): void {
 
   autoUpdater.on('update-available', (info: UpdateInfo) => {
     logger.info(`Update available: ${info.version}`, { module: 'Updater' })
+    availableVersion = info.version
     if (!mainWindow.isDestroyed()) {
       mainWindow.webContents.send('updater:update-available', info.version)
+      if (MANUAL_UPDATES) {
+        mainWindow.webContents.send(
+          'updater:manual-update-available',
+          info.version,
+        )
+      }
     }
   })
 
@@ -70,5 +91,9 @@ export function stopUpdater(): void {
 }
 
 export function installUpdate(): void {
+  if (MANUAL_UPDATES) {
+    void shell.openExternal(releasePageUrl(availableVersion))
+    return
+  }
   autoUpdater.quitAndInstall(false, true)
 }

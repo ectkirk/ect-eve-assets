@@ -307,11 +307,14 @@ export const columns: AssetColumn[] = [
         align="right"
       />
     ),
-    cell: ({ getValue }) => (
-      <span className="text-right w-full">
-        {getValue('locationName') as string}
-      </span>
-    ),
+    cell: ({ getValue }) => {
+      const locationName = getValue('locationName') as string
+      return (
+        <span className="w-full truncate text-right" title={locationName}>
+          {locationName}
+        </span>
+      )
+    },
   },
   {
     id: 'regionName',

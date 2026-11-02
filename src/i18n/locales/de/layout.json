@@ -85,6 +85,8 @@
   "ownerModal.errors.failedRefreshRoles": "Corporation-Rollen konnten nicht aktualisiert werden",
 
   "update.versionReady": "Version {{version}} ist zur Installation bereit",
+  "update.versionAvailable": "Version {{version}} ist verfügbar",
+  "update.download": "Herunterladen",
 
   "settings.title": "Einstellungen",
   "settings.theme": "Design",

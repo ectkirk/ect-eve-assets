@@ -85,6 +85,8 @@
   "ownerModal.errors.failedRefreshRoles": "コーポレーションロールの更新に失敗しました",
 
   "update.versionReady": "バージョン{{version}}のインストール準備ができました",
+  "update.versionAvailable": "バージョン {{version}} が利用可能です",
+  "update.download": "ダウンロード",
 
   "settings.title": "設定",
   "settings.theme": "テーマ",

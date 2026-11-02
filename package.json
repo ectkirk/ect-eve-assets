@@ -1,6 +1,6 @@
 {
   "name": "ecteveassets",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "type": "module",
   "description": "EVE Online Asset Management Desktop Application",
   "main": "dist-electron/main.cjs",
@@ -58,9 +58,16 @@
     },
     "mac": {
       "target": [
-        "dmg"
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
       ],
-      "identity": "-"
+      "identity": "-",
+      "artifactName": "ECTEVEAssets-${version}-${arch}.${ext}"
     },
     "linux": {
       "target": [
