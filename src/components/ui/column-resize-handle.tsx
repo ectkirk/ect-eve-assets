@@ -4,10 +4,10 @@ import { useTranslation } from 'react-i18next'
 export const MIN_COLUMN_WIDTH = 40
 const KEYBOARD_STEP = 16
 
-export interface ColumnResizeCallbacks {
+interface ColumnResizeCallbacks {
   onResizeStart: () => number
   onResize: (width: number) => void
-  onResizeEnd: (width: number) => void
+  onResizeEnd: () => void
   onReset: () => void
 }
 
@@ -33,14 +33,12 @@ export function ColumnResizeHandle({
     const pointerId = e.pointerId
     const startX = e.clientX
     const startWidth = onResizeStart()
-    let width = startWidth
 
     handle.setPointerCapture(pointerId)
     document.body.classList.add('cursor-col-resize', 'select-none')
 
     const handleMove = (event: PointerEvent) => {
-      width = clampWidth(startWidth + event.clientX - startX)
-      onResize(width)
+      onResize(clampWidth(startWidth + event.clientX - startX))
     }
     const handleEnd = () => {
       handle.removeEventListener('pointermove', handleMove)
@@ -50,7 +48,7 @@ export function ColumnResizeHandle({
         handle.releasePointerCapture(pointerId)
       }
       document.body.classList.remove('cursor-col-resize', 'select-none')
-      onResizeEnd(width)
+      onResizeEnd()
     }
 
     handle.addEventListener('pointermove', handleMove)
@@ -63,9 +61,8 @@ export function ColumnResizeHandle({
     e.preventDefault()
     e.stopPropagation()
     const step = e.key === 'ArrowLeft' ? -KEYBOARD_STEP : KEYBOARD_STEP
-    const width = clampWidth(onResizeStart() + step)
-    onResize(width)
-    onResizeEnd(width)
+    onResize(clampWidth(onResizeStart() + step))
+    onResizeEnd()
   }
 
   return (

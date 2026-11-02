@@ -38,7 +38,7 @@ interface RegionFilterConfig {
   onChange: (value: string) => void
 }
 
-export interface ProximityFilterConfig {
+interface ProximityFilterConfig {
   systemId: number | null
   onChange: (systemId: number | null) => void
 }

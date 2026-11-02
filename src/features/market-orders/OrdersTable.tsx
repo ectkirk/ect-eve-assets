@@ -5,6 +5,7 @@ import { useSortable, SortableHeader, sortRows } from '@/hooks'
 import {
   Table,
   TableBody,
+  TableSpacerRow,
   TableCell,
   TableHeader,
   TableRow,
@@ -28,9 +29,8 @@ import {
   DiffHeader,
 } from './components'
 
-const VIRTUALIZATION_THRESHOLD = 100
 const ROW_HEIGHT = 36
-const ROW_CLASS = 'border-b border-border/50 hover:bg-surface-tertiary/50'
+const ROW_CLASS = 'h-9 border-b border-border/50 hover:bg-surface-tertiary/50'
 
 function TranslatedContextMenuText({ labelKey }: { labelKey: string }) {
   const { t } = useTranslation('common')
@@ -89,12 +89,12 @@ function OrderRowCells({ row, show, onItemDoubleClick }: OrderRowCellsProps) {
         </TableCell>
       )}
       {show('price') && (
-        <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
+        <TableCell className="py-1.5 text-right tabular-nums">
           {formatPrice(row.order.price)}
         </TableCell>
       )}
       {show('lowest') && (
-        <TableCell className="py-1.5 text-right tabular-nums text-content-secondary whitespace-nowrap">
+        <TableCell className="py-1.5 text-right tabular-nums text-content-secondary">
           {compPrice !== null ? (
             formatPrice(compPrice)
           ) : (
@@ -103,7 +103,7 @@ function OrderRowCells({ row, show, onItemDoubleClick }: OrderRowCellsProps) {
         </TableCell>
       )}
       {show('diff') && (
-        <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
+        <TableCell className="py-1.5 text-right tabular-nums">
           <DiffCell
             price={row.order.price}
             comparisonPrice={compPrice}
@@ -112,12 +112,12 @@ function OrderRowCells({ row, show, onItemDoubleClick }: OrderRowCellsProps) {
         </TableCell>
       )}
       {show('eveEstimated') && (
-        <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
+        <TableCell className="py-1.5 text-right tabular-nums">
           <EVEEstCell price={row.order.price} eveEstimated={row.eveEstimated} />
         </TableCell>
       )}
       {show('quantity') && (
-        <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">
+        <TableCell className="py-1.5 text-right tabular-nums">
           {formatFullNumber(row.order.volume_remain)}
           {row.order.volume_remain !== row.order.volume_total && (
             <span className="text-content-muted">
@@ -127,12 +127,12 @@ function OrderRowCells({ row, show, onItemDoubleClick }: OrderRowCellsProps) {
         </TableCell>
       )}
       {show('total') && (
-        <TableCell className="py-1.5 text-right tabular-nums text-status-highlight whitespace-nowrap">
+        <TableCell className="py-1.5 text-right tabular-nums text-status-highlight">
           {formatNumber(total)}
         </TableCell>
       )}
       {show('expires') && (
-        <TableCell className="py-1.5 text-right tabular-nums text-content-secondary whitespace-nowrap">
+        <TableCell className="py-1.5 text-right tabular-nums text-content-secondary">
           {formatExpiry(row.order.issued, row.order.duration)}
         </TableCell>
       )}
@@ -148,7 +148,6 @@ function OrderRowWithContext({
   onSetWaypoint,
   onOpenMarket,
   onItemDoubleClick,
-  style,
 }: {
   row: OrderRow
   show: (col: string) => boolean
@@ -157,12 +156,11 @@ function OrderRowWithContext({
   onSetWaypoint: (locationId: number, locationName: string) => void
   onOpenMarket: (typeId: number, typeName: string) => void
   onItemDoubleClick: (typeId: number, typeName: string) => void
-  style?: React.CSSProperties
 }) {
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
-        <TableRow className={ROW_CLASS} style={style}>
+        <TableRow className={ROW_CLASS}>
           <OrderRowCells
             row={row}
             show={show}
@@ -206,7 +204,7 @@ function OrderRowWithContext({
   )
 }
 
-function VirtualizedTableBody({
+function OrdersTableBody({
   sortedOrders,
   columnCount,
   getScrollElement,
@@ -236,11 +234,7 @@ function VirtualizedTableBody({
 
   return (
     <TableBody>
-      {paddingStart > 0 && (
-        <tr aria-hidden="true">
-          <td colSpan={columnCount} style={{ height: paddingStart }} />
-        </tr>
-      )}
+      <TableSpacerRow height={paddingStart} colSpan={columnCount} />
       {virtualRows.map((virtualRow) => {
         const row = sortedOrders[virtualRow.index]
         if (!row) return null
@@ -254,50 +248,10 @@ function VirtualizedTableBody({
             onSetWaypoint={onSetWaypoint}
             onOpenMarket={onOpenMarket}
             onItemDoubleClick={onItemDoubleClick}
-            style={{ height: ROW_HEIGHT }}
           />
         )
       })}
-      {paddingEnd > 0 && (
-        <tr aria-hidden="true">
-          <td colSpan={columnCount} style={{ height: paddingEnd }} />
-        </tr>
-      )}
-    </TableBody>
-  )
-}
-
-function StandardTableBody({
-  sortedOrders,
-  show,
-  navigateToType,
-  navigateToReference,
-  onSetWaypoint,
-  onOpenMarket,
-  onItemDoubleClick,
-}: {
-  sortedOrders: OrderRow[]
-  show: (col: string) => boolean
-  navigateToType: (typeId: number) => void
-  navigateToReference: (typeId: number) => void
-  onSetWaypoint: (locationId: number, locationName: string) => void
-  onOpenMarket: (typeId: number, typeName: string) => void
-  onItemDoubleClick: (typeId: number, typeName: string) => void
-}) {
-  return (
-    <TableBody>
-      {sortedOrders.map((row) => (
-        <OrderRowWithContext
-          key={row.order.order_id}
-          row={row}
-          show={show}
-          navigateToType={navigateToType}
-          navigateToReference={navigateToReference}
-          onSetWaypoint={onSetWaypoint}
-          onOpenMarket={onOpenMarket}
-          onItemDoubleClick={onItemDoubleClick}
-        />
-      ))}
+      <TableSpacerRow height={paddingEnd} colSpan={columnCount} />
     </TableBody>
   )
 }
@@ -370,118 +324,113 @@ export function OrdersTable({
     })
   }, [orders, sortColumn, sortDirection, diffSortMode])
 
-  const useVirtualization = sortedOrders.length > VIRTUALIZATION_THRESHOLD
   const scrollRef = useRef<HTMLDivElement>(null)
   const getScrollElement = useCallback(() => scrollRef.current, [])
 
   return (
-    <Table
-      resizeKey="market-orders"
-      containerRef={scrollRef}
-      containerClassName="h-full overflow-auto"
-    >
-      <TableHeader className="sticky top-0 z-10 bg-surface-secondary">
-        <TableRow className="hover:bg-transparent border-b border-border">
-          {show('item') && (
-            <SortableHeader
-              column="item"
-              label="columns.item"
-              sortColumn={sortColumn}
-              sortDirection={sortDirection}
-              onSort={handleSort}
-            />
-          )}
-          {show('type') && (
-            <SortableHeader
-              column="type"
-              label="columns.type"
-              sortColumn={sortColumn}
-              sortDirection={sortDirection}
-              onSort={handleSort}
-            />
-          )}
-          {show('location') && (
-            <SortableHeader
-              column="location"
-              label="columns.location"
-              sortColumn={sortColumn}
-              sortDirection={sortDirection}
-              onSort={handleSort}
-            />
-          )}
-          {show('price') && (
-            <SortableHeader
-              column="price"
-              label="columns.price"
-              sortColumn={sortColumn}
-              sortDirection={sortDirection}
-              onSort={handleSort}
-              className="text-right"
-            />
-          )}
-          {show('lowest') && (
-            <SortableHeader
-              column="comparison"
-              label="columns.best"
-              sortColumn={sortColumn}
-              sortDirection={sortDirection}
-              onSort={handleSort}
-              className="text-right"
-            />
-          )}
-          {show('diff') && (
-            <DiffHeader
-              sortColumn={sortColumn}
-              sortDirection={sortDirection}
-              onSort={handleSort}
-              diffSortMode={diffSortMode}
-              onDiffSortModeChange={setDiffSortMode}
-            />
-          )}
-          {show('eveEstimated') && (
-            <SortableHeader
-              column="eveEstimated"
-              label="columns.eveEst"
-              sortColumn={sortColumn}
-              sortDirection={sortDirection}
-              onSort={handleSort}
-              className="text-right"
-            />
-          )}
-          {show('quantity') && (
-            <SortableHeader
-              column="qty"
-              label="columns.quantity"
-              sortColumn={sortColumn}
-              sortDirection={sortDirection}
-              onSort={handleSort}
-              className="text-right"
-            />
-          )}
-          {show('total') && (
-            <SortableHeader
-              column="total"
-              label="columns.total"
-              sortColumn={sortColumn}
-              sortDirection={sortDirection}
-              onSort={handleSort}
-              className="text-right"
-            />
-          )}
-          {show('expires') && (
-            <SortableHeader
-              column="expires"
-              label="columns.exp"
-              sortColumn={sortColumn}
-              sortDirection={sortDirection}
-              onSort={handleSort}
-              className="text-right"
-            />
-          )}
-        </TableRow>
-      </TableHeader>
-      {useVirtualization ? (
-        <VirtualizedTableBody
+    <div ref={scrollRef} className="h-full overflow-auto">
+      <Table resizeKey="market-orders">
+        <TableHeader className="sticky top-0 z-10 bg-surface-secondary">
+          <TableRow className="hover:bg-transparent border-b border-border">
+            {show('item') && (
+              <SortableHeader
+                column="item"
+                label="columns.item"
+                sortColumn={sortColumn}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+              />
+            )}
+            {show('type') && (
+              <SortableHeader
+                column="type"
+                label="columns.type"
+                sortColumn={sortColumn}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+              />
+            )}
+            {show('location') && (
+              <SortableHeader
+                column="location"
+                label="columns.location"
+                sortColumn={sortColumn}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+              />
+            )}
+            {show('price') && (
+              <SortableHeader
+                column="price"
+                label="columns.price"
+                sortColumn={sortColumn}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+                className="text-right"
+              />
+            )}
+            {show('lowest') && (
+              <SortableHeader
+                column="comparison"
+                label="columns.best"
+                sortColumn={sortColumn}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+                className="text-right"
+              />
+            )}
+            {show('diff') && (
+              <DiffHeader
+                sortColumn={sortColumn}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+                diffSortMode={diffSortMode}
+                onDiffSortModeChange={setDiffSortMode}
+              />
+            )}
+            {show('eveEstimated') && (
+              <SortableHeader
+                column="eveEstimated"
+                label="columns.eveEst"
+                sortColumn={sortColumn}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+                className="text-right"
+              />
+            )}
+            {show('quantity') && (
+              <SortableHeader
+                column="qty"
+                label="columns.quantity"
+                sortColumn={sortColumn}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+                className="text-right"
+              />
+            )}
+            {show('total') && (
+              <SortableHeader
+                column="total"
+                label="columns.total"
+                sortColumn={sortColumn}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+                className="text-right"
+              />
+            )}
+            {show('expires') && (
+              <SortableHeader
+                column="expires"
+                label="columns.exp"
+                sortColumn={sortColumn}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+                className="text-right"
+              />
+            )}
+          </TableRow>
+        </TableHeader>
+        <OrdersTableBody
           sortedOrders={sortedOrders}
           columnCount={visibleColumns.size}
           getScrollElement={getScrollElement}
@@ -492,17 +441,7 @@ export function OrdersTable({
           onOpenMarket={onOpenMarket}
           onItemDoubleClick={onItemDoubleClick}
         />
-      ) : (
-        <StandardTableBody
-          sortedOrders={sortedOrders}
-          show={show}
-          navigateToType={navigateToType}
-          navigateToReference={navigateToReference}
-          onSetWaypoint={onSetWaypoint}
-          onOpenMarket={onOpenMarket}
-          onItemDoubleClick={onItemDoubleClick}
-        />
-      )}
-    </Table>
+      </Table>
+    </div>
   )
 }

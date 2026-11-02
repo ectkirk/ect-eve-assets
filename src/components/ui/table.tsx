@@ -1,25 +1,24 @@
 import * as React from 'react'
 import { cn } from '@/lib/utils'
-import { getRecordValue, setRecordValue } from '@/lib/record-utils'
-import { useColumnWidths, type ColumnWidths } from '@/hooks/useColumnWidths'
+import { getRecordValue } from '@/lib/record-utils'
+import type { ColumnWidths } from '@/hooks/useColumnWidths'
+import {
+  useColumnResize,
+  columnIdOf,
+  DEFAULT_COLUMN_WIDTH,
+  type ColumnResize,
+} from '@/hooks/useColumnResize'
 import { ColumnResizeHandle } from './column-resize-handle'
 
-const DEFAULT_COLUMN_WIDTH = 120
+const BASE_TABLE_CLASS =
+  'w-full caption-bottom text-sm [&_td.tabular-nums]:whitespace-nowrap'
 const FIXED_LAYOUT_CLASS =
-  '[&_td]:overflow-hidden [&_th]:overflow-hidden [&_th]:text-ellipsis'
+  '[&_td]:overflow-hidden [&_td_*]:max-w-none [&_th]:overflow-hidden [&_th]:text-ellipsis'
 
-interface ColumnResizeContextValue {
-  widths: ColumnWidths
-  startResize: (columnId: string) => number
-  resize: (columnId: string, width: number) => void
-  endResize: () => void
-  reset: () => void
-}
+const ColumnResizeContext = React.createContext<ColumnResize | null>(null)
 
-const ColumnResizeContext =
-  React.createContext<ColumnResizeContextValue | null>(null)
-
-function headerCells(table: HTMLTableElement): HTMLTableCellElement[] {
+function headerCells(table: HTMLTableElement | null): HTMLTableCellElement[] {
+  if (!table) return []
   return Array.from(
     table.querySelectorAll<HTMLTableCellElement>(
       ':scope > thead > tr:first-child > th[data-column-id]',
@@ -27,149 +26,58 @@ function headerCells(table: HTMLTableElement): HTMLTableCellElement[] {
   )
 }
 
-function findHeaderCell(
-  table: HTMLTableElement,
-  columnId: string,
-): HTMLTableCellElement | undefined {
-  return headerCells(table).find((th) => th.dataset['columnId'] === columnId)
-}
-
-function applyFixedLayout(table: HTMLTableElement): void {
-  table.style.tableLayout = 'fixed'
-  table.style.width = '0'
-  table.classList.add(...FIXED_LAYOUT_CLASS.split(' '))
-}
-
-function useColumnResize(
-  resizeKey: string,
-  tableRef: React.RefObject<HTMLTableElement | null>,
-): ColumnResizeContextValue {
-  const { widths, setWidths, resetWidths } = useColumnWidths(resizeKey)
-  const pendingRef = React.useRef<ColumnWidths>(widths)
-
-  const startResize = React.useCallback(
-    (columnId: string) => {
-      const table = tableRef.current
-      if (!table) return DEFAULT_COLUMN_WIDTH
-
-      let next = widths
-      if (Object.keys(widths).length === 0) {
-        for (const th of headerCells(table)) {
-          const id = th.dataset['columnId']
-          if (!id) continue
-          const measured = Math.round(th.getBoundingClientRect().width)
-          if (measured <= 0) continue
-          th.style.width = `${measured}px`
-          next = setRecordValue(next, id, measured)
-        }
-        applyFixedLayout(table)
-      }
-      pendingRef.current = next
-
-      return getRecordValue(next, columnId) ?? DEFAULT_COLUMN_WIDTH
-    },
-    [tableRef, widths],
-  )
-
-  const resize = React.useCallback(
-    (columnId: string, width: number) => {
-      const th = tableRef.current
-        ? findHeaderCell(tableRef.current, columnId)
-        : undefined
-      if (th) th.style.width = `${width}px`
-      pendingRef.current = setRecordValue(pendingRef.current, columnId, width)
-    },
-    [tableRef],
-  )
-
-  const endResize = React.useCallback(() => {
-    setWidths(pendingRef.current)
-  }, [setWidths])
-
-  return React.useMemo(
-    () => ({ widths, startResize, resize, endResize, reset: resetWidths }),
-    [widths, startResize, resize, endResize, resetWidths],
-  )
-}
-
 type TableProps = React.HTMLAttributes<HTMLTableElement> & {
   resizeKey?: string | undefined
-  containerClassName?: string | undefined
-  containerRef?: React.Ref<HTMLDivElement> | undefined
 }
 
-const PlainTable = React.forwardRef<HTMLTableElement, TableProps>(
-  (
-    {
-      className,
-      resizeKey: _resizeKey,
-      containerClassName,
-      containerRef,
-      ...props
-    },
-    ref,
-  ) => (
-    <div
-      ref={containerRef}
-      className={cn('relative w-full', containerClassName)}
-    >
-      <table
-        ref={ref}
-        className={cn(
-          'w-full caption-bottom text-sm [&_td.tabular-nums]:whitespace-nowrap',
-          className,
-        )}
-        {...props}
-      />
-    </div>
-  ),
-)
-PlainTable.displayName = 'PlainTable'
+const BaseTable = React.forwardRef<
+  HTMLTableElement,
+  React.HTMLAttributes<HTMLTableElement>
+>(({ className, ...props }, ref) => (
+  <table ref={ref} className={cn(BASE_TABLE_CLASS, className)} {...props} />
+))
+BaseTable.displayName = 'BaseTable'
 
 const ResizableTable = React.forwardRef<
   HTMLTableElement,
   TableProps & { resizeKey: string }
->(
-  (
-    { className, resizeKey, style, containerClassName, containerRef, ...props },
-    ref,
-  ) => {
-    const tableRef = React.useRef<HTMLTableElement | null>(null)
-    const resizeContext = useColumnResize(resizeKey, tableRef)
-    const isFixed = Object.keys(resizeContext.widths).length > 0
+>(({ className, resizeKey, style, ...props }, ref) => {
+  const tableRef = React.useRef<HTMLTableElement | null>(null)
+  const getHeaders = React.useCallback(() => headerCells(tableRef.current), [])
+  const applyWidths = React.useCallback((widths: ColumnWidths) => {
+    for (const th of headerCells(tableRef.current)) {
+      const id = columnIdOf(th)
+      const width = id ? getRecordValue(widths, id) : undefined
+      if (width !== undefined) th.style.width = `${width}px`
+    }
+  }, [])
+  const columnResize = useColumnResize(resizeKey, {
+    getHeaders,
+    applyWidths,
+    pinAllOnFirstResize: true,
+  })
+  const isFixed = columnResize.hasCustomWidths
 
-    const setRefs = React.useCallback(
-      (node: HTMLTableElement | null) => {
-        tableRef.current = node
-        if (typeof ref === 'function') ref(node)
-        else if (ref) ref.current = node
-      },
-      [ref],
-    )
+  const setRefs = React.useCallback(
+    (node: HTMLTableElement | null) => {
+      tableRef.current = node
+      if (typeof ref === 'function') ref(node)
+      else if (ref) ref.current = node
+    },
+    [ref],
+  )
 
-    return (
-      <ColumnResizeContext.Provider value={resizeContext}>
-        <div
-          ref={containerRef}
-          className={cn('relative w-full', containerClassName)}
-        >
-          <table
-            ref={setRefs}
-            className={cn(
-              'w-full caption-bottom text-sm [&_td.tabular-nums]:whitespace-nowrap',
-              className,
-              isFixed && FIXED_LAYOUT_CLASS,
-            )}
-            style={
-              isFixed ? { ...style, tableLayout: 'fixed', width: 0 } : style
-            }
-            {...props}
-          />
-        </div>
-      </ColumnResizeContext.Provider>
-    )
-  },
-)
+  return (
+    <ColumnResizeContext.Provider value={columnResize}>
+      <BaseTable
+        ref={setRefs}
+        className={cn(className, isFixed && FIXED_LAYOUT_CLASS)}
+        style={isFixed ? { ...style, tableLayout: 'fixed', width: 0 } : style}
+        {...props}
+      />
+    </ColumnResizeContext.Provider>
+  )
+})
 ResizableTable.displayName = 'ResizableTable'
 
 const Table = React.forwardRef<HTMLTableElement, TableProps>(
@@ -177,10 +85,25 @@ const Table = React.forwardRef<HTMLTableElement, TableProps>(
     resizeKey ? (
       <ResizableTable ref={ref} resizeKey={resizeKey} {...props} />
     ) : (
-      <PlainTable ref={ref} {...props} />
+      <BaseTable ref={ref} {...props} />
     ),
 )
 Table.displayName = 'Table'
+
+function TableSpacerRow({
+  height,
+  colSpan,
+}: {
+  height: number
+  colSpan: number
+}) {
+  if (height <= 0) return null
+  return (
+    <tr aria-hidden="true">
+      <td colSpan={colSpan} style={{ height, padding: 0 }} />
+    </tr>
+  )
+}
 
 const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
@@ -238,13 +161,11 @@ type TableHeadProps = React.ThHTMLAttributes<HTMLTableCellElement> & {
 
 const TableHead = React.forwardRef<HTMLTableCellElement, TableHeadProps>(
   ({ className, scope = 'col', columnId, style, children, ...props }, ref) => {
-    const resizeContext = React.useContext(ColumnResizeContext)
-    const resizable = resizeContext !== null && columnId !== undefined
-    const isFixed =
-      resizeContext !== null && Object.keys(resizeContext.widths).length > 0
+    const columnResize = React.useContext(ColumnResizeContext)
+    const resizable = columnResize !== null && columnId !== undefined
     const width =
-      resizable && isFixed
-        ? (getRecordValue(resizeContext.widths, columnId) ??
+      resizable && columnResize.hasCustomWidths
+        ? (getRecordValue(columnResize.widths, columnId) ??
           DEFAULT_COLUMN_WIDTH)
         : undefined
 
@@ -264,12 +185,12 @@ const TableHead = React.forwardRef<HTMLTableCellElement, TableHeadProps>(
         {children}
         {resizable && (
           <ColumnResizeHandle
-            onResizeStart={() => resizeContext.startResize(columnId)}
+            onResizeStart={() => columnResize.startResize(columnId)}
             onResize={(w) => {
-              resizeContext.resize(columnId, w)
+              columnResize.resize(columnId, w)
             }}
-            onResizeEnd={resizeContext.endResize}
-            onReset={resizeContext.reset}
+            onResizeEnd={columnResize.endResize}
+            onReset={columnResize.reset}
           />
         )}
       </th>
@@ -314,4 +235,5 @@ export {
   TableRow,
   TableCell,
   TableCaption,
+  TableSpacerRow,
 }

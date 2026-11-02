@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { findSystems } from '@/components/ui/system-picker'
 import { useDebounce } from '../hooks/useDebounce'
 import { SecurityBadge, type SystemSearchItem } from './MapRouteControls'
 import type { IndexedSystemItem } from '../types'
@@ -29,14 +30,7 @@ export function SystemInput({
   const [isEditing, setIsEditing] = useState(false)
 
   const performSearch = useDebounce((searchQuery: string) => {
-    const lower = searchQuery.toLowerCase()
-    const matches: SystemSearchItem[] = []
-    for (const sys of indexedSystems) {
-      if (sys.nameLower.includes(lower)) {
-        matches.push(sys)
-        if (matches.length >= MAX_RESULTS) break
-      }
-    }
+    const matches = findSystems(indexedSystems, searchQuery, MAX_RESULTS)
     setResults(matches)
     setShowDropdown(matches.length > 0)
   }, DEBOUNCE_MS)

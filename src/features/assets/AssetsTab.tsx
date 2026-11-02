@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/context-menu'
 import { IngameActionModal } from '@/components/dialogs/IngameActionModal'
 import { cn } from '@/lib/utils'
-import { useTabControls } from '@/context'
+import { useTabControlsStore } from '@/store/tab-controls-store'
 import {
   matchesAssetTypeFilter,
   matchesSearch,
@@ -31,14 +31,14 @@ import { useRegionalMarketActionStore } from '@/store/regional-market-action-sto
 import { useContractsSearchActionStore } from '@/store/contracts-search-action-store'
 import { useReferenceActionStore } from '@/store/reference-action-store'
 import { useFixedVirtualRows } from '@/hooks/use-fixed-virtual-rows'
-import { useColumnWidths, type ColumnWidths } from '@/hooks/useColumnWidths'
+import type { ColumnWidths } from '@/hooks/useColumnWidths'
+import { useColumnResize } from '@/hooks/useColumnResize'
 import {
-  buildJumpGraph,
+  buildStargateAdjacency,
   computeJumpDistances,
-  UNREACHABLE_JUMPS,
 } from '@/lib/jump-distance'
 import { ColumnResizeHandle } from '@/components/ui/column-resize-handle'
-import { getRecordValue, setRecordValue } from '@/lib/record-utils'
+import { getRecordValue } from '@/lib/record-utils'
 import {
   type AssetRow,
   type AssetSorting,
@@ -64,7 +64,10 @@ function buildGridTemplate(
     .join(' ')
 }
 
+const NO_ROUTE_SORT_VALUE = Number.MAX_SAFE_INTEGER
+
 function getAssetSortValue(row: AssetRow, columnId: string): string | number {
+  if (columnId === 'jumps') return row.jumps ?? NO_ROUTE_SORT_VALUE
   const value = row[columnId as keyof AssetRow]
   if (typeof value === 'number' || typeof value === 'string') return value
   return ''
@@ -126,18 +129,18 @@ export function AssetsTab() {
     eligibleCharacterIds?: number[]
   } | null>(null)
 
-  const {
-    setColumns,
-    search,
-    setSearchPlaceholder,
-    setCategoryFilter,
-    setGroupFilter,
-    setRegionFilter,
-    setProximityFilter,
-    setAssetTypeFilter,
-    setResultCount,
-    setTotalValue,
-  } = useTabControls()
+  const search = useTabControlsStore((s) => s.search)
+  const setColumns = useTabControlsStore((s) => s.setColumns)
+  const setSearchPlaceholder = useTabControlsStore(
+    (s) => s.setSearchPlaceholder,
+  )
+  const setCategoryFilter = useTabControlsStore((s) => s.setCategoryFilter)
+  const setGroupFilter = useTabControlsStore((s) => s.setGroupFilter)
+  const setRegionFilter = useTabControlsStore((s) => s.setRegionFilter)
+  const setProximityFilter = useTabControlsStore((s) => s.setProximityFilter)
+  const setAssetTypeFilter = useTabControlsStore((s) => s.setAssetTypeFilter)
+  const setResultCount = useTabControlsStore((s) => s.setResultCount)
+  const setTotalValue = useTabControlsStore((s) => s.setTotalValue)
 
   useEffect(() => {
     setSearchPlaceholder(tCommon('search.placeholder'))
@@ -236,16 +239,17 @@ export function AssetsTab() {
   }, [selectedResolvedAssets, types, blueprintsByItemId, abyssalPrices])
 
   const stargates = useReferenceCacheStore((s) => s.stargates)
-  const jumpGraph = useMemo(
-    () => buildJumpGraph(stargates.values()),
-    [stargates],
+  const hasProximity = proximitySystemId !== null
+  const stargateAdjacency = useMemo(
+    () => (hasProximity ? buildStargateAdjacency(stargates.values()) : null),
+    [stargates, hasProximity],
   )
   const jumpDistances = useMemo(
     () =>
-      proximitySystemId === null
-        ? null
-        : computeJumpDistances(jumpGraph, proximitySystemId),
-    [jumpGraph, proximitySystemId],
+      stargateAdjacency && proximitySystemId !== null
+        ? computeJumpDistances(stargateAdjacency, proximitySystemId)
+        : null,
+    [stargateAdjacency, proximitySystemId],
   )
   const rows = useMemo(() => {
     if (!jumpDistances) return data
@@ -253,8 +257,8 @@ export function AssetsTab() {
       ...row,
       jumps:
         row.systemId === undefined
-          ? UNREACHABLE_JUMPS
-          : (jumpDistances.get(row.systemId) ?? UNREACHABLE_JUMPS),
+          ? undefined
+          : jumpDistances.get(row.systemId),
     }))
   }, [data, jumpDistances])
 
@@ -269,10 +273,8 @@ export function AssetsTab() {
     return Array.from(grpSet).sort()
   }, [groups, data, categoryFilterValue])
 
-  const { filteredData, filteredTotalValue, sourceCount } = useMemo(() => {
-    const searchLower = search.toLowerCase()
-    let sourceShowing = 0
-
+  const sourceCount = useMemo(() => {
+    let showing = 0
     for (const ra of selectedResolvedAssets) {
       if (!matchesAssetTypeFilter(ra.modeFlags, assetTypeFilterValue)) continue
       const names = getAssetDisplayNames(ra)
@@ -281,9 +283,20 @@ export function AssetsTab() {
       if (groupFilterValue && names.groupName !== groupFilterValue) continue
       if (regionFilterValue && names.regionName !== regionFilterValue) continue
       if (search && !matchesSearch(ra, search)) continue
-      sourceShowing++
+      showing++
     }
+    return { showing, total: selectedResolvedAssets.length }
+  }, [
+    selectedResolvedAssets,
+    assetTypeFilterValue,
+    categoryFilterValue,
+    groupFilterValue,
+    regionFilterValue,
+    search,
+  ])
 
+  const { filteredData, filteredTotalValue } = useMemo(() => {
+    const searchLower = search.toLowerCase()
     const filtered = rows.filter((row) => {
       if (!matchesAssetTypeFilter(row.modeFlags, assetTypeFilterValue))
         return false
@@ -317,17 +330,9 @@ export function AssetsTab() {
       return sum + row.totalValue
     }, 0)
 
-    return {
-      filteredData: filtered,
-      filteredTotalValue: totalValue,
-      sourceCount: {
-        showing: sourceShowing,
-        total: selectedResolvedAssets.length,
-      },
-    }
+    return { filteredData: filtered, filteredTotalValue: totalValue }
   }, [
     rows,
-    selectedResolvedAssets,
     assetTypeFilterValue,
     categoryFilterValue,
     groupFilterValue,
@@ -503,45 +508,34 @@ export function AssetsTab() {
   })
 
   const gridRef = useRef<HTMLDivElement>(null)
-  const pendingWidthsRef = useRef<ColumnWidths>({})
-  const {
-    widths: columnWidths,
-    setWidths: setColumnWidths,
-    resetWidths: resetColumnWidths,
-  } = useColumnWidths('assets')
-
-  const gridTemplateColumns = useMemo(
-    () => buildGridTemplate(visibleColumns, columnWidths),
-    [visibleColumns, columnWidths],
-  )
-
-  const startColumnResize = useCallback(
-    (columnId: string) => {
-      pendingWidthsRef.current = columnWidths
-      const header = Array.from(
+  const getHeaderCells = useCallback(
+    () =>
+      Array.from(
         gridRef.current?.querySelectorAll<HTMLElement>('[data-column-id]') ??
           [],
-      ).find((el) => el.dataset['columnId'] === columnId)
-      return Math.round(header?.getBoundingClientRect().width ?? 0)
-    },
-    [columnWidths],
+      ),
+    [],
   )
-
-  const resizeColumn = useCallback(
-    (columnId: string, width: number) => {
-      pendingWidthsRef.current = setRecordValue(
-        pendingWidthsRef.current,
-        columnId,
-        width,
-      )
+  const applyGridWidths = useCallback(
+    (widths: ColumnWidths) => {
       if (gridRef.current) {
         gridRef.current.style.gridTemplateColumns = buildGridTemplate(
           visibleColumns,
-          pendingWidthsRef.current,
+          widths,
         )
       }
     },
     [visibleColumns],
+  )
+  const columnResize = useColumnResize('assets', {
+    getHeaders: getHeaderCells,
+    applyWidths: applyGridWidths,
+    pinAllOnFirstResize: false,
+  })
+
+  const gridTemplateColumns = useMemo(
+    () => buildGridTemplate(visibleColumns, columnResize.widths),
+    [visibleColumns, columnResize.widths],
   )
 
   if (owners.length === 0) {
@@ -625,14 +619,14 @@ export function AssetsTab() {
                         },
                       })}
                       <ColumnResizeHandle
-                        onResizeStart={() => startColumnResize(column.id)}
+                        onResizeStart={() =>
+                          columnResize.startResize(column.id)
+                        }
                         onResize={(width) => {
-                          resizeColumn(column.id, width)
+                          columnResize.resize(column.id, width)
                         }}
-                        onResizeEnd={() => {
-                          setColumnWidths(pendingWidthsRef.current)
-                        }}
-                        onReset={resetColumnWidths}
+                        onResizeEnd={columnResize.endResize}
+                        onReset={columnResize.reset}
                       />
                     </div>
                   )
