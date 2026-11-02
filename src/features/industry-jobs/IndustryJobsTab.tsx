@@ -16,6 +16,7 @@ import {
 } from '@/hooks'
 import { type ESIIndustryJob } from '@/api/endpoints/industry'
 import { useReferenceCacheStore, getTypeName } from '@/store/reference-cache'
+import { getName } from '@/api/endpoints/universe'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import {
   Table,
@@ -38,6 +39,7 @@ import { TypeIcon, OwnerIcon } from '@/components/ui/type-icon'
 import { Pagination } from '@/components/ui/pagination'
 
 type JobSortColumn =
+  | 'installer'
   | 'activity'
   | 'blueprint'
   | 'product'
@@ -68,6 +70,8 @@ interface JobRow {
   ownerId: number
   ownerType: 'character' | 'corporation'
   ownerName: string
+  installerId: number
+  installerName: string
   blueprintName: string
   productName: string
   productCategoryId?: number | undefined
@@ -126,6 +130,8 @@ function JobsTable({ jobs, visibleColumns, onSetWaypoint }: JobsTableProps) {
   const sortedJobs = useMemo(() => {
     return sortRows(jobs, sortColumn, sortDirection, (row, column) => {
       switch (column) {
+        case 'installer':
+          return row.installerName.toLowerCase()
         case 'activity':
           return row.activityName.toLowerCase()
         case 'blueprint':
@@ -163,6 +169,15 @@ function JobsTable({ jobs, visibleColumns, onSetWaypoint }: JobsTableProps) {
         <TableHeader className="sticky top-0 z-10 bg-surface-secondary">
           <TableRow className="hover:bg-transparent border-b border-border">
             {show('owner') && <TableHead columnId="owner" className="w-8" />}
+            {show('installer') && (
+              <SortableHeader
+                column="installer"
+                label="columns.installer"
+                sortColumn={sortColumn}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+              />
+            )}
             {show('activity') && (
               <SortableHeader
                 column="activity"
@@ -268,6 +283,24 @@ function JobsTable({ jobs, visibleColumns, onSetWaypoint }: JobsTableProps) {
                           ownerName={row.ownerName}
                           size="sm"
                         />
+                      </TableCell>
+                    )}
+                    {show('installer') && (
+                      <TableCell className="py-1.5">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <OwnerIcon
+                            ownerId={row.installerId}
+                            ownerType="character"
+                            ownerName={row.installerName}
+                            size="sm"
+                          />
+                          <span
+                            className="max-w-48 truncate"
+                            title={row.installerName}
+                          >
+                            {row.installerName}
+                          </span>
+                        </div>
                       </TableCell>
                     )}
                     {show('activity') && (
@@ -402,6 +435,7 @@ export function IndustryJobsTab() {
 
   const types = useReferenceCacheStore((s) => s.types)
   const structures = useReferenceCacheStore((s) => s.structures)
+  const names = useReferenceCacheStore((s) => s.names)
 
   const { search, setTotalValue, setColumns } = useTabControls()
   const selectedOwnerIds = useAuthStore((s) => s.selectedOwnerIds)
@@ -413,6 +447,7 @@ export function IndustryJobsTab() {
   const JOB_COLUMNS: ColumnConfig[] = useMemo(
     () => [
       { id: 'owner', label: 'columns.owner' },
+      { id: 'installer', label: 'columns.installer' },
       { id: 'activity', label: 'columns.activity' },
       { id: 'blueprint', label: 'columns.blueprint' },
       { id: 'product', label: 'columns.product' },
@@ -449,7 +484,25 @@ export function IndustryJobsTab() {
   const { allJobs, totalValue } = useMemo(() => {
     void types
     void structures
+    void names
     void priceVersion
+
+    const ownCharacterNames = new Map(
+      owners
+        .filter((o) => o.type === 'character')
+        .map((o) => [o.characterId, o.name]),
+    )
+    const getInstallerName = (
+      owner: { type: string; name: string },
+      installerId: number,
+    ): string => {
+      if (owner.type === 'character') return owner.name
+      return (
+        ownCharacterNames.get(installerId) ??
+        getName(installerId)?.name ??
+        t('fallback.id', { ns: 'contracts', id: installerId })
+      )
+    }
 
     const filteredJobsByOwner = jobsByOwner.filter(({ owner }) =>
       selectedSet.has(ownerKey(owner.type, owner.id)),
@@ -476,6 +529,8 @@ export function IndustryJobsTab() {
           ownerId: owner.id,
           ownerType: owner.type,
           ownerName: owner.name,
+          installerId: job.installer_id,
+          installerName: getInstallerName(owner, job.installer_id),
           blueprintName: getTypeName(job.blueprint_type_id),
           productName: job.product_type_id
             ? getTypeName(job.product_type_id)
@@ -501,6 +556,7 @@ export function IndustryJobsTab() {
           j.blueprintName,
           j.productName,
           j.ownerName,
+          j.installerName,
           j.locationName,
           j.activityName,
         ),
@@ -509,7 +565,17 @@ export function IndustryJobsTab() {
     }
 
     return { allJobs: jobs, totalValue: value }
-  }, [jobsByOwner, types, structures, priceVersion, search, selectedSet, t])
+  }, [
+    jobsByOwner,
+    types,
+    structures,
+    names,
+    owners,
+    priceVersion,
+    search,
+    selectedSet,
+    t,
+  ])
 
   useEffect(() => {
     setTotalValue({ value: totalValue })

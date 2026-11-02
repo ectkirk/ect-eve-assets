@@ -11,6 +11,7 @@ import {
   needsTypeResolution,
   hasLocation,
   hasStructure,
+  hasName,
   PLAYER_STRUCTURE_ID_THRESHOLD,
   type ResolutionIds,
 } from '@/lib/data-resolver'
@@ -205,6 +206,9 @@ registerCollector('industry-jobs', (ids: ResolutionIds) => {
       }
       if (job.product_type_id && needsTypeResolution(job.product_type_id)) {
         ids.typeIds.add(job.product_type_id)
+      }
+      if (owner.type === 'corporation' && !hasName(job.installer_id)) {
+        ids.entityIds.add(job.installer_id)
       }
 
       const locationId = job.location_id ?? job.facility_id

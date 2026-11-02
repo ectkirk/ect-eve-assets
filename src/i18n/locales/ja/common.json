@@ -16,6 +16,7 @@
   "buttons.copyName": "名前をコピー",
 
   "columns.owner": "オーナー",
+  "columns.installer": "設置者",
   "columns.name": "名前",
   "columns.quantity": "数量",
   "columns.price": "価格",
