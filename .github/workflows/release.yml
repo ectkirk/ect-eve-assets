@@ -3,9 +3,18 @@ name: Release
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release from main, e.g. 3.0.1 (must match package.json and src/data/changelog.json). The release step creates the v<version> tag.'
+        required: true
+        type: string
 
 permissions:
   contents: read
+
+env:
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && format('v{0}', inputs.version) || github.ref_name }}
 
 jobs:
   verify-version:
@@ -15,14 +24,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Manual releases must come from main and use a new tag
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Run the release workflow from main (got $GITHUB_REF)"
+            exit 1
+          fi
+          if ! [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]]; then
+            echo "::error::Version must look like 3.0.1 or 3.1.0-beta.1"
+            exit 1
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG" >/dev/null; then
+            echo "::error::Tag $RELEASE_TAG already exists"
+            exit 1
+          fi
+
       - name: Tag must match package.json and the in-app changelog
         run: |
-          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          TAG_VERSION="${RELEASE_TAG#v}"
           PACKAGE_VERSION=$(node -p "require('./package.json').version")
           CHANGELOG_VERSION=$(node -p "require('./src/data/changelog.json').version")
           echo "tag=$TAG_VERSION package.json=$PACKAGE_VERSION changelog=$CHANGELOG_VERSION"
           if [ "$TAG_VERSION" != "$PACKAGE_VERSION" ] || [ "$TAG_VERSION" != "$CHANGELOG_VERSION" ]; then
-            echo "::error::Tag $GITHUB_REF_NAME does not match package.json ($PACKAGE_VERSION) and src/data/changelog.json ($CHANGELOG_VERSION)"
+            echo "::error::Tag $RELEASE_TAG does not match package.json ($PACKAGE_VERSION) and src/data/changelog.json ($CHANGELOG_VERSION)"
             exit 1
           fi
 
@@ -150,6 +175,8 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v3
         with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          target_commitish: ${{ github.sha }}
           files: artifacts/**/*
           generate_release_notes: true
-          prerelease: ${{ contains(github.ref_name, '-alpha') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') }}
+          prerelease: ${{ contains(env.RELEASE_TAG, '-alpha') || contains(env.RELEASE_TAG, '-beta') || contains(env.RELEASE_TAG, '-rc') }}
