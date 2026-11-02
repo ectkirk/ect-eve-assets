@@ -89,6 +89,7 @@
   "accessibility.filterByAssetType": "Фильтр по типу актива",
   "accessibility.filterByCategory": "Фильтр по категории",
   "accessibility.filterByGroup": "Фильтр по группе",
+  "accessibility.filterByRegion": "Фильтр по региону",
   "accessibility.sortCharacters": "Сортировка персонажей",
   "accessibility.clickToCopy": "Нажмите, чтобы скопировать",
   "accessibility.resizeColumn": "Перетащите, чтобы изменить ширину столбца. Дважды щёлкните, чтобы сбросить ширину столбцов.",
@@ -132,6 +133,9 @@
   "searchBar.more": "+{{count}} ещё",
   "searchBar.allCategories": "Все категории",
   "searchBar.allGroups": "Все группы",
+  "searchBar.allRegions": "Все регионы",
+  "searchBar.proximityTo": "Близость к системе...",
+  "searchBar.clearProximity": "Сбросить систему",
 
   "searchBar.assetTypes.all": "Все типы",
   "searchBar.assetTypes.activeShip": "Активный корабль",
@@ -166,6 +170,8 @@
   "pagination.range": "{{start}}-{{end}} из {{total}}",
 
   "columns.region": "Регион",
+  "columns.jumps": "Прыжки",
+  "columns.noRoute": "Нет маршрута через звёздные врата",
   "columns.best": "Лучшая",
   "columns.eveEst": "EVE оценка",
   "columns.total": "Всего",

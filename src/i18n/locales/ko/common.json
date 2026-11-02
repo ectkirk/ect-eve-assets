@@ -89,6 +89,7 @@
   "accessibility.filterByAssetType": "자산 유형별 필터",
   "accessibility.filterByCategory": "카테고리별 필터",
   "accessibility.filterByGroup": "그룹별 필터",
+  "accessibility.filterByRegion": "지역으로 필터",
   "accessibility.sortCharacters": "캐릭터 정렬",
   "accessibility.clickToCopy": "클릭하여 복사",
   "accessibility.resizeColumn": "드래그하여 열 너비를 조정합니다. 두 번 클릭하면 열 너비가 초기화됩니다.",
@@ -132,6 +133,9 @@
   "searchBar.more": "+{{count}} 더보기",
   "searchBar.allCategories": "모든 카테고리",
   "searchBar.allGroups": "모든 그룹",
+  "searchBar.allRegions": "모든 지역",
+  "searchBar.proximityTo": "기준 항성계...",
+  "searchBar.clearProximity": "기준 항성계 지우기",
 
   "searchBar.assetTypes.all": "모든 유형",
   "searchBar.assetTypes.activeShip": "활성 함선",
@@ -166,6 +170,8 @@
   "pagination.range": "{{start}}-{{end}} / {{total}}",
 
   "columns.region": "리전",
+  "columns.jumps": "점프",
+  "columns.noRoute": "스타게이트 경로 없음",
   "columns.best": "최적",
   "columns.eveEst": "EVE 추정",
   "columns.total": "합계",

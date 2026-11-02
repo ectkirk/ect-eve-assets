@@ -89,6 +89,7 @@
   "accessibility.filterByAssetType": "Nach Asset-Typ filtern",
   "accessibility.filterByCategory": "Nach Kategorie filtern",
   "accessibility.filterByGroup": "Nach Gruppe filtern",
+  "accessibility.filterByRegion": "Nach Region filtern",
   "accessibility.sortCharacters": "Charaktere sortieren",
   "accessibility.clickToCopy": "Klicken zum Kopieren",
   "accessibility.resizeColumn": "Ziehen, um die Spaltenbreite zu ändern. Doppelklicken, um die Spaltenbreiten zurückzusetzen.",
@@ -132,6 +133,9 @@
   "searchBar.more": "+{{count}} weitere",
   "searchBar.allCategories": "Alle Kategorien",
   "searchBar.allGroups": "Alle Gruppen",
+  "searchBar.allRegions": "Alle Regionen",
+  "searchBar.proximityTo": "Nähe zu System...",
+  "searchBar.clearProximity": "Nähe-System entfernen",
 
   "searchBar.assetTypes.all": "Alle Typen",
   "searchBar.assetTypes.activeShip": "Aktives Schiff",
@@ -166,6 +170,8 @@
   "pagination.range": "{{start}}-{{end}} von {{total}}",
 
   "columns.region": "Region",
+  "columns.jumps": "Sprünge",
+  "columns.noRoute": "Keine Stargate-Route",
   "columns.best": "Bester",
   "columns.eveEst": "EVE Schätz",
   "columns.total": "Gesamt",

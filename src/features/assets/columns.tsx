@@ -4,6 +4,7 @@ import { TypeIcon, OwnerIcon } from '@/components/ui/type-icon'
 import { AbyssalPreview } from '@/components/ui/abyssal-preview'
 import { SortButton } from '@/components/ui/sortable-header'
 import { formatNumber, formatFullNumber, cn } from '@/lib/utils'
+import { UNREACHABLE_JUMPS } from '@/lib/jump-distance'
 import type { AssetRow } from './types'
 import { DISPLAY_FLAGS, formatVolume } from './types'
 import type { SortDirection } from '@/hooks'
@@ -29,6 +30,25 @@ function LocationFlagCell({ flag }: { flag: string }) {
         {key ? t(key) : flag}
       </span>
     </div>
+  )
+}
+
+function JumpsCell({ jumps }: { jumps: number | undefined }) {
+  const { t } = useTranslation('common')
+  if (jumps === undefined || jumps === UNREACHABLE_JUMPS) {
+    return (
+      <span
+        className="w-full text-right text-content-muted"
+        title={t('columns.noRoute')}
+      >
+        -
+      </span>
+    )
+  }
+  return (
+    <span className="w-full text-right tabular-nums">
+      {formatFullNumber(jumps)}
+    </span>
   )
 }
 
@@ -258,8 +278,25 @@ export const columns: AssetColumn[] = [
     ),
   },
   {
+    id: 'jumps',
+    size: 90,
+    noFlex: true,
+    header: ({ isSorted, toggleSorting }) => (
+      <SortButton
+        label="columns.jumps"
+        isActive={!!isSorted}
+        sortDirection={isSorted || 'asc'}
+        onClick={() => {
+          toggleSorting(isSorted === 'asc')
+        }}
+        align="right"
+      />
+    ),
+    cell: ({ row }) => <JumpsCell jumps={row.jumps} />,
+  },
+  {
     id: 'locationName',
-    size: 450,
+    size: 320,
     header: ({ isSorted, toggleSorting }) => (
       <SortButton
         label="columns.location"
@@ -276,6 +313,29 @@ export const columns: AssetColumn[] = [
         {getValue('locationName') as string}
       </span>
     ),
+  },
+  {
+    id: 'regionName',
+    size: 160,
+    header: ({ isSorted, toggleSorting }) => (
+      <SortButton
+        label="columns.region"
+        isActive={!!isSorted}
+        sortDirection={isSorted || 'asc'}
+        onClick={() => {
+          toggleSorting(isSorted === 'asc')
+        }}
+        align="right"
+      />
+    ),
+    cell: ({ getValue }) => {
+      const regionName = getValue('regionName') as string
+      return (
+        <span className="w-full truncate text-right" title={regionName}>
+          {regionName || '-'}
+        </span>
+      )
+    },
   },
   {
     id: 'locationFlag',

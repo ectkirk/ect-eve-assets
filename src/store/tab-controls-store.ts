@@ -32,6 +32,17 @@ interface GroupFilterConfig {
   onChange: (value: string) => void
 }
 
+interface RegionFilterConfig {
+  regions: string[]
+  value: string
+  onChange: (value: string) => void
+}
+
+export interface ProximityFilterConfig {
+  systemId: number | null
+  onChange: (systemId: number | null) => void
+}
+
 interface AssetTypeFilterConfig {
   value: string
   onChange: (value: string) => void
@@ -54,6 +65,8 @@ interface TabControlsState {
   searchPlaceholder: string | null
   categoryFilter: CategoryFilterConfig | null
   groupFilter: GroupFilterConfig | null
+  regionFilter: RegionFilterConfig | null
+  proximityFilter: ProximityFilterConfig | null
   assetTypeFilter: AssetTypeFilterConfig | null
   resultCount: ResultCount | null
   totalValue: TotalValueConfig | null
@@ -72,6 +85,8 @@ interface TabControlsActions {
   setSearchPlaceholder: (placeholder: string | null) => void
   setCategoryFilter: (config: CategoryFilterConfig | null) => void
   setGroupFilter: (config: GroupFilterConfig | null) => void
+  setRegionFilter: (config: RegionFilterConfig | null) => void
+  setProximityFilter: (config: ProximityFilterConfig | null) => void
   setAssetTypeFilter: (config: AssetTypeFilterConfig | null) => void
   setResultCount: (count: ResultCount | null) => void
   setTotalValue: (value: TotalValueConfig | null) => void
@@ -95,6 +110,8 @@ export const useTabControlsStore = create<
   searchPlaceholder: null,
   categoryFilter: null,
   groupFilter: null,
+  regionFilter: null,
+  proximityFilter: null,
   assetTypeFilter: null,
   resultCount: null,
   totalValue: null,
@@ -122,6 +139,12 @@ export const useTabControlsStore = create<
   },
   setGroupFilter: (groupFilter) => {
     set({ groupFilter })
+  },
+  setRegionFilter: (regionFilter) => {
+    set({ regionFilter })
+  },
+  setProximityFilter: (proximityFilter) => {
+    set({ proximityFilter })
   },
   setAssetTypeFilter: (assetTypeFilter) => {
     set({ assetTypeFilter })

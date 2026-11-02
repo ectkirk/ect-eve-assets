@@ -23,6 +23,7 @@ import {
   ASSET_SETTINGS_CONFIG,
 } from '@/store/asset-settings-store'
 import { useClickOutside, useDebouncedValue } from '@/hooks'
+import { SystemPicker } from '@/components/ui/system-picker'
 
 const ASSET_TYPE_KEYS: { value: string; key: string }[] = [
   { value: '', key: 'searchBar.assetTypes.all' },
@@ -184,6 +185,8 @@ export function SearchBar() {
     searchPlaceholder,
     categoryFilter,
     groupFilter,
+    regionFilter,
+    proximityFilter,
     assetTypeFilter,
     resultCount,
     totalValue,
@@ -220,8 +223,8 @@ export function SearchBar() {
   }
 
   return (
-    <div className="flex items-center gap-3 border-b border-border bg-surface-secondary/50 px-4 py-2">
-      <div className="relative flex-1 max-w-md">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-surface-secondary/50 px-4 py-2">
+      <div className="relative min-w-48 flex-1 max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-content-muted" />
         <input
           type="text"
@@ -381,6 +384,34 @@ export function SearchBar() {
             </option>
           ))}
         </select>
+      )}
+
+      {regionFilter && regionFilter.regions.length > 0 && (
+        <select
+          value={regionFilter.value}
+          onChange={(e) => {
+            regionFilter.onChange(e.target.value)
+          }}
+          aria-label={t('accessibility.filterByRegion')}
+          className="w-40 rounded border border-border bg-surface-tertiary px-2 py-1.5 text-sm focus:border-accent focus:outline-hidden"
+        >
+          <option value="">{t('searchBar.allRegions')}</option>
+          {regionFilter.regions.map((region) => (
+            <option key={region} value={region}>
+              {region}
+            </option>
+          ))}
+        </select>
+      )}
+
+      {proximityFilter && (
+        <SystemPicker
+          systemId={proximityFilter.systemId}
+          onChange={proximityFilter.onChange}
+          placeholder={t('searchBar.proximityTo')}
+          clearLabel={t('searchBar.clearProximity')}
+          className="w-52"
+        />
       )}
 
       {contractAvailabilityFilter && (
