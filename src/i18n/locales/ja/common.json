@@ -93,6 +93,7 @@
   "accessibility.sortCharacters": "キャラクターを並べ替え",
   "accessibility.clickToCopy": "クリックしてコピー",
   "accessibility.resizeColumn": "ドラッグして列幅を変更します。ダブルクリックで列幅をリセットします。",
+  "accessibility.resizePanel": "ドラッグしてパネル幅を変更します。ダブルクリックでリセットします。",
 
   "buttons.copied": "コピーしました！",
 
@@ -118,7 +119,7 @@
   "mail.loadingContent": "メール内容を読み込み中...",
   "mail.noContent": "内容なし",
   "mail.unknown": "不明",
-  "mail.unknownId": "ID: {{id}}",
+  "fallback.id": "ID {{id}}",
 
   "skills.noMatches": "一致するスキルがありません",
   "skills.empty": "スキルなし",

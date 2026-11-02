@@ -1,7 +1,4 @@
 import { useState, useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
-import { ArrowUp, ArrowDown } from 'lucide-react'
-import { TableHead } from '@/components/ui/table'
 
 export type SortDirection = 'asc' | 'desc'
 
@@ -35,49 +32,6 @@ export function useSortable<T extends string>(
     sortDirection,
     handleSort,
   }
-}
-
-export function SortableHeader<T extends string>({
-  column,
-  label,
-  sortColumn,
-  sortDirection,
-  onSort,
-  className = '',
-}: {
-  column: T
-  label: string
-  sortColumn: T
-  sortDirection: SortDirection
-  onSort: (column: T) => void
-  className?: string
-}) {
-  const { t } = useTranslation('common')
-  const isActive = sortColumn === column
-  const isRightAligned = className.includes('text-right')
-  const displayLabel = label.includes('.') ? t(label) : label
-
-  return (
-    <TableHead
-      columnId={column}
-      className={`cursor-pointer select-none hover:bg-surface-tertiary/50 ${className}`}
-      onClick={() => {
-        onSort(column)
-      }}
-    >
-      <div
-        className={`flex items-center gap-1 ${isRightAligned ? 'justify-end' : ''}`}
-      >
-        {displayLabel}
-        {isActive &&
-          (sortDirection === 'asc' ? (
-            <ArrowUp className="h-3 w-3" />
-          ) : (
-            <ArrowDown className="h-3 w-3" />
-          ))}
-      </div>
-    </TableHead>
-  )
 }
 
 export function sortRows<T, C extends string>(

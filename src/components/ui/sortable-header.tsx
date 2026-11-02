@@ -1,5 +1,7 @@
-import { ChevronUp, ChevronDown } from 'lucide-react'
+import { ArrowDown, ArrowUp } from 'lucide-react'
+import type React from 'react'
 import { useTranslation } from 'react-i18next'
+import { cn } from '@/lib/utils'
 import { TableHead } from './table'
 import type { SortDirection } from '@/hooks'
 
@@ -41,21 +43,24 @@ export function SortButton({
       {displayLabel}
       {isActive &&
         (sortDirection === 'asc' ? (
-          <ChevronUp className="h-4 w-4" aria-hidden="true" />
+          <ArrowUp className="h-3 w-3 shrink-0" aria-hidden="true" />
         ) : (
-          <ChevronDown className="h-4 w-4" aria-hidden="true" />
+          <ArrowDown className="h-3 w-3 shrink-0" aria-hidden="true" />
         ))}
     </button>
   )
 }
 
-interface SortableHeaderProps<T extends string> {
+type SortableHeaderProps<T extends string> = Omit<
+  React.ThHTMLAttributes<HTMLTableCellElement>,
+  'children'
+> & {
   column: T
   label: string
   sortColumn: T | null
   sortDirection: SortDirection
   onSort: (column: T) => void
-  className?: string
+  ref?: React.Ref<HTMLTableCellElement>
 }
 
 export function SortableHeader<T extends string>({
@@ -65,34 +70,45 @@ export function SortableHeader<T extends string>({
   sortDirection,
   onSort,
   className,
+  ...thProps
 }: SortableHeaderProps<T>) {
   const { t } = useTranslation('common')
   const isActive = sortColumn === column
-  const isCentered = className?.includes('text-center')
   const displayLabel = label.includes('.') ? t(label) : label
+  const justify = className?.includes('text-right')
+    ? 'justify-end'
+    : className?.includes('text-center')
+      ? 'justify-center'
+      : ''
+  const ariaSort = isActive
+    ? sortDirection === 'asc'
+      ? 'ascending'
+      : 'descending'
+    : undefined
 
   return (
-    <TableHead columnId={column} className={className}>
+    <TableHead
+      {...thProps}
+      columnId={column}
+      aria-sort={ariaSort}
+      className={cn('p-0', className)}
+    >
       <button
         type="button"
         onClick={() => {
           onSort(column)
         }}
-        className={`flex w-full items-center gap-1 cursor-pointer select-none rounded px-2 py-1 -mx-2 -my-1 hover:bg-surface-tertiary focus:outline-none focus:ring-2 focus:ring-content-secondary ${isCentered ? 'justify-center' : ''}`}
-        aria-sort={
-          isActive
-            ? sortDirection === 'asc'
-              ? 'ascending'
-              : 'descending'
-            : undefined
-        }
+        className={cn(
+          'flex h-10 w-full cursor-pointer select-none items-center gap-1 px-2 hover:bg-surface-tertiary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent',
+          justify,
+        )}
       >
         {displayLabel}
         {isActive &&
           (sortDirection === 'asc' ? (
-            <ChevronUp className="h-4 w-4" aria-hidden="true" />
+            <ArrowUp className="h-3 w-3 shrink-0" aria-hidden="true" />
           ) : (
-            <ChevronDown className="h-4 w-4" aria-hidden="true" />
+            <ArrowDown className="h-3 w-3 shrink-0" aria-hidden="true" />
           ))}
       </button>
     </TableHead>

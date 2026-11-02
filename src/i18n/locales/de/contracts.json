@@ -1,8 +1,6 @@
 {
   "empty": "Keine aktiven Verträge.",
 
-  "fallback.id": "ID {{id}}",
-
   "totals.itemValue": "Gegenstandswert",
   "totals.contractPrice": "Vertragspreis",
   "totals.collateral": "Sicherheit",

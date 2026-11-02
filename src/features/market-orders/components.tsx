@@ -1,9 +1,14 @@
-import { useState, useEffect } from 'react'
-import { createPortal } from 'react-dom'
-import { Copy, Check, ArrowUp, ArrowDown } from 'lucide-react'
+import { useState } from 'react'
+import { Copy, Check } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { TableHead } from '@/components/ui/table'
-import { formatDecimal, formatPrice } from '@/lib/utils'
+import { SortableHeader } from '@/components/ui/sortable-header'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu'
+import { cn, formatDecimal, formatPrice } from '@/lib/utils'
 import { formatExpiry as formatExpiryInfo, MS_PER_DAY } from '@/lib/timer-utils'
 import type { SortColumn, DiffSortMode } from './types'
 
@@ -107,74 +112,39 @@ export function DiffHeader({
   onDiffSortModeChange: (mode: DiffSortMode) => void
 }) {
   const { t } = useTranslation('common')
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [menuPos, setMenuPos] = useState({ x: 0, y: 0 })
-  const isActive = sortColumn === 'diff'
-
-  const handleClick = () => {
-    onSort('diff')
-  }
-
-  const handleContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault()
-    setMenuPos({ x: e.clientX, y: e.clientY })
-    setMenuOpen(true)
-  }
-
-  useEffect(() => {
-    if (!menuOpen) return undefined
-    const close = () => {
-      setMenuOpen(false)
-    }
-    window.addEventListener('click', close)
-    return () => {
-      window.removeEventListener('click', close)
-    }
-  }, [menuOpen])
+  const label =
+    diffSortMode === 'percent' ? `${t('columns.diff')} (%)` : t('columns.diff')
 
   return (
-    <TableHead
-      columnId="diff"
-      className="text-right cursor-pointer select-none hover:bg-surface-tertiary/50"
-      onClick={handleClick}
-      onContextMenu={handleContextMenu}
-    >
-      <div className="flex items-center gap-1 justify-end">
-        {t('columns.diff')} {diffSortMode === 'percent' ? '(%)' : ''}
-        {isActive &&
-          (sortDirection === 'asc' ? (
-            <ArrowUp className="h-3 w-3" />
-          ) : (
-            <ArrowDown className="h-3 w-3" />
-          ))}
-      </div>
-      {menuOpen &&
-        createPortal(
-          <div
-            className="fixed z-50 bg-surface border border-border rounded shadow-lg py-1 text-sm"
-            style={{ left: menuPos.x, top: menuPos.y }}
-          >
-            <button
-              className={`w-full px-3 py-1 text-left hover:bg-surface-secondary ${diffSortMode === 'number' ? 'text-accent' : ''}`}
-              onClick={() => {
-                onDiffSortModeChange('number')
-                setMenuOpen(false)
-              }}
-            >
-              {t('marketOrders.sortByIsk')}
-            </button>
-            <button
-              className={`w-full px-3 py-1 text-left hover:bg-surface-secondary ${diffSortMode === 'percent' ? 'text-accent' : ''}`}
-              onClick={() => {
-                onDiffSortModeChange('percent')
-                setMenuOpen(false)
-              }}
-            >
-              {t('marketOrders.sortByPercent')}
-            </button>
-          </div>,
-          document.body,
-        )}
-    </TableHead>
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <SortableHeader
+          column="diff"
+          label={label}
+          sortColumn={sortColumn}
+          sortDirection={sortDirection}
+          onSort={onSort}
+          className="text-right"
+        />
+      </ContextMenuTrigger>
+      <ContextMenuContent>
+        <ContextMenuItem
+          className={cn(diffSortMode === 'number' && 'text-accent')}
+          onClick={() => {
+            onDiffSortModeChange('number')
+          }}
+        >
+          {t('marketOrders.sortByIsk')}
+        </ContextMenuItem>
+        <ContextMenuItem
+          className={cn(diffSortMode === 'percent' && 'text-accent')}
+          onClick={() => {
+            onDiffSortModeChange('percent')
+          }}
+        >
+          {t('marketOrders.sortByPercent')}
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   )
 }

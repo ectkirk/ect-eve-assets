@@ -134,9 +134,7 @@ export function AssetsTab() {
   const setSearchPlaceholder = useTabControlsStore(
     (s) => s.setSearchPlaceholder,
   )
-  const setCategoryFilter = useTabControlsStore((s) => s.setCategoryFilter)
-  const setGroupFilter = useTabControlsStore((s) => s.setGroupFilter)
-  const setRegionFilter = useTabControlsStore((s) => s.setRegionFilter)
+  const setSelectFilters = useTabControlsStore((s) => s.setSelectFilters)
   const setProximityFilter = useTabControlsStore((s) => s.setProximityFilter)
   const setAssetTypeFilter = useTabControlsStore((s) => s.setAssetTypeFilter)
   const setResultCount = useTabControlsStore((s) => s.setResultCount)
@@ -389,40 +387,49 @@ export function AssetsTab() {
   }, [columnVisibility, setColumns])
 
   useEffect(() => {
-    setCategoryFilter({
-      categories,
-      value: categoryFilterValue,
-      onChange: (value: string) => {
-        setCategoryFilterValue(value)
-        setGroupFilterValue('')
+    setSelectFilters([
+      {
+        id: 'category',
+        options: categories,
+        value: categoryFilterValue,
+        onChange: (value) => {
+          setCategoryFilterValue(value)
+          setGroupFilterValue('')
+        },
+        allLabel: 'searchBar.allCategories',
+        ariaLabel: 'accessibility.filterByCategory',
       },
-    })
+      {
+        id: 'group',
+        options: filteredGroups,
+        value: groupFilterValue,
+        onChange: setGroupFilterValue,
+        allLabel: 'searchBar.allGroups',
+        ariaLabel: 'accessibility.filterByGroup',
+        hideWhenEmpty: true,
+      },
+      {
+        id: 'region',
+        options: regions,
+        value: regionFilterValue,
+        onChange: setRegionFilterValue,
+        allLabel: 'searchBar.allRegions',
+        ariaLabel: 'accessibility.filterByRegion',
+        hideWhenEmpty: true,
+      },
+    ])
     return () => {
-      setCategoryFilter(null)
+      setSelectFilters([])
     }
-  }, [categories, categoryFilterValue, setCategoryFilter])
-
-  useEffect(() => {
-    setGroupFilter({
-      groups: filteredGroups,
-      value: groupFilterValue,
-      onChange: setGroupFilterValue,
-    })
-    return () => {
-      setGroupFilter(null)
-    }
-  }, [filteredGroups, groupFilterValue, setGroupFilter])
-
-  useEffect(() => {
-    setRegionFilter({
-      regions,
-      value: regionFilterValue,
-      onChange: setRegionFilterValue,
-    })
-    return () => {
-      setRegionFilter(null)
-    }
-  }, [regions, regionFilterValue, setRegionFilter])
+  }, [
+    categories,
+    categoryFilterValue,
+    filteredGroups,
+    groupFilterValue,
+    regions,
+    regionFilterValue,
+    setSelectFilters,
+  ])
 
   useEffect(() => {
     setProximityFilter({

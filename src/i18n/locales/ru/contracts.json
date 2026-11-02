@@ -1,8 +1,6 @@
 {
   "empty": "Нет активных контрактов.",
 
-  "fallback.id": "ID {{id}}",
-
   "totals.itemValue": "Стоимость предметов",
   "totals.contractPrice": "Цена контракта",
   "totals.collateral": "Залог",

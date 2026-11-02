@@ -2,7 +2,7 @@ import { ArrowRightLeft, Gavel, Truck, CircleHelp } from 'lucide-react'
 import type { ESIContract, ESIContractItem } from '@/api/endpoints/contracts'
 import type { ContractWithItems } from '@/store/contracts-store'
 import { hasType, getType, getTypeName } from '@/store/reference-cache'
-import { getName } from '@/api/endpoints/universe'
+import { getEntityName } from '@/api/endpoints/universe'
 import { usePriceStore } from '@/store/price-store'
 import { getLocationName } from '@/lib/location-utils'
 import { MS_PER_DAY, MS_PER_HOUR } from '@/lib/timer-utils'
@@ -157,21 +157,16 @@ export function buildContractRow(
       ? getType(firstItem.type_id)
       : undefined
 
-  const assignerName =
-    getName(contract.issuer_id)?.name ??
-    t('fallback.id', { id: contract.issuer_id })
+  const idFallback = (id: number) => t('fallback.id', { ns: 'common', id })
+  const assignerName = getEntityName(contract.issuer_id, idFallback)
 
   let assigneeName: string
   if (contract.acceptor_id) {
-    assigneeName =
-      getName(contract.acceptor_id)?.name ??
-      t('fallback.id', { id: contract.acceptor_id })
+    assigneeName = getEntityName(contract.acceptor_id, idFallback)
   } else if (contract.availability === 'public') {
     assigneeName = t('availability.public')
   } else if (contract.assignee_id) {
-    assigneeName =
-      getName(contract.assignee_id)?.name ??
-      t('fallback.id', { id: contract.assignee_id })
+    assigneeName = getEntityName(contract.assignee_id, idFallback)
   } else {
     assigneeName = '-'
   }

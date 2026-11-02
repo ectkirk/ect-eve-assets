@@ -93,6 +93,7 @@
   "accessibility.sortCharacters": "Сортировка персонажей",
   "accessibility.clickToCopy": "Нажмите, чтобы скопировать",
   "accessibility.resizeColumn": "Перетащите, чтобы изменить ширину столбца. Дважды щёлкните, чтобы сбросить ширину столбцов.",
+  "accessibility.resizePanel": "Перетащите, чтобы изменить ширину панели. Дважды щёлкните для сброса.",
 
   "buttons.copied": "Скопировано!",
 
@@ -118,7 +119,7 @@
   "mail.loadingContent": "Загрузка содержимого письма...",
   "mail.noContent": "Нет содержимого",
   "mail.unknown": "Неизвестно",
-  "mail.unknownId": "ID: {{id}}",
+  "fallback.id": "ID {{id}}",
 
   "skills.noMatches": "Нет подходящих навыков",
   "skills.empty": "Нет навыков",

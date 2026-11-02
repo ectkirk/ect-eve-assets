@@ -1,8 +1,6 @@
 {
   "empty": "활성 계약이 없습니다.",
 
-  "fallback.id": "ID {{id}}",
-
   "totals.itemValue": "아이템 가치",
   "totals.contractPrice": "계약 가격",
   "totals.collateral": "담보금",

@@ -1,8 +1,6 @@
 {
   "empty": "没有进行中的合同。",
 
-  "fallback.id": "ID {{id}}",
-
   "totals.itemValue": "物品价值",
   "totals.contractPrice": "合同价格",
   "totals.collateral": "押金",

@@ -1,6 +1,7 @@
 import { useMemo, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSortable, SortableHeader, sortRows } from '@/hooks'
+import { useSortable, sortRows } from '@/hooks'
+import { SortableHeader } from '@/components/ui/sortable-header'
 import {
   Table,
   TableBody,

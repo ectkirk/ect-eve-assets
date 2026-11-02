@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFixedVirtualRows } from '@/hooks/use-fixed-virtual-rows'
-import { useSortable, SortableHeader, sortRows } from '@/hooks'
+import { useSortable, sortRows } from '@/hooks'
+import { SortableHeader } from '@/components/ui/sortable-header'
 import {
   Table,
   TableBody,

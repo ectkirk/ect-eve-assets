@@ -93,6 +93,7 @@
   "accessibility.sortCharacters": "Sort characters",
   "accessibility.clickToCopy": "Click to copy",
   "accessibility.resizeColumn": "Drag to resize column. Double-click to reset column widths.",
+  "accessibility.resizePanel": "Drag to resize panel. Double-click to reset.",
 
   "buttons.copied": "Copied!",
 
@@ -118,7 +119,7 @@
   "mail.loadingContent": "Loading mail content...",
   "mail.noContent": "No content",
   "mail.unknown": "Unknown",
-  "mail.unknownId": "ID: {{id}}",
+  "fallback.id": "ID {{id}}",
 
   "skills.noMatches": "No skills match",
   "skills.empty": "No skills",

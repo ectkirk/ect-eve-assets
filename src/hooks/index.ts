@@ -2,12 +2,7 @@ export { useAssetData, type OwnerAssets } from './useAssetData'
 export { useTotalAssets } from './useTotalAssets'
 export { useColumnSettings, type ColumnConfig } from './useColumnSettings'
 export { useExpandCollapse } from './useExpandCollapse'
-export {
-  useSortable,
-  SortableHeader,
-  sortRows,
-  type SortDirection,
-} from './useSortable'
+export { useSortable, sortRows, type SortDirection } from './useSortable'
 export { useRowSelection, type CopyData } from './useRowSelection'
 export {
   useBuybackSelection,

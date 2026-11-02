@@ -7,7 +7,8 @@ import { useReferenceCacheStore } from '@/store/reference-cache'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import { CharacterPortrait, CorporationLogo } from '@/components/ui/type-icon'
 import { formatNumber, matchesSearchLower } from '@/lib/utils'
-import { useSortable, SortableHeader, sortRows } from '@/hooks'
+import { useSortable, sortRows } from '@/hooks'
+import { SortableHeader } from '@/components/ui/sortable-header'
 import {
   Table,
   TableBody,

@@ -149,6 +149,13 @@ export function getName(id: number): ESIName | undefined {
   return namesCache.get(id) ?? undefined
 }
 
+export function getEntityName(
+  id: number,
+  fallback: (id: number) => string,
+): string {
+  return getName(id)?.name ?? fallback(id)
+}
+
 export function hasName(id: number): boolean {
   return namesCache.get(id) !== null
 }
