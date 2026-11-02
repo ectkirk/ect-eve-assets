@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import 'fake-indexeddb/auto'
 import { useIndustryJobsStore } from './industry-jobs-store'
 import { createMockOwner, createMockAuthState } from '@/test/helpers'
+import { registerCollector } from '@/lib/data-resolver'
 
 vi.mock('./auth-store', async (importOriginal) => ({
   ...(await importOriginal()),
@@ -35,6 +36,7 @@ vi.mock('@/lib/data-resolver', () => ({
   needsTypeResolution: vi.fn(() => false),
   hasLocation: vi.fn(() => true),
   hasStructure: vi.fn(() => true),
+  hasName: vi.fn(() => false),
   PLAYER_STRUCTURE_ID_THRESHOLD: 1000000000,
 }))
 
@@ -52,6 +54,10 @@ vi.mock('@/store/reference-cache', () => ({
     typeId === 2000 ? { id: 2000, portionSize: 10 } : undefined,
   ),
 }))
+
+const industryJobsCollector = vi
+  .mocked(registerCollector)
+  .mock.calls.find(([name]) => name === 'industry-jobs')?.[1]
 
 describe('industry-jobs-store', () => {
   beforeEach(async () => {
@@ -248,6 +254,67 @@ describe('industry-jobs-store', () => {
       expect(result).toHaveLength(1)
       expect(result[0]?.owner).toEqual(owner)
       expect(result[0]?.jobs).toHaveLength(1)
+    })
+  })
+
+  describe('resolution collector', () => {
+    it('queues installer names for corporation jobs only', async () => {
+      const { findOwnerByKey } = await import('./auth-store')
+      expect(industryJobsCollector).toBeDefined()
+
+      const character = createMockOwner({ id: 1, type: 'character' })
+      const corporation = createMockOwner({
+        id: 98000001,
+        characterId: 1,
+        type: 'corporation',
+      })
+      vi.mocked(findOwnerByKey).mockImplementation((key) =>
+        key === 'corporation-98000001' ? corporation : character,
+      )
+
+      const job = (jobId: number, installerId: number) => ({
+        job_id: jobId,
+        installer_id: installerId,
+        blueprint_type_id: 1,
+        facility_id: 60003760,
+        status: 'active',
+      })
+      useIndustryJobsStore.setState({
+        itemsById: new Map([
+          [
+            1,
+            {
+              item: job(1, 1) as never,
+              sourceOwner: { type: 'character', id: 1, characterId: 1 },
+            },
+          ],
+          [
+            2,
+            {
+              item: job(2, 90000002) as never,
+              sourceOwner: {
+                type: 'corporation',
+                id: 98000001,
+                characterId: 1,
+              },
+            },
+          ],
+        ]),
+        visibilityByOwner: new Map([
+          ['character-1', new Set([1])],
+          ['corporation-98000001', new Set([2])],
+        ]),
+      })
+
+      const ids = {
+        typeIds: new Set<number>(),
+        locationIds: new Set<number>(),
+        structureToCharacter: new Map<number, number>(),
+        entityIds: new Set<number>(),
+      }
+      industryJobsCollector?.(ids)
+
+      expect([...ids.entityIds]).toEqual([90000002])
     })
   })
 })

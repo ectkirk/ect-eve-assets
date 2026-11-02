@@ -16,6 +16,7 @@
   "buttons.copyName": "이름 복사",
 
   "columns.owner": "소유자",
+  "columns.installer": "설치자",
   "columns.name": "이름",
   "columns.quantity": "수량",
   "columns.price": "가격",

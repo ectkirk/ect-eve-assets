@@ -16,6 +16,7 @@
   "buttons.copyName": "Copy name",
 
   "columns.owner": "Owner",
+  "columns.installer": "Installer",
   "columns.name": "Name",
   "columns.quantity": "Quantity",
   "columns.price": "Price",

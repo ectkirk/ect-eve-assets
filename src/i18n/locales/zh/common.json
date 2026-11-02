@@ -16,6 +16,7 @@
   "buttons.copyName": "复制名称",
 
   "columns.owner": "所有者",
+  "columns.installer": "安装者",
   "columns.name": "名称",
   "columns.quantity": "数量",
   "columns.price": "价格",

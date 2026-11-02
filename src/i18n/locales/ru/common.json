@@ -16,6 +16,7 @@
   "buttons.copyName": "Копировать имя",
 
   "columns.owner": "Владелец",
+  "columns.installer": "Установил",
   "columns.name": "Название",
   "columns.quantity": "Количество",
   "columns.price": "Цена",
