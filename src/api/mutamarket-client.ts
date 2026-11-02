@@ -123,7 +123,13 @@ async function fetchSingleAbyssalPriceInternal(
       return null
     }
 
-    const price = parseResult.data.data.estimated_value ?? -1
+    // A missing or zero estimate both mean "no price", so the module counts
+    // as synced instead of being re-fetched on every sync.
+    const estimate = parseResult.data.data.estimated_value
+    const price =
+      estimate !== null && estimate !== undefined && estimate > 0
+        ? estimate
+        : -1
     return { price, persist: true }
   } catch (error) {
     if (retryCount < MAX_RETRIES) {
