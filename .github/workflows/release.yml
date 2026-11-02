@@ -186,3 +186,34 @@ jobs:
           files: artifacts/**/*
           body_path: release-notes.md
           prerelease: ${{ contains(env.RELEASE_TAG, '-alpha') || contains(env.RELEASE_TAG, '-beta') || contains(env.RELEASE_TAG, '-rc') }}
+
+  # Posted from here because releases created with GITHUB_TOKEN do not
+  # trigger other workflows (a separate on: release workflow never runs).
+  notify-discord:
+    needs: release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Post the release to Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: |
+          if [ -z "$DISCORD_WEBHOOK" ]; then
+            echo "::notice::DISCORD_WEBHOOK is not set; skipping the Discord post"
+            exit 0
+          fi
+          NOTES=$(node scripts/release-notes.mjs "$RELEASE_TAG" | head -c 2000)
+          URL="https://github.com/$GITHUB_REPOSITORY/releases/tag/$RELEASE_TAG"
+          jq -n \
+            --arg title "New Release: $RELEASE_TAG" \
+            --arg description "$NOTES" \
+            --arg url "$URL" \
+            --arg version "$RELEASE_TAG" \
+            --arg repo "$GITHUB_REPOSITORY" \
+            '{embeds: [{title: $title, description: $description, url: $url, color: 3066993,
+              fields: [{name: "Version", value: $version, inline: true},
+                       {name: "Repository", value: $repo, inline: true}]}]}' \
+            | curl --fail --silent --show-error -H "Content-Type: application/json" -d @- "$DISCORD_WEBHOOK"
