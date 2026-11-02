@@ -1,6 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 import { MapPin, X } from 'lucide-react'
-import { useReferenceCacheStore } from '@/store/reference-cache'
+import {
+  useReferenceCacheStore,
+  type CachedRegion,
+  type CachedSystem,
+} from '@/store/reference-cache'
 import { cn } from '@/lib/utils'
 
 const MAX_RESULTS = 8
@@ -20,15 +24,15 @@ interface SystemPickerProps {
   className?: string
 }
 
-export function findSystems(
-  options: readonly SystemOption[],
+export function findSystems<T extends { nameLower: string }>(
+  options: readonly T[],
   query: string,
   limit = MAX_RESULTS,
-): SystemOption[] {
+): T[] {
   const lower = query.trim().toLowerCase()
   if (!lower) return []
-  const prefix: SystemOption[] = []
-  const contains: SystemOption[] = []
+  const prefix: T[] = []
+  const contains: T[] = []
   for (const option of options) {
     if (option.nameLower.startsWith(lower)) {
       prefix.push(option)
@@ -38,6 +42,30 @@ export function findSystems(
     }
   }
   return [...prefix, ...contains].slice(0, limit)
+}
+
+let optionsCache: {
+  systems: ReadonlyMap<number, CachedSystem>
+  regions: ReadonlyMap<number, CachedRegion>
+  options: SystemOption[]
+} | null = null
+
+function getSystemOptions(
+  systems: ReadonlyMap<number, CachedSystem>,
+  regions: ReadonlyMap<number, CachedRegion>,
+): SystemOption[] {
+  if (optionsCache?.systems === systems && optionsCache.regions === regions) {
+    return optionsCache.options
+  }
+  const collator = new Intl.Collator()
+  const options = Array.from(systems.values(), (system) => ({
+    id: system.id,
+    name: system.name,
+    nameLower: system.name.toLowerCase(),
+    regionName: regions.get(system.regionId)?.name ?? '',
+  })).sort((a, b) => collator.compare(a.name, b.name))
+  optionsCache = { systems, regions, options }
+  return options
 }
 
 export function SystemPicker({
@@ -53,20 +81,15 @@ export function SystemPicker({
   const [isOpen, setIsOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(0)
 
-  const options = useMemo<SystemOption[]>(
-    () =>
-      Array.from(systems.values())
-        .map((system) => ({
-          id: system.id,
-          name: system.name,
-          nameLower: system.name.toLowerCase(),
-          regionName: regions.get(system.regionId)?.name ?? '',
-        }))
-        .sort((a, b) => a.name.localeCompare(b.name)),
-    [systems, regions],
-  )
+  const listId = useId()
 
-  const results = useMemo(() => findSystems(options, query), [options, query])
+  const results = useMemo(
+    () =>
+      query.trim()
+        ? findSystems(getSystemOptions(systems, regions), query)
+        : [],
+    [systems, regions, query],
+  )
   const selected = systemId !== null ? systems.get(systemId) : undefined
 
   const select = (option: SystemOption) => {
@@ -122,7 +145,6 @@ export function SystemPicker({
     )
   }
 
-  const listId = 'system-picker-results'
   const showResults = isOpen && results.length > 0
 
   return (

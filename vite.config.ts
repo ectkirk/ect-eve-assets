@@ -18,12 +18,8 @@ function packagesTest(packages: readonly string[]): RegExp {
   return new RegExp(`[\\\\/]node_modules[\\\\/](?:${names})[\\\\/]`)
 }
 
-function electronEntry(entry: string, fileName: string) {
-  return {
-    entry,
-    formats: ['cjs' as const],
-    fileName: () => fileName,
-  }
+function cjsOutput(fileName: string) {
+  return { formats: ['cjs' as const], fileName: () => fileName }
 }
 
 export default defineConfig(({ mode }) => {
@@ -46,7 +42,7 @@ export default defineConfig(({ mode }) => {
           vite: {
             define: buildEnv,
             build: {
-              lib: electronEntry('electron/main.ts', 'main.cjs'),
+              lib: cjsOutput('main.cjs'),
             },
           },
         },
@@ -57,7 +53,7 @@ export default defineConfig(({ mode }) => {
           },
           vite: {
             build: {
-              lib: electronEntry('electron/preload.ts', 'preload.cjs'),
+              lib: cjsOutput('preload.cjs'),
             },
           },
         },

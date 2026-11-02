@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildJumpGraph, computeJumpDistances } from './jump-distance'
+import { buildStargateAdjacency, computeJumpDistances } from './jump-distance'
 
 // 1 - 2 - 3 - 4
 //      \     /
@@ -16,14 +16,14 @@ const gates = [
 
 describe('jump-distance', () => {
   it('builds an undirected graph without duplicate edges', () => {
-    const graph = buildJumpGraph(gates)
-    expect(graph.get(1)).toEqual([2])
+    const graph = buildStargateAdjacency(gates)
+    expect([...(graph.get(1) ?? [])]).toEqual([2])
     expect([...(graph.get(2) ?? [])].sort()).toEqual([1, 3, 5])
-    expect(graph.get(7)).toEqual([6])
+    expect([...(graph.get(7) ?? [])]).toEqual([6])
   })
 
   it('computes shortest jump counts from the origin', () => {
-    const distances = computeJumpDistances(buildJumpGraph(gates), 1)
+    const distances = computeJumpDistances(buildStargateAdjacency(gates), 1)
     expect(Object.fromEntries(distances)).toEqual({
       1: 0,
       2: 1,
@@ -34,13 +34,13 @@ describe('jump-distance', () => {
   })
 
   it('leaves systems without a gate route unreachable', () => {
-    const distances = computeJumpDistances(buildJumpGraph(gates), 1)
+    const distances = computeJumpDistances(buildStargateAdjacency(gates), 1)
     expect(distances.has(6)).toBe(false)
     expect(distances.has(7)).toBe(false)
   })
 
   it('handles an origin with no gates', () => {
-    const distances = computeJumpDistances(buildJumpGraph(gates), 999)
+    const distances = computeJumpDistances(buildStargateAdjacency(gates), 999)
     expect(Object.fromEntries(distances)).toEqual({ 999: 0 })
   })
 })

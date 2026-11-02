@@ -5,6 +5,7 @@ import {
   TableBody,
   TableCell,
   TableHeader,
+  TableSpacerRow,
   TableRow,
 } from '@/components/ui/table'
 import {
@@ -309,14 +310,10 @@ export function TreeTable({
           <TableBody>
             {flatRows.length > 0 ? (
               <>
-                {virtualRows.length > 0 && (
-                  <tr>
-                    <td
-                      colSpan={visibleColumns.length}
-                      style={{ height: paddingStart }}
-                    />
-                  </tr>
-                )}
+                <TableSpacerRow
+                  height={paddingStart}
+                  colSpan={visibleColumns.length}
+                />
                 {virtualRows.map((virtualRow) => {
                   const node = flatRows[virtualRow.index]
                   if (!node) return null
@@ -338,14 +335,10 @@ export function TreeTable({
                     />
                   )
                 })}
-                {virtualRows.length > 0 && (
-                  <tr>
-                    <td
-                      colSpan={visibleColumns.length}
-                      style={{ height: paddingEnd }}
-                    />
-                  </tr>
-                )}
+                <TableSpacerRow
+                  height={paddingEnd}
+                  colSpan={visibleColumns.length}
+                />
               </>
             ) : (
               <TableRow>

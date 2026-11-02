@@ -4,7 +4,6 @@ import { TypeIcon, OwnerIcon } from '@/components/ui/type-icon'
 import { AbyssalPreview } from '@/components/ui/abyssal-preview'
 import { SortButton } from '@/components/ui/sortable-header'
 import { formatNumber, formatFullNumber, cn } from '@/lib/utils'
-import { UNREACHABLE_JUMPS } from '@/lib/jump-distance'
 import type { AssetRow } from './types'
 import { DISPLAY_FLAGS, formatVolume } from './types'
 import type { SortDirection } from '@/hooks'
@@ -35,7 +34,7 @@ function LocationFlagCell({ flag }: { flag: string }) {
 
 function JumpsCell({ jumps }: { jumps: number | undefined }) {
   const { t } = useTranslation('common')
-  if (jumps === undefined || jumps === UNREACHABLE_JUMPS) {
+  if (jumps === undefined) {
     return (
       <span
         className="w-full text-right text-content-muted"

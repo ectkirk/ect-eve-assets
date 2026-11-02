@@ -1,3 +1,4 @@
+import { buildStargateAdjacency } from '@/lib/jump-distance'
 import type { CachedStargate } from '@/store/reference-cache'
 import type { Ansiblex } from '@/store/ansiblex-store'
 
@@ -18,18 +19,13 @@ export function buildGraph(
   stargates: CachedStargate[],
   ansiblexes?: Ansiblex[],
 ): PathfinderGraph {
-  const adjacency = new Map<number, Set<number>>()
+  const adjacency = buildStargateAdjacency(stargates)
   const security = new Map<number, number>()
   const ansiblexEdges = new Set<string>()
 
   for (const system of systems) {
-    adjacency.set(system.id, new Set())
+    if (!adjacency.has(system.id)) adjacency.set(system.id, new Set())
     security.set(system.id, system.security)
-  }
-
-  for (const gate of stargates) {
-    adjacency.get(gate.from)?.add(gate.to)
-    adjacency.get(gate.to)?.add(gate.from)
   }
 
   if (ansiblexes) {

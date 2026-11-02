@@ -63,33 +63,65 @@ function saveWindowState(state: WindowState): void {
   }
 }
 
-let storageWriteQueue: Promise<void> = Promise.resolve()
+let encryptionAvailable: Promise<boolean> | null = null
+
+function isEncryptionAvailable(): Promise<boolean> {
+  encryptionAvailable ??= safeStorage.isAsyncEncryptionAvailable().then(
+    (available) => {
+      if (!available) {
+        logger.warn('Encryption not available, using plaintext', {
+          module: 'Storage',
+        })
+      }
+      return available
+    },
+    (err: unknown) => {
+      encryptionAvailable = null
+      throw err
+    },
+  )
+  return encryptionAvailable
+}
 
 async function persistStorage(data: Record<string, unknown>): Promise<void> {
   ensureDirectory(userDataPath)
 
-  if (await safeStorage.isAsyncEncryptionAvailable()) {
+  if (await isEncryptionAvailable()) {
     const encrypted = await safeStorage.encryptStringAsync(JSON.stringify(data))
     writeBinaryFile(storageFile, encrypted, { mode: 0o600 })
     return
   }
 
-  logger.warn('Encryption not available, using plaintext', {
-    module: 'Storage',
-  })
   writeTextFile(storageFile, JSON.stringify(data, null, 2), {
     mode: 0o600,
     encoding: 'utf-8',
   })
 }
 
+let pendingWrite: Record<string, unknown> | null = null
+let activeFlush: Promise<void> | null = null
+
+async function flushStorage(): Promise<void> {
+  try {
+    while (pendingWrite) {
+      const data = pendingWrite
+      pendingWrite = null
+      try {
+        await persistStorage(data)
+      } catch (err) {
+        logger.error('Failed to write storage', err, { module: 'Storage' })
+      }
+    }
+  } finally {
+    activeFlush = null
+  }
+}
+
+/** Resolves once this data, or newer data written after it, is on disk. */
 export function writeStorage(data: Record<string, unknown>): Promise<void> {
-  storageWriteQueue = storageWriteQueue
-    .then(() => persistStorage(data))
-    .catch((err: unknown) => {
-      logger.error('Failed to write storage', err, { module: 'Storage' })
-    })
-  return storageWriteQueue
+  pendingWrite = data
+  activeFlush ??= flushStorage()
+  return activeFlush
 }
 
 export async function readStorage(): Promise<Record<string, unknown> | null> {
@@ -98,10 +130,7 @@ export async function readStorage(): Promise<Record<string, unknown> | null> {
 
     const fileData = readBinaryFile(storageFile)
 
-    if (!(await safeStorage.isAsyncEncryptionAvailable())) {
-      logger.warn('Encryption not available, using plaintext', {
-        module: 'Storage',
-      })
+    if (!(await isEncryptionAvailable())) {
       return JSON.parse(fileData.toString('utf-8')) as Record<string, unknown>
     }
 
@@ -119,7 +148,9 @@ export async function readStorage(): Promise<Record<string, unknown> | null> {
       return null
     }
 
-    if (shouldReEncrypt) {
+    // A queued or in-flight write already re-encrypts with the current key,
+    // and re-writing this older copy after it would lose that newer data.
+    if (shouldReEncrypt && !activeFlush) {
       void writeStorage(data)
     }
     return data

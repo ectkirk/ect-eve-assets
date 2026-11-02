@@ -1,28 +1,23 @@
-export type JumpGraph = ReadonlyMap<number, readonly number[]>
+export type StargateAdjacency = Map<number, Set<number>>
 
-export const UNREACHABLE_JUMPS = Number.MAX_SAFE_INTEGER
-
-export function buildJumpGraph(
+export function buildStargateAdjacency(
   stargates: Iterable<{ from: number; to: number }>,
-): JumpGraph {
-  const graph = new Map<number, number[]>()
+): StargateAdjacency {
+  const adjacency: StargateAdjacency = new Map()
   const link = (a: number, b: number) => {
-    const neighbours = graph.get(a)
-    if (neighbours) {
-      if (!neighbours.includes(b)) neighbours.push(b)
-    } else {
-      graph.set(a, [b])
-    }
+    const neighbours = adjacency.get(a)
+    if (neighbours) neighbours.add(b)
+    else adjacency.set(a, new Set([b]))
   }
   for (const gate of stargates) {
     link(gate.from, gate.to)
     link(gate.to, gate.from)
   }
-  return graph
+  return adjacency
 }
 
 export function computeJumpDistances(
-  graph: JumpGraph,
+  adjacency: ReadonlyMap<number, ReadonlySet<number>>,
   originSystemId: number,
 ): ReadonlyMap<number, number> {
   const distances = new Map<number, number>([[originSystemId, 0]])
@@ -30,7 +25,7 @@ export function computeJumpDistances(
 
   for (const current of queue) {
     const nextDistance = distances.get(current)! + 1
-    for (const neighbour of graph.get(current) ?? []) {
+    for (const neighbour of adjacency.get(current) ?? []) {
       if (distances.has(neighbour)) continue
       distances.set(neighbour, nextDistance)
       queue.push(neighbour)
