@@ -90,6 +90,7 @@
   "accessibility.filterByGroup": "按分组筛选",
   "accessibility.sortCharacters": "角色排序",
   "accessibility.clickToCopy": "点击复制",
+  "accessibility.resizeColumn": "拖动以调整列宽。双击可重置列宽。",
 
   "buttons.copied": "已复制！",
 

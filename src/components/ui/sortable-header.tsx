@@ -72,7 +72,7 @@ export function SortableHeader<T extends string>({
   const displayLabel = label.includes('.') ? t(label) : label
 
   return (
-    <TableHead className={className}>
+    <TableHead columnId={column} className={className}>
       <button
         type="button"
         onClick={() => {

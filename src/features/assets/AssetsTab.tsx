@@ -31,6 +31,9 @@ import { useRegionalMarketActionStore } from '@/store/regional-market-action-sto
 import { useContractsSearchActionStore } from '@/store/contracts-search-action-store'
 import { useReferenceActionStore } from '@/store/reference-action-store'
 import { useFixedVirtualRows } from '@/hooks/use-fixed-virtual-rows'
+import { useColumnWidths, type ColumnWidths } from '@/hooks/useColumnWidths'
+import { ColumnResizeHandle } from '@/components/ui/column-resize-handle'
+import { getRecordValue, setRecordValue } from '@/lib/record-utils'
 import {
   type AssetRow,
   type AssetSorting,
@@ -41,7 +44,20 @@ import {
   saveColumnVisibility,
   createAssetRow,
 } from './types'
-import { columns, renderAssetCell } from './columns'
+import { columns, renderAssetCell, type AssetColumn } from './columns'
+
+function buildGridTemplate(
+  visibleColumns: readonly AssetColumn[],
+  widths: ColumnWidths,
+): string {
+  return visibleColumns
+    .map((col) => {
+      const width = getRecordValue(widths, col.id)
+      if (width !== undefined) return `${width}px`
+      return col.noFlex ? `${col.size}px` : `minmax(${col.size}px, 1fr)`
+    })
+    .join(' ')
+}
 
 function getAssetSortValue(row: AssetRow, columnId: string): string | number {
   const value = row[columnId as keyof AssetRow]
@@ -411,13 +427,47 @@ export function AssetsTab() {
     overscan: 10,
   })
 
-  const gridTemplateColumns = useMemo(() => {
-    return visibleColumns
-      .map((col) => {
-        return col.noFlex ? `${col.size}px` : `minmax(${col.size}px, 1fr)`
-      })
-      .join(' ')
-  }, [visibleColumns])
+  const gridRef = useRef<HTMLDivElement>(null)
+  const pendingWidthsRef = useRef<ColumnWidths>({})
+  const {
+    widths: columnWidths,
+    setWidths: setColumnWidths,
+    resetWidths: resetColumnWidths,
+  } = useColumnWidths('assets')
+
+  const gridTemplateColumns = useMemo(
+    () => buildGridTemplate(visibleColumns, columnWidths),
+    [visibleColumns, columnWidths],
+  )
+
+  const startColumnResize = useCallback(
+    (columnId: string) => {
+      pendingWidthsRef.current = columnWidths
+      const header = Array.from(
+        gridRef.current?.querySelectorAll<HTMLElement>('[data-column-id]') ??
+          [],
+      ).find((el) => el.dataset['columnId'] === columnId)
+      return Math.round(header?.getBoundingClientRect().width ?? 0)
+    },
+    [columnWidths],
+  )
+
+  const resizeColumn = useCallback(
+    (columnId: string, width: number) => {
+      pendingWidthsRef.current = setRecordValue(
+        pendingWidthsRef.current,
+        columnId,
+        width,
+      )
+      if (gridRef.current) {
+        gridRef.current.style.gridTemplateColumns = buildGridTemplate(
+          visibleColumns,
+          pendingWidthsRef.current,
+        )
+      }
+    },
+    [visibleColumns],
+  )
 
   if (owners.length === 0) {
     return (
@@ -470,6 +520,7 @@ export function AssetsTab() {
           className="flex-1 min-h-0 rounded-lg border border-border bg-surface-secondary/30 overflow-auto outline-none focus:ring-1 focus:ring-accent/50"
         >
           <div
+            ref={gridRef}
             role="grid"
             aria-label="Assets"
             className="grid"
@@ -489,7 +540,8 @@ export function AssetsTab() {
                     <div
                       key={column.id}
                       role="columnheader"
-                      className={`sticky top-0 z-10 bg-surface-secondary py-3 text-left text-sm font-medium text-content-secondary border-b border-border ${column.id === 'ownerName' ? 'px-2' : 'px-4'}`}
+                      data-column-id={column.id}
+                      className={`sticky top-0 z-10 min-w-0 overflow-hidden whitespace-nowrap bg-surface-secondary py-3 text-left text-sm font-medium text-content-secondary border-b border-border ${column.id === 'ownerName' ? 'px-2' : 'px-4'}`}
                     >
                       {column.header({
                         isSorted,
@@ -497,6 +549,16 @@ export function AssetsTab() {
                           toggleSorting(column.id, desc)
                         },
                       })}
+                      <ColumnResizeHandle
+                        onResizeStart={() => startColumnResize(column.id)}
+                        onResize={(width) => {
+                          resizeColumn(column.id, width)
+                        }}
+                        onResizeEnd={() => {
+                          setColumnWidths(pendingWidthsRef.current)
+                        }}
+                        onReset={resetColumnWidths}
+                      />
                     </div>
                   )
                 })}
@@ -537,7 +599,7 @@ export function AssetsTab() {
                           key={`${rowId}-${column.id}`}
                           role="gridcell"
                           className={cn(
-                            'py-2 text-sm border-b border-border/50 group-hover:bg-surface-tertiary/50 flex items-center',
+                            'min-w-0 overflow-hidden py-2 text-sm border-b border-border/50 group-hover:bg-surface-tertiary/50 flex items-center',
                             column.id === 'ownerName' ? 'px-2' : 'px-4',
                             isRowSelected && 'bg-accent/20',
                             !isRowSelected &&

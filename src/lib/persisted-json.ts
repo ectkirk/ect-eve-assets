@@ -28,6 +28,21 @@ export function parseBooleanRecord(
   return result
 }
 
+export function parsePositiveNumberRecord(
+  value: string | null,
+): Record<string, number> {
+  const parsed = parseJsonRecord(value)
+  let result: Record<string, number> = {}
+
+  for (const [key, item] of Object.entries(parsed)) {
+    if (typeof item === 'number' && Number.isFinite(item) && item > 0) {
+      result = setRecordValue(result, key, item)
+    }
+  }
+
+  return result
+}
+
 export function parseJsonString(value: string | null): string | null {
   if (!value) return null
 

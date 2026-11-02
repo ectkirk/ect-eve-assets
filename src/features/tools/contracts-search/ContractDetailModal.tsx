@@ -94,18 +94,22 @@ function ItemsTable({
   return (
     <div className="flex flex-col">
       <div className="max-h-80 overflow-auto">
-        <Table>
+        <Table resizeKey="contract-detail-items">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>{t('contractsSearch.modal.columns.name')}</TableHead>
-              <TableHead className="w-20 text-right">
+              <TableHead columnId="name">
+                {t('contractsSearch.modal.columns.name')}
+              </TableHead>
+              <TableHead columnId="qty" className="w-20 text-right">
                 {t('contractsSearch.modal.columns.qty')}
               </TableHead>
-              <TableHead>{t('contractsSearch.modal.columns.group')}</TableHead>
-              <TableHead>
+              <TableHead columnId="group">
+                {t('contractsSearch.modal.columns.group')}
+              </TableHead>
+              <TableHead columnId="category">
                 {t('contractsSearch.modal.columns.category')}
               </TableHead>
-              <TableHead className="text-right">
+              <TableHead columnId="estValue" className="text-right">
                 {t('contractsSearch.modal.columns.estValue')}
               </TableHead>
             </TableRow>

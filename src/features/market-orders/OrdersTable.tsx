@@ -16,7 +16,7 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
 import { TypeIcon, OwnerIcon } from '@/components/ui/type-icon'
-import { formatNumber, formatFullNumber, cn } from '@/lib/utils'
+import { formatNumber, formatFullNumber } from '@/lib/utils'
 import { useRegionalMarketActionStore } from '@/store/regional-market-action-store'
 import { useReferenceActionStore } from '@/store/reference-action-store'
 import type { OrderRow, SortColumn, DiffSortMode } from './types'
@@ -72,7 +72,7 @@ function OrderRowCells({ row, show, onItemDoubleClick }: OrderRowCellsProps) {
         </TableCell>
       )}
       {show('type') && (
-        <TableCell className="py-1.5">
+        <TableCell className="py-1.5 whitespace-nowrap">
           {isBuy
             ? t('searchBar.orderTypes.buy')
             : t('searchBar.orderTypes.sell')}
@@ -208,6 +208,8 @@ function OrderRowWithContext({
 
 function VirtualizedTableBody({
   sortedOrders,
+  columnCount,
+  getScrollElement,
   show,
   navigateToType,
   navigateToReference,
@@ -216,6 +218,8 @@ function VirtualizedTableBody({
   onItemDoubleClick,
 }: {
   sortedOrders: OrderRow[]
+  columnCount: number
+  getScrollElement: () => HTMLElement | null
   show: (col: string) => boolean
   navigateToType: (typeId: number) => void
   navigateToReference: (typeId: number) => void
@@ -223,13 +227,7 @@ function VirtualizedTableBody({
   onOpenMarket: (typeId: number, typeName: string) => void
   onItemDoubleClick: (typeId: number, typeName: string) => void
 }) {
-  const containerRef = useRef<HTMLTableSectionElement>(null)
-
-  const getScrollElement = useCallback(
-    () => containerRef.current?.parentElement ?? null,
-    [],
-  )
-  const { virtualRows, totalSize } = useFixedVirtualRows({
+  const { virtualRows, paddingStart, paddingEnd } = useFixedVirtualRows({
     count: sortedOrders.length,
     getScrollElement,
     rowHeight: ROW_HEIGHT,
@@ -237,12 +235,15 @@ function VirtualizedTableBody({
   })
 
   return (
-    <TableBody
-      ref={containerRef}
-      style={{ height: totalSize, position: 'relative' }}
-    >
+    <TableBody>
+      {paddingStart > 0 && (
+        <tr aria-hidden="true">
+          <td colSpan={columnCount} style={{ height: paddingStart }} />
+        </tr>
+      )}
       {virtualRows.map((virtualRow) => {
-        const row = sortedOrders[virtualRow.index]!
+        const row = sortedOrders[virtualRow.index]
+        if (!row) return null
         return (
           <OrderRowWithContext
             key={row.order.order_id}
@@ -253,17 +254,15 @@ function VirtualizedTableBody({
             onSetWaypoint={onSetWaypoint}
             onOpenMarket={onOpenMarket}
             onItemDoubleClick={onItemDoubleClick}
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: ROW_HEIGHT,
-              transform: `translateY(${virtualRow.start}px)`,
-            }}
+            style={{ height: ROW_HEIGHT }}
           />
         )
       })}
+      {paddingEnd > 0 && (
+        <tr aria-hidden="true">
+          <td colSpan={columnCount} style={{ height: paddingEnd }} />
+        </tr>
+      )}
     </TableBody>
   )
 }
@@ -372,15 +371,16 @@ export function OrdersTable({
   }, [orders, sortColumn, sortDirection, diffSortMode])
 
   const useVirtualization = sortedOrders.length > VIRTUALIZATION_THRESHOLD
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const getScrollElement = useCallback(() => scrollRef.current, [])
 
   return (
-    <Table className={cn(useVirtualization && 'block')}>
-      <TableHeader
-        className={cn(
-          'sticky top-0 z-10 bg-surface-secondary',
-          useVirtualization && 'table w-full',
-        )}
-      >
+    <Table
+      resizeKey="market-orders"
+      containerRef={scrollRef}
+      containerClassName="h-full overflow-auto"
+    >
+      <TableHeader className="sticky top-0 z-10 bg-surface-secondary">
         <TableRow className="hover:bg-transparent border-b border-border">
           {show('item') && (
             <SortableHeader
@@ -483,6 +483,8 @@ export function OrdersTable({
       {useVirtualization ? (
         <VirtualizedTableBody
           sortedOrders={sortedOrders}
+          columnCount={visibleColumns.size}
+          getScrollElement={getScrollElement}
           show={show}
           navigateToType={navigateToType}
           navigateToReference={navigateToReference}

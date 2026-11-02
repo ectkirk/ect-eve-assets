@@ -204,7 +204,7 @@ export function ContractsResultsTable({
         ref={tableRef}
         className={`flex-1 overflow-auto rounded-lg border border-border bg-surface-secondary/30 ${isLoading ? 'opacity-50' : ''}`}
       >
-        <Table>
+        <Table resizeKey="contracts-search">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <SortableHeader
@@ -214,7 +214,7 @@ export function ContractsResultsTable({
                 sortDirection={sortDirection}
                 onSort={handleSort}
               />
-              <TableHead className="w-10"></TableHead>
+              <TableHead columnId="icon" className="w-10"></TableHead>
               <SortableHeader
                 column="location"
                 label={t('contractsSearch.columns.location')}

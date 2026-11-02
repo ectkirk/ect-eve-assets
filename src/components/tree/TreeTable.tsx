@@ -280,7 +280,10 @@ export function TreeTable({
         tabIndex={0}
         className="flex-1 min-h-0 rounded-lg border border-border bg-surface-secondary/30 overflow-auto outline-none focus:ring-1 focus:ring-accent/50"
       >
-        <Table style={{ tableLayout: 'fixed', width: '100%' }}>
+        <Table
+          resizeKey="assets-tree"
+          style={{ tableLayout: 'fixed', width: '100%' }}
+        >
           <TableHeader className="sticky top-0 z-10 bg-surface-secondary">
             <TableRow className="bg-surface-secondary hover:bg-surface-secondary">
               {visibleColumns.map((colId) => {
