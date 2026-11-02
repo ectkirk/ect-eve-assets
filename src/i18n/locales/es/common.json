@@ -90,6 +90,7 @@
   "accessibility.filterByGroup": "Filtrar por grupo",
   "accessibility.sortCharacters": "Ordenar personajes",
   "accessibility.clickToCopy": "Clic para copiar",
+  "accessibility.resizeColumn": "Arrastra para cambiar el ancho de la columna. Haz doble clic para restablecer los anchos de columna.",
 
   "buttons.copied": "¡Copiado!",
 

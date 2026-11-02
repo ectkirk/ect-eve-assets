@@ -253,7 +253,7 @@ export function MarketOrdersTab() {
 
   return (
     <>
-      <div className={`${CONTAINER_CLASS} overflow-auto`}>
+      <div className={`${CONTAINER_CLASS} overflow-hidden`}>
         <OrdersTable
           orders={filteredOrders}
           visibleColumns={visibleColumns}

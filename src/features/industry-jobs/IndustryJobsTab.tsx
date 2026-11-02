@@ -159,10 +159,10 @@ function JobsTable({ jobs, visibleColumns, onSetWaypoint }: JobsTableProps) {
 
   return (
     <>
-      <Table>
+      <Table resizeKey="industry-jobs">
         <TableHeader className="sticky top-0 z-10 bg-surface-secondary">
           <TableRow className="hover:bg-transparent border-b border-border">
-            {show('owner') && <TableHead className="w-8" />}
+            {show('owner') && <TableHead columnId="owner" className="w-8" />}
             {show('activity') && (
               <SortableHeader
                 column="activity"
@@ -335,7 +335,12 @@ function JobsTable({ jobs, visibleColumns, onSetWaypoint }: JobsTableProps) {
                     )}
                     {show('location') && (
                       <TableCell className="py-1.5 text-status-info">
-                        {row.locationName}
+                        <div
+                          className="max-w-xs truncate"
+                          title={row.locationName}
+                        >
+                          {row.locationName}
+                        </div>
                       </TableCell>
                     )}
                   </TableRow>

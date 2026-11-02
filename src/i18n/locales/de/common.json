@@ -90,6 +90,7 @@
   "accessibility.filterByGroup": "Nach Gruppe filtern",
   "accessibility.sortCharacters": "Charaktere sortieren",
   "accessibility.clickToCopy": "Klicken zum Kopieren",
+  "accessibility.resizeColumn": "Ziehen, um die Spaltenbreite zu ändern. Doppelklicken, um die Spaltenbreiten zurückzusetzen.",
 
   "buttons.copied": "Kopiert!",
 

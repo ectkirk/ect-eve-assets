@@ -206,8 +206,10 @@ export function ContractRow({
               '-'
             )}
           </TableCell>
-          <TableCell>{formatTimeLeft(contract.dateExpired)}</TableCell>
-          <TableCell className="text-content-secondary">
+          <TableCell className="whitespace-nowrap">
+            {formatTimeLeft(contract.dateExpired)}
+          </TableCell>
+          <TableCell className="whitespace-nowrap text-content-secondary">
             {formatContractDate(contract.dateIssued)}
           </TableCell>
           <TableCell className="max-w-xs truncate text-content-secondary">

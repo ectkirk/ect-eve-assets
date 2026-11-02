@@ -129,10 +129,10 @@ export function ContractsTable({
 
   return (
     <>
-      <Table>
+      <Table resizeKey="contracts">
         <TableHeader className="sticky top-0 z-10 bg-surface-secondary">
           <TableRow className="hover:bg-transparent border-b border-border">
-            {show('owner') && <TableHead className="w-8" />}
+            {show('owner') && <TableHead columnId="owner" className="w-8" />}
             {show('type') && (
               <SortableHeader
                 column="type"
@@ -239,7 +239,7 @@ export function ContractsTable({
               />
             )}
             {show('status') && (
-              <TableHead className="text-right">
+              <TableHead columnId="status" className="text-right">
                 {t('columns.status')}
               </TableHead>
             )}

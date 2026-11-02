@@ -90,6 +90,7 @@
   "accessibility.filterByGroup": "Filtrer par groupe",
   "accessibility.sortCharacters": "Trier les personnages",
   "accessibility.clickToCopy": "Cliquer pour copier",
+  "accessibility.resizeColumn": "Faites glisser pour redimensionner la colonne. Double-cliquez pour réinitialiser les largeurs de colonne.",
 
   "buttons.copied": "Copié !",
 

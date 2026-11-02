@@ -206,12 +206,12 @@ export function ContractTableRow({
             </TableCell>
           )}
           {show('assigner') && (
-            <TableCell className="py-1.5 text-content-secondary">
+            <TableCell className="py-1.5 whitespace-nowrap text-content-secondary">
               {row.assignerName}
             </TableCell>
           )}
           {show('assignee') && (
-            <TableCell className="py-1.5 text-content-secondary">
+            <TableCell className="py-1.5 whitespace-nowrap text-content-secondary">
               {row.assigneeName}
             </TableCell>
           )}

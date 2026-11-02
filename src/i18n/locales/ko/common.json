@@ -90,6 +90,7 @@
   "accessibility.filterByGroup": "그룹별 필터",
   "accessibility.sortCharacters": "캐릭터 정렬",
   "accessibility.clickToCopy": "클릭하여 복사",
+  "accessibility.resizeColumn": "드래그하여 열 너비를 조정합니다. 두 번 클릭하면 열 너비가 초기화됩니다.",
 
   "buttons.copied": "복사됨!",
 

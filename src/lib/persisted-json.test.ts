@@ -4,6 +4,7 @@ import {
   parseBooleanRecord,
   parseJsonRecord,
   parseJsonString,
+  parsePositiveNumberRecord,
 } from './persisted-json'
 
 describe('persisted-json', () => {
@@ -23,6 +24,14 @@ describe('persisted-json', () => {
       hidden: false,
       visible: true,
     })
+  })
+
+  it('keeps only positive finite numbers in number records', () => {
+    expect(
+      parsePositiveNumberRecord(
+        '{"a":120,"b":"wide","c":-5,"d":0,"e":null,"f":42.5}',
+      ),
+    ).toEqual({ a: 120, f: 42.5 })
   })
 
   it('parses only JSON strings', () => {

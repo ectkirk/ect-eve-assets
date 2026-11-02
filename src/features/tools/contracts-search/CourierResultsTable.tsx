@@ -172,7 +172,7 @@ export function CourierResultsTable({
         ref={tableRef}
         className={`flex-1 overflow-auto rounded-lg border border-border bg-surface-secondary/30 ${isLoading ? 'opacity-50' : ''}`}
       >
-        <Table>
+        <Table resizeKey="courier-search">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <SortableHeader
@@ -182,7 +182,9 @@ export function CourierResultsTable({
                 sortDirection={sortDirection}
                 onSort={handleSort}
               />
-              <TableHead>{t('contractsSearch.columns.contract')}</TableHead>
+              <TableHead columnId="contract">
+                {t('contractsSearch.columns.contract')}
+              </TableHead>
               <SortableHeader
                 column="safeJumps"
                 label={t('contractsSearch.columns.safe')}

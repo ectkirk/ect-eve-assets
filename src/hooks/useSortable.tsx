@@ -59,6 +59,7 @@ export function SortableHeader<T extends string>({
 
   return (
     <TableHead
+      columnId={column}
       className={`cursor-pointer select-none hover:bg-surface-tertiary/50 ${className}`}
       onClick={() => {
         onSort(column)

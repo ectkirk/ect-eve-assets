@@ -134,6 +134,7 @@ export function DiffHeader({
 
   return (
     <TableHead
+      columnId="diff"
       className="text-right cursor-pointer select-none hover:bg-surface-tertiary/50"
       onClick={handleClick}
       onContextMenu={handleContextMenu}

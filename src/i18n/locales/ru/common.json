@@ -90,6 +90,7 @@
   "accessibility.filterByGroup": "Фильтр по группе",
   "accessibility.sortCharacters": "Сортировка персонажей",
   "accessibility.clickToCopy": "Нажмите, чтобы скопировать",
+  "accessibility.resizeColumn": "Перетащите, чтобы изменить ширину столбца. Дважды щёлкните, чтобы сбросить ширину столбцов.",
 
   "buttons.copied": "Скопировано!",
 

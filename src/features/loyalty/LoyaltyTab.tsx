@@ -196,10 +196,10 @@ export function LoyaltyTab() {
   return (
     <div className="flex h-full flex-col">
       <div className="flex-1 min-h-0 rounded-lg border border-border bg-surface-secondary/30 overflow-auto">
-        <Table>
+        <Table resizeKey="loyalty">
           <TableHeader className="sticky top-0 z-10 bg-surface-secondary">
             <TableRow className="hover:bg-transparent border-b border-border">
-              <TableHead className="w-8" />
+              <TableHead columnId="owner" className="w-8" />
               <SortableHeader
                 column="corporation"
                 label="columns.corporation"

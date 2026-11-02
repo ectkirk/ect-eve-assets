@@ -161,7 +161,7 @@ export function StructuresTable({
   return (
     <div className="flex h-full flex-col">
       <div className="flex-1 min-h-0 rounded-lg border border-border bg-surface-secondary/30 overflow-auto">
-        <Table>
+        <Table resizeKey="structures">
           <TableHeader className="sticky top-0 z-10 bg-surface-secondary">
             <TableRow className="hover:bg-transparent border-b border-border">
               {COLUMNS.filter((col) => show(col.id)).map((col) => (

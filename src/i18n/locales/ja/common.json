@@ -90,6 +90,7 @@
   "accessibility.filterByGroup": "グループでフィルタ",
   "accessibility.sortCharacters": "キャラクターを並べ替え",
   "accessibility.clickToCopy": "クリックしてコピー",
+  "accessibility.resizeColumn": "ドラッグして列幅を変更します。ダブルクリックで列幅をリセットします。",
 
   "buttons.copied": "コピーしました！",
 
