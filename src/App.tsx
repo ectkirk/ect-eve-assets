@@ -264,7 +264,7 @@ function App() {
         <span className="text-2xl font-bold tracking-tight">
           <span className="text-accent">ECT</span> EVE Assets
         </span>
-        <span className="text-xs text-content-muted">Beta {version}</span>
+        <span className="text-xs text-content-muted">v{version}</span>
         {loadingStatus && (
           <p className="mt-2 text-content-secondary">{loadingStatus}</p>
         )}
