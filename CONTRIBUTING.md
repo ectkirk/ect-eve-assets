@@ -143,13 +143,15 @@ Releases are cut from `main` by pushing a version tag.
 1. Bump the version: `npm version <x.y.z> --no-git-tag-version` (updates `package.json` and `package-lock.json`).
 2. Replace `src/data/changelog.json` with the new version, date, and user-facing changes. This is what the in-app changelog shows.
 3. Commit as `release: vX.Y.Z`, open a PR to `main`, and merge it once CI passes.
-4. Tag the merged commit on `main` and push the tag:
-   ```bash
-   git tag -a vX.Y.Z -m "vX.Y.Z"
-   git push origin vX.Y.Z
-   ```
+4. Start the release, either way:
+   - **From GitHub:** Actions → Release → Run workflow on `main`, and enter the version (`X.Y.Z`). The release step creates the `vX.Y.Z` tag.
+   - **From git:** tag the merged commit on `main` and push the tag:
+     ```bash
+     git tag -a vX.Y.Z -m "vX.Y.Z"
+     git push origin vX.Y.Z
+     ```
 
-The tag starts `.github/workflows/release.yml`. It first checks that the tag, `package.json`, and `src/data/changelog.json` all have the same version. Then it builds Windows, macOS, and Linux installers and publishes a GitHub release with generated notes and the auto-update files. Publishing the release posts to Discord. Tags containing `-alpha`, `-beta`, or `-rc` are published as pre-releases.
+Either way runs `.github/workflows/release.yml`. It first checks that the version, `package.json`, and `src/data/changelog.json` all match (and, for a manual run, that it runs on `main` and the tag is new). Then it builds Windows, macOS, and Linux installers and publishes a GitHub release with generated notes and the auto-update files. Publishing the release posts to Discord. Tags containing `-alpha`, `-beta`, or `-rc` are published as pre-releases.
 
 ## Questions?
 
