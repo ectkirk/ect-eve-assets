@@ -288,7 +288,7 @@ describe('mutamarket-client', () => {
       )
     })
 
-    it('treats zero estimated_value as a valid price', async () => {
+    it('treats a zero estimate as no price', async () => {
       mockGetAbyssalPrice.mockReturnValue(undefined)
 
       mockMutamarketModule.mockResolvedValue(moduleResponse(12345, 0))
@@ -298,7 +298,7 @@ describe('mutamarket-client', () => {
       expect(result.has(12345)).toBe(false)
       expect(mockSetAbyssalPrices).toHaveBeenCalledWith(
         expect.arrayContaining([
-          expect.objectContaining({ itemId: 12345, price: 0 }),
+          expect.objectContaining({ itemId: 12345, price: -1 }),
         ]),
       )
     })
