@@ -43,7 +43,7 @@ export function TreeTab({ mode }: TreeTabProps) {
   const {
     search,
     setResultCount,
-    setCategoryFilter,
+    setSelectFilters,
     setAssetTypeFilter,
     setTotalValue,
   } = useTabControls()
@@ -105,15 +105,20 @@ export function TreeTab({ mode }: TreeTabProps) {
   }, [unfilteredNodes, search, categoryFilter])
 
   useEffect(() => {
-    setCategoryFilter({
-      categories,
-      value: categoryFilter,
-      onChange: setCategoryFilterValue,
-    })
+    setSelectFilters([
+      {
+        id: 'category',
+        options: categories,
+        value: categoryFilter,
+        onChange: setCategoryFilterValue,
+        allLabel: 'searchBar.allCategories',
+        ariaLabel: 'accessibility.filterByCategory',
+      },
+    ])
     return () => {
-      setCategoryFilter(null)
+      setSelectFilters([])
     }
-  }, [categories, categoryFilter, setCategoryFilter])
+  }, [categories, categoryFilter, setSelectFilters])
 
   useEffect(() => {
     if (mode === TreeMode.ALL) {

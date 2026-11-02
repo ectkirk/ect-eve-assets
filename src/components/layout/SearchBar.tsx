@@ -183,9 +183,7 @@ export function SearchBar() {
     search,
     setSearch,
     searchPlaceholder,
-    categoryFilter,
-    groupFilter,
-    regionFilter,
+    selectFilters,
     proximityFilter,
     assetTypeFilter,
     resultCount,
@@ -350,58 +348,25 @@ export function SearchBar() {
         </select>
       )}
 
-      {categoryFilter && (
-        <select
-          value={categoryFilter.value}
-          onChange={(e) => {
-            categoryFilter.onChange(e.target.value)
-          }}
-          aria-label={t('accessibility.filterByCategory')}
-          className="w-40 rounded border border-border bg-surface-tertiary px-2 py-1.5 text-sm focus:border-accent focus:outline-hidden"
-        >
-          <option value="">{t('searchBar.allCategories')}</option>
-          {categoryFilter.categories.map((cat) => (
-            <option key={cat} value={cat}>
-              {cat}
-            </option>
-          ))}
-        </select>
-      )}
-
-      {groupFilter && groupFilter.groups.length > 0 && (
-        <select
-          value={groupFilter.value}
-          onChange={(e) => {
-            groupFilter.onChange(e.target.value)
-          }}
-          aria-label={t('accessibility.filterByGroup')}
-          className="w-44 rounded border border-border bg-surface-tertiary px-2 py-1.5 text-sm focus:border-accent focus:outline-hidden"
-        >
-          <option value="">{t('searchBar.allGroups')}</option>
-          {groupFilter.groups.map((grp) => (
-            <option key={grp} value={grp}>
-              {grp}
-            </option>
-          ))}
-        </select>
-      )}
-
-      {regionFilter && regionFilter.regions.length > 0 && (
-        <select
-          value={regionFilter.value}
-          onChange={(e) => {
-            regionFilter.onChange(e.target.value)
-          }}
-          aria-label={t('accessibility.filterByRegion')}
-          className="w-40 rounded border border-border bg-surface-tertiary px-2 py-1.5 text-sm focus:border-accent focus:outline-hidden"
-        >
-          <option value="">{t('searchBar.allRegions')}</option>
-          {regionFilter.regions.map((region) => (
-            <option key={region} value={region}>
-              {region}
-            </option>
-          ))}
-        </select>
+      {selectFilters.map((filter) =>
+        filter.hideWhenEmpty && filter.options.length === 0 ? null : (
+          <select
+            key={filter.id}
+            value={filter.value}
+            onChange={(e) => {
+              filter.onChange(e.target.value)
+            }}
+            aria-label={t(filter.ariaLabel)}
+            className="w-40 rounded border border-border bg-surface-tertiary px-2 py-1.5 text-sm focus:border-accent focus:outline-hidden"
+          >
+            <option value="">{t(filter.allLabel)}</option>
+            {filter.options.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        ),
       )}
 
       {proximityFilter && (

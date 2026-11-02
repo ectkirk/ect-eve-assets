@@ -93,6 +93,7 @@
   "accessibility.sortCharacters": "Trier les personnages",
   "accessibility.clickToCopy": "Cliquer pour copier",
   "accessibility.resizeColumn": "Faites glisser pour redimensionner la colonne. Double-cliquez pour réinitialiser les largeurs de colonne.",
+  "accessibility.resizePanel": "Faites glisser pour redimensionner le panneau. Double-cliquez pour réinitialiser.",
 
   "buttons.copied": "Copié !",
 
@@ -118,7 +119,7 @@
   "mail.loadingContent": "Chargement du contenu du courrier...",
   "mail.noContent": "Aucun contenu",
   "mail.unknown": "Inconnu",
-  "mail.unknownId": "ID: {{id}}",
+  "fallback.id": "ID {{id}}",
 
   "skills.noMatches": "Aucune compétence correspondante",
   "skills.empty": "Aucune compétence",

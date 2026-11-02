@@ -93,6 +93,7 @@
   "accessibility.sortCharacters": "角色排序",
   "accessibility.clickToCopy": "点击复制",
   "accessibility.resizeColumn": "拖动以调整列宽。双击可重置列宽。",
+  "accessibility.resizePanel": "拖动以调整面板宽度。双击可重置。",
 
   "buttons.copied": "已复制！",
 
@@ -118,7 +119,7 @@
   "mail.loadingContent": "正在加载邮件内容...",
   "mail.noContent": "无内容",
   "mail.unknown": "未知",
-  "mail.unknownId": "ID: {{id}}",
+  "fallback.id": "ID {{id}}",
 
   "skills.noMatches": "没有匹配的技能",
   "skills.empty": "没有技能",

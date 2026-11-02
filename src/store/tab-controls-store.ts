@@ -20,22 +20,16 @@ interface ExpandCollapseConfig {
   toggle: () => void
 }
 
-interface CategoryFilterConfig {
-  categories: string[]
+export interface SelectFilterConfig {
+  id: string
+  options: string[]
   value: string
   onChange: (value: string) => void
-}
-
-interface GroupFilterConfig {
-  groups: string[]
-  value: string
-  onChange: (value: string) => void
-}
-
-interface RegionFilterConfig {
-  regions: string[]
-  value: string
-  onChange: (value: string) => void
+  /** i18n key (common) for the "all" option */
+  allLabel: string
+  /** i18n key (common) for the select's accessible name */
+  ariaLabel: string
+  hideWhenEmpty?: boolean
 }
 
 interface ProximityFilterConfig {
@@ -63,9 +57,7 @@ interface TabControlsState {
   expandCollapse: ExpandCollapseConfig | null
   search: string
   searchPlaceholder: string | null
-  categoryFilter: CategoryFilterConfig | null
-  groupFilter: GroupFilterConfig | null
-  regionFilter: RegionFilterConfig | null
+  selectFilters: SelectFilterConfig[]
   proximityFilter: ProximityFilterConfig | null
   assetTypeFilter: AssetTypeFilterConfig | null
   resultCount: ResultCount | null
@@ -83,9 +75,7 @@ interface TabControlsActions {
   setExpandCollapse: (config: ExpandCollapseConfig | null) => void
   setSearch: (value: string) => void
   setSearchPlaceholder: (placeholder: string | null) => void
-  setCategoryFilter: (config: CategoryFilterConfig | null) => void
-  setGroupFilter: (config: GroupFilterConfig | null) => void
-  setRegionFilter: (config: RegionFilterConfig | null) => void
+  setSelectFilters: (filters: SelectFilterConfig[]) => void
   setProximityFilter: (config: ProximityFilterConfig | null) => void
   setAssetTypeFilter: (config: AssetTypeFilterConfig | null) => void
   setResultCount: (count: ResultCount | null) => void
@@ -108,9 +98,7 @@ export const useTabControlsStore = create<
   expandCollapse: null,
   search: '',
   searchPlaceholder: null,
-  categoryFilter: null,
-  groupFilter: null,
-  regionFilter: null,
+  selectFilters: [],
   proximityFilter: null,
   assetTypeFilter: null,
   resultCount: null,
@@ -134,14 +122,8 @@ export const useTabControlsStore = create<
   setSearchPlaceholder: (searchPlaceholder) => {
     set({ searchPlaceholder })
   },
-  setCategoryFilter: (categoryFilter) => {
-    set({ categoryFilter })
-  },
-  setGroupFilter: (groupFilter) => {
-    set({ groupFilter })
-  },
-  setRegionFilter: (regionFilter) => {
-    set({ regionFilter })
+  setSelectFilters: (selectFilters) => {
+    set({ selectFilters })
   },
   setProximityFilter: (proximityFilter) => {
     set({ proximityFilter })

@@ -13,12 +13,8 @@ import { useAssetData } from '@/hooks/useAssetData'
 import { OwnerIcon } from '@/components/ui/type-icon'
 import { cn, formatNumber } from '@/lib/utils'
 import { useTabControls } from '@/context'
-import {
-  useExpandCollapse,
-  useSortable,
-  SortableHeader,
-  sortRows,
-} from '@/hooks'
+import { useExpandCollapse, useSortable, sortRows } from '@/hooks'
+import { SortableHeader } from '@/components/ui/sortable-header'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import {
   Table,

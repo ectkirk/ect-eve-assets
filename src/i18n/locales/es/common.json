@@ -93,6 +93,7 @@
   "accessibility.sortCharacters": "Ordenar personajes",
   "accessibility.clickToCopy": "Clic para copiar",
   "accessibility.resizeColumn": "Arrastra para cambiar el ancho de la columna. Haz doble clic para restablecer los anchos de columna.",
+  "accessibility.resizePanel": "Arrastra para cambiar el ancho del panel. Haz doble clic para restablecer.",
 
   "buttons.copied": "¡Copiado!",
 
@@ -118,7 +119,7 @@
   "mail.loadingContent": "Cargando contenido del correo...",
   "mail.noContent": "Sin contenido",
   "mail.unknown": "Desconocido",
-  "mail.unknownId": "ID: {{id}}",
+  "fallback.id": "ID {{id}}",
 
   "skills.noMatches": "No hay habilidades coincidentes",
   "skills.empty": "Sin habilidades",

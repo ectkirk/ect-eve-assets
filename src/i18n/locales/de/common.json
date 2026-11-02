@@ -93,6 +93,7 @@
   "accessibility.sortCharacters": "Charaktere sortieren",
   "accessibility.clickToCopy": "Klicken zum Kopieren",
   "accessibility.resizeColumn": "Ziehen, um die Spaltenbreite zu ändern. Doppelklicken, um die Spaltenbreiten zurückzusetzen.",
+  "accessibility.resizePanel": "Ziehen, um die Breite des Bereichs zu ändern. Doppelklicken zum Zurücksetzen.",
 
   "buttons.copied": "Kopiert!",
 
@@ -118,7 +119,7 @@
   "mail.loadingContent": "Mail-Inhalt wird geladen...",
   "mail.noContent": "Kein Inhalt",
   "mail.unknown": "Unbekannt",
-  "mail.unknownId": "ID: {{id}}",
+  "fallback.id": "ID {{id}}",
 
   "skills.noMatches": "Keine passenden Skills",
   "skills.empty": "Keine Skills",

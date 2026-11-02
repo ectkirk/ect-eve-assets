@@ -10,13 +10,13 @@ import { useTabControls } from '@/context'
 import {
   useColumnSettings,
   useSortable,
-  SortableHeader,
   sortRows,
   type ColumnConfig,
 } from '@/hooks'
+import { SortableHeader } from '@/components/ui/sortable-header'
 import { type ESIIndustryJob } from '@/api/endpoints/industry'
 import { useReferenceCacheStore, getTypeName } from '@/store/reference-cache'
-import { getName } from '@/api/endpoints/universe'
+import { getEntityName } from '@/api/endpoints/universe'
 import { TabLoadingState } from '@/components/ui/tab-loading-state'
 import {
   Table,
@@ -499,8 +499,9 @@ export function IndustryJobsTab() {
       if (owner.type === 'character') return owner.name
       return (
         ownCharacterNames.get(installerId) ??
-        getName(installerId)?.name ??
-        t('fallback.id', { ns: 'contracts', id: installerId })
+        getEntityName(installerId, (id) =>
+          t('fallback.id', { ns: 'common', id }),
+        )
       )
     }
 

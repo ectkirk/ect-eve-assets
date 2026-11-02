@@ -8,12 +8,8 @@ import {
   TableSpacerRow,
   TableRow,
 } from '@/components/ui/table'
-import {
-  useSortable,
-  SortableHeader,
-  useRowSelection,
-  useBuybackSelection,
-} from '@/hooks'
+import { useSortable, useRowSelection, useBuybackSelection } from '@/hooks'
+import { SortableHeader } from '@/components/ui/sortable-header'
 import {
   useBuybackActionStore,
   getSecurityTab,

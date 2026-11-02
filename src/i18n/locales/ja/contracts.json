@@ -1,8 +1,6 @@
 {
   "empty": "有効な契約がありません。",
 
-  "fallback.id": "ID {{id}}",
-
   "totals.itemValue": "アイテム価値",
   "totals.contractPrice": "契約価格",
   "totals.collateral": "担保",

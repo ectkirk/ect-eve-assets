@@ -4,7 +4,7 @@ import { ChevronRight, ChevronDown, Mail } from 'lucide-react'
 import { type ESIMailHeader } from '@/api/endpoints/mail'
 import { CharacterPortrait } from '@/components/ui/type-icon'
 import { formatRelativeTime, cn, matchesSearchLower } from '@/lib/utils'
-import { getName } from '@/api/endpoints/universe'
+import { getEntityName } from '@/api/endpoints/universe'
 import { type MailFilterType } from '@/context'
 import { MS_PER_DAY } from '@/lib/timer-utils'
 
@@ -117,7 +117,8 @@ export function CharacterMailPanel({
 
   const resolveName = useCallback(
     (id: number): string =>
-      resolvedNames.get(id) ?? getName(id)?.name ?? t('mail.unknownId', { id }),
+      resolvedNames.get(id) ??
+      getEntityName(id, (unknownId) => t('fallback.id', { id: unknownId })),
     [resolvedNames, t],
   )
 
