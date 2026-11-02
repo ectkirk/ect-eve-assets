@@ -145,7 +145,7 @@ export interface RefCorporationsResult {
 }
 
 export interface MutamarketResult {
-  estimated_value?: number | null | undefined
+  data?: { id: number; estimated_value?: number | null | undefined }
   error?: string | undefined
   status?: number | undefined
 }

@@ -117,6 +117,32 @@ describe('mutamarket-client', () => {
     })
   })
 
+  // Shape of GET/POST https://mutamarket.com/api/modules (ModuleEnvelope),
+  // including the nullable fields that are not used for pricing.
+  function moduleResponse(id: number, estimatedValue: number | null) {
+    return {
+      data: {
+        id,
+        slug: `abyssal-module-${id}`,
+        type: { id: 47408, name: 'Abyssal Damage Control' },
+        source_type: null,
+        mutaplasmid: null,
+        mutated_attributes: [],
+        contract: {
+          id: 1,
+          type: 'auction',
+          price: null,
+          asking_for_items: false,
+          plex_count: 0,
+          non_abyssal_modules_count: 0,
+          abyssal_modules_count: 1,
+        },
+        estimated_value: estimatedValue,
+        estimated_value_updated_at: null,
+      },
+    }
+  }
+
   describe('fetchAbyssalPrices', () => {
     it('returns cached prices without fetching', async () => {
       mockGetAbyssalPrice.mockReturnValue(1000000)
@@ -131,18 +157,37 @@ describe('mutamarket-client', () => {
     it('fetches uncached prices from Mutamarket API', async () => {
       mockGetAbyssalPrice.mockReturnValue(undefined)
 
-      mockMutamarketModule.mockResolvedValue({
-        id: 12345,
-        type: { id: 47408, name: 'Abyssal Damage Control' },
-        source_type: { id: 2048, name: 'Damage Control II' },
-        estimated_value: 2500000,
-      })
+      mockMutamarketModule.mockResolvedValue(moduleResponse(12345, 2500000))
 
       const result = await fetchAbyssalPrices([item(12345)])
 
       expect(mockMutamarketModule).toHaveBeenCalledWith(12345, 47408)
       expect(result.get(12345)).toBe(2500000)
       expect(mockSetAbyssalPrices).toHaveBeenCalled()
+    })
+
+    it('reads the price from the API envelope despite nullable extra fields', async () => {
+      mockGetAbyssalPrice.mockReturnValue(undefined)
+      mockMutamarketModule.mockResolvedValue(moduleResponse(777, 42000000))
+
+      const result = await fetchAbyssalPrices([item(777)])
+
+      expect(result.get(777)).toBe(42000000)
+      expect(mockSetAbyssalPrices).toHaveBeenCalledWith([
+        { itemId: 777, price: 42000000 },
+      ])
+    })
+
+    it('stores -1 when Mutamarket has no estimate yet', async () => {
+      mockGetAbyssalPrice.mockReturnValue(undefined)
+      mockMutamarketModule.mockResolvedValue(moduleResponse(778, null))
+
+      const result = await fetchAbyssalPrices([item(778)])
+
+      expect(result.has(778)).toBe(false)
+      expect(mockSetAbyssalPrices).toHaveBeenCalledWith([
+        { itemId: 778, price: -1 },
+      ])
     })
 
     it('handles 404 responses by storing -1 price', async () => {
@@ -183,7 +228,7 @@ describe('mutamarket-client', () => {
     it('calls onProgress callback', async () => {
       mockGetAbyssalPrice.mockReturnValue(undefined)
 
-      mockMutamarketModule.mockResolvedValue({ estimated_value: 1000000 })
+      mockMutamarketModule.mockResolvedValue(moduleResponse(1, 1000000))
 
       const onProgress = vi.fn()
       await fetchAbyssalPrices([item(1), item(2), item(3)], onProgress)
@@ -195,7 +240,7 @@ describe('mutamarket-client', () => {
       mockGetAbyssalPrice.mockReturnValue(undefined)
       mockMutamarketModule.mockClear()
 
-      mockMutamarketModule.mockResolvedValue({ estimated_value: 100 })
+      mockMutamarketModule.mockResolvedValue(moduleResponse(1, 100))
 
       const items = Array.from({ length: 3 }, (_, i) => item(i + 1))
       await fetchAbyssalPrices(items)
@@ -206,12 +251,7 @@ describe('mutamarket-client', () => {
     it('re-fetches zero-priced items (from ref API) for manual sync', async () => {
       mockGetAbyssalPrice.mockReturnValue(0)
 
-      mockMutamarketModule.mockResolvedValue({
-        id: 12345,
-        type: { id: 47408, name: 'Abyssal Damage Control' },
-        source_type: { id: 2048, name: 'Damage Control II' },
-        estimated_value: 5000000,
-      })
+      mockMutamarketModule.mockResolvedValue(moduleResponse(12345, 5000000))
 
       const result = await fetchAbyssalPrices([item(12345)])
 
@@ -232,9 +272,10 @@ describe('mutamarket-client', () => {
       mockGetAbyssalPrice.mockReturnValue(undefined)
 
       mockMutamarketModule.mockResolvedValue({
-        id: 12345,
-        type: { id: 47408, name: 'Abyssal Damage Control' },
-        source_type: { id: 2048, name: 'Damage Control II' },
+        data: {
+          id: 12345,
+          type: { id: 47408, name: 'Abyssal Damage Control' },
+        },
       })
 
       const result = await fetchAbyssalPrices([item(12345)])
@@ -250,12 +291,7 @@ describe('mutamarket-client', () => {
     it('treats zero estimated_value as a valid price', async () => {
       mockGetAbyssalPrice.mockReturnValue(undefined)
 
-      mockMutamarketModule.mockResolvedValue({
-        id: 12345,
-        type: { id: 47408, name: 'Abyssal Damage Control' },
-        source_type: { id: 2048, name: 'Damage Control II' },
-        estimated_value: 0,
-      })
+      mockMutamarketModule.mockResolvedValue(moduleResponse(12345, 0))
 
       const result = await fetchAbyssalPrices([item(12345)])
 

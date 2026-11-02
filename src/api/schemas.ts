@@ -580,37 +580,16 @@ export const ESITypeInfoSchema = z.object({
 })
 
 // Mutamarket schemas
-export const MutamarketModuleSchema = z.object({
-  id: z.number(),
-  type: z.object({
+/**
+ * GET/POST https://mutamarket.com/api/modules wrap the module in `data`
+ * (ModuleEnvelope in their OpenAPI spec). Only the fields used for pricing
+ * are validated so unrelated API changes can't break price sync.
+ */
+export const MutamarketModuleResponseSchema = z.object({
+  data: z.object({
     id: z.number(),
-    name: z.string(),
+    estimated_value: z.number().nullable().optional(),
   }),
-  source_type: z.object({
-    id: z.number(),
-    name: z.string(),
-    meta_group: z.string().nullable().optional(),
-    meta_group_id: z.number().nullable().optional(),
-    published: z.boolean().optional(),
-  }),
-  mutaplasmid: z
-    .object({
-      id: z.number(),
-      name: z.string(),
-    })
-    .nullable()
-    .optional(),
-  estimated_value: z.number().nullable().optional(),
-  estimated_value_updated_at: z.string().nullable().optional(),
-  slug: z.string().nullable().optional(),
-  contract: z
-    .object({
-      id: z.number(),
-      type: z.string(),
-      price: z.number(),
-    })
-    .nullable()
-    .optional(),
 })
 
 export const ESIFWSystemSchema = z.object({
