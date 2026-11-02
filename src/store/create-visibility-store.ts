@@ -40,8 +40,7 @@ export interface VisibilityStoreConfig<
   toStoredItem: (owner: Owner, item: TItem) => TStoredItem
   isEmpty?: ((items: TItem[]) => boolean) | undefined
   onAfterInit?:
-    | ((itemsById: Map<number, TStoredItem>) => void | Promise<void>)
-    | undefined
+    ((itemsById: Map<number, TStoredItem>) => void | Promise<void>) | undefined
   onBeforeOwnerUpdate?: (
     owner: Owner,
     previousVisibility: Set<number>,
@@ -54,14 +53,12 @@ export interface VisibilityStoreConfig<
     itemsById: Map<number, TStoredItem>
   }) => void | undefined
   onAfterBatchUpdate?:
-    | ((itemsById: Map<number, TStoredItem>) => void)
-    | undefined
+    ((itemsById: Map<number, TStoredItem>) => void) | undefined
   shouldDeleteStaleItems?: boolean | undefined
   shouldUpdateExisting?: boolean | undefined
   extraState?: TExtraState | undefined
   rebuildExtraState?:
-    | ((itemsById: Map<number, TStoredItem>) => Partial<TExtraState>)
-    | undefined
+    ((itemsById: Map<number, TStoredItem>) => Partial<TExtraState>) | undefined
   extraActions?: (
     set: (partial: Partial<VisibilityState<TStoredItem> & TExtraState>) => void,
     get: () => VisibilityState<TStoredItem> &

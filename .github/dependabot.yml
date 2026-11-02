@@ -16,6 +16,10 @@ updates:
         dependency-type: 'production'
         update-types:
           - 'patch'
+    ignore:
+      # Keep @types/node on the Node major bundled with Electron
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
     commit-message:
       prefix: 'deps'
     labels:

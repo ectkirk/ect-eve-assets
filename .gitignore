@@ -3,6 +3,7 @@ node_modules/
 
 # Local dotfiles and tool state
 .*
+!.oxlintrc.json
 
 # Build outputs
 dist/
@@ -27,8 +28,6 @@ npm-debug.log*
 
 # Test coverage and results
 coverage/
-playwright-report/
-test-results/
 
 # Temp files
 *.tmp

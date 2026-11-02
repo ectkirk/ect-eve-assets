@@ -166,7 +166,7 @@ function TabButtons<T extends string>({
   activeTab: T
   onTabChange: (tab: T) => void
   onKeyDown: (e: KeyboardEvent, index: number) => void
-  tabRefs: React.MutableRefObject<Map<number, HTMLButtonElement>>
+  tabRefs: React.RefObject<Map<number, HTMLButtonElement>>
   getLabel: (tab: T) => string
 }) {
   return tabs.map((tab, index) => (

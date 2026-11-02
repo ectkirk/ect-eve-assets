@@ -30,8 +30,7 @@ interface TreeRowProps {
   onSellToBuyback: (node: TreeNode) => void
   onOpenMarketIngame?: ((typeId: number, typeName?: string) => void) | undefined
   onSetAutopilotIngame?:
-    | ((locationId: number, locationName?: string) => void)
-    | undefined
+    ((locationId: number, locationName?: string) => void) | undefined
   visibleColumns: string[]
 }
 

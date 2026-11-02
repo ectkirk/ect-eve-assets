@@ -31,10 +31,4 @@ export interface UnifiedStructureRow {
 }
 
 export type StructureSortColumn =
-  | 'name'
-  | 'type'
-  | 'region'
-  | 'state'
-  | 'fuel'
-  | 'rigs'
-  | 'details'
+  'name' | 'type' | 'region' | 'state' | 'fuel' | 'rigs' | 'details'

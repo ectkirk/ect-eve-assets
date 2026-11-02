@@ -1,4 +1,4 @@
-import { memo, useCallback } from 'react'
+import { createElement, memo, useCallback } from 'react'
 import { ChevronRight, ChevronDown } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { TableCell } from '@/components/ui/table'
@@ -35,12 +35,10 @@ export const TreeNodeIcon = memo(function TreeNodeIcon({
   ) {
     colorClass = DIVISION_COLORS.at(divisionNumber - 1)!
   }
-  return (
-    <Icon
-      aria-hidden="true"
-      className={cn('h-4 w-4 flex-shrink-0', colorClass)}
-    />
-  )
+  return createElement(Icon, {
+    'aria-hidden': true,
+    className: cn('h-4 w-4 flex-shrink-0', colorClass),
+  })
 })
 
 export const ItemIcon = memo(function ItemIcon({ node }: { node: TreeNode }) {

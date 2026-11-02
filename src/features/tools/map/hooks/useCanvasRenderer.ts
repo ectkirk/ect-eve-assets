@@ -29,7 +29,7 @@ import {
 
 interface UseCanvasRendererOptions {
   canvasRef: React.RefObject<HTMLCanvasElement | null>
-  cameraRef: React.MutableRefObject<Camera>
+  cameraRef: React.RefObject<Camera>
   camera: Camera
   dimensions: { width: number; height: number }
   spatialIndex: SpatialIndex | null

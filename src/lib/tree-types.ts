@@ -16,13 +16,7 @@ export enum TreeMode {
 }
 
 export type TreeNodeType =
-  | 'region'
-  | 'system'
-  | 'station'
-  | 'office'
-  | 'division'
-  | 'ship'
-  | 'item'
+  'region' | 'system' | 'station' | 'office' | 'division' | 'ship' | 'item'
 
 export interface TreeNode {
   id: string

@@ -10,7 +10,7 @@ interface UseMapCameraOptions {
 
 interface UseMapCameraReturn {
   camera: Camera
-  cameraRef: React.MutableRefObject<Camera>
+  cameraRef: React.RefObject<Camera>
   isInitialized: boolean
   isDragging: boolean
   handleMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => void

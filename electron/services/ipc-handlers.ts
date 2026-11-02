@@ -23,8 +23,8 @@ interface WindowContext {
   toggleMaximize: () => void
   isMaximized: () => boolean
   characterTokens: Map<number, string>
-  readStorage: () => Record<string, unknown> | null
-  writeStorage: (data: Record<string, unknown>) => void
+  readStorage: () => Promise<Record<string, unknown> | null>
+  writeStorage: (data: Record<string, unknown>) => Promise<void>
 }
 
 export function registerAuthHandlers(ctx: WindowContext): void {
@@ -92,7 +92,7 @@ export function registerStorageHandlers(ctx: WindowContext): void {
     return ctx.readStorage()
   })
 
-  ipcMain.handle('storage:set', (_event, data: unknown) => {
+  ipcMain.handle('storage:set', async (_event, data: unknown) => {
     if (!isValidObject(data)) {
       logger.error('Invalid storage data type', undefined, {
         module: 'Storage',
@@ -113,7 +113,7 @@ export function registerStorageHandlers(ctx: WindowContext): void {
       })
       return false
     }
-    ctx.writeStorage(data)
+    await ctx.writeStorage(data)
     return true
   })
 }

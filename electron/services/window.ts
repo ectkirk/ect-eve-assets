@@ -63,58 +63,70 @@ function saveWindowState(state: WindowState): void {
   }
 }
 
-function canEncrypt(): boolean {
-  return safeStorage.isEncryptionAvailable()
+let storageWriteQueue: Promise<void> = Promise.resolve()
+
+async function persistStorage(data: Record<string, unknown>): Promise<void> {
+  ensureDirectory(userDataPath)
+
+  if (await safeStorage.isAsyncEncryptionAvailable()) {
+    const encrypted = await safeStorage.encryptStringAsync(JSON.stringify(data))
+    writeBinaryFile(storageFile, encrypted, { mode: 0o600 })
+    return
+  }
+
+  logger.warn('Encryption not available, using plaintext', {
+    module: 'Storage',
+  })
+  writeTextFile(storageFile, JSON.stringify(data, null, 2), {
+    mode: 0o600,
+    encoding: 'utf-8',
+  })
 }
 
-export function readStorage(): Record<string, unknown> | null {
+export function writeStorage(data: Record<string, unknown>): Promise<void> {
+  storageWriteQueue = storageWriteQueue
+    .then(() => persistStorage(data))
+    .catch((err: unknown) => {
+      logger.error('Failed to write storage', err, { module: 'Storage' })
+    })
+  return storageWriteQueue
+}
+
+export async function readStorage(): Promise<Record<string, unknown> | null> {
   try {
     if (!pathExists(storageFile)) return null
 
     const fileData = readBinaryFile(storageFile)
 
-    if (canEncrypt()) {
-      try {
-        const decrypted = safeStorage.decryptString(fileData)
-        return JSON.parse(decrypted) as Record<string, unknown>
-      } catch {
-        logger.warn('Failed to decrypt storage, deleting corrupted file', {
-          module: 'Storage',
-        })
-        removeFile(storageFile)
-        return null
-      }
-    } else {
+    if (!(await safeStorage.isAsyncEncryptionAvailable())) {
       logger.warn('Encryption not available, using plaintext', {
         module: 'Storage',
       })
       return JSON.parse(fileData.toString('utf-8')) as Record<string, unknown>
     }
+
+    let data: Record<string, unknown>
+    let shouldReEncrypt: boolean
+    try {
+      const decrypted = await safeStorage.decryptStringAsync(fileData)
+      data = JSON.parse(decrypted.result) as Record<string, unknown>
+      shouldReEncrypt = decrypted.shouldReEncrypt
+    } catch {
+      logger.warn('Failed to decrypt storage, deleting corrupted file', {
+        module: 'Storage',
+      })
+      removeFile(storageFile)
+      return null
+    }
+
+    if (shouldReEncrypt) {
+      void writeStorage(data)
+    }
+    return data
   } catch (err) {
     logger.error('Failed to read storage', err, { module: 'Storage' })
   }
   return null
-}
-
-export function writeStorage(data: Record<string, unknown>): void {
-  try {
-    ensureDirectory(userDataPath)
-
-    if (canEncrypt()) {
-      const encrypted = safeStorage.encryptString(JSON.stringify(data))
-      writeBinaryFile(storageFile, encrypted, { mode: 0o600 })
-    } else {
-      logger.warn('Encryption not available, using plaintext', {
-        module: 'Storage',
-      })
-      writeTextFile(storageFile, JSON.stringify(data, null, 2), {
-        mode: 0o600,
-        encoding: 'utf-8',
-      })
-    }
-  } catch (err) {
-    logger.error('Failed to write storage', err, { module: 'Storage' })
-  }
 }
 
 function getValidatedWindowState(state: WindowState): WindowState {

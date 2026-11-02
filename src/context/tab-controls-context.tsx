@@ -83,14 +83,3 @@ export function useTabControls() {
     })),
   )
 }
-
-/**
- * @deprecated No longer needed — store is global. Kept as a passthrough for compatibility.
- */
-export function TabControlsProvider({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  return <>{children}</>
-}

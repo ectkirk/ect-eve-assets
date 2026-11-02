@@ -77,7 +77,7 @@ The Electron main and renderer processes communicate exclusively through IPC. Th
 - **No verbose comments** — Code should be self-explanatory. Only comment non-obvious business logic.
 - **DRY** — Extract repeated logic into shared utilities.
 - **KISS** — Simple solutions over complex ones. Avoid premature abstraction.
-- **No `eslint-disable`** — Fix the underlying issue.
+- **No `oxlint-disable` / `eslint-disable`** — Fix the underlying issue.
 - **No `any`** — Use strict TypeScript. Prefix unused variables with `_`.
 - **Early returns** — Avoid deeply nested conditionals.
 
@@ -96,11 +96,9 @@ npm test                              # Run all tests
 npm run test:watch                    # Watch mode
 npx vitest run path/to/file.test.ts   # Single file
 npm run test:coverage                 # Coverage report
-npm run test:e2e                      # Playwright E2E tests
 ```
 
 - **Unit tests**: Vitest + jsdom + React Testing Library + fake-indexeddb
-- **E2E tests**: Playwright
 - **Test setup**: `src/test/setup.ts` provides localStorage polyfill, i18n init, and logger mock
 - When mocking `auth-store`, use `importOriginal` to preserve exports like `ownerKey` and `findOwnerByKey`
 

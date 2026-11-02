@@ -53,16 +53,16 @@ Built with Electron, React, and TypeScript.
 
 ## Tech Stack
 
-| Layer      | Technology                                                |
-| ---------- | --------------------------------------------------------- |
-| Desktop    | Electron 42, electron-updater                             |
-| Frontend   | React 19, TypeScript 6, Vite 8                            |
-| State      | Zustand 5, IndexedDB persistence                          |
-| UI         | Tailwind 4, shadcn/ui (Radix), Lucide icons               |
-| Tables     | Custom React tables with fixed-row virtualization         |
-| Validation | Zod 4                                                     |
-| Auth       | EVE SSO OAuth2 PKCE (jose)                                |
-| Testing    | Vitest, React Testing Library, Playwright, fake-indexeddb |
+| Layer      | Technology                                        |
+| ---------- | ------------------------------------------------- |
+| Desktop    | Electron 45, electron-updater                     |
+| Frontend   | React 19, TypeScript 7, Vite 8                    |
+| State      | Zustand 5, IndexedDB persistence                  |
+| UI         | Tailwind 4, shadcn/ui (Radix), Lucide icons       |
+| Tables     | Custom React tables with fixed-row virtualization |
+| Validation | Zod 4                                             |
+| Auth       | EVE SSO OAuth2 PKCE (jose)                        |
+| Testing    | Vitest, React Testing Library, fake-indexeddb     |
 
 ## Development
 
@@ -71,7 +71,7 @@ npm install
 npm run dev          # Start dev server
 npm test             # Run unit tests
 npm run typecheck    # TypeScript check
-npm run lint         # ESLint
+npm run lint         # Oxlint (type-aware) + Prettier check
 npm run build        # Production build
 ```
 

@@ -10,7 +10,7 @@ import { FACTION_NAMES } from '../types'
 
 interface UseMapHoverOptions {
   canvasRef: React.RefObject<HTMLCanvasElement | null>
-  cameraRef: React.MutableRefObject<Camera>
+  cameraRef: React.RefObject<Camera>
   spatialIndex: SpatialIndex | null
   regionMap: Map<number, CachedRegion>
   fwData: Map<number, number> | null

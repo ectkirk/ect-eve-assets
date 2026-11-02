@@ -7,14 +7,7 @@ import { isJsonRecord, parseJsonRecord } from '@/lib/persisted-json'
 import { getRecordValue } from '@/lib/record-utils'
 
 export type SupportedLanguage =
-  | 'de'
-  | 'en'
-  | 'es'
-  | 'fr'
-  | 'ja'
-  | 'ko'
-  | 'ru'
-  | 'zh'
+  'de' | 'en' | 'es' | 'fr' | 'ja' | 'ko' | 'ru' | 'zh'
 
 export const LANGUAGE_OPTIONS: { value: SupportedLanguage; label: string }[] = [
   { value: 'de', label: 'Deutsch' },

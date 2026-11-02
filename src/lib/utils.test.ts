@@ -29,8 +29,6 @@ describe('cn', () => {
     expect(cn(['foo', 'bar'])).toBe('foo bar')
   })
 
-
-
   it('returns empty string for no inputs', () => {
     expect(cn()).toBe('')
   })

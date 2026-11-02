@@ -25,7 +25,7 @@ export function BuybackForm({
   const effectiveSubmitLabel = submitLabel ?? t('buyback.getQuote')
   const effectiveResetLabel = resetLabel ?? t('buyback.newQuote')
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (text.trim() && !isLoading) {
       onSubmit(text)

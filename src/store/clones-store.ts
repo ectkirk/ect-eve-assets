@@ -45,8 +45,7 @@ export const useClonesStore = createOwnerStore<CloneData, CharacterCloneData>({
       clones: stored['clones'] as ESIClone,
       activeImplants: stored['activeImplants'] as number[],
       activeLocation: stored['activeLocation'] as
-        | ESICharacterLocation
-        | undefined,
+        ESICharacterLocation | undefined,
     }),
   },
   ownerFilter: 'character',

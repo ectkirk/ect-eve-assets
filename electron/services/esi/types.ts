@@ -34,8 +34,7 @@ export interface ESISuccessResponse<T> {
   success: true
   data: T
   meta?:
-    | { expiresAt: number; etag: string | null; notModified: boolean }
-    | undefined
+    { expiresAt: number; etag: string | null; notModified: boolean } | undefined
   xPages?: number | undefined
 }
 
@@ -55,11 +54,7 @@ export interface CacheEntry {
 }
 
 export type ESIRouteStatus =
-  | 'OK'
-  | 'Degraded'
-  | 'Down'
-  | 'Recovering'
-  | 'Unknown'
+  'OK' | 'Degraded' | 'Down' | 'Recovering' | 'Unknown'
 
 export interface ESIRouteHealth {
   method: string
